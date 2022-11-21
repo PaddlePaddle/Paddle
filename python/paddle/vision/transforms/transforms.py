@@ -785,7 +785,7 @@ class BrightnessTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the brightness. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -828,7 +828,7 @@ class ContrastTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the contrast. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -873,7 +873,7 @@ class SaturationTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the saturation. Can be any
-            non negative number. 0 gives the original image
+            non negative number. 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -916,7 +916,7 @@ class HueTransform(BaseTransform):
 
     Args:
         value (float): How much to adjust the hue. Can be any number
-            between 0 and 0.5, 0 gives the original image
+            between 0 and 0.5, 0 gives the original image.
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
