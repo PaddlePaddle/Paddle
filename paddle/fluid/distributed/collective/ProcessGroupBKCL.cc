@@ -20,6 +20,7 @@
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace distributed {
@@ -56,8 +57,14 @@ bool ProcessGroupBKCL::BKCLTask::Wait(std::chrono::milliseconds timeout) {
 
   if (barrier_) {
     // If we use the work to do barrier, we should block cpu
+
+    // TODO(zhangxiaoci) There is no such function that can sync entire device
+    // for xpu (for now), so all we can do is sync whatever stream that we know
+    // and hope for the best. Note that for correctness the communication stream
+    // needs to be in sync mode.
     platform::XPUDeviceGuard guard(place_.GetDeviceId());
     xpu_wait();
+    calc_ctx->Wait();
   }
   return true;
 }
@@ -68,11 +75,8 @@ void ProcessGroupBKCL::BKCLTask::Synchronize() { Wait(kWaitTimeout); }
 ProcessGroupBKCL::ProcessGroupBKCL(const std::shared_ptr<Store>& store,
                                    int rank,
                                    int size,
-                                   const platform::Place& place,
                                    int gid)
-    : ProcessGroupStream(rank, size, place, gid), store_(store) {
-  platform::SetXPUDeviceId(place_.device);
-}
+    : ProcessGroupStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
@@ -107,6 +111,7 @@ void ProcessGroupBKCL::BroadcastUniqueBKCLID(BKCLUniqueId* bkcl_id) {
 
 void ProcessGroupBKCL::CreateBKCLEnvCache(const Place& place,
                                           const std::string& place_key) {
+  platform::XPUDeviceGuard guard(place.GetDeviceId());
   BKCLUniqueId bkcl_id;
   if (rank_ == 0) {
     PADDLE_ENFORCE_XPU_SUCCESS(bkcl_get_unique_id(&bkcl_id));
@@ -230,6 +235,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
+    int64_t offset,  // for compatibility, no use now
+    int64_t numel,   // for compatibility, no use now
     bool sync_op,
     bool use_calc_stream) {
   return Collective(
@@ -255,8 +262,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
     const BarrierOptions& opts) {
+  PADDLE_ENFORCE_GE(opts.device_id,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "The barrier device id must greater or equal than 0."));
+  platform::XPUPlace place(opts.device_id);
   auto allocator = std::unique_ptr<phi::Allocator>(
-      new paddle::experimental::DefaultAllocator(place_));
+      new paddle::experimental::DefaultAllocator(place));
   phi::DenseTensorMeta meta(phi::DataType::FLOAT32, phi::DDim{1});
   phi::DenseTensor barrier_tensor{allocator.get(), meta};
 
@@ -270,12 +282,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
   return task;
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
@@ -517,6 +529,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
       CommType::ALLGATHER,
       sync_op,
       /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
+    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+  auto process_group =
+      std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
 }
 
 }  //  namespace distributed

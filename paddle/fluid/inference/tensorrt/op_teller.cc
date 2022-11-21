@@ -1076,13 +1076,24 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
-      // At present, only support float32 or float16 into trt.
-      if (!(dtype == 5 || dtype == 4)) {
-        return false;
-      }
-      if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
-        return false;
+      if (!with_dynamic_shape) {
+        // At present, only support float32 or float16 into trt.
+        if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP16)) {
+          return false;
+        }
+        if (x_shape.size() == 1) {
+          VLOG(3)
+              << "Scale op does not support 1-dimensional input in tensorrt";
+          return false;
+        }
+      } else {
+        // At present, only support float32 or float16 or int32 into trt.
+        if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP16 ||
+              dtype == framework::proto::VarType::INT32)) {
+          return false;
+        }
       }
     }
 
@@ -1158,6 +1169,28 @@ struct SimpleOpTypeSetTeller : public Teller {
       // At present, only support float32 into trt.
       if (dtype != 5) {
         return false;
+      }
+    }
+
+    if (op_type == "fill_any_like") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the fill_any_like does not support static shape yet";
+        return false;
+      }
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      if (dtype != -1 && dtype != 2 && dtype != 5) {
+        VLOG(3) << "the fill_any_like only supports int32 and float32";
+        return false;
+      }
+      if (dtype == -1) {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        auto input_type = x_var_desc->GetDataType();
+        if (input_type != framework::proto::VarType::INT32 &&
+            input_type != framework::proto::VarType::FP32) {
+          VLOG(3) << "the fill_any_like only supports int32 and float32";
+          return false;
+        }
       }
     }
 
@@ -1244,7 +1277,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
         op_type == "elementwise_pow" || op_type == "elementwise_min" ||
-        op_type == "elementwise_max") {
+        op_type == "elementwise_max" || op_type == "elementwise_floordiv") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1652,6 +1685,17 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
+    }
+
+    if (op_type == "where") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "where is not supported when TensorRT < 8.4";
+      return false;
+#endif
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the where op does not support static shape yet";
+        return false;
+      }
     }
 
     if (op_type == "skip_layernorm") {
@@ -2091,10 +2135,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "unsupport data type conversion";
         return false;
       }
-      if (in_dtype == 0) {
-        VLOG(3) << "do not support input data type as bool now";
-        return false;
+#if IS_TRT_VERSION_GE(8400)
+      if (in_dtype == 0 || out_dtype == 0) {
+        if (with_dynamic_shape) {
+          VLOG(3) << "the cast op supports inputs and outputs of BOOL by "
+                     "trt8.4 above ";
+          return true;
+        }
       }
+#endif
       if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
         VLOG(3) << "only valid conversions are: "
@@ -2277,14 +2326,17 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+      "elementwise_floordiv",
       "equal",
       "dropout",
+      "fill_any_like",
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
+      "where",
       "swish",
       "silu",
       "celu",
@@ -2401,14 +2453,17 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_pow",
       "elementwise_min",
       "elementwise_max",
+      "elementwise_floordiv",
       "equal",
       "dropout",
+      "fill_any_like",
       "prelu",
       "conv2d_transpose",
       "depthwise_conv2d_transpose",
       "leaky_relu",
       "fc",
       "shuffle_channel",
+      "where",
       "swish",
       "silu",
       "celu",
