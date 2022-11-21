@@ -68,7 +68,6 @@ namespace funcs {
 #if defined(__NVCC__) || defined(__HIPCC__) || defined(__xpu__)
 namespace details {
 
-// Return 2^[floor(log2(n))]
 static inline int GetLastPow2(int n) {
   n |= (n >> 1);
   n |= (n >> 2);
@@ -541,7 +540,7 @@ struct ReduceConfig {
     // set grid size.
     // Whether to set grid.y larger than 1, there are 3 following rules:
     // 1. The number that each thread process should no less than
-    //    min_reduce_num_per_thread but no more than max_reduce_num_per_thread;
+    //    min_reduce_num_per_threadbut no more than max_reduce_num_per_thread;
     // 2. It should maximize the utilization of SM.
     // So we choose the minimum between input_split_num_1 and input_split_num_3
     // to make each thread process as mush data as possible. Meanwhile,
@@ -986,16 +985,6 @@ static void LaunchReduceKernel(const Tx* x_data,
   }
 }
 
-template <typename T>
-struct TypeTrait {
-  using Type = T;
-};
-
-template <>
-struct TypeTrait<phi::dtype::float16> {
-  using Type = half;
-};
-
 #if !defined(PADDLE_WITH_XPU_KP)
 template <typename Tx,
           typename Ty,
@@ -1050,78 +1039,9 @@ CubTensorReduceImpl(const Tx* x_data,
                     int reduce_num,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
-#ifdef __HIPCC__
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
-#else
-  const half* in = reinterpret_cast<const half*>(x_data);
-  if (std::is_same<Ty, phi::dtype::float16>::value) {
-    half* out = reinterpret_cast<half*>(y_data);
-    auto reducer = ReduceOp<half>();
-    auto transform_half = kps::IdentityFunctor<half, half>();
-    cub::TransformInputIterator<half,
-                                kps::IdentityFunctor<half, half>,
-                                const half*>
-        trans_x(in, transform_half);
-    size_t temp_storage_bytes = 0;
-    cub::DeviceReduce::Reduce(nullptr,
-                              temp_storage_bytes,
-                              trans_x,
-                              out,
-                              reduce_num,
-                              reducer,
-                              reducer.initial(),
-                              stream);
-    phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
-        dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
-
-    auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
-
-    cub::DeviceReduce::Reduce(temp_storage,
-                              temp_storage_bytes,
-                              trans_x,
-                              out,
-                              reduce_num,
-                              reducer,
-                              reducer.initial(),
-                              stream);
-    y_data = reinterpret_cast<Ty*>(out);
-  } else {
-    // Todo: when Ty is not fp16
-
-    // using MT = typename TypeTrait<Ty>::Type;
-    // auto reducer = ReduceOp<MT>();
-    // auto transform_half = kps::IdentityFunctor<MT, half>();
-    // // cub::TransformInputIterator<MT,
-    //                             // kps::IdentityFunctor<half, MT>,
-    //                             // const half*>
-    //     // trans_x(in, transform_half);
-    // size_t temp_storage_bytes = 0;
-    // cub::DeviceReduce::Reduce(nullptr,
-    //                           temp_storage_bytes,
-    //                           in,
-    //                           y_data,
-    //                           reduce_num,
-    //                           reducer,
-    //                           reducer.initial(),
-    //                           stream);
-    // phi::DenseTensor tmp = phi::Empty<uint8_t, phi::GPUContext>(
-    //     dev_ctx, {static_cast<int64_t>(temp_storage_bytes)});
-
-    // auto* temp_storage = dev_ctx.Alloc<uint8_t>(&tmp);
-
-    // cub::DeviceReduce::Reduce(temp_storage,
-    //                           temp_storage_bytes,
-    //                           in,
-    //                           y_data,
-    //                           reduce_num,
-    //                           reducer,
-    //                           reducer.initial(),
-    //                           stream);
-  }
-}
-#endif  // __HIPCC__
 #endif  // PADDLE_WITH_XPU_KP
 
 template <typename Tx,
@@ -1173,15 +1093,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   }
 
   config.SetOutputData(y_data, dev_ctx, &tmp);
-  constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value &&
-                             std::is_same<Tx, phi::dtype::float16>::value;
-
-#ifdef defined(__HIPCC__) || defined(__xpu__)
+  constexpr bool kIsTxFP16 = std::is_same<Tx, phi::dtype::float16>::value;
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16;
-#else
-  bool use_cub_reduce = config.reduce_num == numel && kIsTxFP16;
-#endif
-
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
     if (is_mean) {
