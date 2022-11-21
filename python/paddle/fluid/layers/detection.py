@@ -631,7 +631,7 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
                     data = fluid.layers.fill_constant(shape=[1], value=1, dtype='int32')
                     fg_label = fluid.layers.greater_equal(label, data)
                     fg_label = fluid.layers.cast(fg_label, dtype='int32')
-                    fg_num = paddle.sum(fg_label)
+                    fg_num = paddle.sum(fg_label, dtype='int32')
                     fg_num.stop_gradient = True
                     avg_loss = get_focal_loss(output, label, fg_num, num_classes)
                     return avg_loss
