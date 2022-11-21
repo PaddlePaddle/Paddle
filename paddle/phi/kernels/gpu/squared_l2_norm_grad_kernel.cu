@@ -21,20 +21,16 @@
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 
 namespace phi {
-namespace kps {
 /**
  * x*y*2.0
  */
 template <typename T>
-struct MulNormFunctor {
-  inline T initial() { return static_cast<T>(1.0f); }
-
+struct DoubleMulFunctor {
   __device__ __forceinline__ T operator()(const T a, const T b) const {
     return b * a * static_cast<T>(2.0f);
   }
 };
 
-}  // namespace kps
 template <typename T, typename Context>
 void SquaredL2NormGradKernel(const Context& dev_ctx,
                              const DenseTensor& x,
@@ -51,7 +47,7 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outs{dx};
 
   funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, ins, &outs, -1, phi::kps::MulNormFunctor<T>());
+      dev_ctx, ins, &outs, -1, phi::DoubleMulFunctor<T>());
 }
 }  // namespace phi
 

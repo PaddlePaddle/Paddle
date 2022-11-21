@@ -19,15 +19,31 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
 
+
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 namespace phi {
 template <typename T, typename Context>
 void SquaredL2NormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
+  /*
+   ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+        dev_ctx, in, out, kps::IdentityFunctor<T>(), out_reduce_dims);
+        */
+    std::vector<int> origin_reduce_dims;
+    for(size_t i = 0; i < x.dims().size(); i++) {
+        origin_reduce_dims.push_back(i);
+    }
+    phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::SquareFunctor<T,T>>(
+        dev_ctx, x, out, kps::SquareFunctor<T, T>(), origin_reduce_dims, false);
+        /*
   phi::Reduce<T, phi::kps::AddFunctor, phi::kps::SquareFunctor>(
       dev_ctx, x, true, phi::vectorize(x.dims()), true, x.dtype(), out);
+      */
+      
 }
 
 }  // namespace phi

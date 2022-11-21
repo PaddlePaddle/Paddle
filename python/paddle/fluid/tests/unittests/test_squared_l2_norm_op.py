@@ -57,7 +57,7 @@ class TestSquaredL2NormF16Op(OpTest):
 
 class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
     def init_test_case(self):
-        self.max_relative_error = 0.5
+        self.max_relative_error = 0.7
         X = np.random.uniform(-2.0, 2.0, (3, 10)).astype('float16')
         X[np.abs(X) < self.max_relative_error] = 0.1
         return X
