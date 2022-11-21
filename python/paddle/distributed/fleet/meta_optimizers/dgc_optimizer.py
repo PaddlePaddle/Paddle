@@ -122,7 +122,7 @@ class DGCMomentumOptimizer(Optimizer):
         return True
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, paddle.fluid.framework.Block)
         velocity_acc = self._get_accumulator(
             self._u_velocity_acc_str, param_and_grad[0]
         )
