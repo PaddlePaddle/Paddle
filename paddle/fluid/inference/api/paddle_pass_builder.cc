@@ -350,8 +350,8 @@ void CpuPassStrategy::EnableMKLDNN() {
              "elt_act_mkldnn_fuse_pass",              //
              "layer_norm_onednn_optimization_pass",   //
              "operator_scale_onednn_fuse_pass",       //
-             // "operator_unsqueeze2_onednn_fuse_pass",  //
-             //  "operator_reshape2_onednn_fuse_pass",    //
+             "operator_unsqueeze2_onednn_fuse_pass",  //
+             "operator_reshape2_onednn_fuse_pass",    //
              // TODO(intel): Please fix the bug on windows.
              // https://github.com/PaddlePaddle/Paddle/issues/29710
              // "mkldnn_inplace_pass",  // This pass should be activated after

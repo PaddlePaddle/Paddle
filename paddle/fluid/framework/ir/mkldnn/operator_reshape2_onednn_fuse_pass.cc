@@ -28,7 +28,7 @@ void FuseOperatorReshape2OneDNNPass::ApplyImpl(Graph *graph) const {
   // THIS FUSE WILL WORK ONLY WITH OPERATORS THAT OUTPUTS PLAIN MEMORY, F.E.
   // ABCD FOR 4D! BE AWARE OF THAT!
   std::vector<std::pair<std::string, int>> ops_and_outputs = {
-      {"fc", 1}, {"transpose2", 2}};
+      {"fc", 1}, {"transpose2", 1}};
 
   for (const auto &op_and_outputs : ops_and_outputs)
     FuseReshape2(graph, op_and_outputs.first, op_and_outputs.second);
