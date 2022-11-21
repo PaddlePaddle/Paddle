@@ -554,6 +554,8 @@ void BindPlace(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
+          # required: npu
+
           import paddle
           place = paddle.NPUPlace(0)
 
