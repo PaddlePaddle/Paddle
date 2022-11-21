@@ -161,7 +161,7 @@ static PyObject* eager_api_run_partial_grad(PyObject* self,
                        only_inputs,
                        allow_unused,
                        no_grad_vars);
-    VLOG(1) << " in eager_api_run_partial_grad, after runing egr::Grad";
+    VLOG(4) << " in eager_api_run_partial_grad, after runing egr::Grad";
   }
   return ToPyObject(result, true /* return_py_none_if_not_initialize */);
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -268,7 +268,8 @@ PyObject* eager_api_get_grads_types(PyObject* self,
     if (meta && grad.initialized()) {
       if (grad.is_dense_tensor() &&
           (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
-           tensor.dtype() == paddle::experimental::DataType::FLOAT16)) {
+           tensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
+           tensor.dtype() == paddle::experimental::DataType::BFLOAT16)) {
         ret.emplace_back(
             paddle::framework::TransToProtoVarType(tensor.dtype()));
       }
