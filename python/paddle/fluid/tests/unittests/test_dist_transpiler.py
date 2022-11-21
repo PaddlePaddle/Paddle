@@ -440,7 +440,7 @@ class TestFakeInit(TranspilerTest):
             fluid.layers.reduce_sum(true_xent, dim=1),
             fluid.layers.reduce_sum(neg_xent, dim=1),
         )
-        avg_cost = fluid.layers.reduce_mean(cost)
+        avg_cost = paddle.mean(cost)
 
         sgd_optimizer = fluid.optimizer.SGD(
             learning_rate=fluid.layers.exponential_decay(

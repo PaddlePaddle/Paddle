@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 import unittest
@@ -27,7 +28,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
             name='image', shape=self.image_shape, dtype='float32'
         )
         relu_image = fluid.layers.relu(image)
-        loss = fluid.layers.reduce_mean(relu_image)
+        loss = paddle.mean(relu_image)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.enable_inplace = True

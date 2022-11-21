@@ -1814,4 +1814,4 @@ def mse_loss(input, label):
     """
     check_variable_and_dtype(input, "input", ['float32', 'float64'], 'mse_loss')
     check_variable_and_dtype(label, "label", ['float32', 'float64'], 'mse_loss')
-    return nn.reduce_mean(square_error_cost(input, label))
+    return paddle.mean(square_error_cost(input, label))

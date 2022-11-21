@@ -134,7 +134,7 @@ class TestGatherGrad(unittest.TestCase):
             a.stop_gradient = False
             b = paddle.gather(a, index)
 
-            loss = fluid.layers.reduce_mean(b)
+            loss = paddle.mean(b)
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
 

@@ -319,7 +319,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             is_sparse=is_sparse,
         )
 
-        avg_cost = fluid.layers.reduce_mean(cost)
+        avg_cost = paddle.mean(cost)
 
         return avg_cost, data_list
 

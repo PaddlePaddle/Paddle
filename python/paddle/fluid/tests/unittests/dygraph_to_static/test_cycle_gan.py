@@ -95,19 +95,19 @@ class Cycle_Gan(fluid.dygraph.Layer):
         diff_B = fluid.layers.abs(
             fluid.layers.elementwise_sub(x=input_B, y=cyc_B)
         )
-        cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
-        cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
+        cyc_A_loss = paddle.mean(diff_A) * lambda_A
+        cyc_B_loss = paddle.mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
 
         fake_rec_A = self.build_gen_discriminator_a(fake_B)
-        g_A_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_A - 1))
+        g_A_loss = paddle.mean(fluid.layers.square(fake_rec_A - 1))
 
         fake_rec_B = self.build_gen_discriminator_b(fake_A)
-        g_B_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_B - 1))
+        g_B_loss = paddle.mean(fluid.layers.square(fake_rec_B - 1))
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
-            fluid.layers.reduce_mean(
+            paddle.mean(
                 fluid.layers.abs(
                     fluid.layers.elementwise_sub(x=input_B, y=idt_A)
                 )
@@ -118,7 +118,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
 
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
-            fluid.layers.reduce_mean(
+            paddle.mean(
                 fluid.layers.abs(
                     fluid.layers.elementwise_sub(x=input_A, y=idt_B)
                 )
@@ -650,7 +650,7 @@ def train(args, to_static):
                     fluid.layers.square(fake_pool_rec_B)
                     + fluid.layers.square(rec_B - 1)
                 ) / 2.0
-                d_loss_A = fluid.layers.reduce_mean(d_loss_A)
+                d_loss_A = paddle.mean(d_loss_A)
 
                 d_loss_A.backward()
                 optimizer2.minimize(d_loss_A)
@@ -664,7 +664,7 @@ def train(args, to_static):
                     fluid.layers.square(fake_pool_rec_A)
                     + fluid.layers.square(rec_A - 1)
                 ) / 2.0
-                d_loss_B = fluid.layers.reduce_mean(d_loss_B)
+                d_loss_B = paddle.mean(d_loss_B)
 
                 d_loss_B.backward()
                 optimizer3.minimize(d_loss_B)

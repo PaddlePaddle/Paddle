@@ -15,6 +15,7 @@
 import unittest
 import numpy
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -642,7 +643,7 @@ def def_seq2seq_model(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )
     loss = loss * tar_mask
-    loss = layers.reduce_mean(loss, dim=[0])
+    loss = paddle.mean(loss, axis=[0])
     loss = layers.reduce_sum(loss)
 
     # optimizer

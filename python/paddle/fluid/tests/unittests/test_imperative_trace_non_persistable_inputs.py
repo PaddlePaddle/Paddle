@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 import os
@@ -69,7 +70,7 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
                 static_out = traced_layer([in_x])[0]
                 np.testing.assert_array_equal(dygraph_out_numpy, static_out)
 
-                loss = fluid.layers.reduce_mean(dygraph_out)
+                loss = paddle.mean(dygraph_out)
                 loss.backward()
 
                 optimizer.minimize(loss)

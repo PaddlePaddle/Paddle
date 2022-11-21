@@ -16,6 +16,7 @@ import unittest
 import paddle.fluid as fluid
 import os
 
+import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.fluid.framework import program_guard
 from paddle.fluid import unique_name
@@ -71,7 +72,7 @@ class AutoCheckpointBase(unittest.TestCase):
             cross_entropy = fluid.layers.softmax_with_cross_entropy(
                 fc_tmp, label
             )
-            loss = fluid.layers.reduce_mean(cross_entropy)
+            loss = paddle.mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             if minimize:
                 sgd.minimize(loss)

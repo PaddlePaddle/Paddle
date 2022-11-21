@@ -17,6 +17,7 @@ import time
 import sys
 import logging
 
+import paddle
 import paddle.fluid as fluid
 
 from ....log_helper import get_logger
@@ -60,9 +61,7 @@ class AdaRoundLoss:
         square_cost = fluid.layers.square_error_cost(
             ada_quantized_output, orig_output
         )
-        recon_loss = fluid.layers.reduce_mean(
-            fluid.layers.reduce_sum(square_cost, dim=-1)
-        )
+        recon_loss = paddle.mean(fluid.layers.reduce_sum(square_cost, dim=-1))
         return recon_loss
 
     def compute_round_loss(self, alpha_v, warm_start, beta):

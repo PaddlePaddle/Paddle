@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
@@ -28,7 +29,7 @@ class TestImperativePartitialBackward(unittest.TestCase):
 
             y = linear1(x[:, :2])
             z = linear2(x[:, 2:])
-            loss = fluid.layers.reduce_mean(y)
+            loss = paddle.mean(y)
             loss.backward()
 
             for param in linear1.parameters():
