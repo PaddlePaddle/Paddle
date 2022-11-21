@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import error
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import unwrap
+from paddle.jit.dy2static import error
+from paddle.jit.dy2static.origin_info import unwrap
 
 
 def inner_func():

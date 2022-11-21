@@ -26,7 +26,7 @@ from paddle.fluid.dygraph import (
     Layer,
     jit,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )

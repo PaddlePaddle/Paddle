@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.static import InputSpec
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     _compatible_non_tensor_spec,
 )
 

@@ -13,14 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.dygraph.jit import save  # noqa: F401
-from ..fluid.dygraph.jit import load  # noqa: F401
-from ..fluid.dygraph.jit import TracedLayer  # noqa: F401
-from ..fluid.dygraph.jit import set_code_level  # noqa: F401
-from ..fluid.dygraph.jit import set_verbosity  # noqa: F401
-from ..fluid.dygraph.jit import declarative as to_static  # noqa: F401
-from ..fluid.dygraph.jit import not_to_static  # noqa: F401
-from ..fluid.dygraph import ProgramTranslator  # noqa: F401
+from .api import save  # noqa: F401
+from .api import load  # noqa: F401
+from .api import TracedLayer  # noqa: F401
+from .api import set_code_level  # noqa: F401
+from .api import set_verbosity  # noqa: F401
+from .api import declarative as to_static  # noqa: F401
+from .api import not_to_static  # noqa: F401
+from .dy2static import ProgramTranslator  # noqa: F401
 from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
 
 from . import dy2static  # noqa: F401

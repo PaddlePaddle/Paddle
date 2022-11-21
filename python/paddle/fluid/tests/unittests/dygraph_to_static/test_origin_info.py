@@ -15,10 +15,10 @@
 import sys
 import unittest
 
-from paddle.fluid.dygraph.dygraph_to_static.ast_transformer import (
+from paddle.jit.dy2static.ast_transformer import (
     DygraphToStaticAst,
 )
-from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
+from paddle.jit.dy2static.origin_info import (
     Location,
     ORIGI_INFO,
     OriginInfo,
@@ -28,7 +28,7 @@ from paddle.fluid.dygraph.dygraph_to_static.origin_info import (
     inspect,
     unwrap,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.jit.dy2static.utils import ast_to_func
 from paddle.fluid.dygraph.jit import declarative
 
 

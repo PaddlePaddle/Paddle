@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit.dy2static import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
 from bert_dygraph_model import PretrainModelLayer

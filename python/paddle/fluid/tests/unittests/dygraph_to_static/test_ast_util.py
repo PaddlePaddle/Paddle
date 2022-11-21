@@ -19,7 +19,7 @@ import inspect
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
+from paddle.jit.dy2static.utils import ast_to_func
 
 from ifelse_simple_func import (
     dyfunc_with_if_else,

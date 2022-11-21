@@ -17,10 +17,10 @@ import unittest
 
 import paddle
 from paddle.fluid.dygraph.jit import declarative
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
-from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
+from paddle.jit.dy2static.utils import Dygraph2StaticException
 import paddle.fluid.core as core
 
 from ifelse_simple_func import (

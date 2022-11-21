@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.dygraph_to_static.utils import (
+from paddle.jit.dy2static.utils import (
     FunctionNameLivenessAnalysis,
 )
 from paddle.utils import gast

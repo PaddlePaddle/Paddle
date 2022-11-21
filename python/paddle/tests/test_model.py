@@ -34,7 +34,7 @@ import paddle.vision.models as models
 import paddle.fluid.dygraph.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )
 

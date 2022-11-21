@@ -43,7 +43,7 @@ from paddle.fluid.framework import (
     _current_expected_place,
 )
 from paddle.fluid import unique_name
-from paddle.fluid.dygraph.dygraph_to_static.utils import parse_arg_and_kwargs
+from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from testsuite import (

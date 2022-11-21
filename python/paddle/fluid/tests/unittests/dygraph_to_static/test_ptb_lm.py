@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.dygraph_to_static import ProgramTranslator
+from paddle.jit.dy2static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding

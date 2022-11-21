@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph.dygraph_to_static.utils import saw  # noqa: F401
-from ...fluid.dygraph.dygraph_to_static.utils import UndefinedVar  # noqa: F401
+from .utils import saw  # noqa: F401
+from .utils import UndefinedVar  # noqa: F401
 
 __all__ = []
