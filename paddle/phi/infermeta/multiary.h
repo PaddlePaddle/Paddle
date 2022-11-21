@@ -518,4 +518,29 @@ void YoloLossInferMeta(const MetaTensor& x,
                        MetaTensor* objectness_mask,
                        MetaTensor* gt_match_mask);
 
+void MultiTensorAdamInferMeta(
+    const std::vector<const MetaTensor*>& params,
+    const std::vector<const MetaTensor*>& grads,
+    const MetaTensor& learning_rate,
+    const std::vector<const MetaTensor*>& moments1,
+    const std::vector<const MetaTensor*>& moments2,
+    const MetaTensor& beta1_pow,
+    const MetaTensor& beta2_pow,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_params,
+    const MetaTensor& skip_update,
+    const Scalar& beta1,
+    const Scalar& beta2,
+    const Scalar& epsilon,
+    int chunk_size,
+    float weight_decay,
+    bool use_adamw,
+    bool multi_precision,
+    bool use_global_beta_pow,
+    std::vector<MetaTensor*> params_out,
+    std::vector<MetaTensor*> moments1_out,
+    std::vector<MetaTensor*> moments2_out,
+    MetaTensor* beta1_pow_out,
+    MetaTensor* beta2_pow_out,
+    std::vector<MetaTensor*> master_params_out);
+
 }  // namespace phi

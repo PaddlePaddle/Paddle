@@ -14,7 +14,7 @@
 
 import warnings
 from collections import defaultdict
-from .optimizer import Optimizer
+from .multi_tensor_base import MultiTensorBase
 from .lr import LRScheduler
 from ..fluid import core
 from ..fluid import framework
@@ -31,7 +31,7 @@ import paddle
 __all__ = []
 
 
-class AdamW(Optimizer):
+class AdamW(MultiTensorBase):
     r"""
     The AdamW optimizer is implemented based on the AdamW Optimization
     in paper `DECOUPLED WEIGHT DECAY REGULARIZATION <https://arxiv.org/pdf/1711.05101.pdf>`_.
@@ -161,6 +161,8 @@ class AdamW(Optimizer):
         grad_clip=None,
         lazy_mode=False,
         multi_precision=False,
+        chunk_size=32 * 2048,
+        use_multi_tensor=False,
         name=None,
     ):
         assert learning_rate is not None
@@ -255,6 +257,8 @@ class AdamW(Optimizer):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
+        self.chunk_size = chunk_size
+        self.use_multi_tensor = use_multi_tensor
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
         self._beta2 = beta2
@@ -668,11 +672,14 @@ class AdamW(Optimizer):
                     params_grads.append((param, grad_var))
 
             optimize_ops = self._apply_optimize(
-                loss=None, startup_program=None, params_grads=params_grads
+                loss=None,
+                startup_program=None,
+                params_grads=params_grads,
+                param_group_idx=0,
             )
         else:
             # optimize parameters in groups
-            for param_group in self._param_groups:
+            for idx, param_group in enumerate(self._param_groups):
                 params_grads = defaultdict(lambda: list())
                 for param in param_group['params']:
                     if param.stop_gradient:
@@ -702,7 +709,10 @@ class AdamW(Optimizer):
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
-                    loss=None, startup_program=None, params_grads=params_grads
+                    loss=None,
+                    startup_program=None,
+                    params_grads=params_grads,
+                    param_group_idx=idx,
                 )
 
     def _update_param_group(self, parameters):
