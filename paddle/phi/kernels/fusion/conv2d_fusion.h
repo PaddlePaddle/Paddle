@@ -20,17 +20,17 @@ namespace phi {
 
 template <typename T, typename Context>
 void Conv2dFusionKernel(const Context& ctx,
-                           const DenseTensor& x,
-                           const DenseTensor& filter,
-                           const DenseTensor& bias,
-                           const paddle::optional<DenseTensor>& residual,
-                            const std::vector<int>& strides,
-                            const std::vector<int>& paddings,
-                            const std::string& padding_algorithm,
-                            int groups,
-                            const std::vector<int>& dilations,
-                            const std::string& data_format,
-                            const std::string& activation,
-                           DenseTensor* output);
+                        const DenseTensor& x,
+                        const DenseTensor& filter,
+                        const DenseTensor& bias,
+                        const paddle::optional<DenseTensor>& residual,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        int groups,
+                        const std::vector<int>& dilations,
+                        const std::string& data_format,
+                        const std::string& activation,
+                        DenseTensor* output);
 
 }  // namespace phi
