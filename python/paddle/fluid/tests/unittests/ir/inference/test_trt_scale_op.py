@@ -39,7 +39,7 @@ class TRTScaleTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
-        return paddlescale(x=data, scale=2.0, bias=-1.0, bias_after_scale=False)
+        return paddle.scale(x=data, scale=2.0, bias=-1.0, bias_after_scale=False)
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
