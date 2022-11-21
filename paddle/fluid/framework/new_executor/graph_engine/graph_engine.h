@@ -197,7 +197,8 @@ class CustomGraphEngine final : public GraphEngine {
       for (size_t i = 0; i < ops.size(); ++i) {
         auto op = ops[i].get();
         const std::string& op_type = op->Type();
-        if (op_type == "feed" || op_type == "fetch_v2") {
+        if (op_type == "feed" || op_type == "fetch_v2" ||
+            op_type == "share_buffer") {
           continue;
         }
 
