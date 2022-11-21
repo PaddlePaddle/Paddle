@@ -21,13 +21,13 @@ paddle.enable_static()
 
 
 class TestColParallelLinearAPI(TestDistBase):
-
     def _setup_config(self):
         pass
 
     def test_col_parallel_linear(self):
-        self.check_with_place("column_parallel_linear_api.py",
-                              "column_parallel_linear", "nccl")
+        self.check_with_place(
+            "column_parallel_linear_api.py", "column_parallel_linear", "nccl"
+        )
 
 
 if __name__ == '__main__':

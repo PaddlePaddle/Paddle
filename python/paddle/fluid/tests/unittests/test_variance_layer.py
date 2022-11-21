@@ -20,14 +20,13 @@ import paddle
 def ref_var(x, axis=None, unbiased=True, keepdim=False):
     ddof = 1 if unbiased else 0
     if isinstance(axis, int):
-        axis = (axis, )
+        axis = (axis,)
     if axis is not None:
         axis = tuple(axis)
     return np.var(x, axis=axis, ddof=ddof, keepdims=keepdim)
 
 
 class TestVarAPI(unittest.TestCase):
-
     def setUp(self):
         self.dtype = 'float64'
         self.shape = [1, 3, 4, 10]
@@ -36,9 +35,11 @@ class TestVarAPI(unittest.TestCase):
         self.unbiased = True
         self.set_attrs()
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place=paddle.CUDAPlace(0) \
-            if paddle.fluid.core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def set_attrs(self):
         pass
@@ -68,43 +69,36 @@ class TestVarAPI(unittest.TestCase):
 
 
 class TestVarAPI_dtype(TestVarAPI):
-
     def set_attrs(self):
         self.dtype = 'float32'
 
 
 class TestVarAPI_axis_int(TestVarAPI):
-
     def set_attrs(self):
         self.axis = 2
 
 
 class TestVarAPI_axis_list(TestVarAPI):
-
     def set_attrs(self):
         self.axis = [1, 2]
 
 
 class TestVarAPI_axis_tuple(TestVarAPI):
-
     def set_attrs(self):
         self.axis = (1, 3)
 
 
 class TestVarAPI_keepdim(TestVarAPI):
-
     def set_attrs(self):
         self.keepdim = False
 
 
 class TestVarAPI_unbiased(TestVarAPI):
-
     def set_attrs(self):
         self.unbiased = False
 
 
 class TestVarAPI_alias(unittest.TestCase):
-
     def test_alias(self):
         paddle.disable_static()
         x = paddle.to_tensor(np.array([10, 12], 'float32'))
@@ -117,7 +111,6 @@ class TestVarAPI_alias(unittest.TestCase):
 
 
 class TestVarError(unittest.TestCase):
-
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('X', [2, 3, 4], 'int32')

@@ -21,7 +21,6 @@ paddle.enable_static()
 
 
 class TestIdentityOp(TestDistBase):
-
     def _setup_config(self):
         pass
 

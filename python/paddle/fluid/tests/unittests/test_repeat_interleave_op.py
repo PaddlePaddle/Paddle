@@ -21,20 +21,20 @@ from paddle.fluid import Program, program_guard
 
 
 class TestRepeatInterleaveOp(OpTest):
-
     def setUp(self):
         self.op_type = "repeat_interleave"
         self.python_api = paddle.repeat_interleave
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=3, size=self.index_size).astype(self.index_type)
+            low=0, high=3, size=self.index_size
+        ).astype(self.index_type)
         x_np = np.random.random(self.x_shape).astype(self.x_type)
 
         self.inputs = {'X': x_np, 'RepeatsTensor': index_np}
         self.attrs = {'dim': self.dim}
 
-        outer_loop = np.prod(self.x_shape[:self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -63,18 +63,17 @@ class TestRepeatInterleaveOp(OpTest):
 
 
 class TestRepeatInterleaveOp2(OpTest):
-
     def setUp(self):
         self.op_type = "repeat_interleave"
         self.python_api = paddle.repeat_interleave
         self.init_dtype_type()
         index_np = 2
         x_np = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {'X': x_np}  #, 'RepeatsTensor': None}
+        self.inputs = {'X': x_np}  # , 'RepeatsTensor': None}
         self.attrs = {'dim': self.dim, 'Repeats': index_np}
 
-        outer_loop = np.prod(self.x_shape[:self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -102,10 +101,14 @@ class TestRepeatInterleaveOp2(OpTest):
 
 
 class TestIndexSelectAPI(unittest.TestCase):
-
     def input_data(self):
-        self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                                [9.0, 10.0, 11.0, 12.0]])
+        self.data_x = np.array(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+            ]
+        )
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
     def test_repeat_interleave_api(self):
@@ -115,18 +118,19 @@ class TestIndexSelectAPI(unittest.TestCase):
         # case 1:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(name='repeats_',
-                                      shape=[4],
-                                      dtype='int32',
-                                      append_batch_size=False)
+            index = fluid.layers.data(
+                name='repeats_',
+                shape=[4],
+                dtype='int32',
+                append_batch_size=False,
+            )
             z = paddle.repeat_interleave(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={
-                'x': self.data_x,
-                'repeats_': self.data_index
-            },
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'repeats_': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
@@ -134,18 +138,22 @@ class TestIndexSelectAPI(unittest.TestCase):
         repeats = np.array([1, 2, 1]).astype('int32')
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(name='repeats_',
-                                      shape=[3],
-                                      dtype='int32',
-                                      append_batch_size=False)
+            index = fluid.layers.data(
+                name='repeats_',
+                shape=[3],
+                dtype='int32',
+                append_batch_size=False,
+            )
             z = paddle.repeat_interleave(x, index, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={
-                'x': self.data_x,
-                'repeats_': repeats,
-            },
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={
+                    'x': self.data_x,
+                    'repeats_': repeats,
+                },
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
         expect_out = np.repeat(self.data_x, repeats, axis=0)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
@@ -154,9 +162,9 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[-1, 4])
             z = paddle.repeat_interleave(x, repeats, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.repeat(self.data_x, repeats, axis=0)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 

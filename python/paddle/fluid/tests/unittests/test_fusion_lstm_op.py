@@ -23,25 +23,36 @@ def fc(x, w, b):
 
 
 def fusion_lstm(
-        x,  # T x M
-        lod,  # 1 x N
-        wx=None,  # M x 4D
-        bx=None,  # 1 x 4D
-        h0=None,  # N x D
-        c0=None,  # N x D
-        w_h=None,  # D x 4D
-        w_b=None,  # 1 x 4D
-        w_c=None,  # 1 x 3D
-        is_reverse=False,
-        act_gate=None,
-        act_cell=None,
-        act_cand=None):
-    return lstm(fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
-                act_cell, act_cand)
+    x,  # T x M
+    lod,  # 1 x N
+    wx=None,  # M x 4D
+    bx=None,  # 1 x 4D
+    h0=None,  # N x D
+    c0=None,  # N x D
+    w_h=None,  # D x 4D
+    w_b=None,  # 1 x 4D
+    w_c=None,  # 1 x 3D
+    is_reverse=False,
+    act_gate=None,
+    act_cell=None,
+    act_cand=None,
+):
+    return lstm(
+        fc(x, wx, bx),
+        lod,
+        h0,
+        c0,
+        w_h,
+        w_b,
+        w_c,
+        is_reverse,
+        act_gate,
+        act_cell,
+        act_cand,
+    )
 
 
 class TestFusionLSTMOp(OpTest):
-
     def set_conf(self):
         pass
 
@@ -76,24 +87,36 @@ class TestFusionLSTMOp(OpTest):
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
         else:
             b = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        w_b = np.copy(b[:, 0:4 * self.D])
-        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+        w_b = np.copy(b[:, 0 : 4 * self.D])
+        w_c = b[:, 4 * self.D :] if self.use_peepholes else None
 
         # this is the weight of fc
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
         # this is the bias of fc
         # and it should be manually added into the bias of this fusion LSTM
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        b[0, 0:4 * self.D] += bx[0, :]
-        h, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
-                           self.is_reverse, ACTIVATION[self.act_gate],
-                           ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
+        b[0, 0 : 4 * self.D] += bx[0, :]
+        h, c = fusion_lstm(
+            x,
+            self.lod,
+            wx,
+            bx,
+            h0,
+            c0,
+            wh,
+            w_b,
+            w_c,
+            self.is_reverse,
+            ACTIVATION[self.act_gate],
+            ACTIVATION[self.act_cell],
+            ACTIVATION[self.act_cand],
+        )
 
         self.inputs = {
             'X': (x, self.lod),
             'WeightX': wx,
             'WeightH': wh,
-            'Bias': b
+            'Bias': b,
         }
 
         if self.has_initial_state:
@@ -110,7 +133,7 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
         }
 
     def test_check_output(self):
@@ -120,74 +143,63 @@ class TestFusionLSTMOp(OpTest):
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
-
     def set_conf(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpReverse(TestFusionLSTMOp):
-
     def set_conf(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
-
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpMD1(TestFusionLSTMOp):
-
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionLSTMOpMD2(TestFusionLSTMOp):
-
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionLSTMOpMD3(TestFusionLSTMOp):
-
     def set_conf(self):
         self.M = 15
         self.D = 3
 
 
 class TestFusionLSTMOpBS1(TestFusionLSTMOp):
-
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
 
 
 class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
-
     def set_conf(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
-
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
-
     def set_conf(self):
         self.use_peepholes = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
-
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
@@ -195,7 +207,6 @@ class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
 
 
 class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
-
     def set_conf(self):
         self.use_peepholes = True
         self.lod = [[2]]
@@ -204,5 +215,6 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

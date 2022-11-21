@@ -63,6 +63,10 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
       return TRT_DT::kINT32;
     case FluidDT::VarType_Type_FP16:
       return TRT_DT::kHALF;
+#if IS_TRT_VERSION_GE(8400)
+    case FluidDT::VarType_Type_BOOL:
+      return TRT_DT::kBOOL;
+#endif
     default:
       return TRT_DT::kINT32;
   }

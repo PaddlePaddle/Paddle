@@ -27,8 +27,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+  if (var->IsType<phi::DenseTensor>()) {
+    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

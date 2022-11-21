@@ -604,12 +604,16 @@ set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
   add_subdirectory(collective)
-  add_subdirectory(rpc)
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -889,7 +893,7 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
-add_subdirectory(interpreter)
+add_subdirectory(standalone_executor)
 
 if(WITH_TESTING)
   set_property(TEST test_parallel_executor_mnist

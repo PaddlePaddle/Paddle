@@ -19,7 +19,6 @@ import numpy as np
 
 
 class TestTransposeMKLDNN(TestTransposeOp):
-
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -30,7 +29,7 @@ class TestTransposeMKLDNN(TestTransposeOp):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
-            'Out': self.inputs['X'].transpose(self.axis)
+            'Out': self.inputs['X'].transpose(self.axis),
         }
 
     def init_op_type(self):
@@ -52,42 +51,36 @@ class TestTransposeMKLDNN(TestTransposeOp):
 
 
 class TestCase0MKLDNN(TestTransposeMKLDNN):
-
     def initTestCase(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1a(TestTransposeMKLDNN):
-
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase1b(TestTransposeMKLDNN):
-
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (2, 1, 0)
 
 
 class TestCase2(TestTransposeMKLDNN):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestTransposeMKLDNN):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestTransposeMKLDNN):
-
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)

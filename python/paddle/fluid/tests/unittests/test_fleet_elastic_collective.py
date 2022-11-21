@@ -25,11 +25,11 @@ print("test")
 
 
 class TestCollectiveLauncher(unittest.TestCase):
-
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.code_path = os.path.join(self.temp_dir.name,
-                                      "fake_python_for_elastic.py")
+        self.code_path = os.path.join(
+            self.temp_dir.name, "fake_python_for_elastic.py"
+        )
         with open(self.code_path, "w") as f:
             f.write(fake_python_code)
 
@@ -37,7 +37,6 @@ class TestCollectiveLauncher(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_launch(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
@@ -76,7 +75,6 @@ class TestCollectiveLauncher(unittest.TestCase):
             pass
 
     def test_stop(self):
-
         class Argument:
             elastic_server = "127.0.0.1:2379"
             job_id = "test_job_id_123"
