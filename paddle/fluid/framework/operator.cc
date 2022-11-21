@@ -2982,6 +2982,9 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // Note: If the input LoDTensorArray size is 0, the output
           // LoDTensorArray is also 0
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
+        } else if (var->template IsType<phi::CPlusString>()) {
+          tensor_out = var->template GetMutable<phi::CPlusString>();
+          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (!var->IsInitialized()) {
           // The following is for RAW type of var
           if (output_defs[i].type_index ==
