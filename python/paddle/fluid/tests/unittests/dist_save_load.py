@@ -178,7 +178,9 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                         fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
                     )
                 if need_save and model_dir:
-                    io.save_persistables(startup_exe, model_dir, trainer_prog)
+                    paddle.distributed.io.save_persistables(
+                        startup_exe, model_dir, trainer_prog
+                    )
 
             var = np.array(
                 fluid.global_scope().find_var('__fc_b__').get_tensor()
@@ -199,7 +201,7 @@ class TestDistSaveLoad2x2(TestDistSimnetBow2x2):
                         and idx == skip_steps
                         and args.trainer_id == 0
                     ):
-                        io.save_persistables(
+                        paddle.distributed.io.save_persistables(
                             startup_exe, model_dir, trainer_prog
                         )
             else:

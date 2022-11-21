@@ -263,7 +263,7 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         y = self.deconv1(y)
         y = fluid.layers.pad2d(y, [3, 3, 3, 3], mode="reflect")
         y = self.conv3(y)
-        y = fluid.layers.tanh(y)
+        y = paddle.tanh(y)
         return y
 
 
@@ -639,8 +639,7 @@ def train(args, to_static):
                     data_B, fake_pool_B
                 )
                 d_loss_A = (
-                    fluid.layers.square(fake_pool_rec_B)
-                    + fluid.layers.square(rec_B - 1)
+                    paddle.square(fake_pool_rec_B) + paddle.square(rec_B - 1)
                 ) / 2.0
                 d_loss_A = paddle.mean(d_loss_A)
 
@@ -653,8 +652,7 @@ def train(args, to_static):
                     data_A, fake_pool_A
                 )
                 d_loss_B = (
-                    fluid.layers.square(fake_pool_rec_A)
-                    + fluid.layers.square(rec_A - 1)
+                    paddle.square(fake_pool_rec_A) + paddle.square(rec_A - 1)
                 ) / 2.0
                 d_loss_B = paddle.mean(d_loss_B)
 

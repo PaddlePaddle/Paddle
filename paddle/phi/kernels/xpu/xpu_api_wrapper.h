@@ -382,7 +382,8 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
                               const T* y,
                               T* out,
                               const XpuFcInfo& fcinfo,
-                              float alpha) {
+                              float alpha,
+                              bool is_grad = false) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   int fccal_type = FCCalcType<XPUType>();
 
@@ -398,6 +399,12 @@ static void MatMulXPUFunction(xpu::Context* xpu_ctx,
   };
 
   auto fc_api = fc_api_list[fccal_type];
+  if (std::getenv("XPU_PADDLE_FC_GRAD_LOCAL") != nullptr) {
+    if (is_grad) {
+      fc_api = fc_api_list[2];
+    }
+  }
+
   auto fc_batch_api = fc_batch_api_list[fccal_type];
 
   int m = fcinfo.m;

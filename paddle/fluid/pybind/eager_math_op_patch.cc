@@ -349,7 +349,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__rsub__method";
+  VLOG(4) << "Running Eager tensor__rsub__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -771,7 +771,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__gt__method";
+  VLOG(4) << "Running Eager tensor__gt__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -857,7 +857,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__ge__method";
+  VLOG(4) << "Running Eager tensor__ge__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1134,7 +1134,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__lt__method";
+  VLOG(4) << "Running Eager tensor__lt__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();
@@ -1220,7 +1220,7 @@ static PyObject* tensor__le__method(TensorObject* self,
       1);
 
   EAGER_TRY
-  VLOG(1) << "Running Eager tensor__le__method";
+  VLOG(4) << "Running Eager tensor__le__method";
 
   // Set Device ID
   auto place = egr::Controller::Instance().GetExpectedPlace();

@@ -122,10 +122,10 @@ class SimpleLSTMRNN(fluid.Layer):
                 i, j, f, o = fluid.layers.split(
                     gate_input, num_or_sections=4, dim=-1
                 )
-                c = pre_cell * fluid.layers.sigmoid(f) + fluid.layers.sigmoid(
-                    i
-                ) * fluid.layers.tanh(j)
-                m = fluid.layers.tanh(c) * fluid.layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
                 self.hidden_array[k] = m
                 self.cell_array[k] = c
                 self._input = m
@@ -1061,7 +1061,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     base_map[var.name] = t
 
             # fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, os.path.join(self.temp_dir.name, "test_path"), main_program
             )
 
@@ -1200,7 +1200,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
                     base_map[var.name] = t
 
             # fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe,
                 os.path.join(self.temp_dir.name, "test_static_load_var_list"),
                 main_program,
@@ -1338,7 +1338,7 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                     base_map[var.name] = t
             save_dir = os.path.join(temp_dir.name, "test_path")
             # fluid.save(main_program, "./test_1")
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, save_dir, main_program, filename="model_single"
             )
 
@@ -1538,7 +1538,7 @@ class TestProgramStateOldSave(unittest.TestCase):
                     self.assertTrue(np.sum(np.abs(t)) != 0)
                     base_map[var.name] = t
             save_dir = os.path.join(self.temp_dir.name, "test_program_1")
-            fluid.io.save_persistables(exe, save_dir, main_program)
+            paddle.distributed.io.save_persistables(exe, save_dir, main_program)
 
             # set var to zero
             for var in main_program.list_vars():
@@ -1711,7 +1711,7 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
                     base_map[var.name] = t
 
             save_dir = os.path.join(temp_dir.name, "test_program_2")
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, save_dir, main_program, filename="model_1"
             )
 

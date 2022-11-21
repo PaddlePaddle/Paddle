@@ -49,8 +49,8 @@ class BasicLSTMUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._forget_bias = forget_bias
         self._dtype = dtype
         self._input_size = input_size
@@ -76,12 +76,14 @@ class BasicLSTMUnit(Layer):
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
-                pre_cell, layers.sigmoid(f + self._forget_bias)
+                pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)),
+            layers.elementwise_mul(
+                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+            ),
         )
 
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 
         return new_hidden, new_cell
 
@@ -196,7 +198,7 @@ class BaseModel(fluid.dygraph.Layer):
         return new_state
 
     def _gather(self, x, indices, batch_pos):
-        topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return fluid.layers.gather_nd(x, topk_coordinates)
 
     @declarative
@@ -288,7 +290,7 @@ class BaseModel(fluid.dygraph.Layer):
                     step_input = new_hidden
             dec_output.append(step_input)
 
-        dec_output = fluid.layers.stack(dec_output)
+        dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
@@ -459,12 +461,8 @@ class BaseModel(fluid.dygraph.Layer):
                 input=scores, k=self.beam_size
             )
 
-            beam_indices = fluid.layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor
-            )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
             next_log_probs = self._gather(scores, topk_indices, batch_pos)
 
             x = 0
@@ -502,8 +500,8 @@ class BaseModel(fluid.dygraph.Layer):
             predicted_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
-        predicted_ids = fluid.layers.stack(predicted_ids)
-        parent_ids = fluid.layers.stack(parent_ids)
+        predicted_ids = paddle.stack(predicted_ids)
+        parent_ids = paddle.stack(parent_ids)
         predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
@@ -684,7 +682,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return new_state
 
     def _gather(self, x, indices, batch_pos):
-        topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return fluid.layers.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
@@ -778,7 +776,7 @@ class AttentionModel(fluid.dygraph.Layer):
             enc_outputs.append(enc_step_input)
             enc_hidden, enc_cell = new_enc_hidden, new_enc_cell
 
-        enc_outputs = fluid.layers.stack(enc_outputs)
+        enc_outputs = paddle.stack(enc_outputs)
         enc_outputs = self._transpose_batch_time(enc_outputs)
 
         # train
@@ -819,7 +817,7 @@ class AttentionModel(fluid.dygraph.Layer):
             dec_output.append(out)
             dec_hidden, dec_cell = new_dec_hidden, new_dec_cell
 
-        dec_output = fluid.layers.stack(dec_output)
+        dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False

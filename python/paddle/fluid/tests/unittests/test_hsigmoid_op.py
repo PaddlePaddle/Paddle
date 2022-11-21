@@ -170,18 +170,15 @@ def hsigmoidWithCustomTree(
 
 def python_api(
     input,
-    weight,
     label,
+    weight,
+    bias=None,
     path_table=None,
     path_code=None,
-    bias=None,
     num_classes=-1,
     is_sparse=False,
     remote_prefetch=False,
 ):
-    assert (
-        is_sparse == remote_prefetch
-    ), "is_sparse is equal to remote_prefetch in dygraph."
     return paddle.nn.functional.hsigmoid_loss(
         input,
         label,

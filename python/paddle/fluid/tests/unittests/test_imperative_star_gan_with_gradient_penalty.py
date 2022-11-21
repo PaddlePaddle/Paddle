@@ -322,7 +322,7 @@ class Generator(fluid.dygraph.Layer):
         res_block = self._res_block(conv0)
         deconv = self._deconv(res_block)
         conv1 = self._conv1(deconv)
-        out = fluid.layers.tanh(conv1)
+        out = paddle.tanh(conv1)
         return out
 
 
@@ -437,9 +437,7 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     )
 
     epsilon = 1e-16
-    norm = fluid.layers.sqrt(
-        fluid.layers.reduce_sum(fluid.layers.square(gradient), dim=1) + epsilon
-    )
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
     gp = paddle.mean(paddle.square(norm - 1.0))
     return gp

@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from . import Layer
 from ..layers import (
-    sigmoid,
-    tanh,
     concat,
     fill_constant,
     matmul,
@@ -139,8 +138,8 @@ class LSTMCell(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or sigmoid
-        self._activation = activation or tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
@@ -254,7 +253,9 @@ class LSTMCell(Layer):
                         elementwise_add(f, self._forget_bias)
                     ),
                 ),
-                elementwise_mul(sigmoid(i), tanh(j)),
+                elementwise_mul(
+                    paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+                ),
             )
             new_hidden = self._activation(new_cell) * self._gate_activation(o)
 
@@ -357,8 +358,8 @@ class GRUCell(Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        self._gate_activation = gate_activation or sigmoid
-        self._activation = activation or tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._use_cudnn_impl = use_cudnn_impl
 
         if self._use_cudnn_impl:
