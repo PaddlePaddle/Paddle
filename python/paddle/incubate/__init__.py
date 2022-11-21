@@ -35,7 +35,7 @@ from . import autotune  # noqa: F401
 from . import nn  # noqa: F401
 from . import asp  # noqa: F401
 
-from .nn import identity_loss
+from .nn.loss import identity_loss
 
 from ..fluid.incubate import fleet
 from . import xpu

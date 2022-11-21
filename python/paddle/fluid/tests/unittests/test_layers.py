@@ -1312,7 +1312,7 @@ class TestLayer(LayerTest):
 
             embs = layers.concat(input=embs, axis=1)
             wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
-            nce_loss = paddle.static.nn.nce(
+            nce_loss = paddle.static.nn.loss.nce(
                 input=embs,
                 label=wl,
                 num_total_classes=dict_size,
@@ -3381,7 +3381,7 @@ class TestBook(LayerTest):
             embs.append(emb)
 
         embs = layers.concat(input=embs, axis=1)
-        loss = paddle.static.nn.nce(
+        loss = paddle.static.nn.loss.nce(
             input=embs,
             label=words[label_word],
             num_total_classes=dict_size,
@@ -4744,7 +4744,7 @@ class TestBook(LayerTest):
             predict = layers.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = paddle.nn.functional.warpctc(
+            output = paddle.nn.functional.loss.warpctc(
                 input=predict,
                 label=label,
                 input_length=input_length,

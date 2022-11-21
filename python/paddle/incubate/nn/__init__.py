@@ -21,8 +21,6 @@ from .layer.fused_transformer import (
     FusedBiasDropoutResidualLayerNorm,
 )  # noqa: F401
 
-from .loss import identity_loss
-
 __all__ = [  # noqa
     'FusedMultiHeadAttention',
     'FusedFeedForward',
@@ -30,5 +28,4 @@ __all__ = [  # noqa
     'FusedMultiTransformer',
     'FusedLinear',
     'FusedBiasDropoutResidualLayerNorm',
-    'identity_loss',
 ]

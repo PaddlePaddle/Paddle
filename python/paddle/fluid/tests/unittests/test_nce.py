@@ -210,7 +210,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
             )
         )
 
-        cost = paddle.static.nn.nce(
+        cost = paddle.static.nn.loss.nce(
             input=input,
             label=label,
             num_total_classes=num_total_classes,
@@ -292,7 +292,7 @@ class TestNCE_OpError(unittest.TestCase):
             )
             # the input(input) of nce layer must be Variable.
             self.assertRaises(
-                TypeError, paddle.static.nn.nce, input1, label1, 5
+                TypeError, paddle.static.nn.loss.nce, input1, label1, 5
             )
 
             input2 = fluid.layers.data(
@@ -303,7 +303,7 @@ class TestNCE_OpError(unittest.TestCase):
             )
             # the input(label) of nce layer must be Variable.
             self.assertRaises(
-                TypeError, paddle.static.nn.nce, input2, label2, 5
+                TypeError, paddle.static.nn.loss.nce, input2, label2, 5
             )
 
             input3 = fluid.layers.data(
@@ -314,7 +314,7 @@ class TestNCE_OpError(unittest.TestCase):
             )
             # the data type of input(input) must be float32 or float64.
             self.assertRaises(
-                TypeError, paddle.static.nn.nce, input3, label3, 5
+                TypeError, paddle.static.nn.loss.nce, input3, label3, 5
             )
 
             input4 = fluid.layers.data(
@@ -325,7 +325,7 @@ class TestNCE_OpError(unittest.TestCase):
             )
             # the data type of input(label) must be int64.
             self.assertRaises(
-                TypeError, paddle.static.nn.nce, input4, label4, 5
+                TypeError, paddle.static.nn.loss.nce, input4, label4, 5
             )
 
 

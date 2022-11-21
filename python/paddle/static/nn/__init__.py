@@ -58,8 +58,6 @@ from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 
-from .loss import nce  # noqa: F401
-
 __all__ = [  # noqa
     'fc',
     'batch_norm',
@@ -78,7 +76,6 @@ __all__ = [  # noqa
     'instance_norm',
     'layer_norm',
     'multi_box_head',
-    'nce',
     'prelu',
     'py_func',
     'row_conv',

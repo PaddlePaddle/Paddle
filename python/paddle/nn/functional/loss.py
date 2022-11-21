@@ -4119,7 +4119,7 @@ def warpctc(
                                  dtype='float32',lod_level=1)
             label = fluid.data(name='label', shape=[None, 1],
                                dtype='int32', lod_level=1)
-            cost = paddle.nn.functional.warpctc(input=logits, label=label)
+            cost = paddle.nn.functional.loss.warpctc(input=logits, label=label)
             place = fluid.CPUPlace()
             x = fluid.create_lod_tensor(
                      np.random.rand(np.sum(seq_lens), class_num+1).astype("float32"),
@@ -4158,7 +4158,7 @@ def warpctc(
                            dtype='int32')
             label_length = fluid.data(name='labels_length', shape=[None],
                              dtype='int64')
-            cost = paddle.nn.functional.warpctc(input=logits, label=label,
+            cost = paddle.nn.functional.loss.warpctc(input=logits, label=label,
                             input_length=logits_length,
                             label_length=label_length)
             place = fluid.CPUPlace()
