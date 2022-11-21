@@ -535,8 +535,8 @@ class Categorical(Distribution):
         other_logits = other.logits - nn.reduce_max(
             other.logits, dim=-1, keep_dim=True
         )
-        e_logits = ops.exp(logits)
-        other_e_logits = ops.exp(other_logits)
+        e_logits = paddle.exp(logits)
+        other_e_logits = paddle.exp(other_logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         other_z = paddle.sum(other_e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
@@ -556,7 +556,7 @@ class Categorical(Distribution):
 
         """
         logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        e_logits = ops.exp(logits)
+        e_logits = paddle.exp(logits)
         z = paddle.sum(e_logits, axis=-1, keepdim=True)
         prob = e_logits / z
         entropy = -1.0 * paddle.sum(
