@@ -4593,14 +4593,14 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
-    reduce_all, dim = _get_reduce_dim(dim, input)
-
     if in_dygraph_mode():
         return _C_ops.sum(input, dim, None, keep_dim)
     elif _in_legacy_dygraph():
+        reduce_all, dim = _get_reduce_dim(dim, input)
         return _legacy_C_ops.reduce_sum(
             input, 'dim', dim, 'keep_dim', keep_dim, 'reduce_all', reduce_all
         )
+    reduce_all, dim = _get_reduce_dim(dim, input)
     attrs = {'dim': dim, 'keep_dim': keep_dim, 'reduce_all': reduce_all}
     check_variable_and_dtype(
         input,
@@ -4727,11 +4727,11 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     helper = LayerHelper('reduce_max', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
 
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
     if in_dygraph_mode():
         return _C_ops.max(input, dim if dim is not None else [], keep_dim)
+
+    if dim is not None and not isinstance(dim, list):
+        dim = [dim]
 
     helper.append_op(
         type='reduce_max',
