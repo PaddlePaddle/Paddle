@@ -1,4 +1,3 @@
-from setuptools import setup
 import os 
 import sys
 import platform
@@ -10,7 +9,7 @@ import fnmatch
 import glob
 import subprocess
 
-
+from setuptools import setup
 from contextlib import contextmanager
 from setuptools.dist import Distribution
 from setuptools import Extension, find_packages
@@ -20,39 +19,23 @@ from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.egg_info import egg_info
 from distutils.spawn import find_executable
-import setuptools
 
 
 #check cmake
-CMAKE=find_executable('cmake3') or find_executable('cmake')
+CMAKE = find_executable('cmake3') or find_executable('cmake')
 assert CMAKE, 'sry,could not find "cmake" executable! please check if you have cmake installed'
 
-#judge input args
-
-"""
-for index,arg in enumerate(sys.argv):
-    if arg == 'rerun-cmake':
-        rerun_cmake=True #delete Cmakecache.txt and rerun cmake
-        continue
-    if arg == 'only-cmake':
-        only_cmake = True #only cmake and do not make, leave a chance for users to adjust build options
-        continue
-    if arg== "--":
-        Filter_args_list += sys.argv[index:]
-        break
-    Filter_args_list.append(arg)
-args=Filter_args_list
-"""
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 WINDOWS = (os.name == 'nt')
 
-def judge_input_args(input_parameters):
+#judge input args
+def judge_input_args(input_args):
     cmake_and_make=True
     only_cmake=False
     rerun_cmake=False
     Filter_args_list=[]
-    for arg in input_parameters:
+    for arg in input_args:
         if arg == 'rerun-cmake':
             rerun_cmake=True #delete Cmakecache.txt and rerun cmake
             continue
@@ -61,17 +44,17 @@ def judge_input_args(input_parameters):
             continue
         Filter_args_list.append(arg)
     print(Filter_args_list)
-    return cmake_and_make,only_cmake,rerun_cmake,Filter_args_list 
+    return cmake_and_make, only_cmake, rerun_cmake, Filter_args_list 
     
 cmake_and_make,only_cmake,rerun_cmake,Filter_args_list = judge_input_args(sys.argv)
 
 def parse_input_command(input_parameters):
     dist=Distribution()
     #get script name :setup.py
-    dist.script_name=os.path.basename(input_parameters[0])
+    dist.script_name = os.path.basename(input_parameters[0])
     print("Start executing %s" % dist.script_name)
     #get args of setup.py
-    dist.script_args=input_parameters[1:]
+    dist.script_args = input_parameters[1:]
     print("args of setup.py:%s" % dist.script_args) 
     try:
         dist.parse_command_line()
@@ -84,7 +67,7 @@ class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
 
-RC      = 0
+RC= 0
 
 ext_name = '.dll' if os.name == 'nt' else ('.dylib' if sys.platform == 'darwin' else '.so')
 
@@ -190,12 +173,14 @@ def _get_version_detail(idx):
 
         if len(version_details) >= 3:
             return version_details[idx]
+    return 0
 
 def _mkdir_p(dir_str):
     try:
         os.makedirs(dir_str)
     except OSError as e:
         raise RuntimeError("Failed to create folder build/")
+
 def get_major():
     return int(_get_version_detail(0))
 
@@ -236,7 +221,7 @@ def is_taged():
         git_tag = git_tag.decode()
     except:
         return False
-    
+    if str(git_tag).replace('v', '') == envir_var.get("PADDLE_VERSION"):
         return True
     else:
         return False
@@ -475,69 +460,6 @@ def build_steps():
     if not os.path.exists(cmake_cache_file_path):
 
         env_var=os.environ.copy() #get env variables
-        #get default cmake options  
-       
-        # default_options={"CMAKE_BUILD_TYPE":"Release",
-        #                 "WITH_GPU":"OFF",
-        #                 "WITH_TENSORRT":"ON",
-        #                 "WITH_ROCM":"OFF",
-        #                 "WITH_CINN":"OFF",
-        #                 "WITH_DISTRIBUTE":"OFF",#
-        #                 "WITH_MKL":"ON",
-        #                 "WITH_AVX":"OFF",
-        #                 "WITH_ARCH_NAME":"ALL",
-        #                 "NEW_RELEASE_PYPI":"OFF",
-        #                 "NEW_RELEASE_ALL":"OFF",
-        #                 "NEW_RELEASE_JIT":"OFF",
-        #                 "WITH_PYTHON":"ON",
-        #                 "CUDNN_ROOT":"/usr/",
-        #                 "WITH_TESTING":"ON",
-        #                 "WITH_COVERAGE":"OFF",
-        #                 "WITH_INCREMENTAL_COVERAGE":"OFF",
-        #                 "CMAKE_MODULE_PATH":"/opt/rocm/hip/cmake",
-        #                 "CMAKE_EXPORT_COMPILE_COMMANDS":"ON",
-        #                 "WITH_CONTRIB":"ON",
-        #                 "WITH_INFERENCE_API_TEST":"ON",
-        #                 "WITH_INFRT":"OFF",
-        #                 "INFERENCE_DEMO_INSTALL_DIR":"${INFERENCE_DEMO_INSTALL_DIR}",
-        #                 "PY_VERSION":"3.7",
-        #                 "CMAKE_INSTALL_PREFIX":"/paddle/build",#
-        #                 "WITH_PSCORE":"=${distibuted_flag}",
-        #                 "WITH_PSLIB":"OFF",
-        #                 "WITH_GLOO":"{gloo_flag}",
-        #                 "WITH_LITE":"OFF",
-        #                 "WITH_CNCL":"OFF",
-        #                 "WITH_XPU":"OFF",
-        #                 "WITH_MLU":"OFF",
-        #                 "WITH_IPU":"OFF",
-        #                 "LITE_GIT_TAG":"release/v2.10",
-        #                 "WITH_UNITY_BUILD":"OFF",
-        #                 "WITH_XPU_BKCL":"OFF",
-        #                 "WITH_ARM":"OFF",
-        #                 "WITH_ASCEND":"OFF",
-        #                 "WITH_ASCEND_CL":"OFF",
-        #                 "WITH_ASCEND_INT64":"OFF",
-        #                 "WITH_STRIP":"ON",
-        #                 "ON_INFER":"OFF",
-        #                 "WITH_HETERPS":"OFF",
-        #                 "WITH_FLUID_ONLY":"OFF",
-        #                 "WITH_RECORD_BUILDTIME":"OFF",
-        #                 "CUDA_ARCH_BIN":"{CUDA_ARCH_BIN}",
-        #                 "WITH_ONNXRUNTIME":"OFF",
-        #                 }
-        # """
-        
-        
-        # """
-        # for key, value in env_var.items():
-        #     real_value=default_options.get(key)
-        #     if real_value is None:
-        #         continue
-        #     else:
-        #         build_options[key]=value
-            
-        # print(build_options)
-        # """
         paddle_build_options={}
         other_options={}
         other_options.update(
@@ -685,176 +607,9 @@ def main():
     
     #get package arg of setup()
     packages=find_packages('python',exclude=['tools'])
-    """
-    packages=['paddle',
-          'paddle.libs',
-          'paddle.utils',
-          'paddle.utils.gast',
-          'paddle.utils.cpp_extension',
-          'paddle.dataset',
-          'paddle.reader',
-          'paddle.distributed',
-          'paddle.distributed.communication',
-          'paddle.distributed.communication.stream',
-          'paddle.distributed.metric',
-          'paddle.distributed.ps',
-          'paddle.distributed.ps.utils',
-          'paddle.incubate',
-          'paddle.incubate.autograd',
-          'paddle.incubate.optimizer',
-          'paddle.incubate.checkpoint',
-          'paddle.incubate.operators',
-          'paddle.incubate.tensor',
-          'paddle.incubate.multiprocessing',
-          'paddle.incubate.nn',
-          'paddle.incubate.asp',
-          'paddle.incubate.passes',
-          'paddle.distribution',
-          'paddle.distributed.utils',
-          'paddle.distributed.sharding',
-          'paddle.distributed.fleet',
-          'paddle.distributed.launch',
-          'paddle.distributed.launch.context',
-          'paddle.distributed.launch.controllers',
-          'paddle.distributed.launch.job',
-          'paddle.distributed.launch.plugins',
-          'paddle.distributed.launch.utils',
-          'paddle.distributed.fleet.base',
-          'paddle.distributed.fleet.recompute',
-          'paddle.distributed.fleet.elastic',
-          'paddle.distributed.fleet.meta_optimizers',
-          'paddle.distributed.fleet.meta_optimizers.sharding',
-          'paddle.distributed.fleet.meta_optimizers.ascend',
-          'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
-          'paddle.distributed.fleet.runtime',
-          'paddle.distributed.rpc',
-          'paddle.distributed.fleet.dataset',
-          'paddle.distributed.fleet.data_generator',
-          'paddle.distributed.fleet.metrics',
-          'paddle.distributed.fleet.proto',
-          'paddle.distributed.fleet.utils',
-          'paddle.distributed.fleet.layers',
-          'paddle.distributed.fleet.layers.mpu',
-          'paddle.distributed.fleet.meta_parallel',
-          'paddle.distributed.fleet.meta_parallel.pp_utils',
-          'paddle.distributed.fleet.meta_parallel.sharding',
-          'paddle.distributed.fleet.meta_parallel.parallel_layers',
-          'paddle.distributed.auto_parallel',
-          'paddle.distributed.auto_parallel.operators',
-          'paddle.distributed.auto_parallel.tuner',
-          'paddle.distributed.auto_parallel.cost',
-          'paddle.distributed.passes',
-          'paddle.distributed.models',
-          'paddle.distributed.models.moe',
-          'paddle.framework',
-          'paddle.jit',
-          'paddle.jit.dy2static',
-          'paddle.inference',
-          'paddle.inference.contrib',
-          'paddle.inference.contrib.utils',
-          'paddle.fluid',
-          'paddle.fluid.inference',
-          'paddle.fluid.dygraph',
-          'paddle.fluid.dygraph.dygraph_to_static',
-          'paddle.fluid.dygraph.amp',
-          'paddle.fluid.proto',
-          'paddle.fluid.proto.profiler',
-          'paddle.fluid.distributed',
-          'paddle.fluid.layers',
-          'paddle.fluid.dataloader',
-          'paddle.fluid.contrib',
-          'paddle.fluid.contrib.decoder',
-          'paddle.fluid.contrib.quantize',
-          'paddle.fluid.contrib.slim',
-          'paddle.fluid.contrib.slim.quantization',
-          'paddle.fluid.contrib.slim.quantization.imperative',
-          'paddle.fluid.contrib.extend_optimizer',
-          'paddle.fluid.contrib.mixed_precision',
-          'paddle.fluid.contrib.mixed_precision.bf16',
-          'paddle.fluid.contrib.layers',
-          'paddle.fluid.contrib.sparsity',
-          'paddle.fluid.transpiler',
-          'paddle.fluid.transpiler.details',
-          'paddle.fluid.incubate',
-          'paddle.fluid.incubate.data_generator',
-          'paddle.fluid.incubate.fleet',
-          'paddle.fluid.incubate.checkpoint',
-          'paddle.fluid.incubate.fleet.base',
-          'paddle.fluid.incubate.fleet.parameter_server',
-          'paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler',
-          'paddle.fluid.incubate.fleet.parameter_server.pslib',
-          'paddle.fluid.incubate.fleet.parameter_server.ir',
-          'paddle.fluid.incubate.fleet.collective',
-          'paddle.fluid.incubate.fleet.utils',
-          'paddle.amp',
-          'paddle.cost_model',
-          'paddle.hapi',
-          'paddle.vision',
-          'paddle.vision.models',
-          'paddle.vision.transforms',
-          'paddle.vision.datasets',
-          'paddle.audio',
-	      'paddle.audio.functional',
-	      'paddle.audio.features',
-	      'paddle.audio.datasets',
-	      'paddle.audio.backends',
-          'paddle.text',
-          'paddle.text.datasets',
-          'paddle.incubate',
-          'paddle.incubate.nn',
-          'paddle.incubate.nn.functional',
-          'paddle.incubate.nn.layer',
-          'paddle.incubate.optimizer.functional',
-          'paddle.incubate.autograd',
-          'paddle.incubate.distributed',
-          'paddle.incubate.distributed.utils',
-          'paddle.incubate.distributed.utils.io',
-          'paddle.incubate.distributed.fleet',
-          'paddle.incubate.distributed.models',
-          'paddle.incubate.distributed.models.moe',
-          'paddle.incubate.distributed.models.moe.gate',
-          'paddle.sparse',
-          'paddle.sparse.nn',
-          'paddle.sparse.nn.layer',
-          'paddle.sparse.nn.functional',
-          'paddle.incubate.xpu',
-          'paddle.io',
-          'paddle.optimizer',
-          'paddle.nn',
-          'paddle.nn.functional',
-          'paddle.nn.layer',
-          'paddle.nn.quant',
-          'paddle.nn.initializer',
-          'paddle.nn.utils',
-          'paddle.metric',
-          'paddle.static',
-          'paddle.static.nn',
-          'paddle.static.amp',
-          'paddle.static.sparsity',
-          'paddle.tensor',
-          'paddle.onnx',
-          'paddle.autograd',
-          'paddle.device',
-          'paddle.device.cuda',
-          'paddle.version',
-          'paddle.profiler',
-          'paddle.geometric',
-          'paddle.geometric.message_passing',
-          'paddle.geometric.sampling',
-          ]
-    """
-    # package_dir={
-    #     '': paddle_binary_dir+'/python',
-    #     # The paddle.fluid.proto will be generated while compiling.
-    #     # So that package points to other directory.
-    #     'paddle.fluid.proto.profiler': paddle_binary_dir+'/paddle/fluid/platform',
-    #     'paddle.fluid.proto': paddle_binary_dir+'/paddle/fluid/framework',
-    #     'paddle.fluid': paddle_binary_dir+'/python/paddle/fluid',
-    # }
-
     #get package_dir arg of setup()
     package_dir={
-        '': 'build/python',
+        '': paddle_binary_dir.split('/')[-1]+'/python',
         # The paddle.fluid.proto will be generated while compiling.
         # So that package points to other directory.
         'paddle.fluid.proto.profiler': 'build/paddle/fluid/platform',
@@ -1110,7 +865,6 @@ def main():
             'install_headers': InstallHeaders,
             'install': InstallCommand,
             'egg_info': EggInfo,
-            
         },
         entry_points={
             'console_scripts': [
