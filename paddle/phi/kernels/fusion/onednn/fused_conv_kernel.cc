@@ -111,7 +111,6 @@ void FusedConv3DKernel(const Context& dev_ctx,
                        bool fuse_residual_conn,
                        bool force_fp32_output,
                        DenseTensor* out) {
-  VLOG(1) << "############ FusedConv3DKernel ##############";
   bool is_BFLOAT16 = mkldnn_data_type == "bfloat16";
 
   ConvOnednn<T>(dev_ctx,
