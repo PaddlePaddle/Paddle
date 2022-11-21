@@ -1164,7 +1164,7 @@ class BeamSearchDecoder(Decoder):
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = paddle.tile(
             nn.unsqueeze(
-                tensor.range(0, batch_size, 1, dtype=indices.dtype), [1]
+                paddle.arange(0, batch_size, 1, dtype=indices.dtype), [1]
             ),
             [1, self.beam_size],
         )

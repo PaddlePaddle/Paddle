@@ -20,7 +20,7 @@ namespace distributed {
 ProcessGroupStream::ProcessGroupStream(int rank, int size, int gid)
     : ProcessGroup(rank, size, gid) {}
 
-const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
+phi::DeviceContext* ProcessGroupStream::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   PADDLE_THROW(platform::errors::Unimplemented(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));
@@ -212,7 +212,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor* tensor,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -226,7 +226,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor*,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -234,43 +234,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
     bool use_calc_stream) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "ProcessGroup%s does not support send.", GetBackendName()));
-}
-
-// TODO(sunyilun): methods below will be removed later
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    bool sync_op) {
-  return AllToAll(in_tensors,
-                  out_tensors,
-                  sync_op,
-                  /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::AllToAll(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do alltoall", GetBackendName()));
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
-    std::vector<phi::DenseTensor>& tensors, int src_rank, bool sync_op) {
-  return Recv(tensors,
-              src_rank,
-              sync_op,
-              /*use_calc_stream*/ false);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
-    std::vector<phi::DenseTensor>& tensors,
-    int src_rank,
-    bool sync_op,
-    bool use_calc_stream) {
-  PADDLE_THROW(platform::errors::InvalidArgument(
-      "ProcessGroup%s does not support do recv", GetBackendName()));
 }
 
 }  // namespace distributed
