@@ -145,7 +145,7 @@ class BOW(fluid.dygraph.Layer):
         emb = emb * mask_emb
         emb = fluid.layers.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
         bow_1 = fluid.layers.reduce_sum(emb, dim=1)
-        bow_1 = fluid.layers.tanh(bow_1)
+        bow_1 = paddle.tanh(bow_1)
         fc_1 = self._fc1(bow_1)
         fc_2 = self._fc2(fc_1)
         prediction = self._fc_prediction(fc_2)
@@ -197,7 +197,7 @@ class GRU(fluid.dygraph.Layer):
         fc_1 = self._fc1(emb)
         gru_hidden = self._gru(fc_1)
         gru_hidden = fluid.layers.reduce_max(gru_hidden, dim=1)
-        tanh_1 = fluid.layers.tanh(gru_hidden)
+        tanh_1 = paddle.tanh(gru_hidden)
         fc_2 = self._fc2(tanh_1)
         prediction = self._fc_prediction(fc_2)
 
@@ -253,8 +253,8 @@ class BiGRU(fluid.dygraph.Layer):
         fc_1 = self._fc1(emb)
         gru_forward = self._gru_forward(fc_1)
         gru_backward = self._gru_backward(fc_1)
-        gru_forward_tanh = fluid.layers.tanh(gru_forward)
-        gru_backward_tanh = fluid.layers.tanh(gru_backward)
+        gru_forward_tanh = paddle.tanh(gru_forward)
+        gru_backward_tanh = paddle.tanh(gru_backward)
         encoded_vector = fluid.layers.concat(
             input=[gru_forward_tanh, gru_backward_tanh], axis=2
         )

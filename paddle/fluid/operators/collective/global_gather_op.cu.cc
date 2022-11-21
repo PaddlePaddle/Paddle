@@ -226,7 +226,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_global_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send(&tmp,
+          pg->Send(tmp,
                    j,
                    send_ptr * in_feat,
                    cpu_global_count_data[idx] * in_feat,
