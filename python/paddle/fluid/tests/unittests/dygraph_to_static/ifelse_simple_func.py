@@ -232,14 +232,14 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
     def __init__(self, hidden_dim=16):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.fc = fluid.dygraph.Linear(
-            input_dim=hidden_dim,
-            output_dim=5,
-            param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.99)
+        self.fc = paddle.nn.Linear(
+            in_features=hidden_dim,
+            out_features=5,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.99)
             ),
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.5)
+            bias_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Constant(value=0.5)
             ),
         )
         self.alpha = 10.0

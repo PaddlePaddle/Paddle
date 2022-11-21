@@ -18,14 +18,13 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
     BatchNorm,
-    Conv3D,
     Embedding,
     GroupNorm,
     LayerNorm,
-    Linear,
     NCE,
     PRelu,
 )
+from paddle.nn import Linear
 import numpy as np
 import os
 import tempfile
@@ -194,11 +193,11 @@ class TestDygraphLoadStatic(unittest.TestCase):
                         in_channels=10, out_channels=10, kernel_size=5
                     )
 
-                    self.conv3d_1 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_1 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
-                    self.conv3d_2 = Conv3D(
-                        num_channels=3, num_filters=2, filter_size=3, act="relu"
+                    self.conv3d_2 = paddle.nn.Conv3D(
+                        in_channels=3, out_channels=2, kernel_size=3
                     )
 
                     self.batch_norm_1 = BatchNorm(10)

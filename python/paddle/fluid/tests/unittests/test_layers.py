@@ -87,10 +87,12 @@ class TestLayer(LayerTest):
         class CustomLayer(fluid.Layer):
             def __init__(self, input_size, linear1_size=4):
                 super().__init__()
-                self.linear1 = nn.Linear(
+                self.linear1 = paddle.nn.Linear(
                     input_size, linear1_size, bias_attr=False
                 )
-                self.linear2 = nn.Linear(linear1_size, 1, bias_attr=False)
+                self.linear2 = paddle.nn.Linear(
+                    linear1_size, 1, bias_attr=False
+                )
 
             def forward(self, x, do_linear2=False):
                 ret = self.linear1(x)
@@ -168,7 +170,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False,
             )
-            linear = nn.Linear(
+            linear = paddle.nn.Linear(
                 32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
             )
             ret = linear(t)
@@ -178,7 +180,7 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 t = base.to_variable(inp)
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -187,7 +189,7 @@ class TestLayer(LayerTest):
                 dy_eager_ret_value = dy_eager_ret.numpy()
 
             t = base.to_variable(inp)
-            linear = nn.Linear(
+            linear = paddle.nn.Linear(
                 32, 4, bias_attr=fluid.initializer.ConstantInitializer(value=1)
             )
             dy_ret = linear(t)
@@ -201,7 +203,7 @@ class TestLayer(LayerTest):
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -214,7 +216,7 @@ class TestLayer(LayerTest):
             # float16 only can be set on GPU place
             def test_type():
                 inp = np.ones([3, 32, 32], dtype='int32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -257,7 +259,7 @@ class TestLayer(LayerTest):
             # the input of Linear must be Variable.
             def test_Variable():
                 inp = np.ones([3, 32, 32], dtype='float32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -270,7 +272,7 @@ class TestLayer(LayerTest):
             # float16 only can be set on GPU place
             def test_type():
                 inp = np.ones([3, 32, 32], dtype='int32')
-                linear = nn.Linear(
+                linear = paddle.nn.Linear(
                     32,
                     4,
                     bias_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -1701,7 +1703,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
+            conv3d = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
             ret = conv3d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
@@ -1711,12 +1715,16 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             with _test_eager_guard():
                 images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-                conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
+                conv3d = paddle.nn.Conv3D(
+                    in_channels=3, out_channels=3, kernel_size=2
+                )
                 dy_eager_ret = conv3d(base.to_variable(images))
                 dy_eager_rlt_value = dy_eager_ret.numpy()
 
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
+            conv3d = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
             dy_ret = conv3d(base.to_variable(images))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1733,14 +1741,14 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                conv3d1 = nn.Conv3D(
-                    num_channels=3, num_filters=3, filter_size=2
+                conv3d1 = paddle.nn.Conv3D(
+                    in_channels=3, out_channels=3, kernel_size=2
                 )
-                conv3d2 = nn.Conv3D(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=2,
-                    param_attr=weight_attr,
+                conv3d2 = paddle.nn.Conv3D(
+                    in_channels=3,
+                    out_channels=3,
+                    kernel_size=2,
+                    weight_attr=weight_attr,
                 )
                 dy_ret1 = conv3d1(base.to_variable(images))
                 dy_ret2 = conv3d2(base.to_variable(images))
@@ -1778,12 +1786,14 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            conv3d1 = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
-            conv3d2 = nn.Conv3D(
-                num_channels=3,
-                num_filters=3,
-                filter_size=2,
-                param_attr=weight_attr,
+            conv3d1 = paddle.nn.Conv3D(
+                in_channels=3, out_channels=3, kernel_size=2
+            )
+            conv3d2 = paddle.nn.Conv3D(
+                in_channels=3,
+                out_channels=3,
+                kernel_size=2,
+                weight_attr=weight_attr,
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
@@ -2282,8 +2292,8 @@ class TestLayer(LayerTest):
             )[0]
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
-            conv3d_transpose = nn.Conv3DTranspose(
-                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False
+            conv3d_transpose = paddle.nn.Conv3DTranspose(
+                in_channels=3, out_channels=12, kernel_size=12
             )
             out = conv3d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
@@ -2291,17 +2301,16 @@ class TestLayer(LayerTest):
             )[0]
         with self.dynamic_graph():
             with _test_eager_guard():
-                conv3d_transpose = nn.Conv3DTranspose(
-                    num_channels=3,
-                    num_filters=12,
-                    filter_size=12,
-                    use_cudnn=False,
+                conv3d_transpose = paddle.nn.Conv3DTranspose(
+                    in_channels=3,
+                    out_channels=12,
+                    kernel_size=12,
                 )
                 dy_eager_rlt = conv3d_transpose(base.to_variable(input_array))
                 dy_eager_rlt_value = dy_eager_rlt.numpy()
 
-            conv3d_transpose = nn.Conv3DTranspose(
-                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False
+            conv3d_transpose = paddle.nn.Conv3DTranspose(
+                in_channels=3, out_channels=12, kernel_size=12
             )
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
             dy_rlt_value = dy_rlt.numpy()
@@ -2318,20 +2327,18 @@ class TestLayer(LayerTest):
                         custom_weight
                     )
                 )
-                conv3d1 = nn.Conv3DTranspose(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=2,
+                conv3d1 = paddle.nn.Conv3DTranspose(
+                    in_channels=3,
+                    out_channels=3,
+                    kernel_size=2,
                     bias_attr='eager_conv3d1_b',
-                    use_cudnn=False,
                 )
-                conv3d2 = nn.Conv3DTranspose(
-                    num_channels=3,
-                    num_filters=3,
-                    filter_size=2,
-                    param_attr=weight_attr,
+                conv3d2 = paddle.nn.Conv3DTranspose(
+                    in_channels=3,
+                    out_channels=3,
+                    kernel_size=2,
+                    weight_attr=weight_attr,
                     bias_attr='eager_conv3d2_b',
-                    use_cudnn=False,
                 )
                 dy_ret1 = conv3d1(base.to_variable(images))
                 dy_ret2 = conv3d2(base.to_variable(images))
@@ -2369,20 +2376,18 @@ class TestLayer(LayerTest):
                     custom_weight
                 )
             )
-            conv3d1 = nn.Conv3DTranspose(
-                num_channels=3,
-                num_filters=3,
-                filter_size=2,
+            conv3d1 = paddle.nn.Conv3DTranspose(
+                in_channels=3,
+                out_channels=3,
+                kernel_size=2,
                 bias_attr='conv3d1_b',
-                use_cudnn=False,
             )
-            conv3d2 = nn.Conv3DTranspose(
-                num_channels=3,
-                num_filters=3,
-                filter_size=2,
-                param_attr=weight_attr,
+            conv3d2 = paddle.nn.Conv3DTranspose(
+                in_channels=3,
+                out_channels=3,
+                kernel_size=2,
+                weight_attr=weight_attr,
                 bias_attr='conv3d2_b',
-                use_cudnn=False,
             )
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))

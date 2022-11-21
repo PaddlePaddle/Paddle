@@ -39,7 +39,7 @@ program_translator = ProgramTranslator()
 class SimpleFcLayer(fluid.dygraph.Layer):
     def __init__(self, fc_size):
         super().__init__()
-        self._linear = fluid.dygraph.Linear(fc_size, fc_size)
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @declarative
     def forward(self, x):

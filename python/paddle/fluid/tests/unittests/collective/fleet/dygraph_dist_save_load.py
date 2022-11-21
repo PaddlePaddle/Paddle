@@ -18,7 +18,7 @@ import numpy as np
 import tempfile
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle.nn import Linear
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,

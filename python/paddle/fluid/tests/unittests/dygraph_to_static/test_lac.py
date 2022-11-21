@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph import Embedding, Linear, GRUUnit
+from paddle.fluid.dygraph import Embedding, GRUUnit
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.fluid.framework import _non_static_mode
@@ -106,10 +106,10 @@ class BiGRU(fluid.dygraph.Layer):
     def __init__(self, input_dim, grnn_hidden_dim, init_bound, h_0=None):
         super().__init__()
 
-        self.pre_gru = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
+        self.pre_gru = paddle.nn.Linear(
+            in_features=input_dim,
+            out_features=grnn_hidden_dim * 3,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -132,10 +132,10 @@ class BiGRU(fluid.dygraph.Layer):
             ),
         )
 
-        self.pre_gru_r = Linear(
-            input_dim=input_dim,
-            output_dim=grnn_hidden_dim * 3,
-            param_attr=fluid.ParamAttr(
+        self.pre_gru_r = paddle.nn.Linear(
+            in_features=input_dim,
+            out_features=grnn_hidden_dim * 3,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
@@ -423,10 +423,10 @@ class LexNet(fluid.dygraph.Layer):
                     )
                 )
 
-        self.fc = Linear(
-            input_dim=self.grnn_hidden_dim * 2,
-            output_dim=self.num_labels,
-            param_attr=fluid.ParamAttr(
+        self.fc = paddle.nn.Linear(
+            in_features=self.grnn_hidden_dim * 2,
+            out_features=self.num_labels,
+            weight_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
