@@ -93,7 +93,7 @@ class ProcessGroupCustom : public ProcessGroup {
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
 
-  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   phi::ccl::CCLComm CustomCCLComm(const Place& place) const;
 

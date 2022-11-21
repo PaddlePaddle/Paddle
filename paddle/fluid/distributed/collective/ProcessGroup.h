@@ -96,7 +96,7 @@ class ProcessGroup {
 
   virtual std::string GetBackendName() const = 0;
 
-  virtual const phi::DeviceContext& GetDeviceContext(const Place& place) const {
+  virtual phi::DeviceContext* GetDeviceContext(const Place& place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "ProcessGroup%s does not support get device_context.",
         GetBackendName()));

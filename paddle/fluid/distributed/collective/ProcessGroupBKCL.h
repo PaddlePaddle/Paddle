@@ -77,10 +77,10 @@ class ProcessGroupBKCL : public ProcessGroupStream {
     return std::string(BKCL_BACKEND_NAME);
   }
 
-  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place, bool use_calc_stream) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,

@@ -34,7 +34,7 @@
 
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
-#else
+#elif PADDLE_WITH_NCCL
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
 
@@ -83,10 +83,10 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   std::string GetBackendName() const override { return "NCCL"; }
 
-  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override;
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place, bool use_calc_stream) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllGather(
       phi::DenseTensor* out_tensor,
