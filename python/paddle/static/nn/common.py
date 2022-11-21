@@ -202,49 +202,25 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             import paddle
             paddle.enable_static()
 
-            #define net structure, using LodTensor
-            train_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(train_program, startup_program):
-                input_data = fluid.data(name='input_data', shape=[-1,10], dtype='float32')
-                label = fluid.data(name='label', shape=[-1,1], dtype='int')
-                emission= fluid.layers.fc(input=input_data, size=10, act="tanh")
-                crf_cost = paddle.static.nn.linear_chain_crf(
-                    input=emission,
-                    label=label,
-                    param_attr=fluid.ParamAttr(
-                    name='crfw',
-                    learning_rate=0.01))
-            use_cuda = False
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup_program)
-            #define data, using LoDTensor
-            a = fluid.create_lod_tensor(np.random.rand(12,10).astype('float32'), [[3,3,4,2]], place)
-            b = fluid.create_lod_tensor(np.array([[1],[1],[2],[3],[1],[1],[1],[3],[1],[1],[1],[1]]),[[3,3,4,2]] , place)
-            feed1 = {'input_data':a,'label':b}
-            loss= exe.run(train_program,feed=feed1, fetch_list=[crf_cost])
-            print(loss)
-
             #define net structure, using padding
-            train_program = fluid.Program()
-            startup_program = fluid.Program()
-            with fluid.program_guard(train_program, startup_program):
-                input_data2 = fluid.data(name='input_data2', shape=[-1,10,10], dtype='float32')
-                label2 = fluid.data(name='label2', shape=[-1,10,1], dtype='int')
-                label_length = fluid.data(name='length', shape=[-1,1], dtype='int')
-                emission2= fluid.layers.fc(input=input_data2, size=10, act="tanh", num_flatten_dims=2)
+            train_program = paddle.static.Program()
+            startup_program = paddle.static.Program()
+            with paddle.static.program_guard(train_program, startup_program):
+                input_data2 = paddle.static.data(name='input_data2', shape=[-1,10,10], dtype='float32')
+                label2 = paddle.static.data(name='label2', shape=[-1,10,1], dtype='int')
+                label_length = paddle.static.data(name='length', shape=[-1,1], dtype='int')
+                emission2= paddle.static.nn.fc(x=input_data2, size=10, activation="tanh", num_flatten_dims=2)
                 crf_cost2 = paddle.static.nn.linear_chain_crf(
                     input=emission2,
                     label=label2,
                     length=label_length,
-                    param_attr=fluid.ParamAttr(
-                     name='crfw',
-                     learning_rate=0.01))
+                    param_attr=paddle.ParamAttr(
+                        name='crfw',
+                        learning_rate=0.01))
 
             use_cuda = False
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            exe = paddle.static.Executor(place)
             exe.run(startup_program)
 
             #define data, using padding
@@ -260,8 +236,9 @@ def linear_chain_crf(input, label, param_attr=None, length=None):
             #        [ 5.86721  ]], dtype=float32)]
 
             #you can use find_var to get transition parameter.
-            transition=np.array(fluid.global_scope().find_var('crfw').get_tensor())
+            transition=np.array(paddle.static.global_scope().find_var('crfw').get_tensor())
             print(transition)
+
 
     """
     check_variable_and_dtype(
