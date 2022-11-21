@@ -234,8 +234,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Broadcast(
     const phi::DenseTensor& in_tensor,
     const BroadcastOptions& opts,
     bool sync_op) {
-  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return Broadcast(in_wrapper, out_wrapper, opts, true);
 }
 
@@ -396,8 +396,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::AllGather(
     int64_t offset,  // for compatibility, no use now
     int64_t numel,   // for compatibility, no use now
     bool sync_op) {
-  std::vector<phi::DenseTensor> in_wrapper = {in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper = {*out_tensor};
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   return AllGather(in_wrapper, out_wrapper, true);
 }
 
@@ -475,24 +475,32 @@ class ReduceGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
-    std::vector<phi::DenseTensor>& inputs,
-    std::vector<phi::DenseTensor>& outputs,
-    const ReduceOptions& opts) {
-  return Reduce(inputs, outputs, opts, true);
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const ReduceOptions& opts,
+    bool sync_op  // for compatibility, no use now
+) {
+  std::shared_ptr<ReduceGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
+  task = std::make_shared<ReduceGlooTask>(rank_,
+                                          context,
+                                          in_wrapper,
+                                          out_wrapper,
+                                          opts.reduce_op,
+                                          opts.root_rank,
+                                          tag);
+  task->Run();
+  return task;
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Reduce(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
-    const ReduceOptions& opts,
-    bool sync_op) {
-  std::shared_ptr<ReduceGlooTask> task;
-  auto tag = next_tag();
-  auto context = get_context();
-  task = std::make_shared<ReduceGlooTask>(
-      rank_, context, inputs, outputs, opts.reduce_op, opts.root_rank, tag);
-  task->Run();
-  return task;
+    const ReduceOptions& opts) {
+  return Reduce(&outputs[0], inputs[0], opts, true);
 }
 
 class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
@@ -538,24 +546,26 @@ class ScatterGlooTask : public ProcessGroupGloo::GlooTask {
 };
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
-    const ScatterOptions& opts) {
-  return Scatter(in_tensors, out_tensors, opts, true);
-}
-
-std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
-    std::vector<phi::DenseTensor>& in_tensors,
-    std::vector<phi::DenseTensor>& out_tensors,
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
     const ScatterOptions& opts,
     bool sync_op) {
   std::shared_ptr<ScatterGlooTask> task;
   auto tag = next_tag();
   auto context = get_context();
+  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   task = std::make_shared<ScatterGlooTask>(
-      rank_, context, in_tensors, out_tensors, opts.root_rank, size_, tag);
+      rank_, context, in_wrapper, out_wrapper, opts.root_rank, size_, tag);
   task->Run();
   return task;
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
+    std::vector<phi::DenseTensor>& in_tensors,
+    std::vector<phi::DenseTensor>& out_tensors,
+    const ScatterOptions& opts) {
+  return Scatter(&out_tensors[0], in_tensors[0], opts, true);
 }
 
 std::shared_ptr<::gloo::transport::Device>
@@ -605,6 +615,23 @@ ProcessGroupGloo::createDefaultDevice() {
     return createDeviceForHostname(hostname.data());
   }
   return createDeviceForHostname("127.0.0.1");
+}
+
+std::shared_ptr<ProcessGroupGloo> ProcessGroupGloo::CreateProcessGroupGloo(
+    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+  std::string GLOO_SOCKET_IFNAME_ENV = "GLOO_SOCKET_IFNAME";
+  auto opts = GlooOptions::create();
+  char* ifname = getenv(GLOO_SOCKET_IFNAME_ENV.c_str());
+  if (ifname && strlen(ifname) > 1) {
+    opts->device =
+        ProcessGroupGloo::createDeviceForInterface(std::string(ifname));
+  } else {
+    opts->device = ProcessGroupGloo::createDefaultDevice();
+  }
+  auto process_group =
+      std::make_shared<ProcessGroupGloo>(store, rank, size, gid, opts);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
 }
 
 }  // namespace distributed

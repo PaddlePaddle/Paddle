@@ -14,7 +14,29 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/tril_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/tril_triu_grad_kernel_impl.h"
+
+PD_REGISTER_KERNEL(tril_triu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TrilTriuGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
+
+PD_REGISTER_KERNEL(triu_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TriuGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16) {}
 
 PD_REGISTER_KERNEL(tril_grad,
                    CPU,

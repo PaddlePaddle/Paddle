@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/cast_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -80,16 +81,19 @@ void CastKernel(const Context& dev_ctx,
           dev_ctx.template Alloc<uint8_t>(out),
           numel);
       break;
+    case phi::DataType::FLOAT64:
+      r = xpu::cast_v2<XPUInTDType, double>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUInTDType*>(in_data),
+          dev_ctx.template Alloc<double>(out),
+          numel);
+      break;
     default:
       PADDLE_THROW(phi::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU CAST API return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
 }
 }  // namespace phi
 
@@ -101,6 +105,8 @@ PD_REGISTER_KERNEL(cast,
                    float,
                    phi::dtype::float16,
                    int64_t,
-                   bool) {
+                   bool,
+                   uint8_t,
+                   double) {
   kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
 }
