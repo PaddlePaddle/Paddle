@@ -225,10 +225,6 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
-cc_library(
-  threadpool
-  SRCS threadpool.cc
-  DEPS enforce)
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
