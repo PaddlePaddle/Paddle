@@ -12702,7 +12702,7 @@ class PyFuncRegistry:
 
         self._func = func
         # find named args using reflection
-        args = inspect.getargspec(self._func)
+        args = inspect.getfullargspec(self._func)
         if len(args[0]) == 0 and args[1] is None and args[2] is None:
             # Function with no inputs
             self._named_args = None
