@@ -20,7 +20,8 @@ import paddle
 from paddle import framework
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle.nn import Layer
+from .container import LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle import _C_ops, _legacy_C_ops
