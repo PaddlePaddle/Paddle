@@ -103,7 +103,6 @@ __all__ = [
     'unsqueeze',
     'lod_reset',
     'lod_append',
-    'lrn',
     'pad',
     'label_smooth',
     'roi_pool',
@@ -123,7 +122,6 @@ __all__ = [
     'mean_iou',
     'relu',
     'log',
-    'crop',
     'crop_tensor',
     'pow',
     'hard_sigmoid',
@@ -135,7 +133,6 @@ __all__ = [
     'unique',
     'unique_with_counts',
     'expand',
-    'expand_as',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -6598,103 +6595,6 @@ def lod_append(x, level):
     return out
 
 
-def lrn(
-    input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None, data_format='NCHW'
-):
-    r"""
-    :alias_main: paddle.nn.functional.lrn
-        :alias: paddle.nn.functional.lrn,paddle.nn.functional.norm.lrn
-        :old_api: paddle.fluid.layers.lrn
-
-    This operator implements the Local Response Normalization Layer.
-    This layer performs a type of "lateral inhibition" by normalizing over local input regions.
-    For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
-
-    The formula is as follows:
-
-    .. math::
-
-        Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
-
-    In the above equation:
-
-    - :math:`n` : The number of channels to sum over.
-    - :math:`k` : The offset (avoid being divided by 0).
-    - :math:`\\alpha` : The scaling parameter.
-    - :math:`\\beta` : The exponent parameter.
-
-
-    Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C],
-            where N is the batch size, C is the input channel, H is Height, W is weight. The data
-            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
-        n (int, optional): The number of channels to sum over. Default: 5
-        k (float, optional): An offset, positive. Default: 1.0
-        alpha (float, optional): The scaling parameter, positive. Default:1e-4
-        beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set
-            this property. For more information, please refer to :ref:`api_guide_Name`
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns:
-        Variable: A tensor variable storing the transformation result with the same shape and data type as input.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        data = fluid.data(
-            name="data", shape=[None, 3, 112, 112], dtype="float32")
-        lrn = fluid.layers.lrn(input=data)
-        print(lrn.shape)  # [-1, 3, 112, 112]
-        print(lrn.dtype)  # float32
-    """
-    helper = LayerHelper('lrn', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], 'lrn')
-    dtype = helper.input_dtype()
-    input_shape = input.shape
-    dims = len(input_shape)
-
-    if dims != 4:
-        raise ValueError(
-            "Input's dimension size of Op(lrn) must be 4, but received %d."
-            % (dims)
-        )
-    if data_format not in ['NCHW', 'NHWC']:
-        raise ValueError(
-            "Attr(data_format) of Op(lrn) got wrong value: received "
-            + data_format
-            + " but only NCHW or NHWC supported."
-        )
-
-    mid_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    lrn_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="lrn",
-        inputs={"X": input},
-        outputs={
-            "Out": lrn_out,
-            "MidOut": mid_out,
-        },
-        attrs={
-            "n": n,
-            "k": k,
-            "alpha": alpha,
-            "beta": beta,
-            "data_format": data_format,
-        },
-    )
-
-    return lrn_out
-
-
 def pad(x, paddings, pad_value=0.0, name=None):
     r"""
     :alias_main: paddle.nn.functional.pad
@@ -8902,108 +8802,6 @@ def mean_iou(input, label, num_classes):
     return out_mean_iou, out_wrong, out_correct
 
 
-def crop(x, shape=None, offsets=None, name=None):
-    """
-    Crop input into output, as specified by offsets and shape.
-
-    **Warning:** THIS OP IS DEPRECATED. It will be removed in the future version.
-    Instructions for updating: Use :ref:`api_fluid_layers_crop_tensor` instead.
-
-    .. code-block:: text
-
-        * Case 1:
-            Given
-                X = [[0, 1, 2, 0, 0]
-                     [0, 3, 4, 0, 0]
-                     [0, 0, 0, 0, 0]],
-            and
-                shape = [2, 2],
-                offsets = [0, 1],
-            output is:
-                Out = [[1, 2],
-                       [3, 4]].
-        * Case 2:
-            Given
-                X = [[0, 1, 2, 5, 0]
-                     [0, 3, 4, 6, 0]
-                     [0, 0, 0, 0, 0]],
-            and shape is tensor
-                shape = [[0, 0, 0]
-                         [0, 0, 0]]
-            and
-                offsets = [0, 1],
-
-            output is:
-                Out = [[1, 2, 5],
-                       [3, 4, 6]].
-
-    Parameters:
-        x (Variable): Tensor, data type can be float32 or float64.
-        shape (Variable|list/tuple of integers, optional): The output shape is specified
-            by `shape`, which can be a Tensor or a list/tuple of integers.
-            If it is a Tensor, it's rank must be the same as `x` , only
-            it's shape will be used, and the value of it will be ignored. This way
-            is suitable for the case that the output shape may be changed each
-            iteration. If it is a list/tuple of integers, it's length must be the same
-            as the rank of `x`
-        offsets (Variable|list/tuple of integers|None, optional): Specifies the cropping
-            offsets at each dimension. It can be a Tensor or a list/tuple
-            of integers. If it is a Tensor, it's rank must be the same as `x`.
-            This way is suitable for the case that the offsets may be changed
-            each iteration. If it is a list/tuple of integers, it's length must be the
-            same as the rank of `x`. If None, the offsets are 0 at each dimension.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name` . Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Tensor, The cropped Tensor, which has the same rank and data type with `x`.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            x = fluid.data(name="x", shape=[3, 3, 5], dtype="float32")
-            y = fluid.data(name="y", shape=[2, 2, 3], dtype="float32")
-            crop = fluid.layers.crop(x, shape=y)
-
-            # or
-            z = fluid.data(name="z", shape=[3, 3, 5], dtype="float32")
-            crop = fluid.layers.crop(z, shape=[2, 2, 3])
-
-    """
-    check_variable_and_dtype(x, 'x', ['float32'], 'crop')
-    check_type(shape, 'shape', (list, tuple, Variable), 'crop')
-    helper = LayerHelper('crop', **locals())
-
-    if offsets is None:
-        offsets = [0] * len(x.shape)
-
-    out = helper.create_variable_for_type_inference(x.dtype)
-    ipts = {'X': x}
-    attrs = {}
-    if isinstance(shape, Variable):
-        ipts['Y'] = shape
-    else:
-        attrs['shape'] = shape
-    if isinstance(offsets, Variable):
-        ipts['Offsets'] = offsets
-    else:
-        attrs['offsets'] = offsets
-
-    helper.append_op(
-        type='crop',
-        inputs=ipts,
-        outputs={'Out': out},
-        attrs=None if len(attrs) == 0 else attrs,
-    )
-    return out
-
-
 def crop_tensor(x, shape=None, offsets=None, name=None):
     """
     Crop input into output, as specified by offsets and shape.
@@ -9834,94 +9632,6 @@ def expand(x, expand_times, name=None):
     helper.append_op(
         type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
-    return out
-
-
-@deprecated(since='2.0.0', update_to="paddle.expand_as")
-def expand_as(x, target_tensor, name=None):
-    """
-    :alias_main: paddle.expand_as
-        :alias: paddle.expand_as,paddle.tensor.expand_as,paddle.tensor.manipulation.expand_as
-        :old_api: paddle.fluid.layers.expand_as
-
-    expand_as operator tiles to the input by given expand tensor. You should set expand tensor
-    for each dimension by providing tensor 'target_tensor'. The rank of X
-    should be in [1, 6]. Please note that size of 'target_tensor' must be the same
-    with X's rank. Following is a using case:
-
-
-    .. code-block:: text
-
-        Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
-                [
-                   [[1], [2], [3]],
-                   [[4], [5], [6]]
-                ]
-
-        target_tensor's shape:  [2, 6, 2]
-
-        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
-                [
-                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
-                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
-                ]
-
-
-    Args:
-        x (Variable): A Tensor with dtype float64, float32, int32.
-        A tensor with rank in [1, 6].
-        target_tensor (Variable): A Tensor with dtype float64, float32, int32.
-        target_tensor for expanding to Input(X). Only use target_tensor'shape.
-
-    Returns:
-        Variable: A Tensor with dtype float64, float32, int32.
-        After expanding, size of each dimension of Output(Out) is equal to the size
-        of the corresponding dimension of target_tensor multiplying the corresponding
-        value given by target_tensor.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
-            paddle.enable_static()
-
-            data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
-            target_tensor = fluid.layers.data(
-              name="target_tensor", shape=[-1,20], dtype='float64')
-            result = fluid.layers.expand_as(x=data, target_tensor=target_tensor)
-            use_cuda = False
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            x = np.random.rand(3,10)
-            y = np.random.rand(3,20)
-            output= exe.run(feed={"data":x,"target_tensor":y},fetch_list=[result.name])
-            print(output[0].shape)
-            #(3,20)
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.expand_as(x, target_tensor)
-
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'int32', 'int64', 'bool'], 'expand_as'
-    )
-    check_variable_and_dtype(
-        target_tensor,
-        'target_tensor',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
-        'expand_as',
-    )
-    helper = LayerHelper('expand_as', input=x, **locals())
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    inputs = {'X': x, 'target_tensor': target_tensor}
-    helper.append_op(type='expand_as', inputs=inputs, outputs={'Out': out})
     return out
 
 

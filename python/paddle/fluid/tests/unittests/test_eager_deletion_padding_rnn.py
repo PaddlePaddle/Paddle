@@ -191,10 +191,10 @@ def lm_model(
                     ends=[hidden_size * 4],
                 )
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 rnn.update_memory(pre_hidden, m)
                 rnn.update_memory(pre_cell, c)
@@ -295,10 +295,10 @@ def lm_model(
                 gate_input = layers.elementwise_add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 hidden_array[k] = m
                 cell_array[k] = c

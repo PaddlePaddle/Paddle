@@ -49,8 +49,8 @@ class BasicLSTMUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._forget_bias = forget_bias
         self._dtype = dtype
         self._input_size = input_size
@@ -76,12 +76,14 @@ class BasicLSTMUnit(Layer):
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
-                pre_cell, layers.sigmoid(f + self._forget_bias)
+                pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)),
+            layers.elementwise_mul(
+                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+            ),
         )
 
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 
         return new_hidden, new_cell
 
