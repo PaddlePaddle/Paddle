@@ -279,7 +279,7 @@ class BertModelLayer(Layer):
         self_attn_mask = fluid.layers.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
-        n_head_self_attn_mask = fluid.layers.stack(
+        n_head_self_attn_mask = paddle.stack(
             x=[self_attn_mask] * self._n_head, axis=1
         )
         n_head_self_attn_mask.stop_gradient = True
@@ -395,7 +395,7 @@ class PretrainModelLayer(Layer):
             x=enc_output, shape=[-1, self._emb_size]
         )
 
-        mask_feat = fluid.layers.gather(input=reshaped_emb_out, index=mask_pos)
+        mask_feat = paddle.gather(reshaped_emb_out, index=mask_pos)
         mask_trans_feat = self.pooled_fc(mask_feat)
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 

@@ -169,39 +169,37 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* dOut,
                   DenseTensor* dX) const {
     const T* x_data = nullptr;
-    const T* y_grad = nullptr;
+    const T* dout_data = nullptr;
     if (x != nullptr) x_data = x->data<T>();
-    if (dOut != nullptr) y_grad = dOut->data<T>();
-    T* x_grad = dX->data<T>();
-    const auto x_dims = x->dims();
-    auto xshape = vectorize<int>(x_dims);
-    int len = x->dims()[x_dims.size() - 1];
-    std::vector<int> yshape(1, len);
+    if (dOut != nullptr) dout_data = dOut->data<T>();
 
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    T* y_data = RAII_GUARD.alloc_l3_or_gm<T>(len);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(y_data);
-    T* tmp_grad = RAII_GUARD.alloc_l3_or_gm<T>(x->numel());
-    PADDLE_ENFORCE_XDNN_NOT_NULL(tmp_grad);
-    int r =
-        xpu::constant<T>(dev_ctx.x_context(), y_data, len, static_cast<T>(1.0));
+    T* dx_data = dev_ctx.template Alloc<T>(dX);
+    int r = xpu::constant<T>(
+        dev_ctx.x_context(), dx_data, x->numel(), static_cast<T>(1.0));
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
+    auto x_dims = vectorize<int>(x->dims());
+
+    // use [1] to replace [], because xpu not support []
+    if (x_dims.size() == 0) {
+      x_dims = std::vector<int>({1});
+    }
 
     // dx.device(d) = dout * (static_cast<T>(1) / x);
     r = xpu::broadcast_div(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(y_data),
+                           reinterpret_cast<const float*>(dx_data),
                            reinterpret_cast<const float*>(x_data),
-                           reinterpret_cast<float*>(tmp_grad),
-                           yshape,
-                           xshape);
+                           reinterpret_cast<float*>(dx_data),
+                           x_dims,
+                           x_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_div");
 
     r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           reinterpret_cast<const float*>(y_grad),
-                           reinterpret_cast<const float*>(tmp_grad),
-                           reinterpret_cast<float*>(x_grad),
-                           xshape,
-                           xshape);
+                           reinterpret_cast<const float*>(dx_data),
+                           reinterpret_cast<const float*>(dout_data),
+                           reinterpret_cast<float*>(dx_data),
+                           x_dims,
+                           x_dims);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
   }
 };
