@@ -160,8 +160,8 @@ class BaseTransform:
 
             Current available strings & data type are describe below:
 
-            - "image": input image, with shape of (H, W, C)
-            - "coords": coordinates, with shape of (N, 2)
+            - "image": input image, with shape of (H, W, C).
+            - "coords": coordinates, with shape of (N, 2).
             - "boxes": bounding boxes, with shape of (N, 4), "xyxy" format,
 
                        the 1st "xy" represents top left point of a box,
@@ -440,23 +440,23 @@ class RandomResizedCrop(BaseTransform):
 
     Args:
         size (int|list|tuple): Target size of output image, with (height, width) shape.
-        scale (list|tuple): Scale range of the cropped image before resizing, relatively to the origin
+        scale (list|tuple, optional): Scale range of the cropped image before resizing, relatively to the origin
             image. Default: (0.08, 1.0)
-        ratio (list|tuple): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
+        ratio (list|tuple, optional): Range of aspect ratio of the origin aspect ratio cropped. Default: (0.75, 1.33)
         interpolation (int|str, optional): Interpolation method. Default: 'bilinear'. when use pil backend,
             support method are as following:
-            - "nearest": Image.NEAREST,
-            - "bilinear": Image.BILINEAR,
-            - "bicubic": Image.BICUBIC,
-            - "box": Image.BOX,
-            - "lanczos": Image.LANCZOS,
-            - "hamming": Image.HAMMING
+                - "nearest": Image.NEAREST,
+                - "bilinear": Image.BILINEAR,
+                - "bicubic": Image.BICUBIC,
+                - "box": Image.BOX,
+                - "lanczos": Image.LANCZOS,
+                - "hamming": Image.HAMMING
             when use cv2 backend, support method are as following:
-            - "nearest": cv2.INTER_NEAREST,
-            - "bilinear": cv2.INTER_LINEAR,
-            - "area": cv2.INTER_AREA,
-            - "bicubic": cv2.INTER_CUBIC,
-            - "lanczos": cv2.INTER_LANCZOS4
+                - "nearest": cv2.INTER_NEAREST,
+                - "bilinear": cv2.INTER_LINEAR,
+                - "area": cv2.INTER_AREA,
+                - "bicubic": cv2.INTER_CUBIC,
+                - "lanczos": cv2.INTER_LANCZOS4
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
@@ -1672,7 +1672,7 @@ class Grayscale(BaseTransform):
     """Converts image to grayscale.
 
     Args:
-        num_output_channels (int): (1 or 3) number of channels desired for output image
+        num_output_channels (int, optional): (1 or 3) number of channels desired for output image
         keys (list[str]|tuple[str], optional): Same as ``BaseTransform``. Default: None.
 
     Shape:
