@@ -113,9 +113,13 @@ inline DataType ToRealType(const DataType& type) {
   }
 }
 
-// We can't depend on the fluid proto::VarType
-// so we copy part of fluid proto::VarType here.
-enum ProtoVarType {
+// In some cases we need to use the conversion between phi::DataType and
+// fluid proto::VarType::Type, but can't depend on the proto::VarType::Type.
+// So here we defined an enum type ProtoDataType which corresponds to
+// proto::VarType::Type in fluid, but keeps only the data types we need.
+// Note: The ProtoDataType (defined here) and proto::VarType::Type (defined
+// in framework.pb.h) need to be modified simultaneously.
+enum ProtoDataType {
   BOOL = 0,
   INT16 = 1,
   INT32 = 2,
@@ -135,31 +139,31 @@ inline DataType TransToPhiDataType(const int& dtype) {
   // Set the order of case branches according to the frequency with
   // the data type is used
   switch (dtype) {
-    case ProtoVarType::FP32:
+    case ProtoDataType::FP32:
       return DataType::FLOAT32;
-    case ProtoVarType::FP64:
+    case ProtoDataType::FP64:
       return DataType::FLOAT64;
-    case ProtoVarType::INT64:
+    case ProtoDataType::INT64:
       return DataType::INT64;
-    case ProtoVarType::INT32:
+    case ProtoDataType::INT32:
       return DataType::INT32;
-    case ProtoVarType::INT8:
+    case ProtoDataType::INT8:
       return DataType::INT8;
-    case ProtoVarType::UINT8:
+    case ProtoDataType::UINT8:
       return DataType::UINT8;
-    case ProtoVarType::INT16:
+    case ProtoDataType::INT16:
       return DataType::INT16;
-    case ProtoVarType::COMPLEX64:
+    case ProtoDataType::COMPLEX64:
       return DataType::COMPLEX64;
-    case ProtoVarType::COMPLEX128:
+    case ProtoDataType::COMPLEX128:
       return DataType::COMPLEX128;
-    case ProtoVarType::FP16:
+    case ProtoDataType::FP16:
       return DataType::FLOAT16;
-    case ProtoVarType::BF16:
+    case ProtoDataType::BF16:
       return DataType::BFLOAT16;
-    case ProtoVarType::BOOL:
+    case ProtoDataType::BOOL:
       return DataType::BOOL;
-    case ProtoVarType::PSTRING:
+    case ProtoDataType::PSTRING:
       return DataType::PSTRING;
     default:
       return DataType::UNDEFINED;
@@ -171,31 +175,31 @@ inline int TransToProtoVarType(const DataType& dtype) {
   // the data type is used
   switch (dtype) {
     case DataType::FLOAT32:
-      return ProtoVarType::FP32;
+      return ProtoDataType::FP32;
     case DataType::FLOAT64:
-      return ProtoVarType::FP64;
+      return ProtoDataType::FP64;
     case DataType::INT64:
-      return ProtoVarType::INT64;
+      return ProtoDataType::INT64;
     case DataType::INT32:
-      return ProtoVarType::INT32;
+      return ProtoDataType::INT32;
     case DataType::INT8:
-      return ProtoVarType::INT8;
+      return ProtoDataType::INT8;
     case DataType::UINT8:
-      return ProtoVarType::UINT8;
+      return ProtoDataType::UINT8;
     case DataType::INT16:
-      return ProtoVarType::INT16;
+      return ProtoDataType::INT16;
     case DataType::COMPLEX64:
-      return ProtoVarType::COMPLEX64;
+      return ProtoDataType::COMPLEX64;
     case DataType::COMPLEX128:
-      return ProtoVarType::COMPLEX128;
+      return ProtoDataType::COMPLEX128;
     case DataType::FLOAT16:
-      return ProtoVarType::FP16;
+      return ProtoDataType::FP16;
     case DataType::BFLOAT16:
-      return ProtoVarType::BF16;
+      return ProtoDataType::BF16;
     case DataType::BOOL:
-      return ProtoVarType::BOOL;
+      return ProtoDataType::BOOL;
     case DataType::PSTRING:
-      return ProtoVarType::PSTRING;
+      return ProtoDataType::PSTRING;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported data type `%s` when casting it into "
