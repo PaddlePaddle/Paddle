@@ -104,7 +104,6 @@ __all__ = [
     'unsqueeze',
     'lod_reset',
     'lod_append',
-    'lrn',
     'pad',
     'label_smooth',
     'roi_pool',
@@ -6829,103 +6828,6 @@ def lod_append(x, level):
         type="lod_reset", inputs=inputs, attrs=attrs, outputs={'Out': out}
     )
     return out
-
-
-def lrn(
-    input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None, data_format='NCHW'
-):
-    r"""
-    :alias_main: paddle.nn.functional.lrn
-        :alias: paddle.nn.functional.lrn,paddle.nn.functional.norm.lrn
-        :old_api: paddle.fluid.layers.lrn
-
-    This operator implements the Local Response Normalization Layer.
-    This layer performs a type of "lateral inhibition" by normalizing over local input regions.
-    For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
-
-    The formula is as follows:
-
-    .. math::
-
-        Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
-
-    In the above equation:
-
-    - :math:`n` : The number of channels to sum over.
-    - :math:`k` : The offset (avoid being divided by 0).
-    - :math:`\\alpha` : The scaling parameter.
-    - :math:`\\beta` : The exponent parameter.
-
-
-    Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C],
-            where N is the batch size, C is the input channel, H is Height, W is weight. The data
-            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
-        n (int, optional): The number of channels to sum over. Default: 5
-        k (float, optional): An offset, positive. Default: 1.0
-        alpha (float, optional): The scaling parameter, positive. Default:1e-4
-        beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set
-            this property. For more information, please refer to :ref:`api_guide_Name`
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns:
-        Variable: A tensor variable storing the transformation result with the same shape and data type as input.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        data = fluid.data(
-            name="data", shape=[None, 3, 112, 112], dtype="float32")
-        lrn = fluid.layers.lrn(input=data)
-        print(lrn.shape)  # [-1, 3, 112, 112]
-        print(lrn.dtype)  # float32
-    """
-    helper = LayerHelper('lrn', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], 'lrn')
-    dtype = helper.input_dtype()
-    input_shape = input.shape
-    dims = len(input_shape)
-
-    if dims != 4:
-        raise ValueError(
-            "Input's dimension size of Op(lrn) must be 4, but received %d."
-            % (dims)
-        )
-    if data_format not in ['NCHW', 'NHWC']:
-        raise ValueError(
-            "Attr(data_format) of Op(lrn) got wrong value: received "
-            + data_format
-            + " but only NCHW or NHWC supported."
-        )
-
-    mid_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    lrn_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="lrn",
-        inputs={"X": input},
-        outputs={
-            "Out": lrn_out,
-            "MidOut": mid_out,
-        },
-        attrs={
-            "n": n,
-            "k": k,
-            "alpha": alpha,
-            "beta": beta,
-            "data_format": data_format,
-        },
-    )
-
-    return lrn_out
 
 
 def pad(x, paddings, pad_value=0.0, name=None):
