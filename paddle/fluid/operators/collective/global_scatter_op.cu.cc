@@ -224,7 +224,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
         int idx = i + j * n_expert;
         if (cpu_local_count_data[idx]) {
           phi::DenseTensor tmp = *x;
-          pg->Send(&tmp,
+          pg->Send(tmp,
                    j,
                    expert_ptr[idx] * in_feat,
                    cpu_local_count_data[idx] * in_feat,

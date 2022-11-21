@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TensorRTSubgraphPassActivationTest(InferencePassTest):
@@ -70,7 +71,7 @@ class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
 
 class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.relu6(x)
+        return paddle.nn.functional.relu6(x)
 
 
 class TensorRTSubgraphPassSoftMaxTest(TensorRTSubgraphPassActivationTest):
@@ -118,7 +119,7 @@ class TensorRTSubgraphPassSwishTest(TensorRTSubgraphPassActivationTest):
         )
 
     def append_act(self, x):
-        return fluid.layers.swish(x)
+        return paddle.nn.functional.swish(x)
 
 
 class TensorRTSubgraphPassSwishFp16SerializeTest(
@@ -131,7 +132,7 @@ class TensorRTSubgraphPassSwishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.swish(x)
+        return paddle.nn.functional.swish(x)
 
 
 class TensorRTSubgraphPassDynamicSwishFp16SerializeTest(
@@ -152,7 +153,7 @@ class TensorRTSubgraphPassDynamicSwishFp16SerializeTest(
         )
 
     def append_act(self, x):
-        return fluid.layers.swish(x)
+        return paddle.nn.functional.swish(x)
 
 
 class TensorRTSubgraphPassMishTest(TensorRTSubgraphPassActivationTest):

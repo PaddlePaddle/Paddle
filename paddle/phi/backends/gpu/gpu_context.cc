@@ -252,7 +252,13 @@ struct GPUContext::Impl {
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+        // NOTE(liyurui): It is not recommend calling CUDA runtime API
+        // in destructor. Since we can not ensure the release order of
+        // static object, calling ncclCommDestroy in static object destructor
+        // is a undefined behavior, CUDA driver may be already unloaded
+        // from process.
+        // If you really need to release the resource of nccl_comm,
+        // try to get the nccl_comm out and use ncclCommDestroy outside.
       }
 #endif
       phi::DestroyBlasHandle(blas_handle_);
