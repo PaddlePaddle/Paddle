@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import paddle
 
 from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
@@ -328,7 +329,7 @@ def basic_gru(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
@@ -612,7 +613,7 @@ def basic_lstm(
 
     mask = None
     if sequence_length:
-        max_seq_len = layers.shape(input)[0]
+        max_seq_len = paddle.shape(input)[0]
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )

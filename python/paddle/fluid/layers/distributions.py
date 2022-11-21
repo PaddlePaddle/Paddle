@@ -27,6 +27,7 @@ from ..data_feeder import (
     check_type,
     check_dtype,
 )
+import paddle
 
 __all__ = ['Uniform', 'Normal', 'Categorical', 'MultivariateNormalDiag']
 
@@ -378,7 +379,7 @@ class Normal(Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.loc.dtype, 0.0
             )
-            zero_tmp_shape = nn.shape(zero_tmp)
+            zero_tmp_shape = paddle.shape(zero_tmp)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed
             )

@@ -15,6 +15,7 @@
 import unittest
 import numpy
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
@@ -637,7 +638,7 @@ def def_seq2seq_model(
         logits=logits, label=label, soft_label=False
     )
     loss = layers.unsqueeze(loss, axes=[2])
-    max_tar_seq_len = layers.shape(target)[1]
+    max_tar_seq_len = paddle.shape(target)[1]
     tar_mask = layers.sequence_mask(
         target_length, maxlen=max_tar_seq_len, dtype="float32"
     )
