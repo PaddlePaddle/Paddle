@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cuda_fp16.h>
 #include "conv2d_all.h"
 #include <vector>
 

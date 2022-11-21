@@ -13,18 +13,15 @@
 // limitations under the License.
 #pragma once
 
-#include "cutlass/gemm/device/gemm.h"
 #include <cutlass/epilogue/thread/linear_combination_bias_relu.h>
+#include "conv2d_all.h"
+#include "conv2d_util.h"
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
 #include "cutlass/cutlass.h"
-#include "conv2d_all.h"
-#include "conv2d_util.h"
 
 namespace phi {
-  namespace fusion {
-
-
+namespace fusion {
 
 template <typename TShape, typename WShape, int aligment = 1>
 cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(COMMON_CONV_PARAMS) {
@@ -112,82 +109,102 @@ cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels(COMMON_CONV_PARAMS) {
 }
 
 // config 1
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels <cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 64, 64>,
+    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
 // config 2
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels <cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>> 
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 32, 64>,
+    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
 // config 3
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<128, 32, 64>,
+    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
 // config 4
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<128, 64, 64>,
+    cutlass::gemm::GemmShape<32, 32, 64>>(COMMON_CONV_PARAMS);
 // config 5
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>> 
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 64, 32>,
+    cutlass::gemm::GemmShape<32, 32, 32>>(COMMON_CONV_PARAMS);
 // config6
-template cutlass::Status 
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 128, 32>,
+    cutlass::gemm::GemmShape<32, 64, 32>>(COMMON_CONV_PARAMS);
 // config 7
-template cutlass::Status
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 128, 64>,
+    cutlass::gemm::GemmShape<64, 64, 32>>(COMMON_CONV_PARAMS);
 // config 8
-template cutlass::Status
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<64, 256, 32>,
+    cutlass::gemm::GemmShape<64, 64, 32>>(COMMON_CONV_PARAMS);
 // config 9
-template cutlass::Status
-cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
-(COMMON_CONV_PARAMS);
+template cutlass::Status cutlass_nhwc_conv2d_bias_relu_few_channels<
+    cutlass::gemm::GemmShape<128, 64, 32>,
+    cutlass::gemm::GemmShape<64, 32, 32>>(COMMON_CONV_PARAMS);
 
 #define N 9
 
-cutlass::Status (*cutlass_conv2d_bias_relu_few_channels_all_func[N])(const half *,
-                                       const half *,
-                                       const half *,
-                                       half *,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int,
-                                       int) = {
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 32, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 64, 64>, cutlass::gemm::GemmShape<32, 32, 64>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 64, 32>, cutlass::gemm::GemmShape<32, 32, 32>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 128, 32>, cutlass::gemm::GemmShape<32, 64, 32>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 128, 64>, cutlass::gemm::GemmShape<64, 64, 32>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<64, 256, 32>, cutlass::gemm::GemmShape<64, 64, 32>>,
-                                                cutlass_nhwc_conv2d_bias_relu_few_channels<cutlass::gemm::GemmShape<128, 64, 32>, cutlass::gemm::GemmShape<64, 32, 32>>
-                                               };
-std::map<std::vector<int>,   int> map_problem_conv2d_bias_relu_few_channels;
+cutlass::Status (*cutlass_conv2d_bias_relu_few_channels_all_func[N])(
+    const half *,
+    const half *,
+    const half *,
+    half *,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int,
+    int) = {
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 64, 64>,
+        cutlass::gemm::GemmShape<32, 32, 64>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 32, 64>,
+        cutlass::gemm::GemmShape<32, 32, 64>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<128, 32, 64>,
+        cutlass::gemm::GemmShape<32, 32, 64>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<128, 64, 64>,
+        cutlass::gemm::GemmShape<32, 32, 64>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 64, 32>,
+        cutlass::gemm::GemmShape<32, 32, 32>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 128, 32>,
+        cutlass::gemm::GemmShape<32, 64, 32>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 128, 64>,
+        cutlass::gemm::GemmShape<64, 64, 32>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<64, 256, 32>,
+        cutlass::gemm::GemmShape<64, 64, 32>>,
+    cutlass_nhwc_conv2d_bias_relu_few_channels<
+        cutlass::gemm::GemmShape<128, 64, 32>,
+        cutlass::gemm::GemmShape<64, 32, 32>>};
+std::map<std::vector<int>, int> map_problem_conv2d_bias_relu_few_channels;
 
 void cutlass_conv2d_bias_relu_few_channels(COMMON_CONV_PARAMS) {
-  std::vector<int> problem_size = {batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
+  std::vector<int> problem_size = {
+      batch, ic, ih, iw, kh, kw, oc, pad_h, pad_w, stride_h, stride_w};
 
- if (map_problem_conv2d_bias_relu_few_channels.count(problem_size)) {
-    cutlass_conv2d_bias_relu_few_channels_all_func[map_problem_conv2d_bias_relu_few_channels.at(problem_size)](COMMON_CONV_ARGS);
+  if (map_problem_conv2d_bias_relu_few_channels.count(problem_size)) {
+    cutlass_conv2d_bias_relu_few_channels_all_func
+        [map_problem_conv2d_bias_relu_few_channels.at(problem_size)](
+            COMMON_CONV_ARGS);
     return;
- }
- else {
-   map_problem_conv2d_bias_relu_few_channels[problem_size] = -1;
- }
-  
+  } else {
+    map_problem_conv2d_bias_relu_few_channels[problem_size] = -1;
+  }
+
   float min_time = 100000.f;
   for (int i = 0; i < N; i++) {
     cutlass::Status status;
@@ -209,14 +226,12 @@ void cutlass_conv2d_bias_relu_few_channels(COMMON_CONV_PARAMS) {
     float elapsed_time;
     cudaEventElapsedTime(&elapsed_time, beg, end);
     if (elapsed_time < min_time && status == cutlass::Status::kSuccess) {
-        min_time = elapsed_time;
-        map_problem_conv2d_bias_relu_few_channels[problem_size] = i;
+      min_time = elapsed_time;
+      map_problem_conv2d_bias_relu_few_channels[problem_size] = i;
     }
 
     // debug code
-
   }
-
 }
-  } // namespace fusion
-}// namespace phi
+}  // namespace fusion
+}  // namespace phi
