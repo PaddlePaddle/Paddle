@@ -116,5 +116,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_conditional_block_reshard)
   py_test_modules(test_engine_api_error MODULES test_engine_api_error)
   py_test_modules(test_fp16_assign MODULES test_fp16_assign)
+  py_test_modules(test_group_operators MODULES test_group_operators)
 
 endif()
