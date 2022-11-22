@@ -162,6 +162,14 @@ class ElementwiseActivationMkldnnFusePassTest_Add_Sigmoid(
         self.act = paddle.nn.functional.sigmoid
 
 
+class ElementwiseActivationMkldnnFusePassTest_Sub_Relu(
+    ElementwiseActivationMkldnnFusePassTest
+):
+    def set_params(self):
+        self.operand = fluid.layers.elementwise_sub
+        self.act = fluid.layers.relu
+
+
 class ElementwiseActivationMkldnnFusePassTest_Sub_Tanh(
     ElementwiseActivationMkldnnFusePassTest
 ):
