@@ -3234,12 +3234,14 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
 
+#if defined(PADDLE_WITH_MKLDNN)
   std::string placeholder_string = "";
   float placeholder_float = 0.0f;
   phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
   one_dnn_ctx->SetDnnAttr("fuse_activation", placeholder_string);
   one_dnn_ctx->SetDnnAttr("fuse_alpha", placeholder_float);
   one_dnn_ctx->SetDnnAttr("fuse_beta", placeholder_float);
+#endif
 
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
