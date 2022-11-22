@@ -37,7 +37,7 @@ enum class ExtraAttrProperty : uint8_t {
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
-  // The attributes for ONEDNN only, can be saved in GPUContext
+  // The attributes for GPUDNN only, can be saved in GPUContext
   GPUDNN,
   // Add necessary properties as needed
 };
