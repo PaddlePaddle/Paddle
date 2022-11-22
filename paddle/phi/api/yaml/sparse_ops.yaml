@@ -95,7 +95,7 @@
   kernel :
     func : batch_norm_coo {sparse_coo, dense, dense, dense, dense -> sparse_coo, dense, dense, dense, dense, dense}
     data_type : x
-  view : (mean -> mean_out), (variance -> variance_out)
+  inplace : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
 
 - op : cast
