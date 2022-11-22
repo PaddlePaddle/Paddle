@@ -133,6 +133,28 @@ struct AbsGradFunctor {
 };
 
 template <>
+struct AbsGradFunctor<phi::dtype::bfloat16> {
+  AbsGradFunctor(const dtype::Real<phi::dtype::bfloat16>* dout,
+                 const phi::dtype::bfloat16* x,
+                 phi::dtype::bfloat16* output,
+                 int64_t numel)
+      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    if (x_[idx] == static_cast<phi::dtype::bfloat16>(0)) {
+      output_[idx] = static_cast<phi::dtype::bfloat16>(0);
+    } else {
+      output_[idx] = dout_[idx] * (x_[idx] / (abs(x_[idx])));
+    }
+  }
+
+  const dtype::Real<phi::dtype::bfloat16>* dout_;
+  const phi::dtype::bfloat16* x_;
+  phi::dtype::bfloat16* output_;
+  int64_t numel_;
+};
+
+template <>
 struct AbsGradFunctor<phi::dtype::complex<float>> {
   AbsGradFunctor(const float* dout,
                  const phi::dtype::complex<float>* x,
