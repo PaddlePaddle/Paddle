@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"
@@ -23,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
@@ -139,7 +139,7 @@ void ConvTransposeRawKernel(const Context& ctx,
   paddle::operators::math::
       Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
           col2im;
-  paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
+  phi::funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward

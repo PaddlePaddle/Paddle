@@ -355,14 +355,14 @@ __global__ void KeBicubicInterpFw(const T* in,
     T in_img_idy = align_corners
                        ? static_cast<T>(ratio_h * out_img_idy)
                        : static_cast<T>(ratio_h * (out_img_idy + 0.5) - 0.5);
-    int input_y = floorf(in_img_idy);
+    int input_y = floorf(static_cast<float>(in_img_idy));
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const T y_t = static_cast<T>(static_cast<MT>(in_img_idy) - input_y);
 
     T in_img_idx = align_corners
                        ? static_cast<T>(ratio_w * out_img_idx)
                        : static_cast<T>(ratio_w * (out_img_idx + 0.5) - 0.5);
-    int input_x = floorf(in_img_idx);
+    int input_x = floorf(static_cast<float>(in_img_idx));
     const T x_t = static_cast<T>(static_cast<MT>(in_img_idx) - input_x);
 
     T coefficients[4];
@@ -1468,6 +1468,7 @@ PD_REGISTER_KERNEL(nearest_interp,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
