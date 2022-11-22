@@ -23,6 +23,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TensorRTSubgraphPassFcTest(InferencePassTest):
@@ -32,7 +33,7 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             fc_out = fluid.layers.fc(input=[data], act=None, size=1000)
-            reshape_out = fluid.layers.reshape(x=fc_out, shape=[1, 1000])
+            reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }

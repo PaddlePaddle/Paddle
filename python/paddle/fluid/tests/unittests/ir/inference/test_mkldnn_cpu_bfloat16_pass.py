@@ -18,6 +18,7 @@ from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
+import paddle
 
 
 class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
@@ -27,8 +28,10 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
             x = fluid.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
+
             out = paddle.transpose(x, perm=[0, 1, 2, 3])
-            out = fluid.layers.reshape(out, [0, 0, 0, 0])
+            out = paddle.reshape(out, [0, 0, 0, 0])
+
             out = fluid.layers.fc(out, size=1)
 
             self.feeds = {
