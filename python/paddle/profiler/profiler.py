@@ -115,7 +115,7 @@ def make_scheduler(
     ready: int,
     record: int,
     repeat: int = 0,
-    skip_first: int = 0
+    skip_first: int = 0,
 ) -> Callable:
     r"""
     Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
@@ -351,7 +351,7 @@ class Profiler:
             be timed and profiled. Default: False.
         record_shapes (bool, optional): If it is True, collect op's input shape information. Default: False.
         profile_memory (bool, optional): If it is True, collect tensor memory allocation and release information. Default: False.
-        compute_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
+        with_flops (bool, optional): If it is True, the flops of the op will be calculated. Default: False.
 
     Examples:
         1. profiling range [2, 5).
@@ -470,10 +470,10 @@ class Profiler:
         on_trace_ready: Optional[Callable[..., Any]] = None,
         record_shapes: Optional[bool] = False,
         profile_memory: Optional[bool] = False,
-        compute_flops: Optional[bool] = False,
         timer_only: Optional[bool] = False,
         emit_nvtx: Optional[bool] = False,
-        custom_device_types: Optional[list] = []
+        custom_device_types: Optional[list] = [],
+        with_flops: Optional[bool] = False,
     ):
         supported_targets = _get_supported_targets()
         if targets:
@@ -536,7 +536,7 @@ class Profiler:
         self.timer_only = timer_only
         self.record_shapes = record_shapes
         self.profile_memory = profile_memory
-        self.compute_flops = compute_flops
+        self.with_flops = with_flops
         self.emit_nvtx = emit_nvtx
 
     def __enter__(self):
@@ -574,7 +574,7 @@ class Profiler:
             utils._is_profiler_used = True
         if self.timer_only:
             return
-        if self.record_shapes or self.compute_flops:
+        if self.record_shapes or self.with_flops:
             enable_op_info_recorder()
         if self.profile_memory:
             enable_memory_recorder()
@@ -617,7 +617,7 @@ class Profiler:
         benchmark().end()
         if self.timer_only:
             return
-        if self.record_shapes or self.compute_flops:
+        if self.record_shapes or self.with_flops:
             disable_op_info_recorder()
         if self.profile_memory:
             disable_memory_recorder()

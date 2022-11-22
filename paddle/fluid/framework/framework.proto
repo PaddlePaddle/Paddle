@@ -112,6 +112,7 @@ message OpProto {
   repeated Var outputs = 3;
   repeated Attr attrs = 4;
   required string comment = 5;
+  required int64 id = 6;
 }
 
 message VarType {

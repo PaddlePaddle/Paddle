@@ -96,36 +96,44 @@ class HostStatisticNode:
         self.self_general_gpu_time = 0
         self.flops = 0
 
+    def cal_flops(self):
+        if self.hostnode.type == TracerEventType.Operator:
+            if self.hostnode.input_shapes:
+                op_name = self.hostnode.name
+                op_name = op_name.replace(' compute', '')
+                op_name = op_name.replace(' dygraph', '')
+                op_name = op_name.replace(' pybind_imperative_func', '')
+                self.flops = flops(
+                    op_name,
+                    self.hostnode.input_shapes,
+                    self.hostnode.attributes,
+                )
+
     def cal_statistic(self):
-        for child in self.children_node:
-            child.cal_statistic()
-        for rt in self.runtime_node:
-            rt.cal_statistic()
         self.cpu_time = self.hostnode.end_ns - self.hostnode.start_ns
         self.self_cpu_time = self.cpu_time
         for child in self.children_node:
+            child.cal_flops()
+            child.cal_statistic()
             self.gpu_time += child.gpu_time
             self.general_gpu_time += child.general_gpu_time
             self.self_cpu_time -= child.end_ns - child.start_ns
+            self.flops += child.flops
+
         for rt in self.runtime_node:
+            rt.cal_statistic()
             self.self_cpu_time -= rt.end_ns - rt.start_ns
             self.gpu_time += rt.gpu_time
             self.self_gpu_time += rt.gpu_time
             self.general_gpu_time += rt.general_gpu_time
             self.self_general_gpu_time += rt.general_gpu_time
+
         for device in self.hostnode.device_node:
             if device.type == TracerEventType.Kernel:
                 self.gpu_time += device.end_ns - device.start_ns
                 self.self_gpu_time += device.end_ns - device.start_ns
             self.general_gpu_time += device.end_ns - device.start_ns
             self.self_general_gpu_time += device.end_ns - device.start_ns
-        if self.hostnode.type == TracerEventType.Operator:
-            op_name = self.hostnode.name.replace(' compute', '').replace(
-                ' dygraph', ''
-            )
-            self.flops = flops(
-                op_name, self.hostnode.input_shapes, self.hostnode.attributes
-            )
 
     @property
     def end_ns(self):
@@ -565,7 +573,14 @@ class EventSummary:
             for host_statistic_node in host_statistic_nodes[
                 1:
             ]:  # skip root node
-                if host_statistic_node.type == TracerEventType.Operator:
+                if host_statistic_node.type == TracerEventType.Forward:
+                    # print("+", host_statistic_node.name)
+                    for child in host_statistic_node.children_node:
+                        if child.type == TracerEventType.Operator:
+                            # print("  ", child.name)
+                            pass
+
+                elif host_statistic_node.type == TracerEventType.Operator:
                     self.add_operator_item(host_statistic_node)
                 if (
                     host_statistic_node.type == TracerEventType.UserDefined
