@@ -651,6 +651,9 @@ jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', '
 for f in jit_layer_headers:
     headers += list(find_files(f, '@PADDLE_SOURCE_DIR@/paddle/fluid/jit', recursive=True))
 
+# collective communication headers
+headers += list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/distributed/collective'))
+
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
@@ -698,6 +701,9 @@ class InstallHeaders(Command):
             if 'fluid/jit' in install_dir:
                 install_dir = re.sub('fluid/jit', 'jit', install_dir)
                 print('fluid/jit install_dir: ', install_dir)
+            if 'fluid/distributed/collective' in install_dir:
+                install_dir = re.sub('fluid/distributed/collective', 'comm', install_dir)
+                print('fluid/distributed/collective install_dir: ', install_dir)
             if 'trace_event.h' in install_dir:
                 install_dir = re.sub('fluid/platform/profiler', 'phi/backends/custom', install_dir)
                 print('trace_event.h install_dir: ', install_dir)
