@@ -34,7 +34,7 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* variance);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-template <typename T,typename AccT=T>
+template <typename T, typename AccT = T>
 class GroupNormDirectCUDAFunctor {
  public:
   void operator()(gpuStream_t stream,

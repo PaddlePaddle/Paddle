@@ -163,6 +163,7 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
         with _test_eager_guard():
             self.test_numerical_accuracy()
 
+
 class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
         paddle.disable_static()
@@ -201,8 +202,12 @@ class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
                 data_pd = paddle.to_tensor(data.astype('float16'))
                 result1 = gn1(data_pd).numpy()
                 result2 = gn2(data_pd).numpy()
-                self.assertTrue(np.allclose(result1, expect_res1, rtol=1e-2, atol=1e-3))
-                self.assertTrue(np.allclose(result2, expect_res2, rtol=1e-2, atol=1e-3))
+                np.testing.assert_allclose(
+                    result1, expect_res1, rtol=1e-2, atol=1e-3
+                )
+                np.testing.assert_allclose(
+                    result2, expect_res2, rtol=1e-2, atol=1e-3
+                )
 
     def test_eager_api(self):
         with _test_eager_guard():
