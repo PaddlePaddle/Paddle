@@ -459,6 +459,18 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
+    } else if (platform::is_custom_place(place)) {
+      LOG(WARNING) << "######## " << place.GetDeviceType();
+      if (op_base->SupportCustomPlace(place.GetDeviceType())) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no XPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported current place %s", op_device));

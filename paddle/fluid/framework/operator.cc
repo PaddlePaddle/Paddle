@@ -1293,6 +1293,25 @@ bool OperatorWithKernel::SupportNPU() const {
   }
 }
 
+bool OperatorWithKernel::SupportCustomPlace(const std::string &device_type) const {
+  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+      phi::TransToPhiKernelName(type_));
+  LOG(WARNING) << "#### custom npu: " << static_cast<size_t>(phi::Backend::NUM_BACKENDS) +
+                        phi::GetOrRegisterGlobalDeviceTypeId(device_type);
+  auto has_phi_kernel =
+      std::any_of(phi_kernels.begin(),
+                  phi_kernels.end(),
+                  [&](phi::KernelKeyMap::const_reference kern_pair) {
+                    return kern_pair.first.backend() == static_cast<phi::Backend>(
+                        static_cast<size_t>(phi::Backend::NUM_BACKENDS) +
+                        phi::GetOrRegisterGlobalDeviceTypeId(device_type));
+                  });
+  if (has_phi_kernel)
+    return true;
+  return false;
+}
+
+
 bool OperatorWithKernel::SupportXPU() const {
 #ifdef PADDLE_WITH_XPU
   auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(

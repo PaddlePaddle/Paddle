@@ -173,6 +173,7 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportNPU() const { return false; }
+  virtual bool SupportCustomPlace(const std::string &device_type) const {return false; }
   virtual bool SupportMLU() const { return false; }
   virtual bool SupportXPU() const { return false; }
 
@@ -617,6 +618,8 @@ class OperatorWithKernel : public OperatorBase {
   bool SupportGPU() const override;
 
   bool SupportNPU() const override;
+
+  bool SupportCustomPlace(const std::string &device_type) const override;
 
   bool SupportMLU() const override {
     // TODO(zhiqiu): support phi if needed?
