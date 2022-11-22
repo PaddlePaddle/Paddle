@@ -179,7 +179,7 @@ class TSM_ResNet(fluid.dygraph.Layer):
                 num_channels = int(bottleneck_block._num_channels_out)
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-        self.pool2d_avg = Pool2D(
+        self.pool2d_avg = paddle.fluid.dygraph.nn.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True
         )
         import math

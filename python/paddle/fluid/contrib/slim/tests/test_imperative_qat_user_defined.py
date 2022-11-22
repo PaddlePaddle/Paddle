@@ -139,7 +139,7 @@ class ImperativeLenet(paddle.nn.Layer):
                 stride=1,
                 padding=0,
             ),
-            paddle.nn.MaxPool2D(pool_size=2, stride=2),
+            paddle.nn.MaxPool2D(kernel_size=2, stride=2),
         )
 
         self.fc = Sequential(
