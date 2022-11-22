@@ -166,9 +166,11 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
 
 class TestGroupNormAPIV2_With_General_Dimensions_fp16(unittest.TestCase):
     def test_numerical_accuracy(self):
+        # fp16 only supported in cuda
+        if not core.is_compiled_with_cuda():
+            return
         paddle.disable_static()
         shapes = [
-            (2, 6),
             (2, 6, 4),
             (2, 6, 4, 4),
             (2, 6, 6, 6, 2),
