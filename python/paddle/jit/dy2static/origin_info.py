@@ -20,10 +20,7 @@ from paddle.jit.dy2static.utils import unwrap
 from paddle.jit.dy2static.utils import ORIGI_INFO
 from paddle.fluid.framework import Program
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections import Sequence
 
 
 class Location:

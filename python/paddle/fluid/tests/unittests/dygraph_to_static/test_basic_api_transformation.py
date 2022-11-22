@@ -23,7 +23,7 @@ import paddle.fluid.dygraph as dygraph
 
 from paddle import to_tensor
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.jit import dygraph_to_static_func
 from paddle.jit.dy2static.utils import is_dygraph_api
 
 SEED = 2020

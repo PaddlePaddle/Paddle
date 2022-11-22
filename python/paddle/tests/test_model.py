@@ -31,7 +31,7 @@ from paddle.metric import Accuracy
 from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 import paddle.vision.models as models
-import paddle.fluid.dygraph.jit as jit
+import paddle.jit as jit
 from paddle.io import DistributedBatchSampler, Dataset
 from paddle.hapi.model import prepare_distributed_context
 from paddle.jit.dy2static.program_translator import (

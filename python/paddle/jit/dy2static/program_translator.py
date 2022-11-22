@@ -26,7 +26,7 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.layers.utils import flatten
 from paddle.fluid.dygraph.base import param_guard
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.jit.dy2static import DygraphToStaticAst
+from .ast_transformer import DygraphToStaticAst
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static import logging_utils
 from paddle.jit.dy2static.origin_info import (

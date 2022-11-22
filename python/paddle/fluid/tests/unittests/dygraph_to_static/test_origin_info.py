@@ -29,7 +29,7 @@ from paddle.jit.dy2static.origin_info import (
     unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 
 
 def simple_func(x):

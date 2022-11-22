@@ -16,7 +16,7 @@ import numpy as np
 import unittest
 
 import paddle
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 from paddle.jit.dy2static.program_translator import (
     ProgramTranslator,
 )

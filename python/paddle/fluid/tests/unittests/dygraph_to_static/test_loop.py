@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import unittest
 
 from paddle.jit.dy2static.loop_transformer import NameVisitor
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 
 SEED = 2020
 np.random.seed(SEED)

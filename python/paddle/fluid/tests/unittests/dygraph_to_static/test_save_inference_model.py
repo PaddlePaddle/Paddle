@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.jit.dy2static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 from paddle.jit.dy2static.partial_program import (
     partial_program_from,
 )

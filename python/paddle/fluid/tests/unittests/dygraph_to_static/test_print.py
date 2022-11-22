@@ -17,7 +17,7 @@ import unittest
 
 import paddle.fluid as fluid
 from paddle.jit.dy2static import ProgramTranslator
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 
 program_translator = ProgramTranslator()
 

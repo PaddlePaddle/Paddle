@@ -21,7 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.jit.dy2static import ProgramTranslator
 from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.optimizer import SGDOptimizer
 

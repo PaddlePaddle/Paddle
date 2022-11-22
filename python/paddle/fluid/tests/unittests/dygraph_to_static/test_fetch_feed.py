@@ -16,7 +16,7 @@ import numpy as np
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.jit import declarative
+from paddle.jit import declarative
 from paddle.jit.dy2static import ProgramTranslator
 
 SEED = 2020

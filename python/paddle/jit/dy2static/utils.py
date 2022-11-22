@@ -16,7 +16,6 @@ import ast
 import astor
 import atexit
 import copy
-import collections
 from paddle.utils import gast
 import inspect
 import os
@@ -32,7 +31,6 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
-import collections
 from functools import reduce
 import warnings
 
@@ -95,21 +93,6 @@ FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 
 RE_PYNAME = '[a-zA-Z0-9_]+'
 RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
-
-# FullArgSpec is valid from Python3. Defined a Namedtuple to
-# to make it available in Python2.
-FullArgSpec = collections.namedtuple(
-    'FullArgSpec',
-    [
-        'args',
-        'varargs',
-        'varkw',
-        'defaults',
-        'kwonlyargs',
-        'kwonlydefaults',
-        'annotations',
-    ],
-)
 
 
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
@@ -199,27 +182,11 @@ def saw(x):
         return x
 
 
-def getfullargspec(target):
-    if hasattr(inspect, "getfullargspec"):
-        return inspect.getfullargspec(target)
-    else:
-        argspec = inspect.getargspec(target)
-        return FullArgSpec(
-            args=argspec.args,
-            varargs=argspec.varargs,
-            varkw=argspec.keywords,
-            defaults=argspec.defaults,
-            kwonlyargs=[],
-            kwonlydefaults=None,
-            annotations={},
-        )
-
-
 def parse_arg_and_kwargs(function):
     """
     Returns full argument names as list. e.g ['x', 'y', 'z']
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     arg_names = fullargspec.args
     if arg_names and 'self' == arg_names[0]:
         arg_names = fullargspec.args[1:]
@@ -239,7 +206,7 @@ def parse_varargs_name(function):
     """
     Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     varargs = fullargspec.varargs
     return varargs
 

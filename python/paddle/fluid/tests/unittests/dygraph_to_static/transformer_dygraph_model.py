@@ -23,7 +23,7 @@ from paddle.fluid.dygraph import (
     Linear,
     to_variable,
 )
-from paddle.fluid.dygraph.jit import dygraph_to_static_func
+from paddle.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
 import paddle
 

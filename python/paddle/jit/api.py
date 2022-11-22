@@ -138,7 +138,7 @@ def _dygraph_to_static_func_(dygraph_func):
 
           import paddle.fluid as fluid
           import numpy as np
-          from paddle.fluid.dygraph.jit import dygraph_to_static_func
+          from paddle.jit import dygraph_to_static_func
 
           @dygraph_to_static_func
           def func(x):
