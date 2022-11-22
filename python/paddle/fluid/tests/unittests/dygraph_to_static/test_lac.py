@@ -89,9 +89,7 @@ class DynamicGRU(fluid.dygraph.Layer):
                 input_, [-1, input_.shape[2]], inplace=False
             )
             hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False
-            )
+            hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
         if self.is_reverse:

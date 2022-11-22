@@ -1549,17 +1549,17 @@ def tdm_sampler(
                 mask, axes=[1], starts=[start_offset], ends=[end_offset]
             )
 
-            layer_samples = reshape(
+            layer_samples = paddle.reshape(
                 layer_samples, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_samples.stop_gradient = True
 
-            layer_labels = reshape(
+            layer_labels = paddle.reshape(
                 layer_labels, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_labels.stop_gradient = True
 
-            layer_mask = reshape(
+            layer_mask = paddle.reshape(
                 layer_mask, [-1, layer_sample_num + positive_flag, 1]
             )
             layer_mask.stop_gradient = True
