@@ -296,7 +296,7 @@ class BertModelLayer(Layer):
         next_sent_feat = self.pooled_fc(next_sent_feat)
 
         next_sent_feat = paddle.tanh(next_sent_feat)
-        next_sent_feat = fluid.layers.reshape(
+        next_sent_feat = paddle.reshape(
             next_sent_feat, shape=[-1, self._emb_size]
         )
 

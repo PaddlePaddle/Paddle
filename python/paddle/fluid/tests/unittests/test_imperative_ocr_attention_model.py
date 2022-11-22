@@ -399,7 +399,7 @@ class OCRAttention(fluid.dygraph.Layer):
         )
         decoder_boot = self.fc(backward_first)
         decoder_boot = paddle.nn.functional.relu(decoder_boot)
-        label_in = fluid.layers.reshape(label_in, [-1], inplace=False)
+        label_in = paddle.reshape(label_in, [-1])
         trg_embedding = self.embedding(label_in)
 
         trg_embedding = paddle.reshape(
