@@ -1627,7 +1627,7 @@ class Layer:
                 return param, state
 
         matched_param_state = []
-        for key, param in self.state_dict(use_hook=False).items():
+        for key, param in self._state_dict_impl(use_hook=False).items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)

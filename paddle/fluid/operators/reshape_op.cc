@@ -518,19 +518,16 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Output(XShape) of ReshapeOp should not be null."));
-    const auto &x_dims = ctx->GetInputDim("X");
-    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
-    xshape_dims[0] = 0;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      xshape_dims[i + 1] = x_dims[i];
+    if (ctx->HasOutput("XShape")) {
+      const auto &x_dims = ctx->GetInputDim("X");
+      std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+      xshape_dims[0] = 0;
+      for (int i = 0; i < x_dims.size(); ++i) {
+        xshape_dims[i + 1] = x_dims[i];
+      }
+      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+      ctx->ShareLoD("X", /*->*/ "XShape");
     }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-
     ReshapeOp::InferShape(ctx);
   }
 };

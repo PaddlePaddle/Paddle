@@ -79,7 +79,7 @@ def max(input, scope=None, util=None):
           input = fluid.layers.cast(some_input, dtype='float32')
           cnt = fluid.layers.reduce_sum(input)
           global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_max(cnt, global_cnt)
+          tmp = paddle.maximum(cnt, global_cnt)
           fluid.layers.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
