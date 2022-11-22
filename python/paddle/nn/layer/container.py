@@ -311,10 +311,8 @@ class Sequential(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            data = np.random.uniform(-1, 1, [30, 10]).astype('float32')
-            data = paddle.to_tensor(data)
+            data = paddle.uniform(shape=[30, 10], dtype='float32')
             # create Sequential with iterable Layers
             model1 = paddle.nn.Sequential(
                 paddle.nn.Linear(10, 1), paddle.nn.Linear(1, 2)
@@ -386,7 +384,6 @@ class ParameterList(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self, num_stacked_param):
@@ -409,8 +406,7 @@ class ParameterList(Layer):
                         x = tmp
                     return x
 
-            data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
-            x = paddle.to_tensor(data_np)
+            x = paddle.uniform(shape=[5, 2], dtype='float32')
             num_stacked_param = 4
             model = MyLayer(num_stacked_param)
             print(len(model.params))  # 4
@@ -472,7 +468,6 @@ class LayerList(Layer):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             class MyLayer(paddle.nn.Layer):
                 def __init__(self):
