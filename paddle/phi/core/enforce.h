@@ -25,15 +25,6 @@ limitations under the License. */
 #include <windows.h>  // GetModuleFileName, Sleep
 #endif
 
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <type_traits>
-
-#if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
-#include <execinfo.h>
-#endif
-
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -54,16 +45,27 @@ limitations under the License. */
 #include <thrust/system_error.h>  // NOLINT
 #endif
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <fstream>
 #include <iomanip>
 #include <memory>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <utility>
+
+#if !defined(_WIN32) && !defined(PADDLE_WITH_MUSL)
+#include <execinfo.h>
+#endif
+
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "paddle/phi/core/errors.h"
 
 #include "paddle/phi/backends/dynload/port.h"
-#include "paddle/phi/core/macros.h"
+#include "paddle/utils/string/printf.h"
+#include "paddle/utils/string/to_string.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -89,10 +91,15 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_HIP
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "paddle/phi/core/errors.h"
-#include "paddle/utils/string/printf.h"
-#include "paddle/utils/string/to_string.h"
+// Note: these headers for simplify demangle type string
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/type_defs.h"
+// Note: this header for simplify HIP and CUDA type string
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_types.h"
+#endif
+#include "paddle/fluid/platform/flags.h"
+
 #include "paddle/utils/variant.h"
 
 DECLARE_int32(call_stack_level);
