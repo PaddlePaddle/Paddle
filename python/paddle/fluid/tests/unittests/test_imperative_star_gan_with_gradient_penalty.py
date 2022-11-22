@@ -435,11 +435,9 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     )
 
     epsilon = 1e-16
-    norm = fluid.layers.sqrt(
-        paddle.sum(fluid.layers.square(gradient), axis=1) + epsilon
-    )
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
-    gp = fluid.layers.reduce_mean(fluid.layers.square(norm - 1.0))
+    gp = paddle.mean(paddle.square(norm - 1.0))
     return gp
 
 
