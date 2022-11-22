@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -54,9 +55,13 @@ void send_shape_info(const phi::DenseTensor& x,
   cpu_data[0] = shape_size;
 
   if (group) {
-    std::vector<phi::DenseTensor> shape_size_tensor;
-    shape_size_tensor.template emplace_back(cpu_shape_size_tensor);
-    auto shape_size_task = group->Send(shape_size_tensor, peer);
+    // copy the shape size tensor to gpu and send
+    phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
+    gpu_shape_size_tensor->Resize({1});
+    gpu_shape_size_tensor->mutable_data(place, shape_dytpe);
+    framework::TensorCopySync(
+        cpu_shape_size_tensor, place, gpu_shape_size_tensor);
+    group->Send(*gpu_shape_size_tensor, peer, 0, -1, false);
   } else {
     // copy the shape size tensor to gpu and send
     phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
@@ -84,9 +89,12 @@ void send_shape_info(const phi::DenseTensor& x,
   }
 
   if (group) {
-    std::vector<phi::DenseTensor> shape_tensor;
-    shape_tensor.template emplace_back(cpu_shape_tensor);
-    auto shape_task = group->Send(shape_tensor, peer);
+    // copy the shape tensor to gpu and send
+    phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
+    gpu_shape_tensor->Resize({shape_size});
+    gpu_shape_tensor->mutable_data(place, shape_dytpe);
+    framework::TensorCopySync(cpu_shape_tensor, place, gpu_shape_tensor);
+    group->Send(*gpu_shape_tensor, peer, 0, -1, false);
   } else {
     // copy the shape tensor to gpu and send
     phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
@@ -112,6 +120,51 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(rid) != map.end()) {
+      const auto& group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(rid));
+
+      bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      auto* x_var = ctx.InputVar("X");
+      bool transfer_lod_tensor = x_var->IsType<framework::LoDTensorArray>();
+
+      int peer = ctx.Attr<int>("peer");
+      if (!dynamic_shape && !transfer_lod_tensor) {
+        // Send normal tensor
+        auto* x = ctx.Input<phi::DenseTensor>("X");
+        group->Send(*x, peer, 0, -1, sync_op, use_calc_stream);
+      } else if (dynamic_shape) {
+        // Send normal tensor with dynamic shape
+        PADDLE_ENFORCE_EQ(transfer_lod_tensor,
+                          false,
+                          platform::errors::InvalidArgument(
+                              "Dynamic shape for send/recv not "
+                              "support LoDTensorArray for now."));
+        auto* x = ctx.Input<phi::DenseTensor>("X");
+        send_shape_info(*x,
+                        ctx.GetPlace(),
+                        /* gpuStream_t */ nullptr,
+                        /* NCCLComm* */ nullptr,
+                        peer,
+                        group.get());
+        group->Send(*x, peer, 0, -1, sync_op, use_calc_stream);
+      } else {
+        // Send lod tensor
+        auto& x_array = x_var->Get<framework::LoDTensorArray>();
+        for (size_t idx = 0; idx < x_array.size(); idx++) {
+          const auto& data = x_array.at(idx);
+          group->Send(data, peer, 0, -1, sync_op, use_calc_stream);
+        }
+      }
+
+      return;
+    }
+
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
         rid,
@@ -125,28 +178,7 @@ class SendOpV2CUDAKernel : public framework::OpKernel<T> {
         0,
         platform::errors::InvalidArgument(
             "The peer (%d) for send_v2 op must be non-negative.", peer));
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      auto x = ctx.Input<phi::DenseTensor>("X");
 
-      if (dynamic_shape) {
-        // dynamic shape for switch send/recv
-        VLOG(3) << "send_v2 will use dynamic shape with recv_v2 for switch";
-        send_shape_info(*x,
-                        ctx.GetPlace(),
-                        /* gpuStream_t */ nullptr,
-                        /* NCCLComm* */ nullptr,
-                        peer,
-                        pg);
-      }
-
-      std::vector<phi::DenseTensor> in_tensor;
-      in_tensor.push_back(*x);
-      auto task = pg->Send(in_tensor, peer);
-      return;
-    }
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);

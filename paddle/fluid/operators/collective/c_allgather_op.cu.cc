@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/api/include/tensor.h"
 
@@ -30,25 +31,35 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    int rid = ctx.Attr<int>("ring_id");
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(rid) != map.end()) {
+      const auto& group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(rid));
+
+      const auto& in = ctx.Input<phi::DenseTensor>("X");
+      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      // Allocate memory for out
+      const auto& place = ctx.GetPlace();
+      int nranks = ctx.Attr<int>("nranks");
+      framework::DDim out_dims = in->dims();
+      out_dims[0] *= nranks;
+      out->mutable_data<T>(out_dims, place);
+
+      group->AllGather(out, *in, 0, -1, sync_op, use_calc_stream);
+      return;
+    }
+
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));
 
     int nranks = ctx.Attr<int>("nranks");
-    int rid = ctx.Attr<int>("ring_id");
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*in);
-      out_tensor.push_back(*out);
-      auto task = pg->AllGather(in_tensor, out_tensor);
-      task->Wait();
-      return;
-    }
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(

@@ -11,6 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#pragma once
+
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -30,6 +32,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 
 namespace paddle {
 namespace operators {
@@ -41,6 +44,17 @@ class CSyncCommStreamKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto place = ctx.GetPlace();
     int ring_id = ctx.Attr<int>("ring_id");
+
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(ring_id) != map.end()) {
+      const auto& group = map.at(ring_id);
+      auto* device_context = group->GetDeviceContext(place);
+      auto comm_stream =
+          static_cast<phi::GPUContext*>(device_context)->stream();
+      platform::GpuStreamSync(comm_stream);
+      return;
+    }
+
     auto stream =
         platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
 

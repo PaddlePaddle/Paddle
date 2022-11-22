@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 
 namespace paddle {
 namespace operators {
@@ -27,6 +29,31 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    int ring_id = ctx.Attr<int>("ring_id");
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(ring_id) != map.end()) {
+      const auto& group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(ring_id));
+
+      const auto& in = ctx.Input<phi::DenseTensor>("X");
+      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      int root_id = ctx.Attr<int>("root");
+      int nranks = ctx.Attr<int>("nranks");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      // Allocate memory for output
+      const auto& place = ctx.GetPlace();
+      framework::DDim out_dims(in->dims());
+      out_dims[0] = out_dims[0] / nranks;
+      out->mutable_data<T>(out_dims, place);
+
+      distributed::ScatterOptions opts{root_id};
+      group->Scatter(out, *in, opts, sync_op, use_calc_stream);
+
+      return;
+    }
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
@@ -35,7 +62,6 @@ class CScatterOpCUDAKernel : public framework::OpKernel<T> {
 
     int nranks = ctx.Attr<int>("nranks");
     int root_id = ctx.Attr<int>("root");
-    int ring_id = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(ring_id, place);
     PADDLE_ENFORCE_EQ(nranks,
