@@ -662,9 +662,7 @@ class GPTModel(nn.Layer):
             )
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(
-                position_ids, input_ids
-            )
+            position_ids = paddle.expand_as(position_ids, input_ids)
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids
         )
