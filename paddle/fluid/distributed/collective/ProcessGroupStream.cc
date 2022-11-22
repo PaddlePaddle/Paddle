@@ -20,7 +20,7 @@ namespace distributed {
 ProcessGroupStream::ProcessGroupStream(int rank, int size, int gid)
     : ProcessGroup(rank, size, gid) {}
 
-const phi::DeviceContext& ProcessGroupStream::GetDeviceContext(
+phi::DeviceContext* ProcessGroupStream::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   PADDLE_THROW(platform::errors::Unimplemented(
       "ProcessGroup%s does not support get device_context.", GetBackendName()));
@@ -212,7 +212,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Recv(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor* tensor,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,
@@ -226,7 +226,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupStream::Send(
-    phi::DenseTensor*,
+    const phi::DenseTensor& tensor,
     int dst_rank,
     int64_t offset,
     int64_t numel,

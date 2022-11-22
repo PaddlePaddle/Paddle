@@ -23,7 +23,6 @@ from paddle.fluid.layers import (
     elementwise_div,
     elementwise_sub,
     nn,
-    ops,
     tensor,
 )
 
@@ -288,7 +287,7 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         return elementwise_div(
-            ops.exp(
+            paddle.exp(
                 -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             ),
             (math.sqrt(2 * math.pi) * self.scale),
