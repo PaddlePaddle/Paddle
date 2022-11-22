@@ -124,7 +124,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'pow',
-    'hard_sigmoid',
     'prelu',
     'brelu',
     'leaky_relu',
@@ -9052,50 +9051,6 @@ def pow(x, factor=1.0, name=None):
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return out
-
-
-@templatedoc()
-def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
-    """
-    ${comment}
-    Parameters:
-        x (${x_type}): ${x_comment}
-        slope (float, optional): ${slope_comment}
-        offset (float, optional): ${offset_comment}
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`
-
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
-            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'hard_sigmoid'
-    )
-
-    helper = LayerHelper('hard_sigmoid', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='hard_sigmoid',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'slope': slope, 'offset': offset},
     )
     return out
 
