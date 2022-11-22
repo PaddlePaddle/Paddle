@@ -127,7 +127,9 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
         super().__init__()
         self._num_channels = num_channels
-        self._pool = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
+        self._pool = paddle.fluid.dygraph.nn.Pool2D(
+            pool_size=0, pool_type='avg', global_pooling=True
+        )
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._fc = Linear(
             num_channels,

@@ -70,24 +70,14 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             bias_attr=None,
         )
 
-        if pool_type == 'max':
-            if global_pooling:
-                self._pool2d = paddle.nn.AdaptiveMaxPool2D(output_size=(1, 1))
-            else:
-                self._pool2d = paddle.nn.MaxPool2D(
-                    kernel_size=pool_size,
-                    stride=pool_stride,
-                    padding=pool_padding,
-                )
-        elif pool_type == "avg":
-            if global_pooling:
-                self._pool2d = paddle.nn.AdaptiveAvgPool2D(output_size=(1, 1))
-            else:
-                self._pool2d = paddle.nn.AvgPool2D(
-                    kernel_size=pool_size,
-                    stride=pool_stride,
-                    padding=pool_padding,
-                )
+        self._pool2d = paddle.fluid.dygraph.nn.Pool2D(
+            pool_size=pool_size,
+            pool_type=pool_type,
+            pool_stride=pool_stride,
+            pool_padding=pool_padding,
+            global_pooling=global_pooling,
+            use_cudnn=use_cudnn,
+        )
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
