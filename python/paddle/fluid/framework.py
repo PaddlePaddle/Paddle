@@ -1707,9 +1707,9 @@ class Variable(metaclass=VariableMetaClass):
 
     def register_hook(self, hook):
         import paddle
+
         def backward_hook_wrapper(d_out):
-            """ call the backward hook in eager mode.
-            """
+            """call the backward hook in eager mode."""
             paddle.disable_static()
             with paddle.no_grad():
                 d_self = hook(d_out)
@@ -1717,14 +1717,20 @@ class Variable(metaclass=VariableMetaClass):
             return d_self
 
         def forward_hook_wrapper(x):
-            """ do nothing but return a new variable.
-            """
+            """do nothing but return a new variable."""
             return x
-        
-        new_var = self.block.create_var(dtype=self.dtype, shape=self.shape) #name=None)
-        new_var = paddle.static.py_func(func=forward_hook_wrapper, x=self,
-            out=new_var, backward_func=backward_hook_wrapper,
-            skip_vars_in_backward_input=[self, new_var])
+
+        new_var = self.block.create_var(
+            dtype=self.dtype, shape=self.shape
+        )  # name=None)
+        new_var = paddle.static.py_func(
+            func=forward_hook_wrapper,
+            x=self,
+            out=new_var,
+            backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self, new_var],
+        )
+
         return new_var
 
     def __str__(self):
