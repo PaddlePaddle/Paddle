@@ -620,11 +620,11 @@ class MSELoss(Layer):
         if self.reduction == 'none':
             return square_out
 
-        reduce_op = 'reduce_mean'
+        reduce_op = 'mean'
         if self.reduction == 'sum':
             reduce_op = 'reduce_sum'
 
-        return getattr(fluid.layers, reduce_op)(square_out)
+        return getattr(paddle, reduce_op)(square_out)
 
 
 class L1Loss(Layer):
