@@ -22,6 +22,9 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/pybind/eager.h"
+#include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -61,68 +64,52 @@ static std::string PythonFuncDebugString(const py::object &py_callable) {
   return inner_func_str + " wrapped by " + wrapper_func_str;
 }
 
-static void CallPythonFunc(py::object *callable,
-                           const std::vector<phi::DenseTensor> &ins,
-                           std::vector<phi::DenseTensor *> *outs) {
+class CallFunctionAfterExit {
+ private:
+  std::function<void()> f_;
+
+ public:
+  explicit CallFunctionAfterExit(std::function<void()> f) { f_ = f; }
+  ~CallFunctionAfterExit() { f_(); }
+};
+
+static std::vector<paddle::experimental::Tensor> CallPythonFunc(
+    py::object *callable,
+    const std::vector<paddle::experimental::Tensor> &ins) {
   py::gil_scoped_acquire guard;
-  py::tuple in_args(ins.size());
+  VLOG(10) << "ref count of ins: " << ins[0].impl().use_count();
+  auto in_args = PyTuple_New(ins.size());
   for (size_t i = 0; i < ins.size(); ++i) {
-    in_args[i] = ins[i].IsInitialized() ? py::cast(ins[i]) : py::cast(nullptr);
+    PyTuple_SetItem(in_args, i, paddle::pybind::ToPyObject(ins[i], true));
   }
 
-  auto ret = (*callable)(*in_args);
-  auto ret_tuple = py::cast<py::tuple>(ret);
-  size_t ret_num = py::len(ret_tuple);
-  size_t out_num = outs->size();
-  if (UNLIKELY(ret_num != out_num)) {
-    // Python function has no return values or returns None
-    // In this case, ret_num = 1 && ret[0] == None && out_num should be 0
-    // Otherwise, ret_num must be equal to out_num
-    PADDLE_ENFORCE_EQ(ret_num == 1,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "Python function has no return values or returns "
-                          "None. In this case, ret_num = 1 && ret[0] == None "
-                          "&& out_num should be 0. But ret_num is %d",
-                          ret_num));
-
-    PADDLE_ENFORCE_EQ(
-        out_num == 0,
-        true,
-        platform::errors::InvalidArgument(
-            "Python function has no return values or returns None. In "
-            "this case, ret_num = 1 && ret[0] == None && out_num should "
-            "be 0. But out_num is %d",
-            out_num));
-
-    PADDLE_ENFORCE_EQ(
-        py::cast<phi::DenseTensor *>(ret_tuple[0]) == nullptr,
-        true,
-        platform::errors::InvalidArgument(
-            "Python function has no return values or returns None. In "
-            "this case, ret_num = 1 && ret[0] == None && out_num should "
-            "be 0. But ret[0] is not None"));
-  }
-
-  for (size_t i = 0; i < out_num; ++i) {
-    auto *out = (*outs)[i];
-    if (out == nullptr) {
-      continue;
-    }
+  auto ret = PyObject_CallObject(callable->ptr(), in_args);
+  VLOG(10) << "after call callable";
+  auto ret_num = PyTuple_Size(ret);
+  std::vector<paddle::experimental::Tensor> outs(ret_num);
+  CallFunctionAfterExit scope_guard([&]() {
+    Py_DECREF(in_args);
+    Py_XDECREF(ret);
+  });
+  VLOG(10) << "start deal return values.";
+  for (int i = 0; i < ret_num; ++i) {
     try {
-      auto *py_out_tensor = py::cast<phi::DenseTensor *>(ret_tuple[i]);
-      PADDLE_ENFORCE_NOT_NULL(py_out_tensor,
-                              platform::errors::InvalidArgument(
-                                  "Output tensor %d should not be nullptr", i));
-      out->set_lod(py_out_tensor->lod());
-      out->ShareDataWith(*py_out_tensor);
+      auto obj = PyTuple_GetItem(ret, i);
+      if (obj != Py_None) {
+        auto py_out_tensor =
+            reinterpret_cast<paddle::pybind::TensorObject *>(obj);
+        if (py_out_tensor != nullptr)
+          outs[i] = std::move(py_out_tensor->tensor);
+      }
     } catch (py::cast_error &) {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "py::cast to LoDTensor error. The %d-th output expection is "
-          "LoDTensor",
+          "py::cast to EagerTensor error. The %d-th output expection is "
+          "EagerTensor",
           i));
     }
   }
+  VLOG(10) << "CallPythonFunc finished.";
+  return outs;
 }
 
 class PyFuncOpVarTypeInference : public framework::StaticGraphVarTypeInference {
@@ -311,7 +298,7 @@ class PyFuncOp : public framework::OperatorBase {
     auto &in_arg_names = Inputs("X");
     auto &out_arg_names = Outputs("Out");
 
-    std::vector<phi::DenseTensor> inputs(in_arg_names.size());
+    std::vector<paddle::experimental::Tensor> inputs(in_arg_names.size());
     for (size_t i = 0; i < in_arg_names.size(); ++i) {
       auto in_var = scope.FindVar(in_arg_names[i]);
       // When py_func op is called in backward, in_var may be null
@@ -322,25 +309,29 @@ class PyFuncOp : public framework::OperatorBase {
       if (!in_tensor.IsInitialized()) {
         continue;
       }
-      if (platform::is_gpu_place(in_tensor.place())) {
-        framework::TensorCopySync(in_tensor, platform::CPUPlace(), &inputs[i]);
-      } else {
-        inputs[i].ShareDataWith(in_tensor);
-      }
-      inputs[i].set_lod(in_tensor.lod());
-    }
-
-    std::vector<phi::DenseTensor *> outputs(out_arg_names.size());
-    for (size_t i = 0; i < out_arg_names.size(); ++i) {
-      auto *out_var = scope.FindVar(out_arg_names[i]);
-      outputs[i] = out_var ? out_var->GetMutable<phi::DenseTensor>() : nullptr;
+      inputs[i] = paddle::experimental::Tensor(
+          std::make_shared<phi::DenseTensor>(in_tensor));
     }
 
     auto callable_id = static_cast<size_t>(Attr<int>(kForwardPythonCallableId));
     auto *py_callable = GetPythonCallableObject(callable_id);
     VLOG(10) << "Call Python function with id " << callable_id << ": "
              << PythonFuncDebugString(*py_callable);
-    CallPythonFunc(py_callable, inputs, &outputs);
+    auto outputs = CallPythonFunc(py_callable, inputs);
+    for (size_t i = 0; i < out_arg_names.size(); ++i) {
+      auto *out_var = scope.FindVar(out_arg_names[i]);
+      if (out_var == nullptr) {
+        continue;
+      }
+      if (outputs[i].defined() && out_var->GetMutable<phi::DenseTensor>()) {
+        // VLOG(10) << i << "-th outputs'impl address is:" <<
+        // (std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl()))->data();
+        // VLOG(10) << i << "-th outputs'tensor data  is:" <<
+        // *(std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl())) ;
+        out_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+            *(std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl())));
+      }
+    }
   }
 };
 

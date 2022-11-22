@@ -14924,15 +14924,17 @@ class PyFuncRegistry(object):
 
         ret = []
         for each_ret in func_ret:
-            if each_ret is None or isinstance(each_ret, core.LoDTensor):
+            if each_ret is None or isinstance(each_ret, core.eager.Tensor):
                 ret.append(each_ret)
                 continue
 
             if not isinstance(each_ret, np.ndarray):
                 each_ret = np.array(each_ret)
 
-            tensor = core.LoDTensor()
-            tensor.set(each_ret, core.CPUPlace())
+            tensor = paddle.to_tensor()
+            assert isinstance(
+                tensor, core.eager.Tensor
+            ), "tensor must be eager.Tensor, but gets {}".format(type(tensor))
             ret.append(tensor)
 
         return tuple(ret)
