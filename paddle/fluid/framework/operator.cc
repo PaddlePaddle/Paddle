@@ -3234,11 +3234,13 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
 
+#if defined(PADDLE_WITH_MKLDNN)
   phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
   std::vector<int> placeholder_vector_ints;
   one_dnn_ctx->SetDnnAttr("fused_squeeze2_axes", placeholder_vector_ints);
   one_dnn_ctx->SetDnnAttr("fused_unsqueeze2_axes", placeholder_vector_ints);
   one_dnn_ctx->SetDnnAttr("fused_reshape2_shape", placeholder_vector_ints);
+#endif
 
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
