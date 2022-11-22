@@ -4115,9 +4115,9 @@ def warpctc(
             class_num = 5
 
             paddle.enable_static()
-            logits = fluid.data(name='logits',shape=[None, class_num+1],
+            logits = paddle.static.data(name='logits',shape=[None, class_num+1],
                                  dtype='float32',lod_level=1)
-            label = fluid.data(name='label', shape=[None, 1],
+            label = paddle.static.data(name='label', shape=[None, 1],
                                dtype='int32', lod_level=1)
             cost = paddle.nn.functional.loss.warpctc(input=logits, label=label)
             place = fluid.CPUPlace()
@@ -4149,14 +4149,14 @@ def warpctc(
             # class num
             class_num = 5
             paddle.enable_static()
-            logits = fluid.data(name='logits',
+            logits = paddle.static.data(name='logits',
                            shape=[max_seq_length, batch_size, class_num+1],
                            dtype='float32')
-            logits_length = fluid.data(name='logits_length', shape=[None],
+            logits_length = paddle.static.data(name='logits_length', shape=[None],
                              dtype='int64')
-            label = fluid.data(name='label', shape=[batch_size, max_label_length],
+            label = paddle.static.data(name='label', shape=[batch_size, max_label_length],
                            dtype='int32')
-            label_length = fluid.data(name='labels_length', shape=[None],
+            label_length = paddle.static.data(name='labels_length', shape=[None],
                              dtype='int64')
             cost = paddle.nn.functional.loss.warpctc(input=logits, label=label,
                             input_length=logits_length,

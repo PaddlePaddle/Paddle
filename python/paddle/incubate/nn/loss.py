@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import (
+from paddle.framework import (
     _non_static_mode,
 )
 from paddle.fluid.data_feeder import check_variable_and_dtype
@@ -51,10 +51,9 @@ def identity_loss(x, reduction="none"):
 
         .. code-block:: python
 
-            import paddle.fluid as fluid
             import paddle
             paddle.enable_static()
-            loss = fluid.data(name="loss", shape=[-1, 1], dtype="float32")
+            loss = paddle.static.data(name="loss", shape=[-1, 1], dtype="float32")
             out = paddle.incubate.identity_loss(loss, reduction=1)
     """
     if isinstance(reduction, str):
