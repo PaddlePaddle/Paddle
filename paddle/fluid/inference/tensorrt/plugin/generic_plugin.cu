@@ -454,7 +454,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   };
 
   // input
-  auto data_type = inputDesc[0].type;
+  auto data_type = input_desc[0].type;
   CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
         (data_type == nvinfer1::DataType::kHALF));
 
@@ -512,7 +512,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
   CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
 
-  (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type]);
+  (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type].get());
 
   return cudaGetLastError() != cudaSuccess;
 }
