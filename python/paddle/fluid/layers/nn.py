@@ -132,7 +132,6 @@ __all__ = [
     'unique',
     'unique_with_counts',
     'expand',
-    'expand_as',
     'elementwise_add',
     'elementwise_div',
     'elementwise_sub',
