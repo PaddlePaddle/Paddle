@@ -17,7 +17,6 @@ import numpy as np
 
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-import paddle
 from op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.framework import _test_eager_guard
 from testsuite import create_op
@@ -327,8 +326,9 @@ class TestGroupNormEager_fp32(unittest.TestCase):
         with fluid.dygraph.guard():
             tensor_1 = fluid.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
-            groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4,
-            dtype='float32')
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float32'
+            )
             ret1 = groupNorm(tensor_1)
             ret1.backward()
             with _test_eager_guard():
@@ -345,6 +345,8 @@ class TestGroupNormEager_fp32(unittest.TestCase):
                     ).all(),
                     True,
                 )
+
+
 class TestGroupNormEager_fp16(unittest.TestCase):
     def test_dygraph_api(self):
         self.dtype = np.float32
@@ -354,8 +356,9 @@ class TestGroupNormEager_fp16(unittest.TestCase):
         with fluid.dygraph.guard():
             tensor_1 = fluid.dygraph.to_variable(input)
             tensor_1.stop_gradient = False
-            groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4,
-            dtype='float16')
+            groupNorm = fluid.dygraph.nn.GroupNorm(
+                channels=32, groups=4, dtype='float16'
+            )
             ret1 = groupNorm(tensor_1)
             ret1.backward()
             with _test_eager_guard():
@@ -372,6 +375,7 @@ class TestGroupNormEager_fp16(unittest.TestCase):
                     ).all(),
                     True,
                 )
+
 
 if __name__ == '__main__':
     unittest.main()
