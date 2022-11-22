@@ -57,6 +57,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "atanh",
                     "ceil",
                     "floor",
+                    "reciprocal",
                 ]:
                     self.dims = dims
                     dics = [{}]
