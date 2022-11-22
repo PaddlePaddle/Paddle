@@ -705,6 +705,7 @@ class FusedFeedForward(Layer):
 
 class FusedTransformerEncoderLayer(Layer):
     """
+
     FusedTransformerEncoderLayer is composed of two sub-layers which are self (multi-head)
     attention and feedforward network. Before and after each sub-layer, pre-process
     and post-precess would be applied on the input and output accordingly. If
@@ -746,7 +747,6 @@ class FusedTransformerEncoderLayer(Layer):
 
 
     Examples:
-
         .. code-block:: python
 
             # required: gpu
@@ -759,6 +759,7 @@ class FusedTransformerEncoderLayer(Layer):
             attn_mask = paddle.rand((2, 2, 4, 4))
             encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
             enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
+
     """
 
     def __init__(
@@ -835,7 +836,9 @@ class FusedTransformerEncoderLayer(Layer):
 
     def forward(self, src, src_mask=None, cache=None):
         """
+
         Applies a Transformer encoder layer on the input.
+
         Parameters:
             src (Tensor): The input of Transformer encoder layer. It is
                 a tensor with shape `[batch_size, sequence_length, d_model]`.
@@ -851,17 +854,19 @@ class FusedTransformerEncoderLayer(Layer):
                 `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
-                See `TransformerEncoderLayer.gen_cache` for more details. It is
+                See :ref:`api_paddle_nn_TransformerEncoderLayer`.gen_cache for more details. It is
                 only used for inference and should be None for training. Default
                 None.
+
         Returns:
-            Tensor|tuple: It is a tensor that has the same shape and data type \
+            Tensor|tuple, It is a tensor that has the same shape and data type \
                 as `enc_input`, representing the output of Transformer encoder \
                 layer. Or a tuple if `cache` is not None, except for encoder \
                 layer output, the tuple includes the new cache which is same \
                 as input `cache` argument but `incremental_cache` has an \
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
+
         """
         src_mask = _convert_attention_mask(src_mask, src.dtype)
         if cache is None:
