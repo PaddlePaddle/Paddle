@@ -31,9 +31,10 @@ namespace phi {
 enum GroupNormKernelFlags { kHasScale = 1, kHasBias = 2 };
 #define ALIGN_BYTES 16
 
-#define CHECK_CASE(i, flags, kernel_name, ...)                              \
-  if (i == flags) {                                                         \
-    kernel_name<T, AccT, i><<<grid, threads, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
+#define CHECK_CASE(i, flags, kernel_name, ...)                 \
+  if (i == flags) {                                            \
+    kernel_name<T, AccT, i>                                    \
+        <<<grid, threads, 0, dev_ctx.stream()>>>(__VA_ARGS__); \
   }
 
 // 0 for no scale, no bias
@@ -75,14 +76,14 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
     size += offset;
     if (tid >= offset) {
       if (Num == 1) {
-        AccT x_acc=static_cast<AccT>(x[tid]);
+        AccT x_acc = static_cast<AccT>(x[tid]);
         *out_mean += x_acc;
-        *out_var += x_acc*x_acc;
+        *out_var += x_acc * x_acc;
       } else if (Num == 2) {
-        AccT x_acc=static_cast<AccT>(x[tid]);
-        AccT y_acc=static_cast<AccT>(y[tid]);
+        AccT x_acc = static_cast<AccT>(x[tid]);
+        AccT y_acc = static_cast<AccT>(y[tid]);
         *out_mean += y_acc;
-        *out_var += y_acc*x_acc;
+        *out_var += y_acc * x_acc;
       }
     }
     size -= blockDim.x;
@@ -108,14 +109,14 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
 #pragma unroll
     for (int i = 0; i < VecSize; ++i) {
       if (Num == 1) {
-        AccT ins_x_acc=static_cast<AccT>(ins_x[i]);
+        AccT ins_x_acc = static_cast<AccT>(ins_x[i]);
         *out_mean += ins_x_acc;
-        *out_var += ins_x_acc*ins_x_acc;
+        *out_var += ins_x_acc * ins_x_acc;
       } else if (Num == 2) {
-        AccT ins_x_acc=static_cast<AccT>(ins_x[i]);
-        AccT ins_y_acc=static_cast<AccT>(ins_y[i]);
+        AccT ins_x_acc = static_cast<AccT>(ins_x[i]);
+        AccT ins_y_acc = static_cast<AccT>(ins_y[i]);
         *out_mean += ins_y_acc;
-        *out_var += ins_y_acc*ins_x_acc;
+        *out_var += ins_y_acc * ins_x_acc;
       }
     }
   }
@@ -124,14 +125,14 @@ __device__ __forceinline__ void ThreadReduce(phi::Array<const T*, Num> arrs,
   tid = size - remain + threadIdx.x;
   for (; tid < size; tid += blockDim.x) {
     if (Num == 1) {
-      AccT x_acc=static_cast<AccT>(x[tid]);
+      AccT x_acc = static_cast<AccT>(x[tid]);
       *out_mean += x_acc;
-      *out_var += x_acc*x_acc;
+      *out_var += x_acc * x_acc;
     } else if (Num == 2) {
-      AccT x_acc=static_cast<AccT>(x[tid]);
-      AccT y_acc=static_cast<AccT>(y[tid]);
+      AccT x_acc = static_cast<AccT>(x[tid]);
+      AccT y_acc = static_cast<AccT>(y[tid]);
       *out_mean += y_acc;
-      *out_var += y_acc*x_acc;
+      *out_var += y_acc * x_acc;
     }
   }
 }
@@ -152,7 +153,10 @@ __device__ __forceinline__ void ReduceMeanAndVar(
 }
 
 template <typename T, typename AccT>
-__global__ void ScalarGetMeanAndVarNCHW(const T* x, AccT* mean, AccT* var, int size) {
+__global__ void ScalarGetMeanAndVarNCHW(const T* x,
+                                        AccT* mean,
+                                        AccT* var,
+                                        int size) {
   int i = blockIdx.x;
   AccT x_mean = static_cast<AccT>(0);
   AccT x_var = static_cast<AccT>(0);
