@@ -32,10 +32,7 @@ from ..framework import _non_static_mode
 from ..param_attr import ParamAttr
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = [
     'RNNCell',
@@ -623,7 +620,7 @@ def _rnn_dynamic_graph(
         )
 
     final_outputs = map_structure(
-        lambda x: nn.stack(x.array, axis=time_step_index), outputs
+        lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
     if is_reverse:
@@ -1163,11 +1160,11 @@ class BeamSearchDecoder(Decoder):
         batch_size.stop_gradient = True  # TODO: remove this
         batch_pos = paddle.tile(
             nn.unsqueeze(
-                tensor.range(0, batch_size, 1, dtype=indices.dtype), [1]
+                paddle.arange(0, batch_size, 1, dtype=indices.dtype), [1]
             ),
             [1, self.beam_size],
         )
-        topk_coordinates = nn.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = True
         return nn.gather_nd(x, topk_coordinates)
 
@@ -1546,7 +1543,9 @@ def _dynamic_decode_imperative(
         if max_step_num is not None and step_idx > max_step_num:
             break
 
-    final_outputs = map_structure(lambda x: nn.stack(x.array, axis=0), outputs)
+    final_outputs = map_structure(
+        lambda x: paddle.stack(x.array, axis=0), outputs
+    )
     final_states = states
 
     try:
