@@ -2808,7 +2808,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 )
             )
         false_cond_block = ConditionalBlock(
-            [logical_not(pred)], is_scalar_condition=True
+            [paddle.logical_not(pred)], is_scalar_condition=True
         )
         with false_cond_block.block():
             origin_false_output = false_fn()
@@ -3261,7 +3261,7 @@ class Switch:
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
-            not_cond = logical_not(x=condition)
+            not_cond = paddle.logical_not(x=condition)
             self.pre_not_conditions.append(not_cond)
         else:
             pre_cond_num = len(self.pre_not_conditions)

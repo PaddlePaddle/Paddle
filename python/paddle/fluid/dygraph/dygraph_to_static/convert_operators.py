@@ -317,7 +317,7 @@ def convert_logical_not(x):
 
 def _run_paddle_logical_not(x):
     x = cast_bool_if_necessary(x)
-    return logical_not(x)
+    return paddle.logical_not(x)
 
 
 def _run_py_logical_not(x):
