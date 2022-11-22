@@ -151,7 +151,6 @@ __all__ = [
     'size',
     'logical_and',
     'logical_or',
-    'logical_not',
     'clip',
     'clip_by_norm',
     'mean',
@@ -11546,41 +11545,6 @@ def logical_or(x, y, out=None, name=None):
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-@templatedoc()
-def logical_not(x, out=None, name=None):
-    """
-
-    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = !x
-
-    Args:
-        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_not(x)
-            print(res) # [False  True False  True]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_not(x)
-    return _logical_op(
-        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
     )
 
 

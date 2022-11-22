@@ -1332,7 +1332,7 @@ class BeamSearchDecoder(Decoder):
             beam_state.lengths, beam_indices, self.batch_size
         )
         next_lengths = next_lengths + tensor.cast(
-            nn.logical_not(next_finished), beam_state.lengths.dtype
+            paddle.logical_not(next_finished), beam_state.lengths.dtype
         )
         next_finished = control_flow.logical_or(
             next_finished,
@@ -1481,7 +1481,7 @@ def _dynamic_decode_imperative(
         initial_states,
         initial_finished,
     )
-    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
     sequence_lengths = tensor.cast(tensor.zeros_like(initial_finished), "int64")
     outputs = None
 
@@ -1505,7 +1505,7 @@ def _dynamic_decode_imperative(
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
                 tensor.cast(
-                    control_flow.logical_not(finished), sequence_lengths.dtype
+                    paddle.logical_not(finished), sequence_lengths.dtype
                 ),
             )
             if impute_finished:  # rectify the states for the finished.
@@ -1539,7 +1539,7 @@ def _dynamic_decode_imperative(
         control_flow.increment(x=step_idx_tensor, value=1.0, in_place=True)
         step_idx += 1
 
-        cond = control_flow.logical_not(nn.reduce_all(finished))
+        cond = paddle.logical_not(nn.reduce_all(finished))
         if max_step_num is not None and step_idx > max_step_num:
             break
 
@@ -1587,7 +1587,7 @@ def _dynamic_decode_declarative(
     global_finished.stop_gradient = True
     step_idx = tensor.fill_constant(shape=[1], dtype="int64", value=0)
 
-    cond = control_flow.logical_not((nn.reduce_all(initial_finished)))
+    cond = paddle.logical_not((nn.reduce_all(initial_finished)))
     if max_step_num is not None:
         max_step_num = tensor.fill_constant(
             shape=[1], dtype="int64", value=max_step_num
@@ -1665,7 +1665,7 @@ def _dynamic_decode_declarative(
             next_sequence_lengths = nn.elementwise_add(
                 sequence_lengths,
                 tensor.cast(
-                    control_flow.logical_not(global_finished),
+                    paddle.logical_not(global_finished),
                     sequence_lengths.dtype,
                 ),
             )
@@ -1720,12 +1720,12 @@ def _dynamic_decode_declarative(
             )
         if max_step_num is not None:
             control_flow.logical_and(
-                control_flow.logical_not(nn.reduce_all(global_finished)),
+                paddle.logical_not(nn.reduce_all(global_finished)),
                 control_flow.less_equal(step_idx, max_step_num),
                 cond,
             )
         else:
-            control_flow.logical_not(nn.reduce_all(global_finished), cond)
+            paddle.logical_not(nn.reduce_all(global_finished), cond)
 
     final_outputs = map_structure(
         lambda array: tensor.tensor_array_to_tensor(
