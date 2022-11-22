@@ -1850,9 +1850,9 @@ static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* kwargs) {
   EAGER_TRY
   if (self->tensor.initialized() && self->tensor.is_dense_tensor()) {
-    ToPyObject(reinterpret_cast<int>(
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl())
-            ->data()));
+    ToPyObject((int)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
+                   self->tensor.impl())
+                   ->data());
   }
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
