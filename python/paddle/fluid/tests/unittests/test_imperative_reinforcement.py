@@ -35,7 +35,7 @@ class Policy(fluid.dygraph.Layer):
         self.rewards = []
 
     def forward(self, inputs):
-        x = fluid.layers.reshape(inputs, shape=[-1, 4])
+        x = paddle.reshape(inputs, shape=[-1, 4])
         x = self.affine1(x)
         x = fluid.layers.dropout(x, self.dropout_ratio)
         x = fluid.layers.relu(x)

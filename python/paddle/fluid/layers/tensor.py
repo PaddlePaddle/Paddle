@@ -66,7 +66,6 @@ __all__ = [
     'has_inf',
     'has_nan',
     'isfinite',
-    'range',
     'linspace',
     'zeros_like',
     'ones_like',
@@ -571,8 +570,9 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
         assert isinstance(
             input, list
         ), "The 'input' in tensor_array_to_tensor must be list"
-        from .nn import stack, concat
+        from .nn import concat
         from ..dygraph import to_variable
+        from paddle import stack
 
         op = stack if use_stack else concat
         res = op(input, axis=axis)
@@ -918,17 +918,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if force_cpu:
             place = core.CPUPlace()
         if isinstance(shape, (list, tuple)):
-            for item in shape:
-                if not isinstance(item, Variable):
-                    shape = list(
-                        map(
-                            lambda x: x.numpy().flat[0]
-                            if isinstance(x, Variable)
-                            else x,
-                            shape,
-                        )
-                    )
-                    break
+            shape = utils.convert_shape_to_list(shape)
 
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
@@ -1644,108 +1634,6 @@ def isfinite(x):
     return out
 
 
-def range(start, end, step, dtype, name=None):
-    """
-    This OP returns a 1-D Tensor with spaced values within a given interval.
-
-    Values are generated into the half-open interval [``start``, ``end``) with
-    the ``step``. (the interval including ``start`` but excluding ``end``).
-
-    If ``dtype`` is float32 or float64, we advise adding a small epsilon to
-    ``end`` to avoid floating point rounding errors when comparing against ``end``.
-
-    Parameters:
-        start(float|int|Tensor): Start of interval. The interval includes this
-            value. If ``start`` is a Tensor, it is a 1-D Tensor with shape [1],
-            with data type int32, int64, float32, float64.
-        end(float|int|Tensor): End of interval. The interval does not include
-            this value. If ``end`` is a Tensor, it is a 1-D Tensor with shape
-            [1], with data type int32, int64, float32, float64.
-        step(float|int|Tensor): Spacing between values. For any out, it is
-            the istance between two adjacent values, out[i+1] - out[i]. If
-            ``step`` is a Tensor, it is a 1-D Tensor with shape [1], with data
-            type int32, int64, float32, float64.
-        dtype(str|np.dtype|core.VarDesc.VarType, optional): The data type of the
-            output tensor. Supported data types: int32, int64, float32, float64.
-        name(str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: A 1-D Tensor with values from the interval [``start``, ``end``)
-            taken with common difference ``step`` beginning from ``start``. Its
-            data type is set by ``dtype``.
-
-    Raises:
-        TypeError: If ``dtype`` is not int32, int64, float32, float64.
-
-    examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            out1 = fluid.layers.range(0, 10, 2, 'int32')
-            # [0, 2, 4, 6, 8]
-
-            start_var = fluid.layers.fill_constant([1], 'int64', 3)
-            out2 = fluid.layers.range(start_var, 7, 1, 'int64')
-            # [3, 4, 5, 6]
-
-    """
-    out_shape = None
-    if (
-        not isinstance(start, Variable)
-        and not isinstance(end, Variable)
-        and not isinstance(step, Variable)
-    ):
-        out_shape = [int(math.ceil((end - start) / step))]
-
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if not isinstance(start, Variable):
-        with device_guard("cpu"):
-            start = fill_constant([1], dtype, start, force_cpu=True)
-    elif start.dtype != dtype:
-        start = cast(start, dtype)
-
-    if not isinstance(end, Variable):
-        with device_guard("cpu"):
-            end = fill_constant([1], dtype, end, force_cpu=True)
-    elif end.dtype != dtype:
-        end = cast(end, dtype)
-
-    if not isinstance(step, Variable):
-        with device_guard("cpu"):
-            step = fill_constant([1], dtype, step, force_cpu=True)
-    elif step.dtype != dtype:
-        step = cast(step, dtype)
-
-    if in_dygraph_mode():
-        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
-
-    if _in_legacy_dygraph():
-        out = _legacy_C_ops.range(start, end, step)
-        out.stop_gradient = True
-        return out
-
-    check_dtype(
-        dtype, 'dtype', ['float32', 'float64', 'int32', 'int64'], 'range/arange'
-    )
-    helper = LayerHelper('range', **locals())
-    out = helper.create_variable_for_type_inference(dtype, shape=out_shape)
-    helper.append_op(
-        type='range',
-        inputs={'Start': start, 'End': end, 'Step': step},
-        outputs={'Out': out},
-    )
-    out.stop_gradient = True
-    if out_shape is not None:
-        out.desc.set_shape(out_shape)
-    return out
-
-
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
     This OP return fixed number of evenly spaced values within a given interval.
@@ -2060,7 +1948,8 @@ def eye(
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
 
-        from .nn import reshape, expand
+        from .nn import expand
+        from paddle import reshape
 
         out = reshape(x=out, shape=re_shape)
         out = expand(x=out, expand_times=expand_times)

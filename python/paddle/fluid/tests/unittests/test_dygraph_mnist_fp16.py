@@ -111,7 +111,7 @@ class MNIST(fluid.dygraph.Layer):
     def forward(self, inputs, label):
         x = paddle.nn.functional.relu(self._simple_img_conv_pool_1(inputs))
         x = paddle.nn.functional.relu(self._simple_img_conv_pool_2(x))
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         cost = paddle.nn.functional.softmax(cost)
         loss = fluid.layers.cross_entropy(cost, label)

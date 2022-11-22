@@ -69,7 +69,7 @@ class ShardingClipGrad:
                 merge_grad = layers.get_tensor_from_selected_rows(
                     layers.merge_selected_rows(g)
                 )
-            square = layers.square(merge_grad)
+            square = paddle.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
             if p.dtype == paddle.float16:
@@ -131,14 +131,14 @@ class ShardingClipGrad:
         with device_guard(dev_id, "gpu"):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
 
         clip_var = layers.elementwise_div(
             x=max_global_norm,
-            y=layers.elementwise_max(x=global_norm_var, y=max_global_norm),
+            y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 

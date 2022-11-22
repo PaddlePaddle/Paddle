@@ -40,7 +40,7 @@ class Policy(Layer):
 
     @declarative
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[1, 4])
+        x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
         x = fluid.layers.dropout(x, self.dropout_ratio)
         x = fluid.layers.relu(x)

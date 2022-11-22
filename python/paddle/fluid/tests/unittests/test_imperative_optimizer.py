@@ -140,7 +140,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                img = fluid.layers.reshape(img, shape=[batch_size, -1])
+                img = paddle.reshape(img, shape=[batch_size, -1])
                 cost = mlp(img)
                 avg_loss = fluid.layers.reduce_mean(cost)
                 dy_out = avg_loss.numpy()
@@ -179,7 +179,7 @@ class TestImperativeOptimizerBase(unittest.TestCase):
                 name='pixel', shape=[1, 28, 28], dtype='float32'
             )
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            img = fluid.layers.reshape(img, shape=[batch_size, 784])
+            img = paddle.reshape(img, shape=[batch_size, 784])
             cost = mlp(img)
             avg_loss = fluid.layers.reduce_mean(cost)
             optimizer.minimize(avg_loss)

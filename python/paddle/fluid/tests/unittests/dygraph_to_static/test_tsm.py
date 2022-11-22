@@ -199,16 +199,16 @@ class TSM_ResNet(fluid.dygraph.Layer):
 
     @declarative
     def forward(self, inputs):
-        y = fluid.layers.reshape(inputs, [-1] + self.reshape_list)
+        y = paddle.reshape(inputs, [-1] + self.reshape_list)
         y = self.conv(y)
         y = self.pool2d_max(y)
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
         y = fluid.layers.dropout(y, dropout_prob=0.5)
-        y = fluid.layers.reshape(y, [-1, self.seg_num, y.shape[1]])
+        y = paddle.reshape(y, [-1, self.seg_num, y.shape[1]])
         y = fluid.layers.reduce_mean(y, dim=1)
-        y = fluid.layers.reshape(y, shape=[-1, 2048])
+        y = paddle.reshape(y, shape=[-1, 2048])
         y = self.out(y)
         y = paddle.nn.functional.softmax(y)
         return y
