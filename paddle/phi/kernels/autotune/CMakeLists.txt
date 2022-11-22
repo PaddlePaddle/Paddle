@@ -2,7 +2,7 @@ if(WITH_CUDNN_FRONTEND)
   cc_library(
     cache
     SRCS cache.cc
-    DEPS cudnn-frontend)
+    DEPS cudnn-frontend phi_enforce)
 else()
   cc_library(cache SRCS cache.cc)
 endif()
