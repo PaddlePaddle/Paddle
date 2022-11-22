@@ -25,10 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
 #include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/dynload/cublasLt.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -1223,10 +1223,10 @@ inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
   constexpr int kBlockSize = 128;
   constexpr int kNumWaves = 16;
 
-  const int device_id = paddle::platform::GetCurrentDeviceId();
-  const int sm_count = paddle::platform::GetGPUMultiProcessors(device_id);
+  const int device_id = phi::backends::gpu::GetCurrentDeviceId();
+  const int sm_count = phi::backends::gpu::GetGPUMultiProcessors(device_id);
   const int max_thread_per_multiprocessor =
-      paddle::platform::GetGPUMultiProcessors(device_id);
+      phi::backends::gpu::GetGPUMultiProcessors(device_id);
 
   *num_blocks =
       std::max<int>(1,
