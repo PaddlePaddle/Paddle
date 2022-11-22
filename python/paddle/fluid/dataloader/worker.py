@@ -374,7 +374,9 @@ def _worker_loop(
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
                     tensor_list = [
-                        paddle.to_tensor(b) if isinstance(b, np.ndarray) else b
+                        core._array_to_share_memory_tensor(b)
+                        if isinstance(b, np.ndarray)
+                        else b.value().get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))

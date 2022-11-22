@@ -21,7 +21,7 @@ import logging
 import itertools
 import threading
 import numpy as np
-import multiprocessing
+import paddle.incubate.multiprocessing
 from collections import namedtuple
 from paddle.fluid.framework import (
     _set_expected_place,
@@ -605,7 +605,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         array = core.LoDTensorArray()
                         if self._use_shared_memory:
                             for tensor in batch:
-                                array.append(tensor.value().get_tensor())
+                                array.append(tensor)
                         else:
                             # LoDTensor not in shared memory is not
                             # serializable, cannot be create in workers
