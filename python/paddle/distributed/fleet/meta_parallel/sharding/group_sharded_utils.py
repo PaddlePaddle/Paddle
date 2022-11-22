@@ -70,7 +70,7 @@ class GroupShardedClipGrad:
                     layers.merge_selected_rows(g)
                 )
             square = paddle.square(merge_grad)
-            sum_square = paddle.reduce_sum(square)
+            sum_square = paddle.sum(square)
 
             if p.dtype == paddle.float16:
                 if p_slice:
