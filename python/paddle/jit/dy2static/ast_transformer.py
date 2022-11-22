@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
 from paddle.fluid.dygraph.dygraph_to_static.early_return_transformer import (
     EarlyReturnTransformer,
 )
-from paddle.fluid.dygraph.dygraph_to_static.assert_transformer import (
+from .assert_transformer import (
     AssertTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.basic_api_transformer import (
