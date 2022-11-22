@@ -739,12 +739,12 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.func_dygraph_add()
 
 
-class TestBoolAddFloatElementwiseAddop1(unittest.TestCase):
+class TestElementwiseAddop1(unittest.TestCase):
     def func_dygraph_add(self):
         paddle.disable_static()
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float64)
-        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
 
         tensor_a = paddle.to_tensor(np_a, dtype="float32")
         tensor_b = paddle.to_tensor(np_b, dtype="float32")

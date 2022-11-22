@@ -718,19 +718,14 @@ class TestMatmulop(unittest.TestCase):
     def func_dygraph_matmul(self):
         paddle.disable_static()
 
-        np_a = np.random.random((2, 4)).astype(np.float64)
-        np_b = np.random.random((4, 2)).astype(np.float64)
+        np_a = np.random.random((2, 4)).astype(np.float32)
+        np_b = np.random.random((4, 2)).astype(np.float32)
 
         tensor_a = paddle.to_tensor(np_a, dtype="float32")
         tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
-        # normal case: nparray * tenor
-        expect_out = np_a / np_b
-        actual_out = np_a / tensor_b
-        np.testing.assert_allclose(actual_out, expect_out)
-
         # normal case: tensor * nparray
-        actual_out = tensor_a / np_b
+        actual_out = tensor_a * np_b
         np.testing.assert_allclose(actual_out, expect_out)
 
         paddle.enable_static()

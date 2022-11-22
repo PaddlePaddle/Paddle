@@ -543,8 +543,13 @@ static PyObject* tensor__mul__method(TensorObject* self,
       eager_gil_scoped_release guard;
       other_tensor =
           full_ad_func({1}, value, DataType::COMPLEX64, self_tensor.place());
+    } else {
+      eager_gil_scoped_release guard;
+      other_tensor = full_ad_func(
+          self_tensor.shape(), value, self_tensor.dtype(), self_tensor.place());
     }
   }
+
   // 3. promote types or unify right var type to left var
   phi::DataType lhs_dtype = self_tensor.dtype();
   phi::DataType rhs_dtype = other_tensor.dtype();

@@ -441,8 +441,8 @@ class TestElementwiseDivop(unittest.TestCase):
     def func_dygraph_div(self):
         paddle.disable_static()
 
-        np_a = np.random.random((2, 3, 4)).astype(np.float64)
-        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
         np_a[np.abs(np_a) < 0.0005] = 0.002
         np_b[np.abs(np_b) < 0.0005] = 0.002
 
