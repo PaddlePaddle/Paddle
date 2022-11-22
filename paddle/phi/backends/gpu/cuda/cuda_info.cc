@@ -14,7 +14,6 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(phi): remove fluid headers.
 #include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
