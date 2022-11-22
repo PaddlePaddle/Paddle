@@ -52,7 +52,7 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                 x = fluid.layers.concat([x_1, x_2], axis=-1)
 
                 for _ in range(self.reshape_times):
-                    x = fluid.layers.reshape(x, [-1, 1])
+                    x = paddle.reshape(x, [-1, 1])
 
                 x.stop_gradient = stop_gradient
 

@@ -309,9 +309,7 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, input, label_trg):
         shape = input.shape
-        label_trg_e = fluid.layers.reshape(
-            label_trg, [-1, label_trg.shape[1], 1, 1]
-        )
+        label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
         label_trg_e = fluid.layers.expand(
             x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
         )
@@ -322,7 +320,7 @@ class Generator(fluid.dygraph.Layer):
         res_block = self._res_block(conv0)
         deconv = self._deconv(res_block)
         conv1 = self._conv1(deconv)
-        out = fluid.layers.tanh(conv1)
+        out = paddle.tanh(conv1)
         return out
 
 
@@ -380,9 +378,7 @@ class Discriminator(fluid.dygraph.Layer):
 
 def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
-    cls = fluid.layers.reshape(
-        cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]]
-    )
+    cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
         fluid.layers.reduce_sum(
             fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
@@ -432,16 +428,14 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     gradient = gradient[0]
     grad_shape = gradient.shape
 
-    gradient = fluid.layers.reshape(
+    gradient = paddle.reshape(
         gradient, [-1, grad_shape[1] * grad_shape[2] * grad_shape[3]]
     )
 
     epsilon = 1e-16
-    norm = fluid.layers.sqrt(
-        fluid.layers.reduce_sum(fluid.layers.square(gradient), dim=1) + epsilon
-    )
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
-    gp = fluid.layers.reduce_mean(fluid.layers.square(norm - 1.0))
+    gp = paddle.mean(paddle.square(norm - 1.0))
     return gp
 
 
@@ -451,7 +445,7 @@ def get_generator_loss(
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
     g_loss_rec = fluid.layers.reduce_mean(
-        fluid.layers.abs(fluid.layers.elementwise_sub(image_real, rec_img))
+        paddle.abs(paddle.subtract(image_real, rec_img))
     )
 
     pred_fake, cls_fake = discriminator(fake_img)

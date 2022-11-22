@@ -736,10 +736,22 @@ class Optimizer:
         )
         if device is None:
             device = self._get_device_for_param(param.name)
-        with device_guard(device):
-            self.helper.set_variable_initializer(
-                var, initializer=Constant(value=float(fill_value))
+
+        if in_dygraph_mode() and (
+            device == 'cpu' or isinstance(device, core.CPUPlace)
+        ):
+            _C_ops.full_(
+                var,
+                var.shape,
+                str(float(fill_value)),
+                var.dtype,
+                core.CPUPlace(),
             )
+        else:
+            with device_guard(device):
+                self.helper.set_variable_initializer(
+                    var, initializer=Constant(value=float(fill_value))
+                )
 
         if framework._non_static_mode():
             if len(self._accumulators_holder) > 0:
