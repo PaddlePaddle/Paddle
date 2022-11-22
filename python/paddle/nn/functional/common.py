@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+import warnings
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
@@ -25,6 +26,8 @@ from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
+from ...fluid import dygraph_utils
+from ..fluid.layers import utils
 from ...fluid.data_feeder import (
     check_variable_and_dtype,
     check_dtype,
@@ -173,6 +176,200 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
         },
     )
     return out
+
+
+def reshape(x, shape, name=None):
+    """
+    Changes the shape of ``x`` without changing its data.
+    Note that the output Tensor will share data with origin Tensor and doesn't
+    have a Tensor copy in ``dygraph`` mode.
+    If you want to use the Tensor copy version, please use `Tensor.clone` like
+    ``reshape_clone_x = x.reshape([-1]).clone()``.
+    Some tricks exist when specifying the target shape.
+        - 1. -1 means the value of this dimension is inferred from the total element number of x and remaining dimensions. Thus one and only one dimension can be set -1.
+        - 2. 0 means the actual dimension value is going to be copied from the corresponding dimension of x. The index of 0s in shape can not exceed the dimension of x.
+    Here are some examples to explain it.
+        - 1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [6, 8], the reshape operator will transform x into a 2-D tensor with shape [6, 8] and leaving x's data unchanged.
+        - 2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape specified is [2, 3, -1, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this case, one dimension of the target shape is set to -1, the value of this dimension is inferred from the total element number of x and remaining dimensions.
+        - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
+    Args:
+        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        Tensor: A reshaped Tensor with the same data type as ``x``.
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.rand([2, 4, 6], dtype="float32")
+            positive_four = paddle.full([1], 4, "int32")
+            out = paddle.reshape(x, [-1, 0, 3, 2])
+            print(out)
+            # the shape is [2,4,3,2].
+            out = paddle.reshape(x, shape=[positive_four, 12])
+            print(out)
+            # the shape of out_2 is [4, 12].
+            shape_tensor = paddle.to_tensor([8, 6], dtype=paddle.int32)
+            out = paddle.reshape(x, shape=shape_tensor)
+            print(out.shape)
+            # the shape is [8, 6].
+            # out shares data with x in dygraph mode
+            x[0, 0, 0] = 10.
+            print(out[0, 0])
+            # the value is [10.]
+    """
+    actual_shape = None
+    act = None
+    inplace = False
+
+    def _contain_var(list_or_tuple):
+        """
+        Check whether list or tuple contains variable.
+        """
+        for item in list_or_tuple:
+            if isinstance(item, Variable):
+                return True
+        return False
+
+    if in_dygraph_mode():
+        tmp_tensor_type = core.eager.Tensor
+        # TODO(zhiqiu): enable inplace in dygraph mode.
+        if inplace:
+            warnings.warn(
+                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
+            )
+        if isinstance(shape, (list, tuple)):
+            shape = [
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type)
+                else item
+                for item in shape
+            ]
+            out = _C_ops.reshape(x, shape)
+        elif isinstance(shape, tmp_tensor_type):
+            shape.stop_gradient = True
+            out = _C_ops.reshape(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape))
+            )
+
+        return dygraph_utils._append_activation_in_dygraph(out, act)
+    else:
+        if _in_legacy_dygraph():
+            tmp_tensor_type = Variable
+            if inplace:
+                warnings.warn(
+                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
+                )
+            if isinstance(shape, (list, tuple)):
+                shape = [
+                    item.numpy().item(0) if isinstance(item, Variable) else item
+                    for item in shape
+                ]
+                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
+            elif isinstance(shape, tmp_tensor_type):
+                shape.stop_gradient = True
+                out, _ = _legacy_C_ops.reshape2(x, shape)
+            else:
+                raise ValueError(
+                    "shape must be an instance of `list`, `tuple` or `Variable`,"
+                    " got '{}.'".format(type(shape))
+                )
+
+            return dygraph_utils._append_activation_in_dygraph(out, act)
+
+    check_variable_and_dtype(
+        x,
+        'x',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'int16',
+            'int32',
+            'int64',
+            'bool',
+            'uint16',
+        ],
+        'reshape',
+    )
+    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
+    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
+
+    helper = LayerHelper("reshape2", **locals())
+
+    def get_attr_shape(list_shape):
+        unk_dim_idx = -1
+        attrs_shape = []
+        for dim_idx, dim_size in enumerate(list_shape):
+            if isinstance(dim_size, Variable):
+                attrs_shape.append(-1)
+            else:
+                attrs_shape.append(dim_size)
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one dimension value of 'shape' in reshape can "
+                        "be -1. But received shape[%d] is also -1.\n"
+                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
+                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
+                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
+                        "\t# z.shape is [-1, -1, 4]\n\n"
+                        "    If your target shape in Reshape represents dynamic shape, "
+                        "please turn it into a Tensor under @to_static. See above example for details."
+                        % dim_idx
+                    )
+                    unk_dim_idx = dim_idx
+                elif dim_size == 0:
+                    assert dim_idx < len(x.shape), (
+                        "The index of 0 in `shape` must be less than "
+                        "the input tensor X's dimensions. "
+                        "But received shape[%d] = 0, X's dimensions = %d."
+                        % (dim_idx, len(x.shape))
+                    )
+                else:
+                    assert dim_size > 0, (
+                        "Each dimension value of 'shape' in reshape must not "
+                        "be negative except one unknown dimension. "
+                        "But received shape[%d] = %s."
+                        % (dim_idx, str(dim_size))
+                    )
+        return attrs_shape
+
+    inputs = {"X": x}
+    attrs = {}
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs["Shape"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in reshape can't be zero, "
+            "but received %s." % len(shape)
+        )
+        attrs["shape"] = get_attr_shape(shape)
+        if _contain_var(shape):
+            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
+        elif isinstance(actual_shape, Variable):
+            actual_shape.stop_gradient = True
+            inputs["Shape"] = actual_shape
+
+    out = (
+        x
+        if inplace
+        else helper.create_variable_for_type_inference(dtype=x.dtype)
+    )
+    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type="reshape2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs={"Out": out, "XShape": x_shape},
+    )
+
+    return helper.append_activation(out)
 
 
 def interpolate(

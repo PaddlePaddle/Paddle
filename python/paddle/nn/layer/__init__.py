@@ -30,6 +30,7 @@ from .activation import RReLU  # noqa: F401
 from .activation import Softmax2D  # noqa: F401
 from .common import Bilinear  # noqa: F401
 from .common import Pad1D  # noqa: F401
+from .common import Reshape  # noqa: F401
 from .common import Pad2D  # noqa: F401
 from .common import ZeroPad2D  # noqa: F401
 from .common import Pad3D  # noqa: F401

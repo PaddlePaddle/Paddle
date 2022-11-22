@@ -49,6 +49,7 @@ from .activation import glu  # noqa: F401
 from .activation import gumbel_softmax  # noqa: F401
 from .activation import rrelu  # noqa: F401
 from .common import dropout  # noqa: F401
+from .common import reshape  # noqa: F401
 from .common import dropout2d  # noqa: F401
 from .common import dropout3d  # noqa: F401
 from .common import alpha_dropout  # noqa: F401
@@ -143,6 +144,7 @@ __all__ = [  # noqa
     'elu',
     'elu_',
     'gelu',
+    'reshape',
     'hardshrink',
     'hardtanh',
     'hardsigmoid',
