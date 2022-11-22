@@ -1,33 +1,32 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
-
-#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/phi/core/threadpool.h"
 
 #include <thread>
 
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
+DECLARE_int32(dist_threadpool_size);
 DEFINE_int32(io_threadpool_size,
              100,
              "number of threads used for doing IO, default 100");
 
-DECLARE_int32(dist_threadpool_size);
+namespace phi {
 
-namespace paddle {
-namespace framework {
 std::unique_ptr<ThreadPool> ThreadPool::threadpool_(nullptr);
 std::once_flag ThreadPool::init_flag_;
 
@@ -47,7 +46,7 @@ void ThreadPool::Init() {
     PADDLE_ENFORCE_GT(
         num_threads,
         0,
-        platform::errors::InvalidArgument("The number of threads is 0."));
+        phi::errors::InvalidArgument("The number of threads is 0."));
     threadpool_.reset(new ThreadPool(num_threads));
   }
 }
@@ -88,8 +87,8 @@ void ThreadPool::TaskLoop() {
       }
 
       if (tasks_.empty()) {
-        PADDLE_THROW(platform::errors::Unavailable(
-            "Current thread has no task to Run."));
+        PADDLE_THROW(
+            phi::errors::Unavailable("Current thread has no task to Run."));
       }
 
       // pop a task from the task queue
@@ -115,6 +114,4 @@ void ThreadPoolIO::InitIO() {
     io_threadpool_.reset(new ThreadPool(FLAGS_io_threadpool_size));
   }
 }
-
-}  // namespace framework
-}  // namespace paddle
+}  // namespace phi
