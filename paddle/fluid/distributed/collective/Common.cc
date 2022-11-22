@@ -58,5 +58,12 @@ bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
       });
 }
 
+bool CheckTensorsInXPUPlace(const std::vector<phi::DenseTensor>& tensors) {
+  return std::all_of(
+      tensors.cbegin(), tensors.cend(), [&](const phi::DenseTensor& t) {
+        return platform::is_xpu_place(t.place());
+      });
+}
+
 }  //  namespace distributed
 }  //  namespace paddle

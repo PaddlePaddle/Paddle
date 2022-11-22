@@ -23,14 +23,13 @@ limitations under the License. */
 
 public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
+ */
 explicit DenseTensor(paddle::experimental::DataType dtype);
 
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* mutable_data(const phi::Place& place,
-                size_t requested_size = 0);
+T* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 template <typename T>
 T* mutable_data(const DDim& dims,
@@ -41,15 +40,14 @@ void* mutable_data(const phi::Place& place,
                    paddle::experimental::DataType type,
                    size_t requested_size = 0);
 
-void* mutable_data(const phi::Place& place,
-                   size_t requested_size = 0);
+void* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
                    paddle::experimental::DataType type,
                    const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
+ */
 paddle::experimental::DataType type() const;
 
 // memory size returns the holding memory size in byte.
@@ -86,13 +84,11 @@ std::shared_ptr<phi::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
-                        paddle::experimental::DataType type);
+                         paddle::experimental::DataType type);
 
 void set_type(paddle::experimental::DataType type);
 
-InplaceVersion& InplaceVersionCounter() {
-  return *inplace_version_counter_;
-}
+InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 
 /*! The internal of two tensors share the same memory block. */
 DenseTensor& ShareDataWith(const DenseTensor& src);
@@ -116,17 +112,11 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-  dnnl::memory::desc mem_desc() const;
+const dnnl::memory::desc& mem_desc() const;
 
 inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
   mem_desc_ = mem_desc;
-  meta_.layout = DataLayout::kMKLDNN;
-}
-
-dnnl::memory::format_tag format() const;
-
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
+  meta_.layout = DataLayout::ONEDNN;
 }
 
 #endif
@@ -147,8 +137,8 @@ void set_lod(const LoD& lod);
 LoD* mutable_lod();
 
 /*
-* Get the start offset and end offset of an  element from LoD.
-*/
+ * Get the start offset and end offset of an  element from LoD.
+ */
 std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const;
 
 size_t NumLevels() const;

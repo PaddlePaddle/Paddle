@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
+#include "paddle/phi/backends/dynload/mklml.h"
 #endif
 
 namespace phi {
@@ -60,23 +60,23 @@ inline void vec_exp<float>(const int n, const float* x, float* y) {
       y[i] = std::exp(x[i]);
     }
   } else {
-    paddle::platform::dynload::vsExp(n, x, y);
+    phi::dynload::vsExp(n, x, y);
   }
 }
 
 template <>
 inline void vec_exp<double>(const int n, const double* x, double* y) {
-  paddle::platform::dynload::vdExp(n, x, y);
+  phi::dynload::vdExp(n, x, y);
 }
 
 template <>
 inline void vec_scal<float>(const int n, const float a, float* x) {
-  paddle::platform::dynload::cblas_sscal(n, a, x, 1);
+  phi::dynload::cblas_sscal(n, a, x, 1);
 }
 
 template <>
 inline void vec_scal<double>(const int n, const double a, double* x) {
-  paddle::platform::dynload::cblas_dscal(n, a, x, 1);
+  phi::dynload::cblas_dscal(n, a, x, 1);
 }
 #endif
 

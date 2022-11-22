@@ -355,7 +355,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             self.places = [paddle.XPUPlace(0)]
             self.init_test()
 
-        ### train mode
+        # train mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = False
@@ -387,13 +387,13 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                     )
 
     class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
-        ### test mode
+        # test mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = True
 
     class TestBatchNormUseGlobalStats2(TestBatchNormOpUseGlobalStats):
-        ### train mode
+        # train mode
         def init_test(self):
             self.use_global_stats = True
             self.trainable_statistics = False

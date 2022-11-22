@@ -35,7 +35,6 @@ from ...framework import get_default_dtype
 from ..initializer import Constant
 from ...framework import ParamAttr
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid import dygraph_utils
 
 from ..functional import batch_norm, layer_norm, instance_norm
 
@@ -319,6 +318,7 @@ Where `H` means height of feature map, `W` means width of feature map.
 
 class GroupNorm(Layer):
     """
+
     This interface is used to construct a callable object of the ``GroupNorm`` class.
     For more details, refer to code examples.
     It implements the function of the Group Normalization Layer.
@@ -339,7 +339,7 @@ class GroupNorm(Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: Tensor with shape: (batch, num_features, *).
+        - x: Tensor with shape: attr:`(batch, num_features, *)`.
         - output: The same shape as input x.
 
     Returns:
@@ -413,15 +413,8 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        mean_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-        variance_out = self._helper.create_variable_for_type_inference(
-            dtype=input.dtype, stop_gradient=True
-        )
-
         if in_dygraph_mode():
-            pre_act = _C_ops.group_norm(
+            return _C_ops.group_norm(
                 input,
                 self.weight,
                 self.bias,
@@ -430,11 +423,14 @@ class GroupNorm(Layer):
                 self._data_format,
             )
 
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True
+        )
 
-        elif _in_legacy_dygraph():
+        if _in_legacy_dygraph():
             pre_act, _, _ = _legacy_C_ops.group_norm(
                 input,
                 self.weight,
@@ -446,9 +442,7 @@ class GroupNorm(Layer):
                 'groups',
                 self._num_groups,
             )
-            return dygraph_utils._append_activation_in_dygraph(
-                pre_act, act=None
-            )
+            return pre_act
 
         inputs = {'X': input}
         if self.bias is not None:
@@ -1048,6 +1042,7 @@ class BatchNorm3D(_BatchNormBase):
 
 class SyncBatchNorm(_BatchNormBase):
     r"""
+
     This interface is used to construct a callable object of the ``SyncBatchNorm`` class.
     It implements the function of the Cross-GPU Synchronized Batch Normalization Layer, and can
     be used as a normalizer function for other operations, such as conv2d and fully connected
@@ -1093,9 +1088,9 @@ class SyncBatchNorm(_BatchNormBase):
     - :math:`\beta` : trainable shift parameter vector
 
     Note:
-        If you want to use container to pack your model and has ``SyncBatchNorm`` in the
-        evaluation phase, please use ``nn.LayerList`` or ``nn.Sequential`` instead of
-        ``list`` to pack the model.
+        If you want to use container to pack your model and has :ref:`api_paddle_nn_SyncBatchNorm` in the
+        evaluation phase, please use :ref:`api_paddle_nn_LayerList` or :ref:`api_paddle_nn_Sequential` instead of
+        :ref:`api_paddle_hub_list` to pack the model.
 
     Parameters:
         num_features(int): Indicate the number of channels of the input ``Tensor``.
@@ -1113,29 +1108,30 @@ class SyncBatchNorm(_BatchNormBase):
              have trainable bias parameter. Default: None.
 
     Shapes:
-        input: Tensor that the dimension from 2 to 5.
-        output: Tensor with the same shape as input.
+        - input: Tensor that the dimension from 2 to 5.
+        - output: Tensor with the same shape as input.
 
     Examples:
         .. code-block:: python
 
-          # required: gpu
+            # required: gpu
 
-          import paddle
-          import paddle.nn as nn
+            import paddle
+            import paddle.nn as nn
 
-          x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
+            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
-          if paddle.is_compiled_with_cuda():
-              sync_batch_norm = nn.SyncBatchNorm(2)
-              hidden1 = sync_batch_norm(x)
-              print(hidden1)
-              # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-              #        [[[[ 0.26824948,  1.09363246],
-              #           [ 0.26824948, -1.63013160]],
+            if paddle.is_compiled_with_cuda():
+                sync_batch_norm = nn.SyncBatchNorm(2)
+                hidden1 = sync_batch_norm(x)
+                print(hidden1)
+                # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+                #        [[[[ 0.26824948,  1.09363246],
+                #           [ 0.26824948, -1.63013160]],
 
-              #          [[ 0.80956620, -0.66528702],
-              #           [-1.27446556,  1.13018656]]]])
+                #          [[ 0.80956620, -0.66528702],
+                #           [-1.27446556,  1.13018656]]]])
+
     """
 
     def __init__(
@@ -1177,8 +1173,8 @@ class SyncBatchNorm(_BatchNormBase):
         # variance and variance out share the same memory
         variance_out = self._variance
 
-        ### train mode: use mini-batch stats, eval mode: use global stats
-        ### use_global_stats only support False in sync_batch_norm
+        # train mode: use mini-batch stats, eval mode: use global stats
+        # use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
@@ -1284,8 +1280,8 @@ class SyncBatchNorm(_BatchNormBase):
             The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
 
         Examples:
-
             .. code-block:: python
+
                 import paddle
                 import paddle.nn as nn
 
