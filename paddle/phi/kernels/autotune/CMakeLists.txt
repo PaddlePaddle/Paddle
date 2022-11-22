@@ -4,7 +4,7 @@ if(WITH_CUDNN_FRONTEND)
     SRCS cache.cc
     DEPS cudnn-frontend phi_enforce)
 else()
-  cc_library(cache SRCS cache.cc)
+  cc_library(cache SRCS cache.cc phi_enforce)
 endif()
 cc_library(
   switch_autotune
