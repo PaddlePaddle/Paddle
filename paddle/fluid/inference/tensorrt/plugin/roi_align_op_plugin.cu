@@ -53,7 +53,7 @@ __inline__ __device__ T BilinearInterpolate(
   T v3 = input_data[y_high * width + x_low];
   T v4 = input_data[y_high * width + x_high];
   T w1 = hy * hx, w2 = hy * lx, w3 = ly * hx, w4 = ly * lx;
-  T val = (w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4);
+  T val = static_cast<T>(w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4);
   return val;
 }
 

@@ -125,12 +125,12 @@ __global__ void GPURoiAlignForward(const int nthreads,
         const T x = roi_xmin + pw * bin_size_w +
                     static_cast<T>(ix + .5f) * bin_size_w /
                         static_cast<T>(roi_bin_grid_w);
-        T val = BilinearInterpolate(offset_input_data, height, width, y, x);
+        T val = BilinearInterpolate(input_data, height, width, y, x);
         output_val += val;
       }
     }
     output_val /= count;
-    output_data[i] = output_val;
+    output_data[i] = static_cast<T>(output_val);
   }
 }
 
