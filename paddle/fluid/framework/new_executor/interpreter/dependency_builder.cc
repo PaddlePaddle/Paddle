@@ -57,11 +57,10 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
 
   if (is_sequential_run) {
     AddDependencyForSequentialRun();
-    VLOG(8) << "Add SequentialRun Deps";
   }
 
   AddDependencyForCoalesceTensorOp();
-  // AddDependencyForCommunicationOp();
+  AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
