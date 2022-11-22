@@ -185,7 +185,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1
     )
     cost = pd.cross_entropy(input=rnn_out, label=label)
-    avg_cost = pd.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     optimizer = fluid.optimizer.Adagrad(
         learning_rate=1e-4,
