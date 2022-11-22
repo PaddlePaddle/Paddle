@@ -131,6 +131,7 @@ void Conv2dFusionKernel(const Context& ctx,
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Cutlass does not support this activation: %s.", activation.c_str()));
   }
+  output->set_layout(DataLayout::NHWC);
 }
 
 }  // namespace fusion
