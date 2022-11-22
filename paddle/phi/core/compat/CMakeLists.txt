@@ -13,3 +13,9 @@ cc_library(
   convert_utils
   SRCS convert_utils.cc
   DEPS ${convert_utils_deps})
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(convert_utils mkldnn)
+endif()
