@@ -371,7 +371,7 @@ class BadInputTest(unittest.TestCase):
 
             def test_bad_x():
                 data = [1, 2, 4]
-                result = fluid.layers.cumsum(data, axis=0)
+                result = paddle.cumsum(data, axis=0)
 
             self.assertRaises(TypeError, test_bad_x)
 
