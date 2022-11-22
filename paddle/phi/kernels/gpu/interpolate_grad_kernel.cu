@@ -1578,7 +1578,9 @@ PD_REGISTER_KERNEL(nearest_interp_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {
+                   phi::dtype::bfloat16,
+                   int,
+                   int64_t) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
