@@ -649,5 +649,13 @@ bool DistModel::Run(const std::vector<DistModelTensor> &input_data,
   return true;
 }
 
+const std::map<int64_t, std::string> &DistModel::GetIdxToFeeds() {
+  return idx_to_feeds_;
+}
+
+const std::map<int64_t, std::string> &DistModel::GetIdxToFetches() {
+  return idx_to_fetches_;
+}
+
 }  // namespace distributed
 }  // namespace paddle

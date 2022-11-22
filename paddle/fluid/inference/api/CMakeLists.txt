@@ -61,7 +61,7 @@ endif()
 
 cc_library(
   paddle_inference_api
-  SRCS api.cc api_impl.cc helper.cc
+  SRCS api.cc api_impl.cc helper.cc distmodel_predictor.cc
   DEPS ${paddle_inference_api_deps})
 
 if(WIN32)

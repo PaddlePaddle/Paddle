@@ -59,6 +59,8 @@ class DistModel {
   bool Init();
   bool Run(const std::vector<DistModelTensor>& input_data,
            std::vector<DistModelTensor>* output_data);
+  const std::map<int64_t, std::string>& GetIdxToFeeds();
+  const std::map<int64_t, std::string>& GetIdxToFetches();
   ~DistModel() = default;
 
  private:

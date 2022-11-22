@@ -22,8 +22,10 @@ limitations under the License. */
 #pragma once
 
 #include <cassert>
+#include <cstring>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -210,6 +212,69 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     PlaceType backend,
     bool keep_io_types = true,
     std::unordered_set<std::string> black_list = {});
+
+enum DistModelDataType {
+  DIST_FLOAT16,
+  DIST_FLOAT32,
+  DIST_INT64,
+  DIST_INT32,
+  DIST_INT8
+};
+
+class PD_INFER_DECL DistModelDataBuf {
+ public:
+  DistModelDataBuf() = default;
+  void Reshape(const std::vector<int>& shape) {
+    shape_ = shape;
+    int size =
+        std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+    len_ = static_cast<size_t>(size);
+  }
+  template <typename T>
+  void CopyFromCpu(T* data);
+
+  template <typename T>
+  T* GetData() {
+    return reinterpret_cast<T*>(data_.data());
+  }
+
+  char* data() { return data_.data(); }
+  DistModelDataType dtype() { return dtype_; }
+  void SetDtype(int dtype) { dtype_ = static_cast<DistModelDataType>(dtype); }
+  size_t size() { return len_; }
+  std::vector<int> shape() { return shape_; }
+
+  std::vector<char> data_;
+  DistModelDataType dtype_;
+
+ private:
+  size_t len_;
+  std::vector<int> shape_;
+};
+
+struct PD_INFER_DECL DistModelPredictorConfig {
+  std::string model_dir;
+  std::string place;
+};
+
+class PD_INFER_DECL DistModelPredictorBase {
+ public:
+  DistModelPredictorBase() = default;
+  DistModelPredictorBase(const DistModelPredictorBase&) = delete;
+  DistModelPredictorBase& operator=(const DistModelPredictorBase&) = delete;
+
+  virtual bool Run() = 0;
+  virtual std::vector<std::string> GetInputNames() = 0;
+  virtual void SetInput(const std::string& name,
+                        DistModelDataBuf* data_buf,
+                        std::vector<std::vector<size_t>> lod) = 0;
+  virtual std::vector<std::string> GetOutputNames() = 0;
+  virtual std::vector<int> GetOutputShape(const std::string& name) = 0;
+  virtual DistModelDataBuf GetOutputData(const std::string& name) = 0;
+};
+
+PD_INFER_DECL std::shared_ptr<DistModelPredictorBase> CreateDistModelPredictor(
+    const DistModelPredictorConfig& config);
 
 namespace services {
 ///
