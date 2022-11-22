@@ -121,16 +121,6 @@ class TestMean(IPUOpTest):
         self.run_test_base()
 
 
-class TestMax(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_max
-
-
-class TestMin(TestMean):
-    def set_test_op(self):
-        self.op = paddle.fluid.layers.reduce_min
-
-
 class TestSum(TestMean):
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_sum
