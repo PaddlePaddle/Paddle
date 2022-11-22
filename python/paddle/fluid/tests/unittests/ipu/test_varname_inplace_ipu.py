@@ -59,7 +59,7 @@ class TestBase(IPUOpTest):
                     dtype=self.feed_dtype[0],
                 )
                 add1 = paddle.fluid.layers.elementwise_add(x, x)
-                reshape = paddle.fluid.layers.reshape(add1, **self.attrs)
+                reshape = paddle.reshape(add1, **self.attrs)
                 add2 = paddle.fluid.layers.elementwise_add(reshape, reshape)
                 scale1 = paddle.scale(add2)
                 scale2 = paddle.scale(scale1, scale=1.3, bias=0.5)
