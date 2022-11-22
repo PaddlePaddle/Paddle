@@ -92,7 +92,7 @@ class TestApiWhileLoop(unittest.TestCase):
             test_dict["test_key"] = i
             test_dict["test_key"] += 1
 
-            test_list[0] = fluid.layers.reshape(test_list[0], [2, -1]) + 1
+            test_list[0] = paddle.reshape(test_list[0], [2, -1]) + 1
 
             test_list_dict[0]["test_key"] += 1
             test_list_dict[0]["test_key"] = fluid.layers.relu(

@@ -1948,7 +1948,8 @@ def eye(
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
 
-        from .nn import reshape, expand
+        from .nn import expand
+        from paddle import reshape
 
         out = reshape(x=out, shape=re_shape)
         out = expand(x=out, expand_times=expand_times)

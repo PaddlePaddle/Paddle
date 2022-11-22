@@ -94,10 +94,7 @@ def restore_flatten_list(l, splits):
 
 
 def extract_args(func):
-    if hasattr(inspect, 'getfullargspec'):
-        return inspect.getfullargspec(func)[0]
-    else:
-        return inspect.getargspec(func)[0]
+    return inspect.getfullargspec(func).args
 
 
 def _all_gather(x, nranks, ring_id=0, use_calc_stream=True):

@@ -59,6 +59,8 @@ from ..data_feeder import (
 )
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
+from collections.abc import Iterable
+
 
 __all__ = [
     'fc',
@@ -98,7 +100,6 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
-    'reshape',
     'squeeze',
     'unsqueeze',
     'lod_reset',
@@ -122,7 +123,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'pow',
-    'hard_sigmoid',
     'prelu',
     'brelu',
     'leaky_relu',
@@ -148,7 +148,6 @@ __all__ = [
     'size',
     'logical_and',
     'logical_or',
-    'logical_not',
     'clip',
     'clip_by_norm',
     'mean',
@@ -6175,240 +6174,6 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
-    r"""
-    :alias_main: paddle.reshape
-	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-
-    This operator changes the shape of ``x`` without changing its data.
-
-    The target shape can be given by ``shape`` or ``actual_shape``.
-    When ``shape`` and ``actual_shape`` are set at the same time,
-    ``actual_shape`` has a higher priority than ``shape``
-    but at this time ``shape`` can only be an integer list or tuple, and ``shape`` still should be set correctly to
-    guarantee shape inference in compile-time.
-
-    Some tricks exist when specifying the target shape.
-
-    1. -1 means the value of this dimension is inferred from the total element
-    number of x and remaining dimensions. Thus one and only one dimension can
-    be set -1.
-
-    2. 0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x. The index of 0s in shape can not exceed
-    the dimension of x.
-
-    Here are some examples to explain it.
-
-    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [6, 8], the reshape operator will transform x into a 2-D tensor with
-    shape [6, 8] and leaving x's data unchanged.
-
-    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified is [2, 3, -1, 2], the reshape operator will transform x into a
-    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
-    case, one dimension of the target shape is set to -1, the value of this
-    dimension is inferred from the total element number of x and remaining
-    dimensions.
-
-    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
-    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
-    besides -1, 0 means the actual dimension value is going to be copied from
-    the corresponding dimension of x.
-
-    **Note**:
-        The parameter ``actual_shape`` will be deprecated in the future and only use ``shape`` instead to represent the target shape.
-
-    Args:
-        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
-        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
-        actual_shape(variable, optional): An 1-D ``Tensor`` or ``LoDTensor`` . The data type is ``int32`` . If provided, reshape
-                                according to this given shape rather than ``shape`` specifying shape.
-                                That is to say ``actual_shape`` has a higher priority
-                                than ``shape(list|tuple)`` but not ``shape(Tensor)``. \
-                                This argument ``actual_shape`` will be removed in a future version. \
-                                Instructions for updating: ``actual_shape`` will be removed in future versions and replaced by ``shape``.
-        act (str, optional): The non-linear activation to be applied to the reshaped input. Default None.
-        inplace(bool, optional): If ``inplace`` is True, the input and output of ``layers.reshape``
-                       are the same variable. Otherwise, the input and output of
-                       ``layers.reshape`` are different variable. Default False. Note that if ``x``
-                       is more than one OPs' input, ``inplace`` must be False.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-                            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            # example 1:
-            # attr shape is a list which doesn't contain Tensors.
-            data_1 = fluid.data(
-              name='data_1', shape=[2, 4, 6], dtype='float32')
-            reshaped_1 = fluid.layers.reshape(
-              x=data_1, shape=[-1, 0, 3, 2])
-            # the shape of reshaped_1 is [2,4,3,2].
-
-            # example 2:
-            # attr shape is a list which contains Tensors.
-            data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
-            dim = fluid.layers.fill_constant([1], "int32", 5)
-            reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
-            # the shape of reshaped_2 is [5,10].
-
-            # example 3:
-            data_3 = fluid.data(
-              name="data_3", shape=[2,4,6], dtype='float32')
-            reshaped_3 = fluid.layers.reshape(x=data_3, shape=[6,8])
-            # the shape of reshaped_3 is [6,8].
-    """
-    if in_dygraph_mode():
-        tmp_tensor_type = core.eager.Tensor
-        # TODO(zhiqiu): enable inplace in dygraph mode.
-        if inplace:
-            warnings.warn(
-                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-            )
-        if isinstance(shape, (list, tuple)):
-            shape = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in shape
-            ]
-            out = _C_ops.reshape(x, shape)
-        elif isinstance(shape, tmp_tensor_type):
-            # TODO: Tensor shape in reshape has not been tested
-            shape.stop_gradient = True
-            out = _C_ops.reshape(x, shape)
-        else:
-            raise ValueError(
-                "shape must be an instance of `list`, `tuple` or `Variable`,"
-                " got '{}.'".format(type(shape))
-            )
-
-        return dygraph_utils._append_activation_in_dygraph(out, act)
-    else:
-        if _in_legacy_dygraph():
-            tmp_tensor_type = Variable
-            if inplace:
-                warnings.warn(
-                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-                )
-            if isinstance(shape, (list, tuple)):
-                shape = [
-                    item.numpy().item(0) if isinstance(item, Variable) else item
-                    for item in shape
-                ]
-                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
-            elif isinstance(shape, tmp_tensor_type):
-                shape.stop_gradient = True
-                out, _ = _legacy_C_ops.reshape2(x, shape)
-            else:
-                raise ValueError(
-                    "shape must be an instance of `list`, `tuple` or `Variable`,"
-                    " got '{}.'".format(type(shape))
-                )
-
-            return dygraph_utils._append_activation_in_dygraph(out, act)
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int16',
-            'int32',
-            'int64',
-            'bool',
-            'uint16',
-        ],
-        'reshape',
-    )
-    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
-    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
-
-    helper = LayerHelper("reshape2", **locals())
-
-    def get_attr_shape(list_shape):
-        unk_dim_idx = -1
-        attrs_shape = []
-        for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, Variable):
-                attrs_shape.append(-1)
-            else:
-                attrs_shape.append(dim_size)
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one dimension value of 'shape' in reshape can "
-                        "be -1. But received shape[%d] is also -1.\n"
-                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
-                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
-                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
-                        "\t# z.shape is [-1, -1, 4]\n\n"
-                        "    If your target shape in Reshape represents dynamic shape, "
-                        "please turn it into a Tensor under @to_static. See above example for details."
-                        % dim_idx
-                    )
-                    unk_dim_idx = dim_idx
-                elif dim_size == 0:
-                    assert dim_idx < len(x.shape), (
-                        "The index of 0 in `shape` must be less than "
-                        "the input tensor X's dimensions. "
-                        "But received shape[%d] = 0, X's dimensions = %d."
-                        % (dim_idx, len(x.shape))
-                    )
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension value of 'shape' in reshape must not "
-                        "be negative except one unknown dimension. "
-                        "But received shape[%d] = %s."
-                        % (dim_idx, str(dim_size))
-                    )
-        return attrs_shape
-
-    inputs = {"X": x}
-    attrs = {}
-    if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        inputs["Shape"] = shape
-    elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in reshape can't be zero, "
-            "but received %s." % len(shape)
-        )
-        attrs["shape"] = get_attr_shape(shape)
-        if utils._contain_var(shape):
-            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
-        elif isinstance(actual_shape, Variable):
-            actual_shape.stop_gradient = True
-            inputs["Shape"] = actual_shape
-
-    out = (
-        x
-        if inplace
-        else helper.create_variable_for_type_inference(dtype=x.dtype)
-    )
-    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="reshape2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out, "XShape": x_shape},
-    )
-
-    return helper.append_activation(out)
-
-
 def squeeze(input, axes, name=None):
     """
     This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
@@ -6740,10 +6505,6 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    try:
-        from collections.abc import Iterable
-    except:
-        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
@@ -9236,50 +8997,6 @@ def pow(x, factor=1.0, name=None):
     return out
 
 
-@templatedoc()
-def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
-    """
-    ${comment}
-    Parameters:
-        x (${x_type}): ${x_comment}
-        slope (float, optional): ${slope_comment}
-        offset (float, optional): ${offset_comment}
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`
-
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
-            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'hard_sigmoid'
-    )
-
-    helper = LayerHelper('hard_sigmoid', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='hard_sigmoid',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'slope': slope, 'offset': offset},
-    )
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
@@ -11494,41 +11211,6 @@ def logical_or(x, y, out=None, name=None):
 
 
 @templatedoc()
-def logical_not(x, out=None, name=None):
-    """
-
-    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = !x
-
-    Args:
-        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_not(x)
-            print(res) # [False  True False  True]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_not(x)
-    return _logical_op(
-        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
-    )
-
-
-@templatedoc()
 def clip(x, min, max, name=None):
     """
         :old_api: paddle.fluid.layers.clip
@@ -12644,7 +12326,7 @@ class PyFuncRegistry:
 
         self._func = func
         # find named args using reflection
-        args = inspect.getargspec(self._func)
+        args = inspect.getfullargspec(self._func)
         if len(args[0]) == 0 and args[1] is None and args[2] is None:
             # Function with no inputs
             self._named_args = None

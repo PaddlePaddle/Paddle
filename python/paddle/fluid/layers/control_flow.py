@@ -27,7 +27,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_or
 from .utils import (
     assert_same_structure,
     map_structure,
@@ -49,6 +49,7 @@ from ..data_feeder import (
     check_dtype,
 )
 from ..backward import _infer_var_data_type_shape_
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
@@ -2807,7 +2808,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 )
             )
         false_cond_block = ConditionalBlock(
-            [logical_not(pred)], is_scalar_condition=True
+            [paddle.logical_not(pred)], is_scalar_condition=True
         )
         with false_cond_block.block():
             origin_false_output = false_fn()
@@ -3260,13 +3261,13 @@ class Switch:
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
-            not_cond = logical_not(x=condition)
+            not_cond = paddle.logical_not(x=condition)
             self.pre_not_conditions.append(not_cond)
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
             new_not_cond = logical_and(
-                x=pre_not_cond, y=logical_not(x=condition)
+                x=pre_not_cond, y=paddle.logical_not(x=condition)
             )
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
