@@ -294,7 +294,6 @@ class DataParallelOptimizationPass(PassBase):
 
                 op._set_attr('use_calc_stream', False)
                 ring_id = op.attr("ring_id")
-
                 block._insert_op_without_sync(
                     idx,
                     type='c_wait_compute',
