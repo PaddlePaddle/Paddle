@@ -69,9 +69,7 @@ void LogsumexpKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
 
-  if (axis.size() == 0 || static_cast<int>(axis.size()) == x.dims().size()) {
-    reduce_all = true;
-  }
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
 
   if (reduce_all) {
     // Flatten and reduce 1-D tensor

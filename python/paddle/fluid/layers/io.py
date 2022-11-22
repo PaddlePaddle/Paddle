@@ -19,7 +19,6 @@ import threading
 
 from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
-from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import (

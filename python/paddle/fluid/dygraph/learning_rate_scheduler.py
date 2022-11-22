@@ -270,12 +270,10 @@ class NaturalExpDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
-        decayed_lr = self.learning_rate * layers.exp(
+            div_res = paddle.floor(div_res)
+        decayed_lr = self.learning_rate * paddle.exp(
             -1 * self.decay_rate * div_res
         )
 
@@ -356,11 +354,9 @@ class ExponentialDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate * (self.decay_rate**div_res)
 
@@ -437,11 +433,9 @@ class InverseTimeDecay(LearningRateDecay):
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate / (1 + self.decay_rate * div_res)
 
@@ -524,12 +518,10 @@ class PolynomialDecay(LearningRateDecay):
         self.cycle = cycle
 
     def step(self):
-        from .. import layers
-
         tmp_step_num = self.step_num
         tmp_decay_steps = self.decay_steps
         if self.cycle:
-            div_res = layers.ceil(
+            div_res = paddle.ceil(
                 self.create_lr_var(tmp_step_num / float(self.decay_steps))
             )
 
@@ -601,15 +593,13 @@ class CosineDecay(LearningRateDecay):
         self.epochs = epochs
 
     def step(self):
-        from .. import layers
-
-        cur_epoch = layers.floor(
+        cur_epoch = paddle.floor(
             self.create_lr_var(self.step_num / self.step_each_epoch)
         )
         decayed_lr = (
             self.learning_rate
             * 0.5
-            * (layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+            * (paddle.cos(cur_epoch * math.pi / self.epochs) + 1)
         )
         return decayed_lr
 

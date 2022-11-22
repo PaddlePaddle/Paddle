@@ -104,7 +104,6 @@ __all__ = [
     'unsqueeze',
     'lod_reset',
     'lod_append',
-    'lrn',
     'pad',
     'label_smooth',
     'roi_pool',
@@ -118,8 +117,6 @@ __all__ = [
     'resize_nearest',
     'gather_nd',
     'scatter',
-    'scatter_nd_add',
-    'scatter_nd',
     'random_crop',
     'mean_iou',
     'relu',
@@ -6831,103 +6828,6 @@ def lod_append(x, level):
     return out
 
 
-def lrn(
-    input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None, data_format='NCHW'
-):
-    r"""
-    :alias_main: paddle.nn.functional.lrn
-        :alias: paddle.nn.functional.lrn,paddle.nn.functional.norm.lrn
-        :old_api: paddle.fluid.layers.lrn
-
-    This operator implements the Local Response Normalization Layer.
-    This layer performs a type of "lateral inhibition" by normalizing over local input regions.
-    For more information, please refer to `ImageNet Classification with Deep Convolutional Neural Networks <https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf>`_
-
-    The formula is as follows:
-
-    .. math::
-
-        Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + n/2)}_{j = \\max(0, i - n/2)}(Input(j, x, y))^2\\right)^{\\beta}
-
-    In the above equation:
-
-    - :math:`n` : The number of channels to sum over.
-    - :math:`k` : The offset (avoid being divided by 0).
-    - :math:`\\alpha` : The scaling parameter.
-    - :math:`\\beta` : The exponent parameter.
-
-
-    Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C],
-            where N is the batch size, C is the input channel, H is Height, W is weight. The data
-            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
-        n (int, optional): The number of channels to sum over. Default: 5
-        k (float, optional): An offset, positive. Default: 1.0
-        alpha (float, optional): The scaling parameter, positive. Default:1e-4
-        beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set
-            this property. For more information, please refer to :ref:`api_guide_Name`
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns:
-        Variable: A tensor variable storing the transformation result with the same shape and data type as input.
-
-
-    Examples:
-
-    .. code-block:: python
-
-        import paddle.fluid as fluid
-        data = fluid.data(
-            name="data", shape=[None, 3, 112, 112], dtype="float32")
-        lrn = fluid.layers.lrn(input=data)
-        print(lrn.shape)  # [-1, 3, 112, 112]
-        print(lrn.dtype)  # float32
-    """
-    helper = LayerHelper('lrn', **locals())
-    check_variable_and_dtype(input, 'input', ['float32'], 'lrn')
-    dtype = helper.input_dtype()
-    input_shape = input.shape
-    dims = len(input_shape)
-
-    if dims != 4:
-        raise ValueError(
-            "Input's dimension size of Op(lrn) must be 4, but received %d."
-            % (dims)
-        )
-    if data_format not in ['NCHW', 'NHWC']:
-        raise ValueError(
-            "Attr(data_format) of Op(lrn) got wrong value: received "
-            + data_format
-            + " but only NCHW or NHWC supported."
-        )
-
-    mid_out = helper.create_variable_for_type_inference(
-        dtype=dtype, stop_gradient=True
-    )
-    lrn_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="lrn",
-        inputs={"X": input},
-        outputs={
-            "Out": lrn_out,
-            "MidOut": mid_out,
-        },
-        attrs={
-            "n": n,
-            "k": k,
-            "alpha": alpha,
-            "beta": beta,
-            "data_format": data_format,
-        },
-    )
-
-    return lrn_out
-
-
 def pad(x, paddings, pad_value=0.0, name=None):
     r"""
     :alias_main: paddle.nn.functional.pad
@@ -8791,138 +8691,6 @@ def scatter(input, index, updates, name=None, overwrite=True):
         outputs={"Out": out},
     )
     return out
-
-
-def scatter_nd_add(ref, index, updates, name=None):
-    r"""
-    **Scatter_nd_add Layer**
-
-    Output is obtained by applying sparse addition to a single value
-    or slice in a Variable.
-
-    :attr:`ref` is a Tensor with rank :math:`R`
-    and :attr:`index` is a Tensor with rank :math:`K` . Thus, :attr:`index`
-    has shape :math:`[i_0, i_1, ..., i_{K-2}, Q]` where :math:`Q \leq R` . :attr:`updates`
-    is a Tensor with rank :math:`K - 1 + R - Q` and its
-    shape is :math:`index.shape[:-1] + ref.shape[index.shape[-1]:]` .
-
-    According to the :math:`[i_0, i_1, ..., i_{K-2}]` of :attr:`index` ,
-    add the corresponding :attr:`updates` slice to the :attr:`ref` slice
-    which is obtained by the last one dimension of :attr:`index` .
-
-    .. code-block:: text
-
-        Given:
-
-        * Case 1:
-            ref = [0, 1, 2, 3, 4, 5]
-            index = [[1], [2], [3], [1]]
-            updates = [9, 10, 11, 12]
-
-          we get:
-
-            output = [0, 22, 12, 14, 4, 5]
-
-        * Case 2:
-            ref = [[65, 17], [-14, -25]]
-            index = [[], []]
-            updates = [[[-1, -2], [1, 2]],
-                       [[3, 4], [-3, -4]]]
-            ref.shape = (2, 2)
-            index.shape = (2, 0)
-            updates.shape = (2, 2, 2)
-
-          we get:
-
-            output = [[67, 19], [-16, -27]]
-
-    Args:
-        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
-        index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
-                          Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
-                            as ref. It must have the shape index.shape[:-1] + ref.shape[index.shape[-1]:].
-        name (str|None): The output variable name. If set None, the layer will be named automatically.
-
-    Returns:
-        output (Variable): The output is a tensor with the same shape and dtype as ref.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            ref = fluid.data(name='ref', shape=[3, 5, 9, 10], dtype='float32')
-            index = fluid.data(name='index', shape=[3, 2], dtype='int32')
-            updates = fluid.data(name='update', shape=[3, 9, 10], dtype='float32')
-
-            output = fluid.layers.scatter_nd_add(ref, index, updates)
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.scatter_nd_add(ref, index, updates)
-    else:
-        if _in_legacy_dygraph():
-            op = getattr(_legacy_C_ops, 'scatter_nd_add')
-            return op(ref, index, updates)
-        else:
-            if ref.dtype != updates.dtype:
-                raise ValueError("ref and updates must have same data type.")
-
-            helper = LayerHelper('scatter_nd_add', **locals())
-            dtype = helper.input_dtype(input_param_name='ref')
-            output = helper.create_variable_for_type_inference(dtype)
-            helper.append_op(
-                type="scatter_nd_add",
-                inputs={"X": ref, "Index": index, "Updates": updates},
-                outputs={"Out": output},
-            )
-            return output
-
-
-def scatter_nd(index, updates, shape, name=None):
-    """
-    **Scatter_nd Layer**
-
-    Output is obtained by scattering the :attr:`updates` in a new tensor according
-    to :attr:`index` . This op is similar to :code:`scatter_nd_add`, except the
-    tensor of :attr:`shape` is zero-initialized. Correspondingly, :code:`scatter_nd(index, updates, shape)`
-    is equal to :code:`scatter_nd_add(paddle.zeros(shape, updates.dtype), index, updates)` .
-    If :attr:`index` has repeated elements, then the corresponding updates are accumulated.
-    Because of the numerical approximation issues, the different order of repeated elements
-    in :attr:`index` may cause different results. The specific calculation method can be
-    seen :code:`scatter_nd_add` . This op is the inverse of the :code:`gather_nd` op.
-
-    Args:
-        index (Tensor): The index input with ndim > 1 and index.shape[-1] <= len(shape).
-                          Its dtype should be int32 or int64 as it is used as indexes.
-        updates (Tensor): The updated value of scatter_nd op. Its dtype should be float32, float64.
-                            It must have the shape index.shape[:-1] + shape[index.shape[-1]:]
-        shape(tuple|list): Shape of output tensor.
-        name (str|None): The output Tensor name. If set None, the layer will be named automatically.
-
-    Returns:
-        output (Tensor): The output is a tensor with the same type as :attr:`updates` .
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            index_data = np.array([[1, 1],
-                                   [0, 1],
-                                   [1, 3]]).astype(np.int64)
-            index = paddle.to_tensor(index_data)
-            updates = paddle.rand(shape=[3, 9, 10], dtype='float32')
-            shape = [3, 5, 9, 10]
-
-            output = paddle.scatter_nd(index, updates, shape)
-    """
-    return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
 @templatedoc()
