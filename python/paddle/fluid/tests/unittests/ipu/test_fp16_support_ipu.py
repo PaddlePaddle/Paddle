@@ -97,7 +97,7 @@ class TestIntInput(TestBase):
         y = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
         )
-        out = paddle.fluid.layers.gather(x, index=y)
+        out = paddle.gather(x, index=y)
         self.fetch_list = [out.name]
 
 
