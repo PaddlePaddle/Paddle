@@ -329,7 +329,6 @@ def lm_model(
         real_res = paddle.reshape(real_res, shape=[len, -1, hidden_size])
         real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
 
-
         return real_res, last_hidden, last_cell
 
     batch_size_each = batch_size

@@ -146,7 +146,6 @@ class MultiHeadAttention(Layer):
         v = paddle.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
         v = paddle.transpose(x=v, perm=[0, 2, 1, 3])
 
-
         if cache is not None:
             cache_k, cache_v = cache["k"], cache["v"]
             k = layers.concat([cache_k, k], axis=2)

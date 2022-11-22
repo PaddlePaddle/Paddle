@@ -487,7 +487,6 @@ class MultiHeadAttentionLayer(Layer):
         transpose_k = paddle.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
         reshaped_v = paddle.reshape(
             x=v, shape=[0, 0, self._n_head, self._d_value]
-
         )
         transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
