@@ -177,9 +177,6 @@ void GroupNormKernel(const Context& dev_ctx,
   dim3 grid(group_size, groups, x_dims[0]);
   dim3 threads(block_size, 1, 1);
   if (data_layout == DataLayout::kNCHW) {
-    set_zero_AccT(dev_ctx, mean, static_cast<AccT>(0));
-    set_zero_AccT(dev_ctx, var, static_cast<AccT>(0));
-
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int size = group_size * imsize;
     const int max_num_threads = 1024;
@@ -274,9 +271,6 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
 #endif
   dim3 grid(group_size, groups, input_ddim[0]);
   dim3 threads(block_size, 1, 1);
-  cudaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
-  cudaMemset(variance, 0, sizeof(AccT) * input_ddim[0] * groups);
-  cudaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
   if (data_layout == DataLayout::kNCHW) {
     constexpr int vec_size = sizeof(float4) / sizeof(T);
     int size = group_size * image_size;  // group element size
@@ -299,6 +293,9 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     }
   } else {
+    cudaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
+    cudaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
+
     phi::GroupNormForwardGetMeanAndVar<T, AccT>
         <<<grid, threads, 0, stream>>>(input,
                                        input_ddim[0],
