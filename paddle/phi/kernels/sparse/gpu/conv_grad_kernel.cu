@@ -200,43 +200,41 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 
       if constexpr (std::is_same<T, float>::value &&
                     std::is_same<IntT, int32_t>::value) {
-        launchKernel<
-            float,
-            cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4<true,
-                                                                true,
-                                                                false>>(
-            dev_ctx,
-            x.values().data<T>(),
-            out_grad.values().data<T>(),
-            nullptr,
-            tmp_d_kernel_ptr,
-            in_channels,
-            out_channels,
-            counter_ptr[i],
-            static_cast<const int32_t*>(gather_x_indices),
-            static_cast<const int32_t*>(gather_out_indices),
-            nullptr,
-            1,
-            0);
+        fp32_gather_gemm_scatter d_kernel_fusion =
+            getBestFp32Kernel<true, true, false>(
+                in_channels, out_channels, counter_ptr[i], true, false);
+        d_kernel_fusion(dev_ctx,
+                        x.values().data<T>(),
+                        out_grad.values().data<T>(),
+                        nullptr,
+                        tmp_d_kernel_ptr,
+                        in_channels,
+                        out_channels,
+                        counter_ptr[i],
+                        static_cast<const int32_t*>(gather_x_indices),
+                        static_cast<const int32_t*>(gather_out_indices),
+                        nullptr,
+                        1,
+                        0);
 
         // call gemm: d_x = out_grad * transpose(kernel)
         // (n, out_channels) * (out_channels, in_channels)
-        launchKernel<
-            float,
-            cutlass_tensorop_s1688gemm_64x64_16x3_nt_align4<true, false, true>>(
-            dev_ctx,
-            out_grad.values().data<T>(),
-            tmp_kernel_ptr,
-            x_grad_values_ptr,
-            x_grad_values_ptr,
-            counter_ptr[i],
-            in_channels,
-            out_channels,
-            static_cast<const int32_t*>(gather_out_indices),
-            nullptr,
-            static_cast<const int32_t*>(scatter_x_indices),
-            1,
-            1);
+        fp32_gather_gemm_scatter d_x_fusion =
+            getBestFp32Kernel<true, false, true>(
+                counter_ptr[i], in_channels, out_channels, false, true);
+        d_x_fusion(dev_ctx,
+                   out_grad.values().data<T>(),
+                   tmp_kernel_ptr,
+                   x_grad_values_ptr,
+                   x_grad_values_ptr,
+                   counter_ptr[i],
+                   in_channels,
+                   out_channels,
+                   static_cast<const int32_t*>(gather_out_indices),
+                   nullptr,
+                   static_cast<const int32_t*>(scatter_x_indices),
+                   1,
+                   1);
       }
     } else {
 #endif

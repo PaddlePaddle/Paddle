@@ -121,7 +121,15 @@ void launchKernel(const GPUContext& dev_ctx,
   CUTLASS_CHECK(status);
   gemm_op(dev_ctx.stream());
 }
-template <bool GatherA, bool GatherB, bool ScatterD>
+// cutlass::gemm::GemmUniversalMode Mode_ =
+// cutlass::gemm::GemmUniversalMode::kGemm,
+// int SplitKSlices_ = 1
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -150,11 +158,15 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -183,11 +195,15 @@ struct cutlass_tensorop_h1688gemm_64x128_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -216,11 +232,15 @@ struct cutlass_tensorop_h1688gemm_128x64_32x2_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -249,11 +269,15 @@ struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -282,11 +306,15 @@ struct cutlass_tensorop_h1688gemm_64x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -315,11 +343,15 @@ struct cutlass_tensorop_h16816gemm_64x64_64x5_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -346,11 +378,15 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x128_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       cutlass::half_t,
@@ -377,44 +413,15 @@ struct cutlass_tensorop_f16_s1688gemm_f16_64x64_32x2_nn_align8 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
-struct cutlass_tensorop_h1688gemm_64x128_32x2_tn_align8 {
-  using Gemm = cutlass::gemm::device::GemmUniversal<
-      cutlass::half_t,
-      cutlass::layout::RowMajor,
-      cutlass::half_t,
-      cutlass::layout::ColumnMajor,
-      cutlass::half_t,
-      cutlass::layout::RowMajor,
-      cutlass::half_t,
-      cutlass::arch::OpClassTensorOp,
-      cutlass::arch::Sm75,
-      cutlass::gemm::GemmShape<64, 128, 32>,
-      cutlass::gemm::GemmShape<32, 64, 32>,
-      cutlass::gemm::GemmShape<16, 8, 8>,
-      cutlass::epilogue::thread::LinearCombination<cutlass::half_t,
-                                                   8,
-                                                   cutlass::half_t,
-                                                   cutlass::half_t>,
-      cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-      2,
-      8,
-      8,
-      cutlass::arch::OpMultiplyAdd,
-      cutlass::ComplexTransform::kNone,
-      cutlass::ComplexTransform::kNone,
-      GatherA,
-      GatherB,
-      ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
-};
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -440,11 +447,15 @@ struct cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel;
-  static const int SplitKSlices = 30;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688gemm_64x64_16x3_nt_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -470,11 +481,15 @@ struct cutlass_tensorop_s1688gemm_64x64_16x3_nt_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -500,11 +515,15 @@ struct cutlass_tensorop_s1688f16gemm_64x64_16x10_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -530,11 +549,15 @@ struct cutlass_tensorop_s1688f16gemm_128x128_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -560,11 +583,15 @@ struct cutlass_tensorop_s1688f16gemm_256x64_16x4_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -590,11 +617,15 @@ struct cutlass_tensorop_s1688tf32gemm_256x128_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -620,11 +651,15 @@ struct cutlass_tensorop_s1688f16gemm_64x128_16x6_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       float,
@@ -650,11 +685,15 @@ struct cutlass_tensorop_s1688gemm_64x64_16x3_nn_align4 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       double,
@@ -680,11 +719,15 @@ struct cutlass_tensorop_d884gemm_16x32_16x5_nn_align1 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
-template <bool GatherA, bool GatherB, bool ScatterD>
+template <bool GatherA,
+          bool GatherB,
+          bool ScatterD,
+          cutlass::gemm::GemmUniversalMode Mode_ =
+              cutlass::gemm::GemmUniversalMode::kGemm,
+          int SplitKSlices_ = 1>
 struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
   using Gemm = cutlass::gemm::device::GemmUniversal<
       double,
@@ -710,9 +753,8 @@ struct cutlass_tensorop_d884gemm_32x16_16x5_nn_align1 {
       GatherA,
       GatherB,
       ScatterD>;
-  static const cutlass::gemm::GemmUniversalMode Mode =
-      cutlass::gemm::GemmUniversalMode::kGemm;
-  static const int SplitKSlices = 1;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
+  static const int SplitKSlices = SplitKSlices_;
 };
 template <bool GatherA, bool GatherB, bool ScatterD>
 fp16_gather_gemm_scatter getBestFp16Kernel(const int M,
@@ -924,9 +966,12 @@ fp32_gather_gemm_scatter getBestFp32Kernel(const int M,
   if (transposedA && !transposedB) {
     return launchKernel<
         float,
-        cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4<GatherA,
-                                                            GatherB,
-                                                            ScatterD>>;
+        cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4<
+            GatherA,
+            GatherB,
+            ScatterD,
+            cutlass::gemm::GemmUniversalMode::kGemmSplitKParallel,
+            30>>;
   }
   if (!transposedA && transposedB) {
     return launchKernel<
