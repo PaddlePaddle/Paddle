@@ -61,11 +61,9 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
-    bool with_fp16 =
-          engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
     if (engine_->with_dynamic_shape()) {
-      std::cout<<"@@in convert group norm, with fp16:"<<with_fp16<<std::endl;
       int gn_num = groups;
       std::vector<int64_t> mean_shape({gn_num});
       std::vector<int64_t> variance_shape({gn_num});
@@ -86,7 +84,6 @@ class GroupNormOpConverter : public OpConverter {
       RreplenishLayerAndOutput(
           groupnorm_layer, "group_norm", {output_name}, test_mode);
     } else {
-      std::cout<<"@@ in convert group norm, with fp16:"<<with_fp16<<std::endl;
       int gn_num = input_itensor->getDimensions().d[0] * groups;
       std::vector<int64_t> mean_shape({gn_num});
       std::vector<int64_t> variance_shape({gn_num});

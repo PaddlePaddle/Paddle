@@ -22,7 +22,6 @@ import unittest
 
 
 class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -47,16 +46,17 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         def generate_bias():
             return np.random.randn(32).astype(np.float32)
 
-        for batch in [1, 2]:
-            for group in [1, 32, -1]:
-                for epsilon in [0.0001]:
+        for batch in [1, 2, 4]:
+            for group in [1, 4, 32, -1]:
+                for epsilon in [0.00001, 0.00005]:
                     for data_layout in ['NCHW']:
                         dics = [
                             {
                                 "epsilon": epsilon,
                                 "groups": group,
                                 "data_layout": data_layout,
-                            },{}
+                            },
+                            {},
                         ]
                         ops_config = [
                             {
@@ -140,7 +140,6 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
-
 
     def test(self):
         self.run_test()
