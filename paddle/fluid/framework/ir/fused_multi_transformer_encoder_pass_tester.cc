@@ -188,6 +188,7 @@ TEST(FusedMultiTransformerEncoderPass, basic) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
+  graph->Set("enable_int8", new bool(false));
 
   auto pass =
       PassRegistry::Instance().Get("fused_multi_transformer_encoder_pass");
@@ -334,6 +335,7 @@ TEST(FusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set("enable_int8", new bool(false));
   graph->Set("__param_scope__", CreateParamScope());
 
   auto pass = PassRegistry::Instance().Get(
@@ -489,6 +491,7 @@ TEST(MultiDevicesFusedMultiTransformerEncoderFuseQKVPass, basic) {
   layers.elementwise_add(attention_out, ffn_eltadd1_out);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set("enable_int8", new bool(false));
   graph->Set("__param_scope__", CreateParamScope());
 
   auto pass = PassRegistry::Instance().Get(

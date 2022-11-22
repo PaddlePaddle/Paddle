@@ -216,6 +216,7 @@ class FusedDropoutHelper {
     auto increment = GetIncrement(ctx);
     if (act_method == "gelu") {
       if (FLAGS_use_fast_math) {
+        VLOG(0) << "fast gelu";
         FastGeluFunctor<T> fast_gelu;
         LaunchDropoutActBias<T, MaskType, FastGeluFunctor<T>, InType, OutType>(
             fast_gelu,
@@ -238,6 +239,7 @@ class FusedDropoutHelper {
             quant_max_bound,
             quant_min_bound);
       } else {
+        VLOG(0) << "slow gelu";
         GeluFunctor<T> gelu;
         LaunchDropoutActBias<T, MaskType, GeluFunctor<T>, InType, OutType>(
             gelu,

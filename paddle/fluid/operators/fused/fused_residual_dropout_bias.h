@@ -106,7 +106,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     T tmp;
     if (std::is_same<InType, int32_t>::value) {
       T tmp0 = static_cast<T>(static_cast<float>(src_vec[ii]) *
-                              quant_last_in_scale / quant_out_scale_vec[ii]);
+                              quant_out_scale_vec[ii]);
       tmp = tmp0 + bias_vec[ii];
     } else {
       tmp = static_cast<T>(src_vec[ii]) + bias_vec[ii];

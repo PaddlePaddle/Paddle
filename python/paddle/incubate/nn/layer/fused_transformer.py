@@ -1255,14 +1255,10 @@ class FusedMultiTransformer(Layer):
             ln_scale = self.create_parameter(
                 attr=ln_scale_attr,
                 shape=[embed_dim],
-                dtype="float32",
                 default_initializer=Constant(value=1.0),
             )
             ln_bias = self.create_parameter(
-                attr=ln_bias_attr,
-                shape=[embed_dim],
-                is_bias=True,
-                dtype="float32",
+                attr=ln_bias_attr, shape=[embed_dim], is_bias=True
             )
             qkv_weight = self.create_parameter(
                 shape=[3, num_heads, self.head_dim, embed_dim]
@@ -1295,14 +1291,10 @@ class FusedMultiTransformer(Layer):
                 shape=[embed_dim],
                 attr=ffn_ln_scale_attr,
                 is_bias=False,
-                dtype="float32",
                 default_initializer=Constant(1.0),
             )
             ffn_ln_bias = self.create_parameter(
-                shape=[embed_dim],
-                attr=ffn_ln_bias_attr,
-                is_bias=True,
-                dtype="float32",
+                shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True
             )
             ffn1_weight = self.create_parameter(
                 shape=[embed_dim, dim_feedforward],

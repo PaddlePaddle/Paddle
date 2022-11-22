@@ -248,7 +248,6 @@ int FuseMultiTransformerLayerPass::BuildFusion(Graph* graph,
       for (const auto& name : attr_names) {
         MergeAttrs<float>(fuse_op_descs, name);
       }
-      VLOG(0) << "Finsh Merge attrs";
     }
 
     ////////////////
