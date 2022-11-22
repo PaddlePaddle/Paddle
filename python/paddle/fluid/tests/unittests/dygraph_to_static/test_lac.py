@@ -621,7 +621,7 @@ class TestLACModel(unittest.TestCase):
                     step += 1
             # save inference model
             if to_static:
-                fluid.dygraph.jit.save(
+                paddle.jit.save(
                     layer=model,
                     path=self.model_save_prefix,
                     input_spec=[input_specs[0], input_specs[-1]],
@@ -706,7 +706,7 @@ class TestLACModel(unittest.TestCase):
     def predict_dygraph_jit(self, batch):
         words, targets, length = batch
         with fluid.dygraph.guard(self.place):
-            model = fluid.dygraph.jit.load(self.model_save_prefix)
+            model = paddle.jit.load(self.model_save_prefix)
             model.eval()
 
             pred_res = model(to_variable(words), to_variable(length))

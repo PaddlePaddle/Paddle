@@ -26,7 +26,7 @@ from paddle.fluid.dygraph import (
     Layer,
     jit,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     ConcreteProgram,
     StaticFunction,
 )
@@ -132,7 +132,7 @@ class TestInputSpec(unittest.TestCase):
             # 2. test save load
             net.inner_function(x)
             jit.save(net, self.model_path)
-            infer_net = fluid.dygraph.jit.load(self.model_path)
+            infer_net = paddle.jit.load(self.model_path)
             pred = infer_net(x)
             np.testing.assert_allclose(out.numpy(), pred.numpy(), rtol=1e-05)
 

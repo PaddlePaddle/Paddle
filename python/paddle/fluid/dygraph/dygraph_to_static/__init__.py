@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import ast_transformer
-from .ast_transformer import *
-
 from . import static_analysis
 from .static_analysis import *
 
@@ -36,7 +33,6 @@ from . import logging_utils
 from .logging_utils import *
 
 __all__ = []
-__all__ += ast_transformer.__all__
 __all__ += loop_transformer.__all__
 __all__ += static_analysis.__all__
 __all__ += variable_trans_func.__all__

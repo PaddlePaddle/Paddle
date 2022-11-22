@@ -21,7 +21,7 @@ import unittest
 
 import paddle
 from paddle.fluid.dygraph.nn import Embedding
-from paddle.fluid.dygraph import ProgramTranslator
+from paddle.jit import ProgramTranslator
 from paddle.fluid.dygraph import declarative
 
 

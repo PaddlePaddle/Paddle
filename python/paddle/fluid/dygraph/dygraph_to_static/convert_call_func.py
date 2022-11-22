@@ -36,13 +36,13 @@ from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import (
     TranslatorLogger,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     StaticFunction,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     convert_to_static,
 )
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+from paddle.jit.dy2static.program_translator import (
     unwrap_decorators,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap

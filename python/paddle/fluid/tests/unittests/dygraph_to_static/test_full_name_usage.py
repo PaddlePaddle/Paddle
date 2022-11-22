@@ -82,9 +82,7 @@ class TestImportProgramTranslator(unittest.TestCase):
         dy_to_stat_prog_trans = (
             fluid.dygraph.dygraph_to_static.ProgramTranslator()
         )
-        full_pkg_prog_trans = (
-            fluid.dygraph.dygraph_to_static.program_translator.ProgramTranslator()
-        )
+        full_pkg_prog_trans = paddle.jit.ProgramTranslator()
         self.assertEqual(dygraph_prog_trans, dy_to_stat_prog_trans)
         self.assertEqual(dygraph_prog_trans, full_pkg_prog_trans)
 
