@@ -912,7 +912,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
-            res2 = fluid.layers.sigmoid(a)
+            res2 = paddle.nn.functional.sigmoid(a)
             np.testing.assert_allclose(res1.numpy(), res2.numpy(), rtol=1e-05)
 
     def test_append_activation_in_dygraph2(self):
@@ -927,7 +927,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_cudnn=True)
-            res2 = fluid.layers.sigmoid(a)
+            res2 = paddle.nn.functional.sigmoid(a)
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph3(self):

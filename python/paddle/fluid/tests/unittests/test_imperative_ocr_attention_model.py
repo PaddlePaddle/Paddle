@@ -315,7 +315,7 @@ class SimpleAttention(fluid.dygraph.Layer):
         concated = fluid.layers.elementwise_add(
             encoder_proj, decoder_state_expand
         )
-        concated = fluid.layers.tanh(x=concated)
+        concated = paddle.tanh(x=concated)
         attention_weight = self.fc_2(concated)
 
         weights_reshape = fluid.layers.reshape(
