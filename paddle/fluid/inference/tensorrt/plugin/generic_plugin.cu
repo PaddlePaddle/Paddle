@@ -362,16 +362,18 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
     phi::KernelKey phi_kernel_key(
         phi::Backend::GPU, phi::DataLayout::ANY, precision_type);
 
-    phi_kernels_[nv_dtype].reset(
+    phi_kernels_[PhiType2NvType(precision_type)].reset(
         new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
             phi_kernel_signature.name, phi_kernel_key)));
 
-    if (!phi_kernel_contexts_[nv_dtype]) {
-      phi_kernel_contexts_[nv_dtype].reset(new phi::KernelContext(dev_ctx));
-      BuildPhiKernelContextAttr(op_desc_,
-                                phi_kernel_contexts_[nv_dtype].get(),
-                                phi_kernel_signature,
-                                phi_kernels_[nv_dtype].get());
+    if (!phi_kernel_contexts_[PhiType2NvType(precision_type)]) {
+      phi_kernel_contexts_[PhiType2NvType(precision_type)].reset(
+          new phi::KernelContext(dev_ctx));
+      BuildPhiKernelContextAttr(
+          op_desc_,
+          phi_kernel_contexts_[PhiType2NvType(precision_type)].get(),
+          phi_kernel_signature,
+          phi_kernels_[PhiType2NvType(precision_type)].get());
     }
   }
   PADDLE_ENFORCE_EQ(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
