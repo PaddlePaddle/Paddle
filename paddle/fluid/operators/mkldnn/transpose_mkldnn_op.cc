@@ -53,19 +53,17 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto x_vec_dims = phi::vectorize(x->dims());
 
-    framework::proto::VarType::Type x_paddle_type =
-        framework::TransToProtoVarType(x->dtype());
-    dnnl::memory::data_type x_type = framework::ToMKLDNNDataType(x_paddle_type);
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x_paddle_type, x_type, dnnl_engine);
+    auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->mem_desc(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
 
     auto dst_md =
         dnnl::memory::desc(x_vec_dims,
                            x->mem_desc().data_type(),
-                           platform::GetPlainMKLDNNFormat(x_vec_dims.size()));
+                           phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
     // a trick is used here to fake transpose of out_md, so later it will be
     // "untransposed", leaving output data in plain format tag
     auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
@@ -148,17 +146,13 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     }
 
     auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
-    framework::proto::VarType::Type dout_paddle_type =
-        framework::TransToProtoVarType(dout->dtype());
-    dnnl::memory::data_type dout_type =
-        framework::ToMKLDNNDataType(dout_paddle_type);
-
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims, dout_paddle_type, dout_type, dnnl_engine);
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, dnnl_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
 
     auto reorder_dst_memory_p =
         reorder_handler.AcquireDstMemory(dx, dout->mem_desc(), ctx.GetPlace());

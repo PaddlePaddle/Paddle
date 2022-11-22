@@ -592,7 +592,7 @@ static bool CheckOpProto(proto::OpProto* op_proto) {
   }
 
   // Only handle matmul_v2 for now
-  VLOG(1) << "------ Analyzing Op ------: " << op_type;
+  VLOG(3) << "------ Analyzing Op ------: " << op_type;
 
   return true;
 }
