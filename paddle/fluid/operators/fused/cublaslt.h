@@ -193,7 +193,6 @@ class CublasLtHelper {
             int32_t* C_dev,
             cudaStream_t stream,
             void* workspace = nullptr) {
-    VLOG(1) << "calc" << m_ << " " << k_ << " " << n_;
     cublasStatus_t status;
 
     status = dyl::cublasLtMatmul(handle_,
@@ -210,11 +209,12 @@ class CublasLtHelper {
                                  C_desc_,
 #if CUDA_VERSION >= 11020
                                  &algo_,
-                                 //  nullptr,// workspace
                                  workspace,
                                  workspace_size_,
 #else
-                                 hshshsh
+                                 nullptr,
+                                 nullptr,
+                                 0
 #endif
                                  stream);
     PADDLE_ENFORCE_EQ(
