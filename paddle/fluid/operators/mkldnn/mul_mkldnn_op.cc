@@ -489,83 +489,6 @@ class MulMKLDNNKernel : public framework::OpKernel<XT> {
   }
 };
 
-template <typename XT>
-class MulGradMKLDNNKernel : public MulMKLDNNKernel<XT> {
- public:
-  void Compute(const ExecutionContext &ctx) const override { RunKernel(ctx); }
-
- private:
-  void RunKernel(const ExecutionContext &ctx) const {
-    const auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
-    const auto &onednn_engine = dev_ctx.GetEngine();
-
-    const auto *x = ctx.Input<LoDTensor>("X");
-    const auto *y = ctx.Input<LoDTensor>("Y");
-    const auto *dout =
-        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
-
-    auto *dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto *dy = ctx.Output<LoDTensor>(framework::GradVarName("Y"));
-
-    int x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
-    int y_num_col_dims = ctx.Attr<int>("y_num_col_dims");
-
-    const Tensor x_matrix = x->dims().size() > 2
-                                ? framework::ReshapeToMatrix(*x, x_num_col_dims)
-                                : static_cast<const Tensor &>(*x);
-    const Tensor y_matrix = y->dims().size() > 2
-                                ? framework::ReshapeToMatrix(*y, y_num_col_dims)
-                                : static_cast<const Tensor &>(*y);
-
-    Tensor dout_matrix = *dout;
-    dout_matrix.Resize({phi::flatten_to_2d(x->dims(), x_num_col_dims)[0],
-                        phi::flatten_to_2d(y->dims(), y_num_col_dims)[1]});
-
-    // adding mb dim because MatMulV2 handler needs it
-    std::vector<int64_t> x_dims(3, 1);
-    std::vector<int64_t> y_dims(3, 1);
-    std::vector<int64_t> dout_dims(3, 1);
-
-    x_dims[1] = x_matrix.dims()[0];
-    x_dims[2] = x_matrix.dims()[1];
-
-    y_dims[1] = y_matrix.dims()[0];
-    y_dims[2] = y_matrix.dims()[1];
-
-    dout_dims[1] = dout_matrix.dims()[0];
-    dout_dims[2] = dout_matrix.dims()[1];
-
-    if (dx != nullptr) {
-      dx->set_lod(x->lod());
-      this->ExecuteMatMul(ctx,
-                          dev_ctx,
-                          onednn_engine,
-                          ctx.GetPlace(),
-                          &dout_matrix,
-                          dout_dims,
-                          false,
-                          &y_matrix,
-                          y_dims,
-                          true,
-                          static_cast<Tensor *>(dx));
-    }
-    if (dy != nullptr) {
-      dy->set_lod(y->lod());
-      this->ExecuteMatMul(ctx,
-                          dev_ctx,
-                          onednn_engine,
-                          ctx.GetPlace(),
-                          &x_matrix,
-                          x_dims,
-                          true,
-                          &dout_matrix,
-                          dout_dims,
-                          false,
-                          static_cast<Tensor *>(dy));
-    }
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -578,9 +501,3 @@ REGISTER_OP_KERNEL(mul,
                    ops::MulMKLDNNINT8Kernel<int8_t>,
                    ops::MulMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::MulMKLDNNKernel<float>);
-
-REGISTER_OP_KERNEL(mul_grad,
-                   MKLDNN,
-                   ::paddle::platform::CPUPlace,
-                   ops::MulGradMKLDNNKernel<paddle::platform::bfloat16>,
-                   ops::MulGradMKLDNNKernel<float>);

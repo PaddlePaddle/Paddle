@@ -1737,7 +1737,6 @@ def kldiv_loss(x, target, reduction='mean', name=None):
     return loss
 
 
-from .ops import square
 from .control_flow import equal
 
 

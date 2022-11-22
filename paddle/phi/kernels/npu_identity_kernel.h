@@ -14,15 +14,16 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void TrilGradKernel(const Context& ctx,
-                    const DenseTensor& out_grad,
-                    int diagonal,
-                    bool lower,
-                    DenseTensor* x_grad);
+void NPUIdentityKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const int format,
+                       DenseTensor* out);
 
 }  // namespace phi

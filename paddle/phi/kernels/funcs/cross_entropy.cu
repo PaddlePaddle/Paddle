@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <typename T, typename LabelT>
 __global__ void CrossEntropyKernel(T* Y,
@@ -39,10 +39,9 @@ __global__ void CrossEntropyKernel(T* Y,
                    D,
                    ignore_index,
                    lbl);
-    Y[i] =
-        ignore_index == lbl
-            ? static_cast<T>(0)
-            : -math::TolerableValue<T>()(phi::funcs::real_log(X[i * D + lbl]));
+    Y[i] = ignore_index == lbl ? static_cast<T>(0)
+                               : -phi::funcs::TolerableValue<T>()(
+                                     phi::funcs::real_log(X[i * D + lbl]));
   }
 }
 
@@ -57,10 +56,11 @@ __global__ void SoftCrossEntropyKernel(T* Y,
   int idx = blockIdx.x * class_num + tid;
   int end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += math::TolerableValue<T>()(phi::funcs::real_log(X[idx])) * label[idx];
+    val += phi::funcs::TolerableValue<T>()(phi::funcs::real_log(X[idx])) *
+           label[idx];
   }
 
-  val = paddle::platform::reduceSum(val, tid, blockDim.x);
+  val = phi::backends::gpu::reduceSum(val, tid, blockDim.x);
   if (threadIdx.x == 0) {
     Y[blockIdx.x] = -val;
   }
@@ -118,8 +118,8 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     const bool softLabel,
     const int ignore_index,
     const int axis_dim) {
+  T* loss_data = ctx.template Alloc<T>(out);
   const T* prob_data = prob->data<T>();
-  T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 
   int batch_size = prob->dims()[0];
   int class_num = prob->dims()[1];
@@ -146,8 +146,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
                                                     ignore_index,
                                                     kMaxBlockDim,
                                                     ctx.stream());
-    framework::VisitDataType(framework::TransToProtoVarType(labels->dtype()),
-                             functor);
+    phi::VisitDataType(labels->dtype(), functor);
   }
 }
 
@@ -155,6 +154,5 @@ template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
 template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi
