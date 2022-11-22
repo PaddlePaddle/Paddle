@@ -37,22 +37,29 @@ __all__ = ['accuracy', 'auc']
 
 def accuracy(input, label, k=1, correct=None, total=None):
     """
+
     accuracy layer.
     Refer to the https://en.wikipedia.org/wiki/Precision_and_recall
     This function computes the accuracy using the input and label.
     If the correct label occurs in top k predictions, then correct will increment by one.
-    Note: the dtype of accuracy is determined by input. the input and label dtype can be different.
+
+    Note:
+        the dtype of accuracy is determined by input. the input and label dtype can be different.
+
     Args:
         input(Tensor): The input of accuracy layer, which is the predictions of network. A Tensor with type float32,float64.
             The shape is ``[sample_number, class_dim]`` .
         label(Tensor): The label of dataset.  Tensor with type int32,int64. The shape is ``[sample_number, 1]`` .
-        k(int): The top k predictions for each class will be checked. Data type is int64 or int32.
-        correct(Tensor): The correct predictions count. A Tensor with type int64 or int32.
-        total(Tensor): The total entries count. A tensor with type int64 or int32.
+        k(int, optional): The top k predictions for each class will be checked. Data type is int64 or int32. Default is 1.
+        correct(Tensor, optional): The correct predictions count. A Tensor with type int64 or int32. Default is None.
+        total(Tensor, optional): The total entries count. A tensor with type int64 or int32. Default is None.
+
     Returns:
-        Tensor: The correct rate. A Tensor with type float32.
+        Tensor, The correct rate. A Tensor with type float32.
+
     Examples:
         .. code-block:: python
+
             import numpy as np
             import paddle
             import paddle.static as static
@@ -72,6 +79,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
                         fetch_list=[result[0]])
             print(output)
             #[array([0.], dtype=float32)]
+
     """
     if _non_static_mode():
         if correct is None:

@@ -477,16 +477,16 @@ class MultiHeadAttentionLayer(Layer):
         v = self._v_fc(values)
 
         # split head
-        reshaped_q = fluid.layers.reshape(
-            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_q = paddle.reshape(
+            x=q, shape=[0, 0, self._n_head, self._d_key]
         )
         transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
-        reshaped_k = fluid.layers.reshape(
-            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_k = paddle.reshape(
+            x=k, shape=[0, 0, self._n_head, self._d_key]
         )
         transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
-        reshaped_v = fluid.layers.reshape(
-            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False
+        reshaped_v = paddle.reshape(
+            x=v, shape=[0, 0, self._n_head, self._d_value]
         )
         transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
@@ -515,10 +515,9 @@ class MultiHeadAttentionLayer(Layer):
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
         trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-        final_out = fluid.layers.reshape(
+        final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=False,
         )
 
         # fc to output
@@ -995,8 +994,8 @@ class WrapDecoderLayer(Layer):
             dec_input, enc_output, trg_slf_attn_bias, trg_src_attn_bias
         )
 
-        dec_output_reshape = fluid.layers.reshape(
-            dec_output, shape=[-1, dec_output.shape[-1]], inplace=False
+        dec_output_reshape = paddle.reshape(
+            dec_output, shape=[-1, dec_output.shape[-1]]
         )
 
         if self._weight_sharing:
