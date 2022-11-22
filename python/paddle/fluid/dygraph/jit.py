@@ -1573,7 +1573,7 @@ class TracedLayer:
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1591,7 +1591,7 @@ class TracedLayer:
                 print(out_static_graph[0].shape) # (2, 10)
 
                 # save the static graph model for inference
-                static_layer.save_inference_model(dirname='./saved_infer_model')
+                static_layer.save_inference_model('./saved_infer_model')
 
         """
         assert isinstance(
@@ -1623,7 +1623,7 @@ class TracedLayer:
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1728,7 +1728,7 @@ class TracedLayer:
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
