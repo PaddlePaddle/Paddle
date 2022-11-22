@@ -141,7 +141,10 @@ def decoder_decode(context, is_sparse):
         topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost
         accu_scores = pd.elementwise_add(
-            x=F.log(topk_scores), y=pd.reshape(pre_score, shape=[-1]), axis=0
+            x=F.log(topk_scores),
+            y=paddle.reshape(pre_score, shape=[-1]),
+            axis=0,
+
         )
         selected_ids, selected_scores = pd.beam_search(
             pre_ids,
@@ -163,7 +166,7 @@ def decoder_decode(context, is_sparse):
         # update the break condition: up to the max length or all candidates of
         # source sentences have ended.
         length_cond = pd.less_than(x=counter, y=array_len)
-        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        finish_cond = paddle.logical_not(pd.is_empty(x=selected_ids))
         pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(

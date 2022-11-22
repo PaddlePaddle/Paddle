@@ -23,15 +23,11 @@ from paddle.fluid.layers import (
     elementwise_div,
     elementwise_sub,
     nn,
-    ops,
     tensor,
 )
 import paddle.nn.functional as F
 
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
+from collections.abc import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -189,7 +185,7 @@ class Normal(distribution.Distribution):
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
             zero_tmp_shape = nn.shape(zero_tmp_reshape)
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
@@ -204,7 +200,7 @@ class Normal(distribution.Distribution):
             ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -289,7 +285,7 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         return elementwise_div(
-            ops.exp(
+            paddle.exp(
                 -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             ),
             (math.sqrt(2 * math.pi) * self.scale),
