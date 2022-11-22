@@ -725,6 +725,7 @@ class TestMatmulop(unittest.TestCase):
         tensor_b = paddle.to_tensor(np_b, dtype="float32")
 
         # normal case: tensor * nparray
+        expect_out = np_a * np_b
         actual_out = tensor_a * np_b
         np.testing.assert_allclose(actual_out, expect_out)
 
