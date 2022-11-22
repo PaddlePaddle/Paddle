@@ -145,7 +145,6 @@ __all__ = [
     'slice',
     'strided_slice',
     'shape',
-    'rank',
     'size',
     'logical_and',
     'logical_or',
@@ -9058,6 +9057,7 @@ def pow(x, factor=1.0, name=None):
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
+
     prelu activation.
 
     .. math::
@@ -9072,26 +9072,20 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
-
         x (Tensor): The input Tensor or LoDTensor with data type float32.
-
         mode (str): The mode for weight sharing.
-
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
-        weight (alpha), it can be create by ParamAttr. None by default. \
-        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-
-        name (str, optional): Name for the operation (optional, default is None). \
-        For more information, please refer to :ref:`api_guide_Name`.
-
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
+            weight (alpha), it can be create by ParamAttr. None by default.
+            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor with the same shape and data type as x.
+        Tensor, A tensor with the same shape and data type as x.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -10463,34 +10457,6 @@ def shape(input):
         outputs={'Out': out},
         stop_gradient=True,
     )
-
-    return out
-
-
-def rank(input):
-    """
-
-    The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
-
-    Args:
-        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
-
-    Returns:
-        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            input = paddle.rand((3, 100, 100))
-            rank = paddle.rank(input)
-            print(rank)
-            # 3
-    """
-    check_type(input, 'input', (Variable), 'input')
-    ndims = len(input.shape)
-    out = assign(np.array(ndims, 'int32'))
 
     return out
 
