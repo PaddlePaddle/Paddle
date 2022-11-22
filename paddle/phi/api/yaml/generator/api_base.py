@@ -19,7 +19,7 @@ PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
 
 
-class BaseAPI(object):
+class BaseAPI:
     def __init__(self, api_item_yaml):
         self.api = self.get_api_name(api_item_yaml)
 

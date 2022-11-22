@@ -857,7 +857,7 @@ def _build_table(
 
     if views is None or SummaryView.DeviceView in views:
 
-        ###### Print Device Summary ######
+        # ----- Print Device Summary ----- #
         headers = ['Device', 'Utilization (%)']
         name_column_width = 30
         DEFAULT_COLUMN_WIDTH = 20
@@ -913,7 +913,7 @@ def _build_table(
             return ''.join(result)
 
     if views is None or SummaryView.OverView in views:
-        ###### Print Overview Summary ######
+        # ----- Print Overview Summary ----- #
         headers = ['Event Type', 'Calls', 'CPU Time', 'Ratio (%)']
         row_format_list = [""]
         header_sep_list = [""]
@@ -1048,7 +1048,7 @@ def _build_table(
 
     if views is None or SummaryView.ModelView in views:
 
-        ###### Print Model Summary Report ######
+        # ----- Print Model Summary Report ----- #
         model_perspective_items = (
             statistic_data.event_summary.model_perspective_items
         )
@@ -1173,7 +1173,7 @@ def _build_table(
 
     if views is None or SummaryView.DistributedView in views:
 
-        ###### Print Distribution Summary Report ######
+        # ----- Print Distribution Summary Report ----- #
         if statistic_data.distributed_summary.communication_range:
             headers = [
                 'Name',
@@ -1253,7 +1253,7 @@ def _build_table(
 
     if views is None or SummaryView.OperatorView in views:
 
-        ###### Print Operator Summary Report ######
+        # ----- Print Operator Summary Report ----- #
         if statistic_data.event_summary.items:
             all_row_values = []
             name_column_width = 52
@@ -1553,7 +1553,7 @@ def _build_table(
 
     if views is None or SummaryView.KernelView in views:
 
-        ###### Print Kernel Summary Report ######
+        # ----- Print Kernel Summary Report ----- #
         if statistic_data.event_summary.kernel_items:
             all_row_values = []
             kernel_items = statistic_data.event_summary.kernel_items
@@ -1654,7 +1654,7 @@ def _build_table(
 
     if views is None or SummaryView.MemoryManipulationView in views:
 
-        ###### Print Memory Manipulation Summary Report ######
+        # ----- Print Memory Manipulation Summary Report ----- #
         if statistic_data.event_summary.memory_manipulation_items:
             all_row_values = []
             memory_manipulation_items = (
@@ -1740,7 +1740,7 @@ def _build_table(
 
     if views is None or SummaryView.UDFView in views:
 
-        ###### Print UserDefined Summary Report ######
+        # ----- Print UserDefined Summary Report ----- #
         if statistic_data.event_summary.userdefined_items:
             all_row_values = []
             gpu_total_time = (
@@ -1889,7 +1889,7 @@ def _build_table(
 
     if views is None or SummaryView.MemoryView in views:
 
-        ###### Print Memory Summary Report ######
+        # ----- Print Memory Summary Report ----- #
         if (
             statistic_data.memory_summary.allocated_items
             or statistic_data.memory_summary.reserved_items

@@ -20,10 +20,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
-#include "paddle/fluid/operators/mkldnn/mkldnn_activation_op.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/infermeta/backward.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -139,132 +140,6 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-UNUSED constexpr char SigmoidDoc[] = R"DOC(
-Sigmoid Activation
-
-$$out = \frac{1}{1 + e^{-x}}$$
-
-)DOC";
-
-UNUSED constexpr char ReluDoc[] = R"DOC(
-Relu Activation Operator.
-
-$$out = \max(x, 0)$$
-
-)DOC";
-
-UNUSED constexpr char TanhShrinkDoc[] = R"DOC(
-TanhShrink Activation Operator.
-
-$$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
-
-)DOC";
-
-UNUSED constexpr char SqrtDoc[] = R"DOC(
-Sqrt Activation Operator.
-
-$$out=\\sqrt{x}=x^{1/2}$$
-
-**Note**:
-  input value must be greater than or equal to zero.
-
-)DOC";
-
-UNUSED constexpr char RsqrtDoc[] = R"DOC(
-Rsqrt Activation Operator.
-
-Please make sure input is legal in case of numeric errors.
-
-$$out = \\frac{1}{\\sqrt{x}}$$
-
-)DOC";
-
-UNUSED constexpr char LogDoc[] = R"DOC(
-Log Activation Operator.
-
-$$out = \ln(x)$$
-
-Natural logarithm of x.
-
-)DOC";
-
-UNUSED constexpr char SquareDoc[] = R"DOC(
-The OP square each elements of the inputs.
-
-$$out = x^2$$
-
-)DOC";
-
-UNUSED constexpr char SoftsignDoc[] = R"DOC(
-Softsign Activation Operator.
-
-$$out = \\frac{x}{1 + \|x\|}$$
-
-)DOC";
-
-class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "A LoDTensor or Tensor representing preactivation values. Must be "
-             "one of the following types: float32, float64.");
-    AddOutput(
-        "Out",
-        "A LoDTensor or Tensor with the same type and size as that of x.");
-    AddAttr<float>("alpha", "Slope of the activation function at x < 0.")
-        .SetDefault(0.02f);
-    AddComment(R"DOC(
-LeakyRelu Activation Operator.
-
-$$out = \max(x, \alpha * x)$$
-
-)DOC");
-  }
-};
-
-class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of Softplus operator, an N-D Tensor, with data type "
-             "float32, float64 or float16.");
-    AddOutput(
-        "Out",
-        "Output of Softplus operator, a Tensor with shape same as input.");
-    AddAttr<float>("beta", "The value of beta for Softplus.").SetDefault(1.0f);
-    AddAttr<float>("threshold", "The value of threshold for Softplus.")
-        .SetDefault(20.0f);
-    AddComment(R"DOC(
-:strong:`Softplus Activation Operator`
-
-..  math::
-    out = \frac{1}{\beta} * \log(1 + \exp(\beta * x)) \\
-    \text{For numerical stability, the implementation reverts to the linear function when :}\,x \times \beta > threshold.
-
-)DOC");
-  }
-};
-
-class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Softshrink operator");
-    AddOutput("Out", "Output of Softshrink operator");
-    AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
-    AddComment(R"DOC(
-:strong:`Softshrink Activation Operator`
-
-..  math::
-    out = \begin{cases}
-         x - \lambda, \text{if } x > \lambda \\
-         x + \lambda, \text{if } x < -\lambda \\
-         0,  \text{otherwise}
-         \end{cases}
-
-)DOC");
-  }
-};
-
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -298,66 +173,6 @@ class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
 SoftRelu Activation Operator.
 
 $$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
-
-)DOC");
-  }
-};
-
-class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "The input is a multi-dimensional Tensor. The data type is "
-             "float32 or float64.");
-    AddOutput("Out",
-              "The output is a multi-dimensional Tensor which has same "
-              "dimension and data type as the ``x``.");
-    AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
-    AddComment(R"DOC(
-ELU Activation Operator.
-
-Applies the following element-wise computation on the input according to
-https://arxiv.org/abs/1511.07289.
-
-$$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
-
-)DOC");
-  }
-};
-
-template <typename T>
-class ELUGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("elu_grad");
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetInput("Out", this->Output("Out"));
-    op->SetInput("X", this->Input("X"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetAttrMap(this->Attrs());
-  }
-};
-
-class CELUOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "The input is a multi-dimensional Tensor. The data type is "
-             "float32 or float64.");
-    AddOutput("Out",
-              "The output is a multi-dimensional Tensor which has same "
-              "dimension and data type as the ``x``.");
-    AddAttr<float>("alpha", "The alpha value of CELU").SetDefault(1.0f);
-    AddComment(R"DOC(
-CELU Activation Operator.
-
-Applies the following element-wise computation on the input according to
-https://arxiv.org/abs/1704.07483.
-
-$$out = \max(0, x) + \min(0, \alpha * (e^(x/\alpha) - 1))$$
 
 )DOC");
   }
@@ -420,27 +235,6 @@ STanh Activation Operator.
 
 $$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
-)DOC");
-  }
-};
-
-class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of ThresholdedRelu operator");
-    AddOutput("Out", "Output of ThresholdedRelu operator");
-    AddAttr<float>("threshold",
-                   "The threshold location of activation. [default 1.0].")
-        .SetDefault(1.0f);
-    AddComment(R"DOC(
-:strong:`ThresholdedRelu activation operator`
-
-..  math::
-
-    out = \begin{cases}
-             x,  \text{if } x > threshold \\
-             0,  \text{otherwise}
-          \end{cases}
 )DOC");
   }
 };
@@ -511,15 +305,6 @@ It is recommended to use the defaults for this activation.
 )DOC");
   }
 };
-
-REGISTER_ACTIVATION_OP_MAKER(Sigmoid, SigmoidDoc);
-REGISTER_ACTIVATION_OP_MAKER(Relu, ReluDoc);
-REGISTER_ACTIVATION_OP_MAKER(TanhShrink, TanhShrinkDoc);
-REGISTER_ACTIVATION_OP_MAKER(Sqrt, SqrtDoc);
-REGISTER_ACTIVATION_OP_MAKER(Rsqrt, RsqrtDoc);
-REGISTER_ACTIVATION_OP_MAKER(Log, LogDoc);
-REGISTER_ACTIVATION_OP_MAKER(Square, SquareDoc);
-REGISTER_ACTIVATION_OP_MAKER(Softsign, SoftsignDoc);
 
 template <ActBwdOpFwdDeps kDepValue>
 class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
@@ -632,229 +417,6 @@ class ActivationOpTripleGrad : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
-class SigmoidDoubleGradMaker
-    : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("sigmoid_grad_grad");
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
-    // input2: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    op->SetAttrMap(this->Attrs());
-    // output: ddy
-    op->SetOutput("DOutNew", this->InputGrad("Out"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-template <typename T>
-class SigmoidTripleGradMaker
-    : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("sigmoid_triple_grad");
-    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
-    // D_OutNew, D_DOut, D_DDx               // output
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
-    // input2: ddx
-    op->SetInput("DDX", this->Input("DDX"));
-    // input3: dout
-    op->SetInput("DOut", this->Input("DOut"));
-    // input4: d_ddout
-    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
-    // input5: d_dout_new
-    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
-    op->SetAttrMap(this->Attrs());
-
-    // output: d_dOut, d_OutNew, d_ddx
-    op->SetOutput("D_OutNew", this->InputGrad("Out"));
-    op->SetOutput("D_DOut", this->InputGrad("DOut"));
-    op->SetOutput("D_DDx", this->InputGrad("DDX"));
-  }
-};
-
-// ReluGrad: dx = dy if y >= 0 else 0
-// ReluGradGrad: ddy = ddx if y >= 0 else 0
-template <typename T>
-class ReluDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("relu_grad_grad");
-    // input1: Out
-    op->SetInput("Out", this->Input("Out"));
-    // input2: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-    // output: ddy
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// leaky_relu Grad: dx=dy if x>=0 else alpha * dy
-// leaky_relu GradGrad: ddy=ddx if x>=0 else alpha * ddx
-template <typename T>
-class LeakyReluDoubleGradMaker
-    : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("leaky_relu_grad_grad");
-    // input1: X
-    op->SetInput("X", this->Input("X"));
-    // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-    // Out@GRAD@GRAD: ddy
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// elu grad: dx=dy if y>0 else alpha*dy*x.exp()
-// elu gradgrad: ddx=ddy if y>0 else alpha*ddy*x.exp()
-template <typename T>
-class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("elu_grad_grad");
-
-    op->SetInput("X", this->Input("X"));
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-
-    // Out@GRAD@GRAD: ddy
-    op->SetOutput("DX", this->InputGrad("X"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// celu grad: dx=dy if y>0 else dy*(x/alpha).exp()
-// celu gradgrad: ddx=ddy if y>0 else ddy*(x/alpha).exp()/alpha
-template <typename T>
-class CELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("celu_grad_grad");
-
-    op->SetInput("X", this->Input("X"));
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-
-    // Out@GRAD@GRAD: ddy
-    op->SetOutput("DX", this->InputGrad("X"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// sqrt Grad: dx = 0.5 * dy / y
-// sqrt GradGrad: ddy = 0.5 * ddx / y, dy = -1 * dx * ddx
-template <typename T>
-class SqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("sqrt_grad_grad");
-    op->SetInput("Out", this->Input("Out"));
-    op->SetInput("DX", this->Output(framework::GradVarName("X")));
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-    op->SetOutput("DOut", this->InputGrad("Out"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// rsqrt Grad: dx = -0.5 * dy * y * y * y
-// rsqrt GradGrad: ddy = -0.5 * ddx * y * y * y, dy = (3/y) * ddx
-template <typename T>
-class RsqrtDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("rsqrt_grad_grad");
-    op->SetInput("Out", this->Input("Out"));
-    op->SetInput("DX", this->Output(framework::GradVarName("X")));
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetAttrMap(this->Attrs());
-    op->SetOutput("DOut", this->InputGrad("Out"));
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// square Grad: dx=2x*dy
-// square GradGrad: ddy=2x*ddx, dx=2dy*ddx
-template <typename T>
-class SquareDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("square_grad_grad");
-    op->SetInput("X", this->Input("X"));
-    // Out@GRAD: dy
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-
-    op->SetAttrMap(this->Attrs());
-
-    // X@GRAD: dx
-    op->SetOutput("DX", this->InputGrad("X"));
-    // Out@GRAD@GRAD: ddy
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
-// log Grad: dx = dout / x
-// log Grad Grad: ddout = ddx / x; dx = -(dout / x) * (ddx / x)
-template <typename T>
-class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
- public:
-  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override {
-    op->SetType("log_grad_grad");
-    op->SetInput("X", this->Input("X"));
-    // X@GRAD@GRAD: ddx
-    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
-    op->SetAttrMap(this->Attrs());
-    // X@GRAD: dx
-    op->SetOutput("DX", this->InputGrad("X"));
-    // Out@GRAD@GRAD: ddy
-    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
-  }
-};
-
 DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInferer,
                            {framework::GradVarName("Out"),  // dout
                             framework::GradVarName("X")});  // dx
@@ -873,7 +435,44 @@ class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("pow_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework ::GradVarName("X"), this->InputGrad("X"));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+template <typename T>
+class PowDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_double_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework ::GradVarName("X")));
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetInput("FactorTensor", this->Input("FactorTensor"));
+    op->SetAttrMap(this->Attrs());
+  }
+};
+template <typename T>
+class PowTripleGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("pow_triple_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input("DOut"));
+    op->SetInput("DDX", this->Input("DDX"));
+    op->SetInput("D_DX", this->OutputGrad("DX"));
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    op->SetOutput("D_X", this->InputGrad("X"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDX", this->InputGrad("DDX"));
     op->SetInput("FactorTensor", this->Input("FactorTensor"));
     op->SetAttrMap(this->Attrs());
   }
@@ -932,6 +531,28 @@ class PowOpGrad : public framework::OperatorWithKernel {
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
+
+class PowOpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
+
+class PowOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
+  }
+};
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
@@ -971,27 +592,7 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
 REGISTER_ACTIVATION_OP(brelu, BRelu, BReluFunctor, BReluGradFunctor);
-REGISTER_ACTIVATION_OP(thresholded_relu,
-                       ThresholdedRelu,
-                       ThresholdedReluFunctor,
-                       ThresholdedReluGradFunctor);
 REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
-REGISTER_ACTIVATION_OP(softshrink,
-                       SoftShrink,
-                       SoftShrinkFunctor,
-                       SoftShrinkGradFunctor);
-REGISTER_ACTIVATION_OP(tanh_shrink,
-                       TanhShrink,
-                       TanhShrinkFunctor,
-                       TanhShrinkGradFunctor);
-REGISTER_ACTIVATION_OP(softsign,
-                       Softsign,
-                       SoftsignFunctor,
-                       SoftsignGradFunctor);
-REGISTER_ACTIVATION_OP(softplus,
-                       Softplus,
-                       SoftplusFunctor,
-                       SoftplusGradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 REGISTER_ACTIVATION_OP(stanh, STanh, STanhFunctor, STanhGradFunctor);
 REGISTER_ACTIVATION_OP(hard_swish,
@@ -1000,206 +601,13 @@ REGISTER_ACTIVATION_OP(hard_swish,
                        HardSwishGradFunctor);
 REGISTER_ACTIVATION_OP(swish, Swish, SwishFunctor, SwishGradFunctor);
 
-/* ==========================    sigmoid register  =============================
- */
-// 1. Register Sigmoid Operator
-REGISTER_OPERATOR(
-    sigmoid,
-    ops::ActivationOp,
-    ops::SigmoidOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::SigmoidGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::SigmoidGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::SigmoidGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer,
-                     void>::type);
-
-// 2. Register Sigmoid Grad Operator
-REGISTER_OPERATOR(sigmoid_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::SigmoidDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>);
-
-// 3. Register Sigmoid DoubleGrad Operator
-REGISTER_OPERATOR(
-    sigmoid_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::SigmoidGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer,
-    ops::SigmoidTripleGradMaker<paddle::framework::OpDesc>,
-    ops::SigmoidTripleGradMaker<paddle::imperative::OpBase>);
-
-// 4. Register Sigmoid TripleGrad Operator
-REGISTER_OPERATOR(sigmoid_triple_grad,
-                  ops::ActivationOpTripleGrad<
-                      ops::SigmoidTripleGradFunctor<float>::FwdDeps()>,
-                  ops::ActivationTripleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ==========================    relu register  ============================= */
-REGISTER_OPERATOR(
-    relu,
-    ops::ActivationOp,
-    ops::ReluOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(relu_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    relu_grad_grad,
-    ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ======================== leaky relu register  ============================ */
-REGISTER_OPERATOR(
-    leaky_relu,
-    ops::ActivationOp,
-    ops::LeakyReluOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(leaky_relu_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::LeakyReluDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    leaky_relu_grad_grad,
-    ops::ActivationOpDoubleGrad2<ops::LeakyReluGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ========================    elu  register     ============================ */
-REGISTER_OPERATOR(elu,
-                  ops::ActivationOp,
-                  ops::ELUOpMaker,
-                  ops::ActivationOpInferVarType,
-                  ops::ELUGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ELUGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(elu_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::ELUDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::ELUDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    elu_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::ELUGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ========================    celu  register     ============================
- */
-REGISTER_OPERATOR(
-    celu,
-    ops::ActivationOp,
-    ops::CELUOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(celu_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::CELUDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::CELUDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    celu_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::CELUGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ===========================   sqrt register  ============================= */
-REGISTER_OPERATOR(
-    sqrt,
-    ops::ActivationOp,
-    ops::SqrtOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(sqrt_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SqrtDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    sqrt_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::SqrtGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ===========================   rsqrt register  =============================
- */
-REGISTER_OPERATOR(
-    rsqrt,
-    ops::ActivationOp,
-    ops::RsqrtOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::RsqrtGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(rsqrt_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::RsqrtDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::RsqrtDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    rsqrt_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::RsqrtGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
-/* ==========================   square register  ============================ */
-REGISTER_OPERATOR(
-    square,
-    ops::ActivationOp,
-    ops::SquareOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(square_grad,
-                  ops::ActivationOpGrad,
-                  ops::ActivationGradOpInplaceInferer,
-                  ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SquareDoubleGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(
-    square_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::SquareGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
-
-/* ========================================================================== */
-
 /* ==========================   pow register  ============================ */
+DECLARE_INFER_SHAPE_FUNCTOR(pow_double_grad,
+                            PowDoubleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralBinaryGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pow_triple_grad,
+                            PowTripleGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralTernaryGradInferMeta));
 
 REGISTER_OPERATOR(
     pow,
@@ -1213,30 +621,19 @@ REGISTER_OPERATOR(
                      void>::type);
 REGISTER_OPERATOR(pow_grad,
                   ops::PowOpGrad,
-                  ops::ActivationGradOpInplaceInferer);
-/* ========================================================================== */
-
-/* ==========================  Log register ==================================*/
-REGISTER_OPERATOR(
-    log,
-    ops::ActivationOp,
-    ops::LogOpMaker,
-    ops::ActivationOpInferVarType,
-    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
-                               paddle::framework::OpDesc>,
-    ops::ActivationGradOpMaker<ops::LogGradFunctor<float>::FwdDeps(),
-                               paddle::imperative::OpBase>,
-    ops::ActFwdInplaceInferer);
-REGISTER_OPERATOR(log_grad,
-                  ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
-                  ops::LogDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::LogDoubleGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OPERATOR(
-    log_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::LogGradGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+                  ops::PowDoubleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowDoubleGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pow_double_grad,
+                  ops::PowOpDoubleGrad,
+                  ops::ActivationDoubleGradOpInplaceInferer,
+                  ops::PowTripleGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowTripleGradOpMaker<paddle::imperative::OpBase>,
+                  PowDoubleGradInferShapeFunctor);
+REGISTER_OPERATOR(pow_triple_grad,
+                  ops::PowOpTripleGrad,
+                  PowTripleGradInferShapeFunctor);
+/* ========================================================================== */
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(leaky_relu)

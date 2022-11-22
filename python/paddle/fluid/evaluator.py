@@ -23,7 +23,6 @@ from .initializer import Constant
 from .layers import detection
 
 __all__ = [
-    'ChunkEvaluator',
     'EditDistance',
     'DetectionMAP',
 ]
@@ -41,7 +40,7 @@ def _clone_var_(block, var):
     )
 
 
-class Evaluator(object):
+class Evaluator:
     """
     Warning: better to use the fluid.metrics.* things, more
     flexible support via pure Python and Operator, and decoupled
@@ -125,123 +124,6 @@ class Evaluator(object):
         )
         self.states.append(state)
         return state
-
-
-class ChunkEvaluator(Evaluator):
-    """
-    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator
-    instead.
-
-    Accumulate counter numbers output by chunk_eval from mini-batches and
-    compute the precision recall and F1-score using the accumulated counter
-    numbers.
-    For some basics of chunking, please refer to
-    'Chunking with Support Vector Machines <https://aclanthology.info/pdf/N/N01/N01-1025.pdf>'.
-
-    Args:
-        input (Variable): prediction output of the network.
-        label (Variable): label of the test data set.
-        chunk_scheme (str): can be IOB/IOE/IOBES and IO. See the chunk_eval op for details.
-        num_chunk_types (int): the number of chunk type.
-        excluded_chunk_types (list): A list including chunk type ids, indicating chunk types that are not counted.
-
-    Returns:
-        tuple: tuple containing: precision, recall, f1_score
-
-    Examples:
-        .. code-block:: python
-
-            exe = fluid.executor(place)
-            evaluator = fluid.Evaluator.ChunkEvaluator(input, label)
-            for epoch in PASS_NUM:
-                evaluator.reset(exe)
-                for data in batches:
-                    loss = exe.run(fetch_list=[cost])
-                distance, instance_error = distance_evaluator.eval(exe)
-    """
-
-    def __init__(
-        self,
-        input,
-        label,
-        chunk_scheme,
-        num_chunk_types,
-        excluded_chunk_types=None,
-    ):
-        super().__init__("chunk_eval")
-        main_program = self.helper.main_program
-        if main_program.current_block().idx != 0:
-            raise ValueError("You can only invoke Evaluator in root block")
-
-        self.num_infer_chunks = self._create_state(
-            dtype='int64', shape=[1], suffix='num_infer_chunks'
-        )
-        self.num_label_chunks = self._create_state(
-            dtype='int64', shape=[1], suffix='num_label_chunks'
-        )
-        self.num_correct_chunks = self._create_state(
-            dtype='int64', shape=[1], suffix='num_correct_chunks'
-        )
-        (
-            precision,
-            recall,
-            f1_score,
-            num_infer_chunks,
-            num_label_chunks,
-            num_correct_chunks,
-        ) = layers.chunk_eval(
-            input=input,
-            label=label,
-            chunk_scheme=chunk_scheme,
-            num_chunk_types=num_chunk_types,
-            excluded_chunk_types=excluded_chunk_types,
-        )
-        layers.sums(
-            input=[self.num_infer_chunks, num_infer_chunks],
-            out=self.num_infer_chunks,
-        )
-        layers.sums(
-            input=[self.num_label_chunks, num_label_chunks],
-            out=self.num_label_chunks,
-        )
-        layers.sums(
-            input=[self.num_correct_chunks, num_correct_chunks],
-            out=self.num_correct_chunks,
-        )
-
-        self.metrics.extend([precision, recall, f1_score])
-
-    def eval(self, executor, eval_program=None):
-        if eval_program is None:
-            eval_program = Program()
-        block = eval_program.current_block()
-        num_infer_chunks, num_label_chunks, num_correct_chunks = executor.run(
-            eval_program,
-            fetch_list=[_clone_var_(block, state) for state in self.states],
-        )
-        num_infer_chunks = num_infer_chunks[0]
-        num_label_chunks = num_label_chunks[0]
-        num_correct_chunks = num_correct_chunks[0]
-        precision = (
-            float(num_correct_chunks) / num_infer_chunks
-            if num_infer_chunks
-            else 0
-        )
-        recall = (
-            float(num_correct_chunks) / num_label_chunks
-            if num_label_chunks
-            else 0
-        )
-        f1_score = (
-            float(2 * precision * recall) / (precision + recall)
-            if num_correct_chunks
-            else 0
-        )
-        return (
-            np.array([precision], dtype='float32'),
-            np.array([recall], dtype='float32'),
-            np.array([f1_score], dtype='float32'),
-        )
 
 
 class EditDistance(Evaluator):

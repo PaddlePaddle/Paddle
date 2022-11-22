@@ -15,9 +15,9 @@
 import os
 import sys
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 
@@ -247,14 +247,13 @@ class YOLOv3(fluid.dygraph.Layer):
 
             block_out = self.add_sublayer(
                 "block_out_%d" % (i),
-                Conv2D(
-                    num_channels=1024 // (2**i),
-                    num_filters=num_filters,
-                    filter_size=1,
+                paddle.nn.Conv2D(
+                    in_channels=1024 // (2**i),
+                    out_channels=num_filters,
+                    kernel_size=1,
                     stride=1,
                     padding=0,
-                    act=None,
-                    param_attr=ParamAttr(
+                    weight_attr=ParamAttr(
                         initializer=fluid.initializer.Normal(0.0, 0.02)
                     ),
                     bias_attr=ParamAttr(
@@ -297,7 +296,9 @@ class YOLOv3(fluid.dygraph.Layer):
         blocks = self.block(inputs)
         for i, block in enumerate(blocks):
             if i > 0:
-                block = fluid.layers.concat(input=[route, block], axis=1)
+                block = fluid.layers.concat(
+                    input=[route, block], axis=1  # noqa: F821
+                )
             route, tip = self.yolo_blocks[i](block)
             block_out = self.block_outputs[i](tip)
             self.outputs.append(block_out)

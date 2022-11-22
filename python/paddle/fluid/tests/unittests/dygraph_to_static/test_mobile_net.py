@@ -20,7 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import MSRA
 from paddle.fluid.param_attr import ParamAttr
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, Linear
+from paddle.fluid.dygraph.nn import Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph import declarative, ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -54,16 +54,14 @@ class ConvBNLayer(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
             groups=num_groups,
-            act=None,
-            use_cudnn=use_cudnn,
-            param_attr=ParamAttr(
+            weight_attr=ParamAttr(
                 initializer=MSRA(), name=self.full_name() + "_weights"
             ),
             bias_attr=False,
@@ -82,7 +80,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         y = self._conv(inputs)
         y = self._batch_norm(y)
         if if_act:
-            y = fluid.layers.relu6(y)
+            y = paddle.nn.functional.relu6(y)
         return y
 
 
@@ -273,7 +271,7 @@ class MobileNetV1(fluid.dygraph.Layer):
         for dws in self.dwsl:
             y = dws(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, 1024])
+        y = paddle.reshape(y, shape=[-1, 1024])
         y = self.out(y)
         return y
 
@@ -440,7 +438,7 @@ class MobileNetV2(fluid.dygraph.Layer):
             y = inv(y)
         y = self._conv9(y, if_act=True)
         y = self._pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self._out_c])
+        y = paddle.reshape(y, shape=[-1, self._out_c])
         y = self._fc(y)
         return y
 
@@ -472,7 +470,7 @@ def fake_data_reader(batch_size, label_size):
     return reader
 
 
-class Args(object):
+class Args:
     batch_size = 4
     model = "MobileNetV1"
     lr = 0.001

@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-class ParamAttr(object):
+class ParamAttr:
     """
 
     Note:

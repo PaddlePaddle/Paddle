@@ -353,7 +353,7 @@ class FLClient(FLClientBase):
             f.write(str(self.train_statical_info))
 
 
-class Coordinator(object):
+class Coordinator:
     def __init__(self, ps_hosts):
         self._communicator = FLCommunicator(ps_hosts)
         self._client_selector = None

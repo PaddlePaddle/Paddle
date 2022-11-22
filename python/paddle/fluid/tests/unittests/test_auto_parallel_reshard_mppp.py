@@ -304,6 +304,60 @@ class TestMLPReshard(unittest.TestCase):
         # the x should not be slice
         self.assertTrue(check_allgather(partitioned_main_prog))
 
+    def test_c_concat(self):
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        process_mesh = auto.ProcessMesh(mesh=[0, 1], dim_names=["x"])
+        with static.program_guard(train_program, startup_program):
+            x = paddle.static.data(name="x", shape=[4, 4], dtype='float32')
+            x = auto.shard_tensor(x, process_mesh, [None, "x"])
+            w = paddle.static.data(name="w", shape=[4, 4], dtype='float32')
+            w = auto.shard_tensor(w, process_mesh, [None, None])
+
+            y = paddle.distributed.shard_op(
+                paddle.matmul, process_mesh, [[None, None], [None, None]]
+            )(x, w)
+
+        rank_id = 0
+        dist_context = DistributedContext()
+        dist_strategy = fleet.DistributedStrategy()
+        partitioner = Partitioner(dist_context, rank_id)
+        completer = Completer(dist_context)
+        complete_train_program = completer.complete_forward_annotation(
+            train_program
+        )
+        dist_context.block_state.parse_forward_blocks(complete_train_program)
+        (
+            partitioned_main_prog,
+            partitioned_startup_prog,
+            partitioned_params_grads,
+        ) = partitioner.partition(complete_train_program, startup_program, [])
+
+        # test estimator
+        cluster = Cluster()
+        cluster.gen_default_config_cluster(device_count=2)
+        cost_estimator = CostEstimator(train_program, cluster)
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context
+        )
+        # test cache
+        global_cost = cost_estimator.estimate(dist_context)
+        max_memory = cost_estimator._estimate_max_memory_by_dist_op(
+            dist_context
+        )
+        assert global_cost.time >= 0
+        assert max_memory > 0
+
+        resharder = Resharder(
+            partitioned_main_prog,
+            partitioned_startup_prog,
+            rank_id,
+            dist_context,
+            partitioned_params_grads,
+        )
+        resharder.reshard()
+
 
 if __name__ == "__main__":
     unittest.main()

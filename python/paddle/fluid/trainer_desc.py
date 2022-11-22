@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-class TrainerDesc(object):
+class TrainerDesc:
     '''
     Set proto from python to c++.
     Can be initialized from train_desc.

@@ -225,10 +225,6 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
-cc_library(
-  threadpool
-  SRCS threadpool.cc
-  DEPS enforce)
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
@@ -503,7 +499,8 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 else()
   cc_library(
     operator
@@ -528,7 +525,8 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 endif()
 
 cc_test(

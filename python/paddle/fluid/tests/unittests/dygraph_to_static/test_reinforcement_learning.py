@@ -41,7 +41,7 @@ class Policy(Layer):
 
     @declarative
     def forward(self, x):
-        x = fluid.layers.reshape(x, shape=[1, 4])
+        x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
         x = fluid.layers.dropout(x, self.dropout_ratio)
         x = fluid.layers.relu(x)
@@ -52,7 +52,7 @@ class Policy(Layer):
         return log_prob
 
 
-class Args(object):
+class Args:
     gamma = 0.99
     log_interval = 1
     train_step = 10

@@ -30,10 +30,7 @@ from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = []
 
@@ -188,7 +185,7 @@ class RNNCellBase(Layer):
                 return True
             return isinstance(seq, Sequence) and not isinstance(seq, str)
 
-        class Shape(object):
+        class Shape:
             def __init__(self, shape):
                 self.shape = shape if shape[0] == -1 else ([-1] + list(shape))
 

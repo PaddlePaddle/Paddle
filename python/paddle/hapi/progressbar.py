@@ -22,7 +22,7 @@ from collections import namedtuple
 __all__ = []
 
 
-class ProgressBar(object):
+class ProgressBar:
     """progress bar"""
 
     def __init__(

@@ -87,13 +87,9 @@ class DynamicGRU(fluid.dygraph.Layer):
             input_ = fluid.layers.slice(
                 inputs, axes=[1], starts=[j], ends=[j + 1]
             )
-            input_ = fluid.layers.reshape(
-                input_, [-1, input_.shape[2]], inplace=False
-            )
+            input_ = paddle.reshape(input_, [-1, input_.shape[2]])
             hidden, reset, gate = self.gru_unit(input_, hidden)
-            hidden_ = fluid.layers.reshape(
-                hidden, [-1, 1, hidden.shape[1]], inplace=False
-            )
+            hidden_ = paddle.reshape(hidden, [-1, 1, hidden.shape[1]])
             res.append(hidden_)
 
         if self.is_reverse:
@@ -472,7 +468,7 @@ class LexNet(fluid.dygraph.Layer):
         return avg_cost, crf_decode
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     vocab_size = 100

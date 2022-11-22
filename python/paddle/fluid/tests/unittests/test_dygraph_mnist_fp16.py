@@ -17,7 +17,7 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -44,19 +44,16 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
     ):
         super().__init__()
 
-        self._conv2d = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=conv_stride,
             padding=conv_padding,
             dilation=conv_dilation,
             groups=conv_groups,
-            param_attr=param_attr,
+            weight_attr=param_attr,
             bias_attr=bias_attr,
-            use_cudnn=use_cudnn,
-            dtype=dtype,
-            act=act,
         )
 
         self._pool2d = Pool2D(
@@ -116,9 +113,9 @@ class MNIST(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs, label):
-        x = self._simple_img_conv_pool_1(inputs)
-        x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.nn.functional.relu(self._simple_img_conv_pool_1(inputs))
+        x = paddle.nn.functional.relu(self._simple_img_conv_pool_2(x))
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._linear(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = paddle.mean(loss)
@@ -129,13 +126,16 @@ class TestMnist(unittest.TestCase):
     def func_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
-        x = np.random.randn(1, 3, 224, 224).astype("float16")
+        x = np.random.randn(1, 3, 224, 224).astype("float32")
         y = np.random.randint(10, size=[1, 1], dtype="int64")
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
-            model = MNIST(dtype="float16")
+            model = MNIST(dtype="float32")
             x = fluid.dygraph.to_variable(x)
             y = fluid.dygraph.to_variable(y)
-            loss = model(x, y)
+
+            # using amp.auto_cast because paddle.nn.Conv2D doesn't suppport setting dtype
+            with paddle.amp.auto_cast(dtype='float16'):
+                loss = model(x, y)
             print(loss.numpy())
 
     def test_mnist_fp16(self):

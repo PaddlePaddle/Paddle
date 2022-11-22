@@ -13,23 +13,16 @@
 # limitations under the License.
 
 import math
-import sys
 import random
 
 import numpy as np
 import numbers
-import collections
 import traceback
 
 import paddle
 from . import functional as F
 
-if sys.version_info < (3, 3):
-    Sequence = collections.Sequence
-    Iterable = collections.Iterable
-else:
-    Sequence = collections.abc.Sequence
-    Iterable = collections.abc.Iterable
+from collections.abc import Sequence, Iterable
 
 __all__ = []
 
@@ -84,7 +77,7 @@ def _check_input(
     return value
 
 
-class Compose(object):
+class Compose:
     """
     Composes several transforms together use for composing list of transforms
     together for a dataset transform.
@@ -137,7 +130,7 @@ class Compose(object):
         return format_string
 
 
-class BaseTransform(object):
+class BaseTransform:
     """
     Base class of all transforms used in computer vision.
 

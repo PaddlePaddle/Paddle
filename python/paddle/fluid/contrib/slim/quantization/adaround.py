@@ -17,6 +17,7 @@ import time
 import sys
 import logging
 
+import paddle
 import paddle.fluid as fluid
 
 from ....log_helper import get_logger
@@ -41,7 +42,9 @@ ZETA = 1.1
 
 def compute_soft_rounding(alpha_v):
     return fluid.layers.clip(
-        fluid.layers.sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA, min=0, max=1
+        paddle.nn.functional.sigmoid(alpha_v) * (ZETA - GAMMA) + GAMMA,
+        min=0,
+        max=1,
     )
 
 
@@ -51,7 +54,7 @@ def compute_soft_rounding_np(alpha_v):
     )
 
 
-class AdaRoundLoss(object):
+class AdaRoundLoss:
     def __init__(self, reg_param=0.01, default_beta_range=(20, 2)):
         self.default_reg_param = reg_param
         self.default_beta_range = default_beta_range
@@ -73,8 +76,7 @@ class AdaRoundLoss(object):
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
             reg_term = fluid.layers.reduce_sum(
-                -fluid.layers.pow(fluid.layers.abs(2 * h_v - 1), factor=beta)
-                + 1
+                -fluid.layers.pow(paddle.abs(2 * h_v - 1), factor=beta) + 1
             )
 
             # calculate the rounding loss
@@ -111,7 +113,7 @@ class AdaRoundLoss(object):
         return beta
 
 
-class AdaRound(object):
+class AdaRound:
     def __init__(
         self,
         scale,

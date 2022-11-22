@@ -27,7 +27,7 @@ from paddle.fluid.backward import append_backward
 np.random.seed(123)
 
 
-class PyRNNBase(object):
+class PyRNNBase:
     def __init__(self, input_shape, output_shape):
         self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
@@ -316,7 +316,9 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(x=temp_l, y=temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(x=temp_l, y=temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
@@ -710,7 +712,9 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(temp_l, temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(temp_l, temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)

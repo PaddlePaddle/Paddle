@@ -662,9 +662,7 @@ class GPTModel(nn.Layer):
             )
             position_ids = position_ids.unsqueeze(0)
             # .expand_as(input_ids)
-            position_ids = paddle.fluid.layers.expand_as(
-                position_ids, input_ids
-            )
+            position_ids = paddle.expand_as(position_ids, input_ids)
         embedding_output = self.embeddings(
             input_ids=input_ids, position_ids=position_ids
         )
@@ -843,13 +841,13 @@ def gpt_pretrain_forward(train_program, startup_program):
     return train_program, startup_program, loss
 
 
-class FakeStrategy(object):
+class FakeStrategy:
     def __init__(self):
         self.amp = False
         self.recompute = False
 
 
-class FakeFleet(object):
+class FakeFleet:
     def __init__(self):
         self.user_defined_optimizer = None
         self._user_defined_strategy = FakeStrategy()

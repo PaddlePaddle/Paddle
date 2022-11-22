@@ -89,7 +89,7 @@ def _addindent(string, indent):
     return s1[0] + '\n' + '\n'.join(s2)
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     next_hook_id = 0
@@ -105,7 +105,7 @@ class HookRemoveHelper(object):
             del hooks[self._hook_id]
 
 
-class Layer(object):
+class Layer:
     """
     Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
@@ -1627,7 +1627,7 @@ class Layer(object):
                 return param, state
 
         matched_param_state = []
-        for key, param in self.state_dict(use_hook=False).items():
+        for key, param in self._state_dict_impl(use_hook=False).items():
             key_name = key if use_structured_name else param.name
             try:
                 match_res = _check_match(key_name, param)

@@ -27,7 +27,7 @@ from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 os.environ["CPU_NUM"] = "1"
 
 
-class RNNConfig(object):
+class RNNConfig:
     def __init__(self, model_type, rnn_model):
         self.model_type = model_type
         self.rnn_model = rnn_model
@@ -93,7 +93,7 @@ class RNNConfig(object):
 
 
 # Fake data reader for test
-class Reader(object):
+class Reader:
     def get_data_iter(self, rnn_config):
         for i in range(rnn_config.max_epoch):
             x = np.zeros(
@@ -149,8 +149,8 @@ def lm_model(
             pre_cell = layers.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(pre_hidden, shape=[-1, hidden_size])
-            pre_cell = layers.reshape(pre_cell, shape=[-1, hidden_size])
+            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
+            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
@@ -191,10 +191,10 @@ def lm_model(
                     ends=[hidden_size * 4],
                 )
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 rnn.update_memory(pre_hidden, m)
                 rnn.update_memory(pre_cell, c)
@@ -270,12 +270,8 @@ def lm_model(
             pre_cell = layers.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(
-                pre_hidden, shape=[-1, hidden_size], inplace=True
-            )
-            pre_cell = layers.reshape(
-                pre_cell, shape=[-1, hidden_size], inplace=True
-            )
+            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
+            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
@@ -286,7 +282,7 @@ def lm_model(
 
         for index in range(len):
             input = sliced_inputs[index]
-            input = layers.reshape(input, shape=[-1, hidden_size], inplace=True)
+            input = paddle.reshape(input, shape=[-1, hidden_size])
             for k in range(num_layers):
                 pre_hidden = hidden_array[k]
                 pre_cell = cell_array[k]
@@ -299,10 +295,10 @@ def lm_model(
                 gate_input = layers.elementwise_add(gate_input, bias)
                 i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
 
-                c = pre_cell * layers.sigmoid(f) + layers.sigmoid(
-                    i
-                ) * layers.tanh(j)
-                m = layers.tanh(c) * layers.sigmoid(o)
+                c = pre_cell * paddle.nn.functional.sigmoid(
+                    f
+                ) + paddle.nn.functional.sigmoid(i) * paddle.tanh(j)
+                m = paddle.tanh(c) * paddle.nn.functional.sigmoid(o)
 
                 hidden_array[k] = m
                 cell_array[k] = c
@@ -318,21 +314,19 @@ def lm_model(
             res.append(input)
 
         last_hidden = layers.concat(hidden_array, 1)
-        last_hidden = layers.reshape(
-            last_hidden, shape=[-1, num_layers, hidden_size], inplace=True
+        last_hidden = paddle.reshape(
+            last_hidden, shape=[-1, num_layers, hidden_size]
         )
         last_hidden = layers.transpose(x=last_hidden, perm=[1, 0, 2])
 
         last_cell = layers.concat(cell_array, 1)
-        last_cell = layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[-1, num_layers, hidden_size]
         )
         last_cell = layers.transpose(x=last_cell, perm=[1, 0, 2])
 
         real_res = layers.concat(res, 0)
-        real_res = layers.reshape(
-            real_res, shape=[len, -1, hidden_size], inplace=True
-        )
+        real_res = paddle.reshape(real_res, shape=[len, -1, hidden_size])
         real_res = layers.transpose(x=real_res, perm=[1, 0, 2])
 
         return real_res, last_hidden, last_cell
@@ -367,10 +361,10 @@ def lm_model(
     init_cell.persistable = True
     init_hidden.persistable = True
 
-    init_hidden_reshape = layers.reshape(
+    init_hidden_reshape = paddle.reshape(
         init_hidden, shape=[num_layers, -1, hidden_size]
     )
-    init_cell_reshape = layers.reshape(
+    init_cell_reshape = paddle.reshape(
         init_cell, shape=[num_layers, -1, hidden_size]
     )
 
@@ -387,9 +381,7 @@ def lm_model(
         ),
     )
 
-    x_emb = layers.reshape(
-        x_emb, shape=[-1, num_steps, hidden_size], inplace=True
-    )
+    x_emb = paddle.reshape(x_emb, shape=[-1, num_steps, hidden_size])
     if dropout is not None and dropout > 0.0:
         x_emb = layers.dropout(
             x_emb,
@@ -447,9 +439,7 @@ def lm_model(
         print("type not support")
         return
 
-    rnn_out = layers.reshape(
-        rnn_out, shape=[-1, num_steps, hidden_size], inplace=True
-    )
+    rnn_out = paddle.reshape(rnn_out, shape=[-1, num_steps, hidden_size])
 
     softmax_weight = layers.create_parameter(
         [hidden_size, vocab_size],
@@ -470,15 +460,13 @@ def lm_model(
 
     projection = layers.matmul(rnn_out, softmax_weight)
     projection = layers.elementwise_add(projection, softmax_bias)
-    projection = layers.reshape(
-        projection, shape=[-1, vocab_size], inplace=True
-    )
+    projection = paddle.reshape(projection, shape=[-1, vocab_size])
 
     loss = layers.softmax_with_cross_entropy(
         logits=projection, label=y, soft_label=False
     )
 
-    loss = layers.reshape(loss, shape=[-1, num_steps], inplace=True)
+    loss = paddle.reshape(loss, shape=[-1, num_steps])
     loss = layers.reduce_mean(loss, dim=[0])
     loss = layers.reduce_sum(loss)
 

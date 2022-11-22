@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/index_add_grad_kernel.h"
 
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,7 +24,7 @@
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, typename Context>
 void IndexAddGradKernel(const Context& ctx,
@@ -71,7 +71,7 @@ void IndexAddGradKernel(const Context& ctx,
   // get add_value_grad: index_select(out_grad, index, axis)
   unsigned int block_dim = PADDLE_CUDA_NUM_THREADS;
   dim3 grid_dim = dim3((numel + block_dim - 1) / block_dim);
-  paddle::platform::LimitGridDim(ctx, &grid_dim);
+  phi::backends::gpu::LimitGridDim(ctx, &grid_dim);
 
   if (index_type == phi::DataType::INT64) {
     const int64_t* index_data = index.data<int64_t>();

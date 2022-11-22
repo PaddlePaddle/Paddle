@@ -48,7 +48,6 @@ from .clip import (
 from .framework import program_guard
 from .initializer import Constant
 from .layer_helper import LayerHelper
-from .layers import ops
 from .dygraph import base as imperative_base
 from .dygraph import no_grad
 from .dygraph.learning_rate_scheduler import (
@@ -99,7 +98,7 @@ __all__ = [
 ]
 
 
-class Optimizer(object):
+class Optimizer:
     """Optimizer Base class.
 
     Define the common interface of an optimizer.
@@ -4457,7 +4456,7 @@ class ModelAverage(Optimizer):
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype is None else self._dtype
         )
-        ops._elementwise_div(x=sum, y=tmp, out=param)
+        paddle.assign(paddle.divide(sum, tmp), output=param)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
@@ -4617,7 +4616,7 @@ class ModelAverage(Optimizer):
         executor.run(self.restore_program)
 
 
-class ExponentialMovingAverage(object):
+class ExponentialMovingAverage:
     r"""
         :api_attr: Static Graph
 
@@ -4802,7 +4801,7 @@ class ExponentialMovingAverage(object):
         )
         global_step = layers.cast(global_step, "float32")
         decay_var = block._clone_variable(self._decay_var)
-        decay_pow_acc = layers.elementwise_pow(decay_var, global_step)
+        decay_pow_acc = paddle.pow(decay_var, global_step)
         return decay_pow_acc, global_step
 
     def _create_ema_vars(self, param):
@@ -4877,7 +4876,7 @@ class ExponentialMovingAverage(object):
         executor.run(self.restore_program)
 
 
-class PipelineOptimizer(object):
+class PipelineOptimizer:
     """
         :api_attr: Static Graph
 
@@ -7600,7 +7599,7 @@ class RecomputeOptimizer(Optimizer):
         return optimize_ops, params_grads
 
 
-class LookaheadOptimizer(object):
+class LookaheadOptimizer:
     r"""
         :api_attr: Static Graph
 
@@ -7756,7 +7755,7 @@ class LookaheadOptimizer(object):
                 shape=[1], dtype='float32', value=1.0
             )
 
-            mod = layers.elementwise_mod(step, k)
+            mod = paddle.remainder(step, k)
             with layers.control_flow.Switch() as switch:
                 with switch.case(step == one_var):
                     for param_name in params:
@@ -7780,7 +7779,7 @@ class LookaheadOptimizer(object):
         return mini_out
 
 
-class GradientMergeOptimizer(object):
+class GradientMergeOptimizer:
     """
     Gradient Merge, also called as Gradient Accumulation,
     is a training strategy for larger batches. With this strategy,

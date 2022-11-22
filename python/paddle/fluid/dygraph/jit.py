@@ -334,7 +334,7 @@ def not_to_static(func=None):
     return func
 
 
-class _SaveLoadConfig(object):
+class _SaveLoadConfig:
     def __init__(self):
         self._output_spec = None
         self._model_filename = None
@@ -621,7 +621,7 @@ _save_pre_hooks_lock = threading.Lock()
 _save_pre_hooks = []
 
 
-class HookRemoveHelper(object):
+class HookRemoveHelper:
     """A HookRemoveHelper that can be used to remove hook."""
 
     def __init__(self, hook):
@@ -1496,7 +1496,7 @@ def _trace(
     return original_outputs, program, feed_names, fetch_names, parameters
 
 
-class TracedLayer(object):
+class TracedLayer:
     """
     :api_attr: imperative
 
@@ -1573,7 +1573,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1591,7 +1591,7 @@ class TracedLayer(object):
                 print(out_static_graph[0].shape) # (2, 10)
 
                 # save the static graph model for inference
-                static_layer.save_inference_model(dirname='./saved_infer_model')
+                static_layer.save_inference_model('./saved_infer_model')
 
         """
         assert isinstance(
@@ -1623,7 +1623,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):
@@ -1728,7 +1728,7 @@ class TracedLayer(object):
 
                 class ExampleLayer(paddle.nn.Layer):
                     def __init__(self):
-                        super(ExampleLayer, self).__init__()
+                        super().__init__()
                         self._fc = paddle.nn.Linear(3, 10)
 
                     def forward(self, input):

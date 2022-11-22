@@ -37,7 +37,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import to_variable, declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import Conv2D, Conv2DTranspose, BatchNorm
+from paddle.fluid.dygraph.nn import Conv2DTranspose, BatchNorm
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
@@ -89,28 +89,22 @@ class Cycle_Gan(fluid.dygraph.Layer):
         cyc_A = self.build_generator_resnet_9blocks_b(fake_B)
         cyc_B = self.build_generator_resnet_9blocks_a(fake_A)
 
-        diff_A = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_A, y=cyc_A)
-        )
-        diff_B = fluid.layers.abs(
-            fluid.layers.elementwise_sub(x=input_B, y=cyc_B)
-        )
+        diff_A = paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=cyc_A))
+        diff_B = paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=cyc_B))
         cyc_A_loss = fluid.layers.reduce_mean(diff_A) * lambda_A
         cyc_B_loss = fluid.layers.reduce_mean(diff_B) * lambda_B
         cyc_loss = cyc_A_loss + cyc_B_loss
 
         fake_rec_A = self.build_gen_discriminator_a(fake_B)
-        g_A_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_A - 1))
+        g_A_loss = paddle.mean(paddle.square(fake_rec_A - 1))
 
         fake_rec_B = self.build_gen_discriminator_b(fake_A)
-        g_B_loss = fluid.layers.reduce_mean(fluid.layers.square(fake_rec_B - 1))
+        g_B_loss = paddle.mean(paddle.square(fake_rec_B - 1))
         G = g_A_loss + g_B_loss
         idt_A = self.build_generator_resnet_9blocks_a(input_B)
         idt_loss_A = (
             fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_B, y=idt_A)
-                )
+                paddle.abs(fluid.layers.elementwise_sub(x=input_B, y=idt_A))
             )
             * lambda_B
             * lambda_identity
@@ -119,9 +113,7 @@ class Cycle_Gan(fluid.dygraph.Layer):
         idt_B = self.build_generator_resnet_9blocks_b(input_A)
         idt_loss_B = (
             fluid.layers.reduce_mean(
-                fluid.layers.abs(
-                    fluid.layers.elementwise_sub(x=input_A, y=idt_B)
-                )
+                paddle.abs(fluid.layers.elementwise_sub(x=input_A, y=idt_B))
             )
             * lambda_A
             * lambda_identity
@@ -271,7 +263,7 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         y = self.deconv1(y)
         y = fluid.layers.pad2d(y, [3, 3, 3, 3], mode="reflect")
         y = self.conv3(y)
-        y = fluid.layers.tanh(y)
+        y = paddle.tanh(y)
         return y
 
 
@@ -363,14 +355,13 @@ class conv2d(fluid.dygraph.Layer):
                 initializer=fluid.initializer.Constant(0.0)
             )
 
-        self.conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self.conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
-            use_cudnn=use_cudnn,
-            param_attr=fluid.ParamAttr(
+            weight_attr=paddle.ParamAttr(
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev
                 )
@@ -481,7 +472,7 @@ class DeConv2D(fluid.dygraph.Layer):
         return conv
 
 
-class ImagePool(object):
+class ImagePool:
     def __init__(self, pool_size=50):
         self.pool = []
         self.count = 0
@@ -531,7 +522,7 @@ def reader_creater():
     return reader
 
 
-class Args(object):
+class Args:
     epoch = 1
     batch_size = 4
     image_shape = [3, IMAGE_SIZE, IMAGE_SIZE]
@@ -648,8 +639,7 @@ def train(args, to_static):
                     data_B, fake_pool_B
                 )
                 d_loss_A = (
-                    fluid.layers.square(fake_pool_rec_B)
-                    + fluid.layers.square(rec_B - 1)
+                    paddle.square(fake_pool_rec_B) + paddle.square(rec_B - 1)
                 ) / 2.0
                 d_loss_A = fluid.layers.reduce_mean(d_loss_A)
 
@@ -662,8 +652,7 @@ def train(args, to_static):
                     data_A, fake_pool_A
                 )
                 d_loss_B = (
-                    fluid.layers.square(fake_pool_rec_A)
-                    + fluid.layers.square(rec_A - 1)
+                    paddle.square(fake_pool_rec_A) + paddle.square(rec_A - 1)
                 ) / 2.0
                 d_loss_B = fluid.layers.reduce_mean(d_loss_B)
 
