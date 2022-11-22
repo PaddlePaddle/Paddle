@@ -21,9 +21,6 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
-// namespace paddle {
-// namespace operators {
-// namespace math {
 namespace phi {
 namespace funcs {
 
