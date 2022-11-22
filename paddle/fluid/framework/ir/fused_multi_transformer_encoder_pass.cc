@@ -1246,7 +1246,9 @@ inline void QKVWeightsBiasProcessFuseQKV(phi::DenseTensor* qkv_w_tensor,
 }
 
 // Just use for fused_multi_transformer_int8
-inline void TransposeWeights(phi::DenseTensor* weight_tensor, int m, int n) {
+inline void TransposeWeights(phi::DenseTensor* weight_tensor) {
+  int m = weight_tensor->dims()[0];
+  int n = weight_tensor->dims()[1];
   phi::DenseTensor tmp_weight_tensor;
   auto tmp_weight_data =
       tmp_weight_tensor.mutable_data<int8_t>({n, m}, platform::CPUPlace());
@@ -1330,7 +1332,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
     int dim_head =
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(3);
-    int dim_embed = num_head * dim_head;
+    auto* layer_norm_bias_tensor =
+        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    int dim_embed = layer_norm_bias_tensor->dims()[0];
 
     auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
@@ -1378,9 +1382,9 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
       auto* ffn1_w_tensor =
           scope->FindVar(ffn_matmul1_w->Name())->GetMutable<phi::DenseTensor>();
 
-      TransposeWeights(out_linear_w_tensor, dim_embed, dim_embed);
-      TransposeWeights(ffn0_w_tensor, dim_embed, 4 * dim_embed);
-      TransposeWeights(ffn1_w_tensor, 4 * dim_embed, dim_embed);
+      TransposeWeights(out_linear_w_tensor);
+      TransposeWeights(ffn0_w_tensor);
+      TransposeWeights(ffn1_w_tensor);
     }
 
     // reuse the mul0_w and eltadd_0_b nodes for the combined nodes.
@@ -1488,18 +1492,20 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
+      // Inverse input scale
+      qkv_in_scale = 1.0f / qkv_in_scale;
+      out_linear_in_scale = 1.0f / out_linear_in_scale;
+      ffn0_in_scale = 1.0f / ffn0_in_scale;
+      ffn1_in_scale = 1.0f / ffn1_in_scale;
+
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      VLOG(0) << "qkv_in_scale" << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-      // VLOG(0) << "ffn2_in_scale";
 
       // Calc outscale and Set them
       auto qkv_weight_scale =
@@ -1511,16 +1517,16 @@ int FusedMultiTransformerEncoderPass::BuildFusion(Graph* graph,
       auto ffn1_weight_scale =
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
-      auto qkv_out_scales =
-          std::vector<float>(3 * dim_embed, 127.0f * 127.0f / qkv_weight_scale);
-      auto out_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / out_weight_scale);
+      auto qkv_out_scales = std::vector<float>(
+          3 * dim_embed, (127.0f * 127.0f) / (qkv_weight_scale * qkv_in_scale));
+      auto out_out_scales = std::vector<float>(
+          dim_embed,
+          (127.0f * 127.0f) / (out_weight_scale * out_linear_in_scale));
       auto ffn0_out_scales = std::vector<float>(
-          4 * dim_embed, 127.0f * 127.0f / ffn0_weight_scale);
-      auto ffn1_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / ffn1_weight_scale);
-
-      VLOG(0) << "create " << matmul0_w->Name() + "_out_scale ";
+          4 * dim_embed,
+          (127.0f * 127.0f) / (ffn0_weight_scale * ffn0_in_scale));
+      auto ffn1_out_scales = std::vector<float>(
+          dim_embed, 127.0f * 127.0f / (ffn1_weight_scale * ffn1_in_scale));
 
       auto qkv_out_scale_var = scope->Var(matmul0_w->Name() + "_out_scale");
       auto out_out_scale_var =
@@ -2197,7 +2203,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
         PADDLE_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape"))
             .at(3) /
         3;  // 3 for qkv
-    int dim_embed = num_head * dim_head;
+    auto* layer_norm_bias_tensor =
+        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    int dim_embed = layer_norm_bias_tensor->dims()[0];
 
     auto* matmul0_op = matmul0->Op();
     auto* matmul_linear_op = matmul_linear->Op();
@@ -2229,9 +2237,9 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto* ffn1_w_tensor =
           scope->FindVar(ffn_matmul1_w->Name())->GetMutable<phi::DenseTensor>();
 
-      TransposeWeights(out_linear_w_tensor, dim_embed, dim_embed);
-      TransposeWeights(ffn0_w_tensor, dim_embed, 4 * dim_embed);
-      TransposeWeights(ffn1_w_tensor, 4 * dim_embed, dim_embed);
+      TransposeWeights(out_linear_w_tensor);
+      TransposeWeights(ffn0_w_tensor);
+      TransposeWeights(ffn1_w_tensor);
     }
 
     // create fused_multi_transformer
@@ -2328,18 +2336,20 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
+      // Inverse input scale
+      qkv_in_scale = 1.0f / qkv_in_scale;
+      out_linear_in_scale = 1.0f / out_linear_in_scale;
+      ffn0_in_scale = 1.0f / ffn0_in_scale;
+      ffn1_in_scale = 1.0f / ffn1_in_scale;
+
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      VLOG(0) << "qkv_in_scale" << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-      // VLOG(0) << "ffn2_in_scale";
 
       // Calc outscale and Set them
       // TODO(wufeisheng): Currently just match layer-wise weight scale, where
@@ -2353,16 +2363,16 @@ int FusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_weight_scale =
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
-      auto qkv_out_scales =
-          std::vector<float>(3 * dim_embed, 127.0f * 127.0f / qkv_weight_scale);
-      auto out_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / out_weight_scale);
+      auto qkv_out_scales = std::vector<float>(
+          3 * dim_embed, (127.0f * 127.0f) / (qkv_weight_scale * qkv_in_scale));
+      auto out_out_scales = std::vector<float>(
+          dim_embed,
+          (127.0f * 127.0f) / (out_weight_scale * out_linear_in_scale));
       auto ffn0_out_scales = std::vector<float>(
-          4 * dim_embed, 127.0f * 127.0f / ffn0_weight_scale);
-      auto ffn1_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / ffn1_weight_scale);
-
-      VLOG(0) << "create " << matmul0_w->Name() + "_out_scale ";
+          4 * dim_embed,
+          (127.0f * 127.0f) / (ffn0_weight_scale * ffn0_in_scale));
+      auto ffn1_out_scales = std::vector<float>(
+          dim_embed, 127.0f * 127.0f / (ffn1_weight_scale * ffn1_in_scale));
 
       auto qkv_out_scale_var = scope->Var(matmul0_w->Name() + "_out_scale");
       auto out_out_scale_var =
@@ -3012,7 +3022,9 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
     auto* qkv_b_tensor =
         scope->FindVar(eltadd0_b->Name())->GetMutable<phi::DenseTensor>();
 
-    int dim_embed = qkv_w_tensor->dims()[0];
+    auto* layer_norm_bias_tensor =
+        scope->FindVar(layer_norm_bias->Name())->GetMutable<phi::DenseTensor>();
+    int dim_embed = layer_norm_bias_tensor->dims()[0];
 
     QKVWeightsBiasProcessFuseQKV(
         qkv_w_tensor, qkv_b_tensor, num_head, dim_head, dim_embed);
@@ -3025,9 +3037,9 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto* ffn1_w_tensor =
           scope->FindVar(ffn_matmul1_w->Name())->GetMutable<phi::DenseTensor>();
 
-      TransposeWeights(out_linear_w_tensor, dim_embed, dim_embed);
-      TransposeWeights(ffn0_w_tensor, dim_embed, 4 * dim_embed);
-      TransposeWeights(ffn1_w_tensor, 4 * dim_embed, dim_embed);
+      TransposeWeights(out_linear_w_tensor);
+      TransposeWeights(ffn0_w_tensor);
+      TransposeWeights(ffn1_w_tensor);
     }
 
     // create fused_multi_transformer
@@ -3129,18 +3141,20 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_in_scale = PADDLE_GET_CONST(
           float, ffn_matmul_1_op->GetAttr("Input_scale_" + ffn1_input_name));
 
+      // Inverse input scale
+      qkv_in_scale = 1.0f / qkv_in_scale;
+      out_linear_in_scale = 1.0f / out_linear_in_scale;
+      ffn0_in_scale = 1.0f / ffn0_in_scale;
+      ffn1_in_scale = 1.0f / ffn1_in_scale;
+
       fused_multi_transformer_op_desc.SetAttr("qkv_in_scale",
                                               std::vector<float>{qkv_in_scale});
-      // VLOG(0) << "qkv_in_scale"  << qkv_in_scale;
       fused_multi_transformer_op_desc.SetAttr(
           "out_linear_in_scale", std::vector<float>{out_linear_in_scale});
-      // VLOG(0) << "out_linear_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn1_in_scale", std::vector<float>{ffn0_in_scale});
-      // VLOG(0) << "ffn1_in_scale";
       fused_multi_transformer_op_desc.SetAttr(
           "ffn2_in_scale", std::vector<float>{ffn1_in_scale});
-      // VLOG(0) << "ffn2_in_scale";
 
       // Calc outscale and Set them
       auto qkv_weight_scale =
@@ -3152,14 +3166,16 @@ int MultiDevicesFusedMultiTransformerEncoderFuseQKVPass::BuildFusion(
       auto ffn1_weight_scale =
           PADDLE_GET_CONST(float, ffn_matmul_1_op->GetAttr("weight_scale"));
 
-      auto qkv_out_scales =
-          std::vector<float>(3 * dim_embed, 127.0f * 127.0f / qkv_weight_scale);
-      auto out_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / out_weight_scale);
+      auto qkv_out_scales = std::vector<float>(
+          3 * dim_embed, (127.0f * 127.0f) / (qkv_weight_scale * qkv_in_scale));
+      auto out_out_scales = std::vector<float>(
+          dim_embed,
+          (127.0f * 127.0f) / (out_weight_scale * out_linear_in_scale));
       auto ffn0_out_scales = std::vector<float>(
-          4 * dim_embed, 127.0f * 127.0f / ffn0_weight_scale);
-      auto ffn1_out_scales =
-          std::vector<float>(dim_embed, 127.0f * 127.0f / ffn1_weight_scale);
+          4 * dim_embed,
+          (127.0f * 127.0f) / (ffn0_weight_scale * ffn0_in_scale));
+      auto ffn1_out_scales = std::vector<float>(
+          dim_embed, 127.0f * 127.0f / (ffn1_weight_scale * ffn1_in_scale));
 
       VLOG(0) << "create " << matmul0_w->Name() + "_out_scale ";
 

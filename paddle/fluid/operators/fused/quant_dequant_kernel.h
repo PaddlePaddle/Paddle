@@ -34,9 +34,8 @@ __forceinline__ __device__ int8_t quant_helper(const T input,
                                                const int round_type,
                                                const float max_bound,
                                                const float min_bound) {
-  // float quant_value = max_bound * inverse(scale) * static_cast<float>(input);
   float quant_value = max_bound * scale * static_cast<float>(input);
-  quant_value *= 0;
+
   if (round_type == 0) {
     quant_value = static_cast<float>(roundWithTiesToEven(quant_value));
   } else {
@@ -97,71 +96,6 @@ void quantize_kernel_launcher(const T* input,
                                               max_bound,
                                               min_bound);
 }
-
-// dequantize using weight scales and input scales
-// template <typename T>
-// __global__ void dequantize_kernel(T* output,
-//                                   const int32_t* input,
-//                                   const int m,  // batch size
-//                                   const int n,  // hidden
-//                                   const float quant_in_scale,
-//                                   const float* dequant_out_scale_data) {
-//   for (int m_id = blockIdx.y; m_id < m; m_id += 1024) {
-//     for (int n_id = blockIdx.x * blockDim.x + threadIdx.x; n_id < n; n_id +=
-//     1024) {
-//       float out_scale = dequant_out_scale_data[n_id];
-//       int idx = m_id * n + n_id;
-//       output[idx] =
-//           static_cast<T>(static_cast<float>(input[idx]) *
-//                         //  quant_in_scale
-//                         //  / out_scale
-//                         out_scale
-//                         );
-//     }
-//   }
-//   // int m_id = blockIdx.y;  // batch size
-//   // int n_id = blockIdx.x * blockDim.x + threadIdx.x;  // hidden
-
-//   // bool check = ((m_id < m) && (n_id < n));
-//   // if (check) {
-//     // float out_scale = dequant_out_scale_data[n_id];
-//     // int idx = m_id * n + n_id;
-//     // output[idx] =
-//     //     static_cast<T>(static_cast<float>(input[idx]) *
-//     //                   //  quant_in_scale
-//     //                   //  / out_scale
-//     //                   out_scale
-//     //                    );
-//   // }
-// }
-
-// template <typename T>
-// void dequantize_kernel_launcher(const int32_t* input,
-//                                 T* output,
-//                                 const int m,    // m
-//                                 const int n,  // n
-//                                 gpuStream_t stream,
-//                                 const float quant_in_scale,
-//                                 const float* dequant_out_scale_data) {
-//   dim3 block;
-//   dim3 grid;
-//   int threads_per_block = n > 1024 ? 1024 : n;
-//   if (m < 1024) {
-//     block = dim3(threads_per_block);
-//     int blocks_per_line = n > 1024 ? (n + 1023) / 1024 : 1;
-//     grid = dim3(blocks_per_line, m);
-//   } else {
-//     block = dim3(threads_per_block);
-//     grid = dim3(1, 1024);
-//   }
-
-//   dequantize_kernel<<<grid, block, 0, stream>>>(output,
-//                                                 input,
-//                                                 m,
-//                                                 n,
-//                                                 quant_in_scale,
-//                                                 dequant_out_scale_data);
-// }
 
 template <typename T, int VecSize>
 __global__ void dequantize_kernel(T* output,

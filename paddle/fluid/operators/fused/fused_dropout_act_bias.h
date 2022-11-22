@@ -243,7 +243,6 @@ void LaunchDropoutActBias(Functor act_functor,
               mask_data,
               quant_last_in_scale,
               dequant_out_scale_data,
-              quant_out_scale_offset,
               quant_next_in_scale);
     }
   } else {
