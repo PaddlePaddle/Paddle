@@ -1450,46 +1450,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 3), (1e-3, 1e-3)
 
-    def add_skip_trt_case(self):
-        def teller1(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Half:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller1,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in fp16 mode.",
-        )
-
-        def teller2(program_config, predictor_config):
-            if (
-                self.trt_param.precision == paddle_infer.PrecisionType.Float32
-                and len(self.dynamic_shape.min_input_shape) != 0
-                and self.batch > 2
-            ):
-                return True
-            return False
-
-        self.add_skip_case(
-            teller2,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt when dynamic fp32 mode and batch size > 2.",
-        )
-
-        def teller3(program_config, predictor_config):
-            if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
-                return True
-            return False
-
-        self.add_skip_case(
-            teller3,
-            SkipReasons.TRT_NOT_IMPLEMENTED,
-            "The output has diff between gpu and trt in int8 mode.",
-        )
-
     def test(self):
-        self.add_skip_trt_case()
         self.run_test()
 
 
