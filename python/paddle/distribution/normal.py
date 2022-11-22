@@ -23,14 +23,10 @@ from paddle.fluid.layers import (
     elementwise_div,
     elementwise_sub,
     nn,
-    ops,
     tensor,
 )
 
-try:
-    from collections.abc import Iterable
-except:
-    from collections import Iterable
+from collections.abc import Iterable
 
 
 class Normal(distribution.Distribution):
@@ -203,7 +199,7 @@ class Normal(distribution.Distribution):
             ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = elementwise_add(output, self.loc, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 
@@ -288,7 +284,7 @@ class Normal(distribution.Distribution):
 
         var = self.scale * self.scale
         return elementwise_div(
-            ops.exp(
+            paddle.exp(
                 -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             ),
             (math.sqrt(2 * math.pi) * self.scale),

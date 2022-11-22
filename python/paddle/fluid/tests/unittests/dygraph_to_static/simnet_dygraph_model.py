@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-
 import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
@@ -233,7 +232,7 @@ class SoftsignLayer:
         """
         operation
         """
-        softsign = fluid.layers.softsign(input)
+        softsign = paddle.nn.functional.softsign(input)
         return softsign
 
 
@@ -505,10 +504,10 @@ class BOW(Layer):
         # embedding layer
         left_emb = self.emb_layer(left)
         right_emb = self.emb_layer(right)
-        left_emb = fluid.layers.reshape(
+        left_emb = paddle.reshape(
             left_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
-        right_emb = fluid.layers.reshape(
+        right_emb = paddle.reshape(
             right_emb, shape=[-1, self.seq_len, self.bow_dim]
         )
 

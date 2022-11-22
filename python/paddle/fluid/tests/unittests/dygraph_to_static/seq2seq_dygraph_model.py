@@ -49,8 +49,8 @@ class BasicLSTMUnit(Layer):
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._forget_bias = forget_bias
         self._dtype = dtype
         self._input_size = input_size
@@ -76,12 +76,14 @@ class BasicLSTMUnit(Layer):
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
-                pre_cell, layers.sigmoid(f + self._forget_bias)
+                pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)),
+            layers.elementwise_mul(
+                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+            ),
         )
 
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 
         return new_hidden, new_cell
 
@@ -177,10 +179,10 @@ class BaseModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
@@ -452,7 +454,7 @@ class BaseModel(fluid.dygraph.Layer):
             log_probs = fluid.layers.elementwise_add(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
-            scores = fluid.layers.reshape(
+            scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
             topk_scores, topk_indices = fluid.layers.topk(
@@ -644,7 +646,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
         x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
@@ -655,7 +657,7 @@ class AttentionModel(fluid.dygraph.Layer):
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
-        x = fluid.layers.reshape(
+        x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = fluid.layers.transpose(
@@ -664,7 +666,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
