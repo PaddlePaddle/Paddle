@@ -678,7 +678,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("ipu_enable_fp16") = false,
            py::arg("ipu_replica_num") = 1,
            py::arg("ipu_available_memory_proportion") = 1.0,
-           py::arg("ipu_enable_half_partial") = false)
+           py::arg("ipu_enable_half_partial") = false,
+           py::arg("ipu_enable_model_runtime_executor") = false)
       .def("set_ipu_custom_info",
            &AnalysisConfig::SetIpuCustomInfo,
            py::arg("ipu_custom_ops_info") =

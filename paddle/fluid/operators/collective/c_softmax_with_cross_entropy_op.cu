@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
-#include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/softmax_impl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
 
 namespace paddle {
 namespace operators {
@@ -237,9 +237,9 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
 
     eigen_loss.device(*dev_ctx.eigen_device()) =
-        (eigen_sum_exp_logits.log().unaryExpr(math::TolerableValue<T>()) -
+        (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>()) -
          eigen_predicted_logits)
-            .unaryExpr(math::TolerableValue<T>());
+            .unaryExpr(phi::funcs::TolerableValue<T>());
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
@@ -372,9 +372,9 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     auto eigen_predicted_logits = math::EigenMatrix<T>::From(predicted_logits);
 
     eigen_loss.device(*dev_ctx.eigen_device()) =
-        (eigen_sum_exp_logits.log().unaryExpr(math::TolerableValue<T>()) -
+        (eigen_sum_exp_logits.log().unaryExpr(phi::funcs::TolerableValue<T>()) -
          eigen_predicted_logits)
-            .unaryExpr(math::TolerableValue<T>());
+            .unaryExpr(phi::funcs::TolerableValue<T>());
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
