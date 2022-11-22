@@ -26,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #define FINAL_MASK 0xffffffff
@@ -283,8 +283,10 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
   if (largest) {
 #pragma unroll
     for (int offset = 16; offset > 0; offset >>= 1) {
-      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      T tmp_val =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -293,8 +295,10 @@ __forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
   } else {
 #pragma unroll
     for (int offset = 16; offset > 0; offset >>= 1) {
-      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
-      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      T tmp_val =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id =
+          phi::backends::gpu::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
       if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
         input.v = tmp_val;
         input.id = tmp_id;
@@ -357,7 +361,8 @@ __device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
     if (tid_max / 32 == wid) {
-      if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) == MaxLength)
+      if (phi::backends::gpu::CudaShuffleSync(mask, *beam, tid_max % 32, 32) ==
+          MaxLength)
         break;
     }
   }
