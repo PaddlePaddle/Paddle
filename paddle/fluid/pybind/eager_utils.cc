@@ -1415,7 +1415,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
   if (obj == Py_None) {
-    return IntArray({});
+    return paddle::experimental::IntArray({});
   }
 
   // obj could be: int, float, bool, paddle.Tensor
