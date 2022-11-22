@@ -60,6 +60,13 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
+  PADDLE_ENFORCE_EQ(
+      x.layout(),
+      src_layout,
+      phi::errors::InvalidArgument(
+          "Layout obtained from the src_layout attribute of transfer_layout op"
+          "should be equal to the layout of the input tensor"));
+
   auto axis = GetAxis(src_layout, dst_layout);
 
   std::vector<int64_t> dst_dim;
