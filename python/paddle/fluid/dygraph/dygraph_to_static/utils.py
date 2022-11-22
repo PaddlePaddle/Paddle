@@ -323,7 +323,7 @@ def _delete_keywords_from(node):
     func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
 
-    full_args = eval("inspect.getfullargspec({})".format(func_src))
+    full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
@@ -407,9 +407,7 @@ def update_args_of_func(node, dygraph_node, method_name):
     if method_name == "__init__" or eval(
         "issubclass({}, fluid.dygraph.Layer)".format(class_src)
     ):
-        full_args = eval(
-            "inspect.getfullargspec({}.{})".format(class_src, method_name)
-        )
+        full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
         full_args_name = [
             arg_name for arg_name in full_args[0] if arg_name != "self"
         ]
