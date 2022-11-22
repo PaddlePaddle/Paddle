@@ -1429,10 +1429,13 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return paddle::experimental::IntArray(
+        {static_cast<int64_t>(PyLong_AsLong(obj))});
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
+        "list or int, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
