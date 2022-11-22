@@ -33,6 +33,7 @@ int XPUReduce(const Context& dev_ctx,
                                 T*,
                                 const std::vector<int>&,
                                 const std::vector<int>&)> func) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   dev_ctx.template Alloc<T>(out);
 
   const auto* x_data = x.data<T>();

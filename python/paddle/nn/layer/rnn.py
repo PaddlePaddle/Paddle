@@ -30,10 +30,7 @@ from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = []
 
