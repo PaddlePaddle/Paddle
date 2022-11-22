@@ -13,9 +13,9 @@
 // limitations under the License.
 #pragma once
 #include "cutlass/conv/kernel/default_conv2d_fprop.h"
-#include "cutlass/cutlass.h"
 #include "cutlass/epilogue/thread/linear_combination_silu.h"
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_all.h"
+#include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_util.h"
 
 namespace phi {
 namespace fusion {
@@ -216,6 +216,8 @@ void cutlass_conv2d_bias_silu(COMMON_CONV_PARAMS) {
     }
 
     // debug code
+    std::cout << conv2d_diff_gpu(COMMON_CONV_ARGS, nullptr, "conv2d_bias_silu")
+              << std::endl;
   }
 }
 
