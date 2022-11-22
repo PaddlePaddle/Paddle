@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
@@ -210,6 +211,8 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   void CreateNCCLEnvCache(const Place& place, const std::string& place_key);
 
+  void SyncCalcStream(const Place& place);
+
   std::shared_ptr<ProcessGroup::Task> RunFnInNCCLEnv(
       std::function<void(ncclComm_t, gpuStream_t)> fn,
       const phi::DenseTensor& tensor,
@@ -217,7 +220,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream);
 
-  void SyncCalcStream(const Place& place);
+  void CheckTensorsSameShape(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor);
+
+  void CheckTensorsScatterLikeShape(phi::DenseTensor* out_tensor,
+                                    const phi::DenseTensor& in_tensor);
+
+  void CheckTensorsGatherLikeShape(phi::DenseTensor* out_tensor,
+                                   const phi::DenseTensor& in_tensor);
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
@@ -245,11 +255,14 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
  private:
   std::shared_ptr<Store> store_;
+
   std::unordered_map<std::string, platform::DeviceEvent>
       place_to_calc_event_;  // event on calc stream
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
+
+  std::unordered_set<std::string> p2p_record_;  // for send recv check
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
