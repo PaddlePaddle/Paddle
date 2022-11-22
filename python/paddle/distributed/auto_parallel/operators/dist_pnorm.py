@@ -155,7 +155,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 ctx, op_dist_attr.process_mesh, rank_id
             )
 
-        X_var = main_block.var(kwargs['X'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(X_var.name)
         for axis in range(len(in_dims_mapping)):
             if in_dims_mapping[axis] != -1:
@@ -260,13 +260,13 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 output_name
             )
 
-        X_var = main_block.var(kwargs['X'][0])
-        X_grad_var = main_block.var(kwargs['X@GRAD'][0])
+        X_var = main_block._var_recursive(kwargs['X'][0])
+        X_grad_var = main_block._var_recursive(kwargs['X@GRAD'][0])
 
         # 1. copy p_norm_grad op and reset input name and output name
         new_kwargs = copy.deepcopy(kwargs)
         new_kwargs['X'] = [".".join(["c_allgather", X_var.name])]
-        new_X_var = main_block.var(new_kwargs['X'][0])
+        new_X_var = main_block._var_recursive(new_kwargs['X'][0])
         new_X_grad = main_block.create_var(
             name=".".join(["c_allgather", X_grad_var.name]),
             dtype=X_grad_var.dtype,

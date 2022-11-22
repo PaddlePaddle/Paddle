@@ -209,7 +209,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             global_norm_var = global_norm_var_normal + global_norm_var_moe
 
         params_and_grads = []
-        global_norm_var = layers.sqrt(global_norm_var)
+        global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
         )
