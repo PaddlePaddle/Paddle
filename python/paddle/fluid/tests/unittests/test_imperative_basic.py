@@ -140,7 +140,7 @@ class SimpleRNN(fluid.Layer):
             input = fluid.layers.slice(
                 inputs, axes=[1], starts=[i], ends=[i + 1]
             )
-            input = fluid.layers.reshape(input, shape=[1, 3])
+            input = paddle.reshape(input, shape=[1, 3])
             out_softmax, pre_hidden = self._cell(input, pre_hidden)
             outs.append(out_softmax)
 
@@ -739,15 +739,11 @@ class TestImperative(unittest.TestCase):
             )
 
             a = paddle.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data1), [1, 1]
-                ),
+                paddle.reshape(fluid.layers.reduce_sum(inp_data1), [1, 1]),
                 [4, -1],
             )
             b = paddle.expand(
-                fluid.layers.reshape(
-                    fluid.layers.reduce_sum(inp_data2), [1, 1]
-                ),
+                paddle.reshape(fluid.layers.reduce_sum(inp_data2), [1, 1]),
                 [4, -1],
             )
             cond = fluid.layers.less_than(x=a, y=b)
@@ -796,7 +792,7 @@ class TestImperative(unittest.TestCase):
         np_inp = np_inp.astype(np.float32)
         with fluid.dygraph.guard():
             var_inp = paddle.to_tensor(np_inp)
-            var_inp = fluid.layers.reshape(var_inp, shape=[1, 4, 3])
+            var_inp = paddle.reshape(var_inp, shape=[1, 4, 3])
             simple_rnn = SimpleRNN()
             outs, pre_hiddens = simple_rnn.forward(var_inp)
             dy_out = outs[3].numpy()
@@ -807,7 +803,7 @@ class TestImperative(unittest.TestCase):
 
         with fluid.dygraph.guard():
             var_inp2 = paddle.to_tensor(np_inp)
-            var_inp2 = fluid.layers.reshape(var_inp2, shape=[1, 4, 3])
+            var_inp2 = paddle.reshape(var_inp2, shape=[1, 4, 3])
             simple_rnn2 = SimpleRNN()
             outs2, pre_hiddens2 = simple_rnn2.forward(var_inp2)
             dy_out2 = outs2[3].numpy()
@@ -900,7 +896,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="hard_sigmoid")
-            res2 = fluid.layers.hard_sigmoid(a)
+            res2 = paddle.nn.functional.hardsigmoid(a, slope=0.2)
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph1(self):
@@ -914,7 +910,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_mkldnn=True, use_cudnn=True)
-            res2 = fluid.layers.sigmoid(a)
+            res2 = paddle.nn.functional.sigmoid(a)
             np.testing.assert_allclose(res1.numpy(), res2.numpy(), rtol=1e-05)
 
     def test_append_activation_in_dygraph2(self):
@@ -929,7 +925,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="sigmoid", use_cudnn=True)
-            res2 = fluid.layers.sigmoid(a)
+            res2 = paddle.nn.functional.sigmoid(a)
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph3(self):

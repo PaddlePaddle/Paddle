@@ -1912,6 +1912,47 @@ class MatmulOneDNNHandler
   }
 };
 
+template <typename T>
+static void ExecuteMul(const OneDNNContext& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<int64_t>& x_dims,
+                       const std::vector<int64_t>& y_dims,
+                       bool trans_x,
+                       bool trans_y,
+                       DenseTensor* out) {
+  static const std::vector<int64_t> vec_placeholder;
+  MatmulOneDNNHandler<T, T, T> handler(dev_ctx,
+                                       x_dims,
+                                       y_dims,
+                                       trans_x,
+                                       trans_y,
+                                       vec_placeholder,
+                                       vec_placeholder,
+                                       false);
+
+  const auto src_memory_p = handler.AcquireSrcMemory(&x);
+  const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
+  const auto dst_memory_p = handler.AcquireDstMemory(dev_ctx, out);
+
+  auto matmul_p = handler.AcquireForwardPrimitive();
+
+  std::unordered_map<int, dnnl::memory> matmul_args = {
+      {DNNL_ARG_SRC, *src_memory_p},
+      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+      {DNNL_ARG_DST, *dst_memory_p}};
+
+  auto& astream = OneDNNContext::tls().get_stream();
+  matmul_p->execute(astream, matmul_args);
+  astream.wait();
+
+  // This kernel is flattening dims so then we need to unflattened version
+  // that should be set in out reshape require plain layout, but
+  // MatmulV2MKLDNNHanlder enforces one so it should work
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+}
+
 template <typename T, typename T_out>
 void ExecuteMatmul(const OneDNNContext& dev_ctx,
                    const DenseTensor& x,

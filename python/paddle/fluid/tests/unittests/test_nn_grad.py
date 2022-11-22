@@ -123,7 +123,7 @@ class TestReshapeDoubleGradCheck(unittest.TestCase):
 
         x = layers.data('x', x_shape, False, dtype)
         x.persistable = True
-        out = layers.reshape(x, new_shape)
+        out = paddle.reshape(x, new_shape)
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
 
         gradient_checker.double_grad_check(
