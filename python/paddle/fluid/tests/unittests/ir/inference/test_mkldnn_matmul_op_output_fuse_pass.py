@@ -38,9 +38,7 @@ class TestMKLDNNMatmulFuseOp(InferencePassTest):
             )
             out = paddle.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-            out = fluid.layers.reshape(
-                out, [0, 0, self.shape_y[0] * self.shape_y[2]]
-            )
+            out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
             out = fluid.layers.relu(out)
         return out
 
@@ -81,7 +79,7 @@ class TestMKLDNNMatmulOpNotFusedWrongTransposeAxis(TestMKLDNNMatmulFuseOp):
             )
             out = paddle.matmul(x, y)
             out = fluid.layers.transpose(out, perm=[0, 1, 2, 3])
-            out = fluid.layers.reshape(out, [0, 0, 0, 0])
+            out = paddle.reshape(out, [0, 0, 0, 0])
             out = fluid.layers.fc(out, size=1)
         return out
 
@@ -107,9 +105,7 @@ class TestMKLDNNMatmulOpNotFusedBreakPattern(TestMKLDNNMatmulFuseOp):
             out = fluid.layers.transpose(
                 out, perm=[0, 1, 2, 3]
             )  # breaks pattern
-            out = fluid.layers.reshape(
-                out, [0, 0, self.shape_y[0] * self.shape_y[2]]
-            )
+            out = paddle.reshape(out, [0, 0, self.shape_y[0] * self.shape_y[2]])
             out = fluid.layers.relu(out)
         return out
 

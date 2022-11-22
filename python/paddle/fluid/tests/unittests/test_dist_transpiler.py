@@ -381,7 +381,7 @@ class TestFakeInit(TranspilerTest):
             ),
         )
 
-        neg_word_reshape = fluid.layers.reshape(inputs[2], shape=[-1, 1])
+        neg_word_reshape = paddle.reshape(inputs[2], shape=[-1, 1])
         neg_word_reshape.stop_gradient = True
 
         neg_emb_w = fluid.layers.embedding(
@@ -391,7 +391,7 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_w', learning_rate=1.0),
         )
 
-        neg_emb_w_re = fluid.layers.reshape(
+        neg_emb_w_re = paddle.reshape(
             neg_emb_w, shape=[-1, neg_num, embedding_size]
         )
 
@@ -402,7 +402,7 @@ class TestFakeInit(TranspilerTest):
             param_attr=fluid.ParamAttr(name='emb_b', learning_rate=1.0),
         )
 
-        neg_emb_b_vec = fluid.layers.reshape(neg_emb_b, shape=[-1, neg_num])
+        neg_emb_b_vec = paddle.reshape(neg_emb_b, shape=[-1, neg_num])
 
         true_logits = fluid.layers.elementwise_add(
             fluid.layers.reduce_sum(
@@ -413,12 +413,10 @@ class TestFakeInit(TranspilerTest):
             true_emb_b,
         )
 
-        input_emb_re = fluid.layers.reshape(
-            input_emb, shape=[-1, 1, embedding_size]
-        )
+        input_emb_re = paddle.reshape(input_emb, shape=[-1, 1, embedding_size])
 
         neg_matmul = paddle.matmul(input_emb_re, neg_emb_w_re, transpose_y=True)
-        neg_matmul_re = fluid.layers.reshape(neg_matmul, shape=[-1, neg_num])
+        neg_matmul_re = paddle.reshape(neg_matmul, shape=[-1, neg_num])
         neg_logits = fluid.layers.elementwise_add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         label_ones = fluid.layers.fill_constant_batch_size_like(

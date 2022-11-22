@@ -284,9 +284,7 @@ class BMN(fluid.dygraph.Layer):
         xp = paddle.nn.functional.relu(self.p_conv1(x))
         # BM layer
         xp = paddle.matmul(xp, self.sample_mask)
-        xp = fluid.layers.reshape(
-            xp, shape=[0, 0, -1, self.dscale, self.tscale]
-        )
+        xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
 
         xp = self.p_conv3d1(xp)
         xp = fluid.layers.squeeze(xp, axes=[2])
@@ -319,12 +317,8 @@ def bmn_loss_func(
 
     def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
         def bi_loss(pred_score, gt_label):
-            pred_score = fluid.layers.reshape(
-                x=pred_score, shape=[-1], inplace=False
-            )
-            gt_label = fluid.layers.reshape(
-                x=gt_label, shape=[-1], inplace=False
-            )
+            pred_score = paddle.reshape(x=pred_score, shape=[-1])
+            gt_label = paddle.reshape(x=gt_label, shape=[-1])
             gt_label.stop_gradient = True
             pmask = fluid.layers.cast(x=(gt_label > 0.5), dtype=DATATYPE)
             num_entries = fluid.layers.cast(

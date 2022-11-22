@@ -340,7 +340,7 @@ def basic_gru(
     if bidirectional:
         direc_num = 2
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -395,7 +395,7 @@ def basic_gru(
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -420,7 +420,7 @@ def basic_gru(
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
 
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
@@ -626,10 +626,10 @@ def basic_lstm(
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
-        init_cell = layers.reshape(
+        init_cell = paddle.reshape(
             init_cell, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -702,11 +702,11 @@ def basic_lstm(
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
         last_cell_output = layers.concat(last_cell_array, axis=0)
-        last_cell_output = layers.reshape(
+        last_cell_output = paddle.reshape(
             last_cell_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -730,12 +730,12 @@ def basic_lstm(
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         last_cell = layers.concat([fw_last_cell, bw_last_cell], axis=1)
-        last_cell = layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
