@@ -553,8 +553,11 @@ void BindPlace(pybind11::module &m) {  // NOLINT
 
     Examples:
         .. code-block:: python
+
+          # required: npu
+
           import paddle
-          npu_place = paddle.NPUPlace(0)
+          place = paddle.NPUPlace(0)
 
         )DOC");
   g_npuplace_pytype = reinterpret_cast<PyTypeObject *>(npuplace.ptr());

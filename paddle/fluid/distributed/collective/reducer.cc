@@ -1053,9 +1053,9 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
   }
   group->task = process_group_->AllReduce(in_out, in_out, opts);
 
-  const auto &context = process_group_->GetDeviceContext(inner_place_);
-  group->SplitTensorsDev(context);
-  group->task->UpdateWaitChain(context);
+  auto *context = process_group_->GetDeviceContext(inner_place_);
+  group->SplitTensorsDev(*context);
+  group->task->UpdateWaitChain(*context);
   // split in FinalizeBackward()
 }
 
