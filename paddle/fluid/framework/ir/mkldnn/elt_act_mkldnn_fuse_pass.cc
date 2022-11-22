@@ -33,6 +33,8 @@ void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types) {
+      // This fuse combination currently does not work
+      if (elt_type == "elementwise_sub" && act_type == "relu") continue;
       FuseElementwiseAct(graph, elt_type, act_type);
     }
 }
