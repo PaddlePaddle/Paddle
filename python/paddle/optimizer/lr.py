@@ -1661,6 +1661,7 @@ class MultiplicativeDecay(LRScheduler):
 
 class OneCycleLR(LRScheduler):
     r"""
+
     Sets the learning rate according to the one cycle learning rate scheduler.
     The scheduler adjusts the learning rate from an initial learning rate to the maximum learning rate and then
     from that maximum learning rate to the minimum learning rate, which is much less than the initial learning rate.
@@ -1674,22 +1675,25 @@ class OneCycleLR(LRScheduler):
     Also note that you should update learning rate each step.
 
     Args:
-        max_learning_rate (float): The maximum learning rate. It is a python float number.
-             Functionally, it defines the initial learning rate by ``divide_factor`` .
+        max_learning_rate (float): The maximum learning rate. It is a python float number. Functionally, it defines the initial learning rate by ``divide_factor`` .
         total_steps (int): Number of total training steps.
-        divide_factor (float): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
+        divide_factor (float, optional): Initial learning rate will be determined by initial_learning_rate = max_learning_rate / divide_factor. Default: 25.
         end_learning_rate (float, optional): The minimum learning rate during training, it should be much less than initial learning rate.
         phase_pct (float): The percentage of total steps which used to increasing learning rate. Default: 0.3.
-        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing,
-            'linear' for linear annealing. Default: 'cos'.
+        anneal_strategy (str, optional): Strategy of adjusting learning rate.'cos' for cosine annealing, 'linear' for linear annealing. Default: 'cos'.
         three_phase (bool, optional): Whether to use three phase.
+
             If ``True``:
+
                 1. The learning rate will first increase from initial learning rate to maximum learning rate.
                 2. Then it will decrease to initial learning rate. Number of step in this phase is the same as the one in first phase.
                 3. Finally, it will decrease to minimum learning rate which is much less than initial learning rate.
+
             If ``False``:
+
                 1. The learning rate will increase to maximum learning rate.
                 2. Then it will directly decrease to minimum learning rate.
+
         last_epoch (int, optional):  The index of last epoch. Can be set to restart training. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for each update. Default: ``False`` .
 
@@ -1741,6 +1745,7 @@ class OneCycleLR(LRScheduler):
                         },
                         fetch_list=loss.name)
                     scheduler.step()    # You should update learning rate each step
+
     """
 
     def __init__(
