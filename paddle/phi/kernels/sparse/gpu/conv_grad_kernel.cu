@@ -136,8 +136,8 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUTLASS
   bool cutlass = true;
   if (dev_ctx.GetComputeCapability() < 80) cutlass = false;
-  if (in_channels % 8 != 0 || out_channels % 8 != 0) cutlass = false;
-  if (!std::is_same<T, phi::dtype::float16>::value) cutlass = false;
+  if (in_channels % 4 != 0 || out_channels % 4 != 0) cutlass = false;
+  if (!std::is_same<T, float>::value) cutlass = false;
   if (!std::is_same<IntT, int32_t>::value) cutlass = false;
 
   if (!cutlass) {
@@ -197,48 +197,46 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
     if (cutlass) {
       // call gemm: d_kernel = transpose(x) * out_grad
       // (in_channels, n) * (n, out_channels)
-      if constexpr (std::is_same<T, phi::dtype::float16>::value &&
+
+      if constexpr (std::is_same<T, float>::value &&
                     std::is_same<IntT, int32_t>::value) {
         launchKernel<
-            cutlass::half_t,
-            cutlass_tensorop_f16_s16816gemm_f16_128x128_32x5_nt_align8<true,
-                                                                       true,
-                                                                       false>>(
+            float,
+            cutlass_tensorop_s1688bf16gemm_64x64_32x5_tn_align4<true,
+                                                                true,
+                                                                false>>(
             dev_ctx,
-            reinterpret_cast<const cutlass::half_t*>(x.values().data<T>()),
-            reinterpret_cast<const cutlass::half_t*>(
-                out_grad.values().data<T>()),
+            x.values().data<T>(),
+            out_grad.values().data<T>(),
             nullptr,
-            reinterpret_cast<cutlass::half_t*>(tmp_d_kernel_ptr),
+            tmp_d_kernel_ptr,
             in_channels,
             out_channels,
             counter_ptr[i],
             static_cast<const int32_t*>(gather_x_indices),
             static_cast<const int32_t*>(gather_out_indices),
             nullptr,
-            static_cast<cutlass::half_t>(1),
-            static_cast<cutlass::half_t>(0));
+            1,
+            0);
 
         // call gemm: d_x = out_grad * transpose(kernel)
         // (n, out_channels) * (out_channels, in_channels)
-        launchKernel<cutlass::half_t,
-                     cutlass_tensorop_h1688gemm_64x128_32x2_tn_align8<true,
-                                                                      false,
-                                                                      true>>(
+        launchKernel<
+            float,
+            cutlass_tensorop_s1688gemm_64x64_16x3_nt_align4<true, false, true>>(
             dev_ctx,
-            reinterpret_cast<const cutlass::half_t*>(
-                out_grad.values().data<T>()),
-            reinterpret_cast<const cutlass::half_t*>(tmp_kernel_ptr),
-            reinterpret_cast<cutlass::half_t*>(x_grad_values_ptr),
-            reinterpret_cast<cutlass::half_t*>(x_grad_values_ptr),
+            out_grad.values().data<T>(),
+            tmp_kernel_ptr,
+            x_grad_values_ptr,
+            x_grad_values_ptr,
             counter_ptr[i],
             in_channels,
             out_channels,
             static_cast<const int32_t*>(gather_out_indices),
             nullptr,
             static_cast<const int32_t*>(scatter_x_indices),
-            static_cast<cutlass::half_t>(1),
-            static_cast<cutlass::half_t>(1));
+            1,
+            1);
       }
     } else {
 #endif
