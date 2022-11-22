@@ -367,7 +367,7 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
         new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
             phi_kernel_signature.name, phi_kernel_key)));
 
-    if (phi_kernel_contexts_.find(nv_dtype) == phi_kernel_contexts_.end() &&
+    if (phi_kernel_contexts_.find(nv_dtype) == phi_kernel_contexts_.end() ||
         !phi_kernel_contexts_[nv_dtype]) {
       phi_kernel_contexts_[nv_dtype].reset(new phi::KernelContext(dev_ctx));
       BuildPhiKernelContextAttr(op_desc_,
