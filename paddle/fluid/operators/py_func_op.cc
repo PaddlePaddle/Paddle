@@ -84,6 +84,8 @@ static std::vector<paddle::experimental::Tensor> CallPythonFunc(
   }
 
   auto ret = PyObject_CallObject(callable->ptr(), in_args);
+  PADDLE_ENFORCE(ret!=Py_None, platform::errors::Fatal(
+          "The python callable raise exception."));
   VLOG(10) << "after call callable";
   auto ret_num = PyTuple_Size(ret);
   std::vector<paddle::experimental::Tensor> outs(ret_num);
@@ -318,16 +320,15 @@ class PyFuncOp : public framework::OperatorBase {
     VLOG(10) << "Call Python function with id " << callable_id << ": "
              << PythonFuncDebugString(*py_callable);
     auto outputs = CallPythonFunc(py_callable, inputs);
+    PADDLE_ENFORCE_EQ(outputs.size(), out_arg_names.size(), 
+                      platform::errors::InvalidArgument("The return values number is not the same with expected numbers."
+                          "run time error in 'py_func' operator."));
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto *out_var = scope.FindVar(out_arg_names[i]);
       if (out_var == nullptr) {
         continue;
       }
       if (outputs[i].defined() && out_var->GetMutable<phi::DenseTensor>()) {
-        // VLOG(10) << i << "-th outputs'impl address is:" <<
-        // (std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl()))->data();
-        // VLOG(10) << i << "-th outputs'tensor data  is:" <<
-        // *(std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl())) ;
         out_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
             *(std::dynamic_pointer_cast<phi::DenseTensor>(outputs[i].impl())));
       }

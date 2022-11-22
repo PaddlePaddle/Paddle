@@ -36,6 +36,7 @@ import paddle.version as fluid_version
 import warnings
 import functools
 from .variable_index import _getitem_impl_, _setitem_impl_
+import paddle
 
 __all__ = [
     'Program',
@@ -1704,9 +1705,27 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
     def register_hook(self, hook):
-        pass
+        import paddle
+        def backward_hook_wrapper(d_out):
+            """ call the backward hook in eager mode.
+            """
+            paddle.disable_static()
+            with paddle.no_grad():
+                d_self = hook(d_out)
+            paddle.enable_static()
+            return d_self
+
+        def forward_hook_wrapper(x):
+            """ do nothing but return a new variable.
+            """
+            return x
+        
+        new_var = self.block.create_var(dtype=self.dtype, shape=self.shape) #name=None)
+        new_var = paddle.static.py_func(func=forward_hook_wrapper, x=self,
+            out=new_var, backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self, new_var])
+        return new_var
 
     def __str__(self):
         return self._to_readable_code()

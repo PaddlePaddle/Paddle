@@ -14909,15 +14909,20 @@ class PyFuncRegistry(object):
         return self._id
 
     def __call__(self, *args):
-        if self._named_args is None:
-            func_ret = self._func()
-        else:
-            kwargs = dict()
-            idx = 0
-            for arg in self._named_args:
-                kwargs[arg] = args[idx]
-                idx += 1
-            func_ret = self._func(*args[idx:], **kwargs)
+        try: 
+            if self._named_args is None:
+                func_ret = self._func()
+            else:
+                kwargs = dict()
+                idx = 0
+                for arg in self._named_args:
+                    kwargs[arg] = args[idx]
+                    idx += 1
+                func_ret = self._func(*args[idx:], **kwargs)
+        except Exception as e: 
+            # exception is thrown in hook function.
+            warnings.warn("Exception is thrown in PyFuncOp, return None): {}".format(e))
+            return None
 
         if not isinstance(func_ret, (list, tuple)):
             func_ret = (func_ret,)
