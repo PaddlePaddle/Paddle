@@ -350,6 +350,54 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
   return result;
 }
 
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
+  std::vector<int64_t> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list or tuple, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   std::vector<size_t> result;
   if (PyList_Check(obj)) {
@@ -1423,7 +1471,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
       type_name == "numpy.ndarray") {
-    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
+    std::vector<int64_t> value = CastPyArg2VectorOfInt64(obj, arg_pos);
     return paddle::experimental::IntArray(value);
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(

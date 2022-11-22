@@ -68,6 +68,7 @@ phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
 std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
                                                            ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
