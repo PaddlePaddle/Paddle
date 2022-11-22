@@ -1414,16 +1414,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
-  // In case of IntArray, only two possible PyObjects:
-  // 1. list of int
-  // 2. Tensor
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
-        op_type,
-        arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return IntArray({});
   }
 
   // obj could be: int, float, bool, paddle.Tensor
