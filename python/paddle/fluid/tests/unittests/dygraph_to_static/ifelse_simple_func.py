@@ -173,7 +173,7 @@ def nested_if_else(x_v):
 
 
 def nested_if_else_2(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     if b < 1:
         # var `z` is not visible for outer scope
@@ -196,7 +196,7 @@ def nested_if_else_2(x):
 
 
 def nested_if_else_3(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     # var `z` is visible for func.body
     if b < 1:
