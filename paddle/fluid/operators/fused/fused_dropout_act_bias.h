@@ -18,13 +18,11 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
+#include "paddle/phi/kernels/gpu/gelu_funcs.h"
 
 namespace paddle {
 namespace operators {
 
-/**
- *@brief the gelu functor
- */
 template <typename T>
 struct GeluFunctor {
   inline __host__ __device__ T operator()(const T x) const {
@@ -33,6 +31,13 @@ struct GeluFunctor {
     const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
     const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
     return static_cast<T>(out);
+  }
+};
+
+template <typename T>
+struct FastGeluFunctor {
+  inline __device__ T operator()(const T x) const {
+    return phi::GeluFwd<T, true>(x);
   }
 };
 
@@ -131,6 +136,49 @@ __global__ void FusedDropoutActBias(
   }
 }
 
+template <typename T,
+          int VecSize,
+          typename Functor,
+          typename InType = T,
+          typename OutType = T>
+__global__ void FusedActBias(Functor act,
+                             const uint64_t elem_cnt,
+                             const uint64_t cols,
+                             const InType *__restrict__ src,
+                             const T *__restrict__ bias,
+                             OutType *dst) {
+  const int32_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  using LoadInType = phi::AlignedVector<InType, VecSize>;
+  using LoadFloat = phi::AlignedVector<float, VecSize>;
+  using StoreOutType = phi::AlignedVector<OutType, VecSize>;
+
+  LoadInType src_vec;
+  LoadT bias_vec;
+  StoreOutType out_vec;
+  for (int32_t idx = global_thread_idx * VecSize,
+               step = blockDim.x * gridDim.x * VecSize;
+       idx < elem_cnt;
+       idx += step) {
+    const int32_t col_idx = idx % cols;
+    phi::Load<InType, VecSize>(&src[idx], &src_vec);
+    if (bias) {
+      phi::Load<T, VecSize>(&bias[col_idx], &bias_vec);
+    }
+#pragma unroll
+    for (int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++) {
+      if (bias) {
+        out_vec[unroll_idx] = static_cast<OutType>(
+            act(static_cast<T>(src_vec[unroll_idx]) + bias_vec[unroll_idx]));
+      } else {
+        out_vec[unroll_idx] =
+            static_cast<OutType>(act(static_cast<T>(src_vec[unroll_idx])));
+      }
+    }
+    phi::Store<OutType, VecSize>(out_vec, &dst[idx]);
+  }
+}
+
 /**
  * @brief dst = dropout(activation(src + bias));
  */
@@ -170,24 +218,37 @@ void LaunchDropoutActBias(Functor act_functor,
   const int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   const auto config = Get1DBlocksAnd2DGrids(ctx, rows, cols, real_vec_size);
   if (cols % VecSize == 0) {
-    FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
-        <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
-            act_functor,
-            seed,
-            rows,
-            cols,
-            increment,
-            dropout_prob,
-            is_upscale_in_train,
-            is_test,
-            src,
-            bias,
-            dst,
-            mask_data,
-            quant_last_in_scale,
-            dequant_out_scale_data,
-            quant_out_scale_offset,
-            quant_next_in_scale);
+    if (is_test && (dequant_out_scale_data == nullptr)) {
+      const int32_t elem_cnt = rows * cols;
+      const int32_t pack_num = elem_cnt / VecSize;
+      const int32_t tmp_cols = cols / VecSize;
+      int block_size =
+          std::max(static_cast<int32_t>(32), std::min(tmp_cols, 128));
+      const int grid_size = std::max(static_cast<int32_t>(1),
+                                     (pack_num + block_size - 1) / block_size);
+      FusedActBias<T, VecSize, Functor, InType, OutType>
+          <<<grid_size, block_size, 0, ctx.stream()>>>(
+              act_functor, elem_cnt, cols, src, bias, dst);
+    } else {
+      FusedDropoutActBias<T, MaskType, VecSize, Functor, InType, OutType>
+          <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(
+              act_functor,
+              seed,
+              rows,
+              cols,
+              increment,
+              dropout_prob,
+              is_upscale_in_train,
+              is_test,
+              src,
+              bias,
+              dst,
+              mask_data,
+              quant_last_in_scale,
+              dequant_out_scale_data,
+              quant_out_scale_offset,
+              quant_next_in_scale);
+    }
   } else {
     FusedDropoutActBias<T, MaskType, 1, Functor, InType, OutType>
         <<<config.block_per_grid, config.thread_per_block, 0, ctx.stream()>>>(

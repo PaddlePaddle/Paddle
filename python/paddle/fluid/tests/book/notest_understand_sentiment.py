@@ -70,21 +70,21 @@ def dyn_rnn_lstm(
             gate1 = fluid.layers.fc(input=hidden, size=size, bias_attr=False)
             return gate0 + gate1
 
-        forget_gate = fluid.layers.sigmoid(
+        forget_gate = paddle.nn.functional.sigmoid(
             x=gate_common(word, prev_hidden, lstm_size)
         )
-        input_gate = fluid.layers.sigmoid(
+        input_gate = paddle.nn.functional.sigmoid(
             x=gate_common(word, prev_hidden, lstm_size)
         )
-        output_gate = fluid.layers.sigmoid(
+        output_gate = paddle.nn.functional.sigmoid(
             x=gate_common(word, prev_hidden, lstm_size)
         )
-        cell_gate = fluid.layers.sigmoid(
+        cell_gate = paddle.nn.functional.sigmoid(
             x=gate_common(word, prev_hidden, lstm_size)
         )
 
         cell = forget_gate * prev_cell + input_gate * cell_gate
-        hidden = output_gate * fluid.layers.tanh(x=cell)
+        hidden = output_gate * paddle.tanh(x=cell)
         rnn.update_memory(prev_cell, cell)
         rnn.update_memory(prev_hidden, hidden)
         rnn.output(hidden)
