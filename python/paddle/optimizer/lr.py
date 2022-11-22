@@ -15,6 +15,7 @@
 import math
 import numpy
 import warnings
+from paddle import Tensor
 import paddle.fluid.core as core
 from ..fluid.framework import _in_legacy_dygraph
 
@@ -153,8 +154,6 @@ class LRScheduler:
             if key not in self.__dict__:
                 continue
             value = self.__dict__[key]
-            import paddle.Tensor as Tensor
-
             if isinstance(value, Tensor):
                 assert value.shape == [
                     1
