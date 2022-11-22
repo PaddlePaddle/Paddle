@@ -54,10 +54,6 @@ KernelSignature Conv2dDoubleGradOpArgumentMapping(
 }
 
 KernelSignature Conv2dFusionArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("ResidualData")) {
-  } else {
-  }
-
   return KernelSignature("conv2d_fusion_cutlass",
                          {"Input", "Filter", "Bias", "ResidualData"},
                          {"strides",
