@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TensorRTMultiClassNMSTest(InferencePassTest):
@@ -62,7 +63,7 @@ class TensorRTMultiClassNMSTest(InferencePassTest):
                 normalized=self.normalized,
             )
             mutliclass_nms_out = multiclass_nms_out + 1.0
-            multiclass_nms_out = fluid.layers.reshape(
+            multiclass_nms_out = paddle.reshape(
                 multiclass_nms_out,
                 [self.bs, 1, self.keep_top_k, 6],
                 name='reshape',

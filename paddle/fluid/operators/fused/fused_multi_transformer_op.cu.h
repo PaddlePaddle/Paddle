@@ -1,12 +1,9 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
  * Copyright (c) 2011-2021, NVIDIA CORPORATION.  All rights reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,6 +12,8 @@ limitations under the License. */
 // This file has been adapted from FasterTransformer file:
 // https://github.com/NVIDIA/FasterTransformer/blob/v4.0/fastertransformer/cuda/masked_multihead_attention.cu
 // We add License in the head.
+
+#pragma once
 
 #include <cuda_fp16.h>
 #include <float.h>
@@ -27,9 +26,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/attn_gemm.h"
 #include "paddle/fluid/operators/fused/fmha_ref.h"
 #include "paddle/fluid/operators/fused/fused_dropout_helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -91,6 +90,23 @@ using float16 = plat::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
+#define MMHA_USE_FP32_ACUM_FOR_FMA
+#define MMHA_USE_HMMA_FOR_REDUCTION
+
+template <typename D>
+class PDDataTypeTraits;
+
+template <>
+class PDDataTypeTraits<float> {
+ public:
+  typedef float DataType;
+};
+
+template <>
+class PDDataTypeTraits<float16> {
+ public:
+  typedef half DataType;
+};
 
 template <typename T>
 struct Masked_multihead_attention_params {
@@ -152,6 +168,17 @@ template <> struct V_vec_<float,   4> { using Type = float4;   };
 template <> struct V_vec_<float16, 2> { using Type = uint32_t; };
 template <> struct V_vec_<float16, 4> { using Type = uint2;    };
 template <> struct V_vec_<float16, 8> { using Type = uint4;    };
+
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+template<typename T>
+struct K_vec_acum_fp32_ {
+};
+
+template<>
+struct K_vec_acum_fp32_<uint32_t> {
+    using Type = float2;
+};
+#endif
 
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
 template <typename T> struct V_vec_acum_fp32_ {};
@@ -322,6 +349,15 @@ inline __device__ uint32_t mul(uint32_t a, float b) {
 }
 
 template <>
+inline __device__ float2 mul(uint32_t a, float b) {
+  float2 tmp = half2_to_float2(a);
+  float2 res;
+  res.x = tmp.x * b;
+  res.y = tmp.y * b;
+  return res;
+}
+
+template <>
 inline __device__ uint2 mul(uint2 a, float b) {
   uint2 res;
   res.x = mul<uint32_t, uint32_t, float>(a.x, b);
@@ -344,6 +380,15 @@ inline __device__ float2 mul(float2 a, float b) {
   float2 res;
   res.x = a.x * b;
   res.y = a.y * b;
+  return res;
+}
+
+template <>
+inline __device__ float2 mul(float2 a, uint32_t b) {
+  float2 tmp_b = half2_to_float2(b);
+  float2 res;
+  res.x = a.x * tmp_b.x;
+  res.y = a.y * tmp_b.y;
   return res;
 }
 
@@ -403,6 +448,12 @@ inline __device__ float2 fma(float2 a, float2 b, float2 c) {
   float2 d;
   d.x = fma(a.x, b.x, c.x);
   d.y = fma(a.y, b.y, c.y);
+  return d;
+}
+
+inline __device__ float2 fma(float2 a, uint32_t b, float2 c) {
+  float2 tmp_b = half2_to_float2(b);
+  float2 d = fma(a, tmp_b, c);
   return d;
 }
 
@@ -527,6 +578,49 @@ inline __device__ float qk_dot_(const K_vec (&q)[N],
   return qk;
 }
 
+inline __device__ float4 hmma_fp32_tensorcore(const uint2 &a, uint32_t b) {
+  float4 c;
+  float zero = 0.f;
+  asm volatile(
+      "mma.sync.aligned.m16n8k8.row.col.f32.f16.f16.f32 \n"
+      "    {%0, %1, %2, %3}, \n"
+      "    {%4, %5}, \n"
+      "    {%6}, \n"
+      "    {%7, %7, %7, %7}; \n"
+
+      : "=f"(c.x), "=f"(c.y), "=f"(c.z), "=f"(c.w)
+      : "r"(a.x) "r"(a.y), "r"(b), "f"(zero));
+  return c;
+}
+
+template <int N>
+inline __device__ float qk_hmma_dot_(const uint32_t (&q)[N],
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 750
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  using K_vec_acum = typename K_vec_acum_fp32_<uint32_t>::Type;
+#else
+  using K_vec_acum = uint32_t;
+#endif
+  K_vec_acum inv_q = mul<K_vec_acum, uint32_t, float>(q[0], inv_sqrt_dh);
+  K_vec_acum qk_vec = mul<K_vec_acum, K_vec_acum, uint32_t>(inv_q, k[0]);
+#pragma unroll
+  for (int ii = 1; ii < N; ++ii) {
+    inv_q = mul<K_vec_acum, uint32_t, float>(q[ii], inv_sqrt_dh);
+    qk_vec = fma(inv_q, k[ii], qk_vec);
+  }
+#ifdef MMHA_USE_FP32_ACUM_FOR_FMA
+  uint32_t qk_vec_ = float2_to_half2(qk_vec);
+  return hmma_fp32_tensorcore(make_uint2(qk_vec_, 0u), 0x3c003c00u).x;
+#else
+  return hmma_fp32_tensorcore(make_uint2(qk_vec, 0u), 0x3c003c00u).x;
+#endif
+#else
+  return 0.f;
+#endif
+}
+
 template <typename T, int THREADS_PER_KEY>
 struct Qk_dot {
   template <typename K_vec, int N>
@@ -534,6 +628,20 @@ struct Qk_dot {
                                      const K_vec (&k)[N],
                                      float inv_sqrt_dh) {
     return qk_dot_<THREADS_PER_KEY>(q, k, inv_sqrt_dh);
+  }
+};
+
+template <>
+struct Qk_dot<float16, 4> {
+  template <int N>
+  static inline __device__ float dot(const uint32_t (&q)[N],
+                                     const uint32_t (&k)[N],
+                                     float inv_sqrt_dh) {
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
+    return qk_hmma_dot_(q, k, inv_sqrt_dh);
+#else
+    return qk_dot_<4>(q, k, inv_sqrt_dh);
+#endif
   }
 };
 
@@ -609,6 +717,8 @@ template <typename T,
 __global__ void masked_multihead_attention_kernel(
     Masked_multihead_attention_params<T> params) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
+  typedef PDDataTypeTraits<T> traits_;
+  typedef typename traits_::DataType DataType_;
 
   static_assert(Dh_MAX % THREADS_PER_KEY == 0, "");
   static_assert(Dh_MAX % THREADS_PER_VALUE == 0, "");
@@ -866,7 +976,7 @@ __global__ void masked_multihead_attention_kernel(
       float logit = logits_smem[ti];
       out = fma(logit, cast_to_float(v), out);
 #else
-      T logit = logits_smem[ti];
+      DataType_ logit = static_cast<DataType_>(logits_smem[ti]);
       // Update the partial sums.
       out = fma(logit, v, out);
 #endif
@@ -990,7 +1100,11 @@ void fmha_launch_kernel(const Masked_multihead_attention_params<T> &params,
   if (params.timestep < 32) {
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 64, stream);
   } else if (params.timestep < 2048) {
+#if defined(MMHA_USE_HMMA_FOR_REDUCTION) && __CUDA_ARCH__ >= 750
+    MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 4, THREADS_PER_VALUE, 256, stream);
+#else
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 2, THREADS_PER_VALUE, 128, stream);
+#endif
   } else {
     MMHA_LAUNCH_KERNEL(T, Dh, Dh_MAX, 1, THREADS_PER_VALUE, 256, stream);
   }
@@ -1153,6 +1267,137 @@ void write_cache_kv(const phi::GPUContext &dev_ctx,
   // [bsz, num_head, max_seq_len, dim_head/x, x]
   write_cache_v_kernel<<<grid_v, block_sz, 0, dev_ctx.stream()>>>(
       cache_v, v, num_head, dim_head, seq_len, max_seq_len);
+}
+
+template <typename T, int VecSize, bool ComputeBias>
+__global__ void add_fusedQKV_bias_transpose_split_kernel(
+    T *q_buf,
+    T *kv_buf,
+    const T *qkv,
+    const T *qkv_bias,
+    const int32_t elem_cnt,
+    const int batch_size,
+    const int seq_len,
+    const int token_num,
+    const int head_num,
+    const int size_per_head) {
+  const int32_t offset = batch_size * seq_len * head_num * size_per_head;
+  const int32_t hidden_size = head_num * size_per_head;
+  const int32_t fused_hidden_size = 3 * hidden_size;
+  int64_t global_thread_idx = blockDim.x * blockIdx.x + threadIdx.x;
+  using LoadT = phi::AlignedVector<T, VecSize>;
+  LoadT src_vec;
+  LoadT bias_vec;
+
+  for (int32_t linear_index = global_thread_idx * VecSize,
+               step = gridDim.x * blockDim.x * VecSize;
+       linear_index < elem_cnt;
+       linear_index += step) {
+    phi::Load<T, VecSize>(&qkv[linear_index], &src_vec);
+    int32_t bias_idx = linear_index % fused_hidden_size;
+    if (ComputeBias) {
+      phi::Load<T, VecSize>(&qkv_bias[bias_idx], &bias_vec);
+#pragma unroll
+      for (int32_t unroll_idx = 0; unroll_idx < VecSize; unroll_idx++) {
+        src_vec[unroll_idx] += bias_vec[unroll_idx];
+      }
+    }
+    const int32_t token_idx = linear_index / fused_hidden_size;
+    // const int32_t token_padded_idx = token_idx + (padding_offset == nullptr ?
+    // 0 : padding_offset[token_idx]);
+    const int32_t target_batch_id = token_idx / seq_len;
+    const int32_t seq_id = token_idx % seq_len;
+
+    // equal to:
+    // const int qkv_id  = (linear_index % fused_hidden_size) / hidden_size;
+    const int32_t qkv_id = bias_idx / hidden_size;
+    const int32_t head_id = (linear_index % hidden_size) / size_per_head;
+    const int32_t size_id = linear_index % size_per_head;
+
+    if (qkv_id == 0) {
+      phi::Store<T, VecSize>(
+          src_vec,
+          &q_buf[target_batch_id * head_num * seq_len * size_per_head +
+                 head_id * seq_len * size_per_head + seq_id * size_per_head +
+                 size_id]);
+    } else {
+      const int32_t kv_store_offset = (qkv_id - 1) * offset;
+      phi::Store<T, VecSize>(
+          src_vec,
+          &kv_buf[kv_store_offset +
+                  target_batch_id * head_num * seq_len * size_per_head +
+                  head_id * seq_len * size_per_head + seq_id * size_per_head +
+                  size_id]);
+    }
+  }
+}
+
+inline cudaError_t GetNumBlocks(int64_t n, int *num_blocks) {
+  constexpr int kBlockSize = 128;
+  constexpr int kNumWaves = 16;
+
+  const int device_id = paddle::platform::GetCurrentDeviceId();
+  const int sm_count = paddle::platform::GetGPUMultiProcessors(device_id);
+  const int max_thread_per_multiprocessor =
+      paddle::platform::GetGPUMultiProcessors(device_id);
+
+  *num_blocks =
+      std::max<int>(1,
+                    std::min<int64_t>((n + kBlockSize - 1) / kBlockSize,
+                                      sm_count * max_thread_per_multiprocessor /
+                                          kBlockSize * kNumWaves));
+  return cudaSuccess;
+}
+
+template <typename T>
+void qkv_bias_add_transpose_split(const phi::GPUContext &dev_ctx,
+                                  T *q_buf,
+                                  T *kv_buf,
+                                  const T *qkv,
+                                  const T *qkv_bias,
+                                  const int batch_size,
+                                  const int head_num,
+                                  const int seq_len,
+                                  const int size_per_head,
+                                  bool compute_bias) {
+  const int32_t token_num = batch_size * seq_len;
+  const int32_t elem_cnt = token_num * head_num * size_per_head * 3;
+  constexpr int PackSize = VEC_16B / sizeof(T);
+  PADDLE_ENFORCE_EQ(size_per_head % PackSize,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "dim_head=%d must be divisible by vec_size=%d",
+                        size_per_head,
+                        PackSize));
+  const int32_t pack_num = elem_cnt / PackSize;
+  const int32_t blocksize = 128;
+  int32_t grid_size = 1;
+  GetNumBlocks(pack_num, &grid_size);
+  if (compute_bias) {
+    add_fusedQKV_bias_transpose_split_kernel<T, PackSize, true>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
+                                                        kv_buf,
+                                                        qkv,
+                                                        qkv_bias,
+                                                        elem_cnt,
+                                                        batch_size,
+                                                        seq_len,
+                                                        token_num,
+                                                        head_num,
+                                                        size_per_head);
+  } else {
+    add_fusedQKV_bias_transpose_split_kernel<T, PackSize, false>
+        <<<grid_size, blocksize, 0, dev_ctx.stream()>>>(q_buf,
+                                                        kv_buf,
+                                                        qkv,
+                                                        qkv_bias,
+                                                        elem_cnt,
+                                                        batch_size,
+                                                        seq_len,
+                                                        token_num,
+                                                        head_num,
+                                                        size_per_head);
+  }
 }
 
 }  // namespace
