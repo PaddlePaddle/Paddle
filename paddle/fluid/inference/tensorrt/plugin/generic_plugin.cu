@@ -30,8 +30,11 @@ namespace plugin {
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
-                               const phi::Kernel& phi_kernel) {
-  const phi::KernelArgsDef& args_def = phi_kernel.args_def();
+                               const phi::Kernel* phi_kernel) {
+  if (!phi_kernel->IsValid()) {
+    return;
+  }
+  const phi::KernelArgsDef& args_def = phi_kernel->args_def();
   const auto& attr_names = signature.attr_names;
   const auto& attr_defs = args_def.attribute_defs();
 
@@ -310,6 +313,11 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3)
       return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+  } else if (op_desc_.Type() == "pad3d") {
+    return (in_out[0].type == nvinfer1::DataType::kFLOAT ||
+            (isFp16Supported() &&
+             in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+           (in_out[0].format == nvinfer1::TensorFormat::kLINEAR);
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
            (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
@@ -337,34 +345,41 @@ int GenericPlugin::initialize() TRT_NOEXCEPT {
         phi::DefaultKernelSignatureMap::Instance().Get(op_type);
   }
 
-  phi::KernelKey phi_kernel_key(
-      phi::Backend::GPU, phi::DataLayout::ANY, phi::DataType::FLOAT32);
-
   PADDLE_ENFORCE_EQ(
       phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type),
       true,
       platform::errors::Fatal("%s has no compatible phi kernel!",
                               op_type.c_str()));
 
-  const phi::Kernel& phi_kernel = phi::KernelFactory::Instance().SelectKernel(
-      phi_kernel_signature.name, phi_kernel_key);
-  phi_kernel_ = &phi_kernel;
-
-  PADDLE_ENFORCE_EQ(phi_kernel_->IsValid(),
-                    true,
-                    platform::errors::Fatal("%s phi kernel is invalid!.",
-                                            phi_kernel_signature.name));
-
   paddle::platform::DeviceContextPool& pool =
       paddle::platform::DeviceContextPool::Instance();
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(place));
 
-  if (!phi_kernel_context_) {
-    phi_kernel_context_ = new phi::KernelContext(dev_ctx);
-    BuildPhiKernelContextAttr(
-        op_desc_, phi_kernel_context_, phi_kernel_signature, phi_kernel);
+  std::vector<phi::DataType> precision_types{phi::DataType::FLOAT32,
+                                             phi::DataType::FLOAT16};
+  for (auto& precision_type : precision_types) {
+    phi::KernelKey phi_kernel_key(
+        phi::Backend::GPU, phi::DataLayout::ANY, precision_type);
+
+    phi_kernels_[nv_dtype].reset(
+        new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
+            phi_kernel_signature.name, phi_kernel_key)));
+
+    if (!phi_kernel_contexts_[nv_dtype]) {
+      phi_kernel_contexts_[nv_dtype].reset(new phi::KernelContext(dev_ctx));
+      BuildPhiKernelContextAttr(op_desc_,
+                                phi_kernel_contexts_[nv_dtype].get(),
+                                phi_kernel_signature,
+                                phi_kernels_[nv_dtype].get());
+    }
   }
+  PADDLE_ENFORCE_EQ(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
+                        phi_kernels_[nvinfer1::DataType::kHALF]->IsValid(),
+                    true,
+                    platform::errors::Fatal("%s phi kernel is invalid!.",
+                                            phi_kernel_signature.name));
+
   if (!dense_tensor_inputs_)
     dense_tensor_inputs_ = new std::vector<phi::DenseTensor>(getNbInputs());
   if (!dense_tensor_outputs_)
@@ -396,15 +411,14 @@ void GenericPlugin::configurePlugin(
     int nb_inputs,
     const nvinfer1::DynamicPluginTensorDesc* out,
     int nb_outputs) TRT_NOEXCEPT {
-  CHECK(phi_kernel_context_);
-  CHECK(phi_kernel_);
+  CHECK(phi_kernels_[nvinfer1::DataType::kFLOAT]->IsValid() ||
+        phi_kernels_[nvinfer1::DataType::kHALF]->IsValid());
   CHECK(nb_inputs == getNbInputs());
   CHECK(nb_outputs == getNbOutputs());
 }
 
 // Shutdown the layer. This is called when the engine is destroyed
 void GenericPlugin::terminate() TRT_NOEXCEPT {
-  delete phi_kernel_context_;
   delete dense_tensor_inputs_;
   delete dense_tensor_outputs_;
 }
@@ -438,7 +452,11 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   };
 
   // input
-  phi_kernel_context_->ClearInputOutput();
+  auto data_type = inputDesc[0].type;
+  CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
+        (data_type == nvinfer1::DataType::kHALF));
+
+  phi_kernel_contexts_[data_type]->ClearInputOutput();
 
   for (int i = 0; i < getNbInputs(); i++) {
     auto const& input_dims = input_desc[i].dims;
@@ -459,7 +477,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                             place));
     (*dense_tensor_inputs_)[i] =
         std::move(phi::DenseTensor(input_alloc, input_meta));
-    phi_kernel_context_->EmplaceBackInput(&((*dense_tensor_inputs_)[i]));
+    phi_kernel_contexts_[data_type]->EmplaceBackInput(
+        &((*dense_tensor_inputs_)[i]));
   }
 
   // output
@@ -484,13 +503,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     phi::DenseTensor output_densetonsor(output_alloc, output_meta);
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));
-    phi_kernel_context_->EmplaceBackOutput(&((*dense_tensor_outputs_)[i]));
+    phi_kernel_contexts_[data_type]->EmplaceBackOutput(
+        &((*dense_tensor_outputs_)[i]));
   }
 
-  CHECK_EQ(phi_kernel_context_->InputsSize(), getNbInputs());
-  CHECK_EQ(phi_kernel_context_->OutputsSize(), getNbOutputs());
+  CHECK_EQ(phi_kernel_contexts_[data_type]->InputsSize(), getNbInputs());
+  CHECK_EQ(phi_kernel_contexts_[data_type]->OutputsSize(), getNbOutputs());
 
-  (*phi_kernel_)(phi_kernel_context_);
+  (*phi_kernels_[data_type])(phi_kernel_contexts_[data_type]);
 
   return cudaGetLastError() != cudaSuccess;
 }

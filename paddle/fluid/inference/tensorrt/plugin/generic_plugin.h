@@ -44,7 +44,7 @@ namespace plugin {
 void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
                                phi::KernelContext* kernel_context,
                                const phi::KernelSignature& signature,
-                               const phi::Kernel& phi_kernel);
+                               const phi::Kernel* phi_kernel);
 
 class GenericPlugin : public DynamicPluginTensorRT {
  public:
@@ -122,15 +122,23 @@ class GenericPlugin : public DynamicPluginTensorRT {
                                        const nvinfer1::DataType* input_types,
                                        int nb_inputs) const TRT_NOEXCEPT;
 
+  bool isFp16Supported() {
+    auto half_dtype = nvinfer1::DataType::kHALF;
+    return !(phi_kernels_.find(half_dtype) == phi_kernels_.end()) &&
+           phi_kernels_[half_dtype]->IsValid();
+  }
+
  private:
   std::string op_meta_data_;
   framework::proto::OpDesc proto_op_desc_;
   framework::OpDesc op_desc_;
 
  private:
-  const phi::Kernel* phi_kernel_{nullptr};
+  std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::Kernel>>
+      phi_kernels_;
+  std::unordered_map<nvinfer1::DataType, std::unique_ptr<phi::KernelContext>>
+      phi_kernel_contexts_;
 
-  phi::KernelContext* phi_kernel_context_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_inputs_{nullptr};
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 
