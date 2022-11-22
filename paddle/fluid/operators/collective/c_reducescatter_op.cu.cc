@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 
 namespace paddle {
 namespace operators {
@@ -27,10 +29,36 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    int rid = ctx.Attr<int>("ring_id");
+    if (map.find(rid) != map.end()) {
+      const auto& group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(rid));
+      int nranks = group->GetSize();
+
+      const auto& in = ctx.Input<phi::DenseTensor>("X");
+      const auto& in_dims = in->dims();
+      auto place = ctx.GetPlace();
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      // Allocate output memory
+      auto out_dims = in_dims;
+      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      out_dims[0] = in_dims[0] / nranks;
+      out->mutable_data<T>(out_dims, place);
+
+      // The reduce scatter only support reduce_sum for now.
+      distributed::ReduceScatterOptions opts;
+      group->ReduceScatter(out, *in, opts, sync_op, use_calc_stream);
+      return;
+    }
+
+    // Code below will be removed after we clean the old dygraph
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
-    int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     int nranks = comm->nranks();

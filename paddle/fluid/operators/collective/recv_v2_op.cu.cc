@@ -20,6 +20,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -47,7 +48,11 @@ framework::DDim recv_shape_info(const platform::Place &place,
 
   // step1: recv the shape size
   phi::DenseTensor gpu_shape_size_tensor(shape_dytpe);
-  if (!group) {
+  if (group) {
+    gpu_shape_size_tensor.Resize({1});
+    gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
+    group->Recv(&gpu_shape_size_tensor, peer, 0, -1, false);
+  } else {
     gpu_shape_size_tensor.Resize({1});
     gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
     auto *gpu_data = gpu_shape_size_tensor.data<int>();
@@ -59,21 +64,19 @@ framework::DDim recv_shape_info(const platform::Place &place,
   phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_size_tensor->Resize({1});
   cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
-  if (group) {
-    std::vector<phi::DenseTensor> shape_size_tensor;
-    shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
-    auto shape_size_task = group->Recv(shape_size_tensor, peer);
-  } else {
-    framework::TensorCopySync(
-        gpu_shape_size_tensor, platform::CPUPlace(), cpu_shape_size_tensor);
-  }
+  framework::TensorCopySync(
+      gpu_shape_size_tensor, platform::CPUPlace(), cpu_shape_size_tensor);
   auto *cpu_data = cpu_shape_size_tensor->data<int>();
   int shape_size = cpu_data[0];
   VLOG(3) << "recv the shape size: " << shape_size << " from peer";
 
   // step2: recv the shape
   phi::DenseTensor gpu_shape_tensor(shape_dytpe);
-  if (!group) {
+  if (group) {
+    gpu_shape_tensor.Resize({shape_size});
+    gpu_shape_tensor.mutable_data(place, shape_dytpe);
+    group->Recv(&gpu_shape_tensor, peer, 0, -1, false);
+  } else {
     gpu_shape_tensor.Resize({shape_size});
     gpu_shape_tensor.mutable_data(place, shape_dytpe);
     auto *gpu_shape_data = gpu_shape_tensor.data<int>();
@@ -85,14 +88,9 @@ framework::DDim recv_shape_info(const platform::Place &place,
   phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
   cpu_shape_tensor->Resize({shape_size});
   cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
-  if (group) {
-    std::vector<phi::DenseTensor> shape_tensor;
-    shape_tensor.emplace_back(*cpu_shape_tensor);
-    auto shape_task = group->Recv(shape_tensor, peer);
-  } else {
-    framework::TensorCopySync(
-        gpu_shape_tensor, platform::CPUPlace(), cpu_shape_tensor);
-  }
+  framework::TensorCopySync(
+      gpu_shape_tensor, platform::CPUPlace(), cpu_shape_tensor);
+
   auto *cpu_shape_data = cpu_shape_tensor->data<int>();
   std::vector<int> all_shape;
   for (int i = 0; i < shape_size; ++i) {
@@ -113,6 +111,55 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 #if (defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)) && \
     NCCL_VERSION_CODE >= 2703
     int rid = ctx.Attr<int>("ring_id");
+    const auto &map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(rid) != map.end()) {
+      const auto &group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(rid));
+
+      int peer = ctx.Attr<int>("peer");
+      const auto &place = ctx.GetPlace();
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
+      auto *out_var = ctx.OutputVar("Out");
+      bool transfer_lod_tensor = out_var->IsType<framework::LoDTensorArray>();
+
+      if (!dynamic_shape && !transfer_lod_tensor) {
+        // Receive normal tensor
+        auto *out = ctx.Output<phi::DenseTensor>("Out");
+        auto out_dims = out->dims();
+        out->mutable_data<T>(out_dims, place);
+        group->Recv(out, peer, 0, -1, sync_op, use_calc_stream);
+      } else if (dynamic_shape) {
+        // Receive tensor with dynamic shape
+        PADDLE_ENFORCE_EQ(transfer_lod_tensor,
+                          false,
+                          platform::errors::InvalidArgument(
+                              "Dynamic shape for send/recv not "
+                              "support LoDTensorArray for now."));
+        framework::DDim new_dim = recv_shape_info(place,
+                                                  /* gpuStream_t */ nullptr,
+                                                  /* NCCLComm* */ nullptr,
+                                                  peer,
+                                                  group.get());
+        auto *out = ctx.Output<phi::DenseTensor>("Out");
+        out->mutable_data<T>(new_dim, place);
+        group->Recv(out, peer, 0, -1, sync_op, use_calc_stream);
+      } else {
+        // Receive lod tensor
+        auto out_array = out_var->GetMutable<framework::LoDTensorArray>();
+        for (size_t idx = 0; idx < out_array->size(); ++idx) {
+          auto out = out_array->at(idx);
+          auto out_dims = out.dims();
+          out.mutable_data<T>(out_dims, place, 0);
+          group->Recv(&out, peer, 0, -1, sync_op, use_calc_stream);
+        }
+      }
+      return;
+    }
+
     bool dynamic_shape = ctx.Attr<bool>("dynamic_shape");
     PADDLE_ENFORCE_GE(
         rid,
@@ -129,32 +176,6 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 
     gpuStream_t stream = nullptr;
     auto place = ctx.GetPlace();
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      // Use ProcessGroup
-      distributed::ProcessGroup *pg = map->get(rid);
-      std::vector<phi::DenseTensor> out_tensor;
-      auto out_shape = ctx.Attr<std::vector<int>>("out_shape");
-      auto out = ctx.Output<phi::DenseTensor>("Out");
-      auto out_dims = out->dims();
-
-      if (dynamic_shape) {
-        VLOG(3) << "recv_v2 will use dynamic shape with send_v2 for switch";
-        framework::DDim new_dim = recv_shape_info(ctx.GetPlace(),
-                                                  /* gpuStream_t */ nullptr,
-                                                  /* NCCLComm* */ nullptr,
-                                                  peer,
-                                                  pg);
-        out->Resize(new_dim);
-        out->mutable_data<T>(new_dim, place);
-      } else {
-        out->mutable_data<T>(out_dims, place);
-      }
-
-      out_tensor.emplace_back(*out);
-      auto task = pg->Recv(out_tensor, peer);
-      return;
-    }
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     if (ctx.Attr<bool>("use_calc_stream")) {
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);

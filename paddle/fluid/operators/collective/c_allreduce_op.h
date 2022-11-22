@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -429,9 +430,30 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    int rid = ctx.Attr<int>("ring_id");
+    if (map.find(rid) != map.end()) {
+      auto group = std::static_pointer_cast<distributed::ProcessGroupStream>(
+          map.at(rid));
+      auto in = ctx.Input<phi::DenseTensor>("X");
+      auto out = ctx.Output<phi::DenseTensor>("Out");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      // Get the right reduce type
+      uint8_t red_type_idx = static_cast<uint8_t>(red_type);
+      distributed::AllreduceOptions opts{distributed::ReduceOp(red_type_idx)};
+
+      // Allocate memory for output
+      auto place = ctx.GetPlace();
+      out->mutable_data<T>(in->dims(), place);
+
+      group->AllReduce(out, *in, opts, sync_op, use_calc_stream);
+      return;
+    }
+
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
-    int rid = ctx.Attr<int>("ring_id");
 
     auto place = ctx.GetPlace();
     ncclDataType_t dtype =
@@ -440,43 +462,6 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     const void* sendbuff = in->data<T>();
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
-
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*in);
-      out_tensor.push_back(*out);
-
-      distributed::AllreduceOptions opts;
-      switch (red_type) {
-        case kRedSum:
-          opts.reduce_op = distributed::ReduceOp::SUM;
-          break;
-
-        case kRedMax:
-          opts.reduce_op = distributed::ReduceOp::MAX;
-          break;
-
-        case kRedMin:
-          opts.reduce_op = distributed::ReduceOp::MIN;
-          break;
-
-        case kRedProd:
-          opts.reduce_op = distributed::ReduceOp::PRODUCT;
-          break;
-
-        default:
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Invalid reduce type: %d", red_type));
-      }
-
-      auto task = pg->AllReduce(in_tensor, out_tensor, opts);
-      task->Wait();
-      return;
-    }
 
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 

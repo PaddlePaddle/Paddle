@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #endif
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
@@ -29,26 +30,35 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    int rid = ctx.Attr<int>("ring_id");
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(rid) != map.end()) {
+      const auto& group =
+          std::static_pointer_cast<distributed::ProcessGroupStream>(
+              map.at(rid));
+
+      auto in = ctx.Input<phi::DenseTensor>("X");
+      auto out = ctx.Output<phi::DenseTensor>("Out");
+      int root = ctx.Attr<int>("root");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      // Allocation output memory
+      auto place = ctx.GetPlace();
+      out->mutable_data<T>(in->dims(), place);
+
+      distributed::BroadcastOptions opts{root};
+      group->Broadcast(out, *in, opts, sync_op, use_calc_stream);
+      return;
+    }
+
     auto x = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
     ncclDataType_t dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(x->dtype()));
 
-    int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto map = distributed::ProcessGroupMapFromGid::getInstance();
-    if (map->has(rid)) {
-      // Use ProcessGroup
-      distributed::ProcessGroup* pg = map->get(rid);
-      std::vector<phi::DenseTensor> in_tensor;
-      std::vector<phi::DenseTensor> out_tensor;
-      in_tensor.push_back(*x);
-      out_tensor.push_back(*out);
-      auto task = pg->Broadcast(in_tensor, out_tensor);
-      task->Wait();
-      return;
-    }
 
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     gpuStream_t stream = nullptr;

@@ -19,6 +19,8 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+#include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -55,7 +57,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-enum ReduceType { kRedSum, kRedMax, kRedMin, kRedProd };
+enum ReduceType { kRedSum = 0, kRedMax, kRedMin, kRedProd };
 
 class CReduceOp : public framework::OperatorWithKernel {
  public:
@@ -294,6 +296,28 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    int rid = ctx.Attr<int>("ring_id");
+    const auto& map = distributed::ProcessGroupIdMap::GetInstance();
+    if (map.find(rid) != map.end()) {
+      auto pg = std::static_pointer_cast<distributed::ProcessGroupStream>(
+          map.at(rid));
+      distributed::ReduceOptions opts;
+      uint8_t red_type_idx = static_cast<uint8_t>(red_type);
+      opts.reduce_op = distributed::ReduceOp(red_type_idx);
+      opts.root_rank = ctx.Attr<int>("root_id");
+
+      const auto& in = ctx.Input<phi::DenseTensor>("X");
+      auto* out = ctx.Output<phi::DenseTensor>("Out");
+      bool use_calc_stream = ctx.Attr<bool>("use_calc_stream");
+      bool sync_op = use_calc_stream;
+
+      const auto& place = ctx.GetPlace();
+      out->mutable_data<T>(in->dims(), place);
+
+      pg->Reduce(out, *in, opts, sync_op, use_calc_stream);
+      return;
+    }
+
     auto in = ctx.Input<phi::DenseTensor>("X");
     auto out = ctx.Output<phi::DenseTensor>("Out");
 
@@ -305,8 +329,8 @@ class CReduceOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize(in->dims());
     void* recvbuff = out->mutable_data<T>(place);
 
-    int rid = ctx.Attr<int>("ring_id");
     int root = ctx.Attr<int>("root_id");
+
     auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
     gpuStream_t stream = nullptr;
