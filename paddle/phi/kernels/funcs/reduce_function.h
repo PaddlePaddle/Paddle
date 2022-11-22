@@ -242,13 +242,6 @@ struct ReduceConfig {
   std::vector<int> reduce_dim, x_dim, left_dim;
   std::vector<int> reduce_strides, x_strides, left_strides;
 
-  static constexpr int BLOCK_x = 0, BLOCK_y = 1, CTA = 2;
-  static constexpr int input_vec_size = 4;
-  int block_width, block_height, num_threads;
-  int step_input = 1, step_output = 1, output_vec_size = 1, ctas_per_output = 1;
-  int input_mult[3] = {0, 0, 0};
-  int output_mult[2] = {0, 0};
-
   int reduce_type;
   int reduce_num;
   int left_num = 1;
@@ -428,13 +421,11 @@ struct ReduceConfig {
 #endif  // PADDLE_WITH_XPU_KP
     reduce_type = static_cast<int>(ReduceType::kReduceAny);
     if (reduce_last_dim && (reduce_rank == 1)) {
-#ifdef PADDLE_WITH_XPU_KP
-      reduce_type = static_cast<int>(ReduceType::kReduceAny);
-#else
+#ifndef PADDLE_WITH_XPU_KP
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
 #endif  // PADDLE_WITH_XPU_KP
-    } else if (reduce_rank < 3 && !not_higher && reduce_num > 1024) {
-      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
+    } else if (reduce_rank < 3 && !not_higher && reduce_num < 1024) {
+      reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
     }
   }
 
@@ -823,7 +814,6 @@ static void LaunchReduceKernel(const Tx* x_data,
             left_index_calculator,
             dim,
             is_mean && (!config.should_reduce_again));
-
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
@@ -876,8 +866,6 @@ static void LaunchReduceKernel(const Tx* x_data,
       grid = dim3(config.grid.x, 1, config.grid.z);
     }
 
-    auto last_index = OneDimIndexCal(1);
-    auto first_index = OneDimIndexCal(config.left_num);
     kps::DimConfig dim =
         kps::DimConfig(grid.x, grid.y, grid.z, block.x, config.grid.y, 0);
     dim.SetRem(config.left_num % block.x, 0, 0);
