@@ -37,7 +37,7 @@ enum class ExtraAttrProperty : uint8_t {
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
-  // The attributes for ONEDNN only, can be saved in GPUContext
+  // The attributes for GPUDNN only, can be saved in GPUContext
   GPUDNN,
   // Add necessary properties as needed
 };
@@ -88,7 +88,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"use_cudnn", ExtraAttrProperty::SCHEDULE},
         {"use_mkldnn", ExtraAttrProperty::SCHEDULE},
         // ONEDNN dedicated attributes
-        {"Bias", ExtraAttrProperty::ONEDNN},
         {"data_format", ExtraAttrProperty::ONEDNN},
         {"force_fp32_output", ExtraAttrProperty::ONEDNN},
         {"fuse_activation", ExtraAttrProperty::ONEDNN},
@@ -109,7 +108,6 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
         {"fused_transpose_X", ExtraAttrProperty::ONEDNN},
         {"fused_transpose_Y", ExtraAttrProperty::ONEDNN},
         {"mkldnn_data_type", ExtraAttrProperty::ONEDNN},
-        {"ResidualData", ExtraAttrProperty::ONEDNN},
         {"scale_x", ExtraAttrProperty::ONEDNN},
         {"scale_y", ExtraAttrProperty::ONEDNN},
         {"scale_out", ExtraAttrProperty::ONEDNN},
