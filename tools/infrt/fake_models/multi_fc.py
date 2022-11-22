@@ -42,7 +42,7 @@ for i in range(num_layers - 1):
     )
 
 cost = fluid.layers.square_error_cost(fc_out, label)
-avg_cost = fluid.layers.mean(cost)
+avg_cost = paddle.mean(cost)
 
 optimizer = fluid.optimizer.SGD(learning_rate=0.001)
 optimizer.minimize(avg_cost)
