@@ -271,8 +271,6 @@ class Optimizer:
             'weight_decay': self.regularization,
             'grad_clip': self._grad_clip,
         }
-        self._lr_first = None
-        self._use_multi_tensor_adam = True
 
         self._param_groups = []
         if self._parameter_list and isinstance(self._parameter_list[0], dict):
@@ -645,10 +643,6 @@ class Optimizer:
         param = param_and_grad[0]
         if hasattr(param, 'optimize_attr'):
             param_lr = param.optimize_attr['learning_rate']
-            if self._lr_first is None:
-                self._lr_first = param_lr
-            if param_lr != self._lr_first:
-                self._use_multi_tensor_adam = False
             if type(param_lr) == Variable:
                 return param_lr
             else:
