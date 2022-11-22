@@ -22,17 +22,52 @@ import os
 
 
 class MLPLayer(nn.Layer):
-    def __init__(self, input_size, hidden_size, output_size, n):
+    def __init__(self, input_size, hidden_size, output_size, n, test_diff_lr):
         super(MLPLayer, self).__init__()
-        self.linear_first = nn.Linear(input_size, hidden_size)
-        self.linear_mid = nn.Sequential(
-            ('l0', nn.Linear(hidden_size, hidden_size))
-        )
-        for i in range(n - 1):
-            self.linear_mid.add_sublayer(
-                'l' + str(i + 1), nn.Linear(hidden_size, hidden_size)
+        if not test_diff_lr:
+            self.linear_first = nn.Linear(input_size, hidden_size)
+            self.linear_mid = nn.Sequential(
+                ('l0', nn.Linear(hidden_size, hidden_size))
             )
-        self.linear_last = nn.Linear(hidden_size, output_size)
+            for i in range(n - 1):
+                self.linear_mid.add_sublayer(
+                    'l' + str(i + 1), nn.Linear(hidden_size, hidden_size)
+                )
+            self.linear_last = nn.Linear(hidden_size, output_size)
+        else:
+            self.linear_first = nn.Linear(
+                input_size,
+                hidden_size,
+                weight_attr=paddle.ParamAttr(learning_rate=0.01),
+                bias_attr=paddle.ParamAttr(learning_rate=0.02),
+            )
+            self.linear_mid = nn.Sequential(
+                (
+                    'l0',
+                    nn.Linear(
+                        hidden_size,
+                        hidden_size,
+                        weight_attr=paddle.ParamAttr(learning_rate=0.01),
+                        bias_attr=paddle.ParamAttr(learning_rate=0.02),
+                    ),
+                )
+            )
+            for i in range(n - 1):
+                self.linear_mid.add_sublayer(
+                    'l' + str(i + 1),
+                    nn.Linear(
+                        hidden_size,
+                        hidden_size,
+                        weight_attr=paddle.ParamAttr(learning_rate=0.01),
+                        bias_attr=paddle.ParamAttr(learning_rate=0.02),
+                    ),
+                )
+            self.linear_last = nn.Linear(
+                hidden_size,
+                output_size,
+                weight_attr=paddle.ParamAttr(learning_rate=0.01),
+                bias_attr=paddle.ParamAttr(learning_rate=0.02),
+            )
 
     def forward(self, x):
         x = self.linear_first(x)
@@ -56,13 +91,18 @@ class TestMultiTensorAdam(unittest.TestCase):
         test_dict,
         test_fp16,
         test_lrscheduler,
+        test_diff_lr,
     ):
 
         paddle.seed(10)
         np.random.seed(10)
 
         model = MLPLayer(
-            self.input_size, self.hidden_size, self.output_size, self.n
+            self.input_size,
+            self.hidden_size,
+            self.output_size,
+            self.n,
+            test_diff_lr,
         )
 
         if test_fp16:
@@ -118,13 +158,14 @@ class TestMultiTensorAdam(unittest.TestCase):
                     use_multi_tensor=True,
                 )
             else:
-                opt = paddle.incubate.optimizer.MultiTensorAdamW(
+                opt = paddle.optimizer.AdamW(
                     learning_rate=learning_rate,
                     parameters=input_paramters,
                     weight_decay=0.01,
                     beta1=beta1,
                     beta2=beta2,
                     multi_precision=multi_precision,
+                    use_multi_tensor=True,
                 )
         else:
             if not use_adamw:
@@ -170,7 +211,7 @@ class TestMultiTensorAdam(unittest.TestCase):
         return model.parameters()
 
     def run_adam_or_adamw(
-        self, use_adamw, test_dict, test_fp16, test_lrscheduler
+        self, use_adamw, test_dict, test_fp16, test_lrscheduler, test_diff_lr
     ):
         use_multi_tensor_adam = True
         parameters_1 = self.get_adam_or_adamw_out(
@@ -179,6 +220,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             test_dict,
             test_fp16,
             test_lrscheduler,
+            test_diff_lr,
         )
         parameters = self.get_adam_or_adamw_out(
             use_multi_tensor_adam,
@@ -186,6 +228,7 @@ class TestMultiTensorAdam(unittest.TestCase):
             test_dict,
             test_fp16,
             test_lrscheduler,
+            test_diff_lr,
         )
         self.assertEqual(len(parameters), len(parameters_1))
         for i, j in zip(parameters, parameters_1):
@@ -193,39 +236,45 @@ class TestMultiTensorAdam(unittest.TestCase):
                 atol = 10
                 rtol = 10
             else:
-                atol = 1e-3 if test_fp16 else 1e-6
-                rtol = 1e-2 if test_fp16 else 1e-6
+                atol = 1e-6 if test_fp16 else 1e-6
+                rtol = 1e-6 if test_fp16 else 1e-6
             np.testing.assert_allclose(
                 i.numpy(), j.numpy(), rtol=rtol, atol=atol
             )
 
     def test_main(self):
         old_device = paddle.get_device()
-        for use_gpu in [False, True]:
-            if use_gpu and not paddle.is_compiled_with_cuda():
-                continue
-            if use_gpu:
-                paddle.set_device("gpu")
-            else:
-                paddle.set_device("cpu")
-            for use_adamw in [True, False]:
-                for test_dict in [True, False]:
-                    for test_lrscheduler in [True, False]:
-                        test_fp16 = False
-                        print(
-                            f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
-                        )
-                        self.run_adam_or_adamw(
-                            use_adamw, test_dict, test_fp16, test_lrscheduler
-                        )
-                        if use_gpu:
-                            test_fp16 = True
+        for test_diff_lr in [True, False]:
+            for use_gpu in [True, False]:
+                if use_gpu and not paddle.is_compiled_with_cuda():
+                    continue
+                if use_gpu:
+                    paddle.set_device("gpu")
+                else:
+                    paddle.set_device("cpu")
+                for use_adamw in [True, False]:
+                    for test_dict in [True, False]:
+                        for test_lrscheduler in [True, False]:
+                            test_fp16 = False
+                            print(
+                                f'use_gpu = {use_gpu} use_adamw = {use_adamw} test_dict = {test_dict} test_fp16 = {test_fp16}'
+                            )
                             self.run_adam_or_adamw(
                                 use_adamw,
                                 test_dict,
                                 test_fp16,
                                 test_lrscheduler,
+                                test_diff_lr,
                             )
+                            if use_gpu:
+                                test_fp16 = True
+                                self.run_adam_or_adamw(
+                                    use_adamw,
+                                    test_dict,
+                                    test_fp16,
+                                    test_lrscheduler,
+                                    test_diff_lr,
+                                )
         paddle.set_device(old_device)
 
 
@@ -233,6 +282,8 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
     def _test(
         self,
         place,
+        use_adamw,
+        use_multi_tensor,
     ):
 
         paddle.enable_static()
@@ -282,16 +333,27 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
                 beta1 = beta1_init
                 beta2 = beta2_init
                 epsilon = epsilon_init
-                multi_tensor_adam = paddle.optimizer.Adam(
-                    learning_rate=0.01,
-                    beta1=beta1,
-                    beta2=beta2,
-                    epsilon=epsilon,
-                    grad_clip=clip,
-                    use_multi_tensor=True,
-                )
+                if not use_adamw:
+                    opt = paddle.optimizer.Adam(
+                        learning_rate=0.01,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epsilon=epsilon,
+                        grad_clip=clip,
+                        use_multi_tensor=use_multi_tensor,
+                    )
+                else:
+                    opt = paddle.optimizer.AdamW(
+                        learning_rate=0.01,
+                        beta1=beta1,
+                        beta2=beta2,
+                        epsilon=epsilon,
+                        weight_decay=0.01,
+                        grad_clip=clip,
+                        use_multi_tensor=use_multi_tensor,
+                    )
 
-                multi_tensor_adam.minimize(loss)
+                opt.minimize(loss)
 
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
@@ -314,17 +376,19 @@ class TestStaticMultiTensorAdam(unittest.TestCase):
             return pred_res, loss_res
 
     def _test_with_place(self, place):
-        preds = []
-        losses = []
-        pred, loss = self._test(
-            place,
-        )
-        preds.append(pred)
-        losses.append(loss)
-        for pred in preds:
-            np.testing.assert_allclose(pred, preds[0], rtol=1e-05)
-        for loss in losses:
-            np.testing.assert_allclose(loss, losses[0], rtol=1e-05)
+        for use_adamw in [True, False]:
+            pred, loss = self._test(
+                place,
+                use_adamw,
+                True,
+            )
+            pred1, loss1 = self._test(
+                place,
+                use_adamw,
+                False,
+            )
+            np.testing.assert_allclose(pred, pred1, rtol=1e-06)
+            np.testing.assert_allclose(loss, loss1, rtol=1e-06)
 
     def test_adam_api(self):
         # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.

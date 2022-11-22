@@ -257,8 +257,9 @@ class AdamW(MultiTensorBase):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._weight_decay = weight_decay
         self._grad_clip = grad_clip
-        self.chunk_size = chunk_size
-        self.use_multi_tensor = use_multi_tensor
+        self._chunk_size = chunk_size
+        self._use_multi_tensor = use_multi_tensor
+        self._use_adamw = True
         self._lr_ratio = lr_ratio
         self._beta1 = beta1
         self._beta2 = beta2
@@ -266,6 +267,8 @@ class AdamW(MultiTensorBase):
         self._lazy_mode = lazy_mode
         self._multi_precision = multi_precision
         self._master_weights = {}
+        self._lr_first = []
+        self._use_multi_tensor_adam = True
 
         self._default_dict = {
             'weight_decay': weight_decay,
@@ -283,7 +286,15 @@ class AdamW(MultiTensorBase):
         else:
             self._param_groups = self._parameter_list
 
-        self._use_multi_tensor = None
+        if self._use_multi_tensor:
+            self._param_dict = self._create_multi_tensor_dict()
+            self._moment1_dict = self._create_multi_tensor_dict()
+            self._moment2_dict = self._create_multi_tensor_dict()
+            self._beta1_pow_acc_dict = self._create_multi_tensor_dict()
+            self._beta2_pow_acc_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict = self._create_multi_tensor_dict()
+            self._master_weight_dict['FP32_LODTensor'] = None
+
         self.regularization = None
         self._auxiliary_vars = {}
 
