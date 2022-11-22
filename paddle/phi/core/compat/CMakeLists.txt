@@ -9,12 +9,6 @@ cc_library(
 
 set(convert_utils_deps data_type place op_utils phi_backends)
 
-# every source file that includes "dnnl.h" must depends on mkldnn
-# or, the first one should depends on mkldnn
-if(WITH_MKLDNN)
-  add_dependencies(convert_utils mkldnn)
-endif()
-
 cc_library(
   convert_utils
   SRCS convert_utils.cc
