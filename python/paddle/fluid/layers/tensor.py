@@ -64,8 +64,6 @@ __all__ = [
     'zeros',
     'reverse',
     'has_inf',
-    'has_nan',
-    'isfinite',
     'linspace',
     'zeros_like',
     'ones_like',
@@ -1572,68 +1570,6 @@ def has_inf(x):
     return out
 
 
-def has_nan(x):
-    """
-    Test if any of x contains a NAN
-
-    Args:
-       x (Tensor): The Tensor to be checked.
-
-    Returns:
-       Tensor: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          data = paddle.randn(shape=[2,3], dtype="float32")
-          res = paddle.fluid.layers.has_nan(data)
-          # [False]
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.isnan(x)
-
-    check_type(x, 'x', (Variable), 'has_nan')
-    helper = LayerHelper("isnan", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
-def isfinite(x):
-    """
-
-    Test if any of x contains an infinity/NAN number. If all the elements are finite,
-    returns true, else false.
-
-    Args:
-        x(Tensor): The Tensor to be checked.
-
-    Returns:
-        Tensor: The tensor storing the output, contains a bool value.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.rand(shape=[4, 6], dtype='float32')
-            y = paddle.fluid.layers.isfinite(x)
-            print(y)
-
-    """
-    check_variable_and_dtype(
-        x, "x", ["float32", "float64", "int32", "int64"], "isfinite"
-    )
-    helper = LayerHelper("isfinite", **locals())
-
-    out = helper.create_variable_for_type_inference(dtype='bool')
-    helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
-    return out
-
-
 def linspace(start, stop, num, dtype=None, name=None):
     r"""
     This OP return fixed number of evenly spaced values within a given interval.
@@ -1948,7 +1884,8 @@ def eye(
             if batch_val <= 0:
                 raise TypeError("batch_shape should be a positive int list")
 
-        from .nn import reshape, expand
+        from .nn import expand
+        from paddle import reshape
 
         out = reshape(x=out, shape=re_shape)
         out = expand(x=out, expand_times=expand_times)
