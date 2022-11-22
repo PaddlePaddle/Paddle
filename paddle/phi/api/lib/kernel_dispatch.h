@@ -37,7 +37,6 @@ namespace experimental {
 namespace detail {
 BackendSet GetTensorBackendSet(const phi::TensorBase& t);
 std::size_t CountLeadingZeros(uint32_t val);
-constexpr BackendSet gpu_without_cudnn_bs = BackendSet(Backend::GPU);
 }  // namespace detail
 
 phi::DeviceContext* GetDeviceContextByBackend(phi::Backend backend);
@@ -102,7 +101,8 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
-    if (tensor_backend_set == gpu_without_cudnn_bs || disable_cudnn) {
+    // tensor's attribute use_cudnn=False, explicitly disable cudnn kernel
+    if (tensor_backend_set == BackendSet(Backend::GPU) || disable_cudnn) {
       disable_cudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
     }
