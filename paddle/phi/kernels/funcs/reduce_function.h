@@ -425,7 +425,7 @@ struct ReduceConfig {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
 #endif  // PADDLE_WITH_XPU_KP
     } else if (reduce_rank < 3 && !not_higher && reduce_num < 1024) {
-      reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
+      reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
     }
   }
 
