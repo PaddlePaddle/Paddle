@@ -3230,6 +3230,15 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
   VLOG(4) << "Done attributes";
 
+#if defined(PADDLE_WITH_MKLDNN)
+  phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+  std::string empty_string = "";
+  one_dnn_ctx->SetDnnAttr("fuse_activation", empty_string);
+  one_dnn_ctx->SetDnnAttr("fuse_alpha", 0.0f);
+  one_dnn_ctx->SetDnnAttr("fuse_beta", 0.0f);
+  one_dnn_ctx->SetDnnAttr("fused_output_scale", 1.0f);
+#endif
+
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();

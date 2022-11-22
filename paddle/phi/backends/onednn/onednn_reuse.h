@@ -1866,8 +1866,10 @@ class MatmulOneDNNHandler
     if (dev_ctx.HasDnnAttr("fused_output_scale")) {
       float scale_alpha =
           PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
-      post_operations.append_eltwise(
-          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+      if (scale_alpha != 1.0f) {
+        post_operations.append_eltwise(
+            1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+      }
     }
 
     matmul_attrs.set_post_ops(post_operations);
