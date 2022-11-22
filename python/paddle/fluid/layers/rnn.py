@@ -1036,7 +1036,7 @@ class BeamSearchDecoder(Decoder):
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
-        x = nn.reshape(
+        x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = nn.transpose(
@@ -1059,7 +1059,7 @@ class BeamSearchDecoder(Decoder):
         """
         check_type(x, 'x', (Variable), 'BeamSearchDecoder._split_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
+        return paddle.reshape(x, shape=[-1, self.beam_size] + list(x.shape[1:]))
 
     def _merge_batch_beams(self, x):
         r"""
@@ -1076,7 +1076,7 @@ class BeamSearchDecoder(Decoder):
         """
         check_type(x, 'x', (Variable), 'BeamSearchDecoder._merge_batch_beams')
         # TODO: avoid fake shape in compile-time like tile_beam_merge_with_batch
-        return nn.reshape(x, shape=[-1] + list(x.shape[2:]))
+        return paddle.reshape(x, shape=[-1] + list(x.shape[2:]))
 
     def _expand_to_beam_size(self, x):
         r"""
@@ -1311,13 +1311,13 @@ class BeamSearchDecoder(Decoder):
         )
         # TODO: length penalty
         scores = log_probs
-        scores = nn.reshape(scores, [-1, self.beam_size * self.vocab_size])
+        scores = paddle.reshape(scores, [-1, self.beam_size * self.vocab_size])
         # TODO: add grad for topk then this beam search can be used to train
         topk_scores, topk_indices = paddle.topk(x=scores, k=self.beam_size)
         beam_indices = paddle.floor_divide(topk_indices, self.vocab_size_tensor)
         token_indices = paddle.remainder(topk_indices, self.vocab_size_tensor)
         next_log_probs = self._gather(
-            nn.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
+            paddle.reshape(log_probs, [-1, self.beam_size * self.vocab_size]),
             topk_indices,
             self.batch_size,
         )
