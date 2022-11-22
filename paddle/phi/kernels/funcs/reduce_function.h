@@ -239,26 +239,30 @@ struct ReduceConfig {
       : reduce_dims_origin(origin_reduce_dims), x_dim(origin_x_dim) {}
 
   std::vector<int> reduce_dims_origin;
-  std::vector<int> reduce_dim;
-  std::vector<int> x_dim;
-  std::vector<int> left_dim;
-  std::vector<int> x_strides;
-  std::vector<int> left_strides;
-  std::vector<int> reduce_strides;
+  std::vector<int> reduce_dim, x_dim, left_dim;
+  std::vector<int> reduce_strides, x_strides, left_strides;
+
+  static constexpr int BLOCK_x = 0, BLOCK_y = 1, CTA = 2;
+  static constexpr int input_vec_size = 4;
+  int block_width, block_height, num_threads;
+  int step_input = 1, step_output = 1, output_vec_size = 1, ctas_per_output = 1;
+  int input_mult[3] = {0, 0, 0};
+  int output_mult[2] = {0, 0};
 
   int reduce_type;
   int reduce_num;
-  int left_num;
+  int left_num = 1;
   int blocking_size;
-  bool should_reduce_again;
-  bool reduce_last_dim;
+  bool should_reduce_again = false;
+  bool reduce_last_dim = false;
+  bool vectorize_input = false;
   Ty* output_data;
   dim3 block;
   dim3 grid;
 
   // Get the parameters of reduceKernel
   void Run(const KPDevice& dev_ctx) {
-    // 1th: Update the reduce_dim left_dim and x_dim
+    // 1st: Update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
     // 2nd: Get the strides of dim for reduceAny and reduceLastDim
@@ -269,6 +273,7 @@ struct ReduceConfig {
 
     // 4th: Set the block and grid for launch kernel
     SetBlockDim();
+
 #ifndef PADDLE_WITH_XPU_KP
     // 5th: Limit the grid to prevent thead overflow
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
@@ -277,7 +282,7 @@ struct ReduceConfig {
 
 #ifndef PADDLE_WITH_XPU_KP
   // Get blockDim for reduceLastDim and reduceAny
-  inline int GetBlockDim(int block_dim) {
+  int GetBlockDim(int block_dim) {
     return block_dim >= kps::details::kReduceMaxThread
                ? kps::details::kReduceMaxThread
                : details::GetLastPow2(block_dim);
@@ -298,8 +303,7 @@ struct ReduceConfig {
   }
 
  private:
-  // Set reduce_dim, left_dim
-  // Update x_dim
+  // 1th: Update the reduce_dim left_dim and x_dim
   // eg: x_dim = [2, 4, 6] origin_reduce_dims = [0, 1]
   //     --SetReduceDim--> x_dim = [8,6], reduce_dim = [0], left_dim = [1]
   void SetReduceDim() {
@@ -344,7 +348,7 @@ struct ReduceConfig {
       x_new_dim = x_dim;
     }
 
-    // update x_dim
+    // Update x_dim
     x_dim = x_new_dim;
     std::vector<int>().swap(x_new_dim);
 
@@ -382,14 +386,15 @@ struct ReduceConfig {
 
     left_dim.assign(left_set.begin(), left_set.end());
 
-    // if the last dim gets involved in reduction
+    // If the last dim gets involved in reduction
     reduce_last_dim = (reduce_dim.back() == x_dim.size() - 1);
   }
 
-  // set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
+  // Set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
   // eg: x_dim = [8, 6], reduce_dim = [0], left_dim = [1]
   //     --SetStrides--> x_strides= [6,1], reduce_strides = [1],
   //     left_strides = [1]
+  // 2nd: Get the strides of dim for reduceAny and reduceLastDim
   void SetStrides() {
     std::vector<int> idx_dim;
     for (int i = 0; i < x_dim.size(); i++) {
@@ -401,13 +406,12 @@ struct ReduceConfig {
     left_strides = details::GetDimStrides(x_dim, left_dim);
     reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
 
-    left_num = 1;
     if (left_dim.size()) {
       left_num = left_strides[0] * x_dim[left_dim[0]];
     }
   }
 
-  // get the reduceType
+  // Get the reduceType
   // eg: x_dim = [8, 6] reduce_dim = [0] --> ReduceHigherDim -->reduceFirstDim
   //     x_dim = [8, 6] reduce_dim = [1] --> reduceLastDim
   //     x_dim = [8] reduce_dim = [0] --> reduceAll
@@ -421,20 +425,16 @@ struct ReduceConfig {
     int device_id = paddle::platform::GetCurrentDeviceId();
     int max_grid_z = phi::backends::gpu::GetGpuMaxGridDimSize(device_id)[2];
     bool not_higher = x_dim[0] >= max_grid_z;
-#endif
+#endif  // PADDLE_WITH_XPU_KP
+    reduce_type = static_cast<int>(ReduceType::kReduceAny);
     if (reduce_last_dim && (reduce_rank == 1)) {
 #ifdef PADDLE_WITH_XPU_KP
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
 #else
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-#endif
-    } else if (reduce_rank == 1) {
+#endif  // PADDLE_WITH_XPU_KP
+    } else if (reduce_rank < 3 && !not_higher && reduce_num > 1024) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-      if (rank == 3 && not_higher) {
-        reduce_type = static_cast<int>(ReduceType::kReduceAny);
-      }
-    } else {
-      reduce_type = static_cast<int>(ReduceType::kReduceAny);
     }
   }
 
@@ -444,7 +444,7 @@ struct ReduceConfig {
     constexpr int max_reduce_num_per_thread = 256;
     constexpr int max_num_threads = kps::details::kReduceMaxThread;
 
-    // set block size.
+    // Set block size.
     // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
     //    will process the reduction for one output.
     //    The number of output for one block is blockDim.y;
@@ -481,7 +481,7 @@ struct ReduceConfig {
     int num_threads = block_dim->x * block_dim->y;
     int max_num_blocks = max_threads / num_threads;
 
-    // set grid size.
+    // Set grid size.
     // Whether to set grid.y larger than 1, there are 3 following rules:
     // 1. The number that each thread process should no less than
     //    min_reduce_num_per_threadbut no more than max_reduce_num_per_thread;
@@ -505,13 +505,13 @@ struct ReduceConfig {
     }
   }
 
-  // set block and grid for launch kernel
+  // Set block and grid for launch kernel
   // for ReduceHigherDim: if block is enough -> splite reduce_num
   //                     else init block(32, 1) grid(block_num, 1)
   // for others: block(block_num, 1) , grid(left_num, 1)
   void SetBlockDimForHigher(dim3* block_dim, dim3* grid_dim) {
     int last_dim_num = x_dim.back();
-    // update left_num
+    // Update left_num
     int grid_z = left_num / last_dim_num;
     left_num = last_dim_num;
     grid_dim->z = grid_z;
@@ -540,8 +540,6 @@ struct ReduceConfig {
 #endif
 
   void SetBlockDim() {
-    // init
-    should_reduce_again = false;
     dim3 block_dim(1, 1, 1);
     dim3 grid_dim(left_num, 1, 1);
     blocking_size = reduce_num;
