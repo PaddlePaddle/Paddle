@@ -77,7 +77,6 @@ def filter_setup_args(input_args):
 
 cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(sys.argv)
 
-
 def parse_input_command(input_parameters):
     dist = Distribution()
     # get script name :setup.py
