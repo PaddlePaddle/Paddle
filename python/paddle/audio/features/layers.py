@@ -24,6 +24,8 @@ from ..functional import create_dct
 from ..functional import power_to_db
 from ..functional.window import get_window
 
+__all__ = []
+
 
 class Spectrogram(nn.Layer):
     """Compute spectrogram of given signals, typically audio waveforms.
@@ -209,7 +211,8 @@ class MelSpectrogram(nn.Layer):
 
 class LogMelSpectrogram(nn.Layer):
     """Compute log-mel-spectrogram feature of given signals, typically audio waveforms.
-
+    Test for Docs CI.
+    Test for Docs CI reply.
     Args:
         sr (int, optional): Sample rate. Defaults to 22050.
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.

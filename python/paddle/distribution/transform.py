@@ -343,8 +343,17 @@ class AbsTransform(Transform):
     r"""Absolute transformation with formula :math:`y = f(x) = abs(x)`,
     element-wise.
 
+<<<<<<< HEAD
+    This is a test code for paddle doc review...
+
+    Hi, have a nice day !
+
+    This non-injective transformation allows for transformations of scalar 
+    distributions with the absolute value function, which maps ``(-inf, inf)`` 
+=======
     This non-injective transformation allows for transformations of scalar
     distributions with the absolute value function, which maps ``(-inf, inf)``
+>>>>>>> e9372fabc70dc320e6eb5cddd503b1e9b05fac66
     to ``[0, inf)`` .
 
     * For ``y`` in ``(0, inf)`` , ``AbsTransform.inverse(y)`` returns the set invese
