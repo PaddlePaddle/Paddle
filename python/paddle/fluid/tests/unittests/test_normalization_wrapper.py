@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy as np
@@ -36,7 +37,7 @@ class TestNormalization(unittest.TestCase):
             append_batch_size=False,
         )
         data.stop_gradient = False
-        l2_norm = fluid.layers.l2_normalize(x=data, axis=axis, epsilon=epsilon)
+        l2_norm = paddle.linalg.norm(x=data, axis=axis)
         out = fluid.layers.reduce_sum(l2_norm, dim=None)
 
         fluid.backward.append_backward(loss=out)

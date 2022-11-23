@@ -3474,7 +3474,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = layers.l2_normalize(x, axis=1)
+            output = paddle.linalg.norm(x, axis=1)
             return output
 
     def make_mean_iou(self):
