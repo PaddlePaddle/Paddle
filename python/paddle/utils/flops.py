@@ -63,8 +63,8 @@ def register_flops(op_type):
 
 @register_flops("dropout")
 def _dropout_flops(input_shapes, attrs):
-    """FLOPS computation for dropout op:
-    For dropout(input),
+    """FLOPs computation for dropout op.
+    For dropout(input):
     equation: flops = 0
     """
     return 0
@@ -90,45 +90,45 @@ def _elementwise_flops_compute(input_shapes, attrs):
 
 @register_flops("elementwise_add")
 def _elementwise_add_flops(input_shapes, attrs):
-    """FLOPS computation for elementwise_add op:
-    For elementwise_add(input,other),
-    input_shapes = [shape_of_input, shape_of_ohther]
-    shape_of_input = [dim1, dim2, dim3 ...]
-    shape_of_other = [odim1, odim2, odim3...]
-    equation: flops = max(dim1, odim1) * max(dim2, odim2) * max()...
+    """FLOPs computation for elementwise_add op.
+    For elementwise_add(input,other):
+        input_shapes = [shape_of_input, shape_of_ohther]
+        shape_of_input = [dim1, dim2, dim3 ...]
+        shape_of_other = [odim1, odim2, odim3...]
+        equation: flops = max(dim1, odim1) * max(dim2, odim2) * max()...
     """
     return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("elementwise_mul")
 def _elementwise_mul_flops(input_shapes, attrs):
-    """FLOPS computation for elementwise_mul op:
-    For elementwise_mul(input,other),
-    input_shapes = [shape_of_input, shape_of_ohther]
-    shape_of_input = [dim1, dim2, dim3 ...]
-    shape_of_other = [odim1, odim2, odim3...]
-    equation: flops = max(dim1, odim1) * max(dim2, odim2)* max()...
+    """FLOPs computation for elementwise_mul op.
+    For elementwise_mul(input,other):
+        input_shapes = [shape_of_input, shape_of_ohther]
+        shape_of_input = [dim1, dim2, dim3 ...]
+        shape_of_other = [odim1, odim2, odim3...]
+        equation: flops = max(dim1, odim1) * max(dim2, odim2)* max()...
     """
     return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("elementwise_div")
 def _elementwise_mul_flops(input_shapes, attrs):
-    """FLOPS computation for elementwise_div op:
-    For elementwise_div(input,other),
-    input_shapes = [shape_of_input, shape_of_ohther]
-    shape_of_input = [dim1, dim2, dim3 ...]
-    shape_of_other = [odim1, odim2, odim3...]
-    equation: flops = max(dim1,odim1)*max(dim2,odim2)*max()...
+    """FLOPs computation for elementwise_div op.
+    For elementwise_div(input,other):
+        input_shapes = [shape_of_input, shape_of_ohther]
+        shape_of_input = [dim1, dim2, dim3 ...]
+        shape_of_other = [odim1, odim2, odim3...]
+        equation: flops = max(dim1,odim1)*max(dim2,odim2)*max()...
     """
     return _elementwise_flops_compute(input_shapes, attrs)
 
 
 @register_flops("gelu")
 def _gelu_flops(input_shapes, attrs):
-    """FLOPS computation for gelu op:
-    For gelu(input),
-    equation: flops = 5 * (numel)total number of elements in the input tensor.
+    """FLOPs computation for gelu op.
+    For gelu(input):
+        equation: flops = 5 * (numel)total number of elements in the input tensor.
     """
     if isinstance(input_shapes, dict):
         input = input_shapes.get('X')[0]
@@ -139,11 +139,11 @@ def _gelu_flops(input_shapes, attrs):
 
 @register_flops("layer_norm")
 def _layer_norm_flops(input_shapes, attrs):
-    """FLOPS computation for layer_norm op:
-    For layer_norm(input),
-    equation:
-    1): WITHOUT epsilon flops = 7 * (numel)total number of elements in the input tensor.
-    2): WITH epsilon flops = 8 * (numel)total number of elements in the input tensor.
+    """FLOPs computation for layer_norm op.
+    For layer_norm(input):
+        equation:
+        1): WITHOUT epsilon flops = 7 * (numel)total number of elements in the input tensor.
+        2): WITH epsilon flops = 8 * (numel)total number of elements in the input tensor.
     """
     if isinstance(input_shapes, dict):
         input = input_shapes.get('X')[0]
@@ -157,14 +157,14 @@ def _layer_norm_flops(input_shapes, attrs):
 
 @register_flops("matmul")
 def _matmul_flops(input_shapes, attrs):
-    """FLOPS computation for matmul op:
-    For matmul(input,other),
-    input_shapes = [shape_of_input, shape_of_ohther]
-    shape_of_input =                  [dim1,dim2 ...dim_n_1,dim_n]  length:n
-    shape_of_other = [odim1,odim2 ... odim(n-m)... odim_m_1,dim_m]  length:m
-    suppose n > m and dim_n = odim_m_1:
-    shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1)) ... dim_n_1, dim_m]
-    equation: flops = 2 * numel(output) * dim_n
+    """FLOPs computation for matmul op.
+    For matmul(input,other):
+        input_shapes = [shape_of_input, shape_of_ohther]
+        shape_of_input =                  [dim1,dim2 ...dim_n_1,dim_n]  length:n
+        shape_of_other = [odim1,odim2 ... odim(n-m)... odim_m_1,dim_m]  length:m
+        suppose n > m and dim_n = odim_m_1:
+        shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1)) ... dim_n_1, dim_m]
+        equation: flops = 2 * numel(output) * dim_n
     """
     if isinstance(input_shapes, dict):
         x_shape = input_shapes.get("X")[0]
@@ -192,14 +192,14 @@ def _matmul_flops(input_shapes, attrs):
 
 @register_flops("matmul_v2")
 def _matmul_v2_flops(input_shapes, attrs):
-    """FLOPS computation for matmul_v2 op:
-    For matmul_v2(input,other),
-    input_shapes = [shape_of_input, shape_of_ohther]
-    shape_of_input =                  [dim1, dim2 ...dim_n_1, dim_n] length:n
-    shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
-    suppose n > m and dim_n = odim_m_1:
-    shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
-    equation: flops = 2 * numel(output) * dim_n
+    """FLOPs computation for matmul_v2 op.
+    For matmul_v2(input,other):
+        input_shapes = [shape_of_input, shape_of_ohther]
+        shape_of_input =                  [dim1, dim2 ...dim_n_1, dim_n] length:n
+        shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
+        suppose n > m and dim_n = odim_m_1:
+        shape_of_output = [dim1, dim2 ... max(dim(n-m), odim(n-m)), max(dim(n-m+1), odim(n-m+1))...dim_n_1, dim_m]
+        equation: flops = 2 * numel(output) * dim_n
     """
     if isinstance(input_shapes, dict):
         x_shape = input_shapes.get('X')[0]
@@ -226,27 +226,27 @@ def _matmul_v2_flops(input_shapes, attrs):
 
 @register_flops("relu")
 def _relu_flops(input_shapes, attrs):
-    """FLOPS computation for relu op:
-    For relu(input),
-    equation: flops = (numel)total number of elements in the input tensor.
+    """FLOPs computation for relu op.
+    For relu(input):
+        equation: flops = (numel)total number of elements in the input tensor.
     """
     return prod(input_shapes.get('X')[0])
 
 
 @register_flops("reshape2")
 def _reshape2_flops(input_shapes, attrs):
-    """FLOPS computation for reshape2 op:
-    For reshape2(input),
-    equation: flops = 0
+    """FLOPs computation for reshape2 op.
+    For reshape2(input):
+        equation: flops = 0
     """
     return 0
 
 
 @register_flops("softmax")
 def _softmax_flops(input_shapes, attrs):
-    """FLOPS computation for softmax op:
-    For softmax(input),
-    equation: flops = 3 * (numel)total number of elements in the input tensor.
+    """FLOPs computation for softmax op.
+    For softmax(input):
+        equation: flops = 3 * (numel)total number of elements in the input tensor.
     """
     if isinstance(input_shapes, dict):
         input = input_shapes.get('X')[0]
@@ -257,8 +257,8 @@ def _softmax_flops(input_shapes, attrs):
 
 @register_flops("transpose2")
 def _transpose2_flops(input_shapes, attrs):
-    """FLOPS computation for transpose2 op:
-    For transpose2(input),
-    equation: flops = 0
+    """FLOPs computation for transpose2 op.
+    For transpose2(input):
+        equation: flops = 0
     """
     return 0
