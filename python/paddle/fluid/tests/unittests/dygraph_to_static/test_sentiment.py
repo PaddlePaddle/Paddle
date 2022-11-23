@@ -19,7 +19,8 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear, Embedding
 from paddle.fluid.dygraph import to_variable
-from paddle.jit import ProgramTranslator, declarative
+from paddle.jit import ProgramTranslator
+from paddle.jit.api import declarative
 
 from test_lac import DynamicGRU
 
