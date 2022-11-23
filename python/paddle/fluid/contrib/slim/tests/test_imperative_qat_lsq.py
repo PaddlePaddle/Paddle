@@ -29,7 +29,7 @@ from paddle.fluid.optimizer import (
     MomentumOptimizer,
 )
 from paddle.fluid.contrib.slim.quantization import ImperativeQuantAware
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 from paddle.nn import ReLU, ReLU6, LeakyReLU, Sigmoid, Softmax, PReLU
 from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
