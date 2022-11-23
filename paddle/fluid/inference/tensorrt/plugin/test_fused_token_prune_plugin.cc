@@ -30,7 +30,7 @@ TEST(fused_token_prune_op_plugin, test_plugin) {
   plugin.initialize();
   plugin.getPluginType();
   plugin.getNbOutputs();
-  auto clone_plugin = plugin.clone();
+  // auto clone_plugin = plugin.clone();
   clone_plugin->destroy();
   size_t buf_size = plugin.getSerializationSize();
   std::vector<char> buf(buf_size);
