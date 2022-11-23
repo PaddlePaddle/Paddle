@@ -21,7 +21,6 @@ from .math import segment_min  # noqa: F401
 from .math import segment_max  # noqa: F401
 from .reindex import reindex_graph  # noqa: F401
 from .reindex import reindex_heter_graph  # noqa: F401
-from .sampling import sample_neighbors  # noqa: F401
 
 __all__ = [
     'send_u_recv',

@@ -371,46 +371,6 @@ class TestGeneratorSeed(unittest.TestCase):
                 np.testing.assert_allclose(out1_res2, out2_res2, rtol=1e-05)
                 self.assertTrue(not np.allclose(out1_res2, out1_res1))
 
-    def test_generator_sampling_id_dygraph(self):
-        """Test Generator seed."""
-        gen = paddle.seed(12312321111)
-
-        fluid.enable_dygraph()
-
-        gen.manual_seed(12312321111)
-        x = fluid.layers.uniform_random(
-            [10, 10], dtype="float32", min=0.0, max=1.0
-        )
-        y = fluid.layers.sampling_id(x)
-
-        st1 = gen.get_state()
-        x1 = fluid.layers.uniform_random(
-            [10, 10], dtype="float32", min=0.0, max=1.0
-        )
-        y1 = fluid.layers.sampling_id(x)
-
-        gen.set_state(st1)
-        x2 = fluid.layers.uniform_random(
-            [10, 10], dtype="float32", min=0.0, max=1.0
-        )
-        y2 = fluid.layers.sampling_id(x)
-
-        gen.manual_seed(12312321111)
-        x3 = fluid.layers.uniform_random(
-            [10, 10], dtype="float32", min=0.0, max=1.0
-        )
-        y3 = fluid.layers.sampling_id(x)
-
-        x_np = y.numpy()
-        x1_np = y1.numpy()
-        x2_np = y2.numpy()
-        x3_np = y3.numpy()
-
-        if not core.is_compiled_with_cuda():
-            print(">>>>>>> sampling id dygraph >>>>>>>")
-            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
-            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
-
     def test_generator_randperm_static_1(self):
 
         fluid.disable_dygraph()
