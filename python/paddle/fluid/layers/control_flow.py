@@ -625,10 +625,12 @@ class StaticRNN:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
@@ -637,7 +639,7 @@ class StaticRNN:
                 dtype='float32',
                 is_sparse=False)
             # transform batch size to dim 1
-            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
@@ -714,10 +716,12 @@ class StaticRNN:
         Examples 1:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -726,7 +730,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -742,9 +746,11 @@ class StaticRNN:
         Examples 2:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -753,7 +759,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
                 boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -842,10 +848,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -854,7 +862,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -893,10 +901,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -905,7 +915,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -953,10 +963,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -965,7 +977,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
