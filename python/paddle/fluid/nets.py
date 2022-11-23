@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 from . import layers
 from .data_feeder import check_variable_and_dtype, convert_dtype
 from ..utils import deprecated
@@ -332,7 +331,7 @@ def sequence_conv_pool(
     """
 
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], 'input')
-    conv_out = layers.sequence_conv(
+    conv_out = paddle.static.nn.sequence_lod.sequence_conv(
         input=input,
         num_filters=num_filters,
         filter_size=filter_size,
@@ -389,7 +388,7 @@ def glu(input, dim=-1):
         input, 'input', ['float16', 'float32', 'float64'], "glu"
     )
     a, b = layers.split(input, num_or_sections=2, dim=dim)
-    act_b = paddle.nn.functional.sigmoid(x=b)
+    act_b = layers.sigmoid(x=b)
     out = layers.elementwise_mul(x=a, y=act_b)
     return out
 
@@ -570,7 +569,7 @@ def scaled_dot_product_attention(
         # reshape the 3-D input: [batch_size, max_sequence_length, hidden_dim]
         # into a 4-D output:
         # [batch_size, max_sequence_length, num_heads, hidden_size_per_head].
-        reshaped = paddle.reshape(
+        reshaped = layers.reshape(
             x=x,
             shape=list(x.shape[:-1]) + [num_heads, hidden_size // num_heads],
         )
@@ -599,7 +598,7 @@ def scaled_dot_product_attention(
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
-        return paddle.reshape(
+        return layers.reshape(
             x=trans_x,
             shape=list(
                 map(
@@ -623,10 +622,12 @@ def scaled_dot_product_attention(
     scaled_q = layers.scale(x=q, scale=key_dim_per_head**-0.5)
     product = layers.matmul(x=scaled_q, y=k, transpose_y=True)
 
-    x = paddle.reshape(x=product, shape=[-1, product.shape[-1]])
-    x = paddle.nn.functional.softmax(x)
-    weights = paddle.reshape(x=x, shape=product.shape)
-
+    weights = layers.reshape(
+        x=layers.reshape(
+            x=product, shape=[-1, product.shape[-1]], act="softmax"
+        ),
+        shape=product.shape,
+    )
     if dropout_rate:
         weights = layers.dropout(
             weights, dropout_prob=dropout_rate, is_test=False

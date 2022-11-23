@@ -1782,6 +1782,7 @@ class LayerNorm(layers.Layer):
                     self.bias,
                     self._epsilon,
                     self._begin_norm_axis,
+                    False,
                 )
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act

@@ -664,54 +664,6 @@ class TestLayer(LayerTest):
         np.testing.assert_allclose(n, min_eager_ret_value, rtol=1e-05)
         np.testing.assert_allclose(n2, max_eager_ret_value, rtol=1e-05)
 
-    def test_sequence_conv(self):
-        inp_np = np.arange(12).reshape([3, 4]).astype('float32')
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-        else:
-            place = core.CPUPlace()
-        with self.static_graph():
-            seq = layers.data(
-                name='seq_in',
-                shape=[3, 4],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            out = layers.sequence_conv(seq, 2, act='sigmoid')
-            static_rlt = self.get_static_graph_result(
-                feed={
-                    "seq_in": fluid.create_lod_tensor(
-                        data=inp_np, recursive_seq_lens=[[1, 1, 1]], place=place
-                    )
-                },
-                fetch_list=[out],
-                with_lod=True,
-            )[0]
-
-        with self.static_graph():
-            seq = layers.data(
-                name='seq_in',
-                shape=[3, 4],
-                dtype='float32',
-                lod_level=1,
-                append_batch_size=False,
-            )
-            seq_conv = nn.SequenceConv('seq_conv', num_filters=2, act='sigmoid')
-            out = seq_conv(seq)
-            static_rlt2 = self.get_static_graph_result(
-                feed={
-                    "seq_in": fluid.create_lod_tensor(
-                        data=inp_np, recursive_seq_lens=[[1, 1, 1]], place=place
-                    )
-                },
-                fetch_list=[out],
-                with_lod=True,
-            )[0]
-        np.testing.assert_array_equal(
-            np.array(static_rlt), np.array(static_rlt2)
-        )
-
     def test_conv2d_transpose(self):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
