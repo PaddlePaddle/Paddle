@@ -1866,7 +1866,7 @@ class MatmulOneDNNHandler
     AppendActivation(dev_ctx, post_operations);
 
     const float scale_alpha =
-        dev_ctx.HasDnnInput("fused_output_scale")
+        dev_ctx.HasDnnAttr("fused_output_scale")
             ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"))
             : 1.0f;
     if (scale_alpha != 1.0f) {
