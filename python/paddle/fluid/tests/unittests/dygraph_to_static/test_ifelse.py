@@ -427,6 +427,7 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
     def get_dy2stat_out(self):
         ProgramTranslator().enable(True)
         static_func = paddle.jit.to_static(self.dyfunc)
+        static_func.eval()  # avoid append_backward()
         out = static_func(self.x)
         ProgramTranslator().enable(False)
         return out
