@@ -1,24 +1,24 @@
-if(APPLE)
-  cmake_minimum_required(VERSION 3.4)
-else()
-  cmake_minimum_required(VERSION 2.8)
-endif()
+# if(APPLE)
+#   cmake_minimum_required(VERSION 3.4)
+# else()
+#   cmake_minimum_required(VERSION 2.8)
+# endif()
 
-project(rnnt_release)
+# project(rnnt_release)
 
 if(NOT APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O2")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -O2")
   add_definitions(-DAPPLE)
 endif()
 
 include_directories(include)
 
-find_package(CUDA)
-message(STATUS "cuda found ${CUDA_FOUND}")
+# find_package(CUDA)
+# message(STATUS "cuda found ${CUDA_FOUND}")
 
 option(USE_NAIVE_KERNEL "use naive alpha-beta kernel" OFF)
 option(DEBUG_TIME "output kernel time" OFF)
@@ -33,8 +33,15 @@ if(DEBUG_KERNEL)
   add_definitions(-DDEBUG_KERNEL)
 endif()
 
-option(WITH_GPU "compile warp-rnnt with cuda." ${CUDA_FOUND})
-option(WITH_OMP "compile warp-rnnt with openmp." ON)
+# option(WITH_GPU "compile warp-rnnt with cuda." ${CUDA_FOUND})
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+   OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"
+   OR WIN32)
+  set(WITH_OMP OFF)
+else()
+  set(WITH_OMP ON)
+endif()
 
 if(NOT WITH_OMP)
   add_definitions(-DRNNT_DISABLE_OMP)
@@ -77,7 +84,7 @@ if(CUDA_VERSION GREATER 11.0)
 endif()
 
 if(NOT APPLE)
-  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++11")
+  set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --std=c++14")
   set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS}")
 endif()
 
@@ -100,50 +107,69 @@ else()
   set(CMAKE_SKIP_RPATH TRUE)
 endif()
 
+file(GLOB RNNT_CC_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB RNNT_CU_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu")
+message(STATUS "RNNT_CC_SOURCES=${RNNT_CC_SOURCES}")
+message(STATUS "RNNT_CU_SOURCES=${RNNT_CU_SOURCES}")
+
 if(WITH_GPU)
-
-  message(STATUS "Building shared library with GPU support")
-
-  cuda_add_library(warprnnt SHARED src/rnnt_entrypoint.cu)
-  if(!Torch_FOUND)
-    target_link_libraries(warprnnt ${CUDA_curand_LIBRARY})
-  endif()
-
-  cuda_add_executable(test_time_gpu tests/test_time.cu tests/random.cpp)
-  target_link_libraries(test_time_gpu warprnnt ${CUDA_curand_LIBRARY})
-  set_target_properties(
-    test_time_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
-
-  cuda_add_executable(test_gpu tests/test_gpu.cu tests/random.cpp)
-  target_link_libraries(test_gpu warprnnt ${CUDA_curand_LIBRARY})
-  set_target_properties(test_gpu PROPERTIES COMPILE_FLAGS
-                                            "${CMAKE_CXX_FLAGS} --std=c++11")
-
+  nv_library(
+    warprnnt
+    SRCS ${RNNT_CU_SOURCES}
+    DEPS dynload_cuda)
+elseif(WITH_ROCM)
+  hip_library(
+    warprnnt
+    SRCS ${RNNT_CU_SOURCES}
+    DEPS dynload_cuda)
 else()
-  message(STATUS "Building shared library with no GPU support")
-
-  if(NOT APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O2")
-  endif()
-
-  add_library(warprnnt SHARED src/rnnt_entrypoint.cpp)
-
+  cc_library(warprnnt SRCS ${RNNT_CC_SOURCES})
 endif()
 
-add_executable(test_cpu tests/test_cpu.cpp tests/random.cpp)
-target_link_libraries(test_cpu warprnnt)
-set_target_properties(test_cpu PROPERTIES COMPILE_FLAGS
-                                          "${CMAKE_CXX_FLAGS} --std=c++11")
+# if(WITH_GPU)
+#   message(STATUS "Building static library with GPU support")
 
-add_executable(test_time tests/test_time.cpp tests/random.cpp)
-target_link_libraries(test_time warprnnt)
-set_target_properties(test_time PROPERTIES COMPILE_FLAGS
-                                           "${CMAKE_CXX_FLAGS} --std=c++11")
+#   # cuda_add_library(warprnnt SHARED src/rnnt_entrypoint.cu)
+#   cuda_add_library(warprnnt STATIC src/rnnt_entrypoint.cpp)
+#   if(!Torch_FOUND)
+#     target_link_libraries(warprnnt ${CUDA_curand_LIBRARY})
+#   endif()
 
-install(
-  TARGETS warprnnt
-  RUNTIME DESTINATION "bin"
-  LIBRARY DESTINATION "lib"
-  ARCHIVE DESTINATION "lib")
+#   # cuda_add_executable(test_time_gpu tests/test_time.cu tests/random.cpp)
+#   # target_link_libraries(test_time_gpu warprnnt ${CUDA_curand_LIBRARY})
+#   # set_target_properties(
+#   #  test_time_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++14")
 
-install(FILES include/rnnt.h DESTINATION "include")
+#   # cuda_add_executable(test_gpu tests/test_gpu.cu tests/random.cpp)
+#   # target_link_libraries(test_gpu warprnnt ${CUDA_curand_LIBRARY})
+#   # set_target_properties(test_gpu PROPERTIES COMPILE_FLAGS
+#   #                                          "${CMAKE_CXX_FLAGS} --std=c++14")
+
+# else()
+#   message(STATUS "Building static library with no GPU support")
+
+#   if(NOT APPLE)
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -O2")
+#   endif()
+
+#   add_library(warprnnt STATIC src/rnnt_entrypoint.cpp)
+
+# endif()
+
+# add_executable(test_cpu tests/test_cpu.cpp tests/random.cpp)
+# target_link_libraries(test_cpu warprnnt)
+# set_target_properties(test_cpu PROPERTIES COMPILE_FLAGS
+#                                          "${CMAKE_CXX_FLAGS} --std=c++14")
+
+# add_executable(test_time tests/test_time.cpp tests/random.cpp)
+# target_link_libraries(test_time warprnnt)
+# set_target_properties(test_time PROPERTIES COMPILE_FLAGS
+#                                           "${CMAKE_CXX_FLAGS} --std=c++14")
+
+# install(
+#   TARGETS warprnnt
+#   RUNTIME DESTINATION "bin"
+#   LIBRARY DESTINATION "lib"
+#   ARCHIVE DESTINATION "lib")
+
+# install(FILES include/rnnt.h DESTINATION "include")

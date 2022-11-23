@@ -160,7 +160,7 @@ bool options_test() {
 
   bool result = true;
   // activations gradient check
-  for (int i = 0; i < grads.size(); i++) {
+  for (size_t i = 0; i < grads.size(); i++) {
     const double lb = expected_grads[i] - eps;
     const double ub = expected_grads[i] + eps;
     if (!(grads[i] > lb && grads[i] < ub)) {
@@ -257,7 +257,7 @@ float numeric_grad(std::vector<float>& acts,
                    std::vector<float>& num_grad) {
   float epsilon = 1e-2;
 
-  for (int i = 0; i < num_grad.size(); ++i) {
+  for (size_t i = 0; i < num_grad.size(); ++i) {
     std::vector<float> costsP1(minibatch);
     std::vector<float> costsP2(minibatch);
 
@@ -342,6 +342,7 @@ bool grad_check(int T,
                                    options),
                  "Error: compute_rnnt_loss (0) in grad_check");
   float cost = std::accumulate(costs.begin(), costs.end(), 0.);
+  cost = cost;
 
   std::vector<float> num_grad(grads.size());
 

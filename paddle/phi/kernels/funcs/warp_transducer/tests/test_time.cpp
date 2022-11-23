@@ -108,8 +108,11 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
             << std::endl;
 
   float cost = std::accumulate(costs.begin(), costs.end(), 0.);
+  cost = cost;
 
   free(acts);
+
+  return true;
 }
 
 int main(int argc, char** argv) {
