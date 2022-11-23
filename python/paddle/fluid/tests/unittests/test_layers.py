@@ -2289,7 +2289,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             conv3d_transpose = paddle.nn.Conv3DTranspose(
-                in_channels=img, out_channels=12, kernel_size=12
+                in_channels=3, out_channels=12, kernel_size=12
             )
             out = conv3d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
