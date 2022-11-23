@@ -1324,6 +1324,19 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "logical_or" || op_type == "logical_xor" ||
+        op_type == "logical_and") {
+      if (!with_dynamic_shape) {
+        VLOG(3)
+            << "static shape mode is not supported for TRT logical_or, "
+               "logical_xor and logical_than.\n"
+               "You can use the config.SetTRTDynamicShapeInfo(...) interface"
+               " to set the shape information to run the dynamic shape "
+               "mode.";
+        return false;
+      }
+    }
+
     if (op_type == "stack") {
       if (!with_dynamic_shape) {
         VLOG(3)
@@ -2327,6 +2340,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
       "equal",
       "dropout",
       "fill_any_like",
@@ -2454,6 +2470,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
+      "logical_or",
+      "logical_xor",
+      "logical_and",
       "equal",
       "dropout",
       "fill_any_like",

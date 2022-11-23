@@ -168,6 +168,9 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
         {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
+        {"logical_or", nvinfer1::ElementWiseOperation::kOR},
+        {"logical_xor", nvinfer1::ElementWiseOperation::kXOR},
+        {"logical_and", nvinfer1::ElementWiseOperation::kAND},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -211,6 +214,24 @@ class ElementwiseTensorFloorDivOpConverter
   ElementwiseTensorFloorDivOpConverter() { op_type_ = "floordiv"; }
 };
 
+class ElementwiseTensorLogicalOrOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalOrOpConverter() { op_type_ = "logical_or"; }
+};
+
+class ElementwiseTensorLogicalXorOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalXorOpConverter() { op_type_ = "logical_xor"; }
+};
+
+class ElementwiseTensorLogicalAndOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLogicalAndOpConverter() { op_type_ = "logical_and"; }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -248,3 +269,6 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
                           ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_or, ElementwiseTensorLogicalOrOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_xor, ElementwiseTensorLogicalXorOpConverter);
+REGISTER_TRT_OP_CONVERTER(logical_and, ElementwiseTensorLogicalAndOpConverter);
