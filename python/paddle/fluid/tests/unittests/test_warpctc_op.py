@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
 import paddle.fluid.core as core
+from paddle.fluid import Program, program_guard
 import paddle
 import paddle.nn.functional as F
 
@@ -504,6 +505,93 @@ class TestWarpCTCOpFp64(OpTest):
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
         self.check_grad(["Logits"], "Loss", check_eager=False)
+
+
+class TestWarpCTCOpError(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            logits = paddle.static.data(
+                name='logits', shape=[5, 16, 6], dtype='float32'
+            )
+            logits_length = paddle.static.data(
+                name='logits_length', shape=[None], dtype='int64'
+            )
+            label = paddle.static.data(
+                name='label', shape=[16, 3], dtype='int32'
+            )
+            label_length = paddle.static.data(
+                name='labels_length', shape=[None], dtype='int64'
+            )
+
+            def test_logits_Variable():
+                logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits_data,
+                    labels=label,
+                    input_lengths=logits_length,
+                    label_lengths=label_length,
+                    reduction='none',
+                )
+
+            self.assertRaises(TypeError, test_logits_Variable)
+
+            def test_label_Variable():
+                label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label_data,
+                    input_lengths=logits_length,
+                    label_lengths=label_length,
+                    reduction='none',
+                )
+
+            self.assertRaises(TypeError, test_label_Variable)
+
+            def test_logits_len_Variable():
+                logits_length_data = np.array([5] * 16).astype("int64")
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length_data,
+                    label_lengths=label_length,
+                    reduction='none',
+                )
+
+            self.assertRaises(TypeError, test_logits_len_Variable)
+
+            def test_label_len_Variable():
+                label_length_data = np.array([3] * 16).astype("int64")
+                paddle.nn.functional.ctc_loss(
+                    log_probs=logits,
+                    labels=label,
+                    input_lengths=logits_length,
+                    label_length=label_length_data,
+                    reduction='none',
+                )
+
+            self.assertRaises(TypeError, test_label_len_Variable)
+
+    def test_dygraph_errors(self):
+        def test_dygraph_with_lod():
+
+            logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
+            # labels should not be blank
+            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
+            softmax = paddle.to_tensor(logits)
+            labels = paddle.to_tensor(labels)
+
+            paddle.nn.functional.ctc_loss(
+                log_probs=softmax,
+                labels=labels,
+                input_lengths=None,
+                label_lengths=None,
+                reduction='none',
+            )
+
+        paddle.disable_static()
+        self.assertRaises(ValueError, test_dygraph_with_lod)
+        paddle.enable_static()
 
 
 class TestCTCLossAPICase(unittest.TestCase):
