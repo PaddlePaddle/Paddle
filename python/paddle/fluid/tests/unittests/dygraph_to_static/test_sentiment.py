@@ -53,7 +53,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
     def forward(self, inputs):
         x = paddle.tanh(self._conv2d(inputs))
         x = fluid.layers.reduce_max(x, dim=-1)
-        x = fluid.layers.reshape(x, shape=[self.batch_size, -1])
+        x = paddle.reshape(x, shape=[self.batch_size, -1])
         return x
 
 
@@ -92,12 +92,12 @@ class CNN(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (
-            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
-        ).astype(dtype='float32')
+        o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
+            dtype='float32'
+        )
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(
+        emb = paddle.reshape(
             emb, shape=[-1, self.channels, self.seq_len, self.hid_dim]
         )
         conv_3 = self._simple_conv_pool_1(emb)
@@ -138,12 +138,12 @@ class BOW(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (
-            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
-        ).astype(dtype='float32')
+        o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
+            dtype='float32'
+        )
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
+        emb = paddle.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
         bow_1 = fluid.layers.reduce_sum(emb, dim=1)
         bow_1 = paddle.tanh(bow_1)
         fc_1 = self._fc1(bow_1)
@@ -186,14 +186,12 @@ class GRU(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (
-            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
-        ).astype('float32')
+        o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
+            'float32'
+        )
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(
-            emb, shape=[self.batch_size, -1, self.hid_dim]
-        )
+        emb = paddle.reshape(emb, shape=[self.batch_size, -1, self.hid_dim])
         fc_1 = self._fc1(emb)
         gru_hidden = self._gru(fc_1)
         gru_hidden = fluid.layers.reduce_max(gru_hidden, dim=1)
@@ -242,14 +240,12 @@ class BiGRU(fluid.dygraph.Layer):
     @declarative
     def forward(self, inputs, label=None):
         emb = self.embedding(inputs)
-        o_np_mask = (
-            fluid.layers.reshape(inputs, [-1, 1]) != self.dict_dim
-        ).astype('float32')
+        o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
+            'float32'
+        )
         mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
         emb = emb * mask_emb
-        emb = fluid.layers.reshape(
-            emb, shape=[self.batch_size, -1, self.hid_dim]
-        )
+        emb = paddle.reshape(emb, shape=[self.batch_size, -1, self.hid_dim])
         fc_1 = self._fc1(emb)
         gru_forward = self._gru_forward(fc_1)
         gru_backward = self._gru_backward(fc_1)

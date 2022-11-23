@@ -18,10 +18,7 @@ import numpy as np
 from ..framework import _non_static_mode
 from .. import core, layers
 
-try:
-    from collections.abc import Sequence, Mapping
-except:
-    from collections import Sequence, Mapping
+from collections.abc import Sequence, Mapping
 
 
 def default_collate_fn(batch):
