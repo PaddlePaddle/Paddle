@@ -82,8 +82,8 @@ class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
             x = paddle.unsqueeze(x,0)
             return x
         else:
-            x = paddle.flatten(x,axis,-1)
-            x = paddle.flatten(x,0,axis-1)
+            x = paddle.flatten(x, axis, -1)
+            x = paddle.flatten(x, 0, axis-1)
             return x
 
     def test_static_api(self):
