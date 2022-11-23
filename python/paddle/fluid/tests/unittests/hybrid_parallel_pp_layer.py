@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 from paddle.distributed import fleet
-from paddle.fluid.dygraph.container import Sequential
+from paddle.nn import Sequential
 import paddle.nn as nn
 from paddle.fluid.dygraph.layers import Layer
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
