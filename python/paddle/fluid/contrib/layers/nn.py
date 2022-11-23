@@ -36,7 +36,6 @@ from paddle.fluid import core
 from paddle.fluid.param_attr import ParamAttr
 
 from paddle.fluid.framework import Variable, convert_np_dtype_to_dtype_
-from paddle.fluid.layers import slice
 import paddle
 import warnings
 from paddle import _C_ops, _legacy_C_ops
