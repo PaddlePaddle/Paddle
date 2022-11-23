@@ -82,7 +82,7 @@ def prepare_context(strategy=None):
     return strategy
 
 
-class ParallelEnv(object):
+class ParallelEnv:
     """
     .. note::
         This API is not recommended, if you need to get rank and world_size,
@@ -320,7 +320,7 @@ def _coalesce_tensors(var_groups):
         for g_var in grad_vars:
             g_var_shapes.append(g_var.shape)
             flattened_vars.append(
-                nn.reshape(x=g_var, shape=[np.prod(g_var.shape)])
+                paddle.reshape(x=g_var, shape=[np.prod(g_var.shape)])
             )
         coalesced_grad = nn.concat(flattened_vars)
         coalesced_grads_and_grad_vars.append(
@@ -512,7 +512,7 @@ class DataParallel(layers.Layer):
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
 
@@ -582,7 +582,7 @@ class DataParallel(layers.Layer):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
                     self.linear = paddle.nn.Linear(2, 2)
 
                 def forward(self, inputs):
@@ -624,9 +624,7 @@ class DataParallel(layers.Layer):
         find_unused_parameters=False,
         group=None,
     ):
-        super(DataParallel, self).__init__(
-            layers.full_name() + "_data_parallel"
-        )
+        super().__init__(layers.full_name() + "_data_parallel")
 
         assert (
             _non_static_mode()
@@ -793,7 +791,7 @@ class DataParallel(layers.Layer):
 
                 class SimpleNet(nn.Layer):
                     def __init__(self):
-                        super(SimpleNet, self).__init__()
+                        super().__init__()
                         self._linear = nn.Linear(10, 1)
 
                     def forward(self, x):

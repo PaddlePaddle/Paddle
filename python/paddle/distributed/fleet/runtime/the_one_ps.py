@@ -677,7 +677,7 @@ class fsClient:
 
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
-        super(TheOnePSRuntime, self).__init__()
+        super().__init__()
         self._communicator = None
         self._server = None
         self._worker = fluid.core.DistFleetWrapper()
@@ -902,7 +902,9 @@ class TheOnePSRuntime(RuntimeBase):
                 heter_device_type = self.role_maker._heter_device_type().upper()
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
-                        "Heter Worker Not Support Device {}".format(device_type)
+                        "Heter Worker Not Support Device {}".format(
+                            heter_device_type
+                        )
                     )
                 if heter_device_type == "GPU":
                     executor = Executor(

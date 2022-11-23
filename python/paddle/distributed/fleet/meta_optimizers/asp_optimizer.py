@@ -12,15 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid.contrib.sparsity.asp import ASPHelper
 from .meta_optimizer_base import MetaOptimizerBase
+from paddle.fluid.contrib.sparsity.asp import ASPHelper
 
 __all__ = []
 
 
 class ASPOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(ASPOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
@@ -36,7 +36,7 @@ class ASPOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(ASPOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 

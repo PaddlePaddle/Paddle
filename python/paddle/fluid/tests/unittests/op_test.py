@@ -1566,7 +1566,7 @@ class OpTest(unittest.TestCase):
             )
             return found[0]
 
-        class Checker(object):
+        class Checker:
             """base class for check with self.outputs.
             currently don't support check between checkers.
             """

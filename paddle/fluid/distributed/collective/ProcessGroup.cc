@@ -17,15 +17,7 @@
 namespace paddle {
 namespace distributed {
 
-ProcessGroup::Task::Task(int rank,
-                         const std::vector<phi::DenseTensor>& inputs,
-                         CommType comm_type)
-    : rank_(rank), comm_type_(comm_type) {}
-
-ProcessGroup::Task::Task(int rank,
-                         const std::vector<phi::DenseTensor>& inputs,
-                         CommType comm_type,
-                         bool sync_op)
+ProcessGroup::Task::Task(int rank, CommType comm_type, bool sync_op)
     : rank_(rank), comm_type_(comm_type), sync_op_(sync_op) {}
 
 ProcessGroup::Task::~Task() = default;
@@ -43,23 +35,29 @@ void ProcessGroup::Task::Synchronize() {}
 
 void ProcessGroup::Task::UpdateWaitChain(const phi::DeviceContext& ctx) {}
 
-ProcessGroup::ProcessGroup(int rank,
-                           int size,
-                           const platform::Place& place,
-                           int gid)
-    : rank_(rank), size_(size), place_(place), gid_(gid) {
-  if (gid != IGNORE_ID) {
-    auto map = ProcessGroupMapFromGid::getInstance();
-    map->insert(gid_, this);
-  }
-}
-
 ProcessGroup::ProcessGroup(int rank, int size, int gid)
     : rank_(rank), size_(size), gid_(gid) {
   if (gid != IGNORE_ID) {
     auto map = ProcessGroupMapFromGid::getInstance();
     map->insert(gid_, this);
   }
+}
+
+// TODO(sunyilun): methods below will be removed later
+ProcessGroup::Task::Task(int rank,
+                         const std::vector<phi::DenseTensor>& inputs,
+                         CommType comm_type)
+    : rank_(rank), comm_type_(comm_type) {}
+
+ProcessGroup::Task::Task(int rank,
+                         const std::vector<phi::DenseTensor>& inputs,
+                         CommType comm_type,
+                         bool sync_op)
+    : rank_(rank), comm_type_(comm_type), sync_op_(sync_op) {}
+
+ProcessGroupIdMap& ProcessGroupIdMap::GetInstance() {
+  static ProcessGroupIdMap instance;
+  return instance;
 }
 
 }  //  namespace distributed

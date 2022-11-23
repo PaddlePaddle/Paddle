@@ -29,7 +29,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 class DMF(fluid.Layer):
     def __init__(self):
-        super(DMF, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
 
@@ -70,7 +70,7 @@ class DMF(fluid.Layer):
 
 class MLP(fluid.Layer):
     def __init__(self):
-        super(MLP, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
         self._match_layers = []
@@ -100,7 +100,7 @@ class MLP(fluid.Layer):
 
 class DeepCF(fluid.Layer):
     def __init__(self, num_users, num_items, matrix):
-        super(DeepCF, self).__init__()
+        super().__init__()
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(
@@ -119,9 +119,10 @@ class DeepCF(fluid.Layer):
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
         # items_emb = self._item_emb(items)
-        users_emb = fluid.layers.gather(self._rating_matrix, users)
-        items_emb = fluid.layers.gather(
-            fluid.layers.transpose(self._rating_matrix, [1, 0]), items
+
+        users_emb = paddle.gather(self._rating_matrix, users)
+        items_emb = paddle.gather(
+            paddle.transpose(self._rating_matrix, [1, 0]), items
         )
         users_emb.stop_gradient = True
         items_emb.stop_gradient = True

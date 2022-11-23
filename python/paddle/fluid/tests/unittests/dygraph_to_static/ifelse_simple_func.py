@@ -61,7 +61,7 @@ def dyfunc_with_if_else2(x, col=100):
         y = fluid.layers.relu(x)
     else:
         x_pow = fluid.layers.pow(x, 2)
-        y = fluid.layers.tanh(x_pow)
+        y = paddle.tanh(x_pow)
     return y
 
 
@@ -161,7 +161,7 @@ def nested_if_else(x_v):
             tmp = y * w
             y = fluid.layers.relu(tmp)
             if paddle.mean(y).numpy()[0] < batch_size:
-                y = fluid.layers.abs(y)
+                y = paddle.abs(y)
             else:
                 tmp = fluid.layers.fill_constant(
                     y.shape, dtype='float32', value=-1
@@ -173,7 +173,7 @@ def nested_if_else(x_v):
 
 
 def nested_if_else_2(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     if b < 1:
         # var `z` is not visible for outer scope
@@ -196,7 +196,7 @@ def nested_if_else_2(x):
 
 
 def nested_if_else_3(x):
-    y = fluid.layers.reshape(x, [-1, 1])
+    y = paddle.reshape(x, [-1, 1])
     b = 2
     # var `z` is visible for func.body
     if b < 1:
@@ -230,7 +230,7 @@ def nested_if_else_3(x):
 
 class NetWithControlFlowIf(fluid.dygraph.Layer):
     def __init__(self, hidden_dim=16):
-        super(NetWithControlFlowIf, self).__init__()
+        super().__init__()
         self.hidden_dim = hidden_dim
         self.fc = fluid.dygraph.Linear(
             input_dim=hidden_dim,
@@ -276,7 +276,7 @@ class NetWithControlFlowIf(fluid.dygraph.Layer):
                     self.constant_vars['w'] = fluid.layers.fill_constant(
                         [hidden_dim], dtype='float32', value=9
                     )
-                    y = fluid.layers.abs(y)
+                    y = paddle.abs(y)
                 else:
                     tmp = fluid.layers.fill_constant(
                         y.shape, dtype='float32', value=-1
@@ -355,7 +355,7 @@ def if_with_and_or_4(x, y=None):
 
 
 def if_with_class_var(x, y=None):
-    class Foo(object):
+    class Foo:
         def __init__(self):
             self.a = 1
             self.b = 2

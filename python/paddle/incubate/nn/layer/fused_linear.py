@@ -75,7 +75,7 @@ class FusedLinear(Layer):
         transpose_weight=False,
         name=None,
     ):
-        super(FusedLinear, self).__init__()
+        super().__init__()
         if transpose_weight:
             weight_shape = [out_features, in_features]
         else:

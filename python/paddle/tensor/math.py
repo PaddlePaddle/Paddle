@@ -272,7 +272,8 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
 
 def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
-    """
+    r"""
+
     stanh activation.
 
     .. math::
@@ -283,8 +284,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
         x (Tensor): The input Tensor with data type float32, float64.
         scale_a (float, optional): The scale factor a of the input. Default is 0.67.
         scale_b (float, optional): The scale factor b of the output. Default is 1.7159.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         A Tensor with the same data type and shape as ``x`` .
@@ -1168,7 +1168,7 @@ def fmax(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmax(x, y, axis)
+        return _C_ops.fmax(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
@@ -1236,7 +1236,7 @@ def fmin(x, y, name=None):
     axis = -1
     act = None
     if in_dygraph_mode():
-        return _C_ops.fmin(x, y, axis)
+        return _C_ops.fmin(x, y)
     if _in_legacy_dygraph():
         return _elementwise_op_in_dygraph(
             x, y, axis=axis, act=act, op_name=op_type
@@ -1357,14 +1357,6 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             'int64',
             'complex64',
             'complex128',
-            u'bool',
-            u'float16',
-            u'float32',
-            u'float64',
-            u'int32',
-            u'int64',
-            u'complex64',
-            u'complex128',
         ],
         'sum',
     )

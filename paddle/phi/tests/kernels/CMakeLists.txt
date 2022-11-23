@@ -66,3 +66,28 @@ cc_test(
   test_transfer_layout_dev_api
   SRCS test_transfer_layout_dev_api.cc
   DEPS phi phi_api_utils)
+
+if(WITH_GPU)
+  nv_test(
+    test_gpu_timer
+    SRCS test_gpu_timer.cu
+    DEPS gtest)
+  nv_test(
+    test_auto_tune
+    SRCS test_auto_tune.cu
+    DEPS gtest)
+elseif(WITH_ROCM)
+  hip_test(
+    test_gpu_timer
+    SRCS test_gpu_timer.cu
+    DEPS gtest)
+  hip_test(
+    test_auto_tune
+    SRCS test_auto_tune.cu
+    DEPS gtest)
+endif()
+
+cc_test(
+  test_cache
+  SRCS test_cache.cc
+  DEPS gtest cache)

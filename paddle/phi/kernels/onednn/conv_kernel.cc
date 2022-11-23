@@ -291,8 +291,7 @@ void ConvKernel(const Context& dev_ctx,
       dev_ctx.GetPlace().GetType(),
       AllocationType::CPU,
       phi::errors::PreconditionNotMet("Operator DNNL Conv must use CPUPlace"));
-  bool is_INT8 =
-      std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+  bool is_INT8 = funcs::is_int8<T>();
 
   bool is_test = dev_ctx.HasDnnAttr("is_test")
                      ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
@@ -424,6 +423,52 @@ void ConvKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void DepthwiseConvKernel(const Context& dev_ctx,
+                         const DenseTensor& input,
+                         const DenseTensor& filter,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& paddings,
+                         const std::string& padding_algorithm,
+                         int groups,
+                         const std::vector<int>& dilations,
+                         const std::string& data_format,
+                         DenseTensor* out) {
+  ConvKernel<T, Context>(dev_ctx,
+                         input,
+                         filter,
+                         strides,
+                         paddings,
+                         padding_algorithm,
+                         dilations,
+                         groups,
+                         data_format,
+                         out);
+}
+
+template <typename T, typename Context>
+void Conv3DKernel(const Context& dev_ctx,
+                  const DenseTensor& input,
+                  const DenseTensor& filter,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  const std::string& padding_algorithm,
+                  int groups,
+                  const std::vector<int>& dilations,
+                  const std::string& data_format,
+                  DenseTensor* out) {
+  ConvKernel<T, Context>(dev_ctx,
+                         input,
+                         filter,
+                         strides,
+                         paddings,
+                         padding_algorithm,
+                         dilations,
+                         groups,
+                         data_format,
+                         out);
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d,
@@ -434,3 +479,14 @@ PD_REGISTER_KERNEL(conv2d,
                    phi::dtype::bfloat16,
                    uint8_t,
                    int8_t) {}
+
+PD_REGISTER_KERNEL(depthwise_conv2d,
+                   OneDNN,
+                   ONEDNN,
+                   phi::DepthwiseConvKernel,
+                   float,
+                   phi::dtype::bfloat16,
+                   uint8_t,
+                   int8_t) {}
+
+PD_REGISTER_KERNEL(conv3d, OneDNN, ONEDNN, phi::Conv3DKernel, float) {}

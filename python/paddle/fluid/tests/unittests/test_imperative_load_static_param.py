@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 from paddle.fluid.dygraph.nn import (
     BatchNorm,
-    Conv2D,
     Conv3D,
     Embedding,
     GroupNorm,
@@ -103,20 +103,20 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name="conv2d_trans_in", shape=[None, 10, 10, 10]
         )
 
-        conv2d_trans_out_1 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_1 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv2d_trans_out_2 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_2 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
 
         conv3d_trans_in = fluid.data(
             name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_trans_out_1 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_trans_out_2 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_2 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
 
@@ -182,22 +182,16 @@ class TestDygraphLoadStatic(unittest.TestCase):
 
             class MyTest(fluid.dygraph.Layer):
                 def __init__(self):
-                    super(MyTest, self).__init__()
+                    super().__init__()
 
                     self.linear1 = Linear(10, 10)
                     self.lienar2 = Linear(10, 20)
 
-                    self.conv2d_1 = Conv2D(
-                        num_channels=10,
-                        num_filters=10,
-                        filter_size=5,
-                        act="relu",
+                    self.conv2d_1 = paddle.nn.Conv2D(
+                        in_channels=10, out_channels=10, kernel_size=5
                     )
-                    self.conv2d_2 = Conv2D(
-                        num_channels=10,
-                        num_filters=10,
-                        filter_size=5,
-                        act="relu",
+                    self.conv2d_2 = paddle.nn.Conv2D(
+                        in_channels=10, out_channels=10, kernel_size=5
                     )
 
                     self.conv3d_1 = Conv3D(

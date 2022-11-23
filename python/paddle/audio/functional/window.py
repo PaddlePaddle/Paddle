@@ -19,7 +19,7 @@ import paddle
 from paddle import Tensor
 
 
-class WindowFunctionRegister(object):
+class WindowFunctionRegister:
     def __init__(self):
         self._functions_dict = dict()
 
@@ -210,7 +210,7 @@ def _tukey(
     if alpha <= 0:
         return paddle.ones((M,), dtype=dtype)
     elif alpha >= 1.0:
-        return hann(M, sym=sym)
+        return _hann(M, sym=sym)
 
     M, needs_trunc = _extend(M, sym)
 

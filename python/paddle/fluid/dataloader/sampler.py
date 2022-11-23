@@ -23,7 +23,7 @@ __all__ = [
 ]
 
 
-class Sampler(object):
+class Sampler:
     """
     An abstract class to encapsulate methods and behaviors of samplers.
 
@@ -151,16 +151,16 @@ class RandomSampler(Sampler):
 
     Args:
         data_source(Dataset): dataset to sample, this could be an
-                instance of :code:`paddle.io.Dataset` other Python
-                object which implemented :code:`__len__`.
-        replacement(bool): If False, sample the whole dataset, If False,
-                set :attr:`num_samples` for how many sample to draw. Default False.
-        num_samples(int): set sample number to draw if :attr:`replacement`
-                is True. Default None.
-        generator(Generator): specify a generator to sample the data source. Default None
+                instance of :ref:`api_paddle_io_Dataset` or :ref:`api_paddle_io_IterableDataset` or other Python
+                object which implemented :code:`__len__` to get indices as the range of :code:`dataset` length. Default None.
+        replacement(bool, optional): If False, sample the whole dataset, If True,
+                set :attr:`num_samples` for how many samples to draw. Default False.
+        num_samples(int, optional): set sample number to draw if :attr:`replacement`
+                is True, then it will take samples according to the number you set. Default None, disabled.
+        generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Returns:
-        Sampler: a Sampler yield sample index randomly
+        RandomSampler: a Sampler yield sample index randomly.
 
     Examples:
 
@@ -185,7 +185,6 @@ class RandomSampler(Sampler):
             for index in sampler:
                 print(index)
 
-    see `paddle.io.Sampler`
     """
 
     def __init__(

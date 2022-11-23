@@ -21,7 +21,7 @@ from ..utils import set_dist_op_desc_original_id
 
 class DistributedUpdateLossScaling(DistributedOperatorImplContainer):
     def __init__(self, op_type):
-        super(DistributedUpdateLossScaling, self).__init__(op_type)
+        super().__init__(op_type)
 
 
 register_distributed_operator_impl_container(
@@ -31,7 +31,7 @@ register_distributed_operator_impl_container(
 
 class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
     def __init__(self, name):
-        super(DistributedUpdateLossScalingImpl, self).__init__(name)
+        super().__init__(name)
         self._name = name
         self._forward_implemented = False
         self._backward_implemented = True
@@ -151,7 +151,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             if (
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 ).process_mesh.processes
             ):
                 filter_vars.append(varname)

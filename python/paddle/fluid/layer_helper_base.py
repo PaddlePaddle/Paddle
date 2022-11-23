@@ -14,6 +14,7 @@
 
 import copy
 import numpy as np
+import paddle
 
 from .framework import (
     Variable,
@@ -31,7 +32,7 @@ from .initializer import _global_weight_initializer, _global_bias_initializer
 __all__ = ['LayerHelperBase']
 
 
-class LayerHelperBase(object):
+class LayerHelperBase:
     # global dtype
     __dtype = "float32"
 
@@ -114,7 +115,7 @@ class LayerHelperBase(object):
             )
 
     def _create_weight_normalize(self, attr, shape, dtype):
-        from .layers import elementwise_mul, elementwise_div, reshape
+        from .layers import elementwise_mul, elementwise_div
 
         # Remove these ops when LayerHelper and layers support indicating
         # program and block.
@@ -275,7 +276,7 @@ class LayerHelperBase(object):
                 x=v,
                 y=scale
                 if dim is None
-                else reshape(x=scale, shape=[v.shape[dim]]),
+                else paddle.reshape(x=scale, shape=[v.shape[dim]]),
                 axis=-1 if dim is None else dim,
             )
             # To serialize the original parameter for inference, maybe a

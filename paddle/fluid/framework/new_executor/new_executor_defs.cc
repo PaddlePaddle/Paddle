@@ -244,7 +244,7 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+    if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -309,7 +309,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
   //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
   //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
   //    in Compute()
-  if (in_tensor.layout() != DataLayout::kMKLDNN)
+  if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
     out_tensor->set_layout(in_tensor.layout());
 }
@@ -338,7 +338,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
-             phi::DataLayout::kMKLDNN));
+             phi::DataLayout::ONEDNN));
   } catch (std::bad_cast& exp) {
     return false;
   }
@@ -675,7 +675,8 @@ Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
                          const platform::DeviceContext& dev_ctx,
                          const Priority priority)
-    : id_(id),
+    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+      id_(id),
       op_func_node_(op_func_node),
       dev_ctx_(dev_ctx),
       priority_(priority) {

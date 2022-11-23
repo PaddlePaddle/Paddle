@@ -131,7 +131,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         is_unsigned = true;
       } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||
                  op->Type() == "pool2d" || op->Type() == "nearest_interp" ||
-                 op->Type() == "nearest_interp_v2") {
+                 op->Type() == "nearest_interp_v2" || op->Type() == "split") {
         auto input_var_name = op->Input("X")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name),
                           scales_.end(),
