@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  std::vector<std::string> conv_types = {"conv2d", "fuse_conv2d"};
+  std::vector<std::string> conv_types = {"conv2d"};
 
   for (auto& act_type : act_types) {
     FuseConvConcatAct(graph, act_type);
@@ -185,6 +185,14 @@ ConvActivationMkldnnFusePass::ConvActivationMkldnnFusePass() {
       .End()
       .AddInput("Filter")
       .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsOptional()
+      .IsTensor()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
       .End()
       .AddOutput("Output")
       .IsTensor()
