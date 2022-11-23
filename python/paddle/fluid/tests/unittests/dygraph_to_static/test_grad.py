@@ -153,5 +153,20 @@ class TestNoGradLinear(TestGradLinear):
         self.temp_dir.cleanup()
 
 
+def test_func_grad(x):
+    y = x + x
+    return y
+
+
+class TestBufferList(unittest.TestCase):
+    def test_bufferlist(self):
+        x = paddle.to_tensor([2.0])
+        x.stop_gradient = False
+        loss = paddle.jit.to_static(test_func_grad)(x)
+        loss.backward()
+        np.testing.assert_array_equal(test_func_grad(x).numpy(), loss)
+        np.testing.assert_array_equal(x.grad, np.array([2.0]))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -521,7 +521,7 @@ class PartialProgramLayer:
             if isinstance(out, framework.Variable):
                 targets.append(program.global_block().var(out.name))
 
-        if targets and self._params:
+        if targets and (self._params or self._inputs):
             backward.gradients(targets=targets, inputs=[])
 
         start_idx = len(main_program.block(0).ops) + 2 * len(
