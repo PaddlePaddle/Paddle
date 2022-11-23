@@ -2224,7 +2224,7 @@ class AdamOptimizer(Optimizer):
                 y = fluid.data(name='y', shape=[None, 1], dtype='float32')
                 y_predict = fluid.layers.fc(input=x, size=1, act=None)
                 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-                avg_cost = paddles.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 adam_optimizer = fluid.optimizer.AdamOptimizer(0.01)
                 adam_optimizer.minimize(avg_cost)
@@ -2634,6 +2634,8 @@ class AdamaxOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
+
+          paddle.enable_static()
 
           # First create the Executor.
           place = fluid.CPUPlace() # fluid.CUDAPlace(0)
@@ -3878,6 +3880,8 @@ class ModelAverage(Optimizer):
         import paddle.fluid as fluid
         import numpy
 
+        paddle.enable_static()
+
         # First create the Executor.
         place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
@@ -4055,6 +4059,8 @@ class ModelAverage(Optimizer):
             import paddle.fluid as fluid
             import numpy
 
+            paddle.enable_static()
+
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
@@ -4108,6 +4114,8 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
+
+            paddle.enable_static()
 
             # First create the Executor.
             place = fluid.CPUPlace()  # fluid.CUDAPlace(0)
