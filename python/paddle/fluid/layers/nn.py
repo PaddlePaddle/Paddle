@@ -87,7 +87,6 @@ __all__ = [
     'reduce_any',
     'dropout',
     'ctc_greedy_decoder',
-    'l2_normalize',
     'matmul',
     'topk',
     'transpose',
@@ -4943,9 +4942,6 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
         },
     )
     return out
-
-
-def l2_normalize(x, axis, epsilon=1e-12, name=None):
     r"""
 
     This op normalizes `x` along dimension `axis` using an L2
