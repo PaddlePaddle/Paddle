@@ -156,7 +156,7 @@ class BasicGRUUnit(Layer):
         gate_input = layers.elementwise_add(gate_input, self._gate_bias)
 
         gate_input = self._gate_activation(gate_input)
-        r, u = layers.split(gate_input, num_or_sections=2, dim=1)
+        r, u = paddle.split(gate_input, num_or_sections=2, axis=1)
 
         r_hidden = r * pre_hidden
 
@@ -877,7 +877,7 @@ class BasicLSTMUnit(Layer):
         gate_input = layers.matmul(x=concat_input_hidden, y=self._weight)
 
         gate_input = layers.elementwise_add(gate_input, self._bias)
-        i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
+        i, j, f, o = paddle.split(gate_input, num_or_sections=4, axis=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
                 pre_cell,
