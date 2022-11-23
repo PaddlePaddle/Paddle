@@ -281,7 +281,7 @@ class TestElasticNormOp(unittest.TestCase):
 
         for place in self.places:
             with fluid.dygraph.guard(place):
-                instance_norm = paddle.nn.InstanceNorm(
+                instance_norm = paddle.nn.InstanceNorm2D(
                     5, weight_attr=False, bias_attr=False
                 )
                 outputs = instance_norm(to_variable(inputs))
@@ -319,7 +319,7 @@ class TestElasticNormOpCase2(unittest.TestCase):
 
         for place in self.places:
             with fluid.dygraph.guard(place):
-                instance_norm = paddle.nn.InstanceNorm(
+                instance_norm = paddle.nn.InstanceNorm2D(
                     3, weight_attr=True, bias_attr=True
                 )
                 outputs = instance_norm(to_variable(inputs))
