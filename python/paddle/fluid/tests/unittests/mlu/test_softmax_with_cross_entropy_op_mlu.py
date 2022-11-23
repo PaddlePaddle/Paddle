@@ -160,7 +160,7 @@ class TestPowNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
-        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-5)
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=2e-5)
         np.testing.assert_allclose(mlu_loss, cpu_loss)
 
 
