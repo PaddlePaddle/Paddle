@@ -1019,14 +1019,14 @@ def get_headers():
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        + list(  # phi capi headers
-            # profiler headers
+        + list(  # phi capi headers profiler headers
             find_files(
                 'trace_event.h',
                 paddle_source_dir + '/paddle/fluid/platform/profiler',
             )
         )
-        + list(  # phi profiler headers utils api headers
+        + list(  # phi profiler headers
+            # utils api headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
