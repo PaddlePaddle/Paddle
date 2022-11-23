@@ -1489,6 +1489,7 @@ class TrtConvertMultiHeadMatmulTest_biasqk_seqseq(TrtLayerAutoScanTest):
         )
 
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
