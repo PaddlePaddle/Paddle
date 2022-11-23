@@ -5587,7 +5587,6 @@ def ctc_greedy_decoder(
         return ctc_out
     else:
         ctc_out_len = helper.create_variable_for_type_inference(dtype="int64")
-        # The parent function will be removed by other partner, so replace this use 2.x API temporarily
         ctc_input = paddle.squeeze(topk_indices, [2])
 
         helper.append_op(
