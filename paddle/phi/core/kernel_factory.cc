@@ -127,8 +127,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
-    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
-                 << "] is not registered.";
+    VLOG(3) << "The cudnn kernel for [" << kernel_name
+            << "] is not registered.";
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
