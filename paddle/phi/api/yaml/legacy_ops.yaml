@@ -994,14 +994,6 @@
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
 
-- op : is_empty
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsEmptyInferMeta
-  kernel :
-    func : is_empty
-
 - op : isclose
   args : (Tensor x, Tensor y, Scalar rtol, Scalar atol,  bool equal_nan)
   output : Tensor(out)
@@ -1010,33 +1002,6 @@
     param: [x, y]
   kernel :
     func : isclose
-
-- op : isfinite
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isfinite {dense -> dense},
-           infinite_sr {selected_rows -> selected_rows}
-
-- op : isinf
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isinf {dense -> dense},
-           isinf_sr {selected_rows -> selected_rows}
-
-- op : isnan
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : IsfiniteInferMeta
-  kernel :
-    func : isnan {dense -> dense},
-           isnan_sr {selected_rows -> selected_rows}
 
 - op : kldiv_loss
   args : (Tensor x, Tensor label, str reduction)

@@ -497,6 +497,41 @@
     func : inverse
   backward : inverse_grad
 
+- op : is_empty
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsEmptyInferMeta
+  kernel :
+    func : is_empty
+
+- op : isfinite
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsfiniteInferMeta
+  kernel :
+    func : isfinite {dense -> dense},
+           infinite_sr {selected_rows -> selected_rows}
+
+- op : isinf
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsfiniteInferMeta
+  kernel :
+    func : isinf {dense -> dense},
+           isinf_sr {selected_rows -> selected_rows}
+
+- op : isnan
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsfiniteInferMeta
+  kernel :
+    func : isnan {dense -> dense},
+           isnan_sr {selected_rows -> selected_rows}
+
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
   output : Tensor

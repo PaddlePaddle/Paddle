@@ -628,6 +628,30 @@
   outputs :
     out : Output
 
+- op : is_empty
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isfinite (isfinite_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isinf (isinf_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : isnan (isnan_v2)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op : layer_norm
   backward : layer_norm_grad
   extra :
