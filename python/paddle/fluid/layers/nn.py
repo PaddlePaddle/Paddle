@@ -103,7 +103,6 @@ __all__ = [
     'lod_reset',
     'lod_append',
     'pad',
-    'label_smooth',
     'roi_pool',
     'roi_align',
     'image_resize',
@@ -119,9 +118,7 @@ __all__ = [
     'relu',
     'log',
     'crop_tensor',
-    'pow',
     'brelu',
-    'leaky_relu',
     'flatten',
     'pad2d',
     'unique',
@@ -5842,95 +5839,6 @@ def pad(x, paddings, pad_value=0.0, name=None):
     return out
 
 
-def label_smooth(
-    label, prior_dist=None, epsilon=0.1, dtype="float32", name=None
-):
-    r"""
-    :alias_main: paddle.nn.functional.label_smooth
-        :alias: paddle.nn.functional.label_smooth,paddle.nn.functional.common.label_smooth
-        :old_api: paddle.fluid.layers.label_smooth
-
-    Label smoothing is a mechanism to regularize the classifier layer and is called
-    label-smoothing regularization (LSR).
-
-    Label smoothing is proposed to encourage the model to be less confident,
-    since optimizing the log-likelihood of the correct label directly may
-    cause overfitting and reduce the ability of the model to adapt. Label
-    smoothing replaces the ground-truth label :math:`y` with the weighted sum
-    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
-    i.e.
-
-    .. math::
-
-        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
-
-    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
-    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
-    uniform distribution is used for :math:`\mu`.
-
-    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
-
-    Parameters:
-        label(Variable): The input variable containing the label data. The
-                        label data should use one-hot representation. It's
-                        a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
-        prior_dist(Variable, optional): The prior distribution to be used to smooth
-                        labels. If not provided, an uniform distribution
-                        is used. It's a multidimensional tensor with a shape of
-                        :math:`[1, class\_num]` . The default value is None.
-        epsilon(float, optional): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution. The default value is
-                        0.1.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
-                        as 'float32', 'float64'. The default value is 'float32'.
-        name(str, optional): The default value is None. Normally there is no need for user
-                        to set this property. For more information, please refer to
-                        :ref:`api_guide_Name`.
-
-    Returns:
-        Variable: The tensor variable containing the smoothed labels.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            label = layers.data(name="label", shape=[1], dtype="int32")
-            one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="float32")
-    """
-    if in_dygraph_mode():
-        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
-
-    if epsilon > 1.0 or epsilon < 0.0:
-        raise ValueError("The value of epsilon must be between 0 and 1.")
-
-    if _non_static_mode():
-        return _legacy_C_ops.label_smooth(
-            label, prior_dist, 'epsilon', float(epsilon)
-        )
-
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
-    )
-
-    helper = LayerHelper("label_smooth", **locals())
-    label.stop_gradient = True
-    smooth_label = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
-        outputs={"Out": smooth_label},
-        attrs={"epsilon": float(epsilon)},
-    )
-    return smooth_label
-
-
 @templatedoc()
 def roi_pool(
     input,
@@ -8123,59 +8031,6 @@ def pad2d(
 
 
 @templatedoc()
-def pow(x, factor=1.0, name=None):
-    """
-    This is Pow Activation Operator.
-
-    :math:`out = x^{factor}`
-
-    Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
-
-            # example 1: argument factor is float
-            y_1 = fluid.layers.pow(x, factor=2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument factor is Variable
-            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = fluid.layers.pow(x, factor=factor_tensor)
-            # y_2 is x^{3.0}
-    """
-    check_variable_and_dtype(
-        x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'pow'
-    )
-
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': x}
-    attrs = {}
-    if isinstance(factor, Variable):
-        check_variable_and_dtype(factor, 'factor', ['float32'], 'pow')
-        factor.stop_gradient = True
-        inputs['FactorTensor'] = factor
-    else:
-        attrs['factor'] = factor
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return out
-
-
-@templatedoc()
 def brelu(x, t_min=0.0, t_max=24.0, name=None):
     """
     ${comment}
@@ -8219,33 +8074,6 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         attrs={'t_min': t_min, 't_max': t_max},
     )
     return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.leaky_relu")
-@templatedoc()
-def leaky_relu(x, alpha=0.02, name=None):
-    """
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|0.02): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        output(${out_type}): ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([[-1, 2], [3, -4]], dtype='float32')
-            y = paddle.fluid.layers.leaky_relu(x, alpha=0.1)
-            print(y) # [[-0.1, 2], [3, -0.4]]
-
-    """
-    return paddle.nn.functional.leaky_relu(x, alpha, name)
 
 
 def flatten(x, axis=1, name=None):
