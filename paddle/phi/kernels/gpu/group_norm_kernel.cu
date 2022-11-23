@@ -293,8 +293,13 @@ void GroupNormDirectCUDAFunctor<T, AccT>::operator()(
           <<<grids, blocks, 0, stream>>>(input, mean, temp_variance, size);
     }
   } else {
+#ifdef PADDLE_WITH_HIP
+    hipMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
+    hipMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
+#else
     cudaMemset(mean, 0, sizeof(AccT) * input_ddim[0] * groups);
     cudaMemset(temp_variance, 0, sizeof(AccT) * input_ddim[0] * groups);
+#endif
 
     phi::GroupNormForwardGetMeanAndVar<T, AccT>
         <<<grid, threads, 0, stream>>>(input,

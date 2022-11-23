@@ -298,9 +298,6 @@ int GroupNormPluginDynamic::enqueue(
           C,
           bias_.size()));
 
-  // phi::DenseTensor mean_t;
-  // phi::DenseTensor variance_t;
-  // phi::DenseTensor temp_variance_t;
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
