@@ -694,7 +694,6 @@ def _rnn_static_graph(
 
     out_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
 
-    init_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
     init_array = map_structure(
         lambda x: control_flow.create_array(dtype=x.dtype), initial_states
     )
