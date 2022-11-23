@@ -228,7 +228,7 @@ class Uniform(Distribution):
                 uniform_random_tmp * (zero_tmp + self.high - self.low)
                 + self.low
             )
-            return nn.reshape(output, output_shape)
+            return paddle.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
             output = (
@@ -240,7 +240,7 @@ class Uniform(Distribution):
                 + self.low
             )
             if self.all_arg_is_float:
-                return nn.reshape(output, shape)
+                return paddle.reshape(output, shape)
             else:
                 return output
 
@@ -382,7 +382,7 @@ class Normal(Distribution):
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed
             )
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
-            return nn.reshape(output, output_shape)
+            return paddle.reshape(output, output_shape)
         else:
             output_shape = shape + batch_shape
             output = (
@@ -394,7 +394,7 @@ class Normal(Distribution):
                 + self.loc
             )
             if self.all_arg_is_float:
-                return nn.reshape(output, shape)
+                return paddle.reshape(output, shape)
             else:
                 return output
 
@@ -530,9 +530,9 @@ class Categorical(Distribution):
         """
         check_type(other, 'other', Categorical, 'kl_divergence')
 
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        other_logits = other.logits - nn.reduce_max(
-            other.logits, dim=-1, keep_dim=True
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
+        other_logits = other.logits - paddle.max(
+            other.logits, axis=-1, keepdim=True
         )
         e_logits = paddle.exp(logits)
         other_e_logits = paddle.exp(other_logits)
@@ -554,7 +554,7 @@ class Categorical(Distribution):
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
 
         """
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = paddle.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
