@@ -100,12 +100,21 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [1, 32, 16, 32],
+                    "cast_output_data1": [1, 32, 16, 32],
+                    "cast_output_data3": [1, 32, 16, 32],
+                    "cast_output_data0": [1, 32, 16, 32],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [1, 32, 16, 32],
+                    "cast_output_data1": [1, 32, 16, 32],
+                    "cast_output_data3": [1, 32, 16, 32],
+                    "cast_output_data0": [1, 32, 16, 32],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [1, 32, 16, 32],
+                    "cast_output_data1": [1, 32, 16, 32],
+                    "cast_output_data3": [1, 32, 16, 32],
+                    "cast_output_data0": [1, 32, 16, 32],
                 }
 
         def clear_dynamic_shape():
