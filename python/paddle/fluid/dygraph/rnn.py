@@ -20,7 +20,6 @@ from ..layers import (
     matmul,
     elementwise_add,
     elementwise_mul,
-    split,
 )
 import copy
 
