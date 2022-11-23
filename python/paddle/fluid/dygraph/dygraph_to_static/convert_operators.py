@@ -30,8 +30,6 @@ from paddle.fluid.layers import (
     assign,
     fill_constant,
     slice,
-    reduce_all,
-    reduce_any,
 )
 from paddle.fluid.layers import (
     cast,
@@ -656,7 +654,7 @@ def convert_shape_compare(left, *args):
         def reduce_compare(x, op_str, y):
             element_wise_result = eval("x " + op_str + " y")
             if op_str == "!=":
-                return reduce_any(element_wise_result)
+                return paddle.any(element_wise_result)
             elif (
                 op_str == "is"
                 or op_str == "is not"
@@ -665,7 +663,7 @@ def convert_shape_compare(left, *args):
             ):
                 return element_wise_result
             else:
-                return reduce_all(element_wise_result)
+                return paddle.all(element_wise_result)
 
         final_result = reduce_compare(left, args[0], args[1])
         for i in range(1, num_cmp):

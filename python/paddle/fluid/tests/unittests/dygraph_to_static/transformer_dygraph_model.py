@@ -873,7 +873,7 @@ class Transformer(Layer):
             predict_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
-            if layers.reduce_all(finished).numpy():
+            if paddle.all(finished).numpy():
                 break
 
         predict_ids = paddle.stack(predict_ids, axis=0)
