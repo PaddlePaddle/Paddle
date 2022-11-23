@@ -558,6 +558,7 @@ function build() {
 #     ============================================
 # EOF
 #     build_base $@
+
     current_branch=`git branch | grep \* | cut -d ' ' -f2`
     if [ "$current_branch" != "develop_base_pr" ];then
         build_size
