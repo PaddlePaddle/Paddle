@@ -193,7 +193,7 @@ class DynamicGRU(fluid.dygraph.Layer):
             if self.is_reverse:
                 i = inputs.shape[1] - 1 - i
             input_ = paddle.slice(inputs, axes=[1], starts=[i], ends=[i + 1])
-            input_ = fluid.layers.reshape(
+            input_ = paddle.reshape(
                 input_, [-1, input_.shape[2]], inplace=False
             )
             hidden, reset, gate = self.gru_unit(input_, hidden)
@@ -358,7 +358,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
             current_word = paddle.slice(
                 target_embedding, axes=[1], starts=[i], ends=[i + 1]
             )
-            current_word = fluid.layers.reshape(
+            current_word = paddle.reshape(
                 current_word, [-1, current_word.shape[2]], inplace=False
             )
 
@@ -401,7 +401,7 @@ class OCRAttention(fluid.dygraph.Layer):
         backward_first = paddle.slice(
             gru_backward, axes=[1], starts=[0], ends=[1]
         )
-        backward_first = fluid.layers.reshape(
+        backward_first = paddle.reshape(
             backward_first, [-1, backward_first.shape[2]], inplace=False
         )
         decoder_boot = self.fc(backward_first)
