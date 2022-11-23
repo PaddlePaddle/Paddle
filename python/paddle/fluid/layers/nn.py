@@ -144,7 +144,6 @@ __all__ = [
     'slice',
     'strided_slice',
     'shape',
-    'rank',
     'size',
     'logical_and',
     'logical_or',
@@ -10405,34 +10404,6 @@ def shape(input):
         outputs={'Out': out},
         stop_gradient=True,
     )
-
-    return out
-
-
-def rank(input):
-    """
-
-    The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
-
-    Args:
-        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
-
-    Returns:
-        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            input = paddle.rand((3, 100, 100))
-            rank = paddle.rank(input)
-            print(rank)
-            # 3
-    """
-    check_type(input, 'input', (Variable), 'input')
-    ndims = len(input.shape)
-    out = assign(np.array(ndims, 'int32'))
 
     return out
 
