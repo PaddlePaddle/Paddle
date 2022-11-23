@@ -76,6 +76,9 @@ class ProcessMesh(core.ProcessMesh):
         if isinstance(mesh, list):
             mesh = np.array(mesh)
 
+        if not isinstance(dim_names, list):
+            raise ValueError('The dim_names must be an instance of list.')
+
         self._mesh = mesh
         self._shape = list(self._mesh.shape)
         self._process_ids = self._mesh.flatten().tolist()
