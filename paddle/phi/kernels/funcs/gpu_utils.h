@@ -111,15 +111,15 @@ IntType CeilOrFloor(IntType x, IntType deviser) {
       deviser,
       0,
       phi::errors::InvalidArgument("deviser should be greater than 0, "
-                                        "but received is:%d",
-                                        deviser));
+                                   "but received is:%d",
+                                   deviser));
 
   PADDLE_ENFORCE_GT(
       x,
       0,
       phi::errors::InvalidArgument("input should be greater than 0, "
-                                        "but received is:%d",
-                                        x));
+                                   "but received is:%d",
+                                   x));
 
   const IntType round_to_zero = x / deviser;
   const IntType inte_result = round_to_zero * deviser;

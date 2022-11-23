@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/funcs/gpu_utils.h"
-#include "paddle/phi/kernels/funcs/transpose_op.h"
-#include "paddle/phi/backends/gpu/gpu_primitives.h"
-#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
+#include "paddle/phi/kernels/funcs/gpu_utils.h"
+#include "paddle/phi/kernels/funcs/transpose_op.h"
+#include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
 namespace funcs {
@@ -116,8 +116,8 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   // Converts block idx to tile index, each block process a tile
-  Index3 input_block_tile_index = ConvertTensorIndex<IndexType>(
-      blockIdx.x, tile_aligned_input_dim);
+  Index3 input_block_tile_index =
+      ConvertTensorIndex<IndexType>(blockIdx.x, tile_aligned_input_dim);
 
   // Compute real index align to tile:0, 32, 64...
   Index3 block_tile_index_in_input = {
@@ -128,8 +128,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   // Compute block flat index against input dims.
   IndexType input_origin_block_flat_index =
-      FlatTensorIndex<IndexType>(block_tile_index_in_input,
-                                            input_dims);
+      FlatTensorIndex<IndexType>(block_tile_index_in_input, input_dims);
 
   bool full_tile = true;
   IndexType tile_width = TileY;
@@ -191,8 +190,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   };
 
   IndexType output_origin_block_flat_index =
-      FlatTensorIndex<IndexType>(block_tile_index_in_output,
-                                            output_dims);
+      FlatTensorIndex<IndexType>(block_tile_index_in_output, output_dims);
 
   constexpr IndexType out_effective_thread_num = NumThreads / TileX * TileX;
 
@@ -473,12 +471,12 @@ void SwapDim1And2InNarrow(const phi::GPUContext& d,
     // to find least wasted threads, which means we need to find tile
     // can split input properly, in another words: num_wasted_threads=0.
     int num_wasted_threads =
-        input_long_edge - CeilOrFloor<int, false>(
-                              input_long_edge, proposed_tile_long_edge) *
-                              proposed_tile_long_edge;
+        input_long_edge -
+        CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge) *
+            proposed_tile_long_edge;
 
-    int num_full_tiles = CeilOrFloor<int, false>(
-        input_long_edge, proposed_tile_long_edge);
+    int num_full_tiles = 
+        CeilOrFloor<int, false>(input_long_edge, proposed_tile_long_edge);
 
     float cost = num_wasted_threads;
 
@@ -1186,8 +1184,8 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     ret = TransposeSimple<T>::run(ctx, in, perm, out);
   }
   if (!ret) {
-    auto* tuner =
-        phi::autotune::MakeTransposeTuner<T>(funcs::TransCompute<phi::GPUContext, T>);
+    auto* tuner = phi::autotune::MakeTransposeTuner<T>(
+        funcs::TransCompute<phi::GPUContext, T>);
     tuner->AddCallBack(PermuteAndTranspose<phi::GPUContext, T>);
 
     size_t key = phi::autotune::TransposeKey(
