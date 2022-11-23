@@ -105,7 +105,6 @@ __all__ = [
     'elementwise_sub',
     'elementwise_mul',
     'gaussian_random',
-    'sampling_id',
     'sum',
     'shape',
     'clip',
@@ -5482,34 +5481,325 @@ def gaussian_random(
 
 
 @templatedoc()
-def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
+def sum(x):
     """
-    This op is used for sampling id from multinomial distribution from the input, sampling one id for one sample.
+    ${comment}
 
-    Parameters:
-        x (Variable): 2-D tensor, [batch_size, input_feature_dimensions]
-        min (Float): minimum , default 0.0.
-        max (Float): maximum, default 1.0.
-        seed (Float): Random seed, default 0. if seed is not 0, will generate same number every time.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+    Case 1:
+    ::
+        Input:
+            Input. Shape = [2, 3]
+            Input = [[1, 2, 3],
+                     [4, 5, 6]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[1, 2, 3],
+                      [4, 5, 6]]
+
+    Case 2:
+    ::
+        Input:
+            First input:
+            Input1. Shape = [2, 3]
+            Input1 = [[1, 2, 3],
+                      [4, 5, 6]]
+
+        The second input:
+            Input2. Shape = [2, 3]
+            Input2 = [[7, 8, 9],
+                      [10, 11, 12]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[8, 10, 12],
+                      [14, 16, 18]]
+
+    Args:
+        x (Variable|list(Variable)): ${x_comment}
 
     Returns:
-        Variable: sampling tensor.
+        Variable: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.data(
-                name="X",
-                shape=[13, 11],
-                dtype='float32')
 
-            out = fluid.layers.sampling_id(x)
+            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
+            sum = fluid.layers.sum([input0, input1])
+
+            # You can print out 'sum' via executor.
+            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_main_program())
+
+            # The printed result is:
+            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
+            # Tensor[sum_0.tmp_0]
+            #    shape: [2,3,]
+            #    dtype: l
+            #    data: 8,8,8,8,8,8,
+
+            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t,
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux,
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
-    helper = LayerHelper('sampling_id', **locals())
-    out = helper.create_variable_for_type_inference(dtype)
+    return paddle.add_n(x)
+
+
+@templatedoc()
+def slice(input, axes, starts, ends):
+    """
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` (here 0 is the initial position).
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` and ``ends``.
+    Following examples will explain how slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+            Then:
+                result = [ [5, 6, 7], ]
+
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]       # -1 denotes the reverse 0th position of dimension 0.
+            Then:
+                result = [ [2, 3, 4], ] # result = data[0:1, 1:4]
+
+    Args:
+        input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
+
+    Returns:
+        Tensor:  A ``Tensor``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Tensor.
+        TypeError: The type of ``ends`` must be list, tuple or Tensor.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            input = paddle.rand(shape=[4, 5, 6], dtype='float32')
+            # example 1:
+            # attr starts is a list which doesn't contain tensor.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            sliced_1 = paddle.slice(input, axes=axes, starts=starts, ends=ends)
+            # sliced_1 is input[0:3, 0:2, 2:4].
+
+            # example 2:
+            # attr starts is a list which contain tensor.
+            minus_3 = paddle.full([1], -3, "int32")
+            sliced_2 = paddle.slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends)
+            # sliced_2 is input[0:3, 0:2, 2:4].
+    """
+    if in_dygraph_mode():
+        attrs = ()
+        starts_tensor = None
+        ends_tensor = None
+
+        if isinstance(axes, (list, tuple)):
+            axes = list(axes)
+            if len(axes) == 0:
+                raise ValueError(
+                    "Input axes should not be an empty list/tuple."
+                )
+            for i in range(len(axes)):
+                if axes[i] < 0:
+                    axes[i] = max(0, axes[i] + len(input.shape))
+                else:
+                    axes[i] = min(len(input.shape) - 1, axes[i])
+
+        else:
+            raise ValueError(
+                "Input axes must be a python list or tuple, but reveived {}".format(
+                    type(axes)
+                )
+            )
+
+        infer_flags = list(1 for i in range(len(axes)))
+
+        tmp_tensor_type = core.eager.Tensor
+        if isinstance(starts, (list, tuple)):
+            starts = [
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type)
+                else item
+                for item in starts
+            ]
+        elif isinstance(starts, tmp_tensor_type):
+            tensor_t = starts.numpy()
+            starts = [ele for ele in tensor_t]
+
+        if isinstance(ends, (list, tuple)):
+            ends = [
+                item.numpy().item(0)
+                if isinstance(item, tmp_tensor_type)
+                else item
+                for item in ends
+            ]
+            attrs += ('ends', ends)
+        elif isinstance(ends, tmp_tensor_type):
+            tensor_t = ends.numpy()
+            ends = [ele for ele in tensor_t]
+
+        return _C_ops.slice(input, axes, starts, ends, infer_flags, [])
+    else:
+        if _in_legacy_dygraph():
+            attrs = ()
+            starts_tensor = None
+            ends_tensor = None
+
+            if isinstance(axes, (list, tuple)):
+                axes = list(axes)
+                if len(axes) == 0:
+                    raise ValueError(
+                        "Input axes should not be an empty list/tuple."
+                    )
+                for i in range(len(axes)):
+                    if axes[i] < 0:
+                        axes[i] = max(0, axes[i] + len(input.shape))
+                    else:
+                        axes[i] = min(len(input.shape) - 1, axes[i])
+
+            else:
+                raise ValueError(
+                    "Input axes must be a python list or tuple, but reveived {}".format(
+                        type(axes)
+                    )
+                )
+
+            infer_flags = list(1 for i in range(len(axes)))
+
+            tmp_tensor_type = Variable
+
+            if isinstance(starts, (list, tuple)):
+                starts = [
+                    item.numpy().item(0)
+                    if isinstance(item, tmp_tensor_type)
+                    else item
+                    for item in starts
+                ]
+                attrs += ('starts', starts)
+            elif isinstance(starts, tmp_tensor_type):
+                starts_tensor = starts
+                starts.stop_gradient = True
+                infer_flags = list(-1 for i in range(len(axes)))
+
+            if isinstance(ends, (list, tuple)):
+                ends = [
+                    item.numpy().item(0)
+                    if isinstance(item, tmp_tensor_type)
+                    else item
+                    for item in ends
+                ]
+                attrs += ('ends', ends)
+            elif isinstance(ends, tmp_tensor_type):
+                ends_tensor = ends
+                ends_tensor.stop_gradient = True
+                infer_flags = list(-1 for i in range(len(axes)))
+
+            return _legacy_C_ops.slice(
+                input,
+                starts_tensor,
+                ends_tensor,
+                None,
+                None,
+                'axes',
+                axes,
+                'infer_flags',
+                infer_flags,
+                *attrs,
+            )
+
+    if not isinstance(starts, (list, tuple, Variable)):
+        raise ValueError(
+            "Input starts must be an Variable, python list or tuple."
+        )
+    if not isinstance(ends, (list, tuple, Variable)):
+        raise ValueError(
+            "Input ends must be an Variable, python list or tuple."
+        )
+
+    helper = LayerHelper('slice', **locals())
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    # starts
+    if isinstance(starts, Variable):
+        starts.stop_gradient = True
+        inputs['StartsTensor'] = starts
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(starts, (list, tuple)):
+        attrs['starts'] = []
+        if utils._contain_var(starts):
+            inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+            for i, dim in enumerate(starts):
+                if isinstance(dim, Variable):
+                    attrs['starts'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['starts'].append(dim)
+        else:
+            attrs['starts'] = starts
+
+    # ends
+    if isinstance(ends, Variable):
+        ends.stop_gradient = True
+        inputs['EndsTensor'] = ends
+        infer_flags = list(-1 for i in range(len(axes)))
+    elif isinstance(ends, (list, tuple)):
+        attrs['ends'] = []
+        if utils._contain_var(ends):
+            inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+            for i, dim in enumerate(ends):
+                if isinstance(dim, Variable):
+                    attrs['ends'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['ends'].append(dim)
+        else:
+            attrs['ends'] = ends
+
+    # infer_flags
+    attrs['infer_flags'] = infer_flags
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input')
+    )
     helper.append_op(
         type='sampling_id',
         inputs={'X': x},
