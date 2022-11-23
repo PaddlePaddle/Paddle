@@ -278,7 +278,7 @@ class OperatorBase {
   const OpInfo* info_;
 
   // OpDesc Id
-  uint64_t id_;
+  uint64_t id_ = UINT64_MAX;
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};

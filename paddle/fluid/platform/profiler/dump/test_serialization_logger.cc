@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/profiler/dump/deserialization_reader.h"
 #include "paddle/fluid/platform/profiler/dump/serialization_logger.h"
 #include "paddle/fluid/platform/profiler/event_node.h"

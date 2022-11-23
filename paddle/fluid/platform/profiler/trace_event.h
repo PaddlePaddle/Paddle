@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/var_desc.h"
+#include "paddle/fluid/framework/type_defs.h"
 
 namespace paddle {
 namespace platform {
