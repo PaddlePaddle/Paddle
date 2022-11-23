@@ -56,8 +56,10 @@ class Node {
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     return 0;
   }
-  virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> & feature_id, std::vector<uint8_t> & slot_id) const {
-     return 0;
+  virtual int get_feature_ids(int slot_idx,
+                              std::vector<uint64_t> &feature_id,
+                              std::vector<uint8_t> &slot_id) const {
+    return 0;
   }
   virtual void set_feature(int idx, const std::string &str) {}
   virtual void set_feature_size(int size) {}
@@ -159,7 +161,9 @@ class FeatureNode : public Node {
     return 0;
   }
 
-  virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> & feature_id, std::vector<uint8_t> & slot_id) const {
+  virtual int get_feature_ids(int slot_idx,
+                              std::vector<uint64_t> &feature_id,
+                              std::vector<uint8_t> &slot_id) const {
     errno = 0;
     size_t num = 0;
     if (slot_idx < (int)this->feature.size()) {
@@ -167,18 +171,18 @@ class FeatureNode : public Node {
       const uint64_t *feas = (const uint64_t *)(s.c_str());
       num = s.length() / sizeof(uint64_t);
       CHECK((s.length() % sizeof(uint64_t)) == 0)
-        << "bad feature_item: [" << s << "]";
+          << "bad feature_item: [" << s << "]";
       for (size_t i = 0; i < num; ++i) {
         feature_id.push_back(feas[i]);
         slot_id.push_back(slot_idx);
       }
     }
     PADDLE_ENFORCE_EQ(
-      errno,
-      0,
-      paddle::platform::errors::InvalidArgument(
-        "get_feature_ids get errno should be 0, but got %d.", errno));
-     return num;
+        errno,
+        0,
+        paddle::platform::errors::InvalidArgument(
+            "get_feature_ids get errno should be 0, but got %d.", errno));
+    return num;
   }
 
   virtual std::string *mutable_feature(int idx) {
@@ -197,10 +201,10 @@ class FeatureNode : public Node {
   virtual void set_feature_size(int size) { this->feature.resize(size); }
   virtual int get_feature_size() { return this->feature.size(); }
   virtual void shrink_to_fit() {
-     feature.shrink_to_fit();
-     for (auto & slot : feature) {
-       slot.shrink_to_fit();
-     }
+    feature.shrink_to_fit();
+    for (auto &slot : feature) {
+      slot.shrink_to_fit();
+    }
   }
 
   template <typename T>

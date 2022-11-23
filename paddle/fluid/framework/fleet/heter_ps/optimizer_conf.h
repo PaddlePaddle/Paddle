@@ -44,7 +44,7 @@ class OptimizerConfig {
   float nodeid_slot = 9008;
   float feature_learning_rate = 0.05;
   // multi node
-  bool  multi_node = false;
+  bool multi_node = false;
 
   void set_sparse_sgd(float nonclk_coeff,
                       float clk_coeff,

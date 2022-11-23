@@ -66,10 +66,10 @@ class HeterComm {
   HeterComm& operator=(const HeterComm&) = delete;
   // reset table
   void reset_table(const int dev_id,
-      size_t capacity,
-      const OptimizerConfig& sgd_config,
-      const OptimizerConfig& embedx_config,
-      bool infer_mode);
+                   size_t capacity,
+                   const OptimizerConfig& sgd_config,
+                   const OptimizerConfig& embedx_config,
+                   bool infer_mode);
   template <typename StreamType>
   size_t merge_keys(const int gpu_num,
                     const KeyType* d_keys,
@@ -452,11 +452,11 @@ class HeterComm {
                       int end_index,
                       size_t keylen,
                       size_t vallen);
-  void create_tmp_storage(void * &dest,
-                      int start_index,
-                      int end_index,
-                      size_t vallen);
-  void destroy_tmp_storage(void * &p, int start_index, int end_index);
+  void create_tmp_storage(void*& dest,
+                          int start_index,
+                          int end_index,
+                          size_t vallen);
+  void destroy_tmp_storage(void*& p, int start_index, int end_index);
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,

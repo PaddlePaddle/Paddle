@@ -462,7 +462,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
     }
-    
+
     if (STAT_GET(STAT_epoch_finish) == 1) {
       VLOG(0) << "get epoch finish true";
       STAT_RESET(STAT_epoch_finish, 0);
