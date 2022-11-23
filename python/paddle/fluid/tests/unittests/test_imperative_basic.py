@@ -895,7 +895,7 @@ class TestDygraphUtils(unittest.TestCase):
         with fluid.dygraph.guard():
             a = paddle.to_tensor(a_np)
             res1 = func(a, act="hard_sigmoid")
-            res2 = fluid.layers.hard_sigmoid(a)
+            res2 = paddle.nn.functional.hardsigmoid(a, slope=0.2)
             np.testing.assert_array_equal(res1.numpy(), res2.numpy())
 
     def test_append_activation_in_dygraph1(self):

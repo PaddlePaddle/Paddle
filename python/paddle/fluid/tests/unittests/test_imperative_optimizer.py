@@ -35,7 +35,6 @@ from paddle.fluid.optimizer import (
 )
 from paddle.fluid.optimizer import (
     ModelAverage,
-    DGCMomentumOptimizer,
     ExponentialMovingAverage,
     PipelineOptimizer,
     LookaheadOptimizer,
@@ -43,6 +42,8 @@ from paddle.fluid.optimizer import (
 )
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
+
+from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.

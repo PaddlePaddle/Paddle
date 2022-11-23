@@ -102,20 +102,20 @@ class TestDygraphLoadStatic(unittest.TestCase):
             name="conv2d_trans_in", shape=[None, 10, 10, 10]
         )
 
-        conv2d_trans_out_1 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_1 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
-        conv2d_trans_out_2 = fluid.layers.conv2d_transpose(
+        conv2d_trans_out_2 = paddle.static.nn.conv2d_transpose(
             conv2d_trans_in, num_filters=10, filter_size=5, act="relu"
         )
 
         conv3d_trans_in = fluid.data(
             name='conv3d_trans_in', shape=[None, 3, 12, 32, 32], dtype='float32'
         )
-        conv3d_trans_out_1 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_1 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
-        conv3d_trans_out_2 = fluid.layers.conv3d_transpose(
+        conv3d_trans_out_2 = paddle.static.nn.conv3d_transpose(
             input=conv3d_trans_in, num_filters=2, filter_size=3, act="relu"
         )
 
