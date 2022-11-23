@@ -3699,6 +3699,7 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestRelu)
+create_test_act_bf16_class(TestAbs)
 
 if __name__ == "__main__":
     unittest.main()

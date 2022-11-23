@@ -89,7 +89,6 @@ __all__ = [
     'l2_normalize',
     'matmul',
     'topk',
-    'transpose',
     'im2sequence',
     'row_conv',
     'multiplex',
@@ -107,7 +106,6 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'roi_align',
-    'dice_loss',
     'image_resize',
     'image_resize_short',
     'resize_linear',
@@ -4875,108 +4873,6 @@ def ctc_greedy_decoder(
         return ctc_out, ctc_out_len
 
 
-def transpose(x, perm, name=None):
-    """
-    Permute the data dimensions of `input` according to `perm`.
-
-    The `i`-th dimension  of the returned tensor will correspond to the
-    perm[i]-th dimension of `input`.
-
-    Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
-        perm (list|tuple): Permute the input according to the data of perm.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
-
-    For Example:
-
-        .. code-block:: text
-
-         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-         shape(x) =  [2,3,4]
-
-         # Example 1
-         perm0 = [1,0,2]
-         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                   [[ 5  6  7  8]  [17 18 19 20]]
-                   [[ 9 10 11 12]  [21 22 23 24]]]
-         shape(y_perm0) = [3,2,4]
-
-         # Example 2
-         perm1 = [2,1,0]
-         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                   [[ 2 14] [ 6 18] [10 22]]
-                   [[ 3 15]  [ 7 19]  [11 23]]
-                   [[ 4 16]  [ 8 20]  [12 24]]]
-         shape(y_perm1) = [4,3,2]
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.randn([2, 3, 4])
-            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
-            print(x_transposed.shape)
-            # [3L, 2L, 4L]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.transpose(x, perm)
-    else:
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
-            return out
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'transpose',
-    )
-    check_type(perm, 'perm', (list, tuple), 'transpose')
-    if isinstance(perm, tuple):
-        perm = list(perm)
-    if len(perm) != len(x.shape):
-        raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(x), "
-            "its length should be equal to dimensions of Input(x), "
-            "but received dimension of Input(x) is %s, "
-            "the length of Input(perm) is %s." % (len(x.shape), len(perm))
-        )
-    for idx, dim in enumerate(perm):
-        if dim >= len(x.shape):
-            raise ValueError(
-                "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                "dimension %d." % (idx, perm[idx], len(x.shape))
-            )
-
-    helper = LayerHelper('transpose', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out], 'XShape': [x_shape]},
-        attrs={'axis': perm},
-    )
-    return out
-
-
 def im2sequence(
     input,
     filter_size=1,
@@ -6267,53 +6163,6 @@ def roi_align(
         },
     )
     return align_out
-
-
-def dice_loss(input, label, epsilon=0.00001, name=None):
-    r"""
-
-    Dice loss for comparing the similarity between the input predictions and the label.
-    This implementation is for binary classification, where the input is sigmoid
-    predictions of each pixel, usually used for segmentation task. The dice loss can
-    be defined as the following equation:
-
-    .. math::
-
-        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
-                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
-                  &= \frac{(union\_area - intersection\_area)}{total\_area}
-
-
-    Parameters:
-        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_k, D]`, where :math:`N_1` is
-                          the batch_size, :math:`D` is the number of categories. It is usually the output
-                          predictions of sigmoid activation. The data type can be float32 or float64.
-        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_k, 1]`.
-                          where :math:`N_1` is the batch_size. The data type can be int32 or int64.
-        epsilon (float): The epsilon will be added to the numerator and denominator.
-                         If both input and label are empty, it makes sure dice is 1.
-                         Default: 0.00001
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor, which shape is [1], data type is the same as `input` .
-
-    Example:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.randn((3,224,224,2))
-            label = paddle.randint(high=2, shape=(3,224,224,1))
-            predictions = F.softmax(x)
-            loss = F.dice_loss(input=predictions, label=label)
-    """
-    return paddle.nn.functional.dice_loss(
-        input, label, epsilon=epsilon, name=name
-    )
 
 
 def image_resize(
