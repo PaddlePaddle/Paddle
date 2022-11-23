@@ -2215,6 +2215,8 @@ class AdamOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
 
+            paddle.enable_static()
+
             place = fluid.CPUPlace()
             main = fluid.Program()
             with fluid.program_guard(main):
@@ -2242,6 +2244,8 @@ class AdamOptimizer(Optimizer):
             import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+
+            paddle.enable_static()
 
             place = fluid.CPUPlace()
             main = fluid.Program()

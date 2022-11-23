@@ -283,6 +283,7 @@ class DistributeTranspiler:
 
     Examples:
         .. code-block:: python
+            import paddle.fluid as fluid
 
             x = fluid.data(name='x', shape=[13], dtype='float32')
             y = fluid.data(name='y', shape=[1], dtype='float32')
