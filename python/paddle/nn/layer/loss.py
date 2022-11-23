@@ -14,9 +14,12 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network
+import paddle.fluid as fluid
 import paddle
 from .. import functional as F
+from paddle.fluid.framework import in_dygraph_mode
 from .. import Layer
+from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -602,7 +605,22 @@ class MSELoss(Layer):
         self.reduction = reduction
 
     def forward(self, input, label):
-        return paddle.nn.MSELoss(self.reduction)
+        if not in_dynamic_mode():
+            fluid.data_feeder.check_variable_and_dtype(
+                input, 'input', ['float32', 'float64'], 'MSELoss'
+            )
+            fluid.data_feeder.check_variable_and_dtype(
+                label, 'label', ['float32', 'float64'], 'MSELoss'
+            )
+
+        if in_dygraph_mode():
+            square_out = paddle._C_ops.square(paddle.subtract(input, label))
+        else:
+            square_out = paddle.square(paddle.subtract(input, label))
+
+        mse_loss = paddle.nn.MSELoss(self.reduction)
+
+        return mse_loss(square_out)
 
 
 class L1Loss(Layer):
