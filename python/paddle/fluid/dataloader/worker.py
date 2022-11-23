@@ -373,8 +373,14 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
+
+                    def numpy2lodtensor(arr):
+                        lodtensor = core.Tensor()
+                        lodtensor.set(arr, core.CPUPlace())
+                        return lodtensor
+
                     tensor_list = [
-                        core._array_to_share_memory_tensor(b)
+                        numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
                         else b.value().get_tensor()
                         for b in batch

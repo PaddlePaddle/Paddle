@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
+
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
 # TODO: check influence on autograd
@@ -21,10 +23,6 @@ import copy
 import threading
 from multiprocessing.util import register_after_fork
 from multiprocessing.reduction import ForkingPickler
-from paddle.fluid.framework import EagerParamBase
-from paddle import Tensor
-import paddle.fluid.core as core
-from paddle.tensor.creation import to_tensor
 
 from collections import OrderedDict
 
@@ -86,18 +84,18 @@ def _cuda_from_cache(key):
 
 
 def _rebuild_tensor(cls, lodtensor, metadata):
-    if cls == EagerParamBase:
-        tensor = EagerParamBase(
+    if cls == paddle.fluid.framework.EagerParamBase:
+        tensor = paddle.fluid.framework.EagerParamBase(
             lodtensor.shape(), lodtensor._dtype(), **metadata
         )
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
-        tensor = core.eager.Tensor()
+        tensor = paddle.fluid.core.eager.Tensor()
         if lodtensor._is_initialized():
             tensor.value().get_tensor()._share_data_with(lodtensor)
         else:
-            tensor = to_tensor([], dtype=lodtensor._dtype())
+            tensor = paddle.to_tensor([], dtype=lodtensor._dtype())
         tensor.stop_gradient = stop_gradient
     return tensor
 
@@ -115,7 +113,7 @@ def _reduce_tensor(tensor):
         or tensor.place.is_gpu_place()
         or tensor.place.is_cuda_pinned_place()
     ):
-        if type(tensor) == EagerParamBase:
+        if type(tensor) == paddle.fluid.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
@@ -149,7 +147,7 @@ def _rebuild_cuda_tensor(
         # you should manualy maintian the lifecycle of ipc tensor
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
-        lodtensor = core.LoDTensor()
+        lodtensor = paddle.fluid.core.LoDTensor()
         lodtensor._share_buffer_with(
             cache_tensor, (size, type_idx, dims, lod, device_idx)
         )
@@ -194,7 +192,9 @@ def init_reductions():
     if not _supported_check():
         return
 
-    ForkingPickler.register(Tensor, _reduce_tensor)
-    ForkingPickler.register(core.eager.Tensor, _reduce_tensor)
-    ForkingPickler.register(EagerParamBase, _reduce_tensor)
-    ForkingPickler.register(core.LoDTensor, _reduce_lodtensor)
+    ForkingPickler.register(paddle.Tensor, _reduce_tensor)
+    ForkingPickler.register(paddle.fluid.core.eager.Tensor, _reduce_tensor)
+    ForkingPickler.register(
+        paddle.fluid.framework.EagerParamBase, _reduce_tensor
+    )
+    ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)
