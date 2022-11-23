@@ -428,20 +428,20 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
 
     coordinate = None
     for mesh in dist_context.process_meshes:
-        if rank in mesh.processes and mesh.topology == target_mesh.topology:
+        if rank in mesh.process_ids and mesh.shape == target_mesh.shape:
             coordinate = _linear_idx2coordinate(
-                mesh.topology, mesh.processes.index(rank)
+                mesh.shape, mesh.process_ids.index(rank)
             )
             break
 
     # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
     #     rank)
     if coordinate is not None:
-        return target_mesh.processes[
-            _coordinate2linear_idx(mesh.topology, coordinate)
+        return target_mesh.process_ids[
+            _coordinate2linear_idx(mesh.shape, coordinate)
         ]
     else:
-        return target_mesh.processes[0]
+        return target_mesh.process_ids[0]
 
 
 def _get_unshard_dist_shape(var, dist_attr):

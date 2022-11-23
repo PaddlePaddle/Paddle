@@ -117,7 +117,7 @@ class ProcessMesh(core.ProcessMesh):
         from .process_group import get_process_group
 
         pg0 = get_process_group(0)
-        pg0.add_ranks(self.processes)
+        pg0.add_ranks(self.process_ids)
 
     @property
     def mesh(self):
@@ -125,14 +125,6 @@ class ProcessMesh(core.ProcessMesh):
         Get the underlying mesh of ProcessMesh.
         """
         return self._mesh
-
-    @property
-    def topology(self):
-        return self.shape
-
-    @property
-    def processes(self):
-        return self.process_ids
 
     def __getitem__(self, index):
         if isinstance(index, tuple):

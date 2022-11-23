@@ -2188,7 +2188,7 @@ class Resharder:
                 for i, mesh in enumerate(self.dist_context.process_meshes):
                     if i == idx:
                         continue
-                    if set(mesh.processes) < set(global_mesh.processes):
+                    if set(mesh.process_ids) < set(global_mesh.process_ids):
                         is_removed = True
 
                 if is_removed:
@@ -2327,7 +2327,7 @@ class Resharder:
                         # deal with union tensor
                         if is_union_process_mesh_tensor:
                             # if op process mesh is subset of union tensor process mesh, need no reshard
-                            if set(input_attr[0].processes) <= set(
+                            if set(input_attr[0].process_ids) <= set(
                                 dist_tensor.dist_attr.process_mesh.process_ids
                             ):
                                 continue
@@ -2523,11 +2523,11 @@ class Resharder:
                             tensor_process_mesh.process_ids
                         ) - (
                             set(tensor_process_mesh.process_ids)
-                            & set(output_attr[0].processes)
+                            & set(output_attr[0].process_ids)
                         )
                         if tensor_processes:
                             if len(tensor_processes) != len(
-                                output_attr[0].processes
+                                output_attr[0].process_ids
                             ):
                                 if dist_tensor.dist_attr.dims_mapping.count(
                                     -1
@@ -2550,13 +2550,15 @@ class Resharder:
                                         recv_rank = tensor_process
                                         actual_index = index
                                         if index >= len(
-                                            output_attr[0].processes
+                                            output_attr[0].process_ids
                                         ):
                                             actual_index = (
                                                 index
-                                                - len(output_attr[0].processes)
-                                            ) % len(output_attr[0].processes)
-                                        item = output_attr[0].processes[
+                                                - len(
+                                                    output_attr[0].process_ids
+                                                )
+                                            ) % len(output_attr[0].process_ids)
+                                        item = output_attr[0].process_ids[
                                             actual_index
                                         ]
                                         if recv_rank == item:
@@ -2586,7 +2588,7 @@ class Resharder:
                                     tensor_processes
                                 ):
                                     recv_rank = tensor_process
-                                    item = output_attr[0].processes[index]
+                                    item = output_attr[0].process_ids[index]
                                     if recv_rank == item:
                                         continue
                                     if self.rank_id == item:
