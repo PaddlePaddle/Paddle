@@ -421,7 +421,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._shutdown = False
 
     def _init_workers(self):
-        import paddle.incubate.multiprocessing
+        import paddle.incubate.multiprocessing as multiprocessing
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
