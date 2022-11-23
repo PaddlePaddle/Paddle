@@ -226,9 +226,9 @@ class PD_INFER_DECL DistModelDataBuf {
   DistModelDataBuf() = default;
   void Reshape(const std::vector<int>& shape) {
     shape_ = shape;
-    int size =
+    int len =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    len_ = static_cast<size_t>(size);
+    len_ = static_cast<size_t>(len);
   }
   template <typename T>
   void CopyFromCpu(T* data);
@@ -241,7 +241,8 @@ class PD_INFER_DECL DistModelDataBuf {
   char* data() { return data_.data(); }
   DistModelDataType dtype() { return dtype_; }
   void SetDtype(int dtype) { dtype_ = static_cast<DistModelDataType>(dtype); }
-  size_t size() { return len_; }
+  size_t len() { return len_; }
+  size_t size() { return size_; }
   std::vector<int> shape() { return shape_; }
 
   std::vector<char> data_;
@@ -249,6 +250,7 @@ class PD_INFER_DECL DistModelDataBuf {
 
  private:
   size_t len_;
+  size_t size_;
   std::vector<int> shape_;
 };
 

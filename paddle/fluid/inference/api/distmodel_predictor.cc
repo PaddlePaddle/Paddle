@@ -18,8 +18,9 @@
 namespace paddle_infer {
 template <typename T>
 void DistModelDataBuf::CopyFromCpu(T* data) {
-  data_.resize(len_ * sizeof(T));
-  std::memcpy(data_.data(), reinterpret_cast<char*>(data), sizeof(T) * len_);
+  size_ = len_ * sizeof(T);
+  data_.resize(size_);
+  std::memcpy(data_.data(), reinterpret_cast<char*>(data), size_);
   if (std::is_same<T, phi::dtype::float16>::value)
     dtype_ = DistModelDataType::DIST_FLOAT16;
   if (std::is_same<T, float>::value) dtype_ = DistModelDataType::DIST_FLOAT32;

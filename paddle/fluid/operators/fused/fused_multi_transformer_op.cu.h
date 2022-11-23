@@ -90,8 +90,8 @@ using float16 = plat::float16;
 
 #define MMHA_USE_FP32_ACUM_FOR_LOGITS
 #define MMHA_USE_FP32_ACUM_FOR_OUT
-#define MMHA_USE_FP32_ACUM_FOR_FMA
-#define MMHA_USE_HMMA_FOR_REDUCTION
+// #define MMHA_USE_FP32_ACUM_FOR_FMA
+// #define MMHA_USE_HMMA_FOR_REDUCTION
 
 template <typename D>
 class PDDataTypeTraits;
