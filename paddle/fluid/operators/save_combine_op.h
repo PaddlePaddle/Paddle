@@ -122,7 +122,8 @@ void SaveCombineVocabKernel(
     bool save_to_memory,
     phi::CPlusString* out) {
   std::string* y = out->Get();
-  std::vector<const framework::Vocab*> x(inputs.size());
+  std::vector<const framework::Vocab*> x;
+  x.reserve(inputs.size());
   for (auto input : inputs) {
     x.push_back(static_cast<const framework::Vocab*>(input));
   }

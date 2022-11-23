@@ -516,7 +516,10 @@ paddle::framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
 
 paddle::framework::Vocab CastPyArg2Vocab(PyObject* obj, ssize_t arg_pos) {
   if (PyDict_Check(obj)) {
-    return ::pybind11::handle(obj).cast<paddle::framework::Vocab>();
+    paddle::framework::Vocab vocab;
+    vocab = ::pybind11::handle(obj)
+                .cast<std::unordered_map<std::wstring, std::int32_t>>();
+    return vocab;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be dict, but got %s",

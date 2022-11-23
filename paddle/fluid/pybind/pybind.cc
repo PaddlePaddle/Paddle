@@ -949,7 +949,8 @@ All parameter, weight, gradient are variables in Paddle.
              *self.GetMutable<Strings>() = str_list;
            })
       .def("set_vocab",
-           [](Variable &self, Vocab vocab) {
+           [](Variable &self,
+              const std::unordered_map<std::wstring, std::int32_t> &vocab) {
              *self.GetMutable<Vocab>() = vocab;
            })
       .def(

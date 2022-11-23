@@ -39,6 +39,12 @@ class Vocab : public phi::ExtendedTensor,
 
   Vocab& operator=(Vocab&& other) = default;
 
+  Vocab& operator=(
+      const std::unordered_map<std::wstring, std::int32_t>& other) {
+    this->data_ = other;
+    return *this;
+  }
+
   /// \brief Destroy the Vocab and release exclusive resources.
   virtual ~Vocab() = default;
 
