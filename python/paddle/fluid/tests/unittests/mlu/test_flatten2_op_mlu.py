@@ -78,12 +78,12 @@ class TestFlattenOpSixDims(TestFlattenOp):
 class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, axis=1):
         if axis==0:
-            x = paddle.flatten(x,0,-1)
-            x = paddle.unsqueeze(x,0)
+            x = paddle.flatten(x, 0, -1)
+            x = paddle.unsqueeze(x, 0)
             return x
         else:
             x = paddle.flatten(x, axis, -1)
-            x = paddle.flatten(x, 0, axis-1)
+            x = paddle.flatten(x, 0, axis - 1)
             return x
 
     def test_static_api(self):
@@ -104,7 +104,7 @@ class TestFlatten2OpError(unittest.TestCase):
 
         def test_Variable():
             # the input type must be Variable
-            paddle.flatten(input_data,1,-1)
+            paddle.flatten(input_data, 1, -1)
 
         self.assertRaises(TypeError, test_Variable)
 
@@ -113,7 +113,7 @@ class TestFlatten2OpError(unittest.TestCase):
             x2 = fluid.layers.data(
                 name='x2', shape=[3, 2, 4, 5], dtype='float16'
             )
-            paddle.flatten(x2,1,-1)
+            paddle.flatten(x2, 1, -1)
             
 
         self.assertRaises(TypeError, test_type)
