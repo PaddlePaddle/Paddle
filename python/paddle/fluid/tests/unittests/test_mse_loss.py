@@ -65,50 +65,6 @@ class TestMseInvalidInput(unittest.TestCase):
 
 
 class TestNNMseLoss(unittest.TestCase):
-    def test_NNMseLoss_mean(self):
-        for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
-            input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
-            label_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
-            paddle.enable_static()
-            prog = fluid.Program()
-            startup_prog = fluid.Program()
-            place = (
-                fluid.CUDAPlace(0)
-                if fluid.core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
-            )
-            with fluid.program_guard(prog, startup_prog):
-                input = fluid.layers.data(
-                    name='input', shape=dim, dtype='float32'
-                )
-                label = fluid.layers.data(
-                    name='label', shape=dim, dtype='float32'
-                )
-                mse_loss = paddle.nn.loss.MSELoss()
-                ret = mse_loss(input, label)
-
-                exe = fluid.Executor(place)
-                (static_result,) = exe.run(
-                    prog,
-                    feed={"input": input_np, "label": label_np},
-                    fetch_list=[ret],
-                )
-
-            with fluid.dygraph.guard():
-                mse_loss = paddle.nn.loss.MSELoss()
-                dy_ret = mse_loss(
-                    fluid.dygraph.to_variable(input_np),
-                    fluid.dygraph.to_variable(label_np),
-                )
-                dy_result = dy_ret.numpy()
-
-            sub = input_np - label_np
-            expected = np.mean(sub * sub)
-            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
-            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
-            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
-
     def test_NNMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
