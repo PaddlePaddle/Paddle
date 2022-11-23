@@ -42,7 +42,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout layout = framework::StringToDataLayout(layout_str);
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
 
     PADDLE_ENFORCE_EQ(use_global_stats,
                       false,
@@ -285,7 +285,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
-    const DataLayout layout = framework::StringToDataLayout(layout_str);
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
 
     const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<phi::DenseTensor>("Scale");

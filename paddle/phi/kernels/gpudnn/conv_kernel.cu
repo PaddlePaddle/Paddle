@@ -19,13 +19,12 @@
 #include "paddle/phi/core/kernel_registry.h"
 
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
 #include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -34,7 +33,308 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+// clang-format off
+#include "paddle/phi/backends/dynload/cudnn_frontend.h"
+#include "paddle/phi/kernels/autotune/cache.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
+// clang-format on
+#endif
+
 namespace phi {
+
+template <typename T, typename Context>
+void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
+                           const DenseTensor* transformed_filter_channel,
+                           const Context& ctx,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& padding_common,
+                           const std::vector<int>& dilations,
+                           paddle::platform::DataLayout compute_format,
+                           paddle::platform::DataLayout layout,
+                           bool exhaustive_search,
+                           bool deterministic,
+                           int groups,
+                           DenseTensor* transformed_output) {
+  const T* input_data = transformed_input->data<T>();
+  const T* filter_data = transformed_filter_channel->data<T>();
+  T* output_data = transformed_output->data<T>();
+
+  auto handle = ctx.cudnn_handle();
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
+
+  // ------------------- cudnn descriptors ---------------------
+  ConvArgs args{handle,
+                transformed_input,
+                transformed_filter_channel,
+                transformed_output,
+                strides,
+                padding_common,
+                dilations,
+                dtype,
+                groups,
+                compute_format};
+
+#ifdef PADDLE_WITH_HIP
+  // MIOPEN need to set groups in cdesc in miopen_desc.h
+  args.cdesc.set(dtype,
+                 padding_common,
+                 strides,
+                 dilations,
+                 paddle::platform::AllowTF32Cudnn(),
+                 groups);
+#else
+  args.cdesc.set(dtype,
+                 padding_common,
+                 strides,
+                 dilations,
+                 paddle::platform::AllowTF32Cudnn());
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
+  // cudnn 7 can support groups, no need to do it manually
+  // FIXME(typhoonzero): find a better way to disable groups
+  // rather than setting it to 1.
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::cudnnSetConvolutionGroupCount(
+          args.cdesc.desc(), groups));
+  groups = 1;
+#endif
+#ifdef PADDLE_WITH_HIP
+  // MIOPEN do not set groups in wdesc after set groups in cdesc
+  groups = 1;
+#endif
+  args.idesc.set(*transformed_input, layout_format);
+  args.wdesc.set(*transformed_filter_channel, layout_format, groups);
+  args.odesc.set(*transformed_output, layout_format);
+  int i_n, i_c, i_d, i_h, i_w;
+  int o_n, o_c, o_d, o_h, o_w;
+
+  if (compute_format == paddle::platform::DataLayout::kNHWC) {
+    GetNCDHW(transformed_input->dims(),
+             paddle::platform::DataLayout::kNHWC,
+             &i_n,
+             &i_c,
+             &i_d,
+             &i_h,
+             &i_w);
+    GetNCDHW(transformed_output->dims(),
+             paddle::platform::DataLayout::kNHWC,
+             &o_n,
+             &o_c,
+             &o_d,
+             &o_h,
+             &o_w);
+  } else {
+    GetNCDHW(transformed_input->dims(),
+             paddle::platform::DataLayout::kNCHW,
+             &i_n,
+             &i_c,
+             &i_d,
+             &i_h,
+             &i_w);
+    GetNCDHW(transformed_output->dims(),
+             paddle::platform::DataLayout::kNCHW,
+             &o_n,
+             &o_c,
+             &o_d,
+             &o_h,
+             &o_w);
+  }
+
+  int group_offset_in = i_c / groups * i_h * i_w * i_d;
+  int group_offset_out = o_c / groups * o_h * o_w * o_d;
+  int group_offset_filter = transformed_filter_channel->numel() / groups;
+  // ------------------- cudnn conv workspace ---------------------
+  size_t workspace_size = 0;  // final workspace to allocate.
+// ------------------- cudnn conv algorithm ---------------------
+#ifdef PADDLE_WITH_HIP
+  SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
+  using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
+  workspace_size = search::GetWorkspaceSize(args);
+  fwd_result.algo = search::Find<T>(
+      args, exhaustive_search, deterministic, workspace_size, ctx);
+#else
+  SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  using search = SearchAlgorithm<ConvKind::kForward>;
+  fwd_result = search::Find<T>(ctx, args, exhaustive_search, deterministic);
+  workspace_size = fwd_result.workspace_size;
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
+  // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
+    // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
+  // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
+    // FWD_ALGO_IMPLICIT_GEMM manually.
+  if (groups > 1) {
+    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+  }
+#endif
+
+  // ------------------- cudnn conv forward ---------------------
+  ScalingParamType<T> alpha = 1.0f;
+  ScalingParamType<T> beta = 0.0f;
+
+  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+
+#ifdef PADDLE_WITH_HIP
+  workspace_handle.RunFunc(
+      [&](void* workspace_ptr) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::miopenConvolutionForward(
+                handle,
+                &alpha,
+                args.idesc.desc(),
+                input_data,
+                args.wdesc.desc(),
+                filter_data,
+                args.cdesc.desc(),
+                fwd_result.algo,
+                &beta,
+                args.odesc.desc(),
+                output_data,
+                workspace_ptr,
+                workspace_size));
+      },
+      workspace_size);
+#else
+  ConvRunner<T, ConvKind::kForward>::Apply(ctx,
+                                           args,
+                                           fwd_result,
+                                           input_data,
+                                           filter_data,
+                                           output_data,
+                                           groups,
+                                           group_offset_in,
+                                           group_offset_filter,
+                                           group_offset_out,
+                                           workspace_size,
+                                           &workspace_handle,
+                                           false);
+#endif
+}
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+template <typename T, typename Context>
+void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
+                           const DenseTensor* filter_channel_tensor,
+                           const Context& ctx,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& padding_common,
+                           const std::vector<int>& dilations,
+                           paddle::platform::DataLayout layout,
+                           bool exhaustive_search,
+                           bool deterministic,
+                           int groups,
+                           DenseTensor* output_tensor) {
+  auto& plan_cache = phi::autotune::AutoTuneCache::Instance().GetConvV8(
+      phi::autotune::AlgorithmType::kConvForwardV8);
+
+  PADDLE_ENFORCE_EQ(
+      groups,
+      1,
+      paddle::platform::errors::Unimplemented(
+          "Group concolution using CUDNNv8 API unsupported for now"));
+
+  T* input_data = const_cast<T*>(input_tensor->data<T>());
+  T* filter_data = const_cast<T*>(filter_channel_tensor->data<T>());
+  T* output_data = output_tensor->data<T>();
+  cudnnHandle_t handle = const_cast<cudnnHandle_t>(ctx.cudnn_handle());
+  auto workspace_handle = ctx.cudnn_workspace_handle();
+
+  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
+  auto dtype = paddle::platform::CudnnDataType<T>::type;
+
+  float alpha = 1.0f;
+  float beta = 0.0f;
+
+  using helper = CudnnFrontendConvHelper;
+  auto op_graph = helper::BuildConvOperationGraph<
+      CUDNN_BACKEND_OPERATION_CONVOLUTION_FORWARD_DESCRIPTOR>(
+      input_tensor,
+      output_tensor,
+      filter_channel_tensor,
+      layout_format,
+      strides,
+      padding_common,
+      dilations,
+      dtype,
+      handle,
+      alpha,
+      beta);
+
+  if (plan_cache.FindPlan(op_graph)) {
+    auto engine_config = plan_cache.GetConfig(op_graph, handle);
+    auto cached_plan = cudnn_frontend::ExecutionPlanBuilder()
+                           .setHandle(handle)
+                           .setEngineConfig(engine_config, op_graph.getTag())
+                           .build();
+    auto workspace_size = cached_plan.getWorkspaceSize();
+    VLOG(4) << "Cached execution plan found." << cached_plan.getTag()
+            << "; Require workspace: " << workspace_size;
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          void* data_ptrs[] = {input_data, output_data, filter_data};
+          int64_t uids[] = {'x', 'y', 'w'};
+          auto variant_pack = cudnn_frontend::VariantPackBuilder()
+                                  .setWorkspacePointer(workspace_ptr)
+                                  .setDataPointers(3, data_ptrs)
+                                  .setUids(3, uids)
+                                  .build();
+          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
+              handle, cached_plan.get_raw_desc(), variant_pack.get_raw_desc()));
+        },
+        workspace_size);
+    return;
+  }
+
+  auto plans = helper::FindExecutionPlans(&op_graph,
+                                          exhaustive_search,
+                                          deterministic,
+                                          input_data,
+                                          output_data,
+                                          filter_data,
+                                          handle,
+                                          &workspace_handle);
+
+  for (auto& plan : plans) {
+    try {
+      int64_t workspace_size = plan.getWorkspaceSize();
+      workspace_handle.RunFunc(
+          [&](void* workspace_ptr) {
+            void* data_ptrs[] = {input_data, output_data, filter_data};
+            int64_t uids[] = {'x', 'y', 'w'};
+            auto variant_pack = cudnn_frontend::VariantPackBuilder()
+                                    .setWorkspacePointer(workspace_ptr)
+                                    .setDataPointers(3, data_ptrs)
+                                    .setUids(3, uids)
+                                    .build();
+            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnBackendExecute(
+                handle, plan.get_raw_desc(), variant_pack.get_raw_desc()));
+          },
+          workspace_size);
+      if (!exhaustive_search || plan_cache.IsStable(op_graph, plan.getTag())) {
+        plan_cache.InsertPlan(op_graph, plan);
+      }
+      return;
+    } catch (cudnn_frontend::cudnnException& e) {
+      VLOG(4) << "Plan " << plan.describe()
+              << "failed to execute. Trying next plan.";
+    } catch (phi::enforce::EnforceNotMet& e) {
+      VLOG(4) << "Plan " << plan.describe()
+              << "failed to execute. Trying next plan.";
+    }
+  }
+  PADDLE_THROW(
+      phi::errors::InvalidArgument("[CUDNN Frontend API] No valid plan could "
+                                   "be found to execute conv."));
+}
+#endif
 
 template <typename T, typename Context>
 void ConvCudnnKernel(const Context& ctx,
@@ -43,21 +343,25 @@ void ConvCudnnKernel(const Context& ctx,
                      const std::vector<int>& strides,
                      const std::vector<int>& paddings_t,
                      const std::string& padding_algorithm,
-                     int groups,
                      const std::vector<int>& dilations_t,
+                     int groups,
                      const std::string& data_format,
-                     bool use_addto,
-                     int workspace_size_MB,
-                     bool exhaustive_search_t,
                      DenseTensor* output) {
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
 
-  bool exhaustive_search = FLAGS_cudnn_exhaustive_search || exhaustive_search_t;
+  bool has_exhaustive_search = ctx.HasDnnAttr("exhaustive_search");
+  VLOG(4) << "GPUContext contains `exhaustive_search`: "
+          << has_exhaustive_search;
+  bool exhaustive_search_attr =
+      has_exhaustive_search
+          ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("exhaustive_search"))
+          : false;
+  bool exhaustive_search =
+      FLAGS_cudnn_exhaustive_search || exhaustive_search_attr;
   bool deterministic = FLAGS_cudnn_deterministic;
-  auto exhaustive_deterministic = exhaustive_search && deterministic;
-  PADDLE_ENFORCE_EQ(exhaustive_deterministic,
+  PADDLE_ENFORCE_EQ(exhaustive_search && deterministic,
                     false,
                     phi::errors::InvalidArgument(
                         "Cann't set exhaustive_search True and "
@@ -70,9 +374,17 @@ void ConvCudnnKernel(const Context& ctx,
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = paddle::platform::DataLayout::kNCHW;
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
   // Tensor Core introduced from Volta GPUs supports more faster conv op
-  // with FP16 in NHWC data format.
+  // with FP16 or BF16 in NHWC data format.
+  const bool compute_in_nhwc =
+      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+      IsVoltaOrLater(ctx);
+#else
+  // Tensor Core introduced from Volta GPUs supports more faster conv op
+  // with FP16 in NHWC data format. (BF16 require cudnn >= 8.1.0)
   const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+#endif
   // We will only do data format conversion from NHWC to NCHW.
   // cudnn will convert NCHW to NHWC automatically on Tensor Core.
   auto compute_format = compute_in_nhwc && channel_last
@@ -88,7 +400,7 @@ void ConvCudnnKernel(const Context& ctx,
   DenseTensor transformed_input_channel(input.type());
   DenseTensor transformed_output(output->type());
   DenseTensor transformed_filter_channel(filter.type());
-  T* output_data = nullptr;
+
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     VLOG(3) << "Transform input tensor from NHWC to NCHW.";
     ResizeToChannelFirst<Context, T>(ctx, &input, &transformed_input_channel);
@@ -107,7 +419,6 @@ void ConvCudnnKernel(const Context& ctx,
   } else {
     transformed_filter_channel.ShareDataWith(filter);
   }
-  output_data = transformed_output.data<T>();
 
   // update padding and dilation
   auto in_dims = transformed_input_channel.dims();
@@ -202,23 +513,6 @@ void ConvCudnnKernel(const Context& ctx,
     }
   }
 
-  const T* input_data = transformed_input.data<T>();
-
-  const T* filter_data = transformed_filter_channel.data<T>();
-
-  // ------------------- cudnn descriptors ---------------------
-  paddle::operators::ConvArgs args{&transformed_input,
-                                   &transformed_filter_channel,
-                                   &transformed_output,
-                                   strides,
-                                   padding_common,
-                                   dilations,
-                                   dtype,
-                                   groups,
-                                   compute_format};
-
-  auto handle = ctx.cudnn_handle();
-  auto workspace_handle = ctx.cudnn_workspace_handle();
   paddle::platform::DataLayout layout =
       compute_format == paddle::platform::DataLayout::kNHWC
           ? paddle::platform::DataLayout::kNHWC
@@ -228,157 +522,46 @@ void ConvCudnnKernel(const Context& ctx,
                  ? paddle::platform::DataLayout::kNDHWC
                  : paddle::platform::DataLayout::kNCDHW;
   }
-  auto layout_format = paddle::platform::GetCudnnTensorFormat(layout);
 
-  args.handle = handle;
-
-#ifdef PADDLE_WITH_HIP
-  // MIOPEN need to set groups in cdesc in miopen_desc.h
-  args.cdesc.set(dtype,
-                 padding_common,
-                 strides,
-                 dilations,
-                 paddle::platform::AllowTF32Cudnn(),
-                 groups);
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+  if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
+    ConvCudnnKernelImplV8<T>(&transformed_input,
+                             &transformed_filter_channel,
+                             ctx,
+                             strides,
+                             padding_common,
+                             dilations,
+                             layout,
+                             exhaustive_search,
+                             deterministic,
+                             groups,
+                             &transformed_output);
+  else
+    ConvCudnnKernelImplV7<T>(&transformed_input,
+                             &transformed_filter_channel,
+                             ctx,
+                             strides,
+                             padding_common,
+                             dilations,
+                             compute_format,
+                             layout,
+                             exhaustive_search,
+                             deterministic,
+                             groups,
+                             &transformed_output);
 #else
-  args.cdesc.set(dtype,
-                 padding_common,
-                 strides,
-                 dilations,
-                 paddle::platform::AllowTF32Cudnn());
-#endif
-
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
-  // cudnn 7 can support groups, no need to do it manually
-  // FIXME(typhoonzero): find a better way to disable groups
-  // rather than setting it to 1.
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      paddle::platform::dynload::cudnnSetConvolutionGroupCount(
-          args.cdesc.desc(), groups));
-  groups = 1;
-#endif
-#ifdef PADDLE_WITH_HIP
-  // MIOPEN do not set groups in wdesc after set groups in cdesc
-  groups = 1;
-#endif
-  args.idesc.set(transformed_input, layout_format);
-  args.wdesc.set(transformed_filter_channel, layout_format, groups);
-  args.odesc.set(transformed_output, layout_format);
-  int i_n, i_c, i_d, i_h, i_w;
-  int o_n, o_c, o_d, o_h, o_w;
-
-  if (compute_format == paddle::platform::DataLayout::kNHWC) {
-    paddle::operators::GetNCDHW(transformed_input.dims(),
-                                paddle::platform::DataLayout::kNHWC,
-                                &i_n,
-                                &i_c,
-                                &i_d,
-                                &i_h,
-                                &i_w);
-    paddle::operators::GetNCDHW(transformed_output.dims(),
-                                paddle::platform::DataLayout::kNHWC,
-                                &o_n,
-                                &o_c,
-                                &o_d,
-                                &o_h,
-                                &o_w);
-  } else {
-    paddle::operators::GetNCDHW(transformed_input.dims(),
-                                paddle::platform::DataLayout::kNCHW,
-                                &i_n,
-                                &i_c,
-                                &i_d,
-                                &i_h,
-                                &i_w);
-    paddle::operators::GetNCDHW(transformed_output.dims(),
-                                paddle::platform::DataLayout::kNCHW,
-                                &o_n,
-                                &o_c,
-                                &o_d,
-                                &o_h,
-                                &o_w);
-  }
-
-  int group_offset_in = i_c / groups * i_h * i_w * i_d;
-  int group_offset_out = o_c / groups * o_h * o_w * o_d;
-  int group_offset_filter = transformed_filter_channel.numel() / groups;
-  // ------------------- cudnn conv workspace ---------------------
-  size_t workspace_size = 0;  // final workspace to allocate.
-// ------------------- cudnn conv algorithm ---------------------
-#ifdef PADDLE_WITH_HIP
-  paddle::operators::SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
-  using search = paddle::operators::SearchAlgorithm<miopenConvFwdAlgorithm_t>;
-  workspace_size = search::GetWorkspaceSize(args);
-  fwd_result.algo = search::Find<T>(
-      args, exhaustive_search, deterministic, workspace_size, ctx);
-#else
-  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
-  using search =
-      paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
-  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
-  workspace_size = fwd_result.workspace_size;
-#endif
-
-#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
-  // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
-    // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
-  // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
-    // FWD_ALGO_IMPLICIT_GEMM manually.
-  if (groups > 1) {
-    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
-  }
-#endif
-
-  // ------------------- cudnn conv forward ---------------------
-  paddle::operators::ScalingParamType<T> alpha = 1.0f;
-  paddle::operators::ScalingParamType<T> beta = 0.0f;
-
-  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
-  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
-  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
-
-#ifdef PADDLE_WITH_HIP
-  workspace_handle.RunFunc(
-      [&](void* workspace_ptr) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            paddle::platform::dynload::miopenConvolutionForward(
-                handle,
-                &alpha,
-                args.idesc.desc(),
-                input_data,
-                args.wdesc.desc(),
-                filter_data,
-                args.cdesc.desc(),
-                fwd_result.algo,
-                &beta,
-                args.odesc.desc(),
-                output_data,
-                workspace_ptr,
-                workspace_size));
-      },
-      workspace_size);
-#else
-  for (int i = 0; i < groups; i++) {
-    workspace_handle.RunFunc(
-        [&](void* workspace_ptr) {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              paddle::platform::dynload::cudnnConvolutionForward(
-                  handle,
-                  &alpha,
-                  args.idesc.desc(),
-                  input_data + i * group_offset_in,
-                  args.wdesc.desc(),
-                  filter_data + i * group_offset_filter,
-                  args.cdesc.desc(),
-                  fwd_result.algo,
-                  workspace_ptr,
-                  workspace_size,
-                  &beta,
-                  args.odesc.desc(),
-                  output_data + i * group_offset_out));
-        },
-        workspace_size);
-  }
+  ConvCudnnKernelImplV7<T>(&transformed_input,
+                           &transformed_filter_channel,
+                           ctx,
+                           strides,
+                           padding_common,
+                           dilations,
+                           compute_format,
+                           layout,
+                           exhaustive_search,
+                           deterministic,
+                           groups,
+                           &transformed_output);
 #endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
@@ -396,9 +579,6 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                        int groups,
                        const std::vector<int>& dilations,
                        const std::string& data_format,
-                       bool use_addto,
-                       int workspace_size_MB,
-                       bool exhaustive_search,
                        DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,
@@ -406,12 +586,9 @@ void Conv3DCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 
@@ -425,10 +602,6 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                               int groups,
                               const std::vector<int>& dilations,
                               const std::string& data_format,
-                              bool use_addto,
-                              int workspace_size_MB,
-                              bool exhaustive_search,
-                              bool fuse_relu,
                               DenseTensor* out) {
   ConvCudnnKernel<T>(dev_ctx,
                      input,
@@ -436,12 +609,9 @@ void DepthwiseConvCudnnKernel(const Context& dev_ctx,
                      strides,
                      paddings,
                      padding_algorithm,
-                     groups,
                      dilations,
+                     groups,
                      data_format,
-                     use_addto,
-                     workspace_size_MB,
-                     exhaustive_search,
                      out);
 }
 

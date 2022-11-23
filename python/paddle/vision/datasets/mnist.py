@@ -88,6 +88,7 @@ class MNIST(Dataset):
                 print(type(img), img.shape, label)
                 # <class 'paddle.Tensor'> [1, 28, 28] [7]
     """
+
     NAME = 'mnist'
     URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
     TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
@@ -99,40 +100,64 @@ class MNIST(Dataset):
     TRAIN_LABEL_URL = URL_PREFIX + 'train-labels-idx1-ubyte.gz'
     TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
-    def __init__(self,
-                 image_path=None,
-                 label_path=None,
-                 mode='train',
-                 transform=None,
-                 download=True,
-                 backend=None):
-        assert mode.lower() in ['train', 'test'], \
-                "mode should be 'train' or 'test', but got {}".format(mode)
+    def __init__(
+        self,
+        image_path=None,
+        label_path=None,
+        mode='train',
+        transform=None,
+        download=True,
+        backend=None,
+    ):
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], "mode should be 'train' or 'test', but got {}".format(mode)
 
         if backend is None:
             backend = paddle.vision.get_image_backend()
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
-                    backend))
+                    backend
+                )
+            )
         self.backend = backend
 
         self.mode = mode.lower()
         self.image_path = image_path
         if self.image_path is None:
-            assert download, "image_path is not set and downloading automatically is disabled"
-            image_url = self.TRAIN_IMAGE_URL if mode == 'train' else self.TEST_IMAGE_URL
-            image_md5 = self.TRAIN_IMAGE_MD5 if mode == 'train' else self.TEST_IMAGE_MD5
+            assert (
+                download
+            ), "image_path is not set and downloading automatically is disabled"
+            image_url = (
+                self.TRAIN_IMAGE_URL if mode == 'train' else self.TEST_IMAGE_URL
+            )
+            image_md5 = (
+                self.TRAIN_IMAGE_MD5 if mode == 'train' else self.TEST_IMAGE_MD5
+            )
             self.image_path = _check_exists_and_download(
-                image_path, image_url, image_md5, self.NAME, download)
+                image_path, image_url, image_md5, self.NAME, download
+            )
 
         self.label_path = label_path
         if self.label_path is None:
-            assert download, "label_path is not set and downloading automatically is disabled"
-            label_url = self.TRAIN_LABEL_URL if self.mode == 'train' else self.TEST_LABEL_URL
-            label_md5 = self.TRAIN_LABEL_MD5 if self.mode == 'train' else self.TEST_LABEL_MD5
+            assert (
+                download
+            ), "label_path is not set and downloading automatically is disabled"
+            label_url = (
+                self.TRAIN_LABEL_URL
+                if self.mode == 'train'
+                else self.TEST_LABEL_URL
+            )
+            label_md5 = (
+                self.TRAIN_LABEL_MD5
+                if self.mode == 'train'
+                else self.TEST_LABEL_MD5
+            )
             self.label_path = _check_exists_and_download(
-                label_path, label_url, label_md5, self.NAME, download)
+                label_path, label_url, label_md5, self.NAME, download
+            )
 
         self.transform = transform
 
@@ -156,14 +181,16 @@ class MNIST(Dataset):
                 # image file : 16B
                 magic_byte_img = '>IIII'
                 magic_img, image_num, rows, cols = struct.unpack_from(
-                    magic_byte_img, img_buf, offset_img)
+                    magic_byte_img, img_buf, offset_img
+                )
                 offset_img += struct.calcsize(magic_byte_img)
 
                 offset_lab = 0
                 # label file : 8B
                 magic_byte_lab = '>II'
                 magic_lab, label_num = struct.unpack_from(
-                    magic_byte_lab, lab_buf, offset_lab)
+                    magic_byte_lab, lab_buf, offset_lab
+                )
                 offset_lab += struct.calcsize(magic_byte_lab)
 
                 while True:
@@ -175,17 +202,19 @@ class MNIST(Dataset):
                     step_label += buffer_size
 
                     fmt_images = '>' + str(buffer_size * rows * cols) + 'B'
-                    images_temp = struct.unpack_from(fmt_images, img_buf,
-                                                     offset_img)
+                    images_temp = struct.unpack_from(
+                        fmt_images, img_buf, offset_img
+                    )
                     images = np.reshape(
-                        images_temp,
-                        (buffer_size, rows * cols)).astype('float32')
+                        images_temp, (buffer_size, rows * cols)
+                    ).astype('float32')
                     offset_img += struct.calcsize(fmt_images)
 
                     for i in range(buffer_size):
                         self.images.append(images[i, :])
                         self.labels.append(
-                            np.array([labels[i]]).astype('int64'))
+                            np.array([labels[i]]).astype('int64')
+                        )
 
     def __getitem__(self, idx):
         image, label = self.images[idx], self.labels[idx]

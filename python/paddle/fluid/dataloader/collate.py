@@ -18,10 +18,7 @@ import numpy as np
 from ..framework import _non_static_mode
 from .. import core, layers
 
-try:
-    from collections.abc import Sequence, Mapping
-except:
-    from collections import Sequence, Mapping
+from collections.abc import Sequence, Mapping
 
 
 def default_collate_fn(batch):
@@ -58,7 +55,7 @@ def default_collate_fn(batch):
         batch = np.stack(batch, axis=0)
         return batch
     elif isinstance(sample, (paddle.Tensor, core.eager.Tensor)):
-        return layers.stack(batch, axis=0)
+        return paddle.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)
         return batch
@@ -66,18 +63,20 @@ def default_collate_fn(batch):
         return batch
     elif isinstance(sample, Mapping):
         return {
-            key: default_collate_fn([d[key] for d in batch])
-            for key in sample
+            key: default_collate_fn([d[key] for d in batch]) for key in sample
         }
     elif isinstance(sample, Sequence):
         sample_fields_num = len(sample)
         if not all(len(sample) == sample_fields_num for sample in iter(batch)):
             raise RuntimeError(
-                "fileds number not same among samples in a batch")
+                "fileds number not same among samples in a batch"
+            )
         return [default_collate_fn(fields) for fields in zip(*batch)]
 
-    raise TypeError("batch data con only contains: tensor, numpy.ndarray, "
-                    "dict, list, number, but got {}".format(type(sample)))
+    raise TypeError(
+        "batch data con only contains: tensor, numpy.ndarray, "
+        "dict, list, number, but got {}".format(type(sample))
+    )
 
 
 def default_convert_fn(batch):

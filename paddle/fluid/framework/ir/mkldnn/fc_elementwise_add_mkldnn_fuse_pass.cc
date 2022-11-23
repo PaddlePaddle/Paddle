@@ -119,7 +119,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
       return;
     }
 
-    fc_op->Op()->SetOutput("ResidualData", {residual_data->Name()});
+    fc_op->Op()->SetInput("ResidualData", {residual_data->Name()});
     fc_op->Op()->SetOutput("Out", {elementwise_out->Name()});
     fc_op->Op()->SetAttr("fuse_residual_connection", true);
 
@@ -132,7 +132,8 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_fc_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = fc_as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_fc_count << " fc (as " << fusionMode

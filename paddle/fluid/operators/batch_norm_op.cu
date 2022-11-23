@@ -35,7 +35,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = phi::DenseTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>

@@ -76,8 +76,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
             x_dims));
   }
 
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
@@ -158,12 +158,17 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
                           bias_dim[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
+  ctx->ShareLoD("X", "Y");
   VLOG(4) << x_dims;
   ctx->SetOutputDim("MeanOut", {C});
   ctx->SetOutputDim("VarianceOut", {C});
-  ctx->SetOutputDim("SavedMean", {C});
-  ctx->SetOutputDim("SavedVariance", {C});
-  ctx->ShareLoD("X", "Y");
+  if (!test_mode) {
+    ctx->SetOutputDim("SavedMean", {C});
+    ctx->SetOutputDim("SavedVariance", {C});
+  }
+  if (ctx->HasOutput("ReserveSpace")) {
+    ctx->SetOutputDim("ReserveSpace", {-1});
+  }
 }
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
@@ -208,15 +213,15 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -350,8 +355,8 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
 
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNormGrad");
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
@@ -398,15 +403,15 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      (expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = Attrs();
     auto ar = paddle::framework::AttrReader(attrs);
     const std::string data_layout = ar.Get<std::string>("data_layout");
-    auto dl = framework::StringToDataLayout(data_layout);
+    auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
-    if (dl != framework::DataLayout::kAnyLayout) {
+    if (dl != phi::DataLayout::kAnyLayout) {
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -492,8 +497,8 @@ void BatchNormDoubleGradOp::InferShape(
   OP_INOUT_CHECK(ctx->HasOutput("DX"), "Output", "DX", "BatchNormDoubleGrad");
 
   const auto x_dims = ctx->GetInputDim("X");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_layout"));
+  const DataLayout data_layout =
+      phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
   const int C =
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]

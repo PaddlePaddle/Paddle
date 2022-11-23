@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ...fluid.dygraph.dygraph_to_static.convert_call_func import convert_call  # noqa: F401
+from ...fluid.dygraph.dygraph_to_static.convert_call_func import (  # noqa: F401
+    convert_call,
+)
 
 __all__ = []

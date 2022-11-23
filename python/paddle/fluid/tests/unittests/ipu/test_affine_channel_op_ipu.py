@@ -21,7 +21,6 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
-
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -48,16 +47,18 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        data = paddle.static.data(name=self.feed_list[0],
-                                  shape=self.feed_shape[0],
-                                  dtype='float32')
+        data = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
         input_scale = paddle.fluid.layers.create_parameter(
-            shape=[self.feed_shape[0][1]], dtype="float32")
+            shape=[self.feed_shape[0][1]], dtype="float32"
+        )
         input_bias = paddle.fluid.layers.create_parameter(
-            shape=[self.feed_shape[0][1]], dtype="float32")
-        out = paddle.fluid.layers.affine_channel(data,
-                                                 scale=input_scale,
-                                                 bias=input_bias)
+            shape=[self.feed_shape[0][1]], dtype="float32"
+        )
+        out = paddle.fluid.layers.affine_channel(
+            data, scale=input_scale, bias=input_bias
+        )
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -72,7 +73,6 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
-
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 4, 64, 64])
         self.feed_fp32 = {'data': data.astype(np.float32)}
@@ -81,7 +81,6 @@ class TestCase1(TestBase):
 
 @unittest.skip("Only support NCHW")
 class TestNHWC(TestBase):
-
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['data_layout'] = 'NHWC'

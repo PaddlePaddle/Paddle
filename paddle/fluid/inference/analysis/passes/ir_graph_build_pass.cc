@@ -55,7 +55,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         argument->model_params_path(),
         argument->scope_ptr(),
         place,
-        argument->model_from_memory_valid() && argument->model_from_memory());
+        argument->model_from_memory_valid() && argument->model_from_memory(),
+        argument->skip_load_params());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -96,6 +97,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                          &argument->ipu_custom_ops_info());
       argument->main_graph().SetNotOwned("custom_patterns",
                                          &argument->ipu_custom_patterns());
+      argument->main_graph().SetNotOwned(
+          "enable_model_runtime_executor",
+          &argument->ipu_enable_model_runtime_executor());
     }
   }
 #endif
@@ -114,10 +118,11 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &params_path,
     framework::Scope *scope,
     const platform::Place &place,
-    bool model_from_memory) {
+    bool model_from_memory,
+    bool skip_load_params) {
   framework::Executor exe(place);
   if (!model_from_memory) {
-    return Load(&exe, scope, program_path, params_path);
+    return Load(&exe, scope, program_path, params_path, !skip_load_params);
   } else {
     return LoadFromMemory(&exe, scope, program_path, params_path);
   }

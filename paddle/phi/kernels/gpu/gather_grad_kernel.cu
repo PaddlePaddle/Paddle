@@ -55,6 +55,10 @@ void GatherGradKernel(const Context& dev_ctx,
   } else if (index_type == DataType::INT64) {
     phi::funcs::GPUScatterAssign<T, int64_t>(
         dev_ctx, out_grad, index, x_grad, overwrite);
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The data type of Input(Index) of gather_grad must be int32 or int64 "
+        "on GPU."));
   }
 }
 

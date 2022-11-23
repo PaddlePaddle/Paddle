@@ -55,7 +55,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -233,7 +232,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_set_layout",
            [](phi::DenseTensor &self, const std::string &layout) {
-             self.set_layout(StringToDataLayout(layout));
+             self.set_layout(phi::StringToDataLayout(layout));
            })
       .def("_alloc_float",
            [](phi::DenseTensor &self, paddle::platform::CustomPlace &place) {
@@ -503,7 +502,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
            })
       .def("_layout",
            [](phi::DenseTensor &self) {
-             return DataLayoutToString(self.layout());
+             return phi::DataLayoutToString(self.layout());
            })
       .def("_share_data_with", &phi::DenseTensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)

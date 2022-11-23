@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
@@ -23,6 +22,7 @@
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
@@ -39,8 +39,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
                                 const std::string& data_format,
                                 DenseTensor* dx,
                                 DenseTensor* dfilter) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   // For filter, we do not use const pointer because we will do reshape,
   // but we should avoid modifying its value.
   DenseTensor filter_ = filter;
@@ -147,7 +146,7 @@ void ConvTransposeGradRawKernel(const Context& ctx,
     paddle::operators::math::
         Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
             im2col;
-    paddle::operators::math::Vol2ColFunctor<Context, T> vol2col;
+    phi::funcs::Vol2ColFunctor<Context, T> vol2col;
     funcs::ConcatFunctor<Context, T> concat_functor;
 
     if (dx) {

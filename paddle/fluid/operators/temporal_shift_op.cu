@@ -11,7 +11,7 @@
 
 #include "paddle/fluid/operators/temporal_shift_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -165,8 +165,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
     const int nt = input->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? input->dims()[1]
@@ -220,8 +219,7 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
     int t = ctx.Attr<int>("seg_num");
     float shift_ratio = ctx.Attr<float>("shift_ratio");
     const std::string data_format_str = ctx.Attr<std::string>("data_format");
-    const DataLayout data_layout =
-        framework::StringToDataLayout(data_format_str);
+    const DataLayout data_layout = phi::StringToDataLayout(data_format_str);
 
     const int nt = output_grad->dims()[0];
     const int c = (data_layout == DataLayout::kNCHW ? output_grad->dims()[1]
