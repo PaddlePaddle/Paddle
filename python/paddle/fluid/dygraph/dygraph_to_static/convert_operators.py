@@ -29,7 +29,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     assign,
     fill_constant,
-    slice,
     reduce_all,
     reduce_any,
 )
