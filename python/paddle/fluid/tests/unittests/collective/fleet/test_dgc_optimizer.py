@@ -24,7 +24,9 @@ paddle.enable_static()
 
 
 class TestDGCMomentumOptimizer(unittest.TestCase):
-    class MockDGCMomentum(optimizer.DGCMomentumOptimizer):
+    class MockDGCMomentum(
+        paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer
+    ):
         def get_accumulators(self):
             return self._accumulators
 
