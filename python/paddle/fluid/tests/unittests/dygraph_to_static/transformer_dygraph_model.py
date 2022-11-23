@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import (
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
 import paddle
+import paddle.nn.functional as F
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -574,7 +575,7 @@ class CrossEntropyCriterion:
 
     def __call__(self, predict, label, weights):
         if self.label_smooth_eps:
-            label_out = layers.label_smooth(
+            label_out = F.label_smooth(
                 label=layers.one_hot(input=label, depth=predict.shape[-1]),
                 epsilon=self.label_smooth_eps,
             )
