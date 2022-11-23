@@ -594,6 +594,7 @@ def deform_conv2d(
         )
 
 
+@static_only
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
     prelu activation.
@@ -619,11 +620,11 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         weight (alpha), it can be create by ParamAttr. None by default. \
         For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
 
-        name (str, optional): Name for the operation (optional, default is None). \
-        For more information, please refer to :ref:`api_guide_Name`.
-
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+
+        name (str, optional): Name for the operation (optional, default is None). \
+        For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
@@ -633,11 +634,12 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
-
-            x = paddle.to_tensor([-1., 2., 3.])
-            param = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(0.2))
-            out = paddle.static.nn.prelu(x, 'all', param)
-            # [-0.2, 2., 3.]
+            import paddle.fluid as fluid
+            from paddle.fluid.param_attr import ParamAttr
+            x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
+            mode = 'channel'
+            output = paddle.static.nn.prelu(
+                x,mode,param_attr=ParamAttr(name='alpha'))
 
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
@@ -691,8 +693,6 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         is_bias=False,
         default_initializer=paddle.nn.initializer.Constant(0.25),
     )
-    if paddle.fluid.framework.in_dygraph_mode():
-        return paddle._C_ops.prelu(x, alpha, data_format, mode)
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
