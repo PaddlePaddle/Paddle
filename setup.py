@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os 
+import os
 import sys
 import platform
 import re
@@ -27,7 +27,7 @@ from setuptools import setup
 from contextlib import contextmanager
 from setuptools.dist import Distribution
 from setuptools import Extension, find_packages
-from subprocess import CalledProcessError,call
+from subprocess import CalledProcessError
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
@@ -35,84 +35,105 @@ from setuptools.command.egg_info import egg_info
 from distutils.spawn import find_executable
 
 
-if sys.version_info < (3,7):
-    raise RuntimeError("Paddle only support Python version>=3.7 now, You are using Python %s" % platform.python_version())
+if sys.version_info < (3, 7):
+    raise RuntimeError(
+        "Paddle only support Python version>=3.7 now, You are using Python %s"
+        % platform.python_version()
+    )
 else:
-    if os.getenv("PY_VERSION") == None:
+    if os.getenv("PY_VERSION") is None:
         print("export PY_VERSION = %s" % platform.python_version())
-        python_version=platform.python_version()
-        os.environ["PY_VERSION"]=python_version
+        python_version = platform.python_version()
+        os.environ["PY_VERSION"] = python_version
 
-#check cmake
+# check cmake
 CMAKE = find_executable('cmake3') or find_executable('cmake')
-assert CMAKE, 'The "cmake" executable is not found. Please check if Cmake is installed.'
+assert (
+    CMAKE
+), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
-#get Top_dir
+# get Top_dir
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 
-IS_WINDOWS = (os.name == 'nt')
+IS_WINDOWS = os.name == 'nt'
 
-#filter args of setup.py
+
+# filter args of setup.py
 def filter_setup_args(input_args):
-    cmake_and_make=True
-    only_cmake=False
-    rerun_cmake=False
-    filter_args_list=[]
+    cmake_and_make = True
+    only_cmake = False
+    rerun_cmake = False
+    filter_args_list = []
     for arg in input_args:
         if arg == 'rerun-cmake':
-            rerun_cmake=True #delete Cmakecache.txt and rerun cmake
+            rerun_cmake = True  # delete Cmakecache.txt and rerun cmake
             continue
         if arg == 'only-cmake':
-            only_cmake = True #only cmake and do not make, leave a chance for users to adjust build options
+            only_cmake = True  # only cmake and do not make, leave a chance for users to adjust build options
             continue
         if arg in ['clean', 'egg_info', 'sdist']:
             cmake_and_make = False
         filter_args_list.append(arg)
-        
-    return cmake_and_make, only_cmake, rerun_cmake, filter_args_list 
-    
-cmake_and_make,only_cmake,rerun_cmake,filter_args_list = filter_setup_args(sys.argv)
+
+    return cmake_and_make, only_cmake, rerun_cmake, filter_args_list
+
+
+cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(
+    sys.argv
+)
+
 
 def parse_input_command(input_parameters):
-    dist=Distribution()
-    #get script name :setup.py
+    dist = Distribution()
+    # get script name :setup.py
     dist.script_name = os.path.basename(input_parameters[0])
     print("Start executing %s" % dist.script_name)
-    #get args of setup.py
+    # get args of setup.py
     dist.script_args = input_parameters[1:]
-    print("args of setup.py:%s" % dist.script_args) 
+    print("args of setup.py:%s" % dist.script_args)
     try:
         dist.parse_command_line()
     except:
-        print("An error occurred while parsing the parameters, '%s'" % dist.script_args)
+        print(
+            "An error occurred while parsing the parameters, '%s'"
+            % dist.script_args
+        )
         sys.exit(1)
-    
-    
+
+
 class BinaryDistribution(Distribution):
     def has_ext_modules(foo):
         return True
 
-RC      = 0
 
-ext_suffix = '.dll' if os.name == 'nt' else ('.dylib' if sys.platform == 'darwin' else '.so')
+RC = 0
+
+ext_suffix = (
+    '.dll'
+    if os.name == 'nt'
+    else ('.dylib' if sys.platform == 'darwin' else '.so')
+)
+
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
+        self.install_headers = os.path.join(
+            self.install_platlib, 'paddle', 'include'
+        )
         return ret
 
+
 class InstallHeaders(Command):
-    """Override how headers are copied.
-    """
+    """Override how headers are copied."""
+
     description = 'install C/C++ header files'
 
-    user_options = [('install-dir=', 'd',
-                     'directory to install header files to'),
-                    ('force', 'f',
-                     'force installation (overwrite existing files)'),
-                   ]
+    user_options = [
+        ('install-dir=', 'd', 'directory to install header files to'),
+        ('force', 'f', 'force installation (overwrite existing files)'),
+    ]
 
     boolean_options = ['force']
 
@@ -122,30 +143,42 @@ class InstallHeaders(Command):
         self.outfiles = []
 
     def finalize_options(self):
-        self.set_undefined_options('install',
-                                   ('install_headers', 'install_dir'),
-                                   ('force', 'force'))
+        self.set_undefined_options(
+            'install', ('install_headers', 'install_dir'), ('force', 'force')
+        )
 
     def mkdir_and_copy_file(self, header):
         if 'pb.h' in header:
-            install_dir = re.sub(envir_var.get("PADDLE_BINARY_DIR") +'/', '', header)
+            install_dir = re.sub(
+                envir_var.get("PADDLE_BINARY_DIR") + '/', '', header
+            )
         elif 'third_party' not in header:
             # paddle headers
-            install_dir = re.sub(envir_var.get("PADDLE_SOURCE_DIR") +'/', '', header)
+            install_dir = re.sub(
+                envir_var.get("PADDLE_SOURCE_DIR") + '/', '', header
+            )
             print('install_dir: ', install_dir)
             if 'fluid/jit' in install_dir:
                 install_dir = re.sub('fluid/jit', 'jit', install_dir)
                 print('fluid/jit install_dir: ', install_dir)
             if 'trace_event.h' in install_dir:
-                install_dir = re.sub('fluid/platform/profiler', 'phi/backends/custom', install_dir)
+                install_dir = re.sub(
+                    'fluid/platform/profiler',
+                    'phi/backends/custom',
+                    install_dir,
+                )
                 print('trace_event.h install_dir: ', install_dir)
         else:
             # third_party
-            install_dir = re.sub(envir_var.get("THIRD_PARTY_PATH") +'/', 'third_party', header)
+            install_dir = re.sub(
+                envir_var.get("THIRD_PARTY_PATH") + '/', 'third_party', header
+            )
             patterns = ['install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
-        install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
+        install_dir = os.path.join(
+            self.install_dir, os.path.dirname(install_dir)
+        )
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
         return self.copy_file(header, install_dir)
@@ -165,6 +198,7 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+
 class EggInfo(egg_info):
     """Copy license file into `.dist-info` folder."""
 
@@ -172,31 +206,44 @@ class EggInfo(egg_info):
         # don't duplicate license into `.dist-info` when building a distribution
         if not self.distribution.have_run.get('install', True):
             self.mkpath(self.egg_info)
-            self.copy_file(envir_var.get("PADDLE_SOURCE_DIR")+"/LICENSE", self.egg_info)
-            
+            self.copy_file(
+                envir_var.get("PADDLE_SOURCE_DIR") + "/LICENSE", self.egg_info
+            )
 
         egg_info.run(self)
+
 
 def git_commit():
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
-        git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
-            cwd=envir_var.get("PADDLE_SOURCE_DIR")).communicate()[0].strip()
+        git_commit = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=envir_var.get("PADDLE_SOURCE_DIR"),
+            )
+            .communicate()[0]
+            .strip()
+        )
     except:
         git_commit = 'Unknown'
     git_commit = git_commit.decode('utf-8')
     return str(git_commit)
 
+
 def _get_version_detail(idx):
-    assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
+    assert (
+        idx < 3
+    ), "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
         so detail index must less than 3"
-    tag_version_regex=envir_var.get("TAG_VERSION_REGEX")
-    paddle_version=envir_var.get("PADDLE_VERSION")
+    tag_version_regex = envir_var.get("TAG_VERSION_REGEX")
+    paddle_version = envir_var.get("PADDLE_VERSION")
     if re.match(tag_version_regex, paddle_version):
         version_details = paddle_version.split('.')
         if len(version_details) >= 3:
             return version_details[idx]
     return 0
+
 
 def _mkdir_p(dir_str):
     try:
@@ -204,43 +251,70 @@ def _mkdir_p(dir_str):
     except OSError as e:
         raise RuntimeError("Failed to create folder build/")
 
+
 def get_major():
     return int(_get_version_detail(0))
+
 
 def get_minor():
     return int(_get_version_detail(1))
 
+
 def get_patch():
     return str(_get_version_detail(2))
 
+
 def get_cuda_version():
-    with_gpu=envir_var.get("WITH_GPU")
+    with_gpu = envir_var.get("WITH_GPU")
     if with_gpu == 'ON':
         return envir_var.get("CUDA_VERSION")
     else:
         return 'False'
 
+
 def get_cudnn_version():
-    with_gpu=envir_var.get("WITH_GPU")
+    with_gpu = envir_var.get("WITH_GPU")
     if with_gpu == 'ON':
         temp_cudnn_version = ''
-        cudnn_major_version=envir_var.get("CUDNN_MAJOR_VERSION")
+        cudnn_major_version = envir_var.get("CUDNN_MAJOR_VERSION")
         if cudnn_major_version:
             temp_cudnn_version += cudnn_major_version
-            cudnn_minor_version=envir_var.get("CUDNN_MINOR_VERSION")
+            cudnn_minor_version = envir_var.get("CUDNN_MINOR_VERSION")
             if cudnn_minor_version:
-                temp_cudnn_version=temp_cudnn_version+'.'+cudnn_minor_version
-                cudnn_patchlevel_version=envir_var.get("CUDNN_PATCHLEVEL_VERSION")
+                temp_cudnn_version = (
+                    temp_cudnn_version + '.' + cudnn_minor_version
+                )
+                cudnn_patchlevel_version = envir_var.get(
+                    "CUDNN_PATCHLEVEL_VERSION"
+                )
                 if cudnn_patchlevel_version:
-                    temp_cudnn_version = temp_cudnn_version+'.'+cudnn_patchlevel_version
+                    temp_cudnn_version = (
+                        temp_cudnn_version + '.' + cudnn_patchlevel_version
+                    )
         return temp_cudnn_version
     else:
         return 'False'
 
+
 def is_taged():
     try:
-        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
-        git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd=envir_var.get("PADDLE_SOURCE_DIR")).communicate()[0].strip()
+        cmd = [
+            'git',
+            'describe',
+            '--exact-match',
+            '--tags',
+            'HEAD',
+            '2>/dev/null',
+        ]
+        git_tag = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=envir_var.get("PADDLE_SOURCE_DIR"),
+            )
+            .communicate()[0]
+            .strip()
+        )
         git_tag = git_tag.decode()
     except:
         return False
@@ -248,6 +322,7 @@ def is_taged():
         return True
     else:
         return False
+
 
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -267,7 +342,7 @@ __all__ = ['cuda', 'cudnn', 'show']
 
 def show():
     """Get the version of paddle if `paddle` package if tagged. Otherwise, output the corresponding commit id.
-    
+
     Returns:
         If paddle package is not tagged, the commit-id of paddle will be output.
         Otherwise, the following information will be output.
@@ -279,13 +354,13 @@ def show():
         minor: the minor version of paddle
 
         patch: the patch level version of paddle
-        
+
         rc: whether it's rc version
 
         cuda: the cuda version of package. It will return `False` if CPU version paddle package is installed
 
         cudnn: the cudnn version of package. It will return `False` if CPU version paddle package is installed
-    
+
     Examples:
         .. code-block:: python
 
@@ -326,7 +401,7 @@ def cuda():
 
     Returns:
         string: Return the version information of cuda. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -343,7 +418,7 @@ def cudnn():
 
     Returns:
         string: Return the version information of cudnn. If paddle package is CPU version, it will return False.
-    
+
     Examples:
         .. code-block:: python
 
@@ -366,17 +441,21 @@ def cudnn():
             raise
 
     with open(filename, 'w') as f:
-        f.write(cnt % {
-            'major': get_major(),
-            'minor': get_minor(),
-            'patch': get_patch(),
-            'rc': RC,
-            'version': envir_var.get("PADDLE_VERSION"),
-            'cuda': get_cuda_version(),
-            'cudnn': get_cudnn_version(),
-            'commit': commit,
-            'istaged': is_taged(),
-            'with_mkl': envir_var.get("WITH_MKL")})
+        f.write(
+            cnt
+            % {
+                'major': get_major(),
+                'minor': get_minor(),
+                'patch': get_patch(),
+                'rc': RC,
+                'version': envir_var.get("PADDLE_VERSION"),
+                'cuda': get_cuda_version(),
+                'cudnn': get_cudnn_version(),
+                'commit': commit,
+                'istaged': is_taged(),
+                'with_mkl': envir_var.get("WITH_MKL"),
+            }
+        )
 
 
 def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
@@ -391,7 +470,10 @@ os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
     with open(filename, 'w') as f:
         f.write(cnt)
 
-def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
+
+def write_distributed_training_mode_py(
+    filename='paddle/fluid/incubate/fleet/parameter_server/version.py',
+):
     cnt = '''
 
 # THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -413,9 +495,14 @@ def is_transpiler():
         if e.errno != errno.EEXIST:
             raise
     with open(filename, 'w') as f:
-        f.write(cnt % {
-            'mode': 'PSLIB' if envir_var.get("WITH_PSLIB") == 'ON' else 'TRANSPILER'
-        })
+        f.write(
+            cnt
+            % {
+                'mode': 'PSLIB'
+                if envir_var.get("WITH_PSLIB") == 'ON'
+                else 'TRANSPILER'
+            }
+        )
 
 
 def find_files(pattern, root, recursive=False):
@@ -424,6 +511,7 @@ def find_files(pattern, root, recursive=False):
             yield os.path.join(dirpath, filename)
         if not recursive:
             break
+
 
 @contextmanager
 def cd(path):
@@ -436,56 +524,60 @@ def cd(path):
     finally:
         os.chdir(orig_path)
 
-def options_process(args,build_options):
-    for key,value in sorted(build_options.items()):
-        if value is not None:
-            args.append("-D{}={}".format(key,value))
 
-def cmake_run(args,build_path):
+def options_process(args, build_options):
+    for key, value in sorted(build_options.items()):
+        if value is not None:
+            args.append("-D{}={}".format(key, value))
+
+
+def cmake_run(args, build_path):
     with cd(build_path):
-        cmake_args=[]
+        cmake_args = []
         cmake_args.append(CMAKE)
-        cmake_args+=args
+        cmake_args += args
         cmake_args.append(TOP_DIR)
-        print("cmake_args:",cmake_args)
+        print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
 
-def make_run(args,build_path,envrion_var):
+
+def make_run(args, build_path, envrion_var):
     with cd(build_path):
-        cmake_args=[]
+        cmake_args = []
         cmake_args.append(CMAKE)
-        
-        cmake_args+=args
+
+        cmake_args += args
         # cmake_args.append(TOP_DIR)
         print(" ".join(cmake_args))
         try:
             print("cmake_args: ", cmake_args)
-            subprocess.check_call(cmake_args,cwd=build_path,env=envrion_var)
+            subprocess.check_call(cmake_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
             sys.exit(1)
-            
+
+
 def build_steps():
     print('------- Building start ------')
 
-    if not os.path.exists(TOP_DIR+'/build'):
-        _mkdir_p(TOP_DIR+'/build')
-    build_path=TOP_DIR+'/build'
+    if not os.path.exists(TOP_DIR + '/build'):
+        _mkdir_p(TOP_DIR + '/build')
+    build_path = TOP_DIR + '/build'
 
-    #run cmake to generate native build files
-    cmake_cache_file_path=os.path.join(build_path,"CMakeCache.txt")
+    # run cmake to generate native build files
+    cmake_cache_file_path = os.path.join(build_path, "CMakeCache.txt")
 
-    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke 
-    if os.path.isfile(cmake_cache_file_path) and rerun_cmake == True:
+    # if rerun_cmake is True,remove CMakeCache.txt and rerun camke
+    if os.path.isfile(cmake_cache_file_path) and rerun_cmake is True:
         os.remove(cmake_cache_file_path)
 
     if not os.path.exists(cmake_cache_file_path):
 
-        env_var=os.environ.copy() #get env variables
-        paddle_build_options={}
-        other_options={}
+        env_var = os.environ.copy()  # get env variables
+        paddle_build_options = {}
+        other_options = {}
         other_options.update(
             {
-                option:option
+                option: option
                 for option in (
                     "PYTHON_LIBRARY:FILEPATH",
                     "INFERENCE_DEMO_INSTALL_DIR",
@@ -508,126 +600,168 @@ def build_steps():
                     "XPU_SDK_ROOT",
                     "MSVC_STATIC_CRT",
                     "Ninja",
-                    "NEW_RELEASE_ALL"
+                    "NEW_RELEASE_ALL",
                 )
             }
         )
-        
-        #if environment variables which start with "WITH_" or "CMAKE_",put it into build_options
-        for option_key,option_value in env_var.items():
-            if option_key.startswith(("CMAKE_","WITH_")):
-                paddle_build_options[option_key]=option_value
-            if option_key in other_options:
-                key=other_options[option_key]
-                if key not in paddle_build_options:
-                    paddle_build_options[key]=option_value      
-        args=[]
-        options_process(args,paddle_build_options)
-        cmake_run(args,build_path)
 
-    #make
+        # if environment variables which start with "WITH_" or "CMAKE_",put it into build_options
+        for option_key, option_value in env_var.items():
+            if option_key.startswith(("CMAKE_", "WITH_")):
+                paddle_build_options[option_key] = option_value
+            if option_key in other_options:
+                key = other_options[option_key]
+                if key not in paddle_build_options:
+                    paddle_build_options[key] = option_value
+        args = []
+        options_process(args, paddle_build_options)
+        cmake_run(args, build_path)
+
+    # make
     if only_cmake:
-        print("You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'")
+        print(
+            "You have finished running cmake, the program exited,run 'ccmake build' to adjust build options and 'python setup.py install to build'"
+        )
         sys.exit()
-    
-    build_args=[ "--build",
-            ".",
-            "--target",
-            "install",
-            "--config",
-            'Release']  
-    
-    max_jobs=os.getenv("MAX_JOBS")
+
+    build_args = ["--build", ".", "--target", "install", "--config", 'Release']
+
+    max_jobs = os.getenv("MAX_JOBS")
     if max_jobs is not None:
         max_jobs = max_jobs or str(multiprocessing.cpu_count())
 
-        build_args+=["--"]
+        build_args += ["--"]
         if IS_WINDOWS:
             build_args += ["/p:CL_MPCount={}".format(max_jobs)]
         else:
             build_args += ["-j", str(multiprocessing.cpu_count())]
     else:
-         build_args+= ["-j",str(multiprocessing.cpu_count())]
-    environ_var=os.environ.copy()
-    make_run(build_args,build_path,environ_var)
+        build_args += ["-j", str(multiprocessing.cpu_count())]
+    environ_var = os.environ.copy()
+    make_run(build_args, build_path, environ_var)
+
 
 def get_setup_requires():
-    
-    with open(envir_var.get("PADDLE_SOURCE_DIR")+'/python/requirements.txt') as f:
-        setup_requires = f.read().splitlines() #Specify the dependencies to install      
-    if sys.version_info >= (3,7):
+
+    with open(
+        envir_var.get("PADDLE_SOURCE_DIR") + '/python/requirements.txt'
+    ) as f:
+        setup_requires = (
+            f.read().splitlines()
+        )  # Specify the dependencies to install
+    if sys.version_info >= (3, 7):
         setup_requires_tmp = []
         for setup_requires_i in setup_requires:
-            if "<\"3.6\"" in setup_requires_i or "<=\"3.6\"" in setup_requires_i or "<\"3.5\"" in setup_requires_i or "<=\"3.5\"" in setup_requires_i or "<\"3.7\"" in setup_requires_i:
+            if (
+                "<\"3.6\"" in setup_requires_i
+                or "<=\"3.6\"" in setup_requires_i
+                or "<\"3.5\"" in setup_requires_i
+                or "<=\"3.5\"" in setup_requires_i
+                or "<\"3.7\"" in setup_requires_i
+            ):
                 continue
-            setup_requires_tmp+=[setup_requires_i]
+            setup_requires_tmp += [setup_requires_i]
         setup_requires = setup_requires_tmp
         return setup_requires
     else:
-        raise RuntimeError("please check your python version,Paddle only support Python version>=3.7 now")
+        raise RuntimeError(
+            "please check your python version,Paddle only support Python version>=3.7 now"
+        )
+
 
 def get_package_data_and_package_dir():
 
     if os.name != 'nt':
-        package_data={'paddle.fluid': [envir_var.get("FLUID_CORE_NAME") + '.so']}
+        package_data = {
+            'paddle.fluid': [envir_var.get("FLUID_CORE_NAME") + '.so']
+        }
     else:
-        package_data={'paddle.fluid': [envir_var.get("FLUID_CORE_NAME") + '.pyd', envir_var.get("FLUID_CORE_NAME") + '.lib']}
+        package_data = {
+            'paddle.fluid': [
+                envir_var.get("FLUID_CORE_NAME") + '.pyd',
+                envir_var.get("FLUID_CORE_NAME") + '.lib',
+            ]
+        }
 
-    package_data['paddle.fluid'] += [paddle_binary_dir+'/python/paddle/cost_model/static_op_benchmark.json']
-    
-    package_dir={
-        '': paddle_binary_dir.split('/')[-1]+'/python',
-        #'':'build/python',
+    package_data['paddle.fluid'] += [
+        paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
+    ]
+
+    package_dir = {
+        '': paddle_binary_dir.split('/')[-1] + '/python',
+        # '':'build/python',
         # The paddle.fluid.proto will be generated while compiling.
         # So that package points to other directory.
-        #'paddle.fluid.proto.profiler': 'build/paddle/fluid/platform',
-        #'paddle.fluid.proto': 'build/paddle/fluid/framework',
-        #'paddle.fluid': 'build/python/paddle/fluid',
+        # 'paddle.fluid.proto.profiler': 'build/paddle/fluid/platform',
+        # 'paddle.fluid.proto': 'build/paddle/fluid/framework',
+        # 'paddle.fluid': 'build/python/paddle/fluid',
     }
     # put all thirdparty libraries in paddle.libs
-    libs_path=paddle_binary_dir+'/python/paddle/libs'
-    
-    package_data['paddle.libs']= []
-    package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix]
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+
+    package_data['paddle.libs'] = []
+    package_data['paddle.libs'] = [
+        ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix
+    ]
     shutil.copy(envir_var.get("WARPCTC_LIBRARIES"), libs_path)
 
-    package_data['paddle.libs']+=[
-        os.path.basename(envir_var.get("LAPACK_LIB")), 
+    package_data['paddle.libs'] += [
+        os.path.basename(envir_var.get("LAPACK_LIB")),
         os.path.basename(envir_var.get("BLAS_LIB")),
         os.path.basename(envir_var.get("GFORTRAN_LIB")),
-        os.path.basename(envir_var.get("GNU_RT_LIB_1"))]
+        os.path.basename(envir_var.get("GNU_RT_LIB_1")),
+    ]
     shutil.copy(envir_var.get("BLAS_LIB"), libs_path)
     shutil.copy(envir_var.get("LAPACK_LIB"), libs_path)
     shutil.copy(envir_var.get("GFORTRAN_LIB"), libs_path)
     shutil.copy(envir_var.get("GNU_RT_LIB_1"), libs_path)
 
-    if envir_var.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(envir_var.get("CUDNN_LIBRARY")):
-        package_data['paddle.libs']+=[os.path.basename(envir_var.get("CUDNN_LIBRARY"))]
+    if envir_var.get("WITH_CUDNN_DSO") == 'ON' and os.path.exists(
+        envir_var.get("CUDNN_LIBRARY")
+    ):
+        package_data['paddle.libs'] += [
+            os.path.basename(envir_var.get("CUDNN_LIBRARY"))
+        ]
         shutil.copy(envir_var.get("CUDNN_LIBRARY"), libs_path)
-        if sys.platform.startswith("linux") and envir_var.get("CUDNN_MAJOR_VERSION") == '8':
+        if (
+            sys.platform.startswith("linux")
+            and envir_var.get("CUDNN_MAJOR_VERSION") == '8'
+        ):
             # libcudnn.so includes libcudnn_ops_infer.so, libcudnn_ops_train.so,
             # libcudnn_cnn_infer.so, libcudnn_cnn_train.so, libcudnn_adv_infer.so,
             # libcudnn_adv_train.so
-            cudnn_lib_files = glob.glob(os.path.dirname(envir_var.get("CUDNN_LIBRARY")) + '/libcudnn_*so.8')
+            cudnn_lib_files = glob.glob(
+                os.path.dirname(envir_var.get("CUDNN_LIBRARY"))
+                + '/libcudnn_*so.8'
+            )
             for cudnn_lib in cudnn_lib_files:
                 if os.path.exists(cudnn_lib):
-                    package_data['paddle.libs']+=[os.path.basename(cudnn_lib)]
+                    package_data['paddle.libs'] += [os.path.basename(cudnn_lib)]
                     shutil.copy(cudnn_lib, libs_path)
 
     if not sys.platform.startswith("linux"):
-        package_data['paddle.libs']+=[os.path.basename(envir_var.get("GNU_RT_LIB_2"))]
+        package_data['paddle.libs'] += [
+            os.path.basename(envir_var.get("GNU_RT_LIB_2"))
+        ]
         shutil.copy(envir_var.get("GNU_RT_LIB_2"), libs_path)
 
     if envir_var.get("WITH_MKL") == 'ON':
-        shutil.copy(envir_var.get("MKLML_SHARED_LIB"), libs_path)#-------
-        shutil.copy(envir_var.get("MKLML_SHARED_IOMP_LIB"), libs_path) #
-        package_data['paddle.libs']+=[('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix, ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix]
+        shutil.copy(envir_var.get("MKLML_SHARED_LIB"), libs_path)  # -------
+        shutil.copy(envir_var.get("MKLML_SHARED_IOMP_LIB"), libs_path)  #
+        package_data['paddle.libs'] += [
+            ('libmklml_intel' if os.name != 'nt' else 'mklml') + ext_suffix,
+            ('libiomp5' if os.name != 'nt' else 'libiomp5md') + ext_suffix,
+        ]
     else:
         if os.name == 'nt':
             # copy the openblas.dll
             shutil.copy(envir_var.get("OPENBLAS_SHARED_LIB"), libs_path)
             package_data['paddle.libs'] += ['openblas' + ext_suffix]
-        elif os.name == 'posix' and platform.machine() == 'aarch64' and envir_var.get("OPENBLAS_LIB").endswith('so'):
+        elif (
+            os.name == 'posix'
+            and platform.machine() == 'aarch64'
+            and envir_var.get("OPENBLAS_LIB").endswith('so')
+        ):
             # copy the libopenblas.so on linux+aarch64
             # special: libpaddle.so without avx depends on 'libopenblas.so.0', not 'libopenblas.so'
             if os.path.exists(envir_var.get("OPENBLAS_LIB") + '.0'):
@@ -636,30 +770,57 @@ def get_package_data_and_package_dir():
 
     if envir_var.get("WITH_LITE") == 'ON':
         shutil.copy(envir_var.get("LITE_SHARED_LIB"), libs_path)
-        package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_suffix]
+        package_data['paddle.libs'] += [
+            'libpaddle_full_api_shared' + ext_suffix
+        ]
         if envir_var.get("LITE_WITH_NNADAPTER") == 'ON':
             shutil.copy(envir_var.get("LITE_NNADAPTER_LIB"), libs_path)
-            package_data['paddle.libs']+=['libnnadapter' + ext_suffix]
+            package_data['paddle.libs'] += ['libnnadapter' + ext_suffix]
             if envir_var.get("NNADAPTER_WITH_HUAWEI_ASCEND_NPU") == 'ON':
                 shutil.copy(envir_var.get("LITE_NNADAPTER_NPU_LIB"), libs_path)
-                package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_suffix]
+                package_data['paddle.libs'] += [
+                    'libnnadapter_driver_huawei_ascend_npu' + ext_suffix
+                ]
 
     if envir_var.get("WITH_CINN") == 'ON':
-        shutil.copy(envir_var.get("CINN_LIB_LOCATION")+'/'+envir_var.get("CINN_LIB_NAME"), libs_path)
-        shutil.copy(envir_var.get("CINN_INCLUDE_DIR")+'/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
-        package_data['paddle.libs']+=['libcinnapi.so']
-        package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
+        shutil.copy(
+            envir_var.get("CINN_LIB_LOCATION")
+            + '/'
+            + envir_var.get("CINN_LIB_NAME"),
+            libs_path,
+        )
+        shutil.copy(
+            envir_var.get("CINN_INCLUDE_DIR")
+            + '/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh',
+            libs_path,
+        )
+        package_data['paddle.libs'] += ['libcinnapi.so']
+        package_data['paddle.libs'] += ['cinn_cuda_runtime_source.cuh']
         if envir_var.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
-            command = "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path + envir_var.get("CINN_LIB_NAME")
+            command = (
+                "patchelf --set-rpath '$ORIGIN/' %s/" % libs_path
+                + envir_var.get("CINN_LIB_NAME")
+            )
             if os.system(command) != 0:
-                raise Exception('patch '+ libs_path + '/'+envir_var.get("CINN_LIB_NAME")+ ' failed', 'command: %s' % command)
+                raise Exception(
+                    'patch '
+                    + libs_path
+                    + '/'
+                    + envir_var.get("CINN_LIB_NAME")
+                    + ' failed',
+                    'command: %s' % command,
+                )
 
     if envir_var.get("WITH_PSLIB") == 'ON':
         shutil.copy(envir_var.get("PSLIB_LIB"), libs_path)
         if os.path.exists(envir_var.get("PSLIB_VERSION_PY")):
-            shutil.copy(envir_var.get("PSLIB_VERSION_PY"), paddle_binary_dir+'/python/paddle/fluid/incubate/fleet/parameter_server/pslib/')
+            shutil.copy(
+                envir_var.get("PSLIB_VERSION_PY"),
+                paddle_binary_dir
+                + '/python/paddle/fluid/incubate/fleet/parameter_server/pslib/',
+            )
         package_data['paddle.libs'] += ['libps' + ext_suffix]
-    
+
     if envir_var.get("WITH_MKLDNN") == 'ON':
         if envir_var.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             # only change rpath in Release mode.
@@ -669,48 +830,73 @@ def get_package_data_and_package_dir():
             # change rpath of libdnnl.so.1, add $ORIGIN/ to it.
             # The reason is that all thirdparty libraries in the same directory,
             # thus, libdnnl.so.1 will find libmklml_intel.so and libiomp5.so.
-            command = "patchelf --set-rpath '$ORIGIN/' "+envir_var.get("MKLDNN_SHARED_LIB") #-----------
+            command = "patchelf --set-rpath '$ORIGIN/' " + envir_var.get(
+                "MKLDNN_SHARED_LIB"
+            )  # -----------
             if os.system(command) != 0:
-                raise Exception("patch libdnnl.so failed, command: %s" % command)
+                raise Exception(
+                    "patch libdnnl.so failed, command: %s" % command
+                )
         shutil.copy(envir_var.get("MKLDNN_SHARED_LIB"), libs_path)
         if os.name != 'nt':
             shutil.copy(envir_var.get("MKLDNN_SHARED_LIB_1"), libs_path)
             shutil.copy(envir_var.get("MKLDNN_SHARED_LIB_2"), libs_path)
-            package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1', 'libdnnl.so.2']
+            package_data['paddle.libs'] += [
+                'libmkldnn.so.0',
+                'libdnnl.so.1',
+                'libdnnl.so.2',
+            ]
         else:
-            package_data['paddle.libs']+=['mkldnn.dll']
+            package_data['paddle.libs'] += ['mkldnn.dll']
 
     if envir_var.get("WITH_ONNXRUNTIME") == 'ON':
         shutil.copy(envir_var.get("ONNXRUNTIME_SHARED_LIB"), libs_path)
         shutil.copy(envir_var.get("PADDLE2ONNX_LIB"), libs_path)
         if os.name == 'nt':
-            package_data['paddle.libs']+=['paddle2onnx.dll', 'onnxruntime.dll']
+            package_data['paddle.libs'] += [
+                'paddle2onnx.dll',
+                'onnxruntime.dll',
+            ]
         else:
-            package_data['paddle.libs']+=[envir_var.get("PADDLE2ONNX_LIB_NAME"), envir_var.get("ONNXRUNTIME_LIB_NAME")]
+            package_data['paddle.libs'] += [
+                envir_var.get("PADDLE2ONNX_LIB_NAME"),
+                envir_var.get("ONNXRUNTIME_LIB_NAME"),
+            ]
 
     if envir_var.get("WITH_XPU") == 'ON':
         # only change rpath in Release mode,
         if envir_var.get("CMAKE_BUILD_TYPE") == 'Release':
             if os.name != 'nt':
                 if envir_var.get("APPLE") == "1":
-                    command = "install_name_tool -id \"@loader_path/\" "+envir_var.get("XPU_API_LIB")
+                    command = (
+                        "install_name_tool -id \"@loader_path/\" "
+                        + envir_var.get("XPU_API_LIB")
+                    )
                 else:
-                    command = "patchelf --set-rpath '$ORIGIN/' "+envir_var.get("XPU_API_LIB")
+                    command = (
+                        "patchelf --set-rpath '$ORIGIN/' "
+                        + envir_var.get("XPU_API_LIB")
+                    )
                 if os.system(command) != 0:
-                    raise Exception('patch ' + envir_var.get("XPU_API_LIB")+ 'failed ,', "command: %s" % command)
+                    raise Exception(
+                        'patch ' + envir_var.get("XPU_API_LIB") + 'failed ,',
+                        "command: %s" % command,
+                    )
         shutil.copy(envir_var.get("XPU_API_LIB"), libs_path)
         shutil.copy(envir_var.get("XPU_RT_LIB"), libs_path)
-        package_data['paddle.libs']+=[envir_var.get("XPU_API_LIB_NAME"),
-                                    envir_var.get("XPU_RT_LIB_NAME")]
+        package_data['paddle.libs'] += [
+            envir_var.get("XPU_API_LIB_NAME"),
+            envir_var.get("XPU_RT_LIB_NAME"),
+        ]
 
     if envir_var.get("WITH_XPU_BKCL") == 'ON':
         shutil.copy(envir_var.get("XPU_BKCL_LIB"), libs_path)
-        package_data['paddle.libs']+=[envir_var.get("XPU_BKCL_LIB_NAME")]
-    
+        package_data['paddle.libs'] += [envir_var.get("XPU_BKCL_LIB_NAME")]
+
     # remove unused paddle/libs/__init__.py
-    if os.path.isfile(libs_path+'/__init__.py'):
-        os.remove(libs_path+'/__init__.py')
-    package_dir['paddle.libs']=libs_path
+    if os.path.isfile(libs_path + '/__init__.py'):
+        os.remove(libs_path + '/__init__.py')
+    package_dir['paddle.libs'] = libs_path
 
     # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
     # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
@@ -720,21 +906,40 @@ def get_package_data_and_package_dir():
         if os.name != 'nt':
             # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
             if envir_var.get("APPLE") == "1":
-                commands = ["install_name_tool -id '@loader_path/../libs/' "+ envir_var.get("PADDLE_BINARY_DIR")+'/python/paddle/fluid/'+envir_var.get("FLUID_CORE_NAME") + '.so']
-                commands.append("install_name_tool -add_rpath '@loader_path/../libs/' " + envir_var.get("PADDLE_BINARY_DIR")+'/python/paddle/fluid/'+envir_var.get("FLUID_CORE_NAME") + '.so')
+                commands = [
+                    "install_name_tool -id '@loader_path/../libs/' "
+                    + envir_var.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/fluid/'
+                    + envir_var.get("FLUID_CORE_NAME")
+                    + '.so'
+                ]
+                commands.append(
+                    "install_name_tool -add_rpath '@loader_path/../libs/' "
+                    + envir_var.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/fluid/'
+                    + envir_var.get("FLUID_CORE_NAME")
+                    + '.so'
+                )
             else:
-                commands = ["patchelf --set-rpath '$ORIGIN/../libs/' " + envir_var.get("PADDLE_BINARY_DIR")+'/python/paddle/fluid/'+envir_var.get("FLUID_CORE_NAME") + '.so']
+                commands = [
+                    "patchelf --set-rpath '$ORIGIN/../libs/' "
+                    + envir_var.get("PADDLE_BINARY_DIR")
+                    + '/python/paddle/fluid/'
+                    + envir_var.get("FLUID_CORE_NAME")
+                    + '.so'
+                ]
             # The sw_64 not suppot patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:
                     if os.system(command) != 0:
-                        raise Exception('patch '+ envir_var.get("FLUID_CORE_NAME") + '.%s failed' %ext_suffix, 'command: %s' % command)
-
-    return package_data,package_dir
-
-def get_ext_modules():
-     #A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
-    ext_modules = [Extension('_foo', [paddle_binary_dir+ '/python/stub.cc'])]  
+                        raise Exception(
+                            'patch '
+                            + envir_var.get("FLUID_CORE_NAME")
+                            + '.%s failed' % ext_suffix,
+                            'command: %s' % command,
+                        )
+    # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
+    ext_modules = [Extension('_foo', [paddle_binary_dir + '/python/stub.cc'])]
     if os.name == 'nt':
         # fix the path separator under windows
         fix_package_dir = {}
@@ -745,75 +950,156 @@ def get_ext_modules():
     elif sys.platform == 'darwin':
         ext_modules = []
 
-    return ext_modules
+    return package_data, package_dir, ext_modules
+
 
 def get_headers():
 
     headers = (
         # paddle level api headers
-        list(find_files('*.h', paddle_source_dir+'/paddle')) +
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/api')) +  # phi unify api header
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/api/ext')) +  # custom op api
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/api/include')) +  # phi api
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/common')) +  # phi common headers
-        # phi level api headers (low level api)
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi')) +  # phi extension header
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/include', recursive=True)) +  # phi include headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/backends', recursive=True)) +  # phi backends headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/core', recursive=True)) +  # phi core headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/infermeta', recursive=True)) +  # phi infermeta headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/kernels')) +  # phi kernels headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/kernels/sparse')) +  # phi sparse kernels headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/kernels/selected_rows')) +  # phi selected_rows kernels headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/kernels/strings')) +  # phi sparse kernels headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/kernels/primitive')) +  # phi kernel primitive api headers
-        # capi headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/phi/capi', recursive=True)) +  # phi capi headers
-        # profiler headers
-        list(find_files('trace_event.h', paddle_source_dir+'/paddle/fluid/platform/profiler')) +  # phi profiler headers
-        # utils api headers
-        list(find_files('*.h', paddle_source_dir+'/paddle/utils', recursive=True))) # paddle utils headers
+        list(find_files('*.h', paddle_source_dir + '/paddle'))
+        + list(find_files('*.h', paddle_source_dir + '/paddle/phi/api'))
+        + list(  # phi unify api header
+            find_files('*.h', paddle_source_dir + '/paddle/phi/api/ext')
+        )
+        + list(  # custom op api
+            find_files('*.h', paddle_source_dir + '/paddle/phi/api/include')
+        )
+        + list(  # phi api
+            find_files('*.h', paddle_source_dir + '/paddle/phi/common')
+        )
+        + list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi')
+        )  # phi common headers phi level api headers (low level api)
+        + list(  # phi extension header
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
+            )
+        )
+        + list(  # phi include headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/backends',
+                recursive=True,
+            )
+        )
+        + list(  # phi backends headers
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/core', recursive=True
+            )
+        )
+        + list(  # phi core headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/infermeta',
+                recursive=True,
+            )
+        )
+        + list(  # phi infermeta headers
+            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels')
+        )
+        + list(  # phi kernels headers
+            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/sparse')
+        )
+        + list(  # phi sparse kernels headers
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/kernels/selected_rows'
+            )
+        )
+        + list(  # phi selected_rows kernels headers
+            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/strings')
+        )
+        + list(  # phi sparse kernels headers
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
+            )
+        )
+        + list(  # phi kernel primitive api headers capi headers
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
+            )
+        )
+        + list(  # phi capi headers
+            # profiler headers
+            find_files(
+                'trace_event.h',
+                paddle_source_dir + '/paddle/fluid/platform/profiler',
+            )
+        )
+        + list(  # phi profiler headers utils api headers
+            find_files(
+                '*.h', paddle_source_dir + '/paddle/utils', recursive=True
+            )
+        )
+    )  # paddle utils headers
 
-    jit_layer_headers = ['layer.h', 'serializer.h', 'serializer_utils.h', 'all.h', 'function.h']
+    jit_layer_headers = [
+        'layer.h',
+        'serializer.h',
+        'serializer_utils.h',
+        'all.h',
+        'function.h',
+    ]
     for f in jit_layer_headers:
-        headers += list(find_files(f, paddle_source_dir+'/paddle/fluid/jit', recursive=True))
+        headers += list(
+            find_files(
+                f, paddle_source_dir + '/paddle/fluid/jit', recursive=True
+            )
+        )
 
     if envir_var.get("WITH_MKLDNN") == 'ON':
-        headers += list(find_files('*', envir_var.get("MKLDNN_INSTALL_DIR")+'/include')) # mkldnn
+        headers += list(
+            find_files('*', envir_var.get("MKLDNN_INSTALL_DIR") + '/include')
+        )  # mkldnn
 
-    if 'envir_var.get("WITH_GPU")' == 'ON' or envir_var.get("WITH_ROCM") == 'ON':
+    if (
+        'envir_var.get("WITH_GPU")' == 'ON'
+        or envir_var.get("WITH_ROCM") == 'ON'
+    ):
         # externalErrorMsg.pb for External Error message
-        headers += list(find_files('*.pb', envir_var.get("externalError_INCLUDE_DIR")))
+        headers += list(
+            find_files('*.pb', envir_var.get("externalError_INCLUDE_DIR"))
+        )
 
     return headers
 
+
 def get_setup_parameters():
-    #get setup_requires
-    setup_requires=get_setup_requires()
+    # get setup_requires
+    setup_requires = get_setup_requires()
 
-    #get packages
-    packages=find_packages(envir_var.get("PADDLE_BINARY_DIR")+'/python',exclude=['tools'])
+    # get packages
+    packages = find_packages(
+        envir_var.get("PADDLE_BINARY_DIR") + '/python', exclude=['tools']
+    )
 
-    #packages=find_packages('python',exclude=['tools'])
+    # packages=find_packages('python',exclude=['tools'])
 
-    #get scripts
+    # get scripts
     paddle_bins = ''
     if not envir_var.get("WIN32"):
-        paddle_bins = [envir_var.get("PADDLE_BINARY_DIR")+'/paddle/scripts/paddle']
+        paddle_bins = [
+            envir_var.get("PADDLE_BINARY_DIR") + '/paddle/scripts/paddle'
+        ]
 
-    #get package_data and package_dir
-    package_data,package_dir=get_package_data_and_package_dir()
+    # get package_data package_dir and ext_modules
+    package_data, package_dir, ext_modules = get_package_data_and_package_dir()
 
-    #get ext_modules
-    ext_modules=get_ext_modules()
+    # get headers
+    headers = get_headers()
 
-    #get headers
-    headers=get_headers()
+    return (
+        setup_requires,
+        packages,
+        paddle_bins,
+        package_data,
+        package_dir,
+        ext_modules,
+        headers,
+    )
 
-    return setup_requires, packages, paddle_bins, package_data, package_dir, ext_modules, headers
 
-
-build_help_message= """
+build_help_message = """
     The following commands of setup.py may help you
 
     if you want to install paddle and get the package that is stable and does not require you to edit, modify, or debug,plz run:
@@ -832,52 +1118,76 @@ build_help_message= """
         $ python setup.py --help-commands
 """
 
+
 def print_info_of_reminding(help_messages):
     print(help_messages)
-    
+
 
 def main():
 
-    #Parse the command line and check arguments before we proceed with building steps and setup
+    # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
-    #Execute the build process,cmake and make
+    # Execute the build process,cmake and make
     if cmake_and_make:
         build_steps()
-    
+
     # envir_dict is environment variables after cmake
-    #sys.path.append("/build/python/")
-    from python.env_dict import env_dict  
+    # sys.path.append("/build/python/")
+    from python.env_dict import env_dict
+
     global envir_var
-    envir_var=env_dict
+    envir_var = env_dict
 
-    global paddle_binary_dir,paddle_source_dir
-    paddle_binary_dir=envir_var.get("PADDLE_BINARY_DIR")
-    paddle_source_dir=envir_var.get("PADDLE_SOURCE_DIR")
-    
-    #preparing parameters for setup()
+    global paddle_binary_dir, paddle_source_dir
+    paddle_binary_dir = envir_var.get("PADDLE_BINARY_DIR")
+    paddle_source_dir = envir_var.get("PADDLE_SOURCE_DIR")
 
-    paddle_version=envir_var.get("PADDLE_VERSION")
-    package_name=envir_var.get("PACKAGE_NAME")
+    # preparing parameters for setup()
 
-    write_version_py(filename=paddle_binary_dir+'/python/paddle/version/__init__.py')
-    write_cuda_env_config_py(filename=paddle_binary_dir+'/python/paddle/cuda_env.py')
-    write_distributed_training_mode_py(filename=paddle_binary_dir+'python/paddle/fluid/incubate/fleet/parameter_server/version.py')
-    
-    setup_requires, packages, scripts, package_data, package_dir, ext_modules, headers=get_setup_parameters()
+    paddle_version = envir_var.get("PADDLE_VERSION")
+    package_name = envir_var.get("PACKAGE_NAME")
+
+    write_version_py(
+        filename=paddle_binary_dir + '/python/paddle/version/__init__.py'
+    )
+    write_cuda_env_config_py(
+        filename=paddle_binary_dir + '/python/paddle/cuda_env.py'
+    )
+    write_distributed_training_mode_py(
+        filename=paddle_binary_dir
+        + 'python/paddle/fluid/incubate/fleet/parameter_server/version.py'
+    )
+
+    (
+        setup_requires,
+        packages,
+        scripts,
+        package_data,
+        package_dir,
+        ext_modules,
+        headers,
+    ) = get_setup_parameters()
 
     # Log for PYPI, get long_description of setup()
-    with open(paddle_source_dir+'/python/paddle/README.rst', "r", encoding='UTF-8') as f:
+    with open(
+        paddle_source_dir + '/python/paddle/README.rst', "r", encoding='UTF-8'
+    ) as f:
         long_description = f.read()
 
     # strip *.so to reduce package size
     if envir_var.get("WITH_STRIP") == 'ON':
-        command = 'find '+ paddle_binary_dir+'/python/paddle -name "*.so" | xargs -i strip {}'
+        command = (
+            'find '
+            + paddle_binary_dir
+            + '/python/paddle -name "*.so" | xargs -i strip {}'
+        )
         if os.system(command) != 0:
             raise Exception("strip *.so failed, command: %s" % command)
 
-    setup(name=package_name,
-        version=paddle_version, 
+    setup(
+        name=package_name,
+        version=paddle_version,
         description='Parallel Distributed Deep Learning',
         long_description=long_description,
         long_description_content_type="text/markdown",
@@ -885,7 +1195,7 @@ def main():
         maintainer="PaddlePaddle",
         maintainer_email="Paddle-better@baidu.com",
         url='https://www.paddlepaddle.org.cn/',
-        download_url='https://github.com/paddlepaddle/paddle',            
+        download_url='https://github.com/paddlepaddle/paddle',
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
@@ -922,8 +1232,7 @@ def main():
     )
     if os.path.exists('${SETUP_LOG_FILE}'):
         os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
-    #print_info_of_reminding(build_help_message)
-
+    # print_info_of_reminding(build_help_message)
 
 
 if __name__ == '__main__':
