@@ -69,45 +69,45 @@ class MLPLayer(nn.Layer):
 
 
 class TestProcessMesh(unittest.TestCase):
-    # def test_construction(self):
-    #     mesh = [[0, 1, 2], [3, 4, 5]]
-    #     process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
-    #     self.assertEqual(process_mesh.shape, [2, 3])
-    #     self.assertEqual(process_mesh.process_ids, [0, 1, 2, 3, 4, 5])
-    #     self.assertEqual(process_mesh.dim_names, ["x", "y"])
-    #     self.assertEqual(process_mesh.ndim, 2)
-    #     self.assertEqual(process_mesh, process_mesh)
-    #     self.assertEqual(str(process_mesh), str(process_mesh))
+    def test_construction(self):
+        mesh = [[0, 1, 2], [3, 4, 5]]
+        process_mesh = ProcessMesh(mesh, dim_names=["x", "y"])
+        self.assertEqual(process_mesh.shape, [2, 3])
+        self.assertEqual(process_mesh.process_ids, [0, 1, 2, 3, 4, 5])
+        self.assertEqual(process_mesh.dim_names, ["x", "y"])
+        self.assertEqual(process_mesh.ndim, 2)
+        self.assertEqual(process_mesh, process_mesh)
+        self.assertEqual(str(process_mesh), str(process_mesh))
 
-    #     sub_process_mesh1 = process_mesh[0]
-    #     self.assertEqual(sub_process_mesh1.shape, [3])
-    #     self.assertEqual(sub_process_mesh1.process_ids, [0, 1, 2])
-    #     self.assertEqual(sub_process_mesh1.dim_names, ["y"])
-    #     self.assertEqual(sub_process_mesh1.ndim, 1)
+        sub_process_mesh1 = process_mesh[0]
+        self.assertEqual(sub_process_mesh1.shape, [3])
+        self.assertEqual(sub_process_mesh1.process_ids, [0, 1, 2])
+        self.assertEqual(sub_process_mesh1.dim_names, ["y"])
+        self.assertEqual(sub_process_mesh1.ndim, 1)
 
-    #     sub_process_mesh2 = process_mesh[:, 1]
-    #     self.assertEqual(sub_process_mesh2.shape, [2])
-    #     self.assertEqual(sub_process_mesh2.process_ids, [1, 4])
-    #     self.assertEqual(sub_process_mesh2.dim_names, ["x"])
-    #     self.assertEqual(sub_process_mesh2.ndim, 1)
+        sub_process_mesh2 = process_mesh[:, 1]
+        self.assertEqual(sub_process_mesh2.shape, [2])
+        self.assertEqual(sub_process_mesh2.process_ids, [1, 4])
+        self.assertEqual(sub_process_mesh2.dim_names, ["x"])
+        self.assertEqual(sub_process_mesh2.ndim, 1)
 
-    #     sub_process_mesh3 = sub_process_mesh2[:]
-    #     self.assertEqual(sub_process_mesh3.shape, [2])
-    #     self.assertEqual(sub_process_mesh3.process_ids, [1, 4])
-    #     self.assertEqual(sub_process_mesh3.dim_names, ["x"])
-    #     self.assertEqual(sub_process_mesh3.ndim, 1)
+        sub_process_mesh3 = sub_process_mesh2[:]
+        self.assertEqual(sub_process_mesh3.shape, [2])
+        self.assertEqual(sub_process_mesh3.process_ids, [1, 4])
+        self.assertEqual(sub_process_mesh3.dim_names, ["x"])
+        self.assertEqual(sub_process_mesh3.ndim, 1)
 
-    #     sub_process_mesh4 = process_mesh[1, 1]
-    #     self.assertEqual(sub_process_mesh4.shape, [1])
-    #     self.assertEqual(sub_process_mesh4.process_ids, [4])
-    #     self.assertEqual(sub_process_mesh4.dim_names, ["d0"])
-    #     self.assertEqual(sub_process_mesh4.ndim, 1)
+        sub_process_mesh4 = process_mesh[1, 1]
+        self.assertEqual(sub_process_mesh4.shape, [1])
+        self.assertEqual(sub_process_mesh4.process_ids, [4])
+        self.assertEqual(sub_process_mesh4.dim_names, ["d0"])
+        self.assertEqual(sub_process_mesh4.ndim, 1)
 
-    #     sub_process_mesh5 = sub_process_mesh3[0]
-    #     self.assertEqual(sub_process_mesh5.shape, [1])
-    #     self.assertEqual(sub_process_mesh5.process_ids, [1])
-    #     self.assertEqual(sub_process_mesh5.dim_names, ["d0"])
-    #     self.assertEqual(sub_process_mesh5.ndim, 1)
+        sub_process_mesh5 = sub_process_mesh3[0]
+        self.assertEqual(sub_process_mesh5.shape, [1])
+        self.assertEqual(sub_process_mesh5.process_ids, [1])
+        self.assertEqual(sub_process_mesh5.dim_names, ["d0"])
+        self.assertEqual(sub_process_mesh5.ndim, 1)
 
     def test_context_manager(self):
         mesh = np.array([1, 2, 3, 4])
@@ -139,21 +139,15 @@ class TestProcessMesh(unittest.TestCase):
                     tensor
                 )
                 if dist_tensor is not None:
-                    print(
-                        dist_tensor.serial_tensor.name,
-                        dist_tensor.serial_tensor.shape,
-                        flush=True,
+                    self.assertEqual(
+                        dist_tensor.dist_attr.process_mesh, ProcessMesh(mesh)
                     )
-                    print(dist_tensor.dist_attr.process_mesh, flush=True)
-                    # self.assertEqual(
-                    #     dist_tensor.dist_attr.process_mesh, ProcessMesh(mesh)
-                    # )
-            # for op in block.ops:
-            #     dist_op = default_dist_context.get_dist_op_for_program(op)
-            #     if dist_op is not None:
-            #         self.assertEqual(
-            #             dist_op.dist_attr.process_mesh, ProcessMesh(mesh)
-            #         )
+            for op in block.ops:
+                dist_op = default_dist_context.get_dist_op_for_program(op)
+                if dist_op is not None:
+                    self.assertEqual(
+                        dist_op.dist_attr.process_mesh, ProcessMesh(mesh)
+                    )
 
 
 if __name__ == "__main__":
