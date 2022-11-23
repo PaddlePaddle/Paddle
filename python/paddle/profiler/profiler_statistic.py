@@ -573,14 +573,7 @@ class EventSummary:
             for host_statistic_node in host_statistic_nodes[
                 1:
             ]:  # skip root node
-                if host_statistic_node.type == TracerEventType.Forward:
-                    # print("+", host_statistic_node.name)
-                    for child in host_statistic_node.children_node:
-                        if child.type == TracerEventType.Operator:
-                            # print("  ", child.name)
-                            pass
-
-                elif host_statistic_node.type == TracerEventType.Operator:
+                if host_statistic_node.type == TracerEventType.Operator:
                     self.add_operator_item(host_statistic_node)
                 if (
                     host_statistic_node.type == TracerEventType.UserDefined
