@@ -333,11 +333,17 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    if (need_comma_kernels) os << ",";
-    os << "\"" << op_kernel_pair.first << "\":[";
+    if (need_comma_kernels) {
+      os << ",";
+      os << std::endl;
+    }
+    os << "\"" << op_kernel_pair.first << " \":[" << std::endl;
     bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
-      if (need_comma_per_kernel) os << ",";
+      if (need_comma_per_kernel) {
+        os << ",";
+        os << std::endl;
+      }
       os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
       need_comma_per_kernel = true;
     }

@@ -17,15 +17,13 @@ All layers just related to the detection neural network.
 
 import paddle
 
-from .layer_function_generator import generate_layer_fn
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
 from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
-from . import ops
 from ..data_feeder import check_variable_and_dtype, check_type, check_dtype
 import math
 import numpy as np
@@ -330,10 +328,10 @@ def retinanet_target_assign(
     bbox_inside_weight.stop_gradient = True
     fg_num.stop_gradient = True
 
-    cls_logits = nn.reshape(x=cls_logits, shape=(-1, num_classes))
-    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, num_classes))
+    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -512,10 +510,10 @@ def rpn_target_assign(
     target_bbox.stop_gradient = True
     bbox_inside_weight.stop_gradient = True
 
-    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
-    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
-    predicted_cls_logits = nn.gather(cls_logits, score_index)
-    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+    cls_logits = paddle.reshape(x=cls_logits, shape=(-1, 1))
+    bbox_pred = paddle.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = paddle.gather(cls_logits, score_index)
+    predicted_bbox_pred = paddle.gather(bbox_pred, loc_index)
 
     return (
         predicted_cls_logits,
@@ -1752,7 +1750,7 @@ def ssd_loss(
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(
+    gt_label = paddle.reshape(
         x=gt_label, shape=(len(gt_label.shape) - 1) * (0,) + (-1, 1)
     )
     gt_label.stop_gradient = True
@@ -1771,9 +1769,7 @@ def ssd_loss(
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
-    conf_loss = nn.reshape(
-        x=conf_loss, shape=(-1, 0), actual_shape=actual_shape
-    )
+    conf_loss = paddle.reshape(x=conf_loss, shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
@@ -1850,7 +1846,7 @@ def ssd_loss(
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
-    loss = nn.reshape(x=loss, shape=(-1, 0), actual_shape=actual_shape)
+    loss = paddle.reshape(x=loss, shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -2479,9 +2475,9 @@ def multi_box_head(
         box = tensor.concat(reshaped_boxes)
         var = tensor.concat(reshaped_vars)
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
-        mbox_locs_concat = nn.reshape(mbox_locs_concat, shape=[0, -1, 4])
+        mbox_locs_concat = paddle.reshape(mbox_locs_concat, shape=[0, -1, 4])
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
-        mbox_confs_concat = nn.reshape(
+        mbox_confs_concat = paddle.reshape(
             mbox_confs_concat, shape=[0, -1, num_classes]
         )
 

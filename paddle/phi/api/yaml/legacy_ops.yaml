@@ -423,15 +423,6 @@
     func : concat
   backward : concat_grad
 
-- op : conj
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : conj
-  backward : conj_grad
-
 - op : conv2d
   args : (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
   output : Tensor
@@ -905,17 +896,6 @@
   kernel :
     func : greater_than
 
-- op : grid_sample
-  args : (Tensor x, Tensor grid, str mode, str padding_mode, bool align_corners)
-  output : Tensor(out)
-  infer_meta :
-    func : GridSampleBaseInferMeta
-    param : [x, grid]
-  kernel:
-    func : grid_sample
-    data_type : x
-  backward : grid_sample_grad
-
 - op : group_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
   output : Tensor(y), Tensor(mean), Tensor(variance)
@@ -947,16 +927,8 @@
     func : hard_tanh
   backward : hardtanh_grad
 
-- op : histogram
-  args : (Tensor input, int64_t bins, int min, int max)
-  output : Tensor(out)
-  infer_meta :
-    func : HistogramInferMeta
-  kernel :
-    func : histogram
-
 - op : hsigmoid_loss
-  args : (Tensor x, Tensor w, Tensor label, Tensor path, Tensor code, Tensor bias, int num_classes, bool remote_prefetch, int trainer_id, int64_t[] height_sections, str[] epmap, str[] table_names, bool is_sparse)
+  args : (Tensor x, Tensor label, Tensor w, Tensor bias, Tensor path, Tensor code, int num_classes, bool remote_prefetch, bool is_sparse)
   output : Tensor(out), Tensor(pre_out), Tensor(w_out)
   infer_meta :
     func : HSigmoidLossInferMeta
@@ -985,7 +957,7 @@
   backward : imag_grad
 
 - op : increment
-  args : (Tensor x, float value)
+  args : (Tensor x, float value = 1.0)
   output : Tensor(out)
   infer_meta :
     func : IncrementInferMeta
@@ -1004,26 +976,6 @@
   inplace : (x -> out)
   backward : index_add_grad
 
-- op : index_sample
-  args : (Tensor x, Tensor index)
-  output : Tensor
-  infer_meta :
-    func : IndexSampleInferMeta
-  kernel :
-    func : index_sample
-    data_type : x
-  backward : index_sample_grad
-
-- op : index_select
-  args : (Tensor x, Tensor index,  int axis)
-  output : Tensor(out)
-  infer_meta :
-    func : IndexSelectInferMeta
-  kernel :
-    func : index_select
-    data_type : x
-  backward : index_select_grad
-
 - op : instance_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
@@ -1035,15 +987,6 @@
   optional : scale, bias
   intermediate : saved_mean, saved_variance
   backward : instance_norm_grad
-
-- op : inverse
-  args : (Tensor x)
-  output : Tensor(out)
-  infer_meta :
-    func : InverseInferMeta
-  kernel :
-    func : inverse
-  backward : inverse_grad
 
 - op : is_empty
   args : (Tensor x)
@@ -1142,7 +1085,7 @@
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
 
 - op : layer_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis, bool is_test)
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
@@ -1345,11 +1288,11 @@
   backward : matrix_power_grad
 
 - op : matrix_rank
-  args : (Tensor x, float tol, bool use_default_tol=true, bool hermitian=false)
+  args : (Tensor x, float tol, bool hermitian=false, bool use_default_tol=true)
   output : Tensor(out)
   infer_meta :
     func : MatrixRankInferMeta
-    param : [x, use_default_tol, hermitian]
+    param : [x, hermitian, use_default_tol]
   kernel :
     func : matrix_rank
 
@@ -2274,7 +2217,7 @@
   backward : triangular_solve_grad
 
 - op : tril
-  args : (Tensor x,  int diagonal,  bool lower)
+  args : (Tensor x,  int diagonal)
   output : Tensor(out)
   infer_meta :
     func : TrilInferMeta
@@ -2304,6 +2247,15 @@
     func : trilinear_interp
     data_type : x
   backward : trilinear_interp_grad
+
+- op : triu
+  args : (Tensor x,  int diagonal)
+  output : Tensor(out)
+  infer_meta :
+    func : TriuInferMeta
+  kernel :
+    func : triu
+  backward : triu_grad
 
 - op : triu_indices
   args : (int row, int col, int offset, DataType dtype, Place place={})

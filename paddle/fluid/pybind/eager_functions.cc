@@ -268,7 +268,8 @@ PyObject* eager_api_get_grads_types(PyObject* self,
     if (meta && grad.initialized()) {
       if (grad.is_dense_tensor() &&
           (tensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
-           tensor.dtype() == paddle::experimental::DataType::FLOAT16)) {
+           tensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
+           tensor.dtype() == paddle::experimental::DataType::BFLOAT16)) {
         ret.emplace_back(
             paddle::framework::TransToProtoVarType(tensor.dtype()));
       }
