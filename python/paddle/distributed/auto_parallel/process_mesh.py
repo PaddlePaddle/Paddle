@@ -15,6 +15,7 @@
 import numpy as np
 import copy
 import paddle
+from paddle.fluid import core
 
 # Use to store the previous and current process mesh
 _g_previous_process_mesh = None
@@ -39,12 +40,12 @@ def reset_current_process_mesh():
     _g_current_process_mesh = _g_previous_process_mesh
 
 
-class ProcessMesh(object):
+class ProcessMesh(core.ProcessMesh):
     """
-    The `Processmesh` object describes the topology of the used processes.
+    The `ProcessMesh` object describes the Cartesian topology of the used processes.
 
     Args:
-        mesh (list|numpy.array): an n-dimensional array describes the toplogy
+        mesh (list|numpy.array): an n-dimensional array describes the topology
             of the processes.
         dim_names (list, optional): the i-th element of this list gives the name of the
             i-th dimension of the mesh.
@@ -56,7 +57,7 @@ class ProcessMesh(object):
 
             mesh = auto.ProcessMesh([[2, 4, 5], [0, 1, 3]], dim_names=["x", "y"])
             assert mesh.shape == [2, 3]
-            assert mesh.processe_ids == [2, 4, 5, 0, 1, 3]
+            assert mesh.process_ids == [2, 4, 5, 0, 1, 3]
 
     """
 
@@ -102,6 +103,11 @@ class ProcessMesh(object):
             self._dim_names
         ), 'All dim_names {} must be unique.'.format(dim_names)
 
+        # Follow the requirement for using pybind11
+        core.ProcessMesh.__init__(
+            self, self._shape, self._process_ids, self._dim_names
+        )
+
         # Store all process meshes
         from .dist_context import get_default_distributed_context
 
@@ -114,34 +120,6 @@ class ProcessMesh(object):
         pg0.add_ranks(self.processes)
 
     @property
-    def shape(self):
-        """
-        Get the shape of this ProcessMesh.
-        """
-        return self._shape
-
-    @property
-    def process_ids(self):
-        """
-        Get the process ids belonging to this ProcessMesh.
-        """
-        return self._process_ids
-
-    @property
-    def dim_names(self):
-        """
-        Get the dimension names of this ProcessMesh.
-        """
-        return self._dim_names
-
-    @property
-    def ndim(self):
-        """
-        Get the number of dimension of this ProcessMesh.
-        """
-        return len(self._shape)
-
-    @property
     def mesh(self):
         """
         Get the underlying mesh of ProcessMesh.
@@ -150,11 +128,11 @@ class ProcessMesh(object):
 
     @property
     def topology(self):
-        return self._shape
+        return self.shape
 
     @property
     def processes(self):
-        return self._process_ids
+        return self.process_ids
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
@@ -205,9 +183,8 @@ class ProcessMesh(object):
                     tensor
                 )
                 if dist_tensor is None:
-                    dist_tensor = DistributedTensor(
-                        cur_block.vars[name], {"process_mesh": self}
-                    )
+                    dist_tensor = DistributedTensor(cur_block.vars[name])
+                    dist_tensor.dist_attr.process_mesh = self
                     dist_tensor.dist_attr.mark_annotated("process_mesh")
                     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
                 else:
@@ -219,7 +196,8 @@ class ProcessMesh(object):
             op = cur_block.ops[idx]
             dist_op = default_dist_ctx.get_dist_op_for_program(op)
             if dist_op is None:
-                dist_op = DistributedOperator(op, {"process_mesh": self})
+                dist_op = DistributedOperator(op)
+                dist_op.dist_attr.process_mesh = self
                 dist_op.dist_attr.mark_annotated("process_mesh")
                 default_dist_ctx.add_dist_op_for_program(dist_op)
             else:
@@ -227,6 +205,13 @@ class ProcessMesh(object):
                     dist_op.dist_attr.process_mesh = self
                     dist_op.dist_attr.mark_annotated("process_mesh")
         reset_current_process_mesh()
+
+    def __deepcopy__(self, memo):
+        if id(self) in memo:
+            return memo[id(self)]
+        new_process_mesh = ProcessMesh(np.array(self.mesh), self.dim_names)
+        memo[id(self)] = new_process_mesh
+        return new_process_mesh
 
     def __eq__(self, other):
         if not isinstance(other, ProcessMesh):
