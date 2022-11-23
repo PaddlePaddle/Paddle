@@ -23,9 +23,11 @@ import glob
 import random
 import tarfile
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
+import paddle.nn.functional as F
 import paddle
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
@@ -1148,7 +1150,7 @@ def multi_head_attention(
 
         # permute the dimensions into:
         # [batch_size, n_head, max_sequence_len, hidden_size_per_head]
-        return layers.transpose(x=reshaped, perm=[0, 2, 1, 3])
+        return paddle.transpose(x=reshaped, perm=[0, 2, 1, 3])
 
     def __combine_heads(x):
         """
@@ -1160,7 +1162,7 @@ def multi_head_attention(
         if len(x.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
 
-        trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(x, perm=[0, 2, 1, 3])
         # The value 0 in shape attr means copying the corresponding dimension
         # size of the input as the output dimension size.
         return paddle.reshape(
@@ -1579,7 +1581,7 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(
+        label = F.label_smooth(
             label=layers.one_hot(input=label, depth=trg_vocab_size),
             epsilon=label_smooth_eps,
         )
