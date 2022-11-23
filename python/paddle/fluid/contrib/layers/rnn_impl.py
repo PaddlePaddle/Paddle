@@ -19,6 +19,7 @@ from paddle.fluid import layers, unique_name
 from paddle.fluid.dygraph import Layer
 from paddle.fluid.dygraph.layer_object_helper import LayerObjectHelper
 from paddle.fluid.layers.control_flow import StaticRNN
+import paddle
 
 __all__ = ['BasicGRUUnit', 'basic_gru', 'BasicLSTMUnit', 'basic_lstm']
 
@@ -325,7 +326,7 @@ def basic_gru(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
@@ -333,13 +334,13 @@ def basic_gru(
         mask = layers.sequence_mask(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -394,7 +395,7 @@ def basic_gru(
             last_hidden_array.append(last_hidden)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -419,12 +420,12 @@ def basic_gru(
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
 
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden
     else:
 
@@ -432,7 +433,7 @@ def basic_gru(
         last_hidden = fw_last_hidden
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden
 
@@ -609,7 +610,7 @@ def basic_lstm(
             )
 
     if batch_first:
-        input = layers.transpose(input, [1, 0, 2])
+        input = paddle.transpose(input, [1, 0, 2])
 
     mask = None
     if sequence_length:
@@ -618,17 +619,17 @@ def basic_lstm(
             sequence_length, maxlen=max_seq_len, dtype='float32'
         )
 
-        mask = layers.transpose(mask, [1, 0])
+        mask = paddle.transpose(mask, [1, 0])
 
     direc_num = 1
     if bidirectional:
         direc_num = 2
         # convert to [num_layers, 2, batch_size, hidden_size]
     if init_hidden:
-        init_hidden = layers.reshape(
+        init_hidden = paddle.reshape(
             init_hidden, shape=[num_layers, direc_num, -1, hidden_size]
         )
-        init_cell = layers.reshape(
+        init_cell = paddle.reshape(
             init_cell, shape=[num_layers, direc_num, -1, hidden_size]
         )
 
@@ -701,11 +702,11 @@ def basic_lstm(
             last_cell_array.append(last_cell)
 
         last_hidden_output = layers.concat(last_hidden_array, axis=0)
-        last_hidden_output = layers.reshape(
+        last_hidden_output = paddle.reshape(
             last_hidden_output, shape=[num_layers, -1, hidden_size]
         )
         last_cell_output = layers.concat(last_cell_array, axis=0)
-        last_cell_output = layers.reshape(
+        last_cell_output = paddle.reshape(
             last_cell_output, shape=[num_layers, -1, hidden_size]
         )
 
@@ -729,17 +730,17 @@ def basic_lstm(
 
         rnn_out = layers.concat([fw_rnn_out, bw_rnn_out], axis=2)
         last_hidden = layers.concat([fw_last_hidden, bw_last_hidden], axis=1)
-        last_hidden = layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         last_cell = layers.concat([fw_last_cell, bw_last_cell], axis=1)
-        last_cell = layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[num_layers * direc_num, -1, hidden_size]
         )
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
         return rnn_out, last_hidden, last_cell
     else:
 
@@ -748,7 +749,7 @@ def basic_lstm(
         last_cell = fw_last_cell
 
         if batch_first:
-            rnn_out = layers.transpose(rnn_out, [1, 0, 2])
+            rnn_out = paddle.transpose(rnn_out, [1, 0, 2])
 
         return rnn_out, last_hidden, last_cell
 
