@@ -164,7 +164,7 @@ class Conv2DLayer(fluid.dygraph.Layer):
             conv = self._norm(conv)
 
         if self.relufactor is not None:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
 
         return conv
 
@@ -206,7 +206,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
             deconv = self._norm(deconv)
 
         if self.relufactor is not None:
-            deconv = fluid.layers.leaky_relu(deconv, alpha=self.relufactor)
+            deconv = paddle.nn.functional.leaky_relu(deconv, self.relufactor)
 
         return deconv
 
@@ -269,7 +269,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         repeat_num = cfg.g_repeat_num
         sub_layers = []
@@ -279,7 +279,7 @@ class Generator(fluid.dygraph.Layer):
             )
             sub_layers.append(res_block)
 
-        self._res_block = fluid.dygraph.Sequential(*sub_layers)
+        self._res_block = paddle.nn.Sequential(*sub_layers)
 
         cur_channels = cfg.g_base_dims * 4
         sub_layers = []
@@ -297,7 +297,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels = cfg.g_base_dims * rate
             sub_layers.append(deconv)
 
-        self._deconv = fluid.dygraph.Sequential(*sub_layers)
+        self._deconv = paddle.nn.Sequential(*sub_layers)
 
         self._conv1 = Conv2DLayer(
             num_channels=cur_channels,
@@ -354,7 +354,7 @@ class Discriminator(fluid.dygraph.Layer):
             cur_dim *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         kernel_size = int(cfg.image_size / np.power(2, repeat_num))
 

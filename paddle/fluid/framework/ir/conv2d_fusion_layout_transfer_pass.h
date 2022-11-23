@@ -14,19 +14,21 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
-namespace distributed {
+namespace framework {
+namespace ir {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(tensor);
-  tensor_flattened.Resize({tensor.numel()});
-  return tensor_flattened.Slice(offset, offset + numel);
-}
+class Conv2dFusionLayoutTransferPass : public FusePassBase {
+ public:
+  Conv2dFusionLayoutTransferPass() = default;
+  virtual ~Conv2dFusionLayoutTransferPass() = default;
 
-}  //  namespace distributed
-}  //  namespace paddle
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

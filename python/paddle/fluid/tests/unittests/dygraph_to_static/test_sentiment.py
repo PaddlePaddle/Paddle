@@ -52,7 +52,7 @@ class SimpleConvPool(fluid.dygraph.Layer):
 
     def forward(self, inputs):
         x = paddle.tanh(self._conv2d(inputs))
-        x = fluid.layers.reduce_max(x, dim=-1)
+        x = paddle.max(x, axis=-1)
         x = paddle.reshape(x, shape=[self.batch_size, -1])
         return x
 
@@ -194,7 +194,7 @@ class GRU(fluid.dygraph.Layer):
         emb = paddle.reshape(emb, shape=[self.batch_size, -1, self.hid_dim])
         fc_1 = self._fc1(emb)
         gru_hidden = self._gru(fc_1)
-        gru_hidden = fluid.layers.reduce_max(gru_hidden, dim=1)
+        gru_hidden = paddle.max(gru_hidden, axis=1)
         tanh_1 = paddle.tanh(gru_hidden)
         fc_2 = self._fc2(tanh_1)
         prediction = self._fc_prediction(fc_2)
@@ -254,7 +254,7 @@ class BiGRU(fluid.dygraph.Layer):
         encoded_vector = fluid.layers.concat(
             input=[gru_forward_tanh, gru_backward_tanh], axis=2
         )
-        encoded_vector = fluid.layers.reduce_max(encoded_vector, dim=1)
+        encoded_vector = paddle.max(encoded_vector, axis=1)
         fc_2 = self._fc2(encoded_vector)
         prediction = self._fc_prediction(fc_2)
         # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.

@@ -532,9 +532,9 @@ class Categorical(Distribution):
         """
         check_type(other, 'other', Categorical, 'kl_divergence')
 
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
-        other_logits = other.logits - nn.reduce_max(
-            other.logits, dim=-1, keep_dim=True
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
+        other_logits = other.logits - paddle.max(
+            other.logits, axis=-1, keepdim=True
         )
         e_logits = paddle.exp(logits)
         other_e_logits = paddle.exp(other_logits)
@@ -556,7 +556,7 @@ class Categorical(Distribution):
           Variable: Shannon entropy of Categorical distribution. The data type is float32.
 
         """
-        logits = self.logits - nn.reduce_max(self.logits, dim=-1, keep_dim=True)
+        logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)
         e_logits = paddle.exp(logits)
         z = nn.reduce_sum(e_logits, dim=-1, keep_dim=True)
         prob = e_logits / z
