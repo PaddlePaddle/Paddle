@@ -15,7 +15,7 @@
 
 #include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include "paddle/phi/core/cudnn_workspace_helper.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #endif
 
 namespace phi {
