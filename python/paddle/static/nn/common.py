@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.framework import static_only
 from paddle.fluid.initializer import Normal
 from paddle.fluid.framework import static_only, Variable, _non_static_mode
 
