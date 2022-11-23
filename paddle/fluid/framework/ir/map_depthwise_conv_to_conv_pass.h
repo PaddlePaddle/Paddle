@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,23 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include <string>
+
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
-namespace distributed {
+namespace framework {
+namespace ir {
 
-inline phi::DenseTensor GetPartialTensor(const phi::DenseTensor& tensor,
-                                         int64_t offset,
-                                         int64_t numel) {
-  phi::DenseTensor tensor_flattened;
-  tensor_flattened.ShareDataWith(tensor);
-  tensor_flattened.Resize({tensor.numel()});
-  return tensor_flattened.Slice(offset, offset + numel);
-}
+class MapDepthwiseConv2ConvPass : public FusePassBase {
+ public:
+  MapDepthwiseConv2ConvPass() = default;
+  virtual ~MapDepthwiseConv2ConvPass() = default;
 
-}  //  namespace distributed
-}  //  namespace paddle
+ protected:
+  void ApplyImpl(Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
