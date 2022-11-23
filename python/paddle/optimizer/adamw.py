@@ -89,6 +89,8 @@ class AdamW(MultiTensorBase):
             different semantics with the original Adam algorithm and may lead to different result.
             The default value is False.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
+        chunk_size(int, optional) ChunkSize for blocks computing. Default is 32*2048.
+        use_multi_tensor (bool, optional): Whether to use multi-tensor strategy to update all parameters at once . Default is false.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
