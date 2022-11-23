@@ -1471,7 +1471,7 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
   auto type_name = std::string(type->tp_name);
   if (type_name == "list" || type_name == "tuple" ||
       type_name == "numpy.ndarray") {
-    std::vector<int64_t> value = CastPyArg2Longs(obj, arg_pos);
+    std::vector<int64_t> value = CastPyArg2Longs(obj, op_type, arg_pos);
     return paddle::experimental::IntArray(value);
   } else if (type_name == "paddle.Tensor" || type_name == "Tensor") {
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
