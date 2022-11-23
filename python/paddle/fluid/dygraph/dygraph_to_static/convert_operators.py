@@ -36,7 +36,6 @@ from paddle.fluid.layers import (
 from paddle.fluid.layers import (
     cast,
     control_flow,
-    logical_not,
     logical_or,
     nn,
 )
