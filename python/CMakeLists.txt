@@ -23,7 +23,7 @@ set(SETUP_LOG_FILE "setup.py.log")
 set(FLUID_CORE_NAME "libpaddle")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-              ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
+               ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py.in
                ${CMAKE_CURRENT_SOURCE_DIR}/env_dict.py)

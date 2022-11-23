@@ -575,6 +575,7 @@ def build_steps():
         env_var = os.environ.copy()  # get env variables
         paddle_build_options = {}
         other_options = {}
+
         other_options.update(
             {
                 option: option
