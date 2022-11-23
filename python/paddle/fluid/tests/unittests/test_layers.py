@@ -1687,7 +1687,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            ret = paddle.static.nn.conv3d(
+                input=images, num_filters=3, filter_size=2
+            )
             static_ret = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
                 fetch_list=[ret],
