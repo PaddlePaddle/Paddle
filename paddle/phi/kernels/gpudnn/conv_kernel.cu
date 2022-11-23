@@ -40,6 +40,7 @@
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 // clang-format on
 #endif
+#include "paddle/fluid/platform/dynload/nvtx.h"
 
 namespace phi {
 
@@ -56,6 +57,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                            bool deterministic,
                            int groups,
                            DenseTensor* transformed_output) {
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6.1");
   const T* input_data = transformed_input->data<T>();
   const T* filter_data = transformed_filter_channel->data<T>();
   T* output_data = transformed_output->data<T>();
@@ -93,7 +96,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                  dilations,
                  paddle::platform::AllowTF32Cudnn());
 #endif
-
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6.2");
 #if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
   // cudnn 7 can support groups, no need to do it manually
   // FIXME(typhoonzero): find a better way to disable groups
@@ -150,7 +154,9 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
   int group_offset_filter = transformed_filter_channel->numel() / groups;
   // ------------------- cudnn conv workspace ---------------------
   size_t workspace_size = 0;  // final workspace to allocate.
-// ------------------- cudnn conv algorithm ---------------------
+  // ------------------- cudnn conv algorithm ---------------------
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6.3");
 #ifdef PADDLE_WITH_HIP
   SearchResult<miopenConvFwdAlgorithm_t> fwd_result;
   using search = SearchAlgorithm<miopenConvFwdAlgorithm_t>;
@@ -173,7 +179,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
     fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
   }
 #endif
-
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6.5");
   // ------------------- cudnn conv forward ---------------------
   ScalingParamType<T> alpha = 1.0f;
   ScalingParamType<T> beta = 0.0f;
@@ -217,6 +224,8 @@ void ConvCudnnKernelImplV7(const DenseTensor* transformed_input,
                                            &workspace_handle,
                                            false);
 #endif
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6.6");
 }
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
@@ -347,6 +356,7 @@ void ConvCudnnKernel(const Context& ctx,
                      int groups,
                      const std::string& data_format,
                      DenseTensor* output) {
+  phi::dynload::nvtxRangePushA("1.1");
   ctx.template Alloc<T>(output);
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
@@ -369,7 +379,8 @@ void ConvCudnnKernel(const Context& ctx,
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   auto dtype = paddle::platform::CudnnDataType<T>::type;
-
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.2");
 #ifdef PADDLE_WITH_HIP
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = paddle::platform::DataLayout::kNCHW;
@@ -411,7 +422,8 @@ void ConvCudnnKernel(const Context& ctx,
   } else {
     transformed_filter_channel.ShareDataWith(filter);
   }
-
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.3");
   // update padding and dilation
   auto in_dims = transformed_input_channel.dims();
   auto filter_dims = transformed_filter_channel.dims();
@@ -466,6 +478,8 @@ void ConvCudnnKernel(const Context& ctx,
         input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
       }
     }
+    phi::dynload::nvtxRangePop();
+    phi::dynload::nvtxRangePushA("1.5");
     DDim new_input_shape(make_ddim(new_input_shape_vec));
     transformed_input.Resize(new_input_shape);
     ctx.template Alloc<T>(&transformed_input);
@@ -514,33 +528,34 @@ void ConvCudnnKernel(const Context& ctx,
                  ? paddle::platform::DataLayout::kNDHWC
                  : paddle::platform::DataLayout::kNCDHW;
   }
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.6");
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
-  if (dynload::IsCudnnFrontendEnabled() && (groups == 1))
-    ConvCudnnKernelImplV8<T>(&transformed_input,
-                             &transformed_filter_channel,
-                             ctx,
-                             strides,
-                             padding_common,
-                             dilations,
-                             layout,
-                             exhaustive_search,
-                             deterministic,
-                             groups,
-                             &transformed_output);
-  else
-    ConvCudnnKernelImplV7<T>(&transformed_input,
-                             &transformed_filter_channel,
-                             ctx,
-                             strides,
-                             padding_common,
-                             dilations,
-                             compute_format,
-                             layout,
-                             exhaustive_search,
-                             deterministic,
-                             groups,
-                             &transformed_output);
+  if (dynload::IsCudnnFrontendEnabled() && (groups == 1)) LOG(ERROR) << "v8";
+  ConvCudnnKernelImplV8<T>(&transformed_input,
+                           &transformed_filter_channel,
+                           ctx,
+                           strides,
+                           padding_common,
+                           dilations,
+                           layout,
+                           exhaustive_search,
+                           deterministic,
+                           groups,
+                           &transformed_output);
+  ConvCudnnKernelImplV7<T>(&transformed_input,
+                           &transformed_filter_channel,
+                           ctx,
+                           strides,
+                           padding_common,
+                           dilations,
+                           compute_format,
+                           layout,
+                           exhaustive_search,
+                           deterministic,
+                           groups,
+                           &transformed_output);
 #else
   ConvCudnnKernelImplV7<T>(&transformed_input,
                            &transformed_filter_channel,
@@ -555,10 +570,12 @@ void ConvCudnnKernel(const Context& ctx,
                            groups,
                            &transformed_output);
 #endif
-
+  phi::dynload::nvtxRangePop();
+  phi::dynload::nvtxRangePushA("1.7");
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {
     TransToChannelLast<Context, T>(ctx, &transformed_output, output);
   }
+  phi::dynload::nvtxRangePop();
 }
 
 template <typename T, typename Context>

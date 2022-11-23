@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/dynload/nvtx.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -1519,9 +1520,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
+    if (!all_kernels_must_compute_runtime_shape_) {
+      phi::dynload::nvtxRangePushA("infershape");
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+      phi::dynload::nvtxRangePop();
+    }
+    phi::dynload::nvtxRangePushA("kernel compute");
     (*phi_kernel_)(impl_->getKernelContext());
+    phi::dynload::nvtxRangePop();
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
