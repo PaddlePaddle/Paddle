@@ -214,7 +214,7 @@ class CublasLtHelper {
 #else
                                  nullptr,
                                  nullptr,
-                                 0
+                                 0,
 #endif
                                  stream);
     PADDLE_ENFORCE_EQ(
