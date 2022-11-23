@@ -716,7 +716,7 @@ class TestLayer(LayerTest):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            out = layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=img,
                 num_filters=10,
                 filter_size=27,
@@ -2270,7 +2270,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
-            out = layers.conv3d_transpose(
+            out = paddle.static.nn.conv3d_transpose(
                 input=img, num_filters=12, filter_size=12, use_cudnn=False
             )
             static_rlt = self.get_static_graph_result(
@@ -2406,70 +2406,6 @@ class TestLayer(LayerTest):
             np.testing.assert_array_equal(
                 conv3d1.bias.numpy(), conv3d2.bias.numpy()
             )
-
-    def test_eye_op(self):
-        np_eye = np.eye(3, 2)
-        array_rlt1 = [np_eye for _ in range(3)]
-        stack_rlt1 = np.stack(array_rlt1, axis=0)
-        array_rlt2 = [stack_rlt1 for _ in range(4)]
-        stack_rlt2 = np.stack(array_rlt2, axis=0)
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                eager_eye_tensor = layers.eye(num_rows=3, num_columns=2)
-                eager_eye_tensor_rlt1 = layers.eye(
-                    num_rows=3, num_columns=2, batch_shape=[3]
-                )
-                eager_eye_tensor_rlt2 = layers.eye(
-                    num_rows=3, num_columns=2, batch_shape=[4, 3]
-                )
-                eager_diag_tensor = layers.eye(20)
-                eager_eye_tensor_value = eager_eye_tensor.numpy()
-                eager_eye_tensor_rlt1_value = eager_eye_tensor_rlt1.numpy()
-                eager_eye_tensor_rlt2_value = eager_eye_tensor_rlt2.numpy()
-                eager_diag_tensor_value = eager_diag_tensor.numpy()
-
-            eye_tensor = layers.eye(num_rows=3, num_columns=2)
-            eye_tensor_rlt1 = layers.eye(
-                num_rows=3, num_columns=2, batch_shape=[3]
-            )
-            eye_tensor_rlt2 = layers.eye(
-                num_rows=3, num_columns=2, batch_shape=[4, 3]
-            )
-            diag_tensor = layers.eye(20)
-            eye_tensor_value = eye_tensor.numpy()
-            eye_tensor_rlt1_value = eye_tensor_rlt1.numpy()
-            eye_tensor_rlt2_value = eye_tensor_rlt2.numpy()
-            diag_tensor_value = diag_tensor.numpy()
-
-        np.testing.assert_allclose(eager_eye_tensor_value, np_eye, rtol=1e-05)
-        np.testing.assert_allclose(
-            eager_eye_tensor_rlt1_value, stack_rlt1, rtol=1e-05
-        )
-        np.testing.assert_allclose(
-            eager_eye_tensor_rlt2_value, stack_rlt2, rtol=1e-05
-        )
-        np.testing.assert_allclose(
-            eager_diag_tensor_value, np.eye(20), rtol=1e-05
-        )
-
-        np.testing.assert_allclose(eye_tensor_value, np_eye, rtol=1e-05)
-        np.testing.assert_allclose(
-            eye_tensor_rlt1_value, stack_rlt1, rtol=1e-05
-        )
-        np.testing.assert_allclose(
-            eye_tensor_rlt2_value, stack_rlt2, rtol=1e-05
-        )
-        np.testing.assert_allclose(diag_tensor_value, np.eye(20), rtol=1e-05)
-
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3.1)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, num_columns=2.2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=2)
-        with self.assertRaises(TypeError):
-            layers.eye(num_rows=3, batch_shape=[-1])
 
     def func_while_loop(self):
         with self.static_graph():
@@ -2984,7 +2920,6 @@ class TestBook(LayerTest):
                 "make_gaussian_random_batch_size_like",
                 "make_kldiv_loss",
                 "make_prelu",
-                "make_sampled_softmax_with_cross_entropy",
                 "make_sampling_id",
                 "make_uniform_random_batch_size_like",
             }
@@ -3091,18 +3026,6 @@ class TestBook(LayerTest):
                 append_batch_size=append_batch_size,
             )
 
-    def make_sampled_softmax_with_cross_entropy(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            logits = self._get_data(name='Logits', shape=[256], dtype='float32')
-            label = self._get_data(name='Label', shape=[1], dtype='int64')
-            num_samples = 25
-            output = layers.sampled_softmax_with_cross_entropy(
-                logits, label, num_samples
-            )
-            return output
-
     def make_fit_a_line(self):
         with program_guard(
             fluid.default_main_program(),
@@ -3139,7 +3062,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             img = self._get_data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            return layers.conv2d_transpose(
+            return paddle.static.nn.conv2d_transpose(
                 input=img, num_filters=10, output_size=28
             )
 
@@ -3235,33 +3158,6 @@ class TestBook(LayerTest):
             ignore_index = -1
             return layers.sigmoid_cross_entropy_with_logits(
                 x=dat, label=lbl, ignore_index=ignore_index
-            )
-
-    def make_hsigmoid(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[2], dtype='float32')
-            y = self._get_data(name='y', shape=[2], dtype='int64')
-            return layers.hsigmoid(input=x, label=y, num_classes=2)
-
-        # test hsigmod with custom tree structure
-        program2 = Program()
-        with program_guard(program2):
-            x2 = self._get_data(name='x2', shape=[4, 8], dtype='float32')
-            y2 = self._get_data(name='y2', shape=[4], dtype='int64')
-            path_table = self._get_data(
-                name='path_table', shape=[4, 6], dtype='int64'
-            )
-            path_code = self._get_data(
-                name='path_code', shape=[4, 6], dtype='int64'
-            )
-            return layers.hsigmoid(
-                input=x2,
-                label=y2,
-                num_classes=6,
-                path_table=path_table,
-                path_code=path_code,
-                is_custom=True,
             )
 
     def make_pool2d(self):
@@ -3597,31 +3493,6 @@ class TestBook(LayerTest):
             return out
             return ids
 
-    def make_rank_loss(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            label = self._get_data(
-                name='label',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            left = self._get_data(
-                name='left',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            right = self._get_data(
-                name='right',
-                append_batch_size=False,
-                shape=[16, 1],
-                dtype="float32",
-            )
-            out = layers.rank_loss(label, left, right, name="rank_loss")
-            return out
-
     def make_shape(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3689,14 +3560,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_bpr_loss(self):
-        self._force_to_use_cpu = True
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name="x", shape=[30, 10], dtype="float32")
-            label = self._get_data(name="label", shape=[30, 1], dtype="int64")
-            out = layers.bpr_loss(x, label)
             return out
 
     def make_expand(self):
@@ -4576,17 +4439,6 @@ class TestBook(LayerTest):
                 label_length=label_length,
             )
             return output
-
-    def test_edit_distance(self):
-        with self.static_graph():
-            predict = layers.data(
-                name='predict', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            label = layers.data(
-                name='label', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            evaluator = fluid.evaluator.EditDistance(predict, label)
-            return evaluator.metrics
 
     def test_basic_gru(self):
         input_size = 128

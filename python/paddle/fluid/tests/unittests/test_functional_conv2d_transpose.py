@@ -89,7 +89,7 @@ class TestFunctionalConv2D(TestCase):
                         (-1, self.in_channels, -1, -1),
                         dtype=self.dtype,
                     )
-                y = fluid.layers.conv2d_transpose(
+                y = paddle.static.nn.conv2d_transpose(
                     x,
                     self.out_channels,
                     output_size=self.output_size,

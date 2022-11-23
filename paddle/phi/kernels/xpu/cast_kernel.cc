@@ -39,14 +39,14 @@ void CastKernel(const Context& dev_ctx,
   int r = -1;
   switch (out_dtype) {
     case phi::DataType::FLOAT32:
-      r = xpu::cast_v2<XPUInTDType, float>(
+      r = xpu::cast<XPUInTDType, float>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<float>(out),
           numel);
       break;
     case phi::DataType::FLOAT16:
-      r = xpu::cast_v2<XPUInTDType, float16>(
+      r = xpu::cast<XPUInTDType, float16>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           reinterpret_cast<float16*>(
@@ -54,35 +54,35 @@ void CastKernel(const Context& dev_ctx,
           numel);
       break;
     case phi::DataType::INT64:
-      r = xpu::cast_v2<XPUInTDType, int64_t>(
+      r = xpu::cast<XPUInTDType, int64_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<int64_t>(out),
           numel);
       break;
     case phi::DataType::INT32:
-      r = xpu::cast_v2<XPUInTDType, int32_t>(
+      r = xpu::cast<XPUInTDType, int32_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<int>(out),
           numel);
       break;
     case phi::DataType::BOOL:
-      r = xpu::cast_v2<XPUInTDType, bool>(
+      r = xpu::cast<XPUInTDType, bool>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<bool>(out),
           numel);
       break;
     case phi::DataType::UINT8:
-      r = xpu::cast_v2<XPUInTDType, uint8_t>(
+      r = xpu::cast<XPUInTDType, uint8_t>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<uint8_t>(out),
           numel);
       break;
     case phi::DataType::FLOAT64:
-      r = xpu::cast_v2<XPUInTDType, double>(
+      r = xpu::cast<XPUInTDType, double>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUInTDType*>(in_data),
           dev_ctx.template Alloc<double>(out),
@@ -93,7 +93,7 @@ void CastKernel(const Context& dev_ctx,
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
 
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 }
 }  // namespace phi
 
