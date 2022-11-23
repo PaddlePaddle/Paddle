@@ -225,8 +225,8 @@ class TestProfilerAPIError(unittest.TestCase):
 
 class TestFLOPSAPI(unittest.TestCase):
     def test_flops(self):
-        self.assertTrue(flops('relu', ([12, 12],), output=4) == 144)
-        self.assertTrue(flops('dropout', ([12, 12],), **{'output': 4}) == 0)
+        self.assertTrue(flops('relu', ([12, 12],), {'output': 4}) == 144)
+        self.assertTrue(flops('dropout', ([12, 12],), {'output': 4}) == 0)
 
 
 if __name__ == '__main__':

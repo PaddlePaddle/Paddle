@@ -98,7 +98,7 @@ class HostStatisticNode:
 
     def cal_flops(self):
         if self.hostnode.type == TracerEventType.Operator:
-            if self.hostnode.input_shapes:
+            if hasattr(self.hostnode, 'input_shapes'):
                 op_name = self.hostnode.name
                 op_name = op_name.replace(' compute', '')
                 op_name = op_name.replace(' dygraph', '')
