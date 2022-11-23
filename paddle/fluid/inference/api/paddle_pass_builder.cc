@@ -165,11 +165,8 @@ const std::vector<std::string> kLiteSubgraphPasses({
 // running errors. After fusion operator supports low precision, delete this.
 const std::vector<std::string> kGpuLowerPrecisionPasses{
     "simplify_with_basic_ops_pass",
-<<<<<<< HEAD
     "silu_fuse_pass",
-=======
     "map_depthwise_conv_to_conv_pass",
->>>>>>> develop
     "conv_bn_fuse_pass",
     "conv_eltwiseadd_bn_fuse_pass",
     "conv_elementwise_add_act_fuse_pass",
