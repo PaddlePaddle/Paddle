@@ -869,7 +869,7 @@ class Transformer(Layer):
             )
             log_probs = gather(log_probs, topk_indices, batch_pos)
             finished = gather(finished, beam_indices, batch_pos)
-            finished = layers.logical_or(
+            finished = paddle.logical_or(
                 finished, layers.equal(token_indices, end_token_tensor)
             )
             trg_word = paddle.reshape(token_indices, [-1, 1])
