@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
-
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 
 namespace phi {
@@ -67,14 +65,7 @@ class ConcatFunctor<XPUContext, T> {
                                   reinterpret_cast<XPUType*>(output->data<T>()),
                                   xdims_list,
                                   axis);
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        paddle::platform::errors::External(
-            "XPU API return wrong value[%d %s], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r,
-            XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "concat");
   }
 };
 
@@ -126,14 +117,7 @@ class SplitFunctor<XPUContext, T> {
         xdims_list,
         split_list,
         axis);
-    PADDLE_ENFORCE_EQ(
-        r,
-        XPU_SUCCESS,
-        paddle::platform::errors::External(
-            "XPU API return wrong value[%d %s], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r,
-            XPUAPIErrorMsg[r]));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "split");
   }
 };
 
