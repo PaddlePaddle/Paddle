@@ -153,6 +153,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
 template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
+template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 
 }  // namespace funcs
 }  // namespace phi

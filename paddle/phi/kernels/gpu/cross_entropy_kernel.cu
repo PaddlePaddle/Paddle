@@ -1466,7 +1466,8 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    ALL_LAYOUT,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #else
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    GPU,
@@ -1474,5 +1475,6 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 #endif
