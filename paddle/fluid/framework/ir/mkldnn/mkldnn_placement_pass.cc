@@ -20,6 +20,7 @@ namespace framework {
 namespace ir {
 
 bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
+  std::cout << "MkldnnPlacementPass" << std::endl;
   auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto op_type = op->Op()->Type();
 
@@ -34,12 +35,15 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
 
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
+    std::cout << "Kernel type founded" << std::endl;
     for (auto& kernel_pair : it->second) {
       if (platform::is_cpu_place(kernel_pair.first.place_) &&
           (kernel_pair.first.library_type_ == LibraryType::kMKLDNN)) {
+        std::cout << "Mkldnn backend" << std::endl;
         if (op->inputs.size() > 0 && op->inputs[0]->IsVar() &&
             kernel_pair.first.data_type_ == op->inputs[0]->Var()->GetDataType())
           return true;
+        return true;
       }
     }
   }
@@ -48,11 +52,14 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
       phi::TransToPhiKernelName(op_type));
 
   for (auto& kernel_pair : phi_kernels) {
+    std::cout << "PHI kernel type founded" << std::endl;
     if (kernel_pair.first.backend() == phi::Backend::ONEDNN) {
+      std::cout << "Onednn backend" << std::endl;
       if (op->inputs.size() > 0 && op->inputs[0]->IsVar() &&
           kernel_pair.first.dtype() == framework::TransToPhiDataType(
                                            op->inputs[0]->Var()->GetDataType()))
         return true;
+      return true;
     }
   }
   return false;

@@ -24,6 +24,7 @@ namespace ir {
 
 void PlacementPassBase::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Applies " << GetPlacementName() << " placement strategy.";
+  std::cout << "PlacementPassBase ApplyImpl" << std::endl;
   std::string attr_name = GetAttrName();
   const auto& op_types_list = GetOpTypesList();
   if (!graph->Has(attr_name)) {
