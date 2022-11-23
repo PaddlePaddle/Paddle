@@ -41,8 +41,8 @@ namespace cub = hipcub;
 
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
-#include "paddle/phi/kernels/funcs/common_funcs.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/index_calculator.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 #include "paddle/utils/string/string_helper.h"
 
@@ -223,7 +223,7 @@ struct ReduceIndexMapping {
 #endif
 };
 
-// When reduce_type == kReduceLastDim this struct will be used
+// when reduce_type == kReduceLastDim this struct will be used
 // for higher performance
 struct OneDimIndexCal {
   explicit OneDimIndexCal(int num) : stride(num) {}
@@ -231,7 +231,7 @@ struct OneDimIndexCal {
   int stride;
 };
 
-// Reduce config
+// reduce config
 template <typename Ty>
 struct ReduceConfig {
   ReduceConfig(const std::vector<int>& origin_reduce_dims,
@@ -255,20 +255,20 @@ struct ReduceConfig {
 
   // Get the parameters of reduceKernel
   void Run(const KPDevice& dev_ctx) {
-    // 1st: Update the reduce_dim left_dim and x_dim
+    // step1: update the reduce_dim left_dim and x_dim
     SetReduceDim();
 
-    // 2nd: Get the strides of dim for reduceAny and reduceLastDim
+    // step2: get the strides of dim for reduceAny and reduceLastDim
     SetStrides();
 
-    // 3rd: Get the type of reduce
+    // step3: get the type of reduce
     SetReduceType();
 
-    // 4th: Set the block and grid for launch kernel
+    // step4: set the block and grid for launch kernel
     SetBlockDim();
 
 #ifndef PADDLE_WITH_XPU_KP
-    // 5th: Limit the grid to prevent thead overflow
+    // step5: limit the grid to prevent thead overflow
     phi::backends::gpu::LimitGridDim(dev_ctx, &grid);
 #endif  // PADDLE_WITH_XPU_KP
   }
@@ -296,7 +296,7 @@ struct ReduceConfig {
   }
 
  private:
-  // 1th: Update the reduce_dim left_dim and x_dim
+  // set reduce_dim, left_dim and update x_dim
   // eg: x_dim = [2, 4, 6] origin_reduce_dims = [0, 1]
   //     --SetReduceDim--> x_dim = [8,6], reduce_dim = [0], left_dim = [1]
   void SetReduceDim() {
@@ -309,7 +309,7 @@ struct ReduceConfig {
     std::vector<int> reduce_dim_temp(reduce_set.begin(), reduce_set.end());
     std::sort(reduce_dim_temp.begin(), reduce_dim_temp.end());
 
-    // Update reduce_dim and x_dim
+    // update reduce_dim and x_dim
     std::vector<int> x_new_dim;
 
     reduce_dim.push_back(reduce_dim_temp[0]);
@@ -341,7 +341,7 @@ struct ReduceConfig {
       x_new_dim = x_dim;
     }
 
-    // Update x_dim
+    // update x_dim
     x_dim = x_new_dim;
     std::vector<int>().swap(x_new_dim);
 
@@ -379,15 +379,14 @@ struct ReduceConfig {
 
     left_dim.assign(left_set.begin(), left_set.end());
 
-    // If the last dim gets involved in reduction
+    // if the last dim gets involved in reduction
     reduce_last_dim = (reduce_dim.back() == x_dim.size() - 1);
   }
 
-  // Set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
+  // set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
   // eg: x_dim = [8, 6], reduce_dim = [0], left_dim = [1]
   //     --SetStrides--> x_strides= [6,1], reduce_strides = [1],
   //     left_strides = [1]
-  // 2nd: Get the strides of dim for reduceAny and reduceLastDim
   void SetStrides() {
     std::vector<int> idx_dim;
     for (int i = 0; i < x_dim.size(); i++) {
@@ -404,7 +403,7 @@ struct ReduceConfig {
     }
   }
 
-  // Get the reduceType
+  // get the reduceType
   // eg: x_dim = [8, 6] reduce_dim = [0] --> ReduceHigherDim -->reduceFirstDim
   //     x_dim = [8, 6] reduce_dim = [1] --> reduceLastDim
   //     x_dim = [8] reduce_dim = [0] --> reduceAll
@@ -423,9 +422,12 @@ struct ReduceConfig {
     if (reduce_last_dim && (reduce_rank == 1)) {
 #ifndef PADDLE_WITH_XPU_KP
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-#endif  // PADDLE_WITH_XPU_KP
-    } else if (reduce_rank < 3 && !not_higher && reduce_num < 1024) {
+#endif
+    } else if (reduce_rank == 1) {
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
+      if (rank == 3 && not_higher) {
+        reduce_type = static_cast<int>(ReduceType::kReduceAny);
+      }
     }
   }
 
