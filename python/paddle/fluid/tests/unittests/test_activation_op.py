@@ -1689,7 +1689,6 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
 
 class TestLeakyReluAPI(unittest.TestCase):
     # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
-    # fluid.layers.leaky_relu
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
