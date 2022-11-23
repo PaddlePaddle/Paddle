@@ -2124,7 +2124,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     nranks = 1
     if group is not False:
         if core.is_compiled_with_dist():
-            parallel_env = paddle.paddle.distributed.parallel_env.ParallelEnv()
+            parallel_env = paddle.distributed.parallel_env.ParallelEnv()
             global_rank = parallel_env.rank
             rank = (
                 global_rank
