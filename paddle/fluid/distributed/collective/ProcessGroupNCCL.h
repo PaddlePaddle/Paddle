@@ -18,7 +18,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/distributed/collective/ProcessGroupStream.h"
@@ -220,15 +219,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
       bool sync_op,
       bool use_calc_stream);
 
-  void CheckTensorsSameShape(phi::DenseTensor* out_tensor,
-                             const phi::DenseTensor& in_tensor);
-
-  void CheckTensorsScatterLikeShape(phi::DenseTensor* out_tensor,
-                                    const phi::DenseTensor& in_tensor);
-
-  void CheckTensorsGatherLikeShape(phi::DenseTensor* out_tensor,
-                                   const phi::DenseTensor& in_tensor);
-
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(
       std::vector<Place> places,
@@ -261,8 +251,6 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
-
-  std::unordered_set<std::string> p2p_record_;  // for send recv check
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
