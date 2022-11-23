@@ -220,3 +220,51 @@ class ProcessMesh(core.ProcessMesh):
             self.shape, self.process_ids, self.dim_names
         )
         return str
+
+
+def compute_compatible_process_mesh(process_mesh_list):
+    """Compute the compatible process mesh given a list of process meshes."""
+    if not process_mesh_list:
+        return None
+
+    def _compute_compatible_process_mesh_of_two(pm1, pm2):
+        if pm1 is None:
+            return True, pm2
+        if pm2 is None:
+            return True, pm1
+        if pm1 == pm2:
+            return True, pm1
+        if pm1.process_ids == pm2.process_ids:
+            if len(pm1.shape) >= len(pm2.shape):
+                return True, pm1
+            else:
+                return True, pm2
+        process_set1 = set(pm1.process_ids)
+        process_set2 = set(pm2.process_ids)
+        if process_set1.issubset(process_set2):
+            return True, pm2
+        if process_set2.issubset(process_set1):
+            return True, pm1
+        return False, None
+
+    compatible_result = None
+    for process_mesh in process_mesh_list:
+        compatible, compatible_result = _compute_compatible_process_mesh_of_two(
+            compatible_result, process_mesh
+        )
+        if not compatible:
+            return None
+    return copy.deepcopy(compatible_result)
+
+
+def merge_process_meshes(process_meshes):
+    """Merge a list of process meshes."""
+    merged_process_mesh = None
+    merged_process_ids = set()
+    for process_mesh in process_meshes:
+        if process_mesh is not None:
+            process_ids = set(process_mesh.process_ids)
+            merged_process_ids = merged_process_ids.union(process_ids)
+    if len(merged_process_ids) != 0:
+        merged_process_mesh = ProcessMesh(list(merged_process_ids))
+    return merged_process_mesh
