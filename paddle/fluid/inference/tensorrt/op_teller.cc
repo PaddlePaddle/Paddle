@@ -2209,8 +2209,9 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
     if (op_type == "less_than" || op_type == "greater_than") {
-#if !IS_TRT_VERSION_GE(8000)
-      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3)
+          << "less_than and greater_than is not supported when TensorRT < 8.4";
       return false;
 #else
       if (!with_dynamic_shape) {
