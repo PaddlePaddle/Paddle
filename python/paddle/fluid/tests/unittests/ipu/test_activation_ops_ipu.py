@@ -63,6 +63,24 @@ class TestBase(IPUOpTest):
         self.check()
 
 
+class TestHardTanhCase0(TestBase):
+    def set_data_feed(self):
+        data = np.random.uniform(size=[1, 3, 10, 10]) * 30
+        self.feed_fp32 = {'in_0': data.astype(np.float32)}
+        self.feed_fp16 = {'in_0': data.astype(np.float16)}
+        self.feed_list = list(self.feed_fp32.keys())
+
+    def set_test_op(self):
+        self.op = paddle.nn.functional.hardtanh
+        self.op_attrs = {}
+
+
+class TestHardTanhCase1(TestHardTanhCase0):
+    def set_test_op(self):
+        self.op = paddle.nn.functional.hardtanh
+        self.op_attrs = {"min": 0.1, 'max': 10.0}
+
+
 class TestEluCase1(TestBase):
     def set_test_op(self):
         self.op = F.elu
