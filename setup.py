@@ -75,9 +75,7 @@ def filter_setup_args(input_args):
     return cmake_and_make, only_cmake, rerun_cmake, filter_args_list
 
 
-cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(
-    sys.argv
-)
+cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(sys.argv)
 
 
 def parse_input_command(input_parameters):
