@@ -16,7 +16,7 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 import unittest
-from paddle.fluid.dygraph import declarative
+from paddle.jit.api import declarative
 
 
 @fluid.dygraph.declarative

@@ -34,5 +34,6 @@ from .variable_trans_func import to_static_variable  # noqa: F401
 from .convert_operators import convert_shape_compare  # noqa: F401
 from .assert_transformer import AssertTransformer
 from .ast_transformer import DygraphToStaticAst
+from .program_translator import convert_to_static
 
 __all__ = []

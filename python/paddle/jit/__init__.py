@@ -20,6 +20,7 @@ from .api import set_code_level
 from .api import set_verbosity
 from .api import declarative as to_static
 from .api import not_to_static
+from .api import TranslatedLayer
 
 from . import dy2static
 from .dy2static.program_translator import ProgramTranslator
