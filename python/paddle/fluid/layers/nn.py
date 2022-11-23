@@ -5439,7 +5439,6 @@ def topk(input, k, name=None):
     return values, indices
 
 
-# Will be removed in this project
 def ctc_greedy_decoder(
     input, blank, input_length=None, padding_value=0, name=None
 ):
