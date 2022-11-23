@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import (
 from paddle.optimizer.lr import NoamDecay
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+import paddle.nn.functional as F
 
 """
 Note(chenweihang): To compare loss of single-card and multi-card
@@ -325,18 +326,19 @@ class MultiHeadAttentionLayer(Layer):
         v = self._v_fc(values)
 
         # split head
-        reshaped_q = fluid.layers.reshape(
-            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_q = paddle.reshape(
+            x=q, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
-        reshaped_k = fluid.layers.reshape(
-            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=False
+
+        transpose_q = paddle.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+        reshaped_k = paddle.reshape(
+            x=k, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
-        reshaped_v = fluid.layers.reshape(
-            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False
+        transpose_k = paddle.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+        reshaped_v = paddle.reshape(
+            x=v, shape=[0, 0, self._n_head, self._d_value]
         )
-        transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+        transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
         product = fluid.layers.matmul(
@@ -362,11 +364,11 @@ class MultiHeadAttentionLayer(Layer):
         # combine heads
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
-        trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-        final_out = fluid.layers.reshape(
+
+        trans_x = paddle.transpose(out, perm=[0, 2, 1, 3])
+        final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=False,
         )
 
         # fc to output
@@ -839,8 +841,8 @@ class WrapDecoderLayer(Layer):
             dec_input, enc_output, trg_slf_attn_bias, trg_src_attn_bias
         )
 
-        dec_output_reshape = fluid.layers.reshape(
-            dec_output, shape=[-1, dec_output.shape[-1]], inplace=False
+        dec_output_reshape = paddle.reshape(
+            dec_output, shape=[-1, dec_output.shape[-1]]
         )
 
         if self._weight_sharing:
@@ -933,7 +935,7 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
+            label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),

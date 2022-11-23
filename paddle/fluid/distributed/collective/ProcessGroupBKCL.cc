@@ -282,24 +282,24 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Barrier(
   return task;
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place) const {
   return GetDeviceContext(place, /*use_calc_stream*/ false);
 }
 
-const phi::DeviceContext& ProcessGroupBKCL::GetDeviceContext(
+phi::DeviceContext* ProcessGroupBKCL::GetDeviceContext(
     const Place& place, bool use_calc_stream) const {
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
-    return *iter->second;
+    return iter->second;
   } else {
     const auto& iter = place_to_comm_ctx_.find(key);
     PADDLE_ENFORCE_NE(iter,
                       place_to_comm_ctx_.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find device context in process group."));
-    return *iter->second;
+    return iter->second.get();
   }
 }
 
@@ -529,6 +529,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
       CommType::ALLGATHER,
       sync_op,
       /*use_calc_stream*/ false);
+}
+
+std::shared_ptr<ProcessGroupBKCL> ProcessGroupBKCL::CreateProcessGroupBKCL(
+    const std::shared_ptr<Store>& store, int rank, int size, int gid) {
+  auto process_group =
+      std::make_shared<ProcessGroupBKCL>(store, rank, size, gid);
+  ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
+  return process_group;
 }
 
 }  //  namespace distributed
