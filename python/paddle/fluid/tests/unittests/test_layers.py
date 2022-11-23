@@ -716,7 +716,7 @@ class TestLayer(LayerTest):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            out = layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=img,
                 num_filters=10,
                 filter_size=27,
@@ -2272,7 +2272,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
-            out = layers.conv3d_transpose(
+            out = paddle.static.nn.conv3d_transpose(
                 input=img, num_filters=12, filter_size=12, use_cudnn=False
             )
             static_rlt = self.get_static_graph_result(
@@ -3064,7 +3064,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             img = self._get_data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            return layers.conv2d_transpose(
+            return paddle.static.nn.conv2d_transpose(
                 input=img, num_filters=10, output_size=28
             )
 
