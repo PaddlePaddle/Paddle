@@ -14,7 +14,7 @@
 
 from ..wrapped_decorator import signature_safe_contextmanager
 
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import (
@@ -27,7 +27,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_or
 from .utils import (
     assert_same_structure,
     map_structure,
@@ -49,6 +49,7 @@ from ..data_feeder import (
     check_dtype,
 )
 from ..backward import _infer_var_data_type_shape_
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
@@ -624,10 +625,12 @@ class StaticRNN:
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
+            paddle.enable_static()
             x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
             # create word sequence
             x_emb = layers.embedding(
@@ -636,7 +639,7 @@ class StaticRNN:
                 dtype='float32',
                 is_sparse=False)
             # transform batch size to dim 1
-            x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
@@ -713,10 +716,12 @@ class StaticRNN:
         Examples 1:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -725,7 +730,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -741,9 +746,11 @@ class StaticRNN:
         Examples 2:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -752,7 +759,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
                 boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -841,10 +848,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -853,7 +862,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -892,10 +901,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -904,7 +915,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -952,10 +963,12 @@ class StaticRNN:
         Examples:
             .. code-block:: python
 
+                import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.layers as layers
 
                 vocab_size, hidden_size=10000, 200
+                paddle.enable_static()
                 x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
                 # create word sequence
                 x_emb = layers.embedding(
@@ -964,7 +977,7 @@ class StaticRNN:
                         dtype='float32',
                         is_sparse=False)
                 # transform batch size to dim 1
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+                x_emb = paddle.transpose(x_emb, perm=[1, 0, 2])
 
                 rnn = fluid.layers.StaticRNN()
                 with rnn.step():
@@ -2075,7 +2088,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y)
     else:
         helper.append_op(
             type='greater_than',
@@ -2173,8 +2186,7 @@ def equal(x, y, cond=None, name=None):
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.equal(x, y, default_axis)
+        return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["float32", "float64", "int32", "int64"], "equal"
@@ -2808,7 +2820,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 )
             )
         false_cond_block = ConditionalBlock(
-            [logical_not(pred)], is_scalar_condition=True
+            [paddle.logical_not(pred)], is_scalar_condition=True
         )
         with false_cond_block.block():
             origin_false_output = false_fn()
@@ -3261,13 +3273,13 @@ class Switch:
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
-            not_cond = logical_not(x=condition)
+            not_cond = paddle.logical_not(x=condition)
             self.pre_not_conditions.append(not_cond)
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
             new_not_cond = logical_and(
-                x=pre_not_cond, y=logical_not(x=condition)
+                x=pre_not_cond, y=paddle.logical_not(x=condition)
             )
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(

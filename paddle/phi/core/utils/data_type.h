@@ -20,8 +20,6 @@ limitations under the License. */
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
-#include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 namespace phi {
 
 // Here we can't depend on the fluid proto::VarType, so we use the dtype enum
@@ -40,6 +38,14 @@ static std::map<int, phi::DataType> var_type_map{{1, phi::DataType::INT16},
                                                  {5, phi::DataType::FLOAT32},
                                                  {6, phi::DataType::FLOAT64},
                                                  {20, phi::DataType::UINT8}};
+
+static std::map<phi::DataType, int> map_to_var_type{{phi::DataType::INT16, 1},
+                                                    {phi::DataType::INT32, 2},
+                                                    {phi::DataType::INT64, 3},
+                                                    {phi::DataType::FLOAT16, 4},
+                                                    {phi::DataType::FLOAT32, 5},
+                                                    {phi::DataType::FLOAT64, 6},
+                                                    {phi::DataType::UINT8, 20}};
 
 #define _PhiForEachDataTypeHelper_(callback, cpp_type, data_type) \
   callback(cpp_type, data_type);
@@ -129,4 +135,41 @@ inline DataType ToRealType(const DataType& type) {
           type));
   }
 }
+
+inline std::string DataType2String(DataType dtype) {
+  switch (dtype) {
+    case DataType::BOOL:
+      return "bool";
+    case DataType::INT8:
+      return "int8";
+    case DataType::UINT8:
+      return "uint8";
+    case DataType::INT16:
+      return "int16";
+    case DataType::INT32:
+      return "int32";
+    case DataType::INT64:
+      return "int64";
+    case DataType::FLOAT16:
+      return "float16";
+    case DataType::FLOAT32:
+      return "float32";
+    case DataType::FLOAT64:
+      return "float64";
+    case DataType::COMPLEX64:
+      return "complex64";
+    case DataType::COMPLEX128:
+      return "complex128";
+    case DataType::PSTRING:
+      return "pstring";
+    case DataType::BFLOAT16:
+      return "bfloat16";
+    default:
+      PADDLE_THROW(
+          errors::InvalidArgument("Unknow phi::DataType, the int value = %d.",
+                                  static_cast<int>(dtype)));
+      return "";
+  }
+}
+
 }  // namespace phi

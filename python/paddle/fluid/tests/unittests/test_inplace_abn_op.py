@@ -78,16 +78,16 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         in_place=inplace,
                     )
                     if activation == 'leaky_relu':
-                        bn = fluid.layers.leaky_relu(bn, alpha)
+                        bn = paddle.nn.functional.leaky_relu(bn, alpha)
                     if activation == 'elu':
-                        bn = fluid.layers.elu(bn, alpha)
+                        bn = paddle.nn.functional.elu(bn, alpha)
 
                 # NOTE: in inplace mode input and output of bn
                 # may have same name, multiply 1. to generate
                 # a new Variable for fetch
                 bn = bn * 1.0
 
-                sigmoid = fluid.layers.sigmoid(bn)
+                sigmoid = paddle.nn.functional.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)

@@ -381,7 +381,7 @@ class TestDistRunnerBase:
                 infer_save_dir_fleet = os.path.join(
                     model_save_dir, "fleet_infer_2"
                 )
-            fluid.io.save_persistables(
+            paddle.distributed.io.save_persistables(
                 exe, model_save_dir_fluid, fleet._origin_program
             )
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
