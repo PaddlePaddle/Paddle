@@ -110,7 +110,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'scatter',
     'random_crop',
     'relu',
     'log',
@@ -7244,96 +7243,6 @@ def gather_nd(input, index, name=None):
         outputs={"Out": output},
     )
     return output
-
-
-@deprecated(since="2.0.0", update_to="paddle.scatter")
-def scatter(input, index, updates, name=None, overwrite=True):
-    """
-    :alias_main: paddle.scatter
-        :alias: paddle.scatter,paddle.tensor.scatter,paddle.tensor.manipulation.scatter
-        :old_api: paddle.fluid.layers.scatter
-
-    **Scatter Layer**
-
-    Output is obtained by updating the input on selected indices based on updates.
-
-    .. code-block:: python
-
-        import numpy as np
-
-        #input:
-        input = np.array([[1, 1], [2, 2], [3, 3]])
-        index = np.array([2, 1, 0, 1])
-        # shape of updates should be the same as input
-        # shape of updates with dim > 1 should be the same as input
-        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
-        overwrite = False
-
-        # calculation:
-        if not overwrite:
-            for i in range(len(index)):
-                input[index[i]] = np.zeros((2))
-
-        for i in range(len(index)):
-            if (overwrite):
-                input[index[i]] = updates[i]
-            else:
-                input[index[i]] += updates[i]
-        # output:
-        out = np.array([[3, 3], [6, 6], [1, 1]])
-        out.shape # [3, 2]
-
-    Args:
-        input (Variable): The input N-D Tensor with rank>=1. Data type can be float32.
-        index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-        overwrite (bool): The mode that updating the output when there are same indices.
-            If True, use the overwrite mode to update the output of the same index,
-            if False, use the accumulate mode to update the output of the same index.
-            Default value is True.
-
-    Returns:
-        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[4, 2], dtype='float32', append_batch_size=False)
-
-            output = fluid.layers.scatter(input, index, updates, overwrite=False)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            in_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
-            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            update_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'data':in_data, "index":index_data, "update":update_data}, fetch_list=[output])
-            print(res)
-            # [array([[3., 3.],
-            #   [6., 6.],
-            #   [1., 1.]], dtype=float32)]
-    """
-    helper = LayerHelper('scatter', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="scatter",
-        inputs={"X": input, "Ids": index, "Updates": updates},
-        attrs={'overwrite': overwrite},
-        outputs={"Out": out},
-    )
-    return out
 
 
 @templatedoc()
