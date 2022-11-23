@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import paddle
 import paddle.distributed.fleet as fleet
 import numpy as np
@@ -22,6 +21,8 @@ import unittest
 from dist_pass_test_base import DistPassTestBase
 
 paddle.enable_static()
+np.random.seed(2022)
+paddle.seed(2022)
 
 
 def verify_op_count(op_types, op_name, target_count):
@@ -110,8 +111,6 @@ class TestFuseGemmEpiloguePassReluFP32(DistPassTestBase):
         rank = paddle.distributed.get_rank()
 
         def reader():
-            seed = int(os.environ.get("SEED", 0))
-            np.random.seed(seed + rank)
             for _ in range(10):
                 data_arr = (
                     np.random.random(
