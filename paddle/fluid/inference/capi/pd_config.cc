@@ -243,7 +243,11 @@ bool PD_SpecifyInputName(const PD_AnalysisConfig* config) {
 }
 
 void PD_EnableTensorRtEngine(PD_AnalysisConfig* config,
+<<<<<<< HEAD
                              int workspace_size,
+=======
+                             int64_t workspace_size,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                              int max_batch_size,
                              int min_subgraph_size,
                              Precision precision,
@@ -269,12 +273,28 @@ bool PD_TensorrtEngineEnabled(const PD_AnalysisConfig* config) {
   return config->config.tensorrt_engine_enabled();
 }
 
-void PD_EnableDlnne(PD_AnalysisConfig* config, int min_subgraph_size) {
+void PD_EnableDlnne(
+    PD_AnalysisConfig* config,
+    int min_subgraph_size,
+    int max_batch_size,
+    bool use_static_batch,
+    std::string weight_share_mode,
+    std::unordered_set<std::string> disable_nodes_by_ouputs,
+    std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict,
+    bool use_calib_mode,
+    AnalysisConfig::Precision precision_mode) {
   PADDLE_ENFORCE_NOT_NULL(
       config,
       paddle::platform::errors::InvalidArgument(
           "The pointer of analysis configuration shouldn't be nullptr"));
-  config->config.EnableDlnne(min_subgraph_size);
+  config->config.EnableDlnne(min_subgraph_size,
+                             max_batch_size,
+                             use_static_batch,
+                             weight_share_mode,
+                             disable_nodes_by_ouputs,
+                             dlnne_input_shape_dict,
+                             use_calib_mode,
+                             precision_mode);
 }
 
 bool PD_DlnneEnabled(const PD_AnalysisConfig* config) {

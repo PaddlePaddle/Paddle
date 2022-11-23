@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import numpy
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import unittest
 import paddle
 
 
 class TestPropertySave(unittest.TestCase):
+<<<<<<< HEAD
     """test jit property save
     """
+=======
+    """test jit property save"""
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def setUp(self):
         a = paddle.framework.core.Property()
@@ -44,6 +51,7 @@ class TestPropertySave(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.a.get_float(1)
 
+<<<<<<< HEAD
     def test_set_float_wo_name(self):
         """test save without name
         """
@@ -67,6 +75,17 @@ class TestPropertySave(unittest.TestCase):
             a.set_string("hello")
             a.set_string("str", "hello")
             a.set_strings(["1", "2", "3"])
+=======
+    def test_set(self):
+        """test propety set."""
+        try:
+            a = paddle.framework.core.Property()
+            a.set_float('float', 10.0)
+            a.set_floats('floats', [5.0, 4.0, 3.0])
+            a.set_int('int', 5)
+            a.set_ints('ints', [1, 2, 3])
+            a.set_string("str", "hello")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             a.set_strings('strs', ["1", "2", "3"])
         except Exception as e:
             self.assertEqual(False, True)

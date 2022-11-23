@@ -23,8 +23,8 @@ namespace math {
 // All tensors are in NCHW or NHWC format, and the groups must be greater than 1
 template <typename DeviceContext, typename T>
 void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
-                                                 const framework::Tensor& input,
-                                                 framework::Tensor* output,
+                                                 const phi::DenseTensor& input,
+                                                 phi::DenseTensor* output,
                                                  const int groups,
                                                  const int axis) {
   const int batch_size = input.dims()[0];
@@ -66,10 +66,17 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const framework::Tensor& input,
     framework::Tensor* input_grad,
     const framework::Tensor& output,
     const framework::Tensor& output_grad,
+=======
+    const phi::DenseTensor& input,
+    phi::DenseTensor* input_grad,
+    const phi::DenseTensor& output,
+    const phi::DenseTensor& output_grad,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const int groups,
     const int axis) {
   const int batch_size = input.dims()[0];

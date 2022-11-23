@@ -25,6 +25,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_op_list.h"
+#endif
 #include "paddle/fluid/framework/library_type.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
@@ -58,9 +61,9 @@ const std::shared_ptr<VariableWrapper>& GetVariableWrapper(
   return var;
 }
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
-  if (var.IsType<framework::LoDTensor>()) {
-    return &(var.Get<framework::LoDTensor>());
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var) {
+  if (var.IsType<phi::DenseTensor>()) {
+    return &(var.Get<phi::DenseTensor>());
   } else if (var.IsType<phi::SelectedRows>()) {
     return &(var.Get<phi::SelectedRows>().value());
   } else {
@@ -91,7 +94,11 @@ void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
                 << " var `" << var->Name() << "` to "
                 << framework::DataTypeToString(var->ForwardDataType())
                 << " real var in dynamic graph.";
+<<<<<<< HEAD
         framework::Tensor out;
+=======
+        phi::DenseTensor out;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         framework::TransComplexToReal(
             var->ForwardDataType(), var->DataType(), *tensor, &out);
         SetTensorToVariable(var->Var(), out, var->MutableVar());
@@ -146,6 +153,48 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       kernel_signature_(std::move(kernel_signature)),
       phi_kernel_(phi_kernel) {}
 
+#ifdef PADDLE_WITH_MLU
+
+static void tokenize(const std::string& ops,
+                     char delim,
+                     std::unordered_set<std::string>* op_set) {
+  std::string::size_type beg = 0;
+  for (uint64_t end = 0; (end = ops.find(delim, end)) != std::string::npos;
+       ++end) {
+    op_set->insert(ops.substr(beg, end - beg));
+    beg = end + 1;
+  }
+
+  op_set->insert(ops.substr(beg));
+}
+
+static bool is_in_mlu_black_list(const std::string& op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> mlu_black_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("MLU_BLACK_LIST") != nullptr) {
+        std::string ops(std::getenv("MLU_BLACK_LIST"));
+        tokenize(ops, ',', &mlu_black_list);
+      }
+      inited = true;
+      VLOG(3) << "MLU Black List: ";
+      for (auto iter = mlu_black_list.begin(); iter != mlu_black_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (mlu_black_list.find(op_name) != mlu_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+#endif
+
 template <typename VarType>
 PreparedOp PrepareImpl(
     const NameVarMap<VarType>& ins,
@@ -183,15 +232,42 @@ PreparedOp PrepareImpl(
 
   const phi::KernelSignature* default_kernel_signature = nullptr;
   phi::KernelSignature kernel_signature;
-  phi::KernelKey pt_kernel_key;
-  std::string pt_kernel_name;
+  phi::KernelKey phi_kernel_key;
+  std::string phi_kernel_name;
+
+// NOTE(jiahongyu): The registered MKLDNN kernel have library_type =
+// LibraryType::kMKLDNN and data_layout_ = DataLayout::ONEDNN. But the default
+// values are kPlain, so we need to modify the library_type and data_layout_
+// here. There are three statements in if condition:
+// 1. Whether mkldnn kernel fallbacks to plain kernel;
+// 2. Whether this op has specific implementation;
+// 3. Whether mkldnn kernel can be used.
+#ifdef PADDLE_WITH_MKLDNN
+  if (!op.DnnFallback() && !paddle::platform::in_mkldnn_white_list(op.Type()) &&
+      op.CanMKLDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
+    expected_kernel_key.data_layout_ = framework::DataLayout::ONEDNN;
+  }
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (op.CanCUDNNBeUsed(dygraph_exe_ctx, expected_kernel_key.data_type_)) {
+    expected_kernel_key.library_type_ = framework::LibraryType::kCUDNN;
+  }
+#endif
+
 #if defined(PADDLE_WITH_XPU)
   bool is_xpu_unsupport =
       paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
           !paddle::platform::is_xpu_support_op(op.Type(),
                                                expected_kernel_key) ||
       paddle::platform::is_in_xpu_black_list(op.Type());
+#endif
 
+#ifdef PADDLE_WITH_MLU
+  if (is_in_mlu_black_list(op.Type())) {
+    expected_kernel_key.place_ = platform::CPUPlace();
+  }
 #endif
 
   bool has_phi_kernel = false;
@@ -213,7 +289,7 @@ PreparedOp PrepareImpl(
 
   if (has_phi_kernel) {
     VLOG(6) << kernel_signature;
-    pt_kernel_name = kernel_signature.name;
+    phi_kernel_name = kernel_signature.name;
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
@@ -236,34 +312,40 @@ PreparedOp PrepareImpl(
         auto expected_kernel_key_library_type =
             expected_kernel_key.library_type_;
         expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
-        VLOG(3) << "modifing XPU KP kernel: " << pt_kernel_name
+        VLOG(3) << "modifing XPU KP kernel: " << phi_kernel_name
                 << ", using_kernel_key:" << expected_kernel_key;
 
-        phi::KernelKey try_pt_kernel_key =
+        phi::KernelKey try_phi_kernel_key =
             TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
-        if (!phi_kernel_factory.HasKernel(pt_kernel_name, try_pt_kernel_key)) {
+        if (!phi_kernel_factory.HasKernel(phi_kernel_name,
+                                          try_phi_kernel_key)) {
           expected_kernel_key.library_type_ = expected_kernel_key_library_type;
-          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+          VLOG(3) << "modify XPU KP kernel: " << phi_kernel_name
                   << " in dynamic graph is failed " << expected_kernel_key;
         } else {
-          VLOG(3) << "modify XPU KP kernel: " << pt_kernel_name
+          VLOG(3) << "modify XPU KP kernel: " << phi_kernel_name
                   << " in dynamic graph is succeed " << expected_kernel_key;
         }
       }
     }
 #endif
 
-    pt_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+    phi_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
     auto& phi_kernel =
-        phi_kernel_factory.SelectKernel(pt_kernel_name, pt_kernel_key);
+        phi_kernel_factory.SelectKernel(phi_kernel_name, phi_kernel_key);
 
     if (phi_kernel.IsValid()
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
         && !is_xpu_unsupport
 #endif
     ) {
+<<<<<<< HEAD
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
               << " | kernel key: " << pt_kernel_key
+=======
+      VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
+              << " | kernel key: " << phi_kernel_key
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
               << " | kernel: " << phi_kernel;
 
       if (expected_kernel_key.place_ != place) {
@@ -279,7 +361,7 @@ PreparedOp PrepareImpl(
                         phi_kernel,
                         dev_ctx);
     } else {
-      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << pt_kernel_name
+      VLOG(6) << "Dynamic mode ChoosePhiKernel - kernel `" << phi_kernel_name
               << "` not found.";
     }
   }
@@ -316,23 +398,31 @@ PreparedOp PrepareImpl(
 #endif
   ) {
     if (has_phi_kernel) {
-      auto pt_cpu_kernel_key =
-          FallBackToCpu(expected_kernel_key, pt_kernel_key, op);
-      auto& pt_cpu_kernel =
-          phi_kernel_factory.SelectKernel(pt_kernel_name, pt_cpu_kernel_key);
-      if (pt_cpu_kernel.IsValid()) {
-        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << pt_kernel_name
-                << " | kernel key: " << pt_cpu_kernel_key
-                << " | kernel: " << pt_cpu_kernel;
+      auto phi_cpu_kernel_key =
+          FallBackToCpu(expected_kernel_key, phi_kernel_key, op);
+      auto& phi_cpu_kernel =
+          phi_kernel_factory.SelectKernel(phi_kernel_name, phi_cpu_kernel_key);
+      if (phi_cpu_kernel.IsValid()) {
+        VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
+                << " | kernel key: " << phi_cpu_kernel_key
+                << " | kernel: " << phi_cpu_kernel;
         auto* cpu_ctx = pool.Get(paddle::platform::CPUPlace());
         return PreparedOp(
             op,
             empty_ctx,
+<<<<<<< HEAD
             framework::TransPhiKernelKeyToOpKernelType(pt_cpu_kernel_key),
             arg_map_fn,
             default_kernel_signature,
             std::move(kernel_signature),
             pt_cpu_kernel,
+=======
+            framework::TransPhiKernelKeyToOpKernelType(phi_cpu_kernel_key),
+            arg_map_fn,
+            default_kernel_signature,
+            std::move(kernel_signature),
+            phi_cpu_kernel,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             cpu_ctx);
       }
     }
@@ -610,7 +700,11 @@ static void PreparedOpRunPtImpl(
 
     PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
 
+<<<<<<< HEAD
     phi::KernelContext pt_kernel_context;
+=======
+    phi::KernelContext phi_kernel_context;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     BuildDygraphPhiKernelContext<VarType>(kernel_signature,
                                           phi_kernel,
                                           ins,
@@ -618,9 +712,15 @@ static void PreparedOpRunPtImpl(
                                           attrs,
                                           default_attrs,
                                           dev_ctx,
+<<<<<<< HEAD
                                           &pt_kernel_context);
 
     phi_kernel(&pt_kernel_context);
+=======
+                                          &phi_kernel_context);
+
+    phi_kernel(&phi_kernel_context);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   if (FLAGS_check_nan_inf) {

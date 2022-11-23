@@ -21,9 +21,15 @@ set(api_gen_base ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_base.py)
 
 # forward api file
 set(api_gen_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/api_gen.py)
+<<<<<<< HEAD
 set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/api.yaml)
 set(legacy_api_yaml_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_api.yaml)
+=======
+set(api_yaml_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/ops.yaml)
+set(legacy_api_yaml_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/legacy_ops.yaml)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
@@ -55,7 +61,11 @@ set(dygraph_api_source_file_tmp ${dygraph_api_source_file}.tmp)
 set(sparse_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_api_gen.py)
 set(sparse_api_yaml_file
+<<<<<<< HEAD
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_api.yaml)
+=======
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_ops.yaml)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 set(sparse_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/sparse_api.h)
 set(sparse_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/sparse_api.cc)
@@ -66,7 +76,11 @@ set(sparse_api_source_file_tmp ${sparse_api_source_file}.tmp)
 set(sparse_bw_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/sparse_bw_api_gen.py)
 set(sparse_bw_api_yaml_file
+<<<<<<< HEAD
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_bw_api.yaml)
+=======
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/sparse_backward.yaml)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 set(sparse_bw_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/backward/sparse_bw_api.h)
 set(sparse_bw_api_source_file
@@ -78,7 +92,11 @@ set(sparse_bw_api_source_file_tmp ${sparse_bw_api_source_file}.tmp)
 set(strings_api_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/strings_api_gen.py)
 set(strings_api_yaml_file
+<<<<<<< HEAD
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_api.yaml)
+=======
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/strings_ops.yaml)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 set(strings_api_header_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/strings_api.h)
 set(strings_api_source_file
@@ -94,6 +112,7 @@ set(wrapped_infermeta_header_file
 set(wrapped_infermeta_source_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/infermeta/generated.cc)
 
+<<<<<<< HEAD
 # op extra info file
 set(ops_extra_info_gen_file
     ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/ops_extra_info_gen.py)
@@ -102,10 +121,13 @@ set(api_compat_yaml_file
 set(ops_extra_info_file
     ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/ops_extra_info.h)
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(NOT PYTHONINTERP_FOUND)
   find_package(PythonInterp REQUIRED)
 endif()
 
+<<<<<<< HEAD
 # install extra dependencies
 if(${PYTHON_VERSION_STRING} VERSION_LESS "3.6.2")
   execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U pyyaml
@@ -226,6 +248,8 @@ execute_process(
     ${api_compat_yaml_file} --ops_extra_info_path ${ops_extra_info_file})
 message("generate ${ops_extra_info_file}")
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 # generate forward api
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
@@ -337,7 +361,12 @@ add_custom_command(
     ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
     ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
     ${wrapped_infermeta_source_file}
+<<<<<<< HEAD
   DEPENDS ${api_yaml_file} ${wrapped_infermeta_gen_file} ${api_gen_base}
+=======
+  DEPENDS ${api_yaml_file} ${legacy_api_yaml_file} ${wrapped_infermeta_gen_file}
+          ${api_gen_base}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   VERBATIM)
 
 cc_library(
@@ -352,6 +381,7 @@ cc_library(
   context_pool
   SRCS context_pool.cc
   DEPS phi_backends phi_enforce place init)
+<<<<<<< HEAD
 
 cc_library(
   kernel_dispatch
@@ -378,6 +408,28 @@ cc_library(
        tensor_copy)
 
 cc_library(
+=======
+
+cc_library(
+  kernel_dispatch
+  SRCS kernel_dispatch.cc
+  DEPS phi_tensor_raw phi_backends kernel_factory context_pool)
+cc_library(
+  api_gen_utils
+  SRCS api_gen_utils.cc
+  DEPS phi_tensor_raw selected_rows sparse_csr_tensor sparse_coo_tensor
+       infermeta_utils)
+cc_library(
+  phi_data_transform
+  SRCS data_transform.cc
+  DEPS phi_tensor_raw phi tensor)
+cc_library(
+  api_custom_impl
+  SRCS api_custom_impl.cc
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils backward_infermeta
+       phi_data_transform)
+cc_library(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   phi_function_api
   SRCS ${api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils phi_data_transform
@@ -390,6 +442,10 @@ cc_library(
        kernel_dispatch
        api_gen_utils
        backward_infermeta
+<<<<<<< HEAD
+=======
+       sparse_backward_infermeta
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
        phi_data_transform
        phi_function_api
        api_custom_impl
@@ -397,12 +453,20 @@ cc_library(
 cc_library(
   sparse_api
   SRCS ${sparse_api_source_file}
+<<<<<<< HEAD
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api_custom_impl)
+=======
+  DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 cc_library(
   sparse_bw_api
   SRCS ${sparse_bw_api_source_file}
   DEPS phi_tensor_raw phi kernel_dispatch api_gen_utils sparse_api
+<<<<<<< HEAD
        sparse_api_custom_impl)
+=======
+       sparse_backward_infermeta)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 cc_library(
   phi_dygraph_api
   SRCS ${dygraph_api_source_file}
@@ -425,6 +489,10 @@ cc_library(
        api_gen_utils
        kernel_dispatch
        infermeta
+<<<<<<< HEAD
+=======
+       sparse_infermeta
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
        sparse_api
        strings_api)
 cc_library(

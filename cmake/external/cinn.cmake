@@ -16,6 +16,12 @@ if(NOT WITH_CINN)
   return()
 endif()
 
+if(NOT CINN_GIT_TAG)
+  set(CINN_GIT_TAG release/v0.2)
+endif()
+
+message(STATUS "CINN version: " ${CINN_GIT_TAG})
+
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
 # clean the code in the future.
@@ -26,7 +32,10 @@ add_definitions(-w)
 ######################################
 include(ExternalProject)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
+<<<<<<< HEAD
 set(CINN_GIT_TAG release/v0.2)
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 set(CINN_OPTIONAL_ARGS
     -DPY_VERSION=${PY_VERSION}
     -DWITH_CUDA=${WITH_GPU}

@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 void FusedBatchNormActOp::InferShape(framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
@@ -168,6 +168,7 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(
       bn_param_type,
       framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
@@ -188,12 +189,35 @@ framework::OpKernelType FusedBatchNormActOp::GetExpectedKernelType(
       framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
       platform::errors::PreconditionNotMet(
           "Variance input should be of float type"));
+=======
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Bias input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Mean")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Mean input should be of float type"));
+  PADDLE_ENFORCE_EQ(bn_param_type,
+                    framework::TransToProtoVarType(
+                        ctx.Input<phi::DenseTensor>("Variance")->dtype()),
+                    platform::errors::PreconditionNotMet(
+                        "Variance input should be of float type"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       input_data_type, ctx.GetPlace(), layout, library);
+<<<<<<< HEAD
 }
 
 framework::OpKernelType FusedBatchNormActOp::GetKernelTypeForVar(
@@ -202,6 +226,8 @@ framework::OpKernelType FusedBatchNormActOp::GetKernelTypeForVar(
     const framework::OpKernelType &expected_kernel_type) const {
   return framework::OpKernelType(
       expected_kernel_type.data_type_, tensor.place(), tensor.layout());
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 void FusedBatchNormActOpMaker::Make() {
@@ -326,7 +352,7 @@ framework::OpKernelType FusedBatchNormActGradOp::GetExpectedKernelType(
   }
 
   framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+  phi::DataLayout layout = phi::DataLayout::kAnyLayout;
 
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),

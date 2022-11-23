@@ -27,6 +27,7 @@ import subprocess
 import sys
 
 parser = argparse.ArgumentParser(description=__doc__)
+<<<<<<< HEAD
 parser.add_argument('--git_dir',
                     type=str,
                     default='',
@@ -47,10 +48,31 @@ parser.add_argument('--test_target',
                     type=str,
                     default='',
                     help='The test target to evaluate.')
+=======
+parser.add_argument(
+    '--git_dir', type=str, default='', help='git repo root directory.'
+)
+parser.add_argument(
+    '--build_dir', type=str, default='', help='build directory.'
+)
+parser.add_argument(
+    '--good_commit',
+    type=str,
+    default='',
+    help='The old commit known to be good.',
+)
+parser.add_argument(
+    '--bad_commit', type=str, default='', help='The new commit known to be bad.'
+)
+parser.add_argument(
+    '--test_target', type=str, default='', help='The test target to evaluate.'
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 parser.add_argument(
     '--bisect_branch',
     type=str,
     default='develop',
+<<<<<<< HEAD
     help='The mainline branch to bisect (feature branch ignored.')
 parser.add_argument('--log_file',
                     type=str,
@@ -64,6 +86,22 @@ parser.add_argument('--build_parallel',
                     type=int,
                     default=32,
                     help="make parallelism.")
+=======
+    help='The mainline branch to bisect (feature branch ignored.',
+)
+parser.add_argument(
+    '--log_file', type=str, default='', help='The file use to log outputs.'
+)
+parser.add_argument(
+    '--test_times',
+    type=int,
+    default=10,
+    help="Number of times to run the test target.",
+)
+parser.add_argument(
+    '--build_parallel', type=int, default=32, help="make parallelism."
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 args = parser.parse_args()
 
 if not args.log_file:
@@ -81,10 +119,20 @@ print_arguments()
 
 # List the commits in mainline branch.
 os.chdir(args.git_dir)
+<<<<<<< HEAD
 ret = subprocess.check_output([
     'git rev-list --first-parent %s...%s' % (args.good_commit, args.bad_commit)
 ],
                               shell=True)
+=======
+ret = subprocess.check_output(
+    [
+        'git rev-list --first-parent %s...%s'
+        % (args.good_commit, args.bad_commit)
+    ],
+    shell=True,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 sys.stdout.write('commits found:\n%s\n' % ret)
 commits = ret.strip().split('\n')
 os.chdir(args.build_dir)
@@ -95,11 +143,21 @@ last_culprit = ''
 while True:
     # Get to the mainline branch and clean up
     os.chdir(args.git_dir)
+<<<<<<< HEAD
     subprocess.check_output([
         'git checkout %s && git clean -fd && git checkout .' %
         args.bisect_branch
     ],
                             shell=True)
+=======
+    subprocess.check_output(
+        [
+            'git checkout %s && git clean -fd && git checkout .'
+            % args.bisect_branch
+        ],
+        shell=True,
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     if not commits:
         sys.stdout.write('no commits to bisect\n')
@@ -115,9 +173,11 @@ while True:
     os.chdir(args.build_dir)
     sys.stdout.write('eval commit %d/%d: %s\n' % (pick_idx, len(commits), pick))
     # Link error can happen without complete clean up.
-    cmd = ('rm -rf * && '
-           'cmake -DWITH_TESTING=ON %s >> %s && make -j%s >> %s' %
-           (args.git_dir, args.log_file, args.build_parallel, args.log_file))
+    cmd = (
+        'rm -rf * && '
+        'cmake -DWITH_TESTING=ON %s >> %s && make -j%s >> %s'
+        % (args.git_dir, args.log_file, args.build_parallel, args.log_file)
+    )
     sys.stdout.write('cmd: %s\n' % cmd)
     try:
         subprocess.check_output([cmd], shell=True)
@@ -127,8 +187,11 @@ while True:
     # test the selected branch.
     passed = True
     try:
-        cmd = ('ctest --repeat-until-fail %s -R %s >> %s' %
-               (args.test_times, args.test_target, args.log_file))
+        cmd = 'ctest --repeat-until-fail %s -R %s >> %s' % (
+            args.test_times,
+            args.test_target,
+            args.log_file,
+        )
         sys.stdout.write('cmd: %s\n' % cmd)
         subprocess.check_output([cmd], shell=True)
     except subprocess.CalledProcessError as e:
@@ -136,10 +199,12 @@ while True:
         last_culprit = pick
     sys.stdout.write('eval %s passed: %s\n' % (pick, passed))
     if passed:
-        if pick_idx == 0: break
+        if pick_idx == 0:
+            break
         commits = commits[:pick_idx]
     else:
-        if pick_idx + 1 >= len(commits): break
-        commits = commits[pick_idx + 1:]
+        if pick_idx + 1 >= len(commits):
+            break
+        commits = commits[pick_idx + 1 :]
 
 sys.stdout.write('Culprit commit: %s\n' % last_culprit)

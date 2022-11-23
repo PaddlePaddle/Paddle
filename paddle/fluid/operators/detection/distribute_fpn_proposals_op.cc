@@ -12,7 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/detection/distribute_fpn_proposals_op.h"
+=======
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/binary.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #include "paddle/fluid/framework/op_version_registry.h"
 
@@ -23,6 +30,7 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("FpnRois"),
@@ -69,6 +77,8 @@ class DistributeFpnProposalsOp : public framework::OperatorWithKernel {
     }
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -109,7 +119,11 @@ class DistributeFpnProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The referring scale of FPN layer with"
                  " specified level");
     AddAttr<bool>("pixel_offset",
+<<<<<<< HEAD
                   "(bool, default True),",
+=======
+                  "(bool, default True),"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
@@ -125,15 +139,19 @@ we return an array which indicate the original index of rois in
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
+DECLARE_INFER_SHAPE_FUNCTOR(
+    distribute_fpn_proposals,
+    DistributeFpnProposalsInferShapeFunctor,
+    PD_INFER_META(phi::DistributeFpnProposalsInferMeta));
+
 REGISTER_OPERATOR(
     distribute_fpn_proposals,
     ops::DistributeFpnProposalsOp,
     ops::DistributeFpnProposalsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(distribute_fpn_proposals,
-                       ops::DistributeFpnProposalsOpKernel<float>,
-                       ops::DistributeFpnProposalsOpKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    DistributeFpnProposalsInferShapeFunctor);
 REGISTER_OP_VERSION(distribute_fpn_proposals)
     .AddCheckpoint(
         R"ROC(

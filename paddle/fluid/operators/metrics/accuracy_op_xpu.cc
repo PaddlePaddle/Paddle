@@ -21,17 +21,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = paddle::framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class AccuracyXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Out");
-    auto* indices = ctx.Input<Tensor>("Indices");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    auto* correct = ctx.Output<Tensor>("Correct");
-    auto* total = ctx.Output<Tensor>("Total");
+    auto* inference = ctx.Input<phi::DenseTensor>("Out");
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* accuracy = ctx.Output<phi::DenseTensor>("Accuracy");
+    auto* correct = ctx.Output<phi::DenseTensor>("Correct");
+    auto* total = ctx.Output<phi::DenseTensor>("Total");
     int* correct_data = correct->mutable_data<int>(ctx.GetPlace());
     int* total_data = total->mutable_data<int>(ctx.GetPlace());
     float* accuracy_data = accuracy->mutable_data<float>(ctx.GetPlace());
@@ -50,6 +50,7 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     int* label_int32_ptr = RAII_GUARD.alloc_l3_or_gm<int>(size);
     PADDLE_ENFORCE_XDNN_NOT_NULL(label_int32_ptr);
 
+<<<<<<< HEAD
     int r = xpu::cast_v2<int64_t, int32_t>(
         dev_ctx.x_context(), indices_data, indices_int32_ptr, size);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
@@ -57,6 +58,15 @@ class AccuracyXPUKernel : public framework::OpKernel<T> {
     r = xpu::cast_v2<int64_t, int32_t>(
         dev_ctx.x_context(), label_data, label_int32_ptr, size);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+=======
+    int r = xpu::cast<int64_t, int32_t>(
+        dev_ctx.x_context(), indices_data, indices_int32_ptr, size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+    r = xpu::cast<int64_t, int32_t>(
+        dev_ctx.x_context(), label_data, label_int32_ptr, size);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     r = xpu::accuracy(dev_ctx.x_context(),
                       indices_int32_ptr,

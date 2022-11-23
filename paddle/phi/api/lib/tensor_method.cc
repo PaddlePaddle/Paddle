@@ -115,6 +115,7 @@ void Tensor::copy_(const Tensor &src,
     // Deep Copy AutoGrad info from src to self.
     *autograd_meta_ = *(src.autograd_meta_);
   }
+<<<<<<< HEAD
   kernel_key_set.backend_set =
       kernel_key_set.backend_set |
       BackendSet(phi::TransToPhiBackend(target_place));
@@ -122,6 +123,14 @@ void Tensor::copy_(const Tensor &src,
   auto place = phi::TransToPhiPlace(kernel_key.backend());
   auto& pool = paddle::experimental::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetMutable(
+=======
+  kernel_key_set.backend_set = kernel_key_set.backend_set |
+                               BackendSet(phi::TransToPhiBackend(target_place));
+  auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+  auto place = phi::TransToPhiPlace(kernel_key.backend());
+  auto &pool = paddle::experimental::DeviceContextPool::Instance();
+  auto *dev_ctx = pool.GetMutable(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       place.GetType() == target_place.GetType() ? target_place : place);
 
   Backend kernel_backend = Backend::UNDEFINED;
@@ -143,7 +152,11 @@ void Tensor::copy_(const Tensor &src,
   }
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
+<<<<<<< HEAD
     SetKernelOutput(kernel_backend, this);
+=======
+    SetKernelOutput(this);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
@@ -155,7 +168,11 @@ void Tensor::copy_(const Tensor &src,
               blocking,
               static_cast<phi::DenseTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SELECTED_ROWS_KENREL) {
+<<<<<<< HEAD
     SetSelectedRowsKernelOutput(kernel_backend, this);
+=======
+    SetSelectedRowsKernelOutput(this);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
         MakeMetaTensor(
@@ -168,7 +185,15 @@ void Tensor::copy_(const Tensor &src,
               static_cast<phi::SelectedRows *>(impl_.get()));
   } else if (kernel_type == KernelType::SPARSE_COO_KERNEL) {
     SetSparseKernelOutput(this, TensorType::SPARSE_COO);
+<<<<<<< HEAD
     // TODO(zhangkaihuo) add sparse infer_meta
+=======
+    phi::MetaTensor meta_out(impl_.get());
+    phi::UnchangedInferMeta(
+        MakeMetaTensor(
+            *(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
+        &meta_out);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi::Copy(*dev_ctx,
               (*(std::static_pointer_cast<phi::SparseCooTensor>(src.impl_))),
               target_place,
@@ -176,7 +201,15 @@ void Tensor::copy_(const Tensor &src,
               static_cast<phi::SparseCooTensor *>(impl_.get()));
   } else if (kernel_type == KernelType::SPARSE_CSR_KERNEL) {
     SetSparseKernelOutput(this, TensorType::SPARSE_CSR);
+<<<<<<< HEAD
     // TODO(zhangkaihuo) add sparse infer_meta
+=======
+    phi::MetaTensor meta_out(impl_.get());
+    phi::UnchangedInferMeta(
+        MakeMetaTensor(
+            *(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
+        &meta_out);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi::Copy(*dev_ctx,
               (*(std::static_pointer_cast<phi::SparseCsrTensor>(src.impl_))),
               target_place,

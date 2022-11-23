@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -27,7 +25,7 @@ import paddle.fluid.core as core
 class SimpleNet(nn.Layer):
 
     def __init__(self, in_size, out_size):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 
@@ -46,7 +44,7 @@ class SimpleNet(nn.Layer):
 class SimpleNetForStatic(nn.Layer):
 
     def __init__(self, in_size, out_size):
-        super(SimpleNetForStatic, self).__init__()
+        super().__init__()
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 
@@ -76,8 +74,8 @@ class TestTensorRegisterHook(unittest.TestCase):
             for device in self.devices:
                 paddle.set_device(device)
 
-                x = paddle.to_tensor([0., 1., 2., 3.])
-                y = paddle.to_tensor([4., 5., 6., 7.])
+                x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0])
+                y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
                 x.stop_gradient = False
                 y.stop_gradient = False
 
@@ -85,7 +83,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 w.stop_gradient = False
                 helper = w.register_hook(double_hook)
 
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 z.stop_gradient = False
 
                 o = z.matmul(w)
@@ -97,23 +95,23 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad is not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
                 # w.grad is not changed by hook
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
                 # x.grad and y.grad are changed if run hook
-                self.assertTrue(
-                    np.array_equal(x.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
-                self.assertTrue(
-                    np.array_equal(y.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
+                np.testing.assert_array_equal(
+                    x.grad.numpy(), z.numpy() * 2 if not removed else z.numpy()
+                )
+                np.testing.assert_array_equal(
+                    y.grad.numpy(), z.numpy() * 2 if not removed else z.numpy()
+                )
 
         def run_print_hook_for_interior_var(print_hook, removed=False):
             for device in self.devices:
                 paddle.set_device(device)
 
-                x = paddle.to_tensor([0., 1., 2., 3.])
-                y = paddle.to_tensor([4., 5., 6., 7.])
+                x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0])
+                y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
                 x.stop_gradient = False
                 y.stop_gradient = False
 
@@ -121,7 +119,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 w.stop_gradient = False
                 helper = w.register_hook(print_hook)
 
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 z.stop_gradient = False
 
                 o = z.matmul(w)
@@ -133,10 +131,10 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # all grads are not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(y.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(x.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(y.grad.numpy(), z.numpy())
 
         def double_hook(grad):
             grad = grad * 2
@@ -174,8 +172,8 @@ class TestTensorRegisterHook(unittest.TestCase):
             for device in self.devices:
                 paddle.set_device(device)
 
-                x = paddle.to_tensor([0., 1., 2., 3.])
-                y = paddle.to_tensor([4., 5., 6., 7.])
+                x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0])
+                y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
                 x.stop_gradient = False
                 y.stop_gradient = False
                 helper = y.register_hook(double_hook)
@@ -183,7 +181,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 w = x + y
                 w.stop_gradient = False
 
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 z.stop_gradient = False
 
                 o = z.matmul(w)
@@ -195,13 +193,13 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad, w.grad, x.grad is not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(x.grad.numpy(), z.numpy())
                 # y.grad are changed if run hook
-                self.assertTrue(
-                    np.array_equal(y.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
+                np.testing.assert_array_equal(
+                    y.grad.numpy(), z.numpy() * 2 if not removed else z.numpy()
+                )
 
         # register hook
         run_double_hook_for_leaf_var(lambda grad: grad * 2)
@@ -216,14 +214,20 @@ class TestTensorRegisterHook(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_interior_var(self):
+<<<<<<< HEAD
 
         def run_double_hook_for_accumulated_grad_interior_var(
                 double_hook, removed=False):
+=======
+        def run_double_hook_for_accumulated_grad_interior_var(
+            double_hook, removed=False
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for device in self.devices:
                 paddle.set_device(device)
 
-                a = paddle.to_tensor([0., 1., 1., 2.])
-                b = paddle.to_tensor([0., 0., 1., 2.])
+                a = paddle.to_tensor([0.0, 1.0, 1.0, 2.0])
+                b = paddle.to_tensor([0.0, 0.0, 1.0, 2.0])
                 a.stop_gradient = False
                 b.stop_gradient = False
 
@@ -234,8 +238,8 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 helper2 = x.register_hook(double_hook)
 
-                y = paddle.to_tensor([4., 5., 6., 7.])
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
+                z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 y.stop_gradient = False
                 z.stop_gradient = False
 
@@ -253,10 +257,11 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 o.backward()
 
-                base_grad = np.array([5., 9., 13., 19.])
+                base_grad = np.array([5.0, 9.0, 13.0, 19.0])
                 # x.grad is not changed
-                self.assertTrue(np.array_equal(x.grad.numpy(), base_grad))
+                np.testing.assert_array_equal(x.grad.numpy(), base_grad)
                 # b.grad is changed by x.hook
+<<<<<<< HEAD
                 self.assertTrue(
                     np.array_equal(b.grad.numpy(),
                                    base_grad * 2 if not removed else base_grad))
@@ -264,12 +269,27 @@ class TestTensorRegisterHook(unittest.TestCase):
                 self.assertTrue(
                     np.array_equal(a.grad.numpy(),
                                    base_grad * 4 if not removed else base_grad))
+=======
+                np.testing.assert_array_equal(
+                    b.grad.numpy(), base_grad * 2 if not removed else base_grad
+                )
+                # a.grad is changed by x.hook and a.hook
+                np.testing.assert_array_equal(
+                    a.grad.numpy(), base_grad * 4 if not removed else base_grad
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # register hook
         run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2)
         # register hook and removed
+<<<<<<< HEAD
         run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2,
                                                           removed=True)
+=======
+        run_double_hook_for_accumulated_grad_interior_var(
+            lambda grad: grad * 2, removed=True
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_hook_for_accumulated_grad_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -279,19 +299,25 @@ class TestTensorRegisterHook(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_hook_for_accumulated_grad_leaf_var(self):
+<<<<<<< HEAD
 
         def run_double_hook_for_accumulated_grad_leaf_var(
                 double_hook, removed=False):
+=======
+        def run_double_hook_for_accumulated_grad_leaf_var(
+            double_hook, removed=False
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for device in self.devices:
                 paddle.set_device(device)
 
-                x = paddle.to_tensor([0., 1., 2., 4.])
+                x = paddle.to_tensor([0.0, 1.0, 2.0, 4.0])
                 x.stop_gradient = False
 
                 helper = x.register_hook(double_hook)
 
-                y = paddle.to_tensor([4., 5., 6., 7.])
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
+                z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
                 y.stop_gradient = False
                 z.stop_gradient = False
 
@@ -308,17 +334,29 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 o.backward()
 
-                base_grad = np.array([5., 9., 13., 19.])
+                base_grad = np.array([5.0, 9.0, 13.0, 19.0])
                 # x.grad is changed by x.hook
+<<<<<<< HEAD
                 self.assertTrue(
                     np.array_equal(x.grad.numpy(),
                                    base_grad * 2 if not removed else base_grad))
+=======
+                np.testing.assert_array_equal(
+                    x.grad.numpy(), base_grad * 2 if not removed else base_grad
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # register hook
         run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2)
         # register hook and removed
+<<<<<<< HEAD
         run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2,
                                                       removed=True)
+=======
+        run_double_hook_for_accumulated_grad_leaf_var(
+            lambda grad: grad * 2, removed=True
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_hook_for_accumulated_grad_leaf_var(self):
         with _test_eager_guard():
@@ -326,12 +364,18 @@ class TestTensorRegisterHook(unittest.TestCase):
         self.func_hook_for_accumulated_grad_leaf_var()
 
     def func_hook_in_model(self):
+<<<<<<< HEAD
 
         def run_double_hook_in_model(data,
                                      label,
                                      hook=None,
                                      register=False,
                                      remove=False):
+=======
+        def run_double_hook_in_model(
+            data, label, hook=None, register=False, remove=False
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for device in self.devices:
                 paddle.seed(self.seed)
                 paddle.set_device(device)
@@ -346,32 +390,45 @@ class TestTensorRegisterHook(unittest.TestCase):
                 loss = loss_fn(out, label)
                 loss.backward()
 
-                return (ret1.grad.numpy(), net.linear1.weight.grad.numpy(),
-                        net.linear1.bias.grad.numpy())
+                return (
+                    ret1.grad.numpy(),
+                    net.linear1.weight.grad.numpy(),
+                    net.linear1.bias.grad.numpy(),
+                )
 
-        data = np.random.uniform(
-            size=[self.batch_size, self.in_size]).astype('float32')
+        data = np.random.uniform(size=[self.batch_size, self.in_size]).astype(
+            'float32'
+        )
         label = np.random.uniform(size=[self.batch_size, 1]).astype('float32')
 
         # get original value
         ret1_grad, linear1_w_grad, linear1_b_grad = run_double_hook_in_model(
-            data, label)
+            data, label
+        )
         # get value changed by hook
-        ret1_grad_hook, linear1_w_grad_hook, linear1_b_grad_hook = run_double_hook_in_model(
-            data, label, lambda grad: grad * 2, True)
+        (
+            ret1_grad_hook,
+            linear1_w_grad_hook,
+            linear1_b_grad_hook,
+        ) = run_double_hook_in_model(data, label, lambda grad: grad * 2, True)
         # get value after removing hook
-        ret1_grad_rm, linear1_w_grad_rm, linear1_b_grad_rm = run_double_hook_in_model(
-            data, label, lambda grad: grad * 2, True, True)
+        (
+            ret1_grad_rm,
+            linear1_w_grad_rm,
+            linear1_b_grad_rm,
+        ) = run_double_hook_in_model(
+            data, label, lambda grad: grad * 2, True, True
+        )
 
         # compare original value and with hook
-        self.assertTrue(np.array_equal(ret1_grad, ret1_grad_hook))
-        self.assertTrue(np.array_equal(linear1_w_grad * 2, linear1_w_grad_hook))
-        self.assertTrue(np.array_equal(linear1_b_grad * 2, linear1_b_grad_hook))
+        np.testing.assert_array_equal(ret1_grad, ret1_grad_hook)
+        np.testing.assert_array_equal(linear1_w_grad * 2, linear1_w_grad_hook)
+        np.testing.assert_array_equal(linear1_b_grad * 2, linear1_b_grad_hook)
 
         # compare original value and remove hook
-        self.assertTrue(np.array_equal(ret1_grad, ret1_grad_rm))
-        self.assertTrue(np.array_equal(linear1_w_grad, linear1_w_grad_rm))
-        self.assertTrue(np.array_equal(linear1_b_grad, linear1_b_grad_rm))
+        np.testing.assert_array_equal(ret1_grad, ret1_grad_rm)
+        np.testing.assert_array_equal(linear1_w_grad, linear1_w_grad_rm)
+        np.testing.assert_array_equal(linear1_b_grad, linear1_b_grad_rm)
 
     def test_func_hook_in_model(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -381,16 +438,22 @@ class TestTensorRegisterHook(unittest.TestCase):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def func_multiple_hooks_for_interior_var(self):
+<<<<<<< HEAD
 
         def run_multiple_hooks_for_interior_var(device,
                                                 hooks,
                                                 remove1=False,
                                                 remove2=False,
                                                 remove3=False):
+=======
+        def run_multiple_hooks_for_interior_var(
+            device, hooks, remove1=False, remove2=False, remove3=False
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             paddle.set_device(device)
 
-            x = paddle.to_tensor([0., 1., 2., 3.])
-            y = paddle.to_tensor([4., 5., 6., 7.])
+            x = paddle.to_tensor([0.0, 1.0, 2.0, 3.0])
+            y = paddle.to_tensor([4.0, 5.0, 6.0, 7.0])
             x.stop_gradient = False
             y.stop_gradient = False
 
@@ -402,7 +465,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 helper = w.register_hook(hook)
                 helpers.append(helper)
 
-            z = paddle.to_tensor([1., 2., 3., 4.])
+            z = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             z.stop_gradient = False
 
             o = z.matmul(w)
@@ -425,39 +488,44 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         for device in self.devices:
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
-                device, hooks)
+                device, hooks
+            )
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 8))
-            self.assertTrue(np.array_equal(y_grad, z * 8))
-
-            z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
-                device, hooks, remove1=True)
-
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 8)
+            np.testing.assert_array_equal(y_grad, z * 8)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
-                device, hooks, remove2=True)
+                device, hooks, remove1=True
+            )
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
-
-            z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
-                device, hooks, remove3=True)
-
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
-                device, hooks, remove1=True, remove2=True, remove3=True)
+                device, hooks, remove2=True
+            )
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z))
-            self.assertTrue(np.array_equal(y_grad, z))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
+
+            z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
+                device, hooks, remove3=True
+            )
+
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
+
+            z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
+                device, hooks, remove1=True, remove2=True, remove3=True
+            )
+
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z)
+            np.testing.assert_array_equal(y_grad, z)
 
     def test_multiple_hooks_for_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -483,13 +551,19 @@ class TestTensorRegisterHook(unittest.TestCase):
 
         y = x * x
         # Since y = x * x, dx = 2 * x
+<<<<<<< HEAD
         dx = paddle.grad(outputs=[y],
                          inputs=[x],
                          create_graph=True,
                          retain_graph=True)[0]
+=======
+        dx = paddle.grad(
+            outputs=[y], inputs=[x], create_graph=True, retain_graph=True
+        )[0]
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         z = y + dx
-        self.assertTrue(x.grad is None)
+        self.assertIsNone(x.grad)
 
         # If create_graph = True, the gradient of dx
         # would be backpropagated. Therefore,
@@ -502,7 +576,7 @@ class TestTensorRegisterHook(unittest.TestCase):
             pass
         else:
             z.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), np.array([8.])))
+            np.testing.assert_array_equal(x.grad.numpy(), np.array([8.0]))
 
     def test_hook_in_double_grad(self):
         with _test_eager_guard():
@@ -513,7 +587,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         for device in self.devices:
             paddle.set_device(device)
 
-            x = paddle.to_tensor([1., 2., 3., 4.])
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
             x.stop_gradient = False
 
             h = x.register_hook(lambda grad: grad * 2)
@@ -529,7 +603,7 @@ class TestTensorRegisterHook(unittest.TestCase):
         for device in self.devices:
             paddle.set_device(device)
 
-            x = paddle.to_tensor([1., 2., 3., 4.])
+            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
 
             with self.assertRaises(RuntimeError):
                 x.register_hook(lambda grad: grad * 2)
@@ -546,9 +620,15 @@ class TestTensorRegisterHook(unittest.TestCase):
         main_program = paddle.static.Program()
         with paddle.static.scope_guard(paddle.static.Scope()):
             with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
                 x = paddle.static.data(name='x',
                                        shape=[None, self.in_size],
                                        dtype='float32')
+=======
+                x = paddle.static.data(
+                    name='x', shape=[None, self.in_size], dtype='float32'
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
                 net = SimpleNetForStatic(self.in_size, self.out_size)
                 with self.assertRaises(AssertionError):
@@ -559,10 +639,12 @@ class TestTensorRegisterHook(unittest.TestCase):
     def func_register_hook_in_dy2static_mode(self):
         net = SimpleNetForStatic(self.in_size, self.out_size)
         jit_net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec([None, self.in_size])])
+            net, input_spec=[paddle.static.InputSpec([None, self.in_size])]
+        )
 
-        data = np.random.uniform(
-            size=[self.batch_size, self.in_size]).astype('float32')
+        data = np.random.uniform(size=[self.batch_size, self.in_size]).astype(
+            'float32'
+        )
         data_t = paddle.to_tensor(data)
 
         with self.assertRaises(AssertionError):
@@ -596,7 +678,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         global HOOK_INIT_VALUE
         global HOOK_IS_CALLED
         for device in self.devices:
-            x = paddle.to_tensor(5., stop_gradient=False)
+            x = paddle.to_tensor(5.0, stop_gradient=False)
             x._register_backward_hook(global_void_hook)
             for i in range(5):
                 y = paddle.pow(x, 4.0)
@@ -615,7 +697,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         self.func_register_backward_hook()
 
     def func_register_backward_hook_for_interior_var(self):
-        x = paddle.to_tensor(5., stop_gradient=False)
+        x = paddle.to_tensor(5.0, stop_gradient=False)
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):
@@ -627,7 +709,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         self.func_register_backward_hook_for_interior_var()
 
     def func_register_backward_hook_for_var_without_gradient(self):
-        x = paddle.to_tensor(5.)
+        x = paddle.to_tensor(5.0)
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):
@@ -640,7 +722,10 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
 
 
 class TestRegsiterBackwardFinalHook(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.devices = ["cpu"]
         if paddle.is_compiled_with_cuda():

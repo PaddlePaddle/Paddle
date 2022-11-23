@@ -12,14 +12,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/row_conv_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using framework::Tensor;
+using LoDTensor = phi::DenseTensor;
 
 namespace {
 
@@ -243,7 +242,7 @@ __global__ void RowConvGradFilterImproved(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -308,7 +307,7 @@ __global__ void RowConvGradFilter(const T *in,
 
         for (int offset = 16; offset > 0;
              offset = offset / 2) {  // blockDim.x is 32.
-          val += platform::CudaShuffleDownSync(mask, val, offset);
+          val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
         }
         __syncthreads();
 
@@ -327,7 +326,7 @@ class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Filter = context.Input<phi::DenseTensor>("Filter");
     auto *Out = context.Output<LoDTensor>("Out");
 
     const T *in = X->data<T>();
@@ -381,14 +380,16 @@ class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Filter = context.Input<phi::DenseTensor>("Filter");
     auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
     const T *in = X->data<T>();
     const T *weights = Filter->data<T>();
     const T *dout = dOut->data<T>();
 
-    Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
-    Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    phi::DenseTensor *dX =
+        context.Output<LoDTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *dFilter =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     int batch_size = 0;
     bool is_tensor = X->lod().empty();
     if (is_tensor) {

@@ -20,13 +20,12 @@
 #include "paddle/fluid/framework/tensor.h"
 
 TEST(DataType, float16) {
-  using paddle::framework::Tensor;
   using paddle::platform::CPUPlace;
   using paddle::platform::float16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
-  Tensor tensor;
+  phi::DenseTensor tensor;
   CPUPlace cpu;
   tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
 
@@ -43,13 +42,16 @@ TEST(DataType, float16) {
 }
 
 TEST(DataType, bfloat16) {
+<<<<<<< HEAD
   using paddle::framework::Tensor;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   using paddle::platform::bfloat16;
   using paddle::platform::CPUPlace;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 
-  Tensor tensor;
+  phi::DenseTensor tensor;
   CPUPlace cpu;
   tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
 

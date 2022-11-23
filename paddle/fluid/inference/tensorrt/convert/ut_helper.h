@@ -45,7 +45,11 @@ float random(float low, float high) {
   return dist(mt);
 }
 
+<<<<<<< HEAD
 void RandomizeTensor(framework::LoDTensor* tensor,
+=======
+void RandomizeTensor(phi::DenseTensor* tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      const platform::Place& place,
                      const platform::DeviceContext& ctx) {
   auto dims = tensor->dims();
@@ -57,7 +61,7 @@ void RandomizeTensor(framework::LoDTensor* tensor,
                                          "tensor which dims is not zero."));
 
   platform::CPUPlace cpu_place;
-  framework::LoDTensor temp_tensor;
+  phi::DenseTensor temp_tensor;
   temp_tensor.Resize(dims);
   auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
 
@@ -79,7 +83,11 @@ class TRTConvertValidation {
   TRTConvertValidation(int max_batch_size,
                        const std::unordered_set<std::string>& parameters,
                        framework::Scope& scope,  // NOLINT
+<<<<<<< HEAD
                        int workspace_size = 1 << 10,
+=======
+                       int64_t workspace_size = 1 << 30,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                        bool if_add_batch = true)
       : parameters_(parameters),
         scope_(scope),
@@ -127,7 +135,7 @@ class TRTConvertValidation {
     phi::GPUContext ctx(place_);
 
     auto* x = scope_.Var(name);
-    auto* x_tensor = x->GetMutable<framework::LoDTensor>();
+    auto* x_tensor = x->GetMutable<phi::DenseTensor>();
     x_tensor->Resize(phi::make_ddim(dim_vec));
     RandomizeTensor(x_tensor, place_, ctx);
   }
@@ -190,7 +198,7 @@ class TRTConvertValidation {
       input_output_names.push_back(output);
       std::vector<float> fluid_out;
       auto* var = scope_.FindVar(output);
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<phi::DenseTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
       fluid_outs.push_back(fluid_out);
     }
@@ -201,7 +209,7 @@ class TRTConvertValidation {
 
     for (const std::string& name : input_output_names) {
       auto* var = scope_.FindVar(name);
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<phi::DenseTensor>();
       const int bind_index = engine_->engine()->getBindingIndex(name.c_str());
       buffers[bind_index] =
           static_cast<void*>(tensor->mutable_data<float>(place_));
@@ -217,7 +225,7 @@ class TRTConvertValidation {
       if (neglected_output.count(output)) continue;
       std::vector<float> trt_out;
       auto* var = scope_.FindVar(output);
-      auto* tensor = var->GetMutable<framework::LoDTensor>();
+      auto* tensor = var->GetMutable<phi::DenseTensor>();
       framework::TensorToVector(*tensor, ctx, &trt_out);
 
       size_t fluid_out_size = fluid_outs[index].size();

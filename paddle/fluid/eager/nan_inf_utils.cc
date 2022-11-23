@@ -15,6 +15,8 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 

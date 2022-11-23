@@ -16,9 +16,15 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace phi {
 
@@ -77,8 +83,7 @@ void LabelSmoothKernel(const Context& ctx,
     std::vector<const DenseTensor*> ins = {&label};
     std::vector<DenseTensor*> outs = {out};
     auto functor = LabelSmoothFunctor<T>(epsilon, label_dim);
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-        ctx, ins, &outs, functor);
+    phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
   }
 }
 

@@ -12,8 +12,6 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import random
@@ -32,12 +30,22 @@ from paddle.fluid.log_helper import get_logger
 from paddle.dataset.common import download
 from paddle.fluid.framework import _test_eager_guard
 
-from imperative_test_utils import fix_model_dict, ImperativeLenet, ImperativeLinearBn
+from imperative_test_utils import (
+    fix_model_dict,
+    ImperativeLenet,
+    ImperativeLinearBn,
+)
 from imperative_test_utils import ImperativeLinearBn_hook
 
+<<<<<<< HEAD
 _logger = get_logger(__name__,
                      logging.INFO,
                      fmt='%(asctime)s-%(levelname)s: %(message)s')
+=======
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestFuseLinearBn(unittest.TestCase):
@@ -56,27 +64,40 @@ class TestFuseLinearBn(unittest.TestCase):
         quant_h = ptq.quantize(model_h, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
+<<<<<<< HEAD
                 assert not (isinstance(layer, nn.BatchNorm1D)
                             or isinstance(layer, nn.BatchNorm2D))
+=======
+                assert not (
+                    isinstance(layer, nn.BatchNorm1D)
+                    or isinstance(layer, nn.BatchNorm2D)
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = model(inputs)
         out_h = model_h(inputs)
         out_quant = quant_model(inputs)
         out_quant_h = quant_h(inputs)
         cos_sim_func = nn.CosineSimilarity(axis=0)
+<<<<<<< HEAD
         print('fuse linear+bn', cos_sim_func(out.flatten(),
                                              out_quant.flatten()))
+=======
+        print(
+            'fuse linear+bn', cos_sim_func(out.flatten(), out_quant.flatten())
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         print(cos_sim_func(out_h.flatten(), out_quant_h.flatten()))
 
 
 class TestImperativePTQ(unittest.TestCase):
-    """
-    """
+    """ """
 
     @classmethod
     def setUpClass(cls):
         cls.download_path = 'dygraph_int8/download'
-        cls.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
-                                              cls.download_path)
+        cls.cache_folder = os.path.expanduser(
+            '~/.cache/paddle/dataset/' + cls.download_path
+        )
 
         cls.lenet_url = "https://paddle-inference-dist.cdn.bcebos.com/int8/unittest_model_data/lenet_pretrained.tar.gz"
         cls.lenet_md5 = "953b802fb73b52fae42896e3c24f0afb"
@@ -89,7 +110,12 @@ class TestImperativePTQ(unittest.TestCase):
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+<<<<<<< HEAD
                 target_folder, zip_path)
+=======
+                target_folder, zip_path
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -116,14 +142,23 @@ class TestImperativePTQ(unittest.TestCase):
             'batch_norm2d_0': [[0.37673383951187134], [0.44249194860458374]],
             're_lu_0': [[0.44249194860458374], [0.25804123282432556]],
             'max_pool2d_0': [[0.25804123282432556], [0.25804123282432556]],
+<<<<<<< HEAD
             'linear_0': [[1.7058950662612915], [14.405526161193848],
                          [0.4373355209827423]],
+=======
+            'linear_0': [
+                [1.7058950662612915],
+                [14.405526161193848],
+                [0.4373355209827423],
+            ],
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             'add_0': [[1.7058950662612915, 0.0], [1.7058950662612915]],
         }
 
     def model_test(self, model, batch_num=-1, batch_size=8):
         model.eval()
 
+<<<<<<< HEAD
         test_reader = paddle.batch(paddle.dataset.mnist.test(),
                                    batch_size=batch_size)
 
@@ -133,6 +168,20 @@ class TestImperativePTQ(unittest.TestCase):
                                for x in data]).astype('float32')
             y_data = np.array([x[1]
                                for x in data]).astype('int64').reshape(-1, 1)
+=======
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+
+        eval_acc_top1_list = []
+        for batch_id, data in enumerate(test_reader()):
+            x_data = np.array([x[0].reshape(1, 28, 28) for x in data]).astype(
+                'float32'
+            )
+            y_data = (
+                np.array([x[1] for x in data]).astype('int64').reshape(-1, 1)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             img = paddle.to_tensor(x_data)
             label = paddle.to_tensor(y_data)
@@ -143,8 +192,11 @@ class TestImperativePTQ(unittest.TestCase):
             eval_acc_top1_list.append(float(acc_top1.numpy()))
 
             if batch_id % 50 == 0:
-                _logger.info("Test | At step {}: acc1 = {:}, acc5 = {:}".format(
-                    batch_id, acc_top1.numpy(), acc_top5.numpy()))
+                _logger.info(
+                    "Test | At step {}: acc1 = {:}, acc5 = {:}".format(
+                        batch_id, acc_top1.numpy(), acc_top5.numpy()
+                    )
+                )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
                 break
@@ -155,31 +207,47 @@ class TestImperativePTQ(unittest.TestCase):
 
     def program_test(self, program_path, batch_num=-1, batch_size=8):
         exe = paddle.static.Executor(paddle.CPUPlace())
+<<<<<<< HEAD
         [inference_program, feed_target_names, fetch_targets
          ] = (paddle.static.load_inference_model(program_path, exe))
 
         test_reader = paddle.batch(paddle.dataset.mnist.test(),
                                    batch_size=batch_size)
+=======
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(program_path, exe)
 
-        top1_correct_num = 0.
-        total_num = 0.
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+
+        top1_correct_num = 0.0
+        total_num = 0.0
         for batch_id, data in enumerate(test_reader()):
-            img = np.array([x[0].reshape(1, 28, 28)
-                            for x in data]).astype('float32')
+            img = np.array([x[0].reshape(1, 28, 28) for x in data]).astype(
+                'float32'
+            )
             label = np.array([x[1] for x in data]).astype('int64')
 
             feed = {feed_target_names[0]: img}
-            results = exe.run(inference_program,
-                              feed=feed,
-                              fetch_list=fetch_targets)
+            results = exe.run(
+                inference_program, feed=feed, fetch_list=fetch_targets
+            )
 
             pred = np.argmax(results[0], axis=1)
             top1_correct_num += np.sum(np.equal(pred, label))
             total_num += len(img)
 
             if total_num % 50 == 49:
-                _logger.info("Test | Test num {}: acc1 = {:}".format(
-                    total_num, top1_correct_num / total_num))
+                _logger.info(
+                    "Test | Test num {}: acc1 = {:}".format(
+                        total_num, top1_correct_num / total_num
+                    )
+                )
 
             if batch_num > 0 and batch_id + 1 >= batch_num:
                 break
@@ -191,8 +259,9 @@ class TestImperativePTQ(unittest.TestCase):
         self.set_vars()
 
         # Load model
-        params_path = self.download_model(self.lenet_url, self.lenet_md5,
-                                          "lenet")
+        params_path = self.download_model(
+            self.lenet_url, self.lenet_md5, "lenet"
+        )
         params_path += "/lenet_pretrained/lenet.pdparams"
 
         model = ImperativeLenet()
@@ -200,14 +269,16 @@ class TestImperativePTQ(unittest.TestCase):
         model.set_state_dict(model_state_dict)
         # Quantize, calibrate and save
         quant_model = self.ptq.quantize(model)
-        before_acc_top1 = self.model_test(quant_model, self.batch_num,
-                                          self.batch_size)
+        before_acc_top1 = self.model_test(
+            quant_model, self.batch_num, self.batch_size
+        )
 
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
         with tempfile.TemporaryDirectory(prefix="imperative_ptq_") as tmpdir:
             save_path = os.path.join(tmpdir, "model")
+<<<<<<< HEAD
             self.ptq.save_quantized_model(model=quant_model,
                                           path=save_path,
                                           input_spec=input_spec)
@@ -219,6 +290,21 @@ class TestImperativePTQ(unittest.TestCase):
             paddle.enable_static()
             infer_acc_top1 = self.program_test(save_path, self.batch_num,
                                                self.batch_size)
+=======
+            self.ptq.save_quantized_model(
+                model=quant_model, path=save_path, input_spec=input_spec
+            )
+            print('Quantized model saved in {%s}' % save_path)
+
+            after_acc_top1 = self.model_test(
+                quant_model, self.batch_num, self.batch_size
+            )
+
+            paddle.enable_static()
+            infer_acc_top1 = self.program_test(
+                save_path, self.batch_num, self.batch_size
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             paddle.disable_static()
 
             # Check
@@ -226,11 +312,23 @@ class TestImperativePTQ(unittest.TestCase):
             print('After converted acc_top1: %s' % after_acc_top1)
             print('Infer acc_top1: %s' % infer_acc_top1)
 
+<<<<<<< HEAD
             self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
                             msg="The test acc {%f} is less than {%f}." %
                             (after_acc_top1, self.eval_acc_top1))
             self.assertTrue(infer_acc_top1 >= after_acc_top1,
                             msg='The acc is lower after converting model.')
+=======
+            self.assertTrue(
+                after_acc_top1 >= self.eval_acc_top1,
+                msg="The test acc {%f} is less than {%f}."
+                % (after_acc_top1, self.eval_acc_top1),
+            )
+            self.assertTrue(
+                infer_acc_top1 >= after_acc_top1,
+                msg='The acc is lower after converting model.',
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
@@ -249,8 +347,9 @@ class TestImperativePTQfuse(TestImperativePTQ):
         self.set_vars()
 
         # Load model
-        params_path = self.download_model(self.lenet_url, self.lenet_md5,
-                                          "lenet")
+        params_path = self.download_model(
+            self.lenet_url, self.lenet_md5, "lenet"
+        )
         params_path += "/lenet_pretrained/lenet.pdparams"
 
         model = ImperativeLenet()
@@ -261,16 +360,27 @@ class TestImperativePTQfuse(TestImperativePTQ):
         quant_model = self.ptq.quantize(model, fuse=True, fuse_list=f_l)
         for name, layer in quant_model.named_sublayers():
             if name in f_l:
+<<<<<<< HEAD
                 assert not (isinstance(layer, nn.BatchNorm1D)
                             or isinstance(layer, nn.BatchNorm2D))
         before_acc_top1 = self.model_test(quant_model, self.batch_num,
                                           self.batch_size)
+=======
+                assert not (
+                    isinstance(layer, nn.BatchNorm1D)
+                    or isinstance(layer, nn.BatchNorm2D)
+                )
+        before_acc_top1 = self.model_test(
+            quant_model, self.batch_num, self.batch_size
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         input_spec = [
             paddle.static.InputSpec(shape=[None, 1, 28, 28], dtype='float32')
         ]
         with tempfile.TemporaryDirectory(prefix="imperative_ptq_") as tmpdir:
             save_path = os.path.join(tmpdir, "model")
+<<<<<<< HEAD
             self.ptq.save_quantized_model(model=quant_model,
                                           path=save_path,
                                           input_spec=input_spec)
@@ -282,6 +392,21 @@ class TestImperativePTQfuse(TestImperativePTQ):
             paddle.enable_static()
             infer_acc_top1 = self.program_test(save_path, self.batch_num,
                                                self.batch_size)
+=======
+            self.ptq.save_quantized_model(
+                model=quant_model, path=save_path, input_spec=input_spec
+            )
+            print('Quantized model saved in {%s}' % save_path)
+
+            after_acc_top1 = self.model_test(
+                quant_model, self.batch_num, self.batch_size
+            )
+
+            paddle.enable_static()
+            infer_acc_top1 = self.program_test(
+                save_path, self.batch_num, self.batch_size
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             paddle.disable_static()
 
             # Check
@@ -289,6 +414,7 @@ class TestImperativePTQfuse(TestImperativePTQ):
             print('After converted acc_top1: %s' % after_acc_top1)
             print('Infer acc_top1: %s' % infer_acc_top1)
 
+<<<<<<< HEAD
             #Check whether the quant_model is correct after converting.
             #The acc of quantized model should be higher than 0.95.
             self.assertTrue(after_acc_top1 >= self.eval_acc_top1,
@@ -298,6 +424,21 @@ class TestImperativePTQfuse(TestImperativePTQ):
             #should not be lower than the one of dygraph model.
             self.assertTrue(infer_acc_top1 >= after_acc_top1,
                             msg='The acc is lower after converting model.')
+=======
+            # Check whether the quant_model is correct after converting.
+            # The acc of quantized model should be higher than 0.95.
+            self.assertTrue(
+                after_acc_top1 >= self.eval_acc_top1,
+                msg="The test acc {%f} is less than {%f}."
+                % (after_acc_top1, self.eval_acc_top1),
+            )
+            # Check the saved infer_model.The acc of infer model
+            # should not be lower than the one of dygraph model.
+            self.assertTrue(
+                infer_acc_top1 >= after_acc_top1,
+                msg='The acc is lower after converting model.',
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             end_time = time.time()
             print("total time: %ss \n" % (end_time - start_time))
@@ -319,6 +460,7 @@ class TestImperativePTQHist(TestImperativePTQ):
         self.eval_acc_top1 = 0.98
 
         self.gt_thresholds = {
+<<<<<<< HEAD
             'conv2d_0': [[0.99853515625], [0.35732391771364225],
                          [0.10933732241392136]],
             'batch_norm2d_0': [[0.35732391771364225], [0.4291427868761275]],
@@ -326,6 +468,21 @@ class TestImperativePTQHist(TestImperativePTQ):
             'max_pool2d_0': [[0.2359918110742001], [0.25665526917146053]],
             'linear_0': [[1.7037603475152991], [14.395224522473026],
                          [0.4373355209827423]],
+=======
+            'conv2d_0': [
+                [0.99853515625],
+                [0.35732391771364225],
+                [0.10933732241392136],
+            ],
+            'batch_norm2d_0': [[0.35732391771364225], [0.4291427868761275]],
+            're_lu_0': [[0.4291427868761275], [0.2359918110742001]],
+            'max_pool2d_0': [[0.2359918110742001], [0.25665526917146053]],
+            'linear_0': [
+                [1.7037603475152991],
+                [14.395224522473026],
+                [0.4373355209827423],
+            ],
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             'add_0': [[1.7037603475152991, 0.0], [1.7037603475152991]],
         }
 
@@ -341,13 +498,20 @@ class TestImperativePTQKL(TestImperativePTQ):
         self.eval_acc_top1 = 0.98
 
         conv2d_1_wt_thresholds = [
-            0.18116560578346252, 0.17079241573810577, 0.1702047884464264,
-            0.179476797580719, 0.1454375684261322, 0.22981858253479004
+            0.18116560578346252,
+            0.17079241573810577,
+            0.1702047884464264,
+            0.179476797580719,
+            0.1454375684261322,
+            0.22981858253479004,
         ]
         self.gt_thresholds = {
             'conv2d_0': [[0.99267578125], [0.37695913558696836]],
-            'conv2d_1': [[0.19189296757394914], [0.24514256547263358],
-                         [conv2d_1_wt_thresholds]],
+            'conv2d_1': [
+                [0.19189296757394914],
+                [0.24514256547263358],
+                [conv2d_1_wt_thresholds],
+            ],
             'batch_norm2d_0': [[0.37695913558696836], [0.27462541429440535]],
             're_lu_0': [[0.27462541429440535], [0.19189296757394914]],
             'max_pool2d_0': [[0.19189296757394914], [0.19189296757394914]],

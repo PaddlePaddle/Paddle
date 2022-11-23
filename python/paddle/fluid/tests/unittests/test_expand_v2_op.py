@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, core, program_guard
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 # Situation 1: shape is a list(without tensor)
@@ -88,8 +89,9 @@ class TestExpandV2OpRank1_tensor_attr(OpTest):
         self.init_data()
         expand_shapes_tensor = []
         for index, ele in enumerate(self.expand_shape):
-            expand_shapes_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            expand_shapes_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float64"),
@@ -198,8 +200,14 @@ class TestExpandV2Error(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
                                          fluid.CPUPlace())
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.expand, x1, shape)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
@@ -214,6 +222,7 @@ class TestExpandV2API(unittest.TestCase):
 
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
+<<<<<<< HEAD
         x = fluid.layers.data(name='x',
                               shape=[12, 14],
                               append_batch_size=False,
@@ -224,6 +233,19 @@ class TestExpandV2API(unittest.TestCase):
                                          shape=[2],
                                          append_batch_size=False,
                                          dtype="int32")
+=======
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
+
+        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+        expand_shape = fluid.layers.data(
+            name="expand_shape",
+            shape=[2],
+            append_batch_size=False,
+            dtype="int32",
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out_1 = paddle.expand(x, shape=[12, 14])
         out_2 = paddle.expand(x, shape=[positive_2, 14])
@@ -232,6 +254,7 @@ class TestExpandV2API(unittest.TestCase):
         g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
+<<<<<<< HEAD
         res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
                                       feed={
                                           "x":
@@ -240,6 +263,16 @@ class TestExpandV2API(unittest.TestCase):
                                           np.array([12, 14]).astype("int32")
                                       },
                                       fetch_list=[out_1, out_2, out_3])
+=======
+        res_1, res_2, res_3 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": input,
+                "expand_shape": np.array([12, 14]).astype("int32"),
+            },
+            fetch_list=[out_1, out_2, out_3],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))
@@ -252,8 +285,14 @@ class TestExpandInferShape(unittest.TestCase):
             x = paddle.static.data(shape=[-1, 1, 3], name='x')
             fake_var = paddle.randn([2, 3])
             target_shape = [
+<<<<<<< HEAD
                 -1, paddle.shape(fake_var)[0],
                 paddle.shape(fake_var)[1]
+=======
+                -1,
+                paddle.shape(fake_var)[0],
+                paddle.shape(fake_var)[1],
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             ]
             out = paddle.expand(x, shape=target_shape)
             self.assertListEqual(list(out.shape), [-1, -1, -1])
@@ -277,11 +316,77 @@ class TestExpandV2DygraphAPI(unittest.TestCase):
             np_array = np.array([2, 5])
             expand_2 = paddle.expand(a, shape=np_array)
 
-            self.assertTrue(
-                np.array_equal(egr_expand_1.numpy(), egr_expand_2.numpy()))
-            self.assertTrue(np.array_equal(expand_1.numpy(), expand_2.numpy()))
-            self.assertTrue(
-                np.array_equal(expand_1.numpy(), egr_expand_1.numpy()))
+            np.testing.assert_array_equal(
+                egr_expand_1.numpy(), egr_expand_2.numpy()
+            )
+            np.testing.assert_array_equal(expand_1.numpy(), expand_2.numpy())
+            np.testing.assert_array_equal(
+                expand_1.numpy(), egr_expand_1.numpy()
+            )
+
+
+class TestExpandDoubleGradCheck(unittest.TestCase):
+    def expand_wrapper(self, x):
+        return paddle.expand(x[0], [2, 3])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3], False, dtype)
+        data.persistable = True
+        out = paddle.expand(data, [2, 3])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(
+            self.expand_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestExpandTripleGradCheck(unittest.TestCase):
+    def expand_wrapper(self, x):
+        return paddle.expand(x[0], [2, 3])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [2, 3], False, dtype)
+        data.persistable = True
+        out = paddle.expand(data, [2, 3])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.expand_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":

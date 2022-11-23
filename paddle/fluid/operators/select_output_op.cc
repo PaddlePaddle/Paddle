@@ -48,7 +48,7 @@ class SelectOutputOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
 
-    auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
+    auto &mask = scope.FindVar(Input("Mask"))->Get<phi::DenseTensor>();
     size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &out_names = Outputs("Out");
@@ -83,7 +83,7 @@ class SelectOutputOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     // (minimal viable product) here.
     AddComment(R"DOC(
 Split input variable into one output branch. The mask is an integer tensor to
-specify which output branch should copy the input. 
+specify which output branch should copy the input.
 )DOC");
   }
 };

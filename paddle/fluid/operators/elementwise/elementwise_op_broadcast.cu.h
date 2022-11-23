@@ -26,8 +26,13 @@ template <ElementwiseType ET,
           int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
     const KPDevice &ctx,
+<<<<<<< HEAD
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs,
+=======
+    const std::vector<const phi::DenseTensor *> &ins,
+    std::vector<phi::DenseTensor *> *outs,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     int axis,
     Functor func) {
   std::vector<const phi::DenseTensor *> pt_inputs;

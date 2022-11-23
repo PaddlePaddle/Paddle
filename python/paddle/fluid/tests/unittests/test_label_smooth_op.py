@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -34,7 +32,12 @@ class TestLabelSmoothOp(OpTest):
     def setUp(self):
         self.config()
         smoothed_label = (
+<<<<<<< HEAD
             1 - self.epsilon) * self.label + self.epsilon / self.label_dim
+=======
+            1 - self.epsilon
+        ) * self.label + self.epsilon / self.label_dim
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.inputs = {'X': self.label}
         self.attrs = {'epsilon': self.epsilon}
         self.outputs = {'Out': smoothed_label}
@@ -60,21 +63,37 @@ class TestLabelSmoothOpWithPriorDist(TestLabelSmoothOp):
 class TestLabelSmoothOp3D(TestLabelSmoothOp):
 
     def setUp(self):
-        super(TestLabelSmoothOp3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
+<<<<<<< HEAD
             [2, -1, self.inputs['X'].shape[-1]])
         self.outputs['Out'] = self.outputs['Out'].reshape(
             self.inputs['X'].shape)
+=======
+            [2, -1, self.inputs['X'].shape[-1]]
+        )
+        self.outputs['Out'] = self.outputs['Out'].reshape(
+            self.inputs['X'].shape
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestLabelSmoothOpWithPriorDist3D(TestLabelSmoothOpWithPriorDist):
 
     def setUp(self):
-        super(TestLabelSmoothOpWithPriorDist3D, self).setUp()
+        super().setUp()
         self.inputs['X'] = self.inputs['X'].reshape(
+<<<<<<< HEAD
             [2, -1, self.inputs['X'].shape[-1]])
         self.outputs['Out'] = self.outputs['Out'].reshape(
             self.inputs['X'].shape)
+=======
+            [2, -1, self.inputs['X'].shape[-1]]
+        )
+        self.outputs['Out'] = self.outputs['Out'].reshape(
+            self.inputs['X'].shape
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

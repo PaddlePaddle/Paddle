@@ -26,9 +26,14 @@ def drop_path(x, training=False):
 
 
 class DropPath(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(DropPath, self).__init__()
+=======
+    def __init__(self):
+        super().__init__()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     @paddle.jit.to_static
     def forward(self, x):
@@ -36,7 +41,10 @@ class DropPath(paddle.nn.Layer):
 
 
 class TestTrainEval(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.model = DropPath()
 
@@ -48,9 +56,15 @@ class TestTrainEval(unittest.TestCase):
         eval_out = x.numpy()
         train_out = x.numpy() * 2
         self.model.train()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(self.model(x).numpy(), train_out))
         self.model.eval()
         self.assertTrue(np.allclose(self.model(x).numpy(), eval_out))
+=======
+        np.testing.assert_allclose(self.model(x).numpy(), train_out, rtol=1e-05)
+        self.model.eval()
+        np.testing.assert_allclose(self.model(x).numpy(), eval_out, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

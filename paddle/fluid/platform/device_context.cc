@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <memory>
 #include <set>
+<<<<<<< HEAD
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/expect.h"
@@ -38,18 +39,22 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/device_context.h"
 #include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
 #endif
+=======
 
-namespace paddle {
-namespace memory {
+#include "glog/logging.h"
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/expect.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
-  auto place = dev_ctx.GetPlace();
-  if (size == 0) {
-    return Alloc(place, size);
-  }
-
-  if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
     auto* default_dev_ctx = static_cast<phi::GPUContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     auto& desired_dev_ctx = static_cast<const phi::GPUContext&>(dev_ctx);
@@ -75,31 +80,16 @@ AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Paddle can't use XPU device since it's not compiled with XPU,"
         "Please recompile or reinstall Paddle with XPU support."));
+=======
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
-  } else if (platform::is_mlu_place(place)) {
-#ifdef PADDLE_WITH_MLU
-    auto* default_dev_ctx = static_cast<platform::MLUDeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    auto& desired_dev_ctx =
-        static_cast<const platform::MLUDeviceContext&>(dev_ctx);
-    if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
-      return Alloc(place, size);
-    } else {
-      return allocation::MLUDeviceContextAllocatorPool::Instance().Alloc(
-          desired_dev_ctx, size);
-    }
-#else
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "Paddle can't use MLU device since it's not compiled with MLU,"
-        "Please recompile or reinstall Paddle with MLU support."));
-#endif
-  } else {
-    return Alloc(place, size);
-  }
-}
 
-}  // namespace memory
-}  // namespace paddle
+#ifdef PADDLE_WITH_MLU
+#include "paddle/fluid/platform/device/mlu/device_context.h"
+#include "paddle/fluid/platform/device/mlu/device_context_allocator.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -127,13 +117,42 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::NPU;
   } else if (platform::is_mlu_place(place)) {
     return platform::DeviceType::MLU;
+  } else if (platform::is_custom_place(place)) {
+    return platform::DeviceType::CUSTOM_DEVICE;
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Unsupported place %s to convert into platform::DeviceType.", place));
   }
 }
 
+<<<<<<< HEAD
 DeviceContextPool* DeviceContextPool::pool = nullptr;
+=======
+static DeviceContextPool* pool = nullptr;
+
+DeviceContextPool& DeviceContextPool::Instance() {
+  PADDLE_ENFORCE_NOT_NULL(pool,
+                          phi::errors::PreconditionNotMet(
+                              "Need to Create DeviceContextPool firstly!"));
+  return *pool;
+}
+
+/*! \brief  Create should only called by Init function */
+DeviceContextPool& DeviceContextPool::Init(
+    const std::vector<platform::Place>& places) {
+  if (pool == nullptr) {
+    pool = new DeviceContextPool(places);
+  }
+  return *pool;
+}
+
+bool DeviceContextPool::IsInitialized() { return pool != nullptr; }
+
+void DeviceContextPool::SetPool(DeviceContextPool* dev_pool) {
+  pool = dev_pool;
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 thread_local const std::map<Place,
                             std::shared_future<std::unique_ptr<DeviceContext>>>*
     DeviceContextPool::external_device_contexts_ = nullptr;
@@ -220,6 +239,12 @@ std::unique_ptr<DeviceContext> CreateDeviceContext(
   dev_ctx->SetZeroAllocator(memory::allocation::AllocatorFacade::Instance()
                                 .GetZeroAllocator(p)
                                 .get());
+<<<<<<< HEAD
+=======
+  dev_ctx->SetHostZeroAllocator(memory::allocation::AllocatorFacade::Instance()
+                                    .GetZeroAllocator(platform::CPUPlace())
+                                    .get());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return PtrType(dev_ctx);
 }
 
@@ -442,6 +467,7 @@ const Place& NPUPinnedDeviceContext::GetPlace() const { return place_; }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
 class EigenCudaStreamDevice : public Eigen::StreamInterface {
  public:
   EigenCudaStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
@@ -531,6 +557,8 @@ void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
   allocation_.reset();
   allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
 }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 CUDAPinnedDeviceContext::CUDAPinnedDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

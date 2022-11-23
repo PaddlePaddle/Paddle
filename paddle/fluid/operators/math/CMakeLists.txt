@@ -21,16 +21,15 @@ else()
   math_library(concat_and_split DEPS concat_and_split_functor)
 endif()
 math_library(context_project DEPS im2col math_function)
-math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
-math_library(im2col)
 math_library(sample_prob)
 math_library(sampler DEPS generator)
 
 # math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 
+<<<<<<< HEAD
 if(WITH_MKLDNN)
   math_library(
     selected_rows_functor
@@ -45,6 +44,8 @@ else()
                blas mixed_vector)
 endif()
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
@@ -59,7 +60,6 @@ endif()
 math_library(matrix_bit_code)
 
 math_library(unpooling)
-math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)

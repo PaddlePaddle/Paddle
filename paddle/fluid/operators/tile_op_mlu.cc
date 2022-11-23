@@ -18,13 +18,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T>
 class TileMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<Tensor>("X")->dims().size();
+=======
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     PADDLE_ENFORCE_GE(
         rank,
         1,
@@ -58,7 +66,11 @@ class TileMLUKernel : public framework::OpKernel<T> {
             MAX_RANK_SUPPORTED,
             repeat_times_size));
 
+<<<<<<< HEAD
     auto* in0 = context.Input<framework::Tensor>("X");
+=======
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto in_dims = in0->dims();
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       PADDLE_ENFORCE_GT(
@@ -86,7 +98,11 @@ class TileMLUKernel : public framework::OpKernel<T> {
             vec_in_dims.size(),
             repeat_times.size()));
 
+<<<<<<< HEAD
     auto* out0 = context.Output<framework::Tensor>("Out");
+=======
+    auto* out0 = context.Output<phi::DenseTensor>("Out");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     bool repeat_one_times = true;
     for (size_t i = 0; i < repeat_times.size(); ++i) {
       if (repeat_times[i] != 1) {

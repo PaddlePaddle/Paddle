@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import itertools
 import numpy as np
@@ -37,19 +35,31 @@ def get_compute_type(dtype):
     if dtype == np.float16:
         return np.float32
     return dtype
+<<<<<<< HEAD
 
 
 class TestFakeQuantizeAbsMaxOp(OpTest):
 
+=======
+
+
+class TestFakeQuantizeAbsMaxOp(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = 'fake_quantize_abs_max'
         self.attrs = {'bit_length': 8}
 
+<<<<<<< HEAD
     def _fake_quantize_abs_max(self,
                                dtype,
                                input_shape,
                                distribution,
                                round_type='TiesAwayFromZero'):
+=======
+    def _fake_quantize_abs_max(
+        self, dtype, input_shape, distribution, round_type='TiesAwayFromZero'
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         scale = np.max(np.abs(input_data))
@@ -57,16 +67,27 @@ class TestFakeQuantizeAbsMaxOp(OpTest):
         inv_scale = 1.0 / (scale + 1e-6) if scale < 1e-30 else 1.0 / scale
         if round_type == 'TiesToEven':
             round_out = np.round(
+<<<<<<< HEAD
                 input_data.astype(compute_type) * inv_scale * bnt)
+=======
+                input_data.astype(compute_type) * inv_scale * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             output_data = np.clip(round_out, -bnt - 1, bnt)
             self.attrs['round_type'] = 0
         else:
             output_data = round_c(
+<<<<<<< HEAD
                 input_data.astype(compute_type) * inv_scale * bnt)
+=======
+                input_data.astype(compute_type) * inv_scale * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.attrs['round_type'] = 1
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
         self.dtype = dtype
+<<<<<<< HEAD
         self.check_output()
 
     def test_fake_quantize_abs_max(self):
@@ -143,6 +164,93 @@ class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
                 self._fake_channel_wise_quantize_abs_max(
                     dtype, input_shape, quant_axis, np.random.random,
                     round_type)
+=======
+        self.check_output()
+
+    def test_fake_quantize_abs_max(self):
+        self._fake_quantize_abs_max(np.float32, (124, 240), np.random.random)
+
+    def test_fake_quantize_abs_max_round1(self):
+        self._fake_quantize_abs_max(
+            np.float32, (124, 240), np.random.random, round_type='TiesToEven'
+        )
+
+    def test_fake_quantize_abs_max_float16(self):
+        self._fake_quantize_abs_max(np.float16, (124, 240), np.random.random)
+
+    def test_fake_quantize_abs_max_underflow(self):
+        self._fake_quantize_abs_max(np.float32, (10, 10), np.zeros)
+
+    def test_fake_quantize_abs_max_underflow2(self):
+        self._fake_quantize_abs_max(
+            np.float32, (10, 10), lambda shape: np.full(shape, 1e-40)
+        )
+
+
+class TestFakeChannelWiseQuantizeAbsMaxOp(OpTest):
+    def setUp(self):
+        self.op_type = 'fake_channel_wise_quantize_abs_max'
+        self.attrs = {'bit_length': 8}
+
+    def _fake_channel_wise_quantize_abs_max(
+        self,
+        dtype,
+        input_shape,
+        quant_axis,
+        distribution,
+        round_type='TiesToEven',
+    ):
+        assert quant_axis in [0, 1], 'quant_axis should be 0 or 1.'
+        input_data = distribution(input_shape).astype(dtype)
+        compute_type = get_compute_type(dtype)
+        bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
+        compute_axis = tuple(
+            i for i in range(len(input_shape)) if i != quant_axis
+        )
+        scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
+        if round_type == 'TiesToEven':
+            round_out = np.round(
+                input_data.astype(compute_type) / scale_broadcast * bnt
+            )
+            output_data = np.clip(round_out, -bnt - 1, bnt)
+            self.attrs['round_type'] = 0
+        else:
+            output_data = round_c(
+                bnt * input_data.astype(compute_type) / scale_broadcast
+            )
+            self.attrs['round_type'] = 1
+        if quant_axis == 1:
+            scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
+        scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
+        self.inputs = {'X': input_data}
+        self.outputs = {'Out': output_data, 'OutScale': scale}
+        self.dtype = dtype
+        self.attrs['quant_axis'] = quant_axis
+        self.check_output()
+
+    def test_fake_channel_wise_quantize_abs_max(self):
+        dtype_options = [np.float32, np.float16]
+        input_shape_quant_axis_options = [
+            [(20, 15, 6, 6), 0],
+            [(20, 15, 6, 6), 1],
+            [(30, 30), 0],
+            [(30, 30), 1],
+        ]
+        round_type_options = ['TiesToEven', 'TiesAwayFromZero']
+        for dtype, input_shape_quant_axis, round_type in itertools.product(
+            dtype_options, input_shape_quant_axis_options, round_type_options
+        ):
+            input_shape, quant_axis = input_shape_quant_axis
+            with self.subTest(
+                dtype=dtype,
+                input_shape=input_shape,
+                quant_axis=quant_axis,
+                round_type=round_type,
+            ):
+                self._fake_channel_wise_quantize_abs_max(
+                    dtype, input_shape, quant_axis, np.random.random, round_type
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestFakeQuantizeRangeAbsMaxOp(OpTest):
@@ -151,12 +259,23 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         self.op_type = 'fake_quantize_range_abs_max'
         self.attrs = {'bit_length': 5, 'window_size': 1}
 
+<<<<<<< HEAD
     def _fake_quantize_range_abs_max(self,
                                      dtype,
                                      input_shape,
                                      distribution,
                                      is_test=False,
                                      round_type='TiesToEven'):
+=======
+    def _fake_quantize_range_abs_max(
+        self,
+        dtype,
+        input_shape,
+        distribution,
+        is_test=False,
+        round_type='TiesToEven',
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
@@ -167,7 +286,12 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
             out_scale[0] = in_scale[0] = out_scale[0] - 1.0
         if round_type == 'TiesToEven':
             round_out = np.round(
+<<<<<<< HEAD
                 input_data.astype(compute_type) / out_scale[0] * bnt)
+=======
+                input_data.astype(compute_type) / out_scale[0] * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.attrs['round_type'] = 0
             output_data = np.clip(round_out, -bnt - 1, bnt)
         else:
@@ -176,17 +300,30 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
             else:
                 clip_data = input_data
             output_data = round_c(
+<<<<<<< HEAD
                 clip_data.astype(compute_type) / out_scale[0] * bnt)
+=======
+                clip_data.astype(compute_type) / out_scale[0] * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.attrs['round_type'] = 1
         self.inputs = {
             'X': input_data,
             'Iter': np.zeros(1).astype(np.int64),
+<<<<<<< HEAD
             'InScale': in_scale
+=======
+            'InScale': in_scale,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {
             'Out': output_data,
             'OutScale': out_scale[0],
+<<<<<<< HEAD
             'OutScales': out_scale
+=======
+            'OutScales': out_scale,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.dtype = dtype
         self.attrs['is_test'] = is_test
@@ -197,6 +334,7 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
         is_test_options = [False, True]
         round_type_options = ['TiesToEven', 'TiesAwayFromZero']
         for dtype, is_test, round_type in itertools.product(
+<<<<<<< HEAD
                 dtype_options, is_test_options, round_type_options):
             self.attrs['bit_length'] = 8 if is_test else 5
             with self.subTest(dtype=dtype,
@@ -207,6 +345,21 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
                     lambda shape: (np.random.random(shape) - 0.4) * 10,
                     is_test=is_test,
                     round_type=round_type)
+=======
+            dtype_options, is_test_options, round_type_options
+        ):
+            self.attrs['bit_length'] = 8 if is_test else 5
+            with self.subTest(
+                dtype=dtype, is_test=is_test, round_type=round_type
+            ):
+                self._fake_quantize_range_abs_max(
+                    dtype,
+                    (8, 16, 6, 6),
+                    lambda shape: (np.random.random(shape) - 0.4) * 10,
+                    is_test=is_test,
+                    round_type=round_type,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestMovingAverageAbsMaxScaleOp(OpTest):
@@ -220,13 +373,22 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         in_accum = np.ones(1).astype(dtype)
         in_state = np.ones(1).astype(dtype)
         out_accum = self.attrs['moving_rate'] * in_accum[0] + np.max(
+<<<<<<< HEAD
             np.abs(input_data))
+=======
+            np.abs(input_data)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out_state = self.attrs['moving_rate'] * in_state[0] + 1.0
         out_scale = out_accum / out_state
         self.inputs = {
             'X': input_data,
             'InAccum': in_accum,
+<<<<<<< HEAD
             'InState': in_state
+=======
+            'InState': in_state,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {
             'Out': input_data,
@@ -238,16 +400,26 @@ class TestMovingAverageAbsMaxScaleOp(OpTest):
         self.check_output()
 
     def test_moving_average_abs_max(self):
+<<<<<<< HEAD
         self._moving_average_abs_max_scale(np.float32, (8, 16, 7, 7),
                                            np.random.random)
 
 
 class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
 
+=======
+        self._moving_average_abs_max_scale(
+            np.float32, (8, 16, 7, 7), np.random.random
+        )
+
+
+class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = 'fake_quantize_moving_average_abs_max'
         self.attrs = {'bit_length': 5, 'moving_rate': 0.9, 'is_test': False}
 
+<<<<<<< HEAD
     def _fake_quantize_moving_average_abs_max(self,
                                               dtype,
                                               input_shape,
@@ -255,6 +427,17 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
                                               dequantize=False,
                                               with_gradient=False,
                                               round_type='TiesAwayFromZero'):
+=======
+    def _fake_quantize_moving_average_abs_max(
+        self,
+        dtype,
+        input_shape,
+        distribution,
+        dequantize=False,
+        with_gradient=False,
+        round_type='TiesAwayFromZero',
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
@@ -265,17 +448,32 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
         out_state = np.zeros(1).astype(dtype)
         out_scale = np.zeros(1).astype(dtype)
         out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
+<<<<<<< HEAD
             np.abs(input_data))
+=======
+            np.abs(input_data)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
         out_scale = out_accum / out_state
         if round_type == 'TiesToEven':
             round_out = np.round(
+<<<<<<< HEAD
                 input_data.astype(compute_type) / out_scale * bnt)
+=======
+                input_data.astype(compute_type) / out_scale * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             quant_data = np.clip(round_out, -bnt - 1, bnt)
             self.attrs['round_type'] = 0
         else:
             quant_data = round_c(
+<<<<<<< HEAD
                 input_data.astype(compute_type) / out_scale * bnt)
+=======
+                input_data.astype(compute_type) / out_scale * bnt
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.attrs['round_type'] = 1
         if dequantize:
             output_data = (quant_data * out_scale / bnt).astype(dtype)
@@ -286,7 +484,11 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
             'X': input_data,
             'InScale': in_scale,
             'InAccum': in_accum,
+<<<<<<< HEAD
             'InState': in_state
+=======
+            'InState': in_state,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {
             'Out': output_data,
@@ -303,6 +505,7 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
             self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_fake_quantize_moving_average_abs_max(self):
+<<<<<<< HEAD
         self._fake_quantize_moving_average_abs_max(np.float32, (8, 16, 7, 7),
                                                    np.random.random)
 
@@ -324,15 +527,48 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
 
 class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
 
+=======
+        self._fake_quantize_moving_average_abs_max(
+            np.float32, (8, 16, 7, 7), np.random.random
+        )
+
+    def test_fake_quantize_moving_average_abs_max_float16(self):
+        self._fake_quantize_moving_average_abs_max(
+            np.float16, (8, 16, 7, 7), np.random.random
+        )
+
+    def test_fake_quantize_moving_average_abs_max_round1(self):
+        self._fake_quantize_moving_average_abs_max(
+            np.float32, (8, 16, 7, 7), np.random.random, round_type='TiesToEven'
+        )
+
+    def test_fake_quantize_dequantize_moving_average_abs_max(self):
+        self._fake_quantize_moving_average_abs_max(
+            np.float32,
+            (8, 16, 7, 7),
+            np.random.random,
+            dequantize=True,
+            with_gradient=True,
+        )
+
+
+class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = 'fake_quantize_dequantize_abs_max'
         self.attrs = {'bit_length': 8}
 
+<<<<<<< HEAD
     def _fake_quantize_dequantize_abs_max(self,
                                           dtype,
                                           input_shape,
                                           distribution,
                                           round_type='TiesAwayFromZero'):
+=======
+    def _fake_quantize_dequantize_abs_max(
+        self, dtype, input_shape, distribution, round_type='TiesAwayFromZero'
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_data = distribution(input_shape).astype(dtype)
         scale = np.max(np.abs(input_data)).astype(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
@@ -346,7 +582,11 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.inputs = {'X': input_data}
         self.outputs = {
             'Out': output_data,
+<<<<<<< HEAD
             'OutScale': np.array(scale).astype(dtype)
+=======
+            'OutScale': np.array(scale).astype(dtype),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.dtype = dtype
         self.check_output()
@@ -354,6 +594,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_fake_quantize_dequantize_abs_max(self):
+<<<<<<< HEAD
         self._fake_quantize_dequantize_abs_max(np.float32, (124, 240),
                                                np.random.random)
 
@@ -365,21 +606,46 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
 
 class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
 
+=======
+        self._fake_quantize_dequantize_abs_max(
+            np.float32, (124, 240), np.random.random
+        )
+
+    def test_fake_quantize_dequantize_abs_max_round1(self):
+        self._fake_quantize_dequantize_abs_max(
+            np.float32, (124, 240), np.random.random, round_type='TiesToEven'
+        )
+
+
+class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = 'fake_channel_wise_quantize_dequantize_abs_max'
         self.attrs = {'bit_length': 8}
 
+<<<<<<< HEAD
     def _fake_channel_wise_quantize_dequantize_abs_max(self,
                                                        dtype,
                                                        input_shape,
                                                        quant_axis,
                                                        distribution,
                                                        round_type='TiesToEven'):
+=======
+    def _fake_channel_wise_quantize_dequantize_abs_max(
+        self,
+        dtype,
+        input_shape,
+        quant_axis,
+        distribution,
+        round_type='TiesToEven',
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert quant_axis in [0, 1], 'quant_axis should be 0 or 1.'
         input_data = distribution(input_shape).astype(dtype)
         compute_type = get_compute_type(dtype)
         bnt = (1 << (self.attrs['bit_length'] - 1)) - 1
         output_data = input_data.copy().astype(compute_type)
+<<<<<<< HEAD
         compute_axis = tuple(i for i in range(len(input_shape))
                              if i != quant_axis)
         scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
@@ -395,6 +661,27 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         if quant_axis == 1:
             scale_broadcast = np.transpose(scale_broadcast,
                                            (1, ) + compute_axis)
+=======
+        compute_axis = tuple(
+            i for i in range(len(input_shape)) if i != quant_axis
+        )
+        scale_broadcast = np.amax(input_data, axis=compute_axis, keepdims=True)
+        if round_type == 'TiesToEven':
+            round_out = np.round(bnt * output_data / scale_broadcast)
+            output_data = (
+                np.clip(round_out, -bnt - 1, bnt) * scale_broadcast / bnt
+            )
+            self.attrs['round_type'] = 0
+        else:
+            output_data = (
+                round_c(bnt * output_data / scale_broadcast)
+                * scale_broadcast
+                / bnt
+            )
+            self.attrs['round_type'] = 1
+        if quant_axis == 1:
+            scale_broadcast = np.transpose(scale_broadcast, (1,) + compute_axis)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         scale = scale_broadcast.reshape(input_shape[quant_axis], -1)[:, 0]
         self.inputs = {'X': input_data}
         self.outputs = {'Out': output_data, 'OutScale': scale}
@@ -405,6 +692,7 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_channel_wise_fake_quant_dequant_abs_max(self):
+<<<<<<< HEAD
         input_shape_quant_axis_options = [[(3, 4, 64, 64), 0],
                                           [(15, 20, 5, 5), 1], [(30, 15), 0],
                                           [(30, 15), 1]]
@@ -415,12 +703,35 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
             with self.subTest(input_shape=input_shape,
                               quant_axis=quant_axis,
                               round_type=round_type):
+=======
+        input_shape_quant_axis_options = [
+            [(3, 4, 64, 64), 0],
+            [(15, 20, 5, 5), 1],
+            [(30, 15), 0],
+            [(30, 15), 1],
+        ]
+        round_type_options = ['TiesToEven', 'TiesAwayFromZero']
+        for input_shape_quant_axis, round_type in itertools.product(
+            input_shape_quant_axis_options, round_type_options
+        ):
+            input_shape, quant_axis = input_shape_quant_axis
+            with self.subTest(
+                input_shape=input_shape,
+                quant_axis=quant_axis,
+                round_type=round_type,
+            ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self._fake_channel_wise_quantize_dequantize_abs_max(
                     np.float32,
                     input_shape,
                     quant_axis,
                     np.random.random,
+<<<<<<< HEAD
                     round_type=round_type)
+=======
+                    round_type=round_type,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 def quantize_max_abs(x, max_range):
@@ -458,15 +769,16 @@ class TestChannelWiseQuantizeOp(OpTest):
         self.set_args()
         self.op_type = "quantize_linear"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
-                                                  self.quant_axis)
+        yq, scale = channel_wise_quantize_max_abs(
+            x, self.bit_length, self.quant_axis
+        )
         scale = np.array(scale).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
 
         self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
         self.attrs = {
             'bit_length': self.bit_length,
-            'quant_axis': self.quant_axis
+            'quant_axis': self.quant_axis,
         }
         self.outputs = {'Y': yq}
 
@@ -494,8 +806,9 @@ class TestChannelWiseQuantizeOpTrain(OpTest):
         self.set_args()
         self.op_type = "quantize_linear"
         x = np.random.randn(4, 3, 64, 64).astype(self.data_type)
-        yq, scale = channel_wise_quantize_max_abs(x, self.bit_length,
-                                                  self.quant_axis)
+        yq, scale = channel_wise_quantize_max_abs(
+            x, self.bit_length, self.quant_axis
+        )
         scale = np.array(scale).astype(self.data_type)
         zero_point = np.zeros(scale.shape, dtype="int32")
 
@@ -503,7 +816,7 @@ class TestChannelWiseQuantizeOpTrain(OpTest):
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
         self.outputs = {'Y': yq, 'OutScale': scale}
 
@@ -550,18 +863,42 @@ class TestquantizeOpTrain(TestquantizeOp):
     def setUp(self):
         self.set_args()
         self.op_type = "quantize_linear"
-        x = np.random.randn(31, 65).astype(self.data_type)
-        yq, scale = quantize_max_abs(x, self.max_range)
-        scale = np.array(scale).astype(self.data_type)
-        zero_point = np.zeros(scale.shape, dtype="int32")
-
-        self.inputs = {'X': x, 'Scale': scale, 'ZeroPoint': zero_point}
         self.attrs = {
             'bit_length': self.bit_length,
             'quant_axis': self.quant_axis,
-            'is_test': self.is_test
+            'moving_rate': 0.9,
+            'is_test': self.is_test,
         }
-        self.outputs = {'Y': yq, 'OutScale': scale}
+
+        x = np.random.randn(31, 65).astype(self.data_type)
+        scale = np.array([0.001]).astype(self.data_type)
+        zero_point = np.zeros(scale.shape, dtype="int32")
+        in_accum = np.ones(1).astype(self.data_type)
+        in_state = np.ones(1).astype(self.data_type)
+        out_accum = np.zeros(1).astype(self.data_type)
+        out_state = np.zeros(1).astype(self.data_type)
+        out_accum[0] = self.attrs['moving_rate'] * in_accum[0] + np.max(
+            np.abs(x)
+        )
+        out_state[0] = self.attrs['moving_rate'] * in_state[0] + 1.0
+        out_scale = out_accum / out_state
+
+        round_out = np.round(x / out_scale * self.max_range)
+        quant_data = np.clip(round_out, -self.max_range - 1, self.max_range)
+
+        self.inputs = {
+            'X': x,
+            'Scale': scale,
+            'ZeroPoint': zero_point,
+            'InAccum': in_accum,
+            'InState': in_state,
+        }
+        self.outputs = {
+            'Y': quant_data,
+            'OutScale': out_scale,
+            'OutAccum': out_accum,
+            'OutState': out_state,
+        }
 
     def test_check_output(self):
         self.check_output()

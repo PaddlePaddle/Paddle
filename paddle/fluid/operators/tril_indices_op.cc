@@ -61,9 +61,15 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   TrilIndices Operator.
 
+<<<<<<< HEAD
   The tril_indices operator returns the indices of the lower triangular part of the matrix 
   whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
   of all indices and the second row contains column coordinates. Indices are ordered based on 
+=======
+  The tril_indices operator returns the indices of the lower triangular part of the matrix
+  whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates
+  of all indices and the second row contains column coordinates. Indices are ordered based on
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   rows and then columns. The lower triangular part of the matrix is defined as the elements on
   and below the diagonal.
 

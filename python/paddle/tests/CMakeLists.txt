@@ -66,6 +66,10 @@ set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
 set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+<<<<<<< HEAD
+=======
+set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()

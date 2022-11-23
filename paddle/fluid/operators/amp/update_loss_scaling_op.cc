@@ -12,13 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/amp/update_loss_scaling_op.h"
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include <cstring>
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/infershape_utils.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -27,6 +36,7 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("FoundInfinite"),
                    "Input",
@@ -76,6 +86,8 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("OutBadSteps", {1});
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -89,7 +101,11 @@ class UpdateLossScalingOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType& expected_kernel_type) const override {
 #ifndef PADDLE_WITH_XPU
     if (var_name == "FoundInfinite" || var_name == "StopUpdate") {
@@ -159,8 +175,8 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
                   "Stop updating loss scaling, and just zero inputs.")
         .SetDefault(false);
     AddComment(R"DOC(
-Update loss scaling according to overall gradients. If all gradients is 
-finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+Update loss scaling according to overall gradients. If all gradients is
+finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
 Otherwise, loss scaling will decrease by decr_ratio after
 decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
@@ -168,6 +184,7 @@ decr_every_n_nan_or_inf steps and each step some gradients are infinite.
   }
 };
 
+<<<<<<< HEAD
 template <typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
  public:
@@ -221,19 +238,21 @@ class LazyZeros<phi::CPUContext, T> {
   }
 };
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 
+DECLARE_INFER_SHAPE_FUNCTOR(update_loss_scaling,
+                            UpdateLossScalingInferShapeFunctor,
+                            PD_INFER_META(phi::UpdateLossScalingInferMeta));
 REGISTER_OPERATOR(
     update_loss_scaling,
     ops::UpdateLossScalingOp,
     ops::UpdateLossScalingOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(update_loss_scaling,
-                       ops::UpdateLossScalingKernel<CPU, float>,
-                       ops::UpdateLossScalingKernel<CPU, double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    UpdateLossScalingInferShapeFunctor);

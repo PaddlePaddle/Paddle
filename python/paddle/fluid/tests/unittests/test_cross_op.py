@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
@@ -31,7 +28,7 @@ class TestCrossOp(OpTest):
         self.initTestCase()
         self.inputs = {
             'X': np.random.random(self.shape).astype(self.dtype),
-            'Y': np.random.random(self.shape).astype(self.dtype)
+            'Y': np.random.random(self.shape).astype(self.dtype),
         }
         self.init_output()
 
@@ -71,10 +68,19 @@ class TestCrossOpCase1(TestCrossOp):
 class TestCrossAPI(unittest.TestCase):
 
     def input_data(self):
+<<<<<<< HEAD
         self.data_x = np.array([[1.0, 1.0, 1.0], [2.0, 2.0, 2.0],
                                 [3.0, 3.0, 3.0]])
         self.data_y = np.array([[1.0, 1.0, 1.0], [1.0, 1.0, 1.0],
                                 [1.0, 1.0, 1.0]])
+=======
+        self.data_x = np.array(
+            [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]]
+        )
+        self.data_y = np.array(
+            [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_cross_api(self):
         self.input_data()
@@ -85,6 +91,7 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[-1, 3])
             z = paddle.cross(x, y, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
+<<<<<<< HEAD
             res, = exe.run(feed={
                 'x': self.data_x,
                 'y': self.data_y
@@ -94,6 +101,17 @@ class TestCrossAPI(unittest.TestCase):
         expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
                                [0.0, 0.0, 0.0]])
         self.assertTrue(np.allclose(expect_out, np.array(res)))
+=======
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'y': self.data_y},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        )
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # case 2:
         with program_guard(Program(), Program()):
@@ -101,6 +119,7 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[-1, 3])
             z = paddle.cross(x, y)
             exe = fluid.Executor(fluid.CPUPlace())
+<<<<<<< HEAD
             res, = exe.run(feed={
                 'x': self.data_x,
                 'y': self.data_y
@@ -110,6 +129,17 @@ class TestCrossAPI(unittest.TestCase):
         expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
                                [-1.0, -1.0, -1.0]])
         self.assertTrue(np.allclose(expect_out, np.array(res)))
+=======
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'y': self.data_y},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.array(
+            [[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0], [-1.0, -1.0, -1.0]]
+        )
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # case 3:
         with program_guard(Program(), Program()):
@@ -129,7 +159,7 @@ class TestCrossAPI(unittest.TestCase):
         #     np_z = z.numpy()
         # expect_out = np.array([[-1.0, -1.0, -1.0], [2.0, 2.0, 2.0],
         #                        [-1.0, -1.0, -1.0]])
-        # self.assertTrue(np.allclose(expect_out, np_z))
+        # np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         with fluid.dygraph.guard():
@@ -137,9 +167,10 @@ class TestCrossAPI(unittest.TestCase):
             y = fluid.dygraph.to_variable(self.data_y)
             z = paddle.cross(x, y, axis=1)
             np_z = z.numpy()
-        expect_out = np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0],
-                               [0.0, 0.0, 0.0]])
-        self.assertTrue(np.allclose(expect_out, np_z))
+        expect_out = np.array(
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+        )
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

@@ -20,19 +20,27 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/data_layout.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/operators/layout_utils.h"
 #include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
+#include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/gpu/batch_norm_utils.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #ifdef __HIPCC__
 #define LAUNCH_BOUNDS(BlockDim) __launch_bounds__(BlockDim)
@@ -69,6 +77,40 @@ static __global__ void BNForwardInference(const T *x,
         static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
     BatchNormParamType<T> inv_var = 1 / sqrt(variance[c] + epsilon);
     y[i] = static_cast<T>(scale[c] * x_sub_mean * inv_var + bias[c]);
+  }
+}
+
+template <typename T>
+static __global__ void InverseVariance(const BatchNormParamType<T> *variance,
+                                       const double epsilon,
+                                       const int C,
+                                       BatchNormParamType<T> *inv_variance) {
+  int tid = threadIdx.x + blockIdx.x * blockDim.x;
+  if (tid < C) {
+    inv_variance[tid] = 1 / sqrt(variance[tid] + epsilon);
+  }
+}
+
+template <typename T, phi::DataLayout layout>
+static __global__ void BN1DForwardInference(
+    const T *x,
+    const BatchNormParamType<T> *mean,
+    const BatchNormParamType<T> *inv_variance,
+    const BatchNormParamType<T> *scale,
+    const BatchNormParamType<T> *bias,
+    const int C,
+    const int N,
+    const int HxW,
+    const double epsilon,
+    T *y) {
+  int gid = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  int num = N * C * HxW;
+  for (int i = gid; i < num; i += stride) {
+    const int c = layout == phi::DataLayout::kNCHW ? i / HxW % C : i % C;
+    BatchNormParamType<T> x_sub_mean =
+        static_cast<BatchNormParamType<T>>(x[i]) - mean[c];
+    y[i] = static_cast<T>(scale[c] * x_sub_mean * inv_variance[c] + bias[c]);
   }
 }
 
@@ -533,17 +575,16 @@ static __global__ void BNForwardTraining2DWriteRes(
 template <typename T, typename Context>
 void BatchNormKernel(const Context &ctx,
                      const DenseTensor &x,
-                     const DenseTensor &scale,
-                     const DenseTensor &bias,
                      const DenseTensor &mean,
                      const DenseTensor &variance,
+                     const DenseTensor &scale,
+                     const DenseTensor &bias,
+                     bool is_test,
                      float momentum,
                      float epsilon_f,
                      const std::string &data_layout_str,
-                     bool is_test,
                      bool use_global_stats,
                      bool trainable_statistics,
-                     bool fuse_with_relu,
                      DenseTensor *y,
                      DenseTensor *mean_out,
                      DenseTensor *variance_out,
@@ -552,8 +593,7 @@ void BatchNormKernel(const Context &ctx,
                      DenseTensor *reserve_space) {
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_layout_str);
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   bool test_mode = is_test && (!trainable_stats);
 
   // Get the size for each dimension.
@@ -691,6 +731,9 @@ void BatchNormKernel(const Context &ctx,
 
   auto handle = ctx.cudnn_handle();
 
+  const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 10240;
+  const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+
   // Now, depending on whether we are running test or not, we have two paths.
   // It is training mode when it's not reference AND not using pre-trained
   // model.
@@ -793,23 +836,83 @@ void BatchNormKernel(const Context &ctx,
 //             est_var->template data<BatchNormParamType<T>>())),
 //         epsilon));
 #else
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        paddle::platform::dynload::cudnnBatchNormalizationForwardInference(
-            handle,
-            // Note: PERSISTENT not implemented for inference
-            CUDNN_BATCHNORM_SPATIAL,
-            CudnnDataType<T>::kOne(),
-            CudnnDataType<T>::kZero(),
-            data_desc_,
-            transformed_x.template data<T>(),
-            data_desc_,
-            ctx.template Alloc<T>(&transformed_y),
-            bn_param_desc_,
-            scale.template data<BatchNormParamType<T>>(),
-            bias.template data<BatchNormParamType<T>>(),
-            est_mean->template data<BatchNormParamType<T>>(),
-            est_var->template data<BatchNormParamType<T>>(),
-            epsilon));
+    const bool use_native_kernel =
+        (x_dims.size() == 2 ||
+         (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
+    if (use_native_kernel) {
+      const int block_size = 256;
+      const int grid_size = (N * C * H * W * D + block_size - 1) / block_size;
+      if (compute_format == DataLayout::kNCHW) {
+        BNForwardInference<T, DataLayout::kNCHW>
+            <<<grid_size, block_size, 0, ctx.stream()>>>(
+                transformed_x.template data<T>(),
+                est_mean->template data<BatchNormParamType<T>>(),
+                est_var->template data<BatchNormParamType<T>>(),
+                scale.template data<BatchNormParamType<T>>(),
+                bias.template data<BatchNormParamType<T>>(),
+                C,
+                N,
+                H * W * D,
+                epsilon,
+                transformed_y.template data<T>());
+      } else {
+        if (x_dims.size() == 2) {
+          DenseTensor inv_var = phi::Empty<BatchNormParamType<T>>(ctx, {C});
+          auto *inv_var_ptr = inv_var.data<BatchNormParamType<T>>();
+          const int threads = 512 > C ? C : 512;
+          const int blocks = (C + 511) / 512;
+          InverseVariance<T><<<blocks, threads>>>(
+              est_var->template data<BatchNormParamType<T>>(),
+              epsilon,
+              C,
+              inv_var_ptr);
+          BN1DForwardInference<T, DataLayout::kNHWC>
+              <<<grid_size, block_size, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  est_mean->template data<BatchNormParamType<T>>(),
+                  // est_var->template data<BatchNormParamType<T>>(),
+                  inv_var_ptr,
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  transformed_y.template data<T>());
+        } else {
+          BNForwardInference<T, DataLayout::kNHWC>
+              <<<grid_size, block_size, 0, ctx.stream()>>>(
+                  transformed_x.template data<T>(),
+                  est_mean->template data<BatchNormParamType<T>>(),
+                  est_var->template data<BatchNormParamType<T>>(),
+                  scale.template data<BatchNormParamType<T>>(),
+                  bias.template data<BatchNormParamType<T>>(),
+                  C,
+                  N,
+                  H * W * D,
+                  epsilon,
+                  transformed_y.template data<T>());
+        }
+      }
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          paddle::platform::dynload::cudnnBatchNormalizationForwardInference(
+              handle,
+              // Note: PERSISTENT not implemented for inference
+              CUDNN_BATCHNORM_SPATIAL,
+              CudnnDataType<T>::kOne(),
+              CudnnDataType<T>::kZero(),
+              data_desc_,
+              transformed_x.template data<T>(),
+              data_desc_,
+              ctx.template Alloc<T>(&transformed_y),
+              bn_param_desc_,
+              scale.template data<BatchNormParamType<T>>(),
+              bias.template data<BatchNormParamType<T>>(),
+              est_mean->template data<BatchNormParamType<T>>(),
+              est_var->template data<BatchNormParamType<T>>(),
+              epsilon));
+    }
 #endif
   } else {
     // if MomentumTensor is set, use MomentumTensor value, momentum
@@ -908,8 +1011,12 @@ void BatchNormKernel(const Context &ctx,
 //         static_cast<void *>(saved_variance->template mutable_data<
 //                             BatchNormParamType<T>>(ctx.GetPlace()))));
 #else
+<<<<<<< HEAD
       const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
       const size_t CUDNN_SPATIAL_THRESHOLD = 880801;
+=======
+      // const size_t CUDNN_PER_ACTIVATION_THRESHOLD = 131070;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const bool use_native_kernel =
           ((x_dims.size() == 2 && N >= CUDNN_PER_ACTIVATION_THRESHOLD) ||
            (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD));
@@ -1068,7 +1175,11 @@ void BatchNormKernel(const Context &ctx,
         // Create reserve space and workspace for batch norm.
         // Create tensor for each batchnorm op, it will be used in the
         // backward. Thus this tensor shouldn't be temp.
+<<<<<<< HEAD
         // auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
+=======
+        // auto *reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if (reserve_space == nullptr) {
           reserve_space = &reserve_space_tensor;
         }
@@ -1189,7 +1300,16 @@ PD_REGISTER_KERNEL(batch_norm,
                    ALL_LAYOUT,
                    phi::BatchNormKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+}
 #else
 PD_REGISTER_KERNEL(batch_norm,
                    GPU,
@@ -1199,6 +1319,10 @@ PD_REGISTER_KERNEL(batch_norm,
                    double,
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
     kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);

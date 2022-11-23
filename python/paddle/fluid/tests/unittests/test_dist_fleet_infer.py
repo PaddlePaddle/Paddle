@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import shutil
 import unittest
 import tempfile
-import tarfile
 from test_dist_fleet_base import TestFleetBase
-from paddle.dataset.common import download, DATA_HOME
 
 
 class TestDistCtrInfer(TestFleetBase):
@@ -29,11 +25,9 @@ class TestDistCtrInfer(TestFleetBase):
         self._mode = "async"
         self._reader = "pyreader"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -58,19 +52,36 @@ class TestDistCtrInfer(TestFleetBase):
     def test_dist_infer(self):
         model_dirname = tempfile.mkdtemp()
 
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False,
                               need_envs={
                                   "SAVE_DIRNAME": model_dirname,
                               })
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py",
+            delta=1e-5,
+            check_error_log=False,
+            need_envs={
+                "SAVE_DIRNAME": model_dirname,
+            },
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self._need_test = 1
         self._model_dir = model_dirname
 
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False)
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         shutil.rmtree(model_dirname)
 
@@ -82,11 +93,9 @@ class TestDistCtrTrainInfer(TestFleetBase):
         self._reader = "pyreader"
         self._need_test = 1
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
 
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -110,9 +119,15 @@ class TestDistCtrTrainInfer(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train_infer(self):
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False)
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

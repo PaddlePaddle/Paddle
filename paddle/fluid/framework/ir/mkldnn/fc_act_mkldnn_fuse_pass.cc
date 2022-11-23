@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 
 #include "paddle/fluid/framework/ir/mkldnn/fc_act_mkldnn_fuse_pass.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/op_version_registry.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -26,20 +29,29 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   std::vector<std::string> act_types = {
       "gelu", "tanh", "sigmoid", "mish", "hard_swish"};
+=======
+  auto act_types = phi::funcs::GetSupportedActivations();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-  for (std::string act_type : act_types) FuseFCAct(graph, act_type);
+  for (auto act_type : act_types) FuseFCAct(graph, act_type);
 }
 
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
                                     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  FusePassBase::Init("fc_act", graph);
+  FusePassBase::Init("fc_" + act_type + "_mkldnn_fuse_pass", graph);
 
   GraphPatternDetector gpd;
+<<<<<<< HEAD
   patterns::OperatorActivation fc_act_pattern(gpd.mutable_pattern(), "fc_act");
+=======
+  patterns::OperatorActivation fc_act_pattern(
+      gpd.mutable_pattern(), "fc_" + act_type + "_mkldnn_fuse_pass");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   fc_act_pattern("fc", act_type);
 
   int found_fc_act_count = 0;
@@ -62,15 +74,29 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
               "is used."));
     }
 
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
+    for (const auto &attr : attr_map) {
+      if (act_op->HasAttr(attr.first)) {
+        fc_op->SetAttr(attr.second, act_op->GetAttr(attr.first));
+      }
+    }
+
     if (act_type == "gelu" && act_op->HasAttr("approximate")) {
+<<<<<<< HEAD
       bool approximate = PADDLE_GET_CONST(bool, act_op->GetAttr("approximate"));
       std::string type = approximate ? "_tanh" : "_erf";
       fc_op->SetAttr("activation_type", act_type + type);
+=======
+      std::string gelu_act_type =
+          PADDLE_GET_CONST(bool, act_op->GetAttr("approximate")) ? "gelu_tanh"
+                                                                 : "gelu_erf";
+      fc_op->SetAttr("fuse_activation", gelu_act_type);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     } else {
-      fc_op->SetAttr("activation_type", act_type);
+      fc_op->SetAttr("fuse_activation", act_type);
     }
-    fc_op->SetAttr("use_mkldnn", true);
 
+    fc_op->SetAttr("use_mkldnn", true);
     fc_op->SetOutput("Out", {act_out->Name()});
 
     IR_OP_VAR_LINK(fc, act_out);
@@ -80,7 +106,12 @@ void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,
 
   gpd(graph, handler);
   AddStatis(found_fc_act_count);
+<<<<<<< HEAD
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+=======
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      found_fc_act_count > 0)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     PrettyLogDetail(
         "---    fused %d fc with %s activation", found_fc_act_count, act_type);
 }
@@ -95,8 +126,16 @@ REGISTER_PASS_CAPABILITY(fc_act_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("fc", 0)
-            .LE("gelu", 0)
-            .LE("sigmoid", 0)
-            .LE("mish", 1)
+            .EQ("abs", 0)
+            .LE("clip", 1)
+            .EQ("gelu", 0)
+            .EQ("hard_sigmoid", 0)
             .LE("hard_swish", 0)
-            .LE("tanh", 0));
+            .LE("leaky_relu", 1)
+            .LE("mish", 1)
+            .EQ("relu", 0)
+            .EQ("relu6", 0)
+            .EQ("sigmoid", 0)
+            .EQ("sqrt", 0)
+            .EQ("swish", 0)
+            .EQ("tanh", 0));

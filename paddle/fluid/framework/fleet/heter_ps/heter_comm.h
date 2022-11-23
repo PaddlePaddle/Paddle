@@ -64,6 +64,7 @@ class HeterComm {
   virtual ~HeterComm();
   HeterComm(const HeterComm&) = delete;
   HeterComm& operator=(const HeterComm&) = delete;
+<<<<<<< HEAD
   // reset table
   void reset_table(const int dev_id,
                    size_t capacity,
@@ -78,6 +79,16 @@ class HeterComm {
                     KeyType* d_merged_keys,
                     uint32_t* d_restore_idx,
                     StreamType stream);
+=======
+
+  void merge_keys(int gpu_num,
+                  const KeyType* d_keys,
+                  size_t len,
+                  KeyType* d_sorted_keys,
+                  KeyType* d_merged_keys,
+                  uint32_t* d_restore_idx,
+                  size_t& uniq_len);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void dynamic_merge_grad(int gpu_num,
                           KeyType* d_keys,
                           float* d_grads,
@@ -190,6 +201,14 @@ class HeterComm {
     max_mf_dim_ = max_mf_dim;
   }
 
+<<<<<<< HEAD
+=======
+  void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) {
+    multi_mf_dim_ = multi_mf_dim;
+    max_mf_dim_ = max_mf_dim;
+  }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
 
   bool need_transfer(int send_id, int receive_id) {
@@ -213,6 +232,7 @@ class HeterComm {
                              uint32_t* d_sorted_idx,
                              uint32_t* d_offset,
                              uint32_t* d_merged_cnts,
+<<<<<<< HEAD
                              bool filter_zero,
                              cudaStream_t stream = 0);
 #endif
@@ -224,6 +244,10 @@ class HeterComm {
                           T* right,
                           int gpu_num,
                           StreamType stream);
+=======
+                             bool filter_zero);
+#endif
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   struct Node {
     ppStream in_stream;
@@ -452,11 +476,14 @@ class HeterComm {
                       int end_index,
                       size_t keylen,
                       size_t vallen);
+<<<<<<< HEAD
   void create_tmp_storage(void*& dest,
                           int start_index,
                           int end_index,
                           size_t vallen);
   void destroy_tmp_storage(void*& p, int start_index, int end_index);
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void destroy_storage(int start_index, int end_index);
   void walk_to_dest(int start_index,
                     int gpu_num,
@@ -484,6 +511,7 @@ class HeterComm {
                    size_t val_size);
 
  protected:
+<<<<<<< HEAD
   void pull_merge_sparse(const int gpu_id,
                          KeyType* d_keys,
                          float* d_vals,
@@ -638,6 +666,10 @@ class HeterComm {
                                         const cudaStream_t& stream);
   // debug time
   void print_debug_time(const int& gpu_id, bool force = false);
+=======
+  void pull_merge_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+  void pull_normal_sparse(int num, KeyType* d_keys, float* d_vals, size_t len);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   using Table = HashTable<KeyType, ValType>;
   using PtrTable = HashTable<KeyType, float*>;
@@ -651,11 +683,19 @@ class HeterComm {
 
   GPUAccessor gpu_accessor_;
 
+<<<<<<< HEAD
  protected:
   int topo_aware_{0};
   std::vector<LocalStorage> storage_;
   DynamicGradMerger merger_;
   int device_num_ = 8;
+=======
+ private:
+  int topo_aware_{0};
+  std::vector<LocalStorage> storage_;
+  DynamicGradMerger merger_;
+  int feanum_{1800 * 2048};
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int multi_node_{0};
   int rank_id_ = 0;
   int node_size_ = 1;

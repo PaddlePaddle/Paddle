@@ -95,18 +95,48 @@ void MasterDaemon::_do_get(SocketType socket) {
   tcputils::send_vector<uint8_t>(socket, value);
 }
 
+<<<<<<< HEAD
 void MasterDaemon::_do_stop(SocketType socket) {
   VLOG(4) << "MasterDaemon::_do_stop " << GetSockName(socket);
   if (!_has_stop) {
     _stop_time = std::chrono::system_clock::now();
-  }
-  _has_stop = true;
-  ReplyType value = ReplyType::STOP_WAIT;
-  tcputils::send_value<ReplyType>(socket, value);
-  if (--_nranks == 0) {
-    _stop = true;
+=======
+#ifndef _WIN32
+void MasterDaemon::InitControlFd() {
+  PADDLE_ENFORCE_NE(
+      pipe(_control_fd.data()),
+      -1,
+      platform::errors::Fatal("failed to cread control pipe errno:%d", errno));
+}
+void MasterDaemon::CloseControlFd() {
+  for (int fd : _control_fd) {
+    if (fd != -1) {
+      ::close(fd);
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 }
+void MasterDaemon::StopByControlFd() {
+  VLOG(4) << ("begin to run StopByControlFd");
+  if (_control_fd[1] != -1) {
+    PADDLE_ENFORCE_NE(::write(_control_fd[1], "\0", 1),
+                      -1,
+                      platform::errors::Fatal(
+                          "failed to write control pipe errno:%d", errno));
+    // close the write end of the pipe
+    ::close(_control_fd[1]);
+    _control_fd[1] = -1;
+  }
+}
+#else
+void MasterDaemon::InitControlFd() {
+  ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
+  PADDLE_ENFORCE(ghStopEvent_,
+                 platform::errors::Fatal("failed to cread control pipe"));
+}
+void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
+void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
+#endif
 
 #ifndef _WIN32
 void MasterDaemon::InitControlFd() {
@@ -186,16 +216,24 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
         case Command::WAIT:
           _do_wait(fds[i].fd);
           break;
+<<<<<<< HEAD
         case Command::STOP:
           _do_stop(fds[i].fd);
           break;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         default:
           LOG(WARNING) << "Unknown command: " << static_cast<int>(command)
                        << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
+<<<<<<< HEAD
       fds.erase(fds.begin() + i);
       tcputils::close_socket(fds[i].fd);
+=======
+      tcputils::close_socket(fds[i].fd);
+      fds.erase(fds.begin() + i);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #ifdef _WIN32
       _sockets.erase(_sockets.begin() + i - 1);
 #else
@@ -218,6 +256,7 @@ void MasterDaemon::run() {
       {.fd = _control_fd[0], .events = POLLIN | POLLHUP, .revents = 0});
 #endif
 
+<<<<<<< HEAD
   while (!_stop) {
     auto end_time = std::chrono::system_clock::now();
     if (_has_stop) {
@@ -235,6 +274,10 @@ void MasterDaemon::run() {
               elapsed_seconds));
     }
 
+=======
+  bool finished = false;
+  while (!finished) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     for (size_t i = 0; i < fds.size(); i++) {
       fds[i].revents = 0;
     }
@@ -242,7 +285,15 @@ void MasterDaemon::run() {
     VLOG(9) << "begin to poll fds_size:"
             << paddle::string::Sprintf("%d", fds.size());
 #ifdef _WIN32
-    ::WSAPoll(fds.data(), fds.size(), INFTIME);
+    int res = ::WSAPoll(fds.data(), fds.size(), INFTIME);
+    if (res == 0) {
+      auto rv = WaitForSingleObject(ghStopEvent_, 0);
+      if (rv != WAIT_TIMEOUT) {
+        finished = true;
+        break;
+      }
+      continue;
+    }
 #else
     ::poll(fds.data(), fds.size(), INFTIME);
 
@@ -256,7 +307,11 @@ void MasterDaemon::run() {
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
+<<<<<<< HEAD
       _stop = true;
+=======
+      finished = true;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       break;
     }
 #endif
@@ -405,12 +460,14 @@ std::vector<uint8_t> TCPStore::get(const std::string& key) {
 void TCPStore::wait(const std::string& key) {
   ReplyType reply;
   VLOG(3) << "TCPStore wait.";
-  do {
-    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
-
-    reply = _client->receive_value<ReplyType>();
+  _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+  reply = _client->receive_value<ReplyType>();
+  while (reply != ReplyType::STOP_WAIT) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (reply != ReplyType::STOP_WAIT);
+
+    _client->send_command_for_key(Command::WAIT, _key_prefix + key);
+    reply = _client->receive_value<ReplyType>();
+  }
 }
 
 TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }

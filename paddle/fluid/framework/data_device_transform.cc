@@ -16,9 +16,15 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 void TransDataDevice(const Tensor &in,
                      const platform::Place &dst_place,
                      Tensor *out) {
+=======
+void TransDataDevice(const phi::DenseTensor &in,
+                     const platform::Place &dst_place,
+                     phi::DenseTensor *out) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   VLOG(3) << "DeviceTransform in, src_place " << in.place()
           << " dst_place: " << dst_place;
 
@@ -51,8 +57,7 @@ void TransDataDevice(const Tensor &in,
   // the elements of learning rate are one and it's CPU side.
   // One solution is to use a CUDA kernel to complete the copy operation when
   // the transforming is from CPU to GPU and the number of elements is little.
-  // But the embarrassment is that this solution this solution makes training
-  // slower.
+  // But the embarrassment is that this solution makes training slower.
   TensorCopySync(in, dst_place, out);
 }
 

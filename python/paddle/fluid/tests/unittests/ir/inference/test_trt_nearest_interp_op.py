@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -31,13 +29,17 @@ class TRTNearestInterpTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             if self.data_layout == 'NCHW':
                 shape = [
-                    -1, self.channels, self.origin_shape[0],
-                    self.origin_shape[1]
+                    -1,
+                    self.channels,
+                    self.origin_shape[0],
+                    self.origin_shape[1],
                 ]
             else:
                 shape = [
-                    -1, self.origin_shape[0], self.origin_shape[1],
-                    self.channels
+                    -1,
+                    self.origin_shape[0],
+                    self.origin_shape[1],
+                    self.channels,
                 ]
             data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
@@ -45,13 +47,17 @@ class TRTNearestInterpTest(InferencePassTest):
 
         if self.data_layout == 'NCHW':
             shape = [
-                self.bs, self.channels, self.origin_shape[0],
-                self.origin_shape[1]
+                self.bs,
+                self.channels,
+                self.origin_shape[0],
+                self.origin_shape[1],
             ]
         else:
             shape = [
-                self.bs, self.origin_shape[0], self.origin_shape[1],
-                self.channels
+                self.bs,
+                self.origin_shape[0],
+                self.origin_shape[1],
+                self.channels,
             ]
 
         self.feeds = {
@@ -59,7 +65,8 @@ class TRTNearestInterpTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTNearestInterpTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def set_params(self):
@@ -73,6 +80,7 @@ class TRTNearestInterpTest(InferencePassTest):
         self.data_layout = 'NCHW'
 
     def append_nearest_interp(self, data):
+<<<<<<< HEAD
         if self.scale > 0.:
             return fluid.layers.resize_nearest(data,
                                                scale=self.scale,
@@ -82,13 +90,29 @@ class TRTNearestInterpTest(InferencePassTest):
                                            out_shape=self.resize_shape,
                                            align_corners=self.align_corners,
                                            data_format=self.data_layout)
+=======
+        if self.scale > 0.0:
+            return fluid.layers.resize_nearest(
+                data,
+                scale=self.scale,
+                align_corners=self.align_corners,
+                data_format=self.data_layout,
+            )
+        return fluid.layers.resize_nearest(
+            data,
+            out_shape=self.resize_shape,
+            align_corners=self.align_corners,
+            data_format=self.data_layout,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTNearestInterpTest1(TRTNearestInterpTest):
@@ -107,7 +131,7 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 
     def set_params(self):
         self.bs = 4
-        self.scale = 2.
+        self.scale = 2.0
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
         self.resize_shape = (32, 32)  # HW
@@ -155,7 +179,7 @@ class TRTNearestInterpTest6(TRTNearestInterpTest):
 
     def set_params(self):
         self.bs = 4
-        self.scale = 2.
+        self.scale = 2.0
         self.channels = 3
         self.origin_shape = (16, 16)  # HW
         self.resize_shape = (32, 32)  # HW

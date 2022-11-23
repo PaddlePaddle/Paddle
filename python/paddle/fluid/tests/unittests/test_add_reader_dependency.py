@@ -21,10 +21,19 @@ import time
 
 def inplace_add(x, bias):
     helper = LayerHelper('scale', **locals())
+<<<<<<< HEAD
     helper.append_op(type='scale',
                      inputs={'X': [x]},
                      outputs={'Out': [x]},
                      attrs={'bias': bias})
+=======
+    helper.append_op(
+        type='scale',
+        inputs={'X': [x]},
+        outputs={'Out': [x]},
+        attrs={'bias': bias},
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return x
 
 
@@ -49,17 +58,28 @@ class TestAddReaderDependency(unittest.TestCase):
                     feed_list=[tmp_in],
                     capacity=16,
                     iterable=False,
-                    use_double_buffer=self.use_double_buffer)
+                    use_double_buffer=self.use_double_buffer,
+                )
 
                 def data_source():
                     for _ in range(self.batch_num):
                         time.sleep(self.sleep_time)  # sleep some times
+<<<<<<< HEAD
                         yield np.random.uniform(low=-1, high=1,
                                                 size=[1]).astype('float32'),
 
                 persistable_in = fluid.data(name='persistable_in',
                                             dtype='float32',
                                             shape=[1])
+=======
+                        yield np.random.uniform(
+                            low=-1, high=1, size=[1]
+                        ).astype('float32'),
+
+                persistable_in = fluid.data(
+                    name='persistable_in', dtype='float32', shape=[1]
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 persistable_in.persistable = True
 
                 persistable_in = inplace_add(persistable_in, bias=1)
@@ -74,26 +94,30 @@ class TestAddReaderDependency(unittest.TestCase):
                     while True:
                         if batch_id == 0:
                             feed = {
-                                persistable_in.name:
-                                np.array([-1]).astype('float32')
+                                persistable_in.name: np.array([-1]).astype(
+                                    'float32'
+                                )
                             }
                         else:
                             feed = None
 
-                        ret, = exe.run(prog,
-                                       feed=feed,
-                                       fetch_list=[persistable_in])
-                        self.assertEqual(ret.shape, (1, ))
+                        (ret,) = exe.run(
+                            prog, feed=feed, fetch_list=[persistable_in]
+                        )
+                        self.assertEqual(ret.shape, (1,))
                         self.assertEqual(ret[0], batch_id)
                         batch_id += 1
                 except fluid.core.EOFException:
                     loader.reset()
 
                     self.assertEqual(batch_id, self.batch_num)
-                    t = fluid.global_scope().find_var(
-                        persistable_in.name).get_tensor()
+                    t = (
+                        fluid.global_scope()
+                        .find_var(persistable_in.name)
+                        .get_tensor()
+                    )
                     t_val = np.array(t)
-                    self.assertEqual(t_val.shape, (1, ))
+                    self.assertEqual(t_val.shape, (1,))
                     self.assertEqual(t_val[0] + 1, batch_id)
 
 

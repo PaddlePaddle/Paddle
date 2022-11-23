@@ -125,10 +125,18 @@ class MishPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
+<<<<<<< HEAD
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
                                           const nvinfer1::DimsExprs* inputs,
                                           int nb_inputs,
                                           nvinfer1::IExprBuilder& expr_builder)
+=======
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

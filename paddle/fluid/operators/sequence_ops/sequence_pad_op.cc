@@ -170,9 +170,9 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
       Sequence Pad Operator
 
-      This operator pads sequences in a same batch to a consistent length. 
-      The length is specified by attribute 'padded_length'. New elements, 
-      whose values are specified by input 'PadValue', will be appended to 
+      This operator pads sequences in a same batch to a consistent length.
+      The length is specified by attribute 'padded_length'. New elements,
+      whose values are specified by input 'PadValue', will be appended to
       the end of each sequence, to make their final lengths consistent.
 
       Following are cases to better explain how this works:
@@ -186,10 +186,10 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           PadValue.data = [0]
       and attribite 'padded_length' = 4,
       then we get LoDTensor:
-          Out.data = [[a, b, 0, 0], 
+          Out.data = [[a, b, 0, 0],
                       [c, d, e, 0]]
           Length.data = [2, 3]
-      
+
       Case 2:
 
       Given a 1-level LoDTensor input(X):
@@ -197,13 +197,13 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [0]
-      and attribite 'padded_length' = -1, which mean using the length 
+      and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get LoDTensor:
-          Out.data = [[[a1, a2], [b1, b2], [0, 0]], 
+          Out.data = [[[a1, a2], [b1, b2], [0, 0]],
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]
- 
+
       Case 3:
 
       Given a 1-level LoDTensor input(X):
@@ -211,10 +211,10 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           X.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]]
       and Input(PadValue):
           PadValue.data = [p1, p2]
-      and attribite 'padded_length' = -1, which mean using the length 
+      and attribite 'padded_length' = -1, which mean using the length
       of longest input sequence(3 in this case),
       then we get LoDTensor:
-          Out.data = [[[a1, a2], [b1, b2], [p1, p2]], 
+          Out.data = [[[a1, a2], [b1, b2], [p1, p2]],
                       [[c1, c2], [d1, d2], [e1, e2]]]
           Length.data = [2, 3]
 

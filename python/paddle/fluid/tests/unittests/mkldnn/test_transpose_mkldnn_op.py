@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 from paddle.fluid.tests.unittests.test_transpose_op import TestTransposeOp
@@ -32,7 +30,7 @@ class TestTransposeMKLDNN(TestTransposeOp):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float32"),
-            'Out': self.inputs['X'].transpose(self.axis)
+            'Out': self.inputs['X'].transpose(self.axis),
         }
 
     def init_op_type(self):
@@ -56,8 +54,8 @@ class TestTransposeMKLDNN(TestTransposeOp):
 class TestCase0MKLDNN(TestTransposeMKLDNN):
 
     def initTestCase(self):
-        self.shape = (100, )
-        self.axis = (0, )
+        self.shape = (100,)
+        self.axis = (0,)
 
 
 class TestCase1a(TestTransposeMKLDNN):

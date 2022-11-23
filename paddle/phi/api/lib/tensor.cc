@@ -35,7 +35,10 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
+<<<<<<< HEAD
 // clang-format off
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace paddle {
 namespace experimental {
@@ -159,6 +162,11 @@ bool Tensor::is_gpu_pinned() const {
   return paddle::platform::is_cuda_pinned_place(place());
 }
 
+<<<<<<< HEAD
+=======
+bool Tensor::is_xpu() const { return paddle::platform::is_xpu_place(place()); }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 bool Tensor::is_custom_device() const {
   return paddle::platform::is_custom_place(place());
 }
@@ -312,8 +320,13 @@ void Tensor::set_impl(std::shared_ptr<phi::TensorBase> &&impl) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 gpuStream_t Tensor::stream() const {
   int device_id = phi::backends::gpu::GetCurrentDeviceId();
+<<<<<<< HEAD
   auto* gpu_context = DeviceContextPool::Instance()
     .Get<AllocationType::GPU>(GPUPlace(device_id));
+=======
+  auto *gpu_context = DeviceContextPool::Instance().Get<AllocationType::GPU>(
+      GPUPlace(device_id));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return gpu_context->stream();
 }
 #endif

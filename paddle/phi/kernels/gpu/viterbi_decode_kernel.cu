@@ -30,13 +30,14 @@ namespace cub = hipcub;
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/viterbi_decode_functor.h"
@@ -90,9 +91,14 @@ struct BinaryOperation {
                   DenseTensor* output) {
     std::vector<const DenseTensor*> ins{&lhs, &rhs};
     std::vector<DenseTensor*> outs{output};
+<<<<<<< HEAD
     paddle::operators::
         LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
             dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+=======
+    phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
+        dev_ctx, ins, &outs, 0, BinaryFunctor<T>());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 };
 
@@ -107,7 +113,7 @@ struct GetMask {
                   DenseTensor* mask) {
     std::vector<const DenseTensor*> ins = {&lhs, &rhs};
     std::vector<DenseTensor*> outs = {mask};
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
   }
 };

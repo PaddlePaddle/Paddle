@@ -50,7 +50,11 @@ class GraphSampleNeighborsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out_Eids", "The eids of the sample edges");
     AddAttr<int>(
         "sample_size",
+<<<<<<< HEAD
         "The sample size of graph sample neighbors method. ",
+=======
+        "The sample size of graph sample neighbors method. "
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         "Set default value as -1, means return all neighbors of nodes.")
         .SetDefault(-1);
     AddAttr<bool>("return_eids",

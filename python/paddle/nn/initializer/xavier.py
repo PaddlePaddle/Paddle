@@ -64,10 +64,14 @@ class XavierNormal(XavierInitializer):
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
+<<<<<<< HEAD
         super(XavierNormal, self).__init__(uniform=False,
                                            fan_in=fan_in,
                                            fan_out=fan_out,
                                            seed=0)
+=======
+        super().__init__(uniform=False, fan_in=fan_in, fan_out=fan_out, seed=0)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class XavierUniform(XavierInitializer):
@@ -120,7 +124,11 @@ class XavierUniform(XavierInitializer):
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
+<<<<<<< HEAD
         super(XavierUniform, self).__init__(uniform=True,
                                             fan_in=fan_in,
                                             fan_out=fan_out,
                                             seed=0)
+=======
+        super().__init__(uniform=True, fan_in=fan_in, fan_out=fan_out, seed=0)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

@@ -47,7 +47,11 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "depth_tensor") {
       return expected_kernel_type;
@@ -85,7 +89,7 @@ This operator outputs a Mask according to Input(X) and Attr(maxlen).
 Supposing Input(X) is a Tensor with shape [d_1, d_2, ..., d_n], the
 Output(Y) is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
 
-Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n)) 
+Y(i_1, i_2, ..., i_n, j) = (j < X(i_1, i_2, ..., i_n))
 
 If maxlen < 0, maxlen = max(X)
     )DOC");

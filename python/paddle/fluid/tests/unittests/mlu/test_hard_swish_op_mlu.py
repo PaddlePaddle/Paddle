@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle
@@ -39,15 +42,28 @@ def ref_hard_swish_grad(x, threshold, scale, offset, data_type):
     threshold = scalarToType(threshold, data_type)
     scale = scalarToType(scale, data_type)
     offset = scalarToType(offset, data_type)
+<<<<<<< HEAD
     dout = np.full_like(x, fill_value=1. / x.size)
     tmp = ((x + offset) < threshold).astype(x.dtype)
     dx = dout * (((x + offset) > 0).astype(x.dtype) *
                  (2 * x + offset) * tmp / scale + 1.0 - tmp)
+=======
+    dout = np.full_like(x, fill_value=1.0 / x.size)
+    tmp = ((x + offset) < threshold).astype(x.dtype)
+    dx = dout * (
+        ((x + offset) > 0).astype(x.dtype) * (2 * x + offset) * tmp / scale
+        + 1.0
+        - tmp
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return dx
 
 
 class TestHardSwishMLU(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.enable_static()
 
@@ -64,11 +80,19 @@ class TestHardSwishMLU(OpTest):
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
 
         out = (
+<<<<<<< HEAD
             x *
             (np.minimum(np.maximum(x + offset, 0.), threshold) / scale)).astype(
                 self.dtype)
         self.x_grad = ref_hard_swish_grad(x, threshold, scale, offset,
                                           self.dtype)
+=======
+            x * (np.minimum(np.maximum(x + offset, 0.0), threshold) / scale)
+        ).astype(self.dtype)
+        self.x_grad = ref_hard_swish_grad(
+            x, threshold, scale, offset, self.dtype
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.set_mlu()
         self.inputs = {'X': x}
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
@@ -88,7 +112,10 @@ class TestHardSwishMLU(OpTest):
 
 
 class TestHardSwishMLUWithCPUFloat16(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.disable_static()
 
@@ -112,11 +139,29 @@ class TestHardSwishMLUWithCPUFloat16(unittest.TestCase):
         threshold = scalarToType(threshold, np.float16)
         scale = scalarToType(scale, np.float16)
         offset = scalarToType(offset, np.float16)
+<<<<<<< HEAD
         self.float16_y = (self.float16_x * (np.minimum(
             np.maximum(self.float16_x + offset, scalarToType(0., np.float16)),
             threshold) / scale)).astype(np.float16)
         self.float16_grad = ref_hard_swish_grad(self.float16_x, threshold,
                                                 scale, offset, np.float16)
+=======
+        self.float16_y = (
+            self.float16_x
+            * (
+                np.minimum(
+                    np.maximum(
+                        self.float16_x + offset, scalarToType(0.0, np.float16)
+                    ),
+                    threshold,
+                )
+                / scale
+            )
+        ).astype(np.float16)
+        self.float16_grad = ref_hard_swish_grad(
+            self.float16_x, threshold, scale, offset, np.float16
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output_and_grad_mlu(self):
         # mlu float16
@@ -128,6 +173,7 @@ class TestHardSwishMLUWithCPUFloat16(unittest.TestCase):
 
         cpu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - self.float16_y)),
+<<<<<<< HEAD
             np.sum(np.abs(self.float32_y.numpy())))
         mlu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - mlu_float16_y.numpy())),
@@ -139,11 +185,29 @@ class TestHardSwishMLUWithCPUFloat16(unittest.TestCase):
         mlu_diff_2 = np.divide(
             np.sum(np.square(self.float32_y.numpy() - mlu_float16_y.numpy())),
             np.sum(np.square(self.float32_y.numpy())))
+=======
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
+        mlu_diff_1 = np.divide(
+            np.sum(np.abs(self.float32_y.numpy() - mlu_float16_y.numpy())),
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
+
+        cpu_diff_2 = np.divide(
+            np.sum(np.square(self.float32_y.numpy() - self.float16_y)),
+            np.sum(np.square(self.float32_y.numpy())),
+        )
+        mlu_diff_2 = np.divide(
+            np.sum(np.square(self.float32_y.numpy() - mlu_float16_y.numpy())),
+            np.sum(np.square(self.float32_y.numpy())),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert mlu_diff_1 <= cpu_diff_1
         assert mlu_diff_2 <= cpu_diff_2
 
         cpu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_grad.numpy() - self.float16_grad)),
+<<<<<<< HEAD
             np.sum(np.abs(self.float32_grad.numpy())))
         mlu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_grad.numpy() -
@@ -158,6 +222,27 @@ class TestHardSwishMLUWithCPUFloat16(unittest.TestCase):
                 np.square(self.float32_grad.numpy() -
                           mlu_float16_grad.numpy())),
             np.sum(np.square(self.float32_grad.numpy())))
+=======
+            np.sum(np.abs(self.float32_grad.numpy())),
+        )
+        mlu_diff_1 = np.divide(
+            np.sum(
+                np.abs(self.float32_grad.numpy() - mlu_float16_grad.numpy())
+            ),
+            np.sum(np.abs(self.float32_grad.numpy())),
+        )
+
+        cpu_diff_2 = np.divide(
+            np.sum(np.square(self.float32_grad.numpy() - self.float16_grad)),
+            np.sum(np.square(self.float32_grad.numpy())),
+        )
+        mlu_diff_2 = np.divide(
+            np.sum(
+                np.square(self.float32_grad.numpy() - mlu_float16_grad.numpy())
+            ),
+            np.sum(np.square(self.float32_grad.numpy())),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert mlu_diff_1 <= cpu_diff_1
         assert mlu_diff_2 <= cpu_diff_2
 

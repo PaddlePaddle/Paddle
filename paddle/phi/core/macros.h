@@ -59,4 +59,13 @@ namespace phi {
 #define PADDLE_RESTRICT
 #endif
 
+<<<<<<< HEAD
+=======
+#ifndef PADDLE_WITH_MUSL
+#if defined(__FLT_MAX__)
+#define FLT_MAX __FLT_MAX__
+#endif  // __FLT_MAX__
+#endif  // PADDLE_WITH_MUSL
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace phi

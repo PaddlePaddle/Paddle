@@ -14,10 +14,14 @@
 
 #include "paddle/phi/kernels/adagrad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 #include "paddle/phi/kernels/impl/adagrad_kernel_impl.h"
 
 namespace phi {
@@ -38,7 +42,7 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
                   DenseTensor* param) {
     // 1. g_m.rows = set(g.rows)
     auto grad_width = grad.value().dims()[1];
-    paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_func;
+    phi::funcs::scatter::MergeAdd<phi::CPUContext, T> merge_func;
     auto grad_merge = merge_func(context, grad);
     auto& merge_rows = grad_merge.rows();
     auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
@@ -47,8 +51,7 @@ struct SparseAdagradFunctor<phi::CPUContext, T> {
     auto grad_square =
         SquareSelectedRows<phi::CPUContext, T>(context, grad_merge);
 
-    paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, T>
-        functor;
+    phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, T> functor;
     functor(context, grad_square, moment);
 
     // 3. update parameter

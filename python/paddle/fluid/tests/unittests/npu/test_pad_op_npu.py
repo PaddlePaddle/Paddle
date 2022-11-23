@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -43,11 +41,20 @@ class TestPadOp(OpTest):
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.pad(self.inputs['X'],
                    self.paddings,
                    mode='constant',
                    constant_values=self.pad_value)
+=======
+            'Out': np.pad(
+                self.inputs['X'],
+                self.paddings,
+                mode='constant',
+                constant_values=self.pad_value,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def test_check_output(self):
@@ -55,9 +62,15 @@ class TestPadOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['X'],
                                        'Out',
                                        max_relative_error=0.6)
+=======
+            self.check_grad_with_place(
+                self.place, ['X'], 'Out', max_relative_error=0.6
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         else:
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
@@ -93,12 +106,12 @@ class TestCase2(TestPadOp):
 class TestCase3(TestPadOp):
 
     def initTestCase(self):
-        self.shape = (100)
+        self.shape = 100
         self.paddings = [(0, 1)]
         self.pad_value = 0.0
 
 
-#----------------Pad Fp16----------------
+# ----------------Pad Fp16----------------
 
 
 def create_test_fp16(parent):

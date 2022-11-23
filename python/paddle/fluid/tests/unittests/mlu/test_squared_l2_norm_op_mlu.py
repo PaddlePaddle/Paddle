@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import numpy as np
 import unittest
 from numpy import linalg as LA
@@ -22,14 +25,22 @@ import sys
 sys.path.append('..')
 from op_test import OpTest
 import paddle
+<<<<<<< HEAD
 from paddle import _C_ops
+=======
+from paddle import _C_ops, _legacy_C_ops
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 paddle.enable_static()
 
 
 class TestL2LossOp(OpTest):
+<<<<<<< HEAD
     """Test squared_l2_norm
     """
+=======
+    """Test squared_l2_norm"""
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
@@ -46,6 +57,7 @@ class TestL2LossOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    max_relative_error=self.max_relative_error)
@@ -53,13 +65,27 @@ class TestL2LossOp(OpTest):
 
 class TestL2LossDeterministic(unittest.TestCase):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=self.max_relative_error
+        )
+
+
+class TestL2LossDeterministic(unittest.TestCase):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def check_place(self, place):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')
             x = paddle.to_tensor(x_np)
+<<<<<<< HEAD
             y1 = _C_ops.squared_l2_norm(x)
             y2 = _C_ops.squared_l2_norm(x)
             self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+=======
+            y1 = _legacy_C_ops.squared_l2_norm(x)
+            y2 = _legacy_C_ops.squared_l2_norm(x)
+            np.testing.assert_allclose(y1.numpy(), y2.numpy())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())

@@ -41,6 +41,7 @@ DECLARE_INPLACE_OP_INFERER(AllreduceMinInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(
     c_allreduce_min,
     ops::CAllReduceOp,
@@ -48,6 +49,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::AllreduceMinInplaceInferer)
+=======
+REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_min,
+                             ops::CAllReduceOp,
+                             ops::CAllReduceMinOpMaker,
+                             ops::AllreduceMinInplaceInferer)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_min,
                        ops::CAllReduceOpCPUKernel<ops::kRedMin, float>,

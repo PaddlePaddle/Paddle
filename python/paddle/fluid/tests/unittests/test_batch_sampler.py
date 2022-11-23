@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
 
 import numpy as np
-import paddle.fluid as fluid
-from paddle.io import BatchSampler, Dataset, Sampler, SequenceSampler, \
-                        RandomSampler, WeightedRandomSampler
-from paddle.io import DistributedBatchSampler
+from paddle.io import (
+    BatchSampler,
+    Dataset,
+    Sampler,
+    SequenceSampler,
+    RandomSampler,
+    WeightedRandomSampler,
+)
 
 IMAGE_SIZE = 32
 
@@ -34,7 +36,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([IMAGE_SIZE]).astype('float32')
-        label = np.random.randint(0, self.class_num - 1, (1, )).astype('int64')
+        label = np.random.randint(0, self.class_num - 1, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -100,10 +102,16 @@ class TestRandomSampler(unittest.TestCase):
     def test_with_generator_num_samples(self):
         dataset = RandomDataset(100, 10)
         generator = iter(range(0, 60))
+<<<<<<< HEAD
         sampler = RandomSampler(dataset,
                                 generator=generator,
                                 num_samples=50,
                                 replacement=True)
+=======
+        sampler = RandomSampler(
+            dataset, generator=generator, num_samples=50, replacement=True
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert len(sampler) == 50
 
         rets = []
@@ -123,17 +131,27 @@ class TestBatchSampler(unittest.TestCase):
 
     def init_batch_sampler(self):
         dataset = RandomDataset(self.num_samples, self.num_classes)
+<<<<<<< HEAD
         bs = BatchSampler(dataset=dataset,
                           batch_size=self.batch_size,
                           shuffle=self.shuffle,
                           drop_last=self.drop_last)
+=======
+        bs = BatchSampler(
+            dataset=dataset,
+            batch_size=self.batch_size,
+            shuffle=self.shuffle,
+            drop_last=self.drop_last,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return bs
 
     def test_main(self):
         bs = self.init_batch_sampler()
         # length check
-        bs_len = (self.num_samples + int(not self.drop_last) \
-                * (self.batch_size - 1)) // self.batch_size
+        bs_len = (
+            self.num_samples + int(not self.drop_last) * (self.batch_size - 1)
+        ) // self.batch_size
         self.assertTrue(bs_len == len(bs))
 
         # output indices check
@@ -170,9 +188,17 @@ class TestBatchSamplerWithSampler(TestBatchSampler):
     def init_batch_sampler(self):
         dataset = RandomDataset(1000, 10)
         sampler = SequenceSampler(dataset)
+<<<<<<< HEAD
         bs = BatchSampler(sampler=sampler,
                           batch_size=self.batch_size,
                           drop_last=self.drop_last)
+=======
+        bs = BatchSampler(
+            sampler=sampler,
+            batch_size=self.batch_size,
+            drop_last=self.drop_last,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return bs
 
 
@@ -199,10 +225,19 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
         try:
             dataset = RandomDataset(self.num_samples, self.num_classes)
             sampler = RandomSampler(dataset)
+<<<<<<< HEAD
             bs = BatchSampler(sampler=sampler,
                               shuffle=self.shuffle,
                               batch_size=self.batch_size,
                               drop_last=self.drop_last)
+=======
+            bs = BatchSampler(
+                sampler=sampler,
+                shuffle=self.shuffle,
+                batch_size=self.batch_size,
+                drop_last=self.drop_last,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertTrue(False)
         except AssertionError:
             pass
@@ -211,8 +246,8 @@ class TestBatchSamplerWithSamplerShuffle(unittest.TestCase):
 class TestWeightedRandomSampler(unittest.TestCase):
 
     def init_probs(self, total, pos):
-        pos_probs = np.random.random((pos, )).astype('float32')
-        probs = np.zeros((total, )).astype('float32')
+        pos_probs = np.random.random((pos,)).astype('float32')
+        probs = np.zeros((total,)).astype('float32')
         probs[:pos] = pos_probs
         np.random.shuffle(probs)
         return probs
@@ -222,7 +257,7 @@ class TestWeightedRandomSampler(unittest.TestCase):
         sampler = WeightedRandomSampler(probs, 30, True)
         assert len(sampler) == 30
         for idx in iter(sampler):
-            assert probs[idx] > 0.
+            assert probs[idx] > 0.0
 
     def test_no_replacement(self):
         probs = self.init_probs(20, 10)
@@ -230,13 +265,13 @@ class TestWeightedRandomSampler(unittest.TestCase):
         assert len(sampler) == 10
         idxs = []
         for idx in iter(sampler):
-            assert probs[idx] > 0.
+            assert probs[idx] > 0.0
             idxs.append(idx)
         assert len(set(idxs)) == len(idxs)
 
     def test_assert(self):
         # all zeros
-        probs = np.zeros((10, )).astype('float32')
+        probs = np.zeros((10,)).astype('float32')
         sampler = WeightedRandomSampler(probs, 10, True)
         try:
             for idx in iter(sampler):
@@ -256,7 +291,7 @@ class TestWeightedRandomSampler(unittest.TestCase):
             self.assertTrue(True)
 
         # neg probs
-        probs = -1.0 * np.ones((10, )).astype('float32')
+        probs = -1.0 * np.ones((10,)).astype('float32')
         sampler = WeightedRandomSampler(probs, 10, True)
         try:
             for idx in iter(sampler):

@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, OpTestTool
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2DOp
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    OpTestTool,
+)
+from paddle.fluid.tests.unittests.test_conv2d_op import (
+    conv2d_forward_naive,
+    TestConv2DOp,
+)
 
 
 def conv2d_residual_naive(out, residual):
@@ -29,8 +33,9 @@ def conv2d_residual_naive(out, residual):
     return out
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestConv2DBF16Op(TestConv2DOp):
 
     def setUp(self):
@@ -56,7 +61,7 @@ class TestConv2DBF16Op(TestConv2DOp):
         self.conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         self.input = np.random.random(self.input_size).astype(np.float32)
@@ -64,16 +69,24 @@ class TestConv2DBF16Op(TestConv2DOp):
 
         self.inputs_fp32 = {'Input': self.input, 'Filter': self.filter}
 
+<<<<<<< HEAD
         conv_out, _, _, _, _ = conv2d_forward_naive(self.input, self.filter,
                                                     self.groups,
                                                     self.conv2d_param)
+=======
+        conv_out, _, _, _, _ = conv2d_forward_naive(
+            self.input, self.filter, self.groups, self.conv2d_param
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.conv_output_float = conv_out
 
         if self.fuse_residual:
             self.input_residual = np.random.random(
-                self.input_residual_size).astype(np.float32)
+                self.input_residual_size
+            ).astype(np.float32)
             self.conv_output_float = conv2d_residual_naive(
-                self.conv_output_float, self.input_residual)
+                self.conv_output_float, self.input_residual
+            )
             self.conv_output = convert_float_to_uint16(self.conv_output_float)
             self.outputs = {'Output': self.conv_output}
         elif self.force_fp32_output:
@@ -90,15 +103,23 @@ class TestConv2DBF16Op(TestConv2DOp):
             self.filter = convert_float_to_uint16(self.filter)
 
         self.inputs = {
+<<<<<<< HEAD
             'Input':
             self.input,
             'Filter':
             OpTest.np_dtype_to_fluid_dtype(self.filter.astype(self.weight_type))
+=======
+            'Input': self.input,
+            'Filter': OpTest.np_dtype_to_fluid_dtype(
+                self.filter.astype(self.weight_type)
+            ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
         if self.fuse_residual:
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                convert_float_to_uint16(self.input_residual))
+                convert_float_to_uint16(self.input_residual)
+            )
 
         self.attrs = {
             'strides': self.stride,
@@ -109,7 +130,7 @@ class TestConv2DBF16Op(TestConv2DOp):
             'use_mkldnn': self.use_mkldnn,
             'mkldnn_data_type': self.mkldnn_data_type,
             'force_fp32_output': self.force_fp32_output,
-            'fuse_residual_connection': self.fuse_residual
+            'fuse_residual_connection': self.fuse_residual,
         }
 
         self.init_additional_attrs()
@@ -180,10 +201,12 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         dx, dweights = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
-            core.CPUPlace(), ["Input", "Filter"],
+            core.CPUPlace(),
+            ["Input", "Filter"],
             "Output",
             user_defined_grads=[dx, dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+        )
 
     def test_check_grad_no_filter(self):
         dout = self.conv_output_float
@@ -193,11 +216,13 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         dx, _ = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
-            core.CPUPlace(), ["Input"],
+            core.CPUPlace(),
+            ["Input"],
             "Output",
             set(['Filter']),
             user_defined_grads=[dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+        )
 
     def test_check_grad_no_input(self):
         dout = self.conv_output_float
@@ -207,11 +232,13 @@ class TestConv2DWithGradBF16Op(TestConv2DBF16Op):
         _, dweights = conv_backward(dout, x, w, self.conv2d_param)
 
         self.check_grad_with_place(
-            core.CPUPlace(), ["Filter"],
+            core.CPUPlace(),
+            ["Filter"],
             "Output",
             set(['Input']),
             user_defined_grads=[dweights],
-            user_defined_grad_outputs=[convert_float_to_uint16(dout)])
+            user_defined_grad_outputs=[convert_float_to_uint16(dout)],
+        )
 
 
 def conv_backward(dout, x, w, params):
@@ -227,7 +254,7 @@ def conv_backward(dout, x, w, params):
     H_out = int(1 + (H + 2 * padding - KH) / stride[0])
     W_out = int(1 + (W + 2 * padding - KW) / stride[1])
 
-    x_padded = np.pad(x, ((0, ), (0, ), (padding, ), (padding, )), 'constant')
+    x_padded = np.pad(x, ((0,), (0,), (padding,), (padding,)), 'constant')
 
     for n in range(N):
         for oc in range(OC):
@@ -236,11 +263,25 @@ def conv_backward(dout, x, w, params):
                     for k in range(H_out):
                         for l in range(W_out):
                             for ic in range(IC):
+<<<<<<< HEAD
                                 dweights[oc, ic, i, j] += x_padded[
                                     n, ic, i + k * stride[0],
                                     j + l * stride[1]] * dout[n, oc, k, l]
 
     dx_padded = np.pad(dx, ((0, ), (0, ), (padding, ), (padding, )), 'constant')
+=======
+                                dweights[oc, ic, i, j] += (
+                                    x_padded[
+                                        n,
+                                        ic,
+                                        i + k * stride[0],
+                                        j + l * stride[1],
+                                    ]
+                                    * dout[n, oc, k, l]
+                                )
+
+    dx_padded = np.pad(dx, ((0,), (0,), (padding,), (padding,)), 'constant')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     w_ = np.zeros_like(w)
     for i in range(KH):
@@ -254,10 +295,21 @@ def conv_backward(dout, x, w, params):
                     for kh in range(KH):
                         for kw in range(KW):
                             for ic in range(IC):
+<<<<<<< HEAD
                                 dx_padded[n, ic, stride[0] * i + kh,
                                           stride[1] * j +
                                           kw] += dout[n, oc, i, j] * w[oc, ic,
                                                                        kh, kw]
+=======
+                                dx_padded[
+                                    n,
+                                    ic,
+                                    stride[0] * i + kh,
+                                    stride[1] * j + kw,
+                                ] += (
+                                    dout[n, oc, i, j] * w[oc, ic, kh, kw]
+                                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     if padding == 0:
         dx = dx_padded
@@ -375,5 +427,6 @@ class TestWithInput1x1Filter1x1(TestConv2DBF16Op):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

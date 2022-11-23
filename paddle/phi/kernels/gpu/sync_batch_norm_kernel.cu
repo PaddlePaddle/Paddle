@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
+<<<<<<< HEAD
                          const DenseTensor &scale,
                          const DenseTensor &bias,
                          const DenseTensor &mean,
@@ -33,6 +34,18 @@ void SyncBatchNormKernel(const Context &ctx,
                          bool use_global_stats,
                          bool trainable_statistics,
                          bool fuse_with_relu,
+=======
+                         const DenseTensor &mean,
+                         const DenseTensor &variance,
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon_f,
+                         const std::string &data_layout_str,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,
@@ -48,8 +61,12 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
+<<<<<<< HEAD
   const DataLayout layout =
       paddle::framework::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -86,21 +103,44 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
+<<<<<<< HEAD
     alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+=======
+    alloc_ptr = paddle::memory::Alloc(
+        ctx.GetPlace(),
+        bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
+<<<<<<< HEAD
     if (layout == paddle::framework::DataLayout::kNCHW) {
       KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
       KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+=======
+    if (layout == phi::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, phi::DataLayout::kNCHW>
+          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+    } else {
+      KeLocalStats<T, threads, phi::DataLayout::kNHWC>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     auto *comm = ctx.nccl_comm();
+=======
+    ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
+    if (comm == nullptr) {
+      comm = ctx.nccl_comm();
+    }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if (comm) {
       int dtype = paddle::platform::ToNCCLDataType(
           paddle::framework::TransToProtoVarType(mean_out->dtype()));
@@ -113,6 +153,10 @@ void SyncBatchNormKernel(const Context &ctx,
           ncclSum,
           comm,
           stream));
+<<<<<<< HEAD
+=======
+      VLOG(3) << "Sync result using all reduce";
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
 #endif
 
@@ -143,8 +187,13 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+<<<<<<< HEAD
   if (layout == paddle::framework::DataLayout::kNCHW) {
     KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+=======
+  if (layout == phi::DataLayout::kNCHW) {
+    KeNormAffine<T, phi::DataLayout::kNCHW>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -156,7 +205,11 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
+<<<<<<< HEAD
     KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+=======
+    KeNormAffine<T, phi::DataLayout::kNHWC>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -178,7 +231,22 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    ALL_LAYOUT,
                    phi::SyncBatchNormKernel,
                    float,
+<<<<<<< HEAD
                    phi::dtype::float16) {}
+=======
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #else
 PD_REGISTER_KERNEL(sync_batch_norm,
                    GPU,
@@ -186,5 +254,20 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    phi::SyncBatchNormKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16) {}
+=======
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif

@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import unittest
 import os
 
@@ -20,14 +23,27 @@ import paddle
 import paddle.nn as nn
 import paddle.optimizer as opt
 import paddle.distributed as dist
+<<<<<<< HEAD
 from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+=======
+from paddle.distributed.spawn import (
+    _get_subprocess_env_list,
+    _options_valid_check,
+    _get_default_nprocs,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 from paddle.fluid import core
 
 
 class LinearNet(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(LinearNet, self).__init__()
+=======
+    def __init__(self):
+        super().__init__()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -63,7 +79,10 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_nprocs_greater_than_device_num_error(self):
         with self.assertRaises(RuntimeError):
             _get_subprocess_env_list(nprocs=100, options=dict())

@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import unittest
 import numpy as np
 import paddle
@@ -23,6 +26,7 @@ np.random.seed(102)
 
 
 class TestNanmedian(unittest.TestCase):
+<<<<<<< HEAD
 
     def setUp(self):
         single_axis_shape = (120)
@@ -37,6 +41,21 @@ class TestNanmedian(unittest.TestCase):
             np.full(single_axis_shape, np.nan),
             "multi_axis_all_nan":
             np.full(multi_axis_shape, np.nan),
+=======
+    def setUp(self):
+        single_axis_shape = 120
+        multi_axis_shape = (2, 3, 4, 5)
+
+        self.fake_data = {
+            "single_axis_normal": np.random.uniform(
+                -1, 1, single_axis_shape
+            ).astype(np.float32),
+            "multi_axis_normal": np.random.uniform(
+                -1, 1, multi_axis_shape
+            ).astype(np.float32),
+            "single_axis_all_nan": np.full(single_axis_shape, np.nan),
+            "multi_axis_all_nan": np.full(multi_axis_shape, np.nan),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
         single_partial_nan = self.fake_data["single_axis_normal"].copy()
@@ -61,11 +80,30 @@ class TestNanmedian(unittest.TestCase):
         col_data[:, :, 2, 3:] = np.nan
         self.fake_data["col_nan_odd"] = col_data
 
+<<<<<<< HEAD
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         self.axis_candiate_list = [
             None, 0, 2, -1, -2, (1, 2), [0, -1], [0, 1, 3], (1, 2, 3),
             [0, 2, 1, 3]
+=======
+        self.place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+        self.axis_candiate_list = [
+            None,
+            0,
+            2,
+            -1,
+            -2,
+            (1, 2),
+            [0, -1],
+            [0, 1, 3],
+            (1, 2, 3),
+            [0, 2, 1, 3],
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ]
 
     def test_api_static(self):
@@ -81,11 +119,20 @@ class TestNanmedian(unittest.TestCase):
             out4 = paddle.nanmedian(x, axis=axis, keepdim=True)
             out5 = paddle.nanmedian(x, axis=tuple(axis), keepdim=True)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res = exe.run(feed={'X': data},
                           fetch_list=[out1, out2, out3, out4, out5])
 
         for out in res:
             self.assertTrue(np.allclose(np_res, out, equal_nan=True))
+=======
+            res = exe.run(
+                feed={'X': data}, fetch_list=[out1, out2, out3, out4, out5]
+            )
+
+        for out in res:
+            np.testing.assert_allclose(np_res, out, rtol=1e-05, equal_nan=True)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
@@ -111,6 +158,7 @@ class TestNanmedian(unittest.TestCase):
                         continue
 
                 np_res = np.nanmedian(data, keepdims=keep_dim)
+<<<<<<< HEAD
                 pd_res = paddle.nanmedian(paddle.to_tensor(data),
                                           keepdim=keep_dim)
                 self.assertTrue(
@@ -123,6 +171,24 @@ class TestNanmedian(unittest.TestCase):
             axis = clean_axis_numpy(axis, len(data.shape))
             np_res = np.nanmedian(data, axis=axis, keepdims=False)
             self.assertTrue(np.allclose(np_res, pd_res.numpy(), equal_nan=True))
+=======
+                pd_res = paddle.nanmedian(
+                    paddle.to_tensor(data), keepdim=keep_dim
+                )
+                np.testing.assert_allclose(
+                    np_res, pd_res.numpy(), rtol=1e-05, equal_nan=True
+                )
+
+        def test_axis_case(data, axis):
+            pd_res = paddle.nanmedian(
+                paddle.to_tensor(data), axis=axis, keepdim=False
+            )
+            axis = clean_axis_numpy(axis, len(data.shape))
+            np_res = np.nanmedian(data, axis=axis, keepdims=False)
+            np.testing.assert_allclose(
+                np_res, pd_res.numpy(), rtol=1e-05, equal_nan=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         for name, data in self.fake_data.items():
             test_data_case(data)
@@ -162,7 +228,11 @@ class TestNanmedian(unittest.TestCase):
             data = self.fake_data["col_nan_odd"]
             out = paddle.nanmedian(paddle.to_tensor(data), keepdim=True)
         np_res = np.nanmedian(data, keepdims=True)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(np_res, out, equal_nan=True))
+=======
+        np.testing.assert_allclose(np_res, out, rtol=1e-05, equal_nan=True)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         paddle.enable_static()
 
     def test_check_grad(self):
@@ -192,7 +262,11 @@ class TestNanmedian(unittest.TestCase):
         x_tensor = paddle.to_tensor(x_np, stop_gradient=False)
         y = paddle.nanmedian(x_tensor, axis=1, keepdim=True)
         dx = paddle.grad(y, x_tensor)[0].numpy()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(np_grad, dx, equal_nan=True))
+=======
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

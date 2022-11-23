@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import paddle
 from numpy.random import random as rand
 from paddle import tensor
 import paddle.fluid as fluid
@@ -32,6 +31,7 @@ class TestComplexTraceLayer(unittest.TestCase):
 
     def test_basic_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([
                 2, 20, 2, 3
             ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
@@ -40,8 +40,19 @@ class TestComplexTraceLayer(unittest.TestCase):
                     var_x = dg.to_variable(input)
                     result = tensor.trace(var_x, offset=1, axis1=0,
                                           axis2=2).numpy()
+=======
+            input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
+                [2, 20, 2, 3]
+            ).astype(dtype)
+            for place in self._places:
+                with dg.guard(place):
+                    var_x = dg.to_variable(input)
+                    result = tensor.trace(
+                        var_x, offset=1, axis1=0, axis2=2
+                    ).numpy()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

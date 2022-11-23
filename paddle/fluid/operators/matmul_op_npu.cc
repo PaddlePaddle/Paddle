@@ -19,15 +19,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void Mul(const framework::ExecutionContext& ctx,
                 const aclrtStream& stream,
+<<<<<<< HEAD
                 const Tensor& X,
                 const Tensor& Y,
                 Tensor* Out,
+=======
+                const phi::DenseTensor& X,
+                const phi::DenseTensor& Y,
+                phi::DenseTensor* Out,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 const float alpha) {
   Out->mutable_data<T>(ctx.GetPlace());
 
@@ -49,9 +55,15 @@ static void Mul(const framework::ExecutionContext& ctx,
 template <typename T>
 static void Dot(const framework::ExecutionContext& ctx,
                 const aclrtStream& stream,
+<<<<<<< HEAD
                 const Tensor& X,
                 const Tensor& Y,
                 Tensor* Out,
+=======
+                const phi::DenseTensor& X,
+                const phi::DenseTensor& Y,
+                phi::DenseTensor* Out,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 const float alpha) {
   Out->mutable_data<T>(ctx.GetPlace());
 
@@ -73,9 +85,15 @@ static void Dot(const framework::ExecutionContext& ctx,
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
+<<<<<<< HEAD
                      const Tensor& X,
                      const Tensor& Y,
                      Tensor* Out,
+=======
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      const bool trans_x,
                      const bool trans_y,
                      const float alpha) {
@@ -107,9 +125,15 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
+<<<<<<< HEAD
                      const Tensor& X,
                      const Tensor& Y,
                      Tensor* Out,
+=======
+                     const phi::DenseTensor& X,
+                     const phi::DenseTensor& Y,
+                     phi::DenseTensor* Out,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      const bool trans_x,
                      const bool trans_y,
                      const float alpha) {
@@ -143,8 +167,13 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& brd_dims,
+<<<<<<< HEAD
                        const Tensor& in,
                        Tensor* out) {
+=======
+                       const phi::DenseTensor& in,
+                       phi::DenseTensor* out) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::vector<int64_t> axes;
   int64_t size = brd_dims.size();
   int64_t diff = brd_dims.size() - dims.size();
@@ -167,9 +196,9 @@ template <typename DeviceContext, typename T>
 class MatMulNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Y = ctx.Input<framework::Tensor>("Y");
-    auto* Out = ctx.Output<framework::Tensor>("Out");
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* Out = ctx.Output<phi::DenseTensor>("Out");
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));
@@ -312,11 +341,11 @@ template <typename DeviceContext, typename T>
 class MatMulGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* X = ctx.Input<framework::Tensor>("X");
-    auto* Y = ctx.Input<framework::Tensor>("Y");
-    auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* dY = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    auto* X = ctx.Input<phi::DenseTensor>("X");
+    auto* Y = ctx.Input<phi::DenseTensor>("Y");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dY = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     float alpha = static_cast<T>(ctx.Attr<float>("alpha"));

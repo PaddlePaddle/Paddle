@@ -50,6 +50,7 @@ void BatchedOrgqr(const DeviceContext& dev_ctx,
                   int a_stride,
                   int tau_stride);
 
+<<<<<<< HEAD
 template <>
 void BatchedGeqrf<GPUContext, float>(const GPUContext& dev_ctx,
                                      int batch_size,
@@ -269,6 +270,8 @@ void BatchedOrgqr<GPUContext, double>(const GPUContext& dev_ctx,
             "For batch [%d]: CUSolver QR is not zero. [%d]", i, info_h));
   }
 }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
 
 }  // namespace phi

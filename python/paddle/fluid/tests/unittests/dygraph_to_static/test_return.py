@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -170,7 +168,7 @@ def test_return_list_many_values(x):
 def test_return_tuple_one_value(x):
     x = fluid.dygraph.to_variable(x)
     x += 1
-    return (x, )
+    return (x,)
 
 
 @to_static
@@ -224,12 +222,65 @@ def test_diff_return(x):
     return y, z
 
 
+<<<<<<< HEAD
+=======
+@to_static
+def test_return_if_else_2(x):
+    rr = 0
+    if True:
+        rr = 1
+        return 1
+    else:
+        a = 0
+
+
+@to_static
+def test_return_in_while_2(x):
+    while True:
+        a = 12
+        return 12
+    return 10
+
+
+@to_static
+def test_return_in_for_2(x):
+    a = 12
+    for i in range(10):
+        return 12
+    return 10
+
+
+@to_static
+def test_return_nested(x):
+    def func():
+        rr = 0
+        if True:
+            rr = 1
+            return 1
+            rr = 2
+        else:
+            a = 0
+            return 4
+        return 3
+
+    return func()
+
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 class TestReturnBase(unittest.TestCase):
 
     def setUp(self):
         self.input = np.ones((1)).astype('int32')
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.init_dygraph_func()
         self.program_translator = ProgramTranslator()
 
@@ -253,15 +304,17 @@ class TestReturnBase(unittest.TestCase):
             self.assertTrue(isinstance(static_res, tuple))
             self.assertEqual(len(dygraph_res), len(static_res))
             for i in range(len(dygraph_res)):
-                self.assertTrue(
-                    np.allclose(dygraph_res[i], static_res[i]),
-                    msg='dygraph res is {}\nstatic_res is {}'.format(
-                        dygraph_res[i], static_res[i]))
-
+                np.testing.assert_allclose(
+                    dygraph_res[i], static_res[i], rtol=1e-05
+                )
         elif isinstance(dygraph_res, np.ndarray):
+<<<<<<< HEAD
             self.assertTrue(np.allclose(dygraph_res, static_res),
                             msg='dygraph res is {}\nstatic_res is {}'.format(
                                 dygraph_res, static_res))
+=======
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         else:
             self.assertEqual(dygraph_res, static_res)
 
@@ -285,6 +338,7 @@ class TestReturnIf(TestReturnBase):
         self.dygraph_func = test_return_if
 
 
+<<<<<<< HEAD
 class TestReturnIfDiff(TestReturnBase):
 
     def init_dygraph_func(self):
@@ -293,8 +347,16 @@ class TestReturnIfDiff(TestReturnBase):
 
 class TestReturnIfElse(TestReturnBase):
 
+=======
+class TestReturnOnlyIf(TestReturnBase):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def init_dygraph_func(self):
-        self.dygraph_func = test_return_if_else
+        self.dygraph_func = test_return_if_else_2
+
+
+class TestReturnInFor(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_for
 
 
 class TestReturnInWhile(TestReturnBase):
@@ -303,10 +365,31 @@ class TestReturnInWhile(TestReturnBase):
         self.dygraph_func = test_return_in_while
 
 
+<<<<<<< HEAD
 class TestReturnInFor(TestReturnBase):
 
+=======
+class TestReturnIfDiff(TestReturnBase):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def init_dygraph_func(self):
-        self.dygraph_func = test_return_in_for
+        self.dygraph_func = test_diff_return
+
+
+class TestReturnIfElse(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_if_else
+
+
+class TestReturnInWhile2(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_while_2
+        self.error = "Found return statement in While or For body and loop"
+
+
+class TestReturnInFor2(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_in_for_2
+        self.error = "Found return statement in While or For body and loop"
 
 
 class TestRecursiveReturn(TestReturnBase):
@@ -372,6 +455,11 @@ class TestReturnTupleManyValue(TestReturnBase):
 
     def init_dygraph_func(self):
         self.dygraph_func = test_return_tuple_many_values
+
+
+class TestReturnNested(TestReturnBase):
+    def init_dygraph_func(self):
+        self.dygraph_func = test_return_nested
 
 
 class TestReturnSpecial(TestReturnBase):

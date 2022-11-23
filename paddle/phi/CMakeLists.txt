@@ -15,8 +15,6 @@ add_subdirectory(backends)
 add_subdirectory(kernels)
 # phi infermeta
 add_subdirectory(infermeta)
-# phi operator definitions
-add_subdirectory(ops)
 # phi tools
 add_subdirectory(tools)
 # phi tests
@@ -36,7 +34,10 @@ set(PHI_DEPS
     arg_map_context
     infermeta
     lod_utils
+<<<<<<< HEAD
     op_compat_infos
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     sparse_csr_tensor
     sparse_coo_tensor
     string_tensor
@@ -46,7 +47,11 @@ set(PHI_DEPS
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})
 
-create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
+if(APPLE AND WITH_ARM)
+  cc_library(phi DEPS ${PHI_DEPS})
+else()
+  create_dummy_static_lib(phi LIBS ${PHI_DEPS} LIMIT 100)
+endif()
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h

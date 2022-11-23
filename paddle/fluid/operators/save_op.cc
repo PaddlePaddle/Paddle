@@ -87,6 +87,7 @@ REGISTER_OPERATOR(save,
                   ops::SaveOp,
                   ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
+<<<<<<< HEAD
 
 REGISTER_OP_CPU_KERNEL(
     save,
@@ -99,3 +100,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::SaveOpKernel<phi::CPUContext, int8_t>,
     ops::SaveOpKernel<phi::CPUContext, int16_t>,
     ops::SaveOpKernel<phi::CPUContext, int64_t>);
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

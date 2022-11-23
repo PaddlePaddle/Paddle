@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <cub/cub.cuh>  // NOLINT
+#include <type_traits>
 #include <vector>
 
 #include "glog/logging.h"
@@ -31,12 +32,6 @@ namespace plugin {
 
 // Dynamic shape plugin requires TRT version greater than 6.0.
 #if IS_TRT_VERSION_GE(6000)
-
-template <typename T>
-EmbEltwiseLayernormPluginDynamicImpl<
-    T>::~EmbEltwiseLayernormPluginDynamicImpl() {}
-
-inline half fp32tofp16(float x) { return static_cast<half>(x); }
 
 template <typename T>
 void EmbEltwiseLayernormPluginDynamicImpl<T>::shareGPUData(
@@ -62,26 +57,23 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
   embs_gpu_.resize(embs_.size());
   for (int i = 0; i < embs_.size(); i++) {
     if (embs_[i]) {
-      T *host_ptr;
+      T *host_ptr = embs_[i];
       auto size = emb_sizes_[i];
-
-      if (std::is_same<T, half>::value) {
-        host_ptr = new T[size];
-        std::transform(embs_[i], (embs_[i] + size), host_ptr, fp32tofp16);
-      } else {
-        host_ptr = reinterpret_cast<T *>(embs_[i]);
-      }
 
       cudaMalloc(&embs_gpu_[i], sizeof(T) * size);
       cudaMemcpy(
           embs_gpu_[i], host_ptr, size * sizeof(T), cudaMemcpyHostToDevice);
+<<<<<<< HEAD
       if (std::is_same<T, half>::value) {
         delete[] host_ptr;
       }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
   }
 
   if (bias_) {
+<<<<<<< HEAD
     cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
     cudaMemcpy(
         bias_gpu_, bias_, bias_size_ * sizeof(float), cudaMemcpyHostToDevice);
@@ -92,6 +84,16 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
                scale_,
                scale_size_ * sizeof(float),
                cudaMemcpyHostToDevice);
+=======
+    cudaMalloc(&bias_gpu_, sizeof(T) * bias_size_);
+    cudaMemcpy(
+        bias_gpu_, bias_, bias_size_ * sizeof(T), cudaMemcpyHostToDevice);
+  }
+  if (scale_) {
+    cudaMalloc(&scale_gpu_, sizeof(T) * scale_size_);
+    cudaMemcpy(
+        scale_gpu_, scale_, scale_size_ * sizeof(T), cudaMemcpyHostToDevice);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   int input_num = embs_.size();
@@ -235,18 +237,23 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
           "The input of swish plugin shoule not be nullptr."));
   PADDLE_ENFORCE_EQ(nb_outputs,
                     1,
+<<<<<<< HEAD
                     platform::errors::InvalidArgument(
                         "The EmbEltwiseLayerNorm's output should be one"
                         "but it's (%d) outputs.",
                         nb_outputs));
   PADDLE_ENFORCE_EQ(nb_outputs,
                     1,
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     platform::errors::InvalidArgument(
                         "The EmbEltwiseLayerNorm's output should be one"
                         "but it's (%d) outputs.",
                         nb_outputs));
+  int all_nums = nb_inputs + nb_outputs;
   PADDLE_ENFORCE_LT(
       pos,
+<<<<<<< HEAD
       nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
@@ -255,6 +262,13 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
 
   int all_nums = nb_inputs + nb_outputs;
 
+=======
+      all_nums,
+      platform::errors::InvalidArgument("The pos(%d) should be less than the "
+                                        "num(%d) of the input and the output.",
+                                        pos,
+                                        all_nums));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   const nvinfer1::PluginTensorDesc &desc = in_out[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
@@ -269,7 +283,7 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
     return desc.type == nvinfer1::DataType::kINT32 &&
            desc.dims.d[0] == prev.dims.d[0] && desc.dims.d[1] == prev.dims.d[1];
   }
-
+  // output
   if (pos == all_nums - 1) {
     if (with_fp16_ == false) {
       return desc.type == nvinfer1::DataType::kFLOAT;
@@ -288,7 +302,11 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
       index,
       0,
       platform::errors::InvalidArgument(
+<<<<<<< HEAD
           "The EmbEltwiseLayernorm Plugin only has one input, so the "
+=======
+          "The EmbEltwiseLayernorm Plugin only has one output, so the "
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
           "index value should be 0, but get %d.",
           index));
   if (with_fp16_)

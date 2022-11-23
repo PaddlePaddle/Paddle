@@ -14,7 +14,6 @@
 import unittest
 import numpy as np
 import math
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
@@ -32,13 +31,24 @@ def add_position_encoding(input, alpha=1.0, beta=1.0):
     for i in range(batch_size):
         for j in range(max_length):
             for k in range(half_shape):
+<<<<<<< HEAD
                 val = j / pow(
                     10000.0, k * 1.0 /
                     (half_shape - 1)) if half_shape > 1 else j / 10000.0
                 out[i, j, k] = \
                     input[i, j, k] * alpha + math.sin(val) * beta
                 out[i, j, half_shape + k] = \
+=======
+                val = (
+                    j / pow(10000.0, k * 1.0 / (half_shape - 1))
+                    if half_shape > 1
+                    else j / 10000.0
+                )
+                out[i, j, k] = input[i, j, k] * alpha + math.sin(val) * beta
+                out[i, j, half_shape + k] = (
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     input[i, j, half_shape + k] * alpha + math.cos(val) * beta
+                )
     return out
 
 
@@ -134,14 +144,25 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
             max_length = self.lod[0][i]
             for j in range(max_length):
                 for k in range(half_shape):
+<<<<<<< HEAD
                     val = j / pow(
                         10000.0, k * 1.0 /
                         (half_shape - 1)) if half_shape > 1 else j / 10000.0
+=======
+                    val = (
+                        j / pow(10000.0, k * 1.0 / (half_shape - 1))
+                        if half_shape > 1
+                        else j / 10000.0
+                    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     pos = start + j
-                    self.out[pos, k] = \
+                    self.out[pos, k] = (
                         self.x[pos, k] * self.alpha + math.sin(val) * self.beta
-                    self.out[pos, half_shape + k] = \
-                        self.x[pos, half_shape + k] * self.alpha + math.cos(val) * self.beta
+                    )
+                    self.out[pos, half_shape + k] = (
+                        self.x[pos, half_shape + k] * self.alpha
+                        + math.cos(val) * self.beta
+                    )
             start += max_length
 
 
@@ -153,9 +174,15 @@ class TestAddPositionEncodingOpError(unittest.TestCase):
 
             def test_Variable():
                 # the input type must be Variable
+<<<<<<< HEAD
                 fluid.layers.add_position_encoding(input=input_data,
                                                    alpha=1.0,
                                                    beta=1.0)
+=======
+                fluid.layers.add_position_encoding(
+                    input=input_data, alpha=1.0, beta=1.0
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -166,11 +193,14 @@ class TestAddPositionEncodingOpDygraph(unittest.TestCase):
         paddle.disable_static()
         tensor = np.random.randn(16, 32, 64)
         position_tensor = paddle.fluid.layers.add_position_encoding(
-            input=paddle.to_tensor(tensor), alpha=1.0, beta=1.0).numpy()
+            input=paddle.to_tensor(tensor), alpha=1.0, beta=1.0
+        ).numpy()
         paddle.enable_static()
 
         position_tensor_np = add_position_encoding(tensor, 1.0, 1.0)
-        self.assertTrue(np.allclose(position_tensor, position_tensor_np))
+        np.testing.assert_allclose(
+            position_tensor, position_tensor_np, rtol=1e-05
+        )
 
 
 if __name__ == '__main__':

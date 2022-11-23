@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -67,11 +65,13 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
         x0 = np.random.normal(size=(T, self.inputs_M[0])).astype('float32')
         xs = [x0]
         for i in range(num_inputs - 1):
-            xi = np.random.normal(size=(bs,
-                                        self.inputs_M[i + 1])).astype('float32')
+            xi = np.random.normal(size=(bs, self.inputs_M[i + 1])).astype(
+                'float32'
+            )
             xs.append(xi)
 
         # fc weight and bias
+<<<<<<< HEAD
         w = np.random.normal(size=(sum(self.inputs_M),
                                    self.D)).astype('float32')
         b = np.random.normal(
@@ -80,6 +80,20 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
 
         out = fusion_seqexpand_concat_fc(xs, self.lod, w, b,
                                          ACTIVATION[self.fc_act])
+=======
+        w = np.random.normal(size=(sum(self.inputs_M), self.D)).astype(
+            'float32'
+        )
+        b = (
+            np.random.normal(size=(1, self.D)).astype('float32')
+            if self.with_bias
+            else np.zeros((1, self.D)).astype('float32')
+        )
+
+        out = fusion_seqexpand_concat_fc(
+            xs, self.lod, w, b, ACTIVATION[self.fc_act]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.inputs = {'X': [('x0', (x0, self.lod))], 'FCWeight': w}
         normal_lod = [[1] * bs]

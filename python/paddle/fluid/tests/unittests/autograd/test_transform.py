@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
 
 import paddle
 from paddle.incubate.autograd.primx import Transform, orig2prim, prim2orig
@@ -28,8 +27,9 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         self.main_program = paddle.static.Program()
         self.startup_program = paddle.static.Program()
 
-        with paddle.static.program_guard(self.main_program,
-                                         self.startup_program):
+        with paddle.static.program_guard(
+            self.main_program, self.startup_program
+        ):
             self.init_data()
 
     def init_data(self):
@@ -37,6 +37,7 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         self.xs_shape_map = {0: (20, 40), 1: (20, 40)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (20, 40)}
+<<<<<<< HEAD
         X0 = paddle.static.data(name='X0',
                                 shape=self.xs_shape_map[0],
                                 dtype='float32')
@@ -44,19 +45,29 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
         X1 = paddle.static.data(name='X1',
                                 shape=self.xs_shape_map[1],
                                 dtype='float32')
+=======
+        X0 = paddle.static.data(
+            name='X0', shape=self.xs_shape_map[0], dtype='float32'
+        )
+        X0.stop_gradient = False
+        X1 = paddle.static.data(
+            name='X1', shape=self.xs_shape_map[1], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         X1.stop_gradient = False
 
         A = paddle.tanh(X0)
         B = paddle.tanh(X1)
-        Y = paddle.add(A, B)
+        C = paddle.rsqrt(B)
+        Y = paddle.add(A, C)
 
         self.orig_xs = [X0, X1]
         self.orig_ys = [
             Y,
         ]
 
-        self.orig_ops = ['tanh', 'tanh', 'elementwise_add']
-        self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p']
+        self.orig_ops = ['tanh', 'tanh', 'elementwise_add', 'rsqrt']
+        self.orig2prim_ops = ['tanh_p', 'tanh_p', 'add_p', 'rsqrt_p']
         self.linearize_ops = self.orig2prim_ops + [
             # call fill_const() in linearize() function
             'fill_constant_p',
@@ -71,6 +82,10 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'fill_constant_p',
             'mul_p',
             'add_p',
+            'fill_constant_p',
+            'div_p',
+            'div_p',
+            'mul_p',
         ]
         self.transpose_ops = self.orig2prim_ops + [
             # call fill_const() in transpose() function
@@ -84,9 +99,34 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'mul_p',
             'sub_p',
             'fill_constant_p',
+            'mul_p',
+            'div_p',
+            'div_p',
+            'fill_constant_p',
             # transposed op
             'mul_p',
-            'mul_p'
+            'mul_p',
+        ]
+        self.prim2orig_ops_with_blacklist = [
+            'tanh',
+            'tanh',
+            'add_p',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'sub_p',
+            'fill_constant',
+            'elementwise_mul',
+            'sub_p',
+            'fill_constant',
+            'elementwise_mul',
+            'elementwise_mul',
+            'rsqrt',
+            'fill_constant',
+            'elementwise_div',
+            'elementwise_div',
+            'elementwise_mul',
         ]
         self.prim2orig_ops_with_blacklist = [
             'tanh', 'tanh', 'add_p', 'fill_constant', 'fill_constant',
@@ -95,16 +135,32 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
             'elementwise_mul'
         ]
         self.prim2orig_ops = [
-            'tanh', 'tanh', 'elementwise_add', 'fill_constant', 'fill_constant',
-            'fill_constant', 'elementwise_mul', 'elementwise_sub',
-            'fill_constant', 'elementwise_mul', 'elementwise_sub',
-            'fill_constant', 'elementwise_mul', 'elementwise_mul'
+            'tanh',
+            'tanh',
+            'elementwise_add',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'elementwise_sub',
+            'fill_constant',
+            'elementwise_mul',
+            'elementwise_sub',
+            'fill_constant',
+            'elementwise_mul',
+            'elementwise_mul',
+            'rsqrt',
+            'fill_constant',
+            'elementwise_div',
+            'elementwise_div',
+            'elementwise_mul',
         ]
 
     def test_run(self):
         # Must using with program_guard(), otherwise prim ops will append other block
-        with paddle.static.program_guard(self.main_program,
-                                         self.startup_program):
+        with paddle.static.program_guard(
+            self.main_program, self.startup_program
+        ):
             ad = Transform(self.main_program.block(0))
             orig_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(orig_ops), sorted(self.orig_ops))
@@ -139,11 +195,21 @@ class TestAutoGradTransformForAdd(unittest.TestCase):
                 self.assertEqual(flatten_ys_bar[k].shape, v)
 
             # Test prim2orig with blacklist
+<<<<<<< HEAD
             prim2orig(block=self.main_program.block(0),
                       blacklist=['add_p', 'sub_p'])
             prim2orig_ops = [op.type for op in self.main_program.block(0).ops]
             self.assertEqual(sorted(prim2orig_ops),
                              sorted(self.prim2orig_ops_with_blacklist))
+=======
+            prim2orig(
+                block=self.main_program.block(0), blacklist=['add_p', 'sub_p']
+            )
+            prim2orig_ops = [op.type for op in self.main_program.block(0).ops]
+            self.assertEqual(
+                sorted(prim2orig_ops), sorted(self.prim2orig_ops_with_blacklist)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             # Test prim2orig
             prim2orig(block=self.main_program.block(0))
@@ -158,6 +224,7 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
         self.xs_shape_map = {0: (100, 2), 1: (5, 2)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (100, 5)}
+<<<<<<< HEAD
         X0 = paddle.static.data('X0',
                                 shape=self.xs_shape_map[0],
                                 dtype='float32')
@@ -165,6 +232,15 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
         X1 = paddle.static.data('X1',
                                 shape=self.xs_shape_map[1],
                                 dtype='float32')
+=======
+        X0 = paddle.static.data(
+            'X0', shape=self.xs_shape_map[0], dtype='float32'
+        )
+        X0.stop_gradient = False
+        X1 = paddle.static.data(
+            'X1', shape=self.xs_shape_map[1], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         X1.stop_gradient = False
 
         A = paddle.reshape(X1, [2, 5])
@@ -178,8 +254,13 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
 
         self.orig_ops = ['reshape2', 'scale', 'matmul_v2']
         self.orig2prim_ops = [
-            'reshape_p', 'fill_constant_p', 'fill_constant_p',
-            'fill_constant_p', 'mul_p', 'add_p', 'matmul_p'
+            'reshape_p',
+            'fill_constant_p',
+            'fill_constant_p',
+            'fill_constant_p',
+            'mul_p',
+            'add_p',
+            'matmul_p',
         ]
         self.linearize_ops = self.orig2prim_ops + [
             # call fill_const() in linearize() function
@@ -193,7 +274,7 @@ class TestAutoGradTransformForMatmul(TestAutoGradTransformForAdd):
             # 'add_p',
             'matmul_p',
             'matmul_p',
-            'add_p'
+            'add_p',
         ]
         self.transpose_ops = self.orig2prim_ops + [
             # call fill_const() in transpose() function
@@ -256,10 +337,11 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
 
     def init_data(self):
         # { input_index: input_shape }
-        self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3, )}
+        self.xs_shape_map = {0: (7, 8, 9), 1: (8, 1), 2: (7, 8, 9), 3: (3,)}
         # { output_index: output_shape }
         self.ys_shape_map = {0: (3, 16, 9)}
 
+<<<<<<< HEAD
         X0 = paddle.static.data('X0',
                                 shape=self.xs_shape_map[0],
                                 dtype='float32')
@@ -271,6 +353,19 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         X2 = paddle.static.data('X2',
                                 shape=self.xs_shape_map[2],
                                 dtype='float32')
+=======
+        X0 = paddle.static.data(
+            'X0', shape=self.xs_shape_map[0], dtype='float32'
+        )
+        X0.stop_gradient = False
+        X1 = paddle.static.data(
+            'X1', shape=self.xs_shape_map[1], dtype='float32'
+        )
+        X1.stop_gradient = False
+        X2 = paddle.static.data(
+            'X2', shape=self.xs_shape_map[2], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         X2.stop_gradient = False
         X3 = paddle.static.data('X3', shape=self.xs_shape_map[3], dtype='int32')
         X3.stop_gradient = False
@@ -286,12 +381,23 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             Y,
         ]
         self.orig_ops = [
-            'elementwise_add', 'p_norm', 'elementwise_sub', 'concat',
-            'index_select'
+            'elementwise_add',
+            'p_norm',
+            'elementwise_sub',
+            'concat',
+            'index_select',
         ]
         self.orig2prim_ops = [
-            'broadcast_p', 'add_p', 'reshape_p', 'mul_p', 'reduce_p', 'sqrt_p',
-            'broadcast_p', 'sub_p', 'concat_p', 'gather_p'
+            'broadcast_p',
+            'add_p',
+            'reshape_p',
+            'mul_p',
+            'reduce_sum_p',
+            'sqrt_p',
+            'broadcast_p',
+            'sub_p',
+            'concat_p',
+            'gather_p',
         ]
         self.linearize_ops = self.orig2prim_ops + [
             # call fill_const() in linearize() function
@@ -306,14 +412,14 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'mul_p',
             'mul_p',
             'add_p',
-            'reduce_p',
+            'reduce_sum_p',
             'fill_constant_p',  # 'sqrt_p', Will not append sqrt_p op when apply JVP for sqrt_p
             'mul_p',
             'div_p',
             'broadcast_p',
             'sub_p',
             'concat_p',
-            'gather_p'
+            'gather_p',
         ]
         self.transpose_ops = self.orig2prim_ops + [
             # call fill_const() in transpose() function
@@ -326,7 +432,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'fill_constant_p',
             'mul_p',
             # transposed op
-            'reduce_p',
+            'reduce_sum_p',
             'reshape_p',
             'reshape_p',
             'mul_p',
@@ -334,7 +440,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'reshape_p',
             'broadcast_p',
             'div_p',
-            'reduce_p',
+            'reduce_sum_p',
             'reshape_p',
             'fill_constant_p',
             'sub_p',
@@ -346,6 +452,7 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
         ]
 
         self.prim2orig_ops_with_blacklist = [
+<<<<<<< HEAD
             'expand_v2', 'add_p', 'reshape2', 'elementwise_mul', 'reduce_sum',
             'sqrt', 'expand_v2', 'sub_p', 'concat', 'gather', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
@@ -354,18 +461,83 @@ class TestAutoGradTransformForIndexSelect(TestAutoGradTransformForAdd):
             'expand_v2', 'elementwise_div', 'reduce_sum', 'reshape2',
             'fill_constant', 'sub_p', 'split', 'fill_constant', 'fill_any_like',
             'add_p', 'scatter', 'elementwise_add', 'add_p'
+=======
+            'expand_v2',
+            'add_p',
+            'reshape2',
+            'elementwise_mul',
+            'reduce_sum',
+            'sqrt',
+            'expand_v2',
+            'sub_p',
+            'concat',
+            'gather',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'reduce_sum',
+            'reshape2',
+            'reshape2',
+            'elementwise_mul',
+            'elementwise_mul',
+            'reshape2',
+            'expand_v2',
+            'elementwise_div',
+            'reduce_sum',
+            'reshape2',
+            'fill_constant',
+            'sub_p',
+            'split',
+            'fill_constant',
+            'fill_any_like',
+            'add_p',
+            'scatter',
+            'elementwise_add',
+            'add_p',
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ]
 
         self.prim2orig_ops = [
-            'expand_v2', 'elementwise_add', 'reshape2', 'elementwise_mul',
-            'reduce_sum', 'sqrt', 'expand_v2', 'elementwise_sub', 'concat',
-            'gather', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant',
-            'elementwise_mul', 'reduce_sum', 'reshape2', 'reshape2',
-            'elementwise_mul', 'elementwise_mul', 'reshape2', 'expand_v2',
-            'elementwise_div', 'reduce_sum', 'reshape2', 'fill_constant',
-            'elementwise_sub', 'split', 'fill_constant', 'fill_any_like',
-            'elementwise_add', 'scatter', 'elementwise_add', 'elementwise_add'
+            'expand_v2',
+            'elementwise_add',
+            'reshape2',
+            'elementwise_mul',
+            'reduce_sum',
+            'sqrt',
+            'expand_v2',
+            'elementwise_sub',
+            'concat',
+            'gather',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'fill_constant',
+            'elementwise_mul',
+            'reduce_sum',
+            'reshape2',
+            'reshape2',
+            'elementwise_mul',
+            'elementwise_mul',
+            'reshape2',
+            'expand_v2',
+            'elementwise_div',
+            'reduce_sum',
+            'reshape2',
+            'fill_constant',
+            'elementwise_sub',
+            'split',
+            'fill_constant',
+            'fill_any_like',
+            'elementwise_add',
+            'scatter',
+            'elementwise_add',
+            'elementwise_add',
         ]
 
 

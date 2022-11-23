@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import os
-import six
 import warnings
 from multiprocessing import Process  # noqa: F401
 from multiprocessing import Manager  # noqa: F401
 import time
+<<<<<<< HEAD
 import sys
 import paddle
 
 from paddle import compat as cpt
+=======
+import paddle
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 # deprecated module import
 from paddle.fluid import core
@@ -30,12 +33,12 @@ from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
 from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
-from paddle.distributed import collective
+from paddle.distributed.fleet.base.private_helper_function import (
+    wait_server_ready,
+)  # noqa: F401
 from paddle.distributed.collective import _set_group_map
 from paddle.distributed.collective import _set_group_map_by_name
 from paddle.distributed.collective import _get_group_map_by_name
-from paddle.distributed.collective import _group_map_by_name
 from paddle.distributed.collective import _default_group_name
 from paddle.distributed.collective import _valid_backend_list
 from paddle.distributed.collective import _set_default_backend
@@ -43,6 +46,10 @@ from paddle.distributed.collective import _set_default_store
 from paddle.distributed.collective import _new_process_group_impl
 from paddle.distributed.collective import Group
 from paddle.distributed.collective import _set_group_map_backend
+<<<<<<< HEAD
+=======
+from paddle.distributed.communication.group import _add_new_group
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 __all__ = []
 
@@ -62,6 +69,7 @@ def _get_global_parallel_env():
 
 def _start_kv_server(port, http_server_d, size):
     from paddle.distributed.fleet.utils.http_server import KVServer
+
     http_server = KVServer(int(port), size=size)
     http_server.start()
     wait_seconds = 3
@@ -72,10 +80,22 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
+<<<<<<< HEAD
     if backend in [
             'auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl'
     ] and (core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
            or core.is_compiled_with_npu() or core.is_compiled_with_mlu()):
+=======
+    if (
+        backend in ['auto', 'nccl', 'bkcl', 'hccl', 'heter', 'cncl']
+        and (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_xpu()
+            or core.is_compiled_with_npu()
+            or core.is_compiled_with_mlu()
+        )
+    ) or backend == 'xccl':
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
@@ -86,16 +106,18 @@ def _is_cpuonly(backend):
 def _check_var_exists(var_name):
     var = os.environ.get(var_name, None)
     if var is None:
-        raise ValueError("paddle.distributed initialize error, "
-                         "environment variable %s is needed, but not set." %
-                         var_name)
+        raise ValueError(
+            "paddle.distributed initialize error, "
+            "environment variable %s is needed, but not set." % var_name
+        )
 
 
 def init_parallel_env():
     """
+
     Initialize parallel training environment in dynamic graph mode.
 
-    .. note::
+    Note:
         Now initialize both `NCCL` and `GLOO` contexts for communication.
 
     Args:
@@ -105,9 +127,10 @@ def init_parallel_env():
 
     Returns:
         None
-        
+
     Examples:
         .. code-block:: python
+
             # required: gpu
             import paddle
             import paddle.nn as nn
@@ -116,10 +139,10 @@ def init_parallel_env():
 
             class LinearNet(nn.Layer):
                 def __init__(self):
-                    super(LinearNet, self).__init__()
+                    super().__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -140,7 +163,7 @@ def init_parallel_env():
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -148,6 +171,7 @@ def init_parallel_env():
 
             if __name__ == '__main__':
                 dist.spawn(train)
+
     """
 
     # 0. get env & check world size
@@ -166,24 +190,42 @@ def init_parallel_env():
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu,
+<<<<<<< HEAD
     if not (is_cpu_only or core.is_compiled_with_cuda()
             or core.is_compiled_with_xpu() or core.is_compiled_with_npu()
             or core.is_compiled_with_mlu()):
+=======
+    if not (
+        is_cpu_only
+        or core.is_compiled_with_cuda()
+        or core.is_compiled_with_xpu()
+        or core.is_compiled_with_npu()
+        or core.is_compiled_with_mlu()
+        or backend == "xccl"
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         raise NotImplementedError(
-            "If you want to use CPU-only version, please use 'gloo' as backend")
+            "If you want to use CPU-only version, please use 'gloo' as backend"
+        )
 
-    if not is_cpu_only and core.is_compiled_with_cuda():
-        _check_var_exists("FLAGS_selected_gpus")
-        backend = "nccl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_xpu():
-        _check_var_exists('FLAGS_selected_xpus')
-        backend = "bkcl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_npu():
-        _check_var_exists('FLAGS_selected_npus')
-        backend = "hccl" if backend == "auto" else backend
-    elif not is_cpu_only and core.is_compiled_with_mlu():
-        _check_var_exists('FLAGS_selected_mlus')
-        backend = "cncl" if backend == "auto" else backend
+    if backend == "xccl":
+        FLAGS_selected_custom_devices = 'FLAGS_selected_{}s'.format(
+            parallel_env.device_type
+        )
+        _check_var_exists(FLAGS_selected_custom_devices)
+    else:
+        if not is_cpu_only and core.is_compiled_with_cuda():
+            _check_var_exists("FLAGS_selected_gpus")
+            backend = "nccl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_xpu():
+            _check_var_exists('FLAGS_selected_xpus')
+            backend = "bkcl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_npu():
+            _check_var_exists('FLAGS_selected_npus')
+            backend = "hccl" if backend == "auto" else backend
+        elif not is_cpu_only and core.is_compiled_with_mlu():
+            _check_var_exists('FLAGS_selected_mlus')
+            backend = "cncl" if backend == "auto" else backend
 
     _check_var_exists("PADDLE_TRAINER_ID")
     _check_var_exists("PADDLE_CURRENT_ENDPOINT")
@@ -196,7 +238,11 @@ def init_parallel_env():
     # directly, if they want to switch default place,
     # they need to call a function to change default place,
     # here just set correctly place to users
-    if is_cpu_only:
+    if backend == "xccl":
+        place = core.CustomPlace(
+            parallel_env.device_type, parallel_env.device_id
+        )
+    elif is_cpu_only:
         place = core.CPUPlace()
     elif core.is_compiled_with_cuda():
         place = core.CUDAPlace(parallel_env.device_id)
@@ -219,11 +265,20 @@ def init_parallel_env():
         assert rank >= 0 and world_size > rank and world_size > 1, (
             "rank must be non-negative and world_size must be the "
             "maximum rank plus one. Moreover, at least two processes are "
-            "required to create a process group.")
+            "required to create a process group."
+        )
         master_addr = os.getenv("MASTER_ADDR", None)
         master_port = os.getenv("MASTER_PORT", None)
+<<<<<<< HEAD
         endpoints = ":".join([master_addr, master_port
                               ]) if master_addr and master_port else None
+=======
+        endpoints = (
+            ":".join([master_addr, master_port])
+            if master_addr and master_port
+            else None
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if endpoints is None:
             endpoints = os.getenv("PADDLE_MASTER", None)
         if endpoints is None:
@@ -232,11 +287,13 @@ def init_parallel_env():
             "The environment variable 'MASTER_ADDR' and 'MASTER_PORT' "
             "must be specified, for example 'export MASTER_ADDR=127.0.0.1' "
             "and 'export MASTER_ADDR=54612'. Or you can start your training"
-            "with paddle.distributed.run module.")
+            "with paddle.distributed.run module."
+        )
         master_addr, master_port = endpoints.split(":")
         master_port = int(master_port)
         is_master = rank == 0
         stop_check_timeout = int(os.getenv("FLAGS_stop_check_timeout", "900"))
+<<<<<<< HEAD
         default_store = core.TCPStore(master_addr,
                                       master_port,
                                       is_master,
@@ -259,6 +316,30 @@ def init_parallel_env():
         _set_group_map_by_name(_default_group_name, group)
         _set_group_map(0, group)
         _set_group_map_backend(group, backend)
+=======
+        default_store = core.TCPStore(
+            master_addr,
+            master_port,
+            is_master,
+            world_size,
+            timeout=stop_check_timeout,
+        )
+        _set_default_store(default_store)
+        pg = _new_process_group_impl(
+            backend,
+            default_store,
+            rank,
+            world_size,
+            _default_group_name,
+            pg_options=None,
+        )
+        ranks = list(range(world_size))
+        group = Group(rank, 0, ranks, pg=pg, name=_default_group_name)
+        _set_group_map_by_name(_default_group_name, group)
+        _set_group_map(0, group)
+        _set_group_map_backend(group, backend)
+        _add_new_group(group)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         parallel_helper._set_parallel_ctx(True)
 
         paddle.distributed.barrier(group=group)
@@ -278,8 +359,15 @@ def init_parallel_env():
             size = {'_worker': parallel_env.world_size}
             if backend == "heter":
                 size = {'_worker': len(node_num)}
+<<<<<<< HEAD
             http_server = Process(target=_start_kv_server,
                                   args=(int(ep_rank_0[1]), http_server_d, size))
+=======
+            http_server = Process(
+                target=_start_kv_server,
+                args=(int(ep_rank_0[1]), http_server_d, size),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             http_server.daemon = True
             http_server_d["running"] = True
             http_server.start()
@@ -297,22 +385,28 @@ def init_parallel_env():
     # init nccl or hccl or bkcl or heter context
     if is_cpu_only:
         parallel_helper._set_parallel_ctx(
-            core.GLOOParallelContext(strategy, place))
-    elif (backend == "heter"):
+            core.GLOOParallelContext(strategy, place)
+        )
+    elif backend == "heter":
         parallel_helper._set_parallel_ctx(
-            core.HeterParallelContext(strategy, parallel_env.device_id))
+            core.HeterParallelContext(strategy, parallel_env.device_id)
+        )
     elif core.is_compiled_with_cuda():
         parallel_helper._set_parallel_ctx(
-            core.NCCLParallelContext(strategy, place))
+            core.NCCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
-            core.BKCLParallelContext(strategy, place))
+            core.BKCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_npu():
         parallel_helper._set_parallel_ctx(
-            core.HCCLParallelContext(strategy, place))
+            core.HCCLParallelContext(strategy, place)
+        )
     elif core.is_compiled_with_mlu():
         parallel_helper._set_parallel_ctx(
-            core.CNCLParallelContext(strategy, place))
+            core.CNCLParallelContext(strategy, place)
+        )
 
     if backend != "heter":
         other_endpoints = strategy.trainer_endpoints[:]
@@ -351,47 +445,65 @@ def init_parallel_env():
     return group
 
 
-def get_rank():
+def get_rank(group=None):
     """
-    Returns the rank of current trainer.
+    Returns the rank of current trainer in the given group, ranks are consecutive integers in [0, ``world_size``).
+    If none of the group is given, the global group will be used as default.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . 
-    The default value is 0.
+    Args:
+        group (Group, optional): The communication group you want to get rank of current trainer, use global group as default if group is None.
 
     Returns:
-        (int) The rank of current trainer.
+        (int) The rank of current trainer in the given group. Return -1 if the process is not part of the given group.
+
+    Warning:
+        Argument ``group`` only supports in dygraph mode.
 
     Examples:
         .. code-block:: python
 
+            # Execute this script using distributed launch with one card configs.
             import paddle
             import paddle.distributed as dist
 
-            # execute this command in terminal: export PADDLE_TRAINER_ID=0
+            dist.init_parallel_env()
             print("The rank is %d" % dist.get_rank())
             # The rank is 0
     """
+    if in_dygraph_mode() and group:
+        return group.rank
+
+    assert group is None, "Only support group argument in eager mode."
     return _get_global_parallel_env().rank
 
 
-def get_world_size():
+def get_world_size(group=None):
     """
-    Returns the number of trainers (number of processes participating in current job).
+    Returns the number of trainers (number of processes participating in current job) in the given group.
+    If none of the group is given, the global group will be used as default.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
-    The default value is 1.
+    Args:
+        group (Group, optional): The communication group you want to check world size, use global group as default if group is None.
 
     Returns:
-        (int) The number of trainers.
+        (int) The number of trainers in the given group. Return -1 if the process if not part of the given group.
+
+    Warning:
+        Argument ``group`` only supports in dygraph mode.
 
     Examples:
         .. code-block:: python
 
+            # Execute this script using distributed launch with one card configs.
             import paddle
             import paddle.distributed as dist
 
-            # execute this command in terminal: export PADDLE_TRAINERS_NUM=4
+            dist.init_parallel_env()
             print("The world_size is %d" % dist.get_world_size())
-            # The world_size is 4
+            # The world_size is 1
     """
+    if in_dygraph_mode() and group:
+        return group.world_size
+
+    assert group is None, "Only support group argument in eager mode."
     return _get_global_parallel_env().world_size

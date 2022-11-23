@@ -24,6 +24,16 @@ namespace operators {
 class CumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -34,7 +44,12 @@ class CumsumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "The dimension to accumulate along. -1 means the last "
                  "dimension [default -1].")
+<<<<<<< HEAD
         .SetDefault(-1);
+=======
+        .SetDefault(-1)
+        .SupportTensor();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     AddAttr<bool>("flatten",
                   "Whether to compute the cumsum over the flattened array. "
                   "[default false].")
@@ -64,6 +79,7 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("cumsum");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
+<<<<<<< HEAD
     grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
     grad_op->SetAttr("flatten",
                      PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
@@ -71,6 +87,11 @@ class CumsumGradMaker : public framework::SingleGradOpMaker<T> {
                      !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
     grad_op->SetAttr("exclusive",
                      PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
+=======
+    grad_op->SetAttrMap(this->Attrs());
+    grad_op->SetAttr("reverse",
+                     !PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 };
 
@@ -148,7 +169,11 @@ namespace ops = paddle::operators;
 using CPU = phi::CPUContext;
 DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::CumInferMeta));
+=======
+                            PD_INFER_META(phi::CumScalarAxisInferMeta));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
                             LogcumsumexpInferShapeFunctor,
                             PD_INFER_META(phi::CumInferMeta));

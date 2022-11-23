@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import paddle.fluid as fluid
 
 fluid.core._set_fuse_parameter_group_size(3)
@@ -29,12 +28,23 @@ class TestResnetWithFuseAllReduceGPU(TestResnetBase):
     def test_seresnext_with_fused_all_reduce(self):
         # NOTE(zcd): In order to make the program faster,
         # this unit test remove drop_out and batch_norm.
+<<<<<<< HEAD
         check_func = partial(self.check_network_convergence,
                              optimizer=seresnext_net.optimizer,
                              fuse_all_reduce_ops=True)
         self._compare_result_with_origin_model(check_func,
                                                use_device=DeviceType.CUDA,
                                                delta2=1e-2)
+=======
+        check_func = partial(
+            self.check_network_convergence,
+            optimizer=seresnext_net.optimizer,
+            fuse_all_reduce_ops=True,
+        )
+        self._compare_result_with_origin_model(
+            check_func, use_device=DeviceType.CUDA, delta2=1e-2
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

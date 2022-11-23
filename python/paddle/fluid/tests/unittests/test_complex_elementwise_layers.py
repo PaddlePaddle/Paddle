@@ -44,14 +44,20 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             return paddle_apis[op](x_t, y_t).numpy()
 
     def assert_check(self, pd_result, np_result, place):
-        self.assertTrue(
-            np.allclose(pd_result, np_result),
-            "\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n".
-            format(place, pd_result[~np.isclose(pd_result, np_result)],
-                   np_result[~np.isclose(pd_result, np_result)]))
+        np.testing.assert_allclose(
+            pd_result,
+            np_result,
+            rtol=1e-05,
+            err_msg='\nplace: {}\npaddle diff result:\n {}\nnumpy diff result:\n {}\n'.format(
+                place,
+                pd_result[~np.isclose(pd_result, np_result)],
+                np_result[~np.isclose(pd_result, np_result)],
+            ),
+        )
 
     def compare_by_basic_api(self, x, y):
         for place in self._places:
+<<<<<<< HEAD
             self.assert_check(self.paddle_calc(x, y, "add", place), x + y,
                               place)
             self.assert_check(self.paddle_calc(x, y, "sub", place), x - y,
@@ -60,6 +66,20 @@ class TestComplexElementwiseLayers(unittest.TestCase):
                               place)
             self.assert_check(self.paddle_calc(x, y, "div", place), x / y,
                               place)
+=======
+            self.assert_check(
+                self.paddle_calc(x, y, "add", place), x + y, place
+            )
+            self.assert_check(
+                self.paddle_calc(x, y, "sub", place), x - y, place
+            )
+            self.assert_check(
+                self.paddle_calc(x, y, "mul", place), x * y, place
+            )
+            self.assert_check(
+                self.paddle_calc(x, y, "div", place), x / y, place
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def compare_op_by_basic_api(self, x, y):
         for place in self._places:
@@ -73,18 +93,33 @@ class TestComplexElementwiseLayers(unittest.TestCase):
 
     def test_complex_xy(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5
                       ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
             y = rand([2, 3, 4, 5
                       ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]
+            ).astype(dtype)
+            y = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]
+            ).astype(dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
 
     def test_complex_x_real_y(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5
                       ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
+                [2, 3, 4, 5]
+            ).astype(dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             y = rand([4, 5]).astype(dtype)
 
             # promote types cases

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -30,7 +28,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
         self.set_conf()
         self.op_type = 'fusion_repeated_fc_relu'
         sz = len(self.oc)
-        ics = [self.ic] + self.oc[0:sz - 1]
+        ics = [self.ic] + self.oc[0 : sz - 1]
         assert len(ics) == len(self.oc)
         weights = []
         biases = []
@@ -40,23 +38,47 @@ class TestFusionRepeatedFCReluOp(OpTest):
         matrix = MatrixGenerate(self.bs, ics[i], self.oc[i], 1, 1)
         inp = np.reshape(matrix.input, [self.bs, ics[i]])
         weights.append(
+<<<<<<< HEAD
             ('W_{0}'.format(i), np.reshape(matrix.weights,
                                            [ics[i], self.oc[i]])))
         biases.append(('B_{0}'.format(i), matrix.bias))
         outs.append(
             np.reshape(np.maximum(fc_refer(matrix, True), 0),
                        [self.bs, self.oc[i]]))
+=======
+            (
+                'W_{0}'.format(i),
+                np.reshape(matrix.weights, [ics[i], self.oc[i]]),
+            )
+        )
+        biases.append(('B_{0}'.format(i), matrix.bias))
+        outs.append(
+            np.reshape(
+                np.maximum(fc_refer(matrix, True), 0), [self.bs, self.oc[i]]
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         for i in range(sz - 1):
             matrix = MatrixGenerate(self.bs, ics[i + 1], self.oc[i + 1], 1, 1)
             matrix.input = np.reshape(outs[i], [self.bs, ics[i + 1], 1, 1])
             out = fc_refer(matrix, True)
+<<<<<<< HEAD
             weights.append(('W_{0}'.format(i + 1),
                             np.reshape(matrix.weights,
                                        [ics[i + 1], self.oc[i + 1]])))
+=======
+            weights.append(
+                (
+                    'W_{0}'.format(i + 1),
+                    np.reshape(matrix.weights, [ics[i + 1], self.oc[i + 1]]),
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             biases.append(('B_{0}'.format(i + 1), matrix.bias))
             outs.append(
-                np.reshape(np.maximum(out, 0), [self.bs, self.oc[i + 1]]))
+                np.reshape(np.maximum(out, 0), [self.bs, self.oc[i + 1]])
+            )
 
         relu_outs = []
         for i in range(sz - 1):

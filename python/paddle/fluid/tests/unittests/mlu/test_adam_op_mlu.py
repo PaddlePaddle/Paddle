@@ -52,20 +52,19 @@ class TestAdam(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def set_mlu(self):
@@ -112,15 +111,14 @@ class TestAdamWithEpsilonTensor(OpTest):
 
         self.attrs = {'epsilon': epsilon}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def set_mlu(self):
@@ -220,8 +218,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
         attributes = {'epsilon': epsilon}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
 
         self.attrs = {'use_global_beta_pow': True}
 
@@ -231,7 +228,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([]),
-            'Beta2PowOut': np.array([])
+            'Beta2PowOut': np.array([]),
         }
 
     def set_mlu(self):
@@ -261,9 +258,15 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -287,6 +290,7 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -294,17 +298,27 @@ class TestNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
     def test_mlu(self):
         mlu_pred, mlu_loss = self._test(True)
         cpu_pred, cpu_loss = self._test(False)
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred, rtol=1e-3))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss, rtol=1e-3))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-3)
+        np.testing.assert_allclose(mlu_loss, cpu_loss, rtol=1e-3)
 
 
 if __name__ == '__main__':

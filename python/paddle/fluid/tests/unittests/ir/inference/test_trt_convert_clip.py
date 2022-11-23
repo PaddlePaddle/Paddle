@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -46,34 +46,33 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
-                for op_inputs in [{
-                        "X": ["input_data"]
-                }, {
-                        "X": ["input_data"],
-                        "Min": ["Min_"],
-                        "Max": ["Max_"]
-                }]:
+                for op_inputs in [
+                    {"X": ["input_data"]},
+                    {"X": ["input_data"], "Min": ["Min_"], "Max": ["Max_"]},
+                ]:
                     self.input_num = len(op_inputs)
                     self.dims = dims
-                    dics = [{
-                        "min": np.random.uniform(1, 10),
-                        "max": np.random.uniform(10, 20)
-                    }, {
-                        "op_inputs": op_inputs
-                    }]
-                    ops_config = [{
-                        "op_type": "clip",
-                        "op_inputs": op_inputs,
-                        "op_outputs": {
-                            "Out": ["output_data"]
+                    dics = [
+                        {
+                            "min": np.random.uniform(1, 10),
+                            "max": np.random.uniform(10, 20),
                         },
-                        "op_attrs": dics[0]
-                    }]
+                        {"op_inputs": op_inputs},
+                    ]
+                    ops_config = [
+                        {
+                            "op_type": "clip",
+                            "op_inputs": op_inputs,
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[0],
+                        }
+                    ]
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={
+<<<<<<< HEAD
                             "Min_":
                             TensorConfig(
                                 data_gen=partial(generate_weight1, dics)),
@@ -85,8 +84,24 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
                             "input_data":
                             TensorConfig(data_gen=partial(
                                 generate_input1, dims, batch, dics))
+=======
+                            "Min_": TensorConfig(
+                                data_gen=partial(generate_weight1, dics)
+                            ),
+                            "Max_": TensorConfig(
+                                data_gen=partial(generate_weight2, dics)
+                            ),
                         },
-                        outputs=["output_data"])
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(
+                                    generate_input1, dims, batch, dics
+                                )
+                            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+                        },
+                        outputs=["output_data"],
+                    )
 
                     yield program_config
 
@@ -122,10 +137,13 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.input_num == 3 or self.dims == 1:
+            if self.input_num == 3:
                 return 0, 3
             else:
-                return 1, 2
+                if not dynamic_shape and self.dims == 1:
+                    return 0, 3
+                else:
+                    return 1, 2
 
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -135,19 +153,30 @@ class TrtConvertClipTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test(self):
         self.run_test()

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/beam_search.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
 
 namespace paddle {
 namespace operators {
@@ -406,6 +406,7 @@ template <typename T>
 class BeamSearchFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const framework::LoDTensor* pre_ids,
                   const framework::LoDTensor* pre_scores,
                   const framework::LoDTensor* ids,
@@ -413,6 +414,15 @@ class BeamSearchFunctor<phi::GPUContext, T> {
                   framework::LoDTensor* selected_ids,
                   framework::LoDTensor* selected_scores,
                   framework::Tensor* parent_idx,
+=======
+                  const phi::DenseTensor* pre_ids,
+                  const phi::DenseTensor* pre_scores,
+                  const phi::DenseTensor* ids,
+                  const phi::DenseTensor* scores,
+                  phi::DenseTensor* selected_ids,
+                  phi::DenseTensor* selected_scores,
+                  phi::DenseTensor* parent_idx,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   size_t level,
                   size_t beam_size,
                   int end_id,

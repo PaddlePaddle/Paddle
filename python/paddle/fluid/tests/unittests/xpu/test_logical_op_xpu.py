@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -23,12 +21,16 @@ sys.path.append("..")
 import paddle
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
-################## TEST OP: logical_and ##################
+# -------------- TEST OP: logical_and ----------------- #
 class XPUTestLogicalAnd(XPUOpTestWrapper):
 
     def __init__(self):
@@ -44,6 +46,7 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_and'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -52,12 +55,20 @@ class XPUTestLogicalAnd(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = np.logical_and(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -89,7 +100,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalAnd, stype)
 
 
-################## TEST OP: logical_or ##################
+# --------------- TEST OP: logical_or ------------------ #
 class XPUTestLogicalOr(XPUOpTestWrapper):
 
     def __init__(self):
@@ -105,6 +116,7 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_or'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -113,12 +125,20 @@ class XPUTestLogicalOr(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = np.logical_or(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -150,7 +170,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalOr, stype)
 
 
-################## TEST OP: logical_xor ##################
+# --------------- TEST OP: logical_xor ------------------- #
 class XPUTestLogicalXor(XPUOpTestWrapper):
 
     def __init__(self):
@@ -166,6 +186,7 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_xor'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -174,12 +195,20 @@ class XPUTestLogicalXor(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = np.logical_xor(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -211,7 +240,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestLogicalXor, stype)
 
 
-##################  TEST OP: LogicalNot ##################
+# -------------  TEST OP: LogicalNot ---------------- #
 class XPUTestLogicalNot(XPUOpTestWrapper):
 
     def __init__(self):
@@ -227,10 +256,16 @@ class XPUTestLogicalNot(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'logical_not'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = np.logical_not(x)
 
             self.attrs = {'use_xpu': True}

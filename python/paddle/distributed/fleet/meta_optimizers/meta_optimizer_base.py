@@ -26,8 +26,9 @@ class MetaOptimizerBase(Optimizer):
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
-    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
-                        user_defined_strategy):
+    def _set_basic_info(
+        self, loss, role_maker, user_defined_optimizer, user_defined_strategy
+    ):
         self.loss = loss
         self.role_maker = role_maker
         self.user_defined_optimizer = user_defined_optimizer
@@ -50,26 +51,42 @@ class MetaOptimizerBase(Optimizer):
     def _disable_strategy(self, dist_strategy):
         raise NotImplementedError(
             "you should implement disable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__))
+=======
+                type(self).__name__
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def _enable_strategy(self, dist_strategy, context=None):
         raise NotImplementedError(
             "you should implement enable strategy in {}".format(
+<<<<<<< HEAD
                 type(self).__name__))
+=======
+                type(self).__name__
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def apply_gradients(self, params_grads):
         return self.inner_opt.apply_gradients(params_grads=params_grads)
 
-    def backward(self,
-                 loss,
-                 startup_program=None,
-                 parameter_list=None,
-                 no_grad_set=None,
-                 callbacks=None):
-        return self.inner_opt.backward(loss, startup_program, parameter_list,
-                                       no_grad_set, callbacks)
+    def backward(
+        self,
+        loss,
+        startup_program=None,
+        parameter_list=None,
+        no_grad_set=None,
+        callbacks=None,
+    ):
+        return self.inner_opt.backward(
+            loss, startup_program, parameter_list, no_grad_set, callbacks
+        )
 
     def apply_optimize(self, loss, startup_program, params_grads):
+<<<<<<< HEAD
         return self.inner_opt.apply_optimize(loss,
                                              startup_program=startup_program,
                                              params_grads=params_grads)
@@ -98,4 +115,32 @@ class MetaOptimizerBase(Optimizer):
         optimize_ops, params_grads = self.minimize_impl(loss, startup_program,
                                                         parameter_list,
                                                         no_grad_set)
+=======
+        return self.inner_opt.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads
+        )
+
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
+        params_grads = self.backward(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set,
+        )
+
+        optimize_ops = self.apply_optimize(
+            loss, startup_program=startup_program, params_grads=params_grads
+        )
+
+        return optimize_ops, params_grads
+
+    def minimize(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
+        optimize_ops, params_grads = self.minimize_impl(
+            loss, startup_program, parameter_list, no_grad_set
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return optimize_ops, params_grads

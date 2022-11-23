@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -86,6 +84,7 @@ class TestRank3(TestWhereIndexOp):
 
     def init_config(self):
         self.inputs = {
+<<<<<<< HEAD
             'Condition':
             np.array([[[True, False], [False, True]],
                       [[False, True], [True, False]],
@@ -96,6 +95,22 @@ class TestRank3(TestWhereIndexOp):
             'Out':
             np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                      dtype='int64')
+=======
+            'Condition': np.array(
+                [
+                    [[True, False], [False, True]],
+                    [[False, True], [True, False]],
+                    [[False, False], [False, True]],
+                ]
+            ),
+        }
+
+        self.outputs = {
+            'Out': np.array(
+                [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                dtype='int64',
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
 

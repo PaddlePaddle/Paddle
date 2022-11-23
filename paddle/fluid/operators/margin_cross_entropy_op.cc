@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/margin_cross_entropy_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,6 +25,7 @@ class MarginCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(
         ctx->HasInput("Logits"), "Input", "Logits", "MarginCrossEntropyOp");
@@ -70,6 +75,8 @@ class MarginCrossEntropyOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Logits", /*->*/ "Loss");
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -140,6 +147,7 @@ class MarginCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")),
                       true,
@@ -163,6 +171,8 @@ class MarginCrossEntropyOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim("Softmax"));
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -194,18 +204,21 @@ class MarginCrossEntropyOpGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
+DECLARE_INFER_SHAPE_FUNCTOR(margin_cross_entropy,
+                            MarginCrossEntropyInferShapeFunctor,
+                            PD_INFER_META(phi::MarginCrossEntropyInferMeta));
 REGISTER_OPERATOR(
     margin_cross_entropy,
     ops::MarginCrossEntropyOp,
     ops::MarginCrossEntropyOpMaker,
     ops::MarginCrossEntropyOpGradMaker<paddle::framework::OpDesc>,
-    ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>);
-
-REGISTER_OPERATOR(margin_cross_entropy_grad, ops::MarginCrossEntropyOpGrad);
-
-REGISTER_OP_CPU_KERNEL(margin_cross_entropy,
-                       ops::MarginCrossEntropyOpCPUKernel<float>,
-                       ops::MarginCrossEntropyOpCPUKernel<double>,
-                       ops::MarginCrossEntropyOpCPUKernel<plat::float16>);
+    ops::MarginCrossEntropyOpGradMaker<paddle::imperative::OpBase>,
+    MarginCrossEntropyInferShapeFunctor);
+DECLARE_INFER_SHAPE_FUNCTOR(
+    margin_cross_entropy_grad,
+    MarginCrossEntropyGradInferShapeFunctor,
+    PD_INFER_META(phi::MarginCrossEntropyGradInferMeta));
+REGISTER_OPERATOR(margin_cross_entropy_grad,
+                  ops::MarginCrossEntropyOpGrad,
+                  MarginCrossEntropyGradInferShapeFunctor);

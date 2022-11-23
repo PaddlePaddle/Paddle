@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import paddle
 import paddle.fluid as fluid
 import numpy as np
@@ -26,14 +24,13 @@ from op_test import OpTest
 paddle.enable_static()
 
 
-def test_static_layer(place,
-                      input_np,
-                      label_np,
-                      reduction='mean',
-                      weight_np=None):
+def test_static_layer(
+    place, input_np, label_np, reduction='mean', weight_np=None
+):
     prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     with paddle.static.program_guard(prog, startup_prog):
+<<<<<<< HEAD
         input = paddle.fluid.data(name='input',
                                   shape=input_np.shape,
                                   dtype='float32')
@@ -46,10 +43,26 @@ def test_static_layer(place,
                                        dtype='float32')
             bce_loss = paddle.nn.loss.BCELoss(weight=weight,
                                               reduction=reduction)
+=======
+        input = paddle.fluid.data(
+            name='input', shape=input_np.shape, dtype='float32'
+        )
+        label = paddle.fluid.data(
+            name='label', shape=label_np.shape, dtype='float32'
+        )
+        if weight_np is not None:
+            weight = paddle.fluid.data(
+                name='weight', shape=weight_np.shape, dtype='float32'
+            )
+            bce_loss = paddle.nn.loss.BCELoss(
+                weight=weight, reduction=reduction
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         else:
             bce_loss = paddle.nn.loss.BCELoss(reduction=reduction)
         res = bce_loss(input, label)
         exe = paddle.static.Executor(place)
+<<<<<<< HEAD
         static_result = exe.run(prog,
                                 feed={
                                     "input": input_np,
@@ -108,6 +121,55 @@ def test_dygraph_layer(place,
                        label_np,
                        reduction='mean',
                        weight_np=None):
+=======
+        static_result = exe.run(
+            prog,
+            feed={"input": input_np, "label": label_np}
+            if weight_np is None
+            else {"input": input_np, "label": label_np, "weight": weight_np},
+            fetch_list=[res],
+        )
+    return static_result[0]
+
+
+def test_static_functional(
+    place, input_np, label_np, reduction='mean', weight_np=None
+):
+    prog = paddle.static.Program()
+    startup_prog = paddle.static.Program()
+    with paddle.static.program_guard(prog, startup_prog):
+        input = paddle.fluid.data(
+            name='input', shape=input_np.shape, dtype='float32'
+        )
+        label = paddle.fluid.data(
+            name='label', shape=label_np.shape, dtype='float32'
+        )
+        if weight_np is not None:
+            weight = paddle.fluid.data(
+                name='weight', shape=weight_np.shape, dtype='float32'
+            )
+            res = paddle.nn.functional.binary_cross_entropy(
+                input, label, weight=weight, reduction=reduction
+            )
+        else:
+            res = paddle.nn.functional.binary_cross_entropy(
+                input, label, reduction=reduction
+            )
+        exe = paddle.static.Executor(place)
+        static_result = exe.run(
+            prog,
+            feed={"input": input_np, "label": label_np}
+            if weight_np is None
+            else {"input": input_np, "label": label_np, "weight": weight_np},
+            fetch_list=[res],
+        )
+    return static_result[0]
+
+
+def test_dygraph_layer(
+    place, input_np, label_np, reduction='mean', weight_np=None
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     paddle.disable_static(place)
     if weight_np is not None:
         weight = paddle.to_tensor(weight_np)
@@ -120,17 +182,16 @@ def test_dygraph_layer(place,
     return dy_result
 
 
-def test_dygraph_functional(place,
-                            input_np,
-                            label_np,
-                            reduction='mean',
-                            weight_np=None):
+def test_dygraph_functional(
+    place, input_np, label_np, reduction='mean', weight_np=None
+):
     paddle.disable_static(place)
     input = paddle.to_tensor(input_np)
     label = paddle.to_tensor(label_np)
 
     if weight_np is not None:
         weight = paddle.to_tensor(weight_np)
+<<<<<<< HEAD
         dy_res = paddle.nn.functional.binary_cross_entropy(input,
                                                            label,
                                                            weight=weight,
@@ -139,6 +200,15 @@ def test_dygraph_functional(place,
         dy_res = paddle.nn.functional.binary_cross_entropy(input,
                                                            label,
                                                            reduction=reduction)
+=======
+        dy_res = paddle.nn.functional.binary_cross_entropy(
+            input, label, weight=weight, reduction=reduction
+        )
+    else:
+        dy_res = paddle.nn.functional.binary_cross_entropy(
+            input, label, reduction=reduction
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     dy_result = dy_res.numpy()
     paddle.enable_static()
     return dy_result
@@ -146,11 +216,19 @@ def test_dygraph_functional(place,
 
 def calc_bceloss(input_np, label_np, reduction='mean', weight_np=None):
     if weight_np is None:
-        expected = -1 * (label_np * np.log(input_np) +
-                         (1. - label_np) * np.log(1. - input_np))
+        expected = -1 * (
+            label_np * np.log(input_np)
+            + (1.0 - label_np) * np.log(1.0 - input_np)
+        )
     else:
-        expected = -1 * weight_np * (label_np * np.log(input_np) +
-                                     (1. - label_np) * np.log(1. - input_np))
+        expected = (
+            -1
+            * weight_np
+            * (
+                label_np * np.log(input_np)
+                + (1.0 - label_np) * np.log(1.0 - input_np)
+            )
+        )
 
     if reduction == 'mean':
         expected = np.mean(expected)
@@ -173,11 +251,14 @@ class TestBCELoss(unittest.TestCase):
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
-                static_result = test_static_layer(place, input_np, label_np,
-                                                  reduction)
-                dy_result = test_dygraph_layer(place, input_np, label_np,
-                                               reduction)
+                static_result = test_static_layer(
+                    place, input_np, label_np, reduction
+                )
+                dy_result = test_dygraph_layer(
+                    place, input_np, label_np, reduction
+                )
                 expected = calc_bceloss(input_np, label_np, reduction)
+<<<<<<< HEAD
                 self.assertTrue(np.allclose(static_result, expected))
                 self.assertTrue(np.allclose(static_result, dy_result))
                 self.assertTrue(np.allclose(dy_result, expected))
@@ -241,11 +322,80 @@ class TestBCELoss(unittest.TestCase):
                           input=input,
                           label=label,
                           reduction="unsupport reduction")
+=======
+                np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+                np.testing.assert_allclose(static_result, dy_result)
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
+                static_functional = test_static_functional(
+                    place, input_np, label_np, reduction
+                )
+                dy_functional = test_dygraph_functional(
+                    place, input_np, label_np, reduction
+                )
+                np.testing.assert_allclose(
+                    static_functional, expected, rtol=1e-6
+                )
+                np.testing.assert_allclose(static_functional, dy_functional)
+                np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
+
+    def test_BCELoss_weight(self):
+        input_np = np.random.uniform(0.1, 0.8, size=(2, 3, 4, 10)).astype(
+            np.float32
+        )
+        label_np = np.random.randint(0, 2, size=(2, 3, 4, 10)).astype(
+            np.float32
+        )
+        weight_np = np.random.random(size=(3, 4, 10)).astype(np.float32)
+        place = (
+            fluid.NPUPlace(0)
+            if fluid.core.is_compiled_with_npu()
+            else fluid.CPUPlace()
+        )
+        for reduction in ['sum', 'mean', 'none']:
+            static_result = test_static_layer(
+                place, input_np, label_np, reduction, weight_np=weight_np
+            )
+            dy_result = test_dygraph_layer(
+                place, input_np, label_np, reduction, weight_np=weight_np
+            )
+            expected = calc_bceloss(
+                input_np, label_np, reduction, weight_np=weight_np
+            )
+            np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-6)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
+            static_functional = test_static_functional(
+                place, input_np, label_np, reduction, weight_np=weight_np
+            )
+            dy_functional = test_dygraph_functional(
+                place, input_np, label_np, reduction, weight_np=weight_np
+            )
+            np.testing.assert_allclose(static_functional, expected, rtol=1e-6)
+            np.testing.assert_allclose(
+                static_functional, dy_functional, rtol=1e-6
+            )
+            np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
+
+    def test_BCELoss_error(self):
+        paddle.disable_static(paddle.NPUPlace(0))
+        self.assertRaises(
+            ValueError, paddle.nn.loss.BCELoss, reduction="unsupport reduction"
+        )
+        input = paddle.to_tensor([[0.1, 0.3]], dtype='float32')
+        label = paddle.to_tensor([[0.0, 1.0]], dtype='float32')
+        self.assertRaises(
+            ValueError,
+            paddle.nn.functional.binary_cross_entropy,
+            input=input,
+            label=label,
+            reduction="unsupport reduction",
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         paddle.enable_static()
 
 
 def bce_loss(input, label):
-    return -1 * (label * np.log(input) + (1. - label) * np.log(1. - input))
+    return -1 * (label * np.log(input) + (1.0 - label) * np.log(1.0 - input))
 
 
 class TestBceLossOp(OpTest):

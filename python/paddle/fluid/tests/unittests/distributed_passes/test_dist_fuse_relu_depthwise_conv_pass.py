@@ -21,11 +21,13 @@ from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
 
+paddle.enable_static()
+
 
 class ReluDepthwiseConvNet(nn.Layer):
 
     def __init__(self):
-        super(ReluDepthwiseConvNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 9, (3, 3))
         self.relu = nn.ReLU()
@@ -46,9 +48,15 @@ class TestFuseReluDepthwiseConvPass(DistPassTestBase):
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[3, 224, 224]):
+<<<<<<< HEAD
         image = paddle.static.data(shape=[batch_size] + image_shape,
                                    dtype='float32',
                                    name='image')
+=======
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         model = ReluDepthwiseConvNet()
         pred_out = model(image)

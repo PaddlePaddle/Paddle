@@ -18,16 +18,19 @@ import functools
 from contextlib import ContextDecorator
 
 from paddle.fluid import core
-from paddle.fluid.core import (_RecordEvent, TracerEventType)
+from paddle.fluid.core import _RecordEvent, TracerEventType
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
 
 _AllowedEventTypeList = [
-    TracerEventType.Dataloader, TracerEventType.ProfileStep,
-    TracerEventType.Forward, TracerEventType.Backward,
-    TracerEventType.Optimization, TracerEventType.PythonOp,
-    TracerEventType.PythonUserDefined
+    TracerEventType.Dataloader,
+    TracerEventType.ProfileStep,
+    TracerEventType.Forward,
+    TracerEventType.Backward,
+    TracerEventType.Optimization,
+    TracerEventType.PythonOp,
+    TracerEventType.PythonUserDefined,
 ]
 
 
@@ -36,8 +39,10 @@ class RecordEvent(ContextDecorator):
     Interface for recording a time range by user defined.
 
     Args:
-        name(str): Name of the record event
-        event_type(TracerEventType, optional): Optional, default value is TracerEventType.PythonUserDefined. It is reserved for internal purpose, and it is better not to specify this parameter. 
+        name (str): Name of the record event.
+        event_type (TracerEventType, optional): Optional, default value is
+            `TracerEventType.PythonUserDefined`. It is reserved for internal
+            purpose, and it is better not to specify this parameter.
 
     Examples:
         .. code-block:: python
@@ -59,13 +64,20 @@ class RecordEvent(ContextDecorator):
             record_event.end()
 
     **Note**:
-        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of RECORD.
+        RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
     """
 
     def __init__(
+<<<<<<< HEAD
             self,
             name: str,
             event_type: TracerEventType = TracerEventType.PythonUserDefined):
+=======
+        self,
+        name: str,
+        event_type: TracerEventType = TracerEventType.PythonUserDefined,
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.name = name
         self.event_type = event_type
         self.event = None
@@ -98,8 +110,12 @@ class RecordEvent(ContextDecorator):
         if not _is_profiler_used:
             return
         if self.event_type not in _AllowedEventTypeList:
-            warn("Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
-                  can be recorded.".format(*_AllowedEventTypeList))
+            warn(
+                "Only TracerEvent Type in [{}, {}, {}, {}, {}, {},{}]\
+                  can be recorded.".format(
+                    *_AllowedEventTypeList
+                )
+            )
             self.event = None
         else:
             self.event = _RecordEvent(self.name, self.event_type)
@@ -134,11 +150,10 @@ def load_profiler_result(filename: str):
         filename(str): Name of the exported protobuf file of profiler data.
 
     Returns:
-        ProfilerResult object, which stores profiling data.
+        ``ProfilerResult`` object, which stores profiling data.
 
     Examples:
         .. code-block:: python
-            :name: code-example1
 
             # required: gpu
             import paddle.profiler as profiler
@@ -155,7 +170,7 @@ def load_profiler_result(filename: str):
 
 
 def in_profiler_mode():
-    return _is_profiler_used == True
+    return _is_profiler_used
 
 
 def wrap_optimizers():
@@ -165,8 +180,14 @@ def wrap_optimizers():
         @functools.wraps(func)
         def warpper(*args, **kwargs):
             if in_profiler_mode():
+<<<<<<< HEAD
                 with RecordEvent('Optimization Step',
                                  event_type=TracerEventType.Optimization):
+=======
+                with RecordEvent(
+                    'Optimization Step', event_type=TracerEventType.Optimization
+                ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     return func(*args, **kwargs)
             else:
                 return func(*args, **kwargs)
@@ -174,12 +195,13 @@ def wrap_optimizers():
         return warpper
 
     global _has_optimizer_wrapped
-    if _has_optimizer_wrapped == True:
+    if _has_optimizer_wrapped:
         return
     import paddle.optimizer as optimizer
+
     for classname in optimizer.__all__:
         if classname != 'Optimizer':
             classobject = getattr(optimizer, classname)
-            if getattr(classobject, 'step', None) != None:
+            if getattr(classobject, 'step', None) is not None:
                 classobject.step = optimizer_warpper(classobject.step)
     _has_optimizer_wrapped = True

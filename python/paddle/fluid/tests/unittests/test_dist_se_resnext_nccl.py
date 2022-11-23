@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import os
@@ -33,11 +32,21 @@ class TestDistSeResneXtNCCL(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place("dist_se_resnext.py",
                                   delta=1e-5,
                                   check_error_log=True,
                                   log_name=flag_name)
+=======
+            self.check_with_place(
+                "dist_se_resnext.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDistSeResneXtNCCLMP(TestDistBase):
@@ -50,12 +59,23 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place("dist_se_resnext.py",
                                   delta=1e-5,
                                   check_error_log=True,
                                   need_envs={"NCCL_P2P_DISABLE": "1"},
                                   log_name=flag_name)
+=======
+            self.check_with_place(
+                "dist_se_resnext.py",
+                delta=1e-5,
+                check_error_log=True,
+                need_envs={"NCCL_P2P_DISABLE": "1"},
+                log_name=flag_name,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

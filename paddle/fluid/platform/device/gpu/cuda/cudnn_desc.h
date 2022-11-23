@@ -33,7 +33,6 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline cudnnDataType_t ToCudnnDataType(const T& t) {
@@ -41,12 +40,13 @@ inline cudnnDataType_t ToCudnnDataType(const T& t) {
   return ToCudnnDataType(type);
 }
 
-inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
-  std::vector<int> transformed_dims(dims.begin(), dims.end());
+template <typename T>
+inline std::vector<T> TransformDimOrder(const std::vector<T>& dims) {
+  std::vector<T> transformed_dims(dims.begin(), dims.end());
   if (dims.size() < 4) {
     return transformed_dims;
   }
-  int H, W, D, C;
+  T H, W, D, C;
   if (dims.size() == 4) {
     H = dims[1];
     W = dims[2];
@@ -141,7 +141,7 @@ class TensorDescriptor {
   }
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
-  void set(const Tensor& tensor, const int groups = 1) {
+  void set(const phi::DenseTensor& tensor, const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -177,7 +177,7 @@ class TensorDescriptor {
                                               transformed_dims.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+  void set(const phi::DenseTensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = phi::vectorize<int>(tensor.dims());
     auto dtype =
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
@@ -228,7 +228,11 @@ class FilterDescriptor {
                                             transformed_dims.data()));
   }
 
+<<<<<<< HEAD
   void set(const Tensor& tensor,
+=======
+  void set(const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
            const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());

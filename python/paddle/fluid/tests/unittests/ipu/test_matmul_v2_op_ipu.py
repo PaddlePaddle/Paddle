@@ -45,12 +45,21 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
         y = paddle.static.data(name=self.feed_list[1],
                                shape=self.feed_shape[1],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.matmul(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -149,7 +158,10 @@ class TestCase8(TestBase):
 
 
 class TestCase9(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {
             "transpose_y": True,
@@ -164,7 +176,10 @@ class TestCase9(TestBase):
 
 
 class TestCase10(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {
             "transpose_x": True,

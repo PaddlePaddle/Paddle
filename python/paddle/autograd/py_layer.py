@@ -21,7 +21,11 @@ from paddle.fluid import core
 __all__ = []
 
 
+<<<<<<< HEAD
 class LegacyPyLayerContext(object):
+=======
+class LegacyPyLayerContext:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -54,16 +58,16 @@ class LegacyPyLayerContext(object):
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
-        
-        .. note::
-            This API should be called at most once, and only inside `forward`. 
+
+        Note:
+            This API should be called at most once, and only inside `forward`.
 
         Args:
             tensors(list of Tensors): Tensors to be stored.
 
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -94,7 +98,7 @@ class LegacyPyLayerContext(object):
         Get the tensors stored by ``save_for_backward``.
 
         Returns:
-            list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
+            list of Tensors or None: If context contains tensors stored by `save_for_backward`,
             then return these tensors, otherwise return None.
 
         Examples:
@@ -133,8 +137,12 @@ def with_mateclass(meta, *bases):
     return type.__new__(impl, "impl", (), {})
 
 
+<<<<<<< HEAD
 class CPyLayer(object):
 
+=======
+class CPyLayer:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
@@ -147,7 +155,7 @@ class CPyLayer(object):
 
         Returns:
             tensors or other types : output of PyLayer.
-        
+
         Examples:
             .. code-block:: python
 
@@ -182,12 +190,18 @@ class CPyLayer(object):
 
 
 class PyLayerBackward(LegacyPyLayerContext):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
             with paddle.fluid.dygraph.no_grad():
-                if self._amp_state and 'enable' in self._amp_state and self._amp_state[
-                        'enable']:
+                if (
+                    self._amp_state
+                    and 'enable' in self._amp_state
+                    and self._amp_state['enable']
+                ):
                     with auto_cast(**args[0]._amp_state):
                         return self._forward_cls.backward(*args, **kwargs)
                 else:
@@ -199,10 +213,11 @@ class PyLayerBackward(LegacyPyLayerContext):
 class LayerMeta(type):
 
     def __init__(cls, name, bases, attrs):
-        cls._backward_function = type(name + '_backward', (PyLayerBackward, ),
-                                      {"_forward_cls": cls})
+        cls._backward_function = type(
+            name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
+        )
 
-        return super(LayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
@@ -210,15 +225,15 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
     Build a custom `Layer` by creating subclasses. Subclasses need to follow the following rules:
     1. Subclasses contain `forward` and `backward` function. Both forward and backward are @staticmethod.
     Their first argument should be a context and `None` can not be included in the returned result.
-    2. Input of backward contains a context as the first argument, and the rest arguments are the 
-    gradient of forward's output tensors. so the number of backward's input tensors equal to 
-    the number of forward output tensors. If you need the forward's inputs or outputs in `backward`, 
+    2. Input of backward contains a context as the first argument, and the rest arguments are the
+    gradient of forward's output tensors. so the number of backward's input tensors equal to
+    the number of forward output tensors. If you need the forward's inputs or outputs in `backward`,
     you can use `save_for_backward` to store the required tensors, and then use them in the backward.
     3. Output of backward function can only be `Tensor` or tuple/list of `Tensor`.
-    Output tensors of backward are the gradient of forward's input tensors, 
+    Output tensors of backward are the gradient of forward's input tensors,
     so the number of backward's output tensors equal to the number of forward input tensors.
     After building the custom Layer, run it through the `apply` method.
-    
+
 
     Examples:
         .. code-block:: python
@@ -259,8 +274,8 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
-        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as 
-        the first argument, followed by any number of arguments (tensors or other types). 
+        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as
+        the first argument, followed by any number of arguments (tensors or other types).
         `None` can not be included in the returned result.
 
         Args:
@@ -269,7 +284,7 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
         Returns:
             tensors or other types : output of PyLayer.
-        
+
         Examples:
             .. code-block:: python
 
@@ -292,14 +307,15 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
                         return grad
         """
         raise NotImplementedError(
-            "You must implement the forward function for PyLayer.")
+            "You must implement the forward function for PyLayer."
+        )
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
         """
-        This is a function to calculate the gradient. It is to be overloaded by subclasses. 
-        It must accept a object of `PyLayerContext` as the first argument, and the rest 
-        arguments are the gradient of forward's output tensors. Output tensors of backward 
+        This is a function to calculate the gradient. It is to be overloaded by subclasses.
+        It must accept a object of `PyLayerContext` as the first argument, and the rest
+        arguments are the gradient of forward's output tensors. Output tensors of backward
         are the gradient of forward's input tensors.
 
         Args:
@@ -308,7 +324,7 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
 
         Returns:
             Tensor or list of Tensors: The gradient of forward's input tensor(s).
-        
+
         Examples:
             .. code-block:: python
 
@@ -332,24 +348,29 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         """
 
         raise NotImplementedError(
-            "You must implement the backward function for PyLayer.")
+            "You must implement the backward function for PyLayer."
+        )
 
 
+<<<<<<< HEAD
 class EagerPyLayerContext(object):
 
+=======
+class EagerPyLayerContext:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
-        
-        .. note::
-            This API should be called at most once, and only inside `forward`. 
+
+        Note:
+            This API should be called at most once, and only inside `forward`.
 
         Args:
             tensors(list of Tensors): Tensors to be stored.
 
         Returns:
             None
-        
+
         Examples:
             .. code-block:: python
 
@@ -380,7 +401,7 @@ class EagerPyLayerContext(object):
         Get the tensors stored by ``save_for_backward``.
 
         Returns:
-            list of Tensors or None: If context contains tensors stored by `save_for_backward`, 
+            list of Tensors or None: If context contains tensors stored by `save_for_backward`,
             then return these tensors, otherwise return None.
 
         Examples:
@@ -407,13 +428,50 @@ class EagerPyLayerContext(object):
         """
         return self.container
 
-    def mark_dirty(self, *args):
-        self.dirty_tensors = args
+    def mark_not_inplace(self, *args):
+        """
+        Marks inputs as not inplace.
+        This should be called at most once, only from inside the `forward` method,
+        and all arguments should be Tensor inputs.
+
+        If the Tensor returned by `forward` method is the same as the Tensor input of forward,
+        and this Tensor is marked as not_inplace, then Paddle will help the user create a new Tensor as output.
+        Thereby preventing the auto grad information of the input Tensor from being overwritten.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                class Exp(paddle.autograd.PyLayer):
+                    @staticmethod
+                    def forward(ctx, x):
+                        ctx.mark_not_inplace(x)
+                        return x
+
+                    @staticmethod
+                    def backward(ctx, grad_output):
+                        out = grad_output.exp()
+                        return out
+
+                x = paddle.randn((1, 1))
+                x.stop_gradient = False
+                attn_layers = []
+                for idx in range(0, 2):
+                    attn_layers.append(Exp())
+
+                for step in range(0, 2):
+                    a = x
+                    for j in range(0,2):
+                        a = attn_layers[j].apply(x)
+                    a.backward()
+        """
+        self.not_inplace_tensors = args
 
     def mark_non_differentiable(self, *args):
         """
         Marks outputs as non-differentiable.
-        This should be called at most once, only from inside thethe `forward` method, 
+        This should be called at most once, only from inside the `forward` method,
         and all arguments should be tensor outputs.
 
         This will mark outputs as not requiring gradients, increasing the
@@ -475,7 +533,7 @@ class EagerPyLayerContext(object):
                 class Tanh(PyLayer):
                     @staticmethod
                     def forward(ctx, x):
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):
@@ -486,7 +544,7 @@ class EagerPyLayerContext(object):
                     @staticmethod
                     def forward(ctx, x):
                         ctx.set_materialize_grads(False)
-                        return x, x+x
+                        return x+x+x, x+x
 
                     @staticmethod
                     def backward(ctx, grad, grad2):
@@ -513,22 +571,27 @@ class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
 class EagerPyLayerMeta(type):
 
     def __init__(cls, name, bases, attrs):
-        cls._backward_function = type(name + '_backward',
-                                      (EagerPyLayerBackward, ),
-                                      {"_forward_cls": cls})
+        cls._backward_function = type(
+            name + '_backward', (EagerPyLayerBackward,), {"_forward_cls": cls}
+        )
 
-        return super(EagerPyLayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class EagerPyLayer(
+<<<<<<< HEAD
         with_mateclass(EagerPyLayerMeta, core.eager.PyLayer,
                        EagerPyLayerContext)):
 
+=======
+    with_mateclass(EagerPyLayerMeta, core.eager.PyLayer, EagerPyLayerContext)
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
-        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as 
-        the first argument, followed by any number of arguments (tensors or other types). 
+        It is to be overloaded by subclasses. It must accept a object of `PyLayerContext` as
+        the first argument, followed by any number of arguments (tensors or other types).
         `None` can not be included in the returned result.
 
         Args:
@@ -537,7 +600,7 @@ class EagerPyLayer(
 
         Returns:
             tensors or other types : output of PyLayer.
-        
+
         Examples:
             .. code-block:: python
 
@@ -560,14 +623,15 @@ class EagerPyLayer(
                         return grad
         """
         raise NotImplementedError(
-            "You must implement the forward function for PyLayer.")
+            "You must implement the forward function for PyLayer."
+        )
 
     @staticmethod
     def backward(ctx, *args):
         """
-        This is a function to calculate the gradient. It is to be overloaded by subclasses. 
-        It must accept a object of `PyLayerContext` as the first argument, and the rest 
-        arguments are the gradient of forward's output tensors. Output tensors of backward 
+        This is a function to calculate the gradient. It is to be overloaded by subclasses.
+        It must accept a object of `PyLayerContext` as the first argument, and the rest
+        arguments are the gradient of forward's output tensors. Output tensors of backward
         are the gradient of forward's input tensors.
 
         Args:
@@ -576,7 +640,7 @@ class EagerPyLayer(
 
         Returns:
             Tensor or list of Tensors: The gradient of forward's input tensor(s).
-        
+
         Examples:
             .. code-block:: python
 
@@ -600,7 +664,8 @@ class EagerPyLayer(
         """
 
         raise NotImplementedError(
-            "You must implement the backward function for PyLayer.")
+            "You must implement the backward function for PyLayer."
+        )
 
 
 def once_differentiable(backward):

@@ -11,18 +11,25 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fused_softmax_mask_op.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/binary.h"
+
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class SoftmaxMaskFuseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SoftmaxMaskFuse");
@@ -47,6 +54,8 @@ class SoftmaxMaskFuseOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dims);
     ctx->ShareLoD("X", "Out");
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class SoftmaxMaskFuseOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -80,6 +89,7 @@ By doing this fusion, we can optimize the training by
 class SoftmaxMaskFuseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
@@ -91,6 +101,8 @@ class SoftmaxMaskFuseOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 template <typename T>
@@ -111,12 +123,29 @@ class SoftmaxMaskFuseGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(fused_softmax_mask,
+                            SoftmaxMaskFuseInferShapeFunctor,
+                            PD_INFER_META(phi::SoftmaxMaskFuseInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(fused_softmax_mask_grad,
+                            SoftmaxMaskFuseGradInferShapeFunctor,
+                            PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OPERATOR(fused_softmax_mask,
                   ops::SoftmaxMaskFuseOp,
                   ops::SoftmaxMaskFuseOpMaker,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::framework::OpDesc>,
+<<<<<<< HEAD
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(fused_softmax_mask_grad, ops::SoftmaxMaskFuseOpGrad);
 REGISTER_OP_CPU_KERNEL(fused_softmax_mask,
                        ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, float>,
                        ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, double>);
+=======
+                  ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>,
+                  SoftmaxMaskFuseInferShapeFunctor);
+REGISTER_OPERATOR(fused_softmax_mask_grad,
+                  ops::SoftmaxMaskFuseOpGrad,
+                  SoftmaxMaskFuseGradInferShapeFunctor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

@@ -34,27 +34,45 @@ struct DivScalarFunctor {
 };
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivCooScalarKernel(const Context& dev_ctx,
+=======
+void DivScalarCooKernel(const Context& dev_ctx,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                         const SparseCooTensor& x,
                         float scalar,
                         SparseCooTensor* out) {
   EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
 
+<<<<<<< HEAD
   std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
   std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+=======
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivCsrScalarKernel(const Context& dev_ctx,
+=======
+void DivScalarCsrKernel(const Context& dev_ctx,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                         const SparseCsrTensor& x,
                         float scalar,
                         SparseCsrTensor* out) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
 
+<<<<<<< HEAD
   std::vector<const DenseTensor*> ins = {&(x.non_zero_elements())};
   std::vector<DenseTensor*> outs = {out->mutable_non_zero_elements()};
+=======
+  std::vector<const DenseTensor*> ins = {&(x.values())};
+  std::vector<DenseTensor*> outs = {out->mutable_values()};
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DivScalarFunctor<T> func(static_cast<T>(scalar));
   funcs::ElementwiseKernel<T, DivScalarFunctor<T>>(dev_ctx, ins, &outs, func);
 }
@@ -99,6 +117,7 @@ PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(abs, Abs)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(expm1, Expm1)
+<<<<<<< HEAD
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
 PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
 
@@ -106,15 +125,32 @@ PD_REGISTER_KERNEL(divide_coo_scalar,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DivCooScalarKernel,
+=======
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6_raw, Relu6Raw)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(relu6, Relu6)
+PD_REGISTER_SPARSE_UNARY_GPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(divide_scalar_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivScalarCooKernel,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(divide_csr_scalar,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::DivCsrScalarKernel,
+=======
+PD_REGISTER_KERNEL(divide_scalar_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivScalarCsrKernel,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);

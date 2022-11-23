@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -41,6 +37,7 @@ class TestGcdAPI(unittest.TestCase):
             y = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
             out = paddle.gcd(x, y)
 
+<<<<<<< HEAD
             place = fluid.CUDAPlace(
                 0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -52,14 +49,31 @@ class TestGcdAPI(unittest.TestCase):
                           fetch_list=[out])
             self.assertTrue((np.array(res[0]) == np.gcd(self.x_np,
                                                         self.y_np)).all())
+=======
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+            exe = fluid.Executor(place)
+            res = exe.run(
+                fluid.default_main_program(),
+                feed={'input1': self.x_np, 'input2': self.y_np},
+                fetch_list=[out],
+            )
+            self.assertTrue(
+                (np.array(res[0]) == np.gcd(self.x_np, self.y_np)).all()
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_dygraph(self):
         paddle.disable_static()
         x = paddle.to_tensor(self.x_np)
         y = paddle.to_tensor(self.y_np)
         result = paddle.gcd(x, y)
-        self.assertEqual(
-            np.allclose(np.gcd(self.x_np, self.y_np), result.numpy()), True)
+        np.testing.assert_allclose(
+            np.gcd(self.x_np, self.y_np), result.numpy(), rtol=1e-05
+        )
 
         paddle.enable_static()
 

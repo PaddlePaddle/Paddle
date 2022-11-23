@@ -12,24 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-import time
-import random
-import tempfile
-import shutil
-import numpy as np
 
 import paddle
 import paddle.vision.transforms as T
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
 from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 # Accelerate unittest
@@ -46,12 +39,19 @@ class TestReduceLROnPlateau(unittest.TestCase):
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(learning_rate=0.001,
                                       parameters=net.parameters())
+=======
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(patience=1,
                                                        verbose=1,
                                                        cooldown=1)
@@ -62,6 +62,20 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   save_freq=10,
                   epochs=10,
                   callbacks=[callbacks])
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(
+            patience=1, verbose=1, cooldown=1
+        )
+        model.fit(
+            train_dataset,
+            val_dataset,
+            batch_size=8,
+            log_freq=1,
+            save_freq=10,
+            epochs=10,
+            callbacks=[callbacks],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_reduce_lr_on_plateau(self):
         with _test_eager_guard():
@@ -78,12 +92,19 @@ class TestReduceLROnPlateau(unittest.TestCase):
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(learning_rate=0.001,
                                       parameters=net.parameters())
+=======
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=net.parameters()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='miou',
                                                        patience=3,
                                                        verbose=1)
@@ -94,13 +115,30 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   save_freq=10,
                   epochs=1,
                   callbacks=[callbacks])
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(
+            monitor='miou', patience=3, verbose=1
+        )
+        model.fit(
+            train_dataset,
+            val_dataset,
+            batch_size=8,
+            log_freq=1,
+            save_freq=10,
+            epochs=1,
+            callbacks=[callbacks],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         optim = paddle.optimizer.Adam(
-            learning_rate=paddle.optimizer.lr.PiecewiseDecay([0.001, 0.0001],
-                                                             [5, 10]),
-            parameters=net.parameters())
+            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
+                [0.001, 0.0001], [5, 10]
+            ),
+            parameters=net.parameters(),
+        )
 
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='acc',
                                                        mode='max',
                                                        patience=3,
@@ -113,6 +151,20 @@ class TestReduceLROnPlateau(unittest.TestCase):
                   save_freq=10,
                   epochs=3,
                   callbacks=[callbacks])
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(
+            monitor='acc', mode='max', patience=3, verbose=1, cooldown=1
+        )
+        model.fit(
+            train_dataset,
+            val_dataset,
+            batch_size=8,
+            log_freq=1,
+            save_freq=10,
+            epochs=3,
+            callbacks=[callbacks],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_warn_or_error(self):
         with _test_eager_guard():

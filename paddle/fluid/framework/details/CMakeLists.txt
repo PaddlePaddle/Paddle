@@ -54,6 +54,12 @@ if(WITH_PSCORE)
   set(DISTRIBUTE_COMPILE_FLAGS
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
   )
+<<<<<<< HEAD
+=======
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   set_source_files_properties(
     reduce_op_handle.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   set_source_files_properties(
@@ -319,6 +325,7 @@ cc_test(
        memory
        device_context
        broadcast_op_handle)
+<<<<<<< HEAD
 cc_test(
   gather_op_test
   SRCS gather_op_handle_test.cc
@@ -329,6 +336,20 @@ cc_test(
        memory
        device_context
        gather_op_handle)
+=======
+cc_test_old(
+  gather_op_test
+  SRCS
+  gather_op_handle_test.cc
+  DEPS
+  var_handle
+  op_handle_base
+  scope
+  ddim
+  memory
+  device_context
+  gather_op_handle)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 cc_library(
   scope_buffered_monitor
@@ -382,7 +403,12 @@ set(IR_PASS_DEPS
     runtime_context_cache_pass
     graph_to_program_pass
     fix_op_run_order_pass
+<<<<<<< HEAD
     fuse_gemm_epilogue_pass)
+=======
+    fuse_gemm_epilogue_pass
+    delete_dropout_op_pass)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)

@@ -12,26 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestConvActMkldnnFusePass(PassAutoScanTest):
-    """
+    r"""
     x_var   f_var(persistable)
       \       /
-        conv2d 
+        conv2d
           |
-      conv2d_var    
+      conv2d_var
           |
          act
           |
@@ -54,12 +48,36 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
         filter_shape = prog_config.weights["filter"].shape
         input_shape = prog_config.inputs["input_x"].shape
         if padding_algorithm == "VALID":
-            if ((input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-            ((input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+            if (
+                (input_shape[2] - (dilations[0] * (filter_shape[2] - 1) + 1))
+                / strides[0]
+                + 1
+            ) <= 1 or (
+                (input_shape[3] - (dilations[1] * (filter_shape[3] - 1) + 1))
+                / strides[1]
+                + 1
+            ) <= 1:
                 return False
         if padding_algorithm == "EXPLICIT":
-            if ((input_shape[2] + paddings[0] + paddings[1] - (dilations[0] * (filter_shape[2] - 1) + 1)) / strides[0] + 1) <= 1 or \
-                ((input_shape[3] + paddings[2] + paddings[3] - (dilations[1] * (filter_shape[3] - 1) + 1)) / strides[1] + 1) <= 1:
+            if (
+                (
+                    input_shape[2]
+                    + paddings[0]
+                    + paddings[1]
+                    - (dilations[0] * (filter_shape[2] - 1) + 1)
+                )
+                / strides[0]
+                + 1
+            ) <= 1 or (
+                (
+                    input_shape[3]
+                    + paddings[2]
+                    + paddings[3]
+                    - (dilations[1] * (filter_shape[3] - 1) + 1)
+                )
+                / strides[1]
+                + 1
+            ) <= 1:
                 return False
         if data_format == "NCHW":
             if input_shape[1] != filter_shape[1] * groups:
@@ -76,9 +94,16 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of conv2d
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=5, max_value=100),
                      min_size=4,
                      max_size=4))
+=======
+            st.lists(
+                st.integers(min_value=5, max_value=100), min_size=4, max_size=4
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x_shape[1] = draw(st.integers(min_value=5, max_value=10))
 
         # 2. Generate legal attr:data_format of conv2d
@@ -86,9 +111,16 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 3. Generate legal shape of input:Y of conv2d
         f_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=5),
                      min_size=4,
                      max_size=4))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=5), min_size=4, max_size=4
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if data_format == "NCHW":
             f_shape[1] = x_shape[1]
         else:
@@ -96,35 +128,65 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
 
         # 4. Generate legal attr:strides of conv2d
         strides = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=5),
                      min_size=2,
                      max_size=2))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=5), min_size=2, max_size=2
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 5. Generate legal attr:padding_algorithm of conv2d
         padding_algorithm = draw(st.sampled_from(["EXPLICIT", "SAME", "VALID"]))
 
         # 6. Generate legal attr:padding of conv2d
         padding = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=5),
                      min_size=4,
                      max_size=4))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=5), min_size=4, max_size=4
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 7. Generate legal attr:groups of conv2d
         groups = draw(st.integers(min_value=1, max_value=3))
 
         # 8. Generate legal attr:dilations of conv2d
         dilations = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=5),
                      min_size=2,
                      max_size=2))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=5), min_size=2, max_size=2
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 9. Generate legal input:ResidualData of conv2d
         res_shape = []
         if draw(st.booleans()):
             res_shape = draw(
+<<<<<<< HEAD
                 st.lists(st.integers(min_value=1, max_value=100),
                          min_size=4,
                          max_size=4))
+=======
+                st.lists(
+                    st.integers(min_value=1, max_value=100),
+                    min_size=4,
+                    max_size=4,
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 10. Generate legal shape of input:bias of conv2d
         conv_bias_shape = []
@@ -141,22 +203,24 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
             }
             weights = {
                 "filter": TensorConfig(shape=f_shape),
-                "conv_bias": TensorConfig(shape=conv_bias_shape)
+                "conv_bias": TensorConfig(shape=conv_bias_shape),
             }
             use_mkldnn = True
         else:
             inputs = {
                 "Input": ["input_x"],
                 "Filter": ["filter"],
-                "ResidualData": ["residualdata"]
+                "ResidualData": ["residualdata"],
             }
             weights = {"filter": TensorConfig(shape=f_shape)}
             use_mkldnn = False
 
         # 11. Generate legal act type of conv2d
         act_type = draw(
-            st.sampled_from(["relu", "leaky_relu", "relu6", "swish"]))
+            st.sampled_from(["relu", "leaky_relu", "relu6", "swish"])
+        )
 
+<<<<<<< HEAD
         conv2d_op = OpConfig("conv2d",
                              inputs=inputs,
                              outputs={"Output": ["conv2d_out"]},
@@ -167,12 +231,27 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                              dilations=dilations,
                              data_format=data_format,
                              use_mkldnn=True)
+=======
+        conv2d_op = OpConfig(
+            "conv2d",
+            inputs=inputs,
+            outputs={"Output": ["conv2d_out"]},
+            strides=strides,
+            padding_algorithm=padding_algorithm,
+            paddings=padding,
+            groups=groups,
+            dilations=dilations,
+            data_format=data_format,
+            use_mkldnn=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 11. Generate legal attr of act
         act_op = None
         self.passes = ["conv_activation_mkldnn_fuse_pass"]
         if act_type == "relu6":
             threshold = draw(st.floats(min_value=1.0, max_value=10.0))
+<<<<<<< HEAD
             act_op = OpConfig("relu6",
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["relu_out"]},
@@ -193,6 +272,36 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
                               inputs={"X": ["conv2d_out"]},
                               outputs={"Out": ["swish_out"]},
                               beta=beta)
+=======
+            act_op = OpConfig(
+                "relu6",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]},
+                threshold=threshold,
+            )
+        elif act_type == "leaky_relu":
+            alpha = draw(st.floats(min_value=0.1, max_value=1.0))
+            act_op = OpConfig(
+                "leaky_relu",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]},
+                alpha=alpha,
+            )
+        elif act_type == "relu":
+            act_op = OpConfig(
+                "relu",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["relu_out"]},
+            )
+        elif act_type == "swish":
+            beta = draw(st.floats(min_value=0.1, max_value=1.0))
+            act_op = OpConfig(
+                "swish",
+                inputs={"X": ["conv2d_out"]},
+                outputs={"Out": ["swish_out"]},
+                beta=beta,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         ops = [conv2d_op, act_op]
 
@@ -201,7 +310,7 @@ class TestConvActMkldnnFusePass(PassAutoScanTest):
             weights=weights,
             inputs={
                 "input_x": TensorConfig(shape=x_shape),
-                "residualdata": TensorConfig(shape=res_shape)
+                "residualdata": TensorConfig(shape=res_shape),
             },
             outputs=ops[-1].outputs["Out"],
         )

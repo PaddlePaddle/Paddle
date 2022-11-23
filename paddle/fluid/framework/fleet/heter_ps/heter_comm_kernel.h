@@ -72,9 +72,15 @@ struct DynamicGradMerger {
   template <typename GPUAccessor>
   __device__ __forceinline__ void update_embedx(float* output,
                                                 const float* input,
+<<<<<<< HEAD
                                                 const int embedx_idx,
                                                 GPUAccessor& fv_accessor) {
     if (embedx_idx < int(output[fv_accessor.common_push_value.MfDimIndex()])) {
+=======
+                                                size_t embedx_idx,
+                                                GPUAccessor& fv_accessor) {
+    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] =
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
@@ -83,9 +89,15 @@ struct DynamicGradMerger {
   template <typename GPUAccessor>
   __device__ __forceinline__ void merge_embedx(float* output,
                                                const float* input,
+<<<<<<< HEAD
                                                const int embedx_idx,
                                                GPUAccessor& fv_accessor) {
     if (embedx_idx < int(output[fv_accessor.common_push_value.MfDimIndex()])) {
+=======
+                                               size_t embedx_idx,
+                                               GPUAccessor& fv_accessor) {
+    if (embedx_idx < output[fv_accessor.common_push_value.MfDimIndex()]) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       output[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx] +=
           input[fv_accessor.common_push_value.EmbedxGIndex() + embedx_idx];
     }
@@ -243,6 +255,7 @@ class HeterCommKernel {
                         const uint32_t* d_merged_cnts,
                         uint32_t* d_restore_idx,
                         const StreamType& stream);
+<<<<<<< HEAD
 
   template <typename KeyType, typename StreamType>
   void unpack_merged_vals(size_t n,
@@ -322,6 +335,17 @@ class HeterCommKernel {
                          const size_t& embedx_dim,
                          const float& max_bound,
                          const StreamType& stream);
+=======
+
+  template <typename KeyType, typename StreamType>
+  void unpack_merged_vals(size_t n,
+                          const KeyType* d_keys,
+                          const void* d_merged_vals,
+                          const uint32_t* d_restore_idx,
+                          void* d_vals,
+                          size_t val_size,
+                          const StreamType& stream);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
  private:
   int block_size_{256};

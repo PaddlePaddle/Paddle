@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import contextlib
 import unittest
 import paddle
 from paddle.fluid import core
@@ -24,16 +23,18 @@ os.environ['FLAGS_new_einsum'] = "1"
 
 
 def error_trans(func, *args, **kargs):
-    """ 
-    transport C++ exception into Python exception. 
+    """
+    transport C++ exception into Python exception.
     because einsum_v2 raise different exception with einsum_v1.
     """
     try:
         out = func(*args, **kargs)
     except ValueError as e:
         if "Same label have different shapes" in str(e):
-            raise AssertionError("Invalid operands: label i "
-                                 "corresponds to non-broadcastable dimensions.")
+            raise AssertionError(
+                "Invalid operands: label i "
+                "corresponds to non-broadcastable dimensions."
+            )
 
 
 class TestErrors(unittest.TestCase):
@@ -41,27 +42,16 @@ class TestErrors(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_diagonalize_errors(self):
-        a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
-        a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
-            paddle.einsum('...ii->...i', a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
-            paddle.einsum('i...i', a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
-            paddle.einsum('i...i->i...', a)
-
     def test_param_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
         with self.assertRaisesRegex(
-                AssertionError,
-            ("Required at least one operand in Einsum API, but received 0 ")):
+            AssertionError,
+            ("Required at least one operand in Einsum API, but received 0 "),
+        ):
             paddle.einsum('ijk')
         with self.assertRaisesRegex(
+<<<<<<< HEAD
                 AssertionError,
             ('Invalid equation: multiple `->` were found.')):
             paddle.einsum('i -> j -> k', a)
@@ -112,6 +102,75 @@ class TestErrors(unittest.TestCase):
                 AssertionError,
             ("Invalid operands: label i "
              "corresponds to non-broadcastable dimensions.")):
+=======
+            AssertionError, ('Invalid equation: multiple `->` were found.')
+        ):
+            paddle.einsum('i -> j -> k', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
+                "Invalid equation: the number of operands is 2, "
+                "but found 3 segments in the label equation."
+            ),
+        ):
+            paddle.einsum('i,j,k', a, a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
+                "Invalid equation: the number of operands is 2, "
+                "but found 1 segments in the label equation."
+            ),
+        ):
+            paddle.einsum('ij -> k', a, a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
+                "Invalid equation: the number of operands is 1, "
+                "but found 2 segments in the label equation."
+            ),
+        ):
+            paddle.einsum('i, -> k', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: the label string '' misses dimensions."),
+        ):
+            paddle.einsum('->', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: the label string 'i' misses dimensions."),
+        ):
+            paddle.einsum('i', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
+                "Invalid equation: _ is not a valid label, "
+                "which should be letters."
+            ),
+        ):
+            paddle.einsum('i_', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: `.` is found outside of an ellipsis."),
+        ):
+            paddle.einsum('i..j', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: `.` is found outside of an ellipsis."),
+        ):
+            paddle.einsum('...k...', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: missing ellipsis in output labels."),
+        ):
+            paddle.einsum('i...->i', a)
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
+                "Invalid operands: label i "
+                "corresponds to non-broadcastable dimensions."
+            ),
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             error_trans(paddle.einsum, 'ij...,ji...', a, a)
 
 
@@ -137,6 +196,13 @@ class TestEinsum(unittest.TestCase):
             "I": np.random.rand(2, 2),
             "J": np.random.rand(1, 3, 5),
             "K": np.random.rand(1, 2, 3, 4),
+            "X": np.random.rand(5, 5),
+            "L": np.random.rand(5, 10, 5),
+            "M": np.random.rand(5, 3, 2, 1, 4, 5),
+            "N": np.random.rand(5, 5, 5),
+            "O": np.random.rand(3, 5, 7, 3),
+            "P": np.random.rand(5, 7, 5, 7),
+            "S": np.random.rand(4, 3, 4, 4),
         }
 
     def _get_place(self, force_to_use_cpu=False):
@@ -147,12 +213,24 @@ class TestEinsum(unittest.TestCase):
                 return core.CUDAPlace(0)
             return core.CPUPlace()
 
-    def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
+    def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
+<<<<<<< HEAD
         self.assertTrue(
             np.allclose(actual, expect, rtol=rtol, atol=atol),
             error_msg.format(paddle.get_device(), expect, actual,
                              self.__class__.__name__))
+=======
+        np.testing.assert_allclose(
+            actual,
+            expect,
+            rtol=rtol,
+            atol=atol,
+            err_msg=error_msg.format(
+                paddle.get_device(), expect, actual, self.__class__.__name__
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def setUp(self):
         self.sample = {"paradigm": "i->", "data": ["x"]}
@@ -165,7 +243,8 @@ class TestEinsum(unittest.TestCase):
         equation = self.sample["paradigm"]
 
         with paddle.fluid.dygraph.guard(
-                self._get_place(force_to_use_cpu=False)):
+            self._get_place(force_to_use_cpu=False)
+        ):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
@@ -176,16 +255,64 @@ class TestEinsum(unittest.TestCase):
             self.check_output_equal(result.numpy(), expected_result)
 
 
+<<<<<<< HEAD
 class TestEinsumVectorDot(TestEinsum):
 
+=======
+class TestEinsumTraceDiag1(TestEinsum):
     def setUp(self):
-        self.sample = {"paradigm": "i,i->", "data": ["x", "x"]}
+        self.sample = {"paradigm": "ii->", "data": ["X"]}
 
 
+class TestEinsumTraceDiag2(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "iji->j", "data": ["L"]}
+
+
+class TestEinsumTraceDiag3(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->...", "data": ["M"]}
+
+
+class TestEinsumTraceDiag4(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "a...a->a...", "data": ["M"]}
+
+
+class TestEinsumTraceDiag5(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "aaa->a", "data": ["N"]}
+
+
+# Numpy don't support i->ii, but paddle.einsum support.
+# class TestEinsumTraceDiag6(TestEinsum):
+# def setUp(self):
+# self.sample = {"paradigm": "i->iii", "data": ["x"]}
+
+# class TestEinsumTraceDiag7(TestEinsum):
+# def setUp(self):
+# self.sample = {"paradigm": "i...->i...i", "data": ["S"]}
+
+
+class TestEinsumTraceDiag2Ops(TestEinsum):
+    def setUp(self):
+        self.sample = {"paradigm": "ijki,jkjk->ik", "data": ["O", "P"]}
+
+
+class TestEinsumIdentity(TestEinsum):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+    def setUp(self):
+        self.sample = {"paradigm": "...->...", "data": ["N"]}
+
+
+<<<<<<< HEAD
 class TestEinsumVectorMul(TestEinsum):
 
+=======
+class TestEinsumElementwiseProduct(TestEinsum):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
-        self.sample = {"paradigm": "i,i->i", "data": ["x", "x"]}
+        self.sample = {"paradigm": "...,...->...", "data": ["N", "N"]}
 
 
 class TestEinsumVectorOuter(TestEinsum):
@@ -345,17 +472,30 @@ class TestNumpyTests(unittest.TestCase):
                 return core.CUDAPlace(0)
             return core.CPUPlace()
 
-    def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
+    def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
+<<<<<<< HEAD
         self.assertTrue(
             np.allclose(actual, expect, rtol=rtol, atol=atol),
             error_msg.format(paddle.get_device(), expect, actual,
                              self.__class__.__name__))
+=======
+        np.testing.assert_allclose(
+            actual,
+            expect,
+            rtol=rtol,
+            atol=atol,
+            err_msg=error_msg.format(
+                paddle.get_device(), expect, actual, self.__class__.__name__
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
         with paddle.fluid.dygraph.guard(
-                self._get_place(force_to_use_cpu=False)):
+            self._get_place(force_to_use_cpu=False)
+        ):
             pd_operands = [paddle.to_tensor(op) for op in ops]
             actual = paddle.einsum(eqn, *pd_operands)
             self.check_output_equal(actual.numpy(), expect)
@@ -426,36 +566,11 @@ class TestNumpyTests(unittest.TestCase):
             self.check_output("...,...", a, a)
             self.check_output("i,i", a, a)
 
-        # TODO(@xiongkun): explict broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        #p = np.ones((10, 2)).astype('float')
-        #q = np.ones((1, 2)).astype('float')
-        #self.check_output('ij,ij->j', p, q)
-
-        # TODO(@xiongkun): explict-label-broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        #x = np.array([2., 3.]).astype('float')
-        #y = np.array([4.]).astype('float')
-        #self.check_output("i, i", x, y)
-
-        # TODO(@xiongkun): explict-label-broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        #p = np.ones((1, 5)) / 2
-        #q = np.ones((5, 5)) / 2
-        #self.check_output("...ij,...jk->...ik", p, p)
-        #self.check_output("...ij,...jk->...ik", p, q)
-
         x = np.eye(2).astype('float')
         y = np.ones(2).astype('float')
         self.check_output("ji,i->", x, y)
         self.check_output("i,ij->", y, x)
         self.check_output("ij,i->", x, y)
-
-    def test_large_nops(self):
-        pass
-        # TODO(@xiongkun): explict broadcast in EinsumOp is not supported, it's not recommend to use einsum like this.
-        #a = np.arange(4 * 3 * 1 * 4).reshape(4, 3, 1, 4).astype('float')
-        #self.check_output('a...b,b...c,c...d', a, a, a)
-        #self.check_output('a...b,b...c,c...a', a, a, a)
-        #self.check_output('a...b,b...c,c...a', a, a, a)
-        #self.check_output('...ab,...ba,...ab,...ab', a, a, a, a)
 
     def test_static_graph(self):
         paddle.enable_static()
@@ -467,6 +582,7 @@ class TestNumpyTests(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
+<<<<<<< HEAD
             a = paddle.static.data(name='a',
                                    shape=[3, None, None, None],
                                    dtype='float')
@@ -482,6 +598,23 @@ class TestNumpyTests(unittest.TestCase):
             e = paddle.static.data(name='e',
                                    shape=[None, 2, None],
                                    dtype='float')
+=======
+            a = paddle.static.data(
+                name='a', shape=[3, None, None, None], dtype='float'
+            )
+            b = paddle.static.data(
+                name='b', shape=[2, None, None, None], dtype='float'
+            )
+            c = paddle.static.data(
+                name='c', shape=[None, None, 2, None], dtype='float'
+            )
+            d = paddle.static.data(
+                name='d', shape=[None, None, 5], dtype='float'
+            )
+            e = paddle.static.data(
+                name='e', shape=[None, 2, None], dtype='float'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             outs = []
             outs.append(paddle.einsum("ibnd,jbnd->bnij", a, b))
@@ -523,6 +656,14 @@ class TestStaticGraphShape(unittest.TestCase):
         self.assertEqual(C.shape, (-1, 384))
 
 
+<<<<<<< HEAD
+=======
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 class TestBF16(unittest.TestCase):
     """
     EinsumOp support bfloat16 type, add unittest here for the correctness.
@@ -530,15 +671,25 @@ class TestBF16(unittest.TestCase):
 
     def test_shape(self):
         cuda_major = paddle.version.cuda().split('.')[0].strip()
+<<<<<<< HEAD
         if paddle.is_compiled_with_cuda() and int(cuda_major) >= 11:
             """ MatmulKernel support bfloat16 only if cuda_major > 11.0.
             """
+=======
+        if int(cuda_major) >= 11:
+            """MatmulKernel support bfloat16 only if cuda_major > 11.0."""
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             A = paddle.to_tensor(np.array([1.0, 2.0])).astype(paddle.bfloat16)
             A = A.cuda()
             B = paddle.to_tensor(np.array([2.0, 3.0])).astype(paddle.bfloat16)
             B = B.cuda()
             C = paddle.einsum('i,i->', A, B)
+<<<<<<< HEAD
             self.assertEqual(C.item(), 8.0)
+=======
+            D = paddle.to_tensor(8.0).astype(paddle.bfloat16)
+            self.assertEqual(C.item(), D.item())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestComplex(unittest.TestCase):
@@ -555,5 +706,96 @@ class TestComplex(unittest.TestCase):
         c = paddle.einsum('xy,yz->xz', a, b)
 
 
+<<<<<<< HEAD
+=======
+class TestSimpleUndiagonal(unittest.TestCase):
+    """
+    EinsumOp support undiagonalize.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(np.array([1.0, 2.0]))
+        A_expect = paddle.to_tensor([[1.0, 0.0], [0.0, 2.0]])
+        A_actual = paddle.einsum('i->ii', A)
+        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
+
+
+class TestSimpleUndiagonal2(unittest.TestCase):
+    """
+    EinsumOp support undiagonalize.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(np.array([1.0, 2.0]))
+        B = paddle.to_tensor(np.array([1.0, 1.0]))
+        A_expect = paddle.to_tensor([[2.0, 0.0], [0.0, 4.0]])
+        A_actual = paddle.einsum('i,j->ii', A, B)
+        assert np.array_equal(A_expect.numpy(), A_actual.numpy())
+
+
+class TestSimpleComplexGrad(unittest.TestCase):
+    """
+    EinsumOp support complex grad. but op_test don't support numeric grad for complex dtype.
+    """
+
+    def test_shape(self):
+        paddle.disable_static()
+        A = paddle.to_tensor(
+            [
+                [
+                    [-1.08644637 + 1.30794563j],
+                    [-0.89606513 + 1.84546043j],
+                    [-0.30629937 + 0.82911495j],
+                ],
+                [
+                    [-1.33993366 - 0.02329881j],
+                    [-1.20658558 - 0.20856395j],
+                    [-0.64172681 - 0.91661975j],
+                ],
+            ]
+        )
+
+        B = paddle.to_tensor(
+            [
+                [[-1.07474258 + 0.39477287j], [-0.08614349 - 0.38770082j]],
+                [[1.17583854 + 0.58840176j], [-1.63509173 - 1.43329882j]],
+                [[1.228194 - 0.32357468j], [1.07638625 + 1.25298469j]],
+            ]
+        )
+
+        dOut = paddle.to_tensor(
+            [
+                [[-0.73074259 - 0.1632133j], [1.42848507 - 0.96410727j]],
+                [[0.94465389 - 0.34264733j], [-0.26400278 + 0.04890404j]],
+            ]
+        )
+
+        d_expect = paddle.to_tensor(
+            [
+                [
+                    [0.971658 + 1.100766j],
+                    [-1.909121 + 3.861908j],
+                    [-0.515092 - 3.264529j],
+                ],
+                [
+                    [-1.146746 - 0.111233j],
+                    [1.270721 - 1.417091j],
+                    [1.048197 + 0.268260j],
+                ],
+            ]
+        )
+
+        A.stop_gradient = False
+        B.stop_gradient = False
+        Out = paddle.einsum('iox,ojx->ijx', A, B)
+        dA = paddle.grad(Out, A, dOut)[0]
+        np.testing.assert_allclose(
+            dA.numpy(), d_expect.numpy(), rtol=1e-6, atol=0
+        )
+
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if __name__ == "__main__":
     unittest.main()

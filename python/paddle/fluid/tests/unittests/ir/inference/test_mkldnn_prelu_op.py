@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import MkldnnAutoScanTest, SkipReasons
+from auto_scan_test import MkldnnAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
+from hypothesis import given
 import hypothesis.strategies as st
 
 
@@ -29,8 +26,15 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # if mode is channel, and in_shape is 1 rank
+<<<<<<< HEAD
         if len(program_config.inputs['input_data'].shape
                ) == 1 and program_config.ops[0].attrs['mode'] == 'channel':
+=======
+        if (
+            len(program_config.inputs['input_data'].shape) == 1
+            and program_config.ops[0].attrs['mode'] == 'channel'
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             return False
         return True
 
@@ -48,16 +52,19 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                     return np.zeros((1)).astype(np.float32)
                 if kwargs['data_format'] == 'NCHW':
                     return np.random.random(kwargs['in_shape'][1]).astype(
-                        np.float32)
+                        np.float32
+                    )
                 else:
                     return np.random.random(kwargs['in_shape'][-1]).astype(
-                        np.float32)
+                        np.float32
+                    )
             else:
                 if len(kwargs['in_shape']) <= 1:
                     # not valid case, just return 0
                     return np.zeros((1)).astype(np.float32)
                 return np.random.random(kwargs['in_shape']).astype(np.float32)
 
+<<<<<<< HEAD
         prelu_op = OpConfig(type="prelu",
                             inputs={
                                 "X": ["input_data"],
@@ -68,18 +75,32 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                                 "mode": kwargs['mode'],
                                 "data_format": kwargs['data_format']
                             })
+=======
+        prelu_op = OpConfig(
+            type="prelu",
+            inputs={"X": ["input_data"], "Alpha": ["alpha_weight"]},
+            outputs={"Out": ["output_data"]},
+            attrs={
+                "mode": kwargs['mode'],
+                "data_format": kwargs['data_format'],
+            },
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         program_config = ProgramConfig(
             ops=[prelu_op],
             weights={
-                "alpha_weight":
-                TensorConfig(data_gen=partial(generate_alpha, *args, **kwargs))
+                "alpha_weight": TensorConfig(
+                    data_gen=partial(generate_alpha, *args, **kwargs)
+                )
             },
             inputs={
-                "input_data":
-                TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
@@ -90,11 +111,21 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
     def add_skip_pass_case(self):
         pass
 
+<<<<<<< HEAD
     @given(mode=st.sampled_from(['all', 'channel', 'element']),
            data_format=st.sampled_from(['NCHW', 'NHWC']),
            in_shape=st.lists(st.integers(min_value=1, max_value=32),
                              min_size=1,
                              max_size=4))
+=======
+    @given(
+        mode=st.sampled_from(['all', 'channel', 'element']),
+        data_format=st.sampled_from(['NCHW', 'NHWC']),
+        in_shape=st.lists(
+            st.integers(min_value=1, max_value=32), min_size=1, max_size=4
+        ),
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test(self, *args, **kwargs):
         self.add_skip_pass_case()
         self.run_test(quant=False, *args, **kwargs)

@@ -16,12 +16,12 @@ import unittest
 
 import numpy as np
 import paddle
-import scipy.stats
 
 import config
 import mock_data as mock
 import parameterize
 
+np.random.seed(2022)
 paddle.enable_static()
 
 
@@ -45,17 +45,21 @@ class TestExponentialFamily(unittest.TestCase):
                 fetch_list=[
                     self.mock_dist.entropy(),
                     paddle.distribution.ExponentialFamily.entropy(
-                        self.mock_dist)
-                ])
+                        self.mock_dist
+                    ),
+                ],
+            )
 
             np.testing.assert_allclose(
                 out1,
                 out2,
                 rtol=config.RTOL.get(config.DEFAULT_DTYPE),
-                atol=config.ATOL.get(config.DEFAULT_DTYPE))
+                atol=config.ATOL.get(config.DEFAULT_DTYPE),
+            )
 
     def test_entropy_exception(self):
         with paddle.static.program_guard(self.program):
             with self.assertRaises(NotImplementedError):
                 paddle.distribution.ExponentialFamily.entropy(
-                    mock.DummyExpFamily(0.5, 0.5))
+                    mock.DummyExpFamily(0.5, 0.5)
+                )

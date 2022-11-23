@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import paddle.fluid as fluid
 from paddle.fluid.framework import Variable
 
@@ -27,8 +26,12 @@ def cyclic_reader(reader):
     return __reader__
 
 
+<<<<<<< HEAD
 class FeedDataReader(object):
 
+=======
+class FeedDataReader:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def __init__(self, feed_list, reader):
         self._feed_list = []
         for var in feed_list:
@@ -44,13 +47,13 @@ class FeedDataReader(object):
         next_data = next(self._iter)
         feed_data = dict()
         assert len(self._feed_list) == len(next_data)
-        for key, value in six.moves.zip(self._feed_list, next_data):
+        for key, value in zip(self._feed_list, next_data):
             feed_data[key] = value
         return feed_data
 
     def _feed_parallel_executor(self, device_num):
         feed_data = []
-        for _ in six.moves.range(device_num):
+        for _ in range(device_num):
             feed_data.append(self._feed_executor())
 
         return feed_data
@@ -63,8 +66,11 @@ class FeedDataReader(object):
             if program._is_data_parallel:
                 use_executor = False
                 if program._places is None:
-                    device_num = len(fluid.cuda_places()) if use_cuda else len(
-                        fluid.cpu_places())
+                    device_num = (
+                        len(fluid.cuda_places())
+                        if use_cuda
+                        else len(fluid.cpu_places())
+                    )
                 else:
                     device_num = len(program._places)
             else:

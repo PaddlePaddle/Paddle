@@ -24,8 +24,8 @@ import sys
 def filter_by(list_file, max_rate):
     """
     Args:
-        list_file (str): File of list.  
-        max_rate (float): Max rate.  
+        list_file (str): File of list.
+        max_rate (float): Max rate.
 
     Returns:
         tuple: File and coverage rate.
@@ -41,7 +41,7 @@ def filter_by(list_file, max_rate):
             name = split[0].strip()
 
             if name.startswith('/paddle/'):
-                name = name[len('/paddle/'):]
+                name = name[len('/paddle/') :]
 
             # rate
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
@@ -29,3 +30,6 @@ limitations under the License. */
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__
 #endif  // PADDLE_WITH_MUSL
+=======
+#include "paddle/phi/core/macros.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

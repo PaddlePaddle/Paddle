@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -43,8 +41,9 @@ class TestIsEmptyOpError(unittest.TestCase):
 
     def test_errors(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input_data = np.random.random((3, 2)).astype("float64")
 
             def test_Variable():
@@ -55,18 +54,30 @@ class TestIsEmptyOpError(unittest.TestCase):
 
             def test_type():
                 # dtype must be float32, float64, int32, int64
+<<<<<<< HEAD
                 x3 = paddle.static.data(name="x3",
                                         shape=[4, 32, 32],
                                         dtype="bool")
+=======
+                x3 = paddle.static.data(
+                    name="x3", shape=[4, 32, 32], dtype="bool"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 res = paddle.is_empty(x=x3)
 
             self.assertRaises(TypeError, test_type)
 
             def test_name_type():
                 # name type must be string.
+<<<<<<< HEAD
                 x4 = paddle.static.data(name="x4",
                                         shape=[3, 2],
                                         dtype="float32")
+=======
+                x4 = paddle.static.data(
+                    name="x4", shape=[3, 2], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 res = paddle.is_empty(x=x4, name=1)
 
             self.assertRaises(TypeError, test_name_type)

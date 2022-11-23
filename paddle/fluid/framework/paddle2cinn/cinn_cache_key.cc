@@ -36,7 +36,11 @@ CinnCacheKey::CinnCacheKey(GraphHashStrategy graph_hash)
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
+<<<<<<< HEAD
     const std::map<std::string, const LoDTensor*>& input_tensors,
+=======
+    const std::map<std::string, const phi::DenseTensor*>& input_tensors,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const std::string& arch_str,
     GraphHashStrategy graph_hash)
     : graph_hash_(graph_hash) {
@@ -53,7 +57,7 @@ CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
 
 void CinnCacheKey::SetKey(
     const ir::Graph& graph,
-    const std::map<std::string, const LoDTensor*>& input_tensors,
+    const std::map<std::string, const phi::DenseTensor*>& input_tensors,
     const std::string& arch_str) {
   graph_hash_val_ = graph_hash_(graph);
   for (const auto& name_tensor : input_tensors) {

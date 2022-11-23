@@ -77,6 +77,7 @@ class RandintOp : public framework::OperatorWithKernel {
       return;
     }
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(shape.empty(),
                       false,
                       platform::errors::InvalidArgument(
@@ -85,6 +86,8 @@ class RandintOp : public framework::OperatorWithKernel {
                           "attr(shape) information must "
                           "be set by Attr(shape)."));
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     std::vector<int64_t> tensor_shape;
     tensor_shape.reserve(shape.size());
     for (auto dim : shape) {

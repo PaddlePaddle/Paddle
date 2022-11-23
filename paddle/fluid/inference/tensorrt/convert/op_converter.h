@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -49,11 +50,17 @@ class OpConverter {
                  const std::unordered_set<std::string>& parameters,
                  const framework::Scope& scope,
                  TensorRTEngine* engine,
+<<<<<<< HEAD
                  bool test_mode = false) {
+=======
+                 bool test_mode = false,
+                 const framework::proto::BlockDesc* block = nullptr) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     framework::OpDesc op_desc(op, nullptr);
 
     OpConverter* it{nullptr};
 
+<<<<<<< HEAD
     if (op_desc.Type() == "mul") {
       PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
                         1UL,
@@ -144,16 +151,132 @@ class OpConverter {
           it,
           platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                           op_desc.Type()));
+=======
+    auto op_converter_type_map = OpTeller::Global().GetOpConverterTypeMap();
+    switch (op_converter_type_map.at(op_desc.Type())) {
+      case OpConverterType::Default:
+        if (op_desc.Type() == "mul") {
+          PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                            1UL,
+                            platform::errors::InvalidArgument(
+                                "The input op mul's Input(\"Y\")."
+                                "size() should equal to 1, but reveceid "
+                                "Input(\"Y\").size() = %u.",
+                                op_desc.Input("Y").size()));
+          std::string Y = op_desc.Input("Y")[0];
+          if (parameters.count(Y)) {
+            it = Registry<OpConverter>::Global().Lookup("fc");
+          }
+        }
+        if (op_desc.Type().find("elementwise") != std::string::npos) {
+          static std::unordered_set<std::string> add_tensor_op_set{
+              "add", "mul", "sub", "div", "max", "min", "pow"};
+          static std::unordered_set<std::string> add_weight_op_set{
+              "add", "mul", "sub", "div", "max", "min", "pow"};
+          PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
+                            1UL,
+                            platform::errors::InvalidArgument(
+                                "The input op's Input(\"Y\")."
+                                "size() should equal to 1, but reveceid "
+                                "Input(\"Y\").size() = %u.",
+                                op_desc.Input("Y").size()));
+          int op_type_len = op_desc.Type().size();
+          std::string op_type =
+              op_desc.Type().substr(op_type_len - 3, op_type_len);
+          std::string Y = op_desc.Input("Y")[0];
+          if (parameters.count(Y)) {
+            PADDLE_ENFORCE_GT(
+                add_weight_op_set.count(op_type),
+                0,
+                platform::errors::Unimplemented(
+                    "Unsupported elementwise type %s", op_type.c_str()));
+            it = Registry<OpConverter>::Global().Lookup("elementwise_" +
+                                                        op_type + "_weight");
+            PADDLE_ENFORCE_NOT_NULL(
+                it,
+                platform::errors::Unimplemented(
+                    "no OpConverter for optype [%s]", op_desc.Type()));
+          } else {
+            PADDLE_ENFORCE_GT(
+                add_tensor_op_set.count(op_type),
+                0,
+                platform::errors::Unimplemented(
+                    "Unsupported elementwise type %s", op_type.c_str()));
+            it = Registry<OpConverter>::Global().Lookup("elementwise_" +
+                                                        op_type + "_tensor");
+          }
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+
+        if (op_desc.Type() == "depthwise_conv2d") {
+          it = Registry<OpConverter>::Global().Lookup("conv2d");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        if (op_desc.Type() == "depthwise_conv2d_transpose") {
+          it = Registry<OpConverter>::Global().Lookup("conv2d_transpose");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        if (op_desc.Type() == "transpose2") {
+          it = Registry<OpConverter>::Global().Lookup("transpose");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        if (op_desc.Type() == "flatten2") {
+          it = Registry<OpConverter>::Global().Lookup("flatten");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        // reshape2 == reshape
+        if (op_desc.Type() == "reshape2") {
+          it = Registry<OpConverter>::Global().Lookup("reshape");
+          PADDLE_ENFORCE_NOT_NULL(
+              it,
+              platform::errors::Unimplemented("no OpConverter for optype [%s]",
+                                              op_desc.Type()));
+        }
+        if (!it) {
+          it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
+        }
+        break;
+
+      case OpConverterType::GenericPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use generic_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup("generic_plugin_creater");
+        break;
+
+      case OpConverterType::CustomPluginCreater:
+        LOG(INFO) << "There is no OpConverter for type " << op_desc.Type()
+                  << ", now use custom_plugin_creater!";
+        it = Registry<OpConverter>::Global().Lookup("custom_plugin_creater");
+        break;
+
+      default:
+        CHECK(false) << "no OpConverter for optype " << op_desc.Type();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
-    if (!it) {
-      it = Registry<OpConverter>::Global().Lookup(op_desc.Type());
-    }
+
     PADDLE_ENFORCE_NOT_NULL(
         it,
         platform::errors::Unimplemented("no OpConverter for optype [%s]",
                                         op_desc.Type()));
 
     it->SetEngine(engine);
+    engine->SetScope(scope);
+    it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
     size_t output_num = op_desc.OutputNames().size();
@@ -257,7 +380,26 @@ class OpConverter {
     }
     for (int i = 0; i < block.ops_size(); i++) {
       const auto& op = block.ops(i);
-      ConvertOp(op, parameters, scope, engine);
+      ConvertOp(op, parameters, scope, engine, false, &block);
+    }
+    for (int i = 0; i < engine->network()->getNbLayers(); i++) {
+      auto layer = engine->network()->getLayer(i);
+      if (layer->getType() == nvinfer1::LayerType::kSHUFFLE) {
+        auto* input_tensor = layer->getInput(0);
+        auto* output_tensor = layer->getOutput(0);
+        auto output_tensor_name = output_tensor->getName();
+        auto input_tensor_name = input_tensor->getName();
+        if (engine->DynamicRangeIsSet(input_tensor) &&
+            !engine->DynamicRangeIsSet(output_tensor)) {
+          float output_scale = engine->GetTensorDynamicRange(input_tensor);
+          VLOG(1) << "Set output tensor scale = " << output_scale
+                  << " for tensor in TensorRT: " << output_tensor_name << ".";
+          engine->SetTensorDynamicRange(output_tensor, output_scale);
+        } else {
+          VLOG(1) << "Failed to get input tensor scale for tensor in TensorRT: "
+                  << input_tensor_name << ".";
+        }
+      }
     }
     for (int i = 0; i < engine->network()->getNbLayers(); i++) {
       auto layer = engine->network()->getLayer(i);
@@ -494,7 +636,11 @@ class OpConverter {
 
     int data_size = std::accumulate(
         shape.d, shape.d + shape.nbDims, 1, std::multiplies<int>());
+<<<<<<< HEAD
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+=======
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
     for (int i = 0; i < data_size; i++) {
@@ -529,7 +675,11 @@ class OpConverter {
           "supports float, half or int32_t."));
     }
 
+<<<<<<< HEAD
     std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+=======
+    std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     int data_size = data.size();
     tmp_tensor->Resize({data_size});
     auto* tmp_data = tmp_tensor->mutable_data<T>(platform::CPUPlace());
@@ -571,6 +721,7 @@ class OpConverter {
     return Add1DConstantLayer(input_data, weight_name, scalar);
   }
 
+<<<<<<< HEAD
   // For cases when input is not middle-tensor , but persistable tensor
   // you should call this.
   nvinfer1::ITensor* ConvertWeight2ITensor(const framework::Scope& scope,
@@ -600,6 +751,8 @@ class OpConverter {
     return layer->getOutput(0);
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void RreplenishLayerAndOutput(
       nvinfer1::ILayer* layer,
       const std::string& layer_type,
@@ -620,10 +773,16 @@ class OpConverter {
   }
   void SetEngine(TensorRTEngine* engine) { engine_ = engine; }
 
+  void SetBlockDesc(const framework::proto::BlockDesc* block) {
+    block_ = block;
+  }
+
   virtual ~OpConverter() {}
 
   // TensorRT engine
   TensorRTEngine* engine_{nullptr};
+  // BlockDesc
+  const framework::proto::BlockDesc* block_{nullptr};
 
  protected:
   bool test_mode_;

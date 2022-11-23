@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
@@ -31,14 +26,15 @@ class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        #scale = draw(st.floats(min_value=0.01, max_value=1.0))
-        #bias = draw(st.floats(min_value=0.01, max_value=2.0))
-        #bias_after_scale = draw(st.booleans())
+        # scale = draw(st.floats(min_value=0.01, max_value=1.0))
+        # bias = draw(st.floats(min_value=0.01, max_value=2.0))
+        # bias_after_scale = draw(st.booleans())
         fix_seed = draw(st.booleans())
         dropout_implementation = "upscale_in_train"
         dropout_prob = draw(st.floats(min_value=0.0, max_value=1.0))
         seed = draw(st.integers(min_value=0, max_value=512))
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=4),
                      min_size=2,
                      max_size=4))
@@ -67,6 +63,39 @@ class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
                                            TensorConfig(shape=x_shape),
                                        },
                                        outputs=["relu_out"])
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=4
+            )
+        )
+        is_test = True
+
+        dropout_op = OpConfig(
+            "dropout",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["dropout_output"], "Mask": ["mask"]},
+            fix_seed=fix_seed,
+            dropout_implementation=dropout_implementation,
+            dropout_prob=dropout_prob,
+            seed=seed,
+            is_test=is_test,
+        )
+        relu_op = OpConfig(
+            "relu",
+            inputs={"X": ["dropout_output"]},
+            outputs={"Out": ["relu_out"]},
+        )
+        ops = [dropout_op, relu_op]
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "input_data": TensorConfig(shape=x_shape),
+            },
+            outputs=["relu_out"],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         return program_config
 
@@ -82,14 +111,24 @@ class TestSimplifyWithBasicOpsPassUpscale(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False)
+            use_calib_mode=False,
+        )
         yield config, ['relu'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             max_examples=30,
                             passes=["simplify_with_basic_ops_pass"],
                             min_success_num=30)
+=======
+        self.run_and_statis(
+            quant=False,
+            max_examples=30,
+            passes=["simplify_with_basic_ops_pass"],
+            min_success_num=30,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
@@ -103,6 +142,7 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
         dropout_prob = draw(st.floats(min_value=0.0, max_value=1.0))
         seed = draw(st.integers(min_value=0, max_value=512))
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=4),
                      min_size=2,
                      max_size=4))
@@ -131,6 +171,39 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
                                            TensorConfig(shape=x_shape),
                                        },
                                        outputs=["relu_out"])
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=4), min_size=2, max_size=4
+            )
+        )
+        is_test = True
+
+        dropout_op = OpConfig(
+            "dropout",
+            inputs={"X": ["input_data"]},
+            outputs={"Out": ["dropout_output"], "Mask": ["mask"]},
+            fix_seed=fix_seed,
+            dropout_implementation=dropout_implementation,
+            dropout_prob=dropout_prob,
+            seed=seed,
+            is_test=is_test,
+        )
+        relu_op = OpConfig(
+            "relu",
+            inputs={"X": ["dropout_output"]},
+            outputs={"Out": ["relu_out"]},
+        )
+        ops = [dropout_op, relu_op]
+
+        program_config = ProgramConfig(
+            ops=ops,
+            weights={},
+            inputs={
+                "input_data": TensorConfig(shape=x_shape),
+            },
+            outputs=["relu_out"],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         return program_config
 
@@ -146,14 +219,24 @@ class TestSimplifyWithBasicOpsPassDowngrade(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
-            use_calib_mode=False)
+            use_calib_mode=False,
+        )
         yield config, ['scale', 'relu'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             max_examples=30,
                             passes=["simplify_with_basic_ops_pass"],
                             min_success_num=30)
+=======
+        self.run_and_statis(
+            quant=False,
+            max_examples=30,
+            passes=["simplify_with_basic_ops_pass"],
+            min_success_num=30,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

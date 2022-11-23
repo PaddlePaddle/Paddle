@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import unittest
 
@@ -44,7 +43,12 @@ def test_list_append_in_if(x):
         a.append(x)
     else:
         a.append(
+<<<<<<< HEAD
             fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int64"))
+=======
+            fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int64")
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
     return a[0]
 
@@ -100,9 +104,15 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
 
 def test_list_append_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(shape=[1],
                                           value=iter_num,
                                           dtype="int32")
+=======
+    iter_num = fluid.layers.fill_constant(
+        shape=[1], value=iter_num, dtype="int32"
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     a = []
     i = 0
     while i < iter_num:
@@ -113,16 +123,30 @@ def test_list_append_in_while_loop(x, iter_num):
 
 def test_list_append_in_while_loop_with_stack(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(shape=[1],
                                           value=iter_num,
                                           dtype="int32")
+=======
+    iter_num = fluid.layers.fill_constant(
+        shape=[1], value=iter_num, dtype="int32"
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     a = []
     i = 0
     while i < iter_num.numpy()[0]:
         a.append(x)
         i += 1
-    out = fluid.layers.stack(a, axis=1)
+    out = paddle.stack(a, axis=1)
     return out
+
+
+def test_tensor_array_slice(x, iter_num):
+    a = []
+    for i in range(paddle.to_tensor(3)):
+        a.append(paddle.to_tensor(i))
+    t = a[1:3]
+    return a[2]
 
 
 # Situation 2: Test list pop
@@ -182,9 +206,15 @@ def test_list_pop_in_for_loop(x, iter_num):
 
 def test_list_pop_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(shape=[1],
                                           value=iter_num,
                                           dtype="int32")
+=======
+    iter_num = fluid.layers.fill_constant(
+        shape=[1], value=iter_num, dtype="int32"
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     a = []
     b = [x]
     b.append(x)
@@ -203,8 +233,16 @@ def test_list_pop_in_while_loop(x, iter_num):
 class TestListWithoutControlFlow(unittest.TestCase):
 
     def setUp(self):
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.init_data()
         self.init_dygraph_func()
@@ -249,16 +287,27 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
             self.assertEqual(len(static_res_list), len(dygraph_res_list))
             for stat_res, dy_res in zip(static_res_list, dygraph_res_list):
+<<<<<<< HEAD
                 self.assertTrue(
                     np.allclose(stat_res, dy_res),
                     msg='dygraph_res is {}\nstatic_res is {}'.format(
                         stat_res, dy_res))
+=======
+                np.testing.assert_allclose(
+                    stat_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                        dy_res, stat_res
+                    ),
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestListInIf(TestListWithoutControlFlow):
 
     def init_dygraph_func(self):
-        self.all_dygraph_funcs = [test_list_append_in_if, test_list_pop_in_if]
+        self.all_dygraph_funcs = [test_list_append_in_if]
 
 
 class TestListInWhileLoop(TestListWithoutControlFlow):
@@ -269,7 +318,8 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
-            test_list_append_in_while_loop, test_list_pop_in_while_loop
+            test_list_append_in_while_loop,
+            test_list_pop_in_while_loop,
         ]
 
     def train(self, to_static=False):
@@ -289,11 +339,17 @@ class TestListInWhileLoopWithStack(TestListInWhileLoop):
         self.all_dygraph_funcs = [test_list_append_in_while_loop_with_stack]
 
 
+class TestTensorArraySlice(TestListInWhileLoop):
+    def init_dygraph_func(self):
+        self.all_dygraph_funcs = [test_tensor_array_slice]
+
+
 class TestListInForLoop(TestListInWhileLoop):
 
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
-            test_list_append_in_for_loop, test_list_pop_in_for_loop
+            test_list_append_in_for_loop,
+            test_list_pop_in_for_loop,
         ]
 
 
@@ -310,7 +366,7 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
             test_list_append_in_for_subscript,
-            test_list_append_in_while_loop_subscript
+            test_list_append_in_while_loop_subscript,
         ]
 
     def init_data(self):
@@ -320,7 +376,7 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 class ListWithCondNet(paddle.nn.Layer):
 
     def __init__(self):
-        super(ListWithCondNet, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static
     def forward(self, x, index):
@@ -348,7 +404,7 @@ class TestListWithCondGradInferVarType(unittest.TestCase):
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
         res = net(x, index)
-        self.assertEqual(res[0], 48.)
+        self.assertEqual(res[0], 48.0)
 
 
 if __name__ == '__main__':

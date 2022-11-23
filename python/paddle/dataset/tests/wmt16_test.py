@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.dataset.wmt16
 import unittest
 
@@ -39,23 +37,48 @@ class TestWMT16(unittest.TestCase):
 
     def test_train(self):
         for idx, sample in enumerate(
+<<<<<<< HEAD
                 paddle.dataset.wmt16.train(src_dict_size=100000,
                                            trg_dict_size=100000)()):
             if idx >= 10: break
+=======
+            paddle.dataset.wmt16.train(
+                src_dict_size=100000, trg_dict_size=100000
+            )()
+        ):
+            if idx >= 10:
+                break
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.checkout_one_sample(sample)
 
     def test_test(self):
         for idx, sample in enumerate(
+<<<<<<< HEAD
                 paddle.dataset.wmt16.test(src_dict_size=1000,
                                           trg_dict_size=1000)()):
             if idx >= 10: break
+=======
+            paddle.dataset.wmt16.test(src_dict_size=1000, trg_dict_size=1000)()
+        ):
+            if idx >= 10:
+                break
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.checkout_one_sample(sample)
 
     def test_val(self):
         for idx, sample in enumerate(
+<<<<<<< HEAD
                 paddle.dataset.wmt16.validation(src_dict_size=1000,
                                                 trg_dict_size=1000)()):
             if idx >= 10: break
+=======
+            paddle.dataset.wmt16.validation(
+                src_dict_size=1000, trg_dict_size=1000
+            )()
+        ):
+            if idx >= 10:
+                break
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.checkout_one_sample(sample)
 
     def test_get_dict(self):

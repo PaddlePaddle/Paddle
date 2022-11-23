@@ -356,6 +356,13 @@ else()
   )
 endif()
 
+<<<<<<< HEAD
+=======
+if(WITH_INFERENCE_NVTX AND NOT WIN32)
+  add_definitions(-DPADDLE_WITH_INFERENCE_NVTX)
+endif()
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 copy(
   inference_lib_dist
   SRCS ${src_dir}/inference/capi_exp/pd_*.h ${paddle_inference_c_lib}

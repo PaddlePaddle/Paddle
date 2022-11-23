@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
-import os
-import sys
-import six
-import time
 import unittest
 import multiprocessing
 import numpy as np
@@ -25,8 +19,6 @@ import numpy as np
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.io import Dataset, IterableDataset, BatchSampler, DataLoader
-from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 
 
@@ -38,7 +30,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([784]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -69,9 +61,15 @@ class TestDataLoaderAssert(unittest.TestCase):
 
             # num_workers < 0
             try:
+<<<<<<< HEAD
                 loader = DataLoader(dataset=dataset,
                                     places=place,
                                     num_workers=-1)
+=======
+                loader = DataLoader(
+                    dataset=dataset, places=place, num_workers=-1
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue(False)
             except AssertionError:
                 pass
@@ -85,20 +83,36 @@ class TestDataLoaderAssert(unittest.TestCase):
 
             # set batch_sampler and shuffle/batch_size/drop_last
             try:
+<<<<<<< HEAD
                 loader = DataLoader(dataset=dataset,
                                     places=place,
                                     batch_sampler=batch_sampler,
                                     shuffle=True,
                                     drop_last=True)
+=======
+                loader = DataLoader(
+                    dataset=dataset,
+                    places=place,
+                    batch_sampler=batch_sampler,
+                    shuffle=True,
+                    drop_last=True,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue(False)
             except AssertionError:
                 pass
 
             # set batch_sampler correctly
             try:
+<<<<<<< HEAD
                 loader = DataLoader(dataset=dataset,
                                     places=place,
                                     batch_sampler=batch_sampler)
+=======
+                loader = DataLoader(
+                    dataset=dataset, places=place, batch_sampler=batch_sampler
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue(True)
             except AssertionError:
                 self.assertTrue(False)
@@ -149,8 +163,9 @@ class TestDatasetRuntimeError(unittest.TestCase):
 
 # CI Converage cannot record stub in subprocess,
 # HACK a _worker_loop in main process call here
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestDataLoaderWorkerLoop(unittest.TestCase):
 
     def run_without_worker_done(self, use_shared_memory=True):
@@ -169,12 +184,24 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                         np.stack(s, axis=0) for s in list(zip(*sample_list))
                     ]
 
+<<<<<<< HEAD
                 loader = DataLoader(dataset,
                                     num_workers=1,
                                     places=place,
                                     use_shared_memory=use_shared_memory)
                 assert loader.num_workers > 0, \
                     "go to AssertionError and pass in Mac and Windows"
+=======
+                loader = DataLoader(
+                    dataset,
+                    num_workers=1,
+                    places=place,
+                    use_shared_memory=use_shared_memory,
+                )
+                assert (
+                    loader.num_workers > 0
+                ), "go to AssertionError and pass in Mac and Windows"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
@@ -182,16 +209,35 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                     indices_queue.put([i, i + 10])
                 indices_queue.put(None)
                 base_seed = 1234
+<<<<<<< HEAD
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
                              True, _collate_fn, True, _init_fn, 0, 1,
                              loader._use_shared_memory, base_seed)
+=======
+                _worker_loop(
+                    loader._dataset,
+                    0,
+                    indices_queue,
+                    loader._data_queue,
+                    loader._workers_done_event,
+                    True,
+                    _collate_fn,
+                    True,
+                    _init_fn,
+                    0,
+                    1,
+                    loader._use_shared_memory,
+                    base_seed,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue(False)
         except AssertionError:
             pass
         except Exception as e:
             print("Exception", e)
             import sys
+
             sys.stdout.flush()
             self.assertTrue(False)
 
@@ -211,12 +257,24 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                         np.stack(s, axis=0) for s in list(zip(*sample_list))
                     ]
 
+<<<<<<< HEAD
                 loader = DataLoader(dataset,
                                     num_workers=1,
                                     places=place,
                                     use_shared_memory=use_shared_memory)
                 assert loader.num_workers > 0, \
                     "go to AssertionError and pass in Mac and Windows"
+=======
+                loader = DataLoader(
+                    dataset,
+                    num_workers=1,
+                    places=place,
+                    use_shared_memory=use_shared_memory,
+                )
+                assert (
+                    loader.num_workers > 0
+                ), "go to AssertionError and pass in Mac and Windows"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 loader = iter(loader)
                 print("loader length", len(loader))
                 indices_queue = multiprocessing.Queue()
@@ -225,10 +283,28 @@ class TestDataLoaderWorkerLoop(unittest.TestCase):
                 indices_queue.put(None)
                 loader._workers_done_event.set()
                 base_seed = 1234
+<<<<<<< HEAD
                 _worker_loop(loader._dataset, 0, indices_queue,
                              loader._data_queue, loader._workers_done_event,
                              True, _collate_fn, True, _init_fn, 0, 1,
                              loader._use_shared_memory, base_seed)
+=======
+                _worker_loop(
+                    loader._dataset,
+                    0,
+                    indices_queue,
+                    loader._data_queue,
+                    loader._workers_done_event,
+                    True,
+                    _collate_fn,
+                    True,
+                    _init_fn,
+                    0,
+                    1,
+                    loader._use_shared_memory,
+                    base_seed,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue(True)
         except AssertionError:
             pass

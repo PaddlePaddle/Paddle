@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import division
 from __future__ import print_function
 
@@ -21,6 +22,11 @@ import numpy as np
 import time
 import paddle
 from paddle.distributed.ps.utils.public import ps_log_root_dir, debug_program
+=======
+import os
+import time
+import paddle
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 
@@ -50,16 +56,33 @@ def get_dataset(inputs, config, pipe_cmd, role="worker"):
 def fl_ps_train():
     # 0. get role
     import paddle.distributed.fleet.base.role_maker as role_maker
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     role_maker = role_maker.PaddleCloudRoleMaker()
     role_maker._generate_role()
     fleet.util._set_role_maker(role_maker)
 
     # 1. load yaml-config to dict-config
+<<<<<<< HEAD
     from ps_dnn_trainer import YamlHelper, StaticModel, get_user_defined_strategy
     yaml_helper = YamlHelper()
     config_yaml_path = '../ps/fl_async_ps_config.yaml'
     config = yaml_helper.load_yaml(config_yaml_path)
     #yaml_helper.print_yaml(config)
+=======
+    from ps_dnn_trainer import (
+        YamlHelper,
+        StaticModel,
+        get_user_defined_strategy,
+    )
+
+    yaml_helper = YamlHelper()
+    config_yaml_path = '../ps/fl_async_ps_config.yaml'
+    config = yaml_helper.load_yaml(config_yaml_path)
+    # yaml_helper.print_yaml(config)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     # 2. get static model
     paddle.enable_static()
@@ -73,6 +96,7 @@ def fl_ps_train():
     a_sync_configs = user_defined_strategy.a_sync_configs
     a_sync_configs["launch_barrier"] = True
     user_defined_strategy.a_sync_configs = a_sync_configs
+<<<<<<< HEAD
     print("launch_barrier: ",
           user_defined_strategy.a_sync_configs["launch_barrier"])
     learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
@@ -81,10 +105,30 @@ def fl_ps_train():
     ps_optimizer = ParameterServerOptimizer(inner_optimizer)
     ps_optimizer._set_basic_info(loss, role_maker, inner_optimizer,
                                  user_defined_strategy)
+=======
+    print(
+        "launch_barrier: ",
+        user_defined_strategy.a_sync_configs["launch_barrier"],
+    )
+    learning_rate = config.get("hyper_parameters.optimizer.learning_rate")
+    inner_optimizer = paddle.optimizer.Adam(learning_rate, lazy_mode=True)
+    from paddle.distributed.fleet.meta_optimizers.ps_optimizer import (
+        ParameterServerOptimizer,
+    )
+
+    ps_optimizer = ParameterServerOptimizer(inner_optimizer)
+    ps_optimizer._set_basic_info(
+        loss, role_maker, inner_optimizer, user_defined_strategy
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     ps_optimizer.minimize_impl(loss)
 
     # 4. runtime
     from paddle.distributed.ps.the_one_ps import TheOnePSRuntime
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     _runtime_handle = TheOnePSRuntime()  # ps 目录下重构版的 TheOnePSRuntime
     _runtime_handle._set_basic_info(ps_optimizer.pass_ctx._attrs)
     epoch_num = int(config.get('runner.epoch_num'))
@@ -100,14 +144,26 @@ def fl_ps_train():
         _runtime_handle._init_worker()
         print('trainer get dataset')
         inputs = feeds_list[1:-1]
+<<<<<<< HEAD
         dataset, file_list = get_dataset(inputs, config,
                                          "python dataset_generator_A.py")
         print("fluid.default_main_program: {}".format(
             fluid.default_main_program()._heter_pipeline_opt))
+=======
+        dataset, file_list = get_dataset(
+            inputs, config, "python dataset_generator_A.py"
+        )
+        print(
+            "fluid.default_main_program: {}".format(
+                fluid.default_main_program()._heter_pipeline_opt
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         for epoch in range(epoch_num):
             # A 方和 B 方如果要以文件粒度 shuffle 时，则需要固定同一个种子
             dataset.set_filelist(file_list)
             start_time = time.time()
+<<<<<<< HEAD
             exe.train_from_dataset(program=fluid.default_main_program(),
                                    dataset=dataset,
                                    print_period=2,
@@ -115,6 +171,19 @@ def fl_ps_train():
             end_time = time.time()
             print("trainer epoch %d finished, use time=%d\n" %
                   ((epoch), end_time - start_time))
+=======
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                print_period=2,
+                debug=False,
+            )
+            end_time = time.time()
+            print(
+                "trainer epoch %d finished, use time=%d\n"
+                % ((epoch), end_time - start_time)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         exe.close()
         _runtime_handle._stop_worker()
         print("Fl partyA Trainer Success!")
@@ -122,6 +191,7 @@ def fl_ps_train():
         exe = fluid.Executor()
         exe.run(fluid.default_startup_program())
         _runtime_handle._init_worker()
+<<<<<<< HEAD
         inputs = [feeds_list[0],
                   feeds_list[-1]]  # 顺序务必要和 dataset_generator_B.py 中保持一致
         dataset, file_list = get_dataset(inputs, config,
@@ -135,6 +205,28 @@ def fl_ps_train():
                                    dataset=dataset,
                                    print_period=2,
                                    debug=False)
+=======
+        inputs = [
+            feeds_list[0],
+            feeds_list[-1],
+        ]  # 顺序务必要和 dataset_generator_B.py 中保持一致
+        dataset, file_list = get_dataset(
+            inputs, config, "python dataset_generator_B.py", "heter_worker"
+        )
+        print(
+            "fluid.default_main_program: {}".format(
+                fluid.default_main_program()._heter_pipeline_opt
+            )
+        )
+        for epoch in range(epoch_num):
+            dataset.set_filelist(file_list)
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                print_period=2,
+                debug=False,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         exe.close()
         _runtime_handle._stop_worker()
         print("Fl partB Trainer Success!")

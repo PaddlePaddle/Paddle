@@ -16,7 +16,11 @@ limitations under the License. */
 #include <iostream>
 #include <memory>
 
+<<<<<<< HEAD
 #include "dnnl.hpp"
+=======
+#include "dnnl.hpp"  // NOLINT
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/fused/multi_gru_op.h"
@@ -26,6 +30,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using paddle::framework::LoDTensor;
 using paddle::framework::Tensor;
 using paddle::platform::CreateKey;
@@ -34,6 +39,12 @@ using paddle::platform::MKLDNNMemDesc;
 using phi::CPUContext;
 using phi::vectorize;
 using platform::to_void_cast;
+=======
+using paddle::platform::CreateKey;
+using phi::vectorize;
+using phi::funcs::OneDNNGetDataType;
+using phi::funcs::OneDNNMemDesc;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 using Direction = dnnl::rnn_direction;
 
 namespace {
@@ -64,9 +75,9 @@ class MultiGRUHandler {
         layers_(ctx.Attr<int>("layers")),
         concat_pds_(layers_, std::shared_ptr<dnnl::concat::primitive_desc>()),
         x_(ctx.Input<LoDTensor>("X")),
-        weights_x_(ctx.MultiInput<Tensor>("WeightX")),
-        weights_h_(ctx.MultiInput<Tensor>("WeightH")),
-        biases_(ctx.MultiInput<Tensor>("Bias")),
+        weights_x_(ctx.MultiInput<phi::DenseTensor>("WeightX")),
+        weights_h_(ctx.MultiInput<phi::DenseTensor>("WeightH")),
+        biases_(ctx.MultiInput<phi::DenseTensor>("Bias")),
         hidden_(ctx.Output<LoDTensor>("Hidden")),
         x_lod_(x_->lod()[0]) {
     PADDLE_ENFORCE_EQ(
@@ -117,7 +128,7 @@ class MultiGRUHandler {
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = platform::ExtendKeyWithThreadInfoIfNeeded(
-        dev_ctx, CreateKey(dev_ctx, unique_name, MKLDNNGetDataType<T>()));
+        dev_ctx, CreateKey(dev_ctx, unique_name, OneDNNGetDataType<T>()));
     key_ = memory_key_;
     key_.append("T").append(std::to_string(Ti_));
 
@@ -178,6 +189,7 @@ class MultiGRUHandler {
       const auto weights_dt =
           is_int8 ? dnnl::memory::data_type::s8 : dnnl::memory::data_type::f32;
 
+<<<<<<< HEAD
       auto x_md = MKLDNNMemDesc({Ti_, N_, ICs[layer]},
                                 MKLDNNGetDataType<T>(),
                                 MKLDNNMemoryFormat::ntc);
@@ -193,11 +205,28 @@ class MultiGRUHandler {
       auto b_md = MKLDNNMemDesc({L, D, G, OCs[layer]},
                                 MKLDNNGetDataType<float>(),
                                 MKLDNNMemoryFormat::ldgo);
+=======
+      auto x_md = OneDNNMemDesc({Ti_, N_, ICs[layer]},
+                                OneDNNGetDataType<T>(),
+                                OneDNNMemoryFormat::ntc);
+      auto h0_md = OneDNNMemDesc({L, D, N_, OCs[layer]},
+                                 OneDNNGetDataType<T>(),
+                                 OneDNNMemoryFormat::ldnc);
+      auto wx_md = OneDNNMemDesc({L, D, ICs[layer], G, OCs[layer]},
+                                 weights_dt,
+                                 OneDNNMemoryFormat::any);
+      auto wh_md = OneDNNMemDesc({L, D, OCs[layer], G, OCs[layer]},
+                                 weights_dt,
+                                 OneDNNMemoryFormat::any);
+      auto b_md = OneDNNMemDesc({L, D, G, OCs[layer]},
+                                OneDNNGetDataType<float>(),
+                                OneDNNMemoryFormat::ldgo);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       auto h_md =
-          MKLDNNMemDesc({Ti_, N_, OCs[layer]},
-                        (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
-                                               : MKLDNNGetDataType<T>(),
-                        MKLDNNMemoryFormat::ntc);
+          OneDNNMemDesc({Ti_, N_, OCs[layer]},
+                        (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
+                                               : OneDNNGetDataType<T>(),
+                        OneDNNMemoryFormat::ntc);
 
       auto desc = std::make_shared<dnnl::gru_forward::desc>(
           dnnl::prop_kind::forward_inference,
@@ -228,10 +257,10 @@ class MultiGRUHandler {
     if (pd == nullptr) {
       const int axis = 2;
       auto in_md =
-          MKLDNNMemDesc({Ti_, N_, OCs[layer]},
-                        (layer == layers_ - 1) ? MKLDNNGetDataType<T_out>()
-                                               : MKLDNNGetDataType<T>(),
-                        MKLDNNMemoryFormat::ntc);
+          OneDNNMemDesc({Ti_, N_, OCs[layer]},
+                        (layer == layers_ - 1) ? OneDNNGetDataType<T_out>()
+                                               : OneDNNGetDataType<T>(),
+                        OneDNNMemoryFormat::ntc);
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
       pd = std::make_shared<dnnl::concat::primitive_desc>(
@@ -253,13 +282,12 @@ class MultiGRUHandler {
       dev_ctx_.SetBlob(key, memory_p);
     }
 
-    auto* x_data = to_void_cast(x_->data<T>());
+    auto* x_data = phi::funcs::to_void_cast(x_->data<T>());
 
     auto* x_onednn_data = memory_p->get_data_handle();
     memset(x_onednn_data, 0, sizeof(T) * N_ * Ti_ * ICs[0]);
 
-    if (platform::GetMKLDNNFormat(gru_pds_[{0, L2R}]->src_desc()) ==
-        dnnl::memory::format_tag::ntc) {
+    if (isNTC(gru_pds_[{0, L2R}]->src_desc())) {
       reorderPPtoNTC(x_data, x_onednn_data, x_lod_, 0, L2R);
     } else {
       reorderPPtoTNC(x_data, x_onednn_data, x_lod_, 0, L2R);
@@ -339,8 +367,8 @@ class MultiGRUHandler {
     if (!memory_p) {
       auto user_h0_memory = dnnl::memory();
       user_h0_memory = dnnl::memory({{1, 1, N_, OCs[layer]},
-                                     MKLDNNGetDataType<float>(),
-                                     MKLDNNMemoryFormat::ldnc},
+                                     OneDNNGetDataType<float>(),
+                                     OneDNNMemoryFormat::ldnc},
                                     engine_);
       memset(
           user_h0_memory.get_data_handle(), 0, sizeof(float) * N_ * OCs[layer]);
@@ -363,9 +391,15 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
+<<<<<<< HEAD
       auto user_md = MKLDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
                                    MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
+=======
+      auto user_md = OneDNNMemDesc({1, 1, ICs[layer], 3, OCs[layer]},
+                                   OneDNNGetDataType<float>(),
+                                   OneDNNMemoryFormat::ldigo);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       auto user_memory = dnnl::memory(user_md, engine_);
 
       auto* weight_x_data =
@@ -403,9 +437,15 @@ class MultiGRUHandler {
         std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(key));
 
     if (!memory_p) {
+<<<<<<< HEAD
       auto user_md = MKLDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
                                    MKLDNNGetDataType<float>(),
                                    MKLDNNMemoryFormat::ldigo);
+=======
+      auto user_md = OneDNNMemDesc({1, 1, OCs[layer], 3, OCs[layer]},
+                                   OneDNNGetDataType<float>(),
+                                   OneDNNMemoryFormat::ldigo);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       auto user_memory = dnnl::memory(user_md, engine_);
 
       // Reorder weights_h from PP format [OC, 2OC] + [OC, OC] to
@@ -602,17 +642,20 @@ class MultiGRUHandler {
   template <typename Tout>
   void reorderOutput(std::shared_ptr<dnnl::memory> mem, int layer) {
     auto* data = mem->get_data_handle();
-    auto* hidden_data = to_void_cast(hidden_->mutable_data<Tout>(place_));
-    if (isNTC(layers_ - 1)) {
+    auto* hidden_data =
+        phi::funcs::to_void_cast(hidden_->mutable_data<Tout>(place_));
+
+    if (isNTC(gru_pds_[{layers_ - 1, L2R}]->dst_desc())) {
       reorderNTCtoPP(data, hidden_data, layers_ - 1);
     } else {
       reorderTNCtoPP(data, hidden_data, layers_ - 1);
     }
   }
 
-  bool isNTC(int layer) {
-    return (platform::GetMKLDNNFormat(gru_pds_[{layer, L2R}]->dst_desc()) ==
-            dnnl::memory::format_tag::ntc);
+  bool isNTC(const dnnl::memory::desc& md) {
+    auto ntc_md = dnnl::memory::desc(
+        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+    return md == ntc_md;
   }
 
   int getLayers() const { return layers_; }
@@ -672,9 +715,9 @@ class MultiGRUHandler {
   std::string memory_key_;
 
   const LoDTensor* x_;
-  const std::vector<const Tensor*> weights_x_;
-  const std::vector<const Tensor*> weights_h_;
-  const std::vector<const Tensor*> biases_;
+  const std::vector<const phi::DenseTensor*> weights_x_;
+  const std::vector<const phi::DenseTensor*> weights_h_;
+  const std::vector<const phi::DenseTensor*> biases_;
   LoDTensor* hidden_;
   std::vector<dnnl::primitive_attr> attrs_;
   const paddle::framework::Vector<size_t>& x_lod_;

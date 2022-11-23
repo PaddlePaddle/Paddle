@@ -72,7 +72,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>() ||
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<phi::DenseTensor>() ||
                             inp_vars[i]->IsType<framework::Vocab>(),
                         true,
                         platform::errors::InvalidArgument(
@@ -80,8 +80,8 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                             "LoDTensor or Vocab variable, %s has wrong type.",
                             inp_var_names[i]));
 
-      if (inp_vars[i]->IsType<framework::LoDTensor>()) {
-        auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+      if (inp_vars[i]->IsType<phi::DenseTensor>()) {
+        auto &tensor = inp_vars[i]->Get<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(
             tensor.IsInitialized(),
             true,
@@ -97,7 +97,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         if (in_dtype != out_dtype) {
           auto in_kernel_type = framework::OpKernelType(in_dtype, place);
           auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-          framework::LoDTensor out;
+          phi::DenseTensor out;
           // copy LoD info to the new tensor
           out.set_lod(tensor.lod());
           framework::TransDataType(

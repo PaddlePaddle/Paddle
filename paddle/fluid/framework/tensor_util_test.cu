@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "gtest/gtest.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/isfinite_op.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -61,7 +65,7 @@ TEST(TensorContainsNAN, GPU) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -72,7 +76,7 @@ TEST(TensorContainsNAN, GPU) {
     ASSERT_TRUE(TensorContainsNAN(tensor));
   }
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
@@ -90,7 +94,7 @@ TEST(TensorContainsInf, GPU) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -101,7 +105,7 @@ TEST(TensorContainsInf, GPU) {
     ASSERT_TRUE(TensorContainsInf(tensor));
   }
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
@@ -121,7 +125,7 @@ TEST(TensorIsfinite, GPU) {
   auto* cuda_ctx = pool.GetByPlace(gpu);
   // contains inf
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -132,7 +136,7 @@ TEST(TensorIsfinite, GPU) {
     EXPECT_TRUE(!TensorIsfinite(tensor));
   }
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float16* buf = tensor.mutable_data<float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -145,7 +149,7 @@ TEST(TensorIsfinite, GPU) {
 
   // contains nan
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -156,7 +160,7 @@ TEST(TensorIsfinite, GPU) {
     EXPECT_TRUE(!TensorIsfinite(tensor));
   }
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float16* buf = tensor.mutable_data<float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -169,7 +173,7 @@ TEST(TensorIsfinite, GPU) {
 
   // all element are finite
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
@@ -181,7 +185,7 @@ TEST(TensorIsfinite, GPU) {
     EXPECT_TRUE(TensorIsfinite(tensor));
   }
   {
-    Tensor tensor;
+    phi::DenseTensor tensor;
     float16* buf = tensor.mutable_data<float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
@@ -199,7 +203,7 @@ TEST(TensorContainsInf, GPUWithoutWait) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -209,13 +213,13 @@ TEST(TensorContainsInf, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorContainsInf(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     ASSERT_EQ(tmp.data<bool>()[0], true);
   }
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
@@ -226,7 +230,7 @@ TEST(TensorContainsInf, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorContainsInf(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     ASSERT_EQ(tmp.data<bool>()[0], true);
@@ -238,7 +242,7 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -248,13 +252,13 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorContainsNAN(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     ASSERT_EQ(tmp.data<bool>()[0], true);
   }
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     paddle::platform::float16* buf =
         tensor.mutable_data<paddle::platform::float16>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
@@ -265,7 +269,7 @@ TEST(TensorContainsNAN, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorContainsNAN(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     ASSERT_EQ(tmp.data<bool>()[0], true);
@@ -277,7 +281,7 @@ TEST(TensorIsfinite, GPUWithoutWait) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
   auto* cuda_ctx = pool.GetByPlace(gpu);
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillInf, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -287,13 +291,13 @@ TEST(TensorIsfinite, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     EXPECT_EQ(tmp.data<bool>()[0], false);
   }
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(FillNAN, dim3(1), dim3(1), 0, cuda_ctx->stream(), buf);
@@ -303,13 +307,13 @@ TEST(TensorIsfinite, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     EXPECT_EQ(tmp.data<bool>()[0], false);
   }
   {
-    Tensor tensor, out;
+    phi::DenseTensor tensor, out;
     float* buf = tensor.mutable_data<float>({3}, gpu);
 #ifdef PADDLE_WITH_HIP
     hipLaunchKernelGGL(
@@ -320,7 +324,7 @@ TEST(TensorIsfinite, GPUWithoutWait) {
     cuda_ctx->Wait();
     TensorIsfinite(tensor, &out);
     platform::CPUPlace cpu;
-    Tensor tmp;
+    phi::DenseTensor tmp;
     TensorCopy(out, cpu, *cuda_ctx, &tmp);
     cuda_ctx->Wait();
     EXPECT_EQ(tmp.data<bool>()[0], true);

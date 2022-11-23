@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -39,7 +37,8 @@ class TestComplexAbsOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = np.abs(self.x)
 
     def init_grad_input_output(self):
@@ -50,11 +49,21 @@ class TestComplexAbsOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=False)
+=======
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestComplexAbsOpZeroValues(OpTest):
@@ -72,8 +81,14 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_input_output(self):
+<<<<<<< HEAD
         self.x = np.zeros(self.shape).astype(
             self.dtype) + 1J * np.zeros(self.shape).astype(self.dtype)
+=======
+        self.x = np.zeros(self.shape).astype(self.dtype) + 1j * np.zeros(
+            self.shape
+        ).astype(self.dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.out = np.abs(self.x)
 
     def init_grad_input_output(self):
@@ -84,11 +99,21 @@ class TestComplexAbsOpZeroValues(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=False)
+=======
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestAbs(unittest.TestCase):
@@ -105,7 +130,7 @@ class TestAbs(unittest.TestCase):
             for place in self._places:
                 with dg.guard(place):
                     y = paddle.abs(paddle.to_tensor(x))
-                    self.assertTrue(np.allclose(np.abs(x), y.numpy()))
+                    np.testing.assert_allclose(np.abs(x), y.numpy(), rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():
@@ -138,11 +163,21 @@ class TestRealAbsOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(['X'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=False)
+=======
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

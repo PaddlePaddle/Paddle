@@ -15,15 +15,26 @@
 # limitations under the License.
 
 import unittest
+<<<<<<< HEAD
 import shlex
 from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import prepare_python_path_and_return_module, remove_path_if_exists
+=======
+import shlex  # noqa: F401
+from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import (
+    remove_path_if_exists,
+)  # noqa: F401
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import os
 
 
 class FlPsTest(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_launch_fl_ps(self):
         pass
+=======
+    def test_launch_fl_ps(self):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         '''
         cmd = [
             'python', '-m', 'paddle.distributed.fleet.launch', '--log_dir',

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -39,7 +37,7 @@ class TestReshape2(OpTest):
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.infered_shape),
-            'XShape': np.random.random(self.ori_shape).astype("float32")
+            'XShape': np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_npu(self):

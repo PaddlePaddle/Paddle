@@ -48,9 +48,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.slice(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -85,12 +91,12 @@ class TestCase2(TestBase):
         self.feed_fp32 = {
             "x": x.astype(np.float32),
             "starts": s.astype(np.int32),
-            "ends": e.astype(np.int32)
+            "ends": e.astype(np.int32),
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "starts": s.astype(np.int32),
-            "ends": e.astype(np.int32)
+            "ends": e.astype(np.int32),
         }
 
     def set_op_attrs(self):
@@ -98,6 +104,7 @@ class TestCase2(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -111,6 +118,20 @@ class TestCase2(TestBase):
                                         starts=starts,
                                         ends=ends,
                                         **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        starts = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+        )
+        ends = paddle.static.data(
+            name=self.feed_list[2], shape=self.feed_shape[2], dtype='int32'
+        )
+        out = paddle.fluid.layers.slice(
+            x, starts=starts, ends=ends, **self.attrs
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.fetch_list = [out.name]
 
 

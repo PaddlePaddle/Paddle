@@ -15,9 +15,13 @@ limitations under the License. */
 #pragma once
 #include <type_traits>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/eigen.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/gru_compute.h"
 
 namespace phi {
@@ -27,7 +31,7 @@ using Array1 = Eigen::DSizes<int64_t, 1>;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 #if !defined(__NVCC__) && !defined(__HIPCC___)  // @{ Group for GRU CPU
 template <class OpResetOutput, typename T>

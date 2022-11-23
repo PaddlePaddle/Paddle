@@ -35,10 +35,17 @@ namespace operators {
 template <typename T>
 struct DequantizeFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& dev_ctx,
+<<<<<<< HEAD
                   const framework::Tensor* in,
                   const framework::Tensor* scale,
                   float max_range,
                   framework::Tensor* out) {
+=======
+                  const phi::DenseTensor* in,
+                  const phi::DenseTensor* scale,
+                  float max_range,
+                  phi::DenseTensor* out) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const float* scale_factor = scale->data<float>();
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
@@ -69,7 +76,7 @@ class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const {
+      const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     auto type = framework::OpKernelType(data_type, ctx.device_context());
     return type;

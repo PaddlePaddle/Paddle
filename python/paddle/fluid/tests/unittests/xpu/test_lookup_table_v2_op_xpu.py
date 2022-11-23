@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -24,7 +22,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
-import paddle.compat as cpt
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
@@ -45,11 +42,21 @@ class TestLookupTableOp(OpTest):
 
     def test_check_grad(self):
 
+<<<<<<< HEAD
         self.check_grad_with_place(inputs_to_check=['W'],
                                    output_names='Out',
                                    no_grad_set=set('Ids'),
                                    place=paddle.XPUPlace(0),
                                    in_place=True)
+=======
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
@@ -65,17 +72,28 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.check_output_with_place(place=paddle.XPUPlace(0))
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(inputs_to_check=['W'],
                                    output_names='Out',
                                    no_grad_set=set('Ids'),
                                    place=paddle.XPUPlace(0),
                                    in_place=True)
+=======
+        self.check_grad_with_place(
+            inputs_to_check=['W'],
+            output_names='Out',
+            no_grad_set=set('Ids'),
+            place=paddle.XPUPlace(0),
+            in_place=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithPadding(TestLookupTableOp):
 
     def test_check_output(self):
@@ -89,7 +107,8 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
 @skip_check_grad_ci(
     reason="Since paddings are not trainable and fixed in forward,"
     "the gradient of paddings makes no sense and we don't "
-    "test the gradient here.")
+    "test the gradient here."
+)
 class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
 
     def test_check_output(self):
@@ -97,7 +116,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         flatten_idx = ids.flatten()
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
-        self.attrs = {'padding_idx': cpt.long_type(padding_idx)}
+        self.attrs = {'padding_idx': padding_idx}
         self.check_output_with_place(place=paddle.XPUPlace(0))
 
 
@@ -150,6 +169,7 @@ class TestLookupTableWIsSelectedRows(unittest.TestCase):
             self.check_with_place(place)
 
 
+<<<<<<< HEAD
 class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
                                                   ):
 
@@ -157,6 +177,16 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(TestLookupTableWIsSelectedRows
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.random.randint(low=0, high=6,
                                       size=(2, 4, 3)).astype("int64")
+=======
+class TestLookupTableWithTensorIdsWIsSelectedRows(
+    TestLookupTableWIsSelectedRows
+):
+    def prepare_ids(self, scope, place):
+        ids_tensor = scope.var('Ids').get_tensor()
+        ids_array = np.random.randint(low=0, high=6, size=(2, 4, 3)).astype(
+            "int64"
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ids_tensor.set(ids_array, place)
         return ids_array
 
@@ -176,11 +206,21 @@ class TestLookupTableApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         ret = exe.run(feed={
             'x': x_data,
         },
                       fetch_list=[emb],
                       return_numpy=False)
+=======
+        ret = exe.run(
+            feed={
+                'x': x_data,
+            },
+            fetch_list=[emb],
+            return_numpy=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestEmbedOpError(unittest.TestCase):

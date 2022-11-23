@@ -143,7 +143,11 @@ void GradTensorHolder::add(size_t slot_id,
     if (t.is_dense_tensor()) {
       if (buffer_tensor.is_dense_tensor()) {
         if (create_graph || t.is_custom_device()) {
+<<<<<<< HEAD
           buffer_tensor = add_final_state_dygraph_function(t, buffer_tensor);
+=======
+          buffer_tensor = add_ad_func(t, buffer_tensor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t, &buffer_tensor);
@@ -170,8 +174,12 @@ void GradTensorHolder::add(size_t slot_id,
             std::make_shared<phi::DenseTensor>(
                 buffer_sparse->non_zero_elements()));
         if (create_graph || t.is_custom_device()) {
+<<<<<<< HEAD
           buffer_values =
               add_final_state_dygraph_function(t_values, buffer_values);
+=======
+          buffer_values = add_ad_func(t_values, buffer_values);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         } else {
           paddle::imperative::TensorAdd<paddle::experimental::Tensor>(
               t_values, &buffer_values);

@@ -33,15 +33,20 @@ struct sgd_dense_param_kernel {
 
 // LodTensor
 template <typename T>
+<<<<<<< HEAD
 struct sgd_dense_param_kernel<
     T,
     framework::VarTypeTrait<framework::LoDTensor>::kId> {
+=======
+struct sgd_dense_param_kernel<T,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
     const auto sz = param_out->numel();
     jit::sgd_attr_t attr(1, sz, 1, sz, 1);
@@ -64,9 +69,9 @@ struct sgd_dense_param_kernel<T,
                               framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, SelectedRows>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
@@ -93,15 +98,20 @@ struct sgd_dense_param_kernel<T,
 
 // LodTensor
 template <>
+<<<<<<< HEAD
 struct sgd_dense_param_kernel<
     platform::bfloat16,
     framework::VarTypeTrait<framework::LoDTensor>::kId> {
+=======
+struct sgd_dense_param_kernel<platform::bfloat16,
+                              framework::VarTypeTrait<phi::DenseTensor>::kId> {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
     param_out->mutable_data<platform::bfloat16>(ctx.GetPlace());
 
     auto p = framework::EigenVector<platform::bfloat16>::Flatten(*param);
@@ -119,8 +129,8 @@ struct sgd_dense_param_kernel<platform::bfloat16,
                               framework::VarTypeTrait<phi::SelectedRows>::kId> {
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, SelectedRows>";
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad = ctx.Input<phi::SelectedRows>("Grad");
 
     const auto &grad_value = grad->value();
@@ -164,7 +174,7 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
 
-    if (param_var->IsType<framework::LoDTensor>()) {
+    if (param_var->IsType<phi::DenseTensor>()) {
       invoke_dense_param_kernel(ctx);
     } else if (param_var->IsType<phi::SelectedRows>()) {
       sparse_param_and_grad_kernel(ctx);
@@ -181,12 +191,12 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
 
  protected:
   void invoke_dense_param_kernel(const framework::ExecutionContext &ctx) const {
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
     const auto *grad_var = ctx.InputVar("Grad");
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    if (grad_var->IsType<phi::DenseTensor>()) {
+      const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
       const auto sz = param_out->numel();
       PADDLE_ENFORCE_EQ(param->numel(),
                         sz,
@@ -269,7 +279,7 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
 
   void sparse_param_and_grad_kernel(
       const framework::ExecutionContext &ctx) const {
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
 
@@ -322,7 +332,11 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
         T,
+<<<<<<< HEAD
         framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+=======
+        framework::VarTypeTrait<phi::DenseTensor>::kId>()(ctx);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   virtual void dense_param_sparse_grad_kernel(

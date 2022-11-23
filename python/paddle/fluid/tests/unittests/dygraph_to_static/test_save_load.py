@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import tempfile
@@ -27,16 +25,23 @@ from test_fetch_feed import Linear
 
 np.random.seed(2020)
 
+<<<<<<< HEAD
 place = fluid.CUDAPlace(
     0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDyToStaticSaveLoad(unittest.TestCase):
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.model_path = os.path.join(self.temp_dir.name,
-                                       "test_dy2stat_save_load")
+        self.model_path = os.path.join(
+            self.temp_dir.name, "test_dy2stat_save_load"
+        )
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -51,8 +56,14 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             program_translator.enable(True)
             x = fluid.dygraph.to_variable(x_data)
             net = Linear(32, 64)
+<<<<<<< HEAD
             adam = AdamOptimizer(learning_rate=0.1,
                                  parameter_list=net.parameters())
+=======
+            adam = AdamOptimizer(
+                learning_rate=0.1, parameter_list=net.parameters()
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             for i in range(batch_num):
                 static_out, static_loss = net(x)
@@ -83,8 +94,12 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             program_translator.enable(False)
             dygraph_out, dygraph_loss = dygraph_net(x)
 
-        self.assertTrue(np.allclose(dygraph_out.numpy(), static_out.numpy()))
-        self.assertTrue(np.allclose(dygraph_loss.numpy(), static_loss.numpy()))
+        np.testing.assert_allclose(
+            dygraph_out.numpy(), static_out.numpy(), rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
+        )
 
 
 if __name__ == '__main__':

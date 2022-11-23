@@ -14,7 +14,6 @@
 
 import os
 import cv2
-import shutil
 import unittest
 import tempfile
 import numpy as np
@@ -52,11 +51,13 @@ class TestReadFile(unittest.TestCase):
             place = paddle.CUDAPlace(0)
             exe = paddle.static.Executor(place)
             exe.run(paddle.static.default_startup_program())
-            out = exe.run(paddle.static.default_main_program(),
-                          fetch_list=[img])
+            out = exe.run(
+                paddle.static.default_main_program(), fetch_list=[img]
+            )
 
-            np.testing.assert_equal(out[0].shape,
-                                    img_cv2.transpose(2, 0, 1).shape)
+            np.testing.assert_equal(
+                out[0].shape, img_cv2.transpose(2, 0, 1).shape
+            )
 
     def test_read_file_decode_jpeg_dynamic(self):
         self.read_file_decode_jpeg()

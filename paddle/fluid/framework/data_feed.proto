@@ -19,7 +19,7 @@ message Slot {
   required string type = 2;
   optional bool is_dense = 3 [ default = false ];
   optional bool is_used = 4 [ default = false ];
-  repeated int32 shape = 5; // we can define N-D Tensor
+  repeated int32 shape = 5; // we can define N-D phi::DenseTensor
 }
 
 message MultiSlotDesc {
@@ -38,10 +38,13 @@ message GraphConfig {
   optional string first_node_type = 8;
   optional string meta_path = 9;
   optional bool gpu_graph_training = 10 [ default = true ];
+<<<<<<< HEAD
   optional bool sage_mode = 11 [ default = false ];
   optional string samples = 12;
   optional int64 train_table_cap = 13 [ default = 80000 ];
   optional int64 infer_table_cap = 14 [ default = 80000 ];
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 message DataFeedDesc {

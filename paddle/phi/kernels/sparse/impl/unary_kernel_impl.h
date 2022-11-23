@@ -37,6 +37,10 @@ namespace sparse {
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);                       \
     phi::prefix##Kernel<T, Context>(                                       \
         dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements()); \
+<<<<<<< HEAD
+=======
+    out->SetIndicesDict(x.GetIndicesDict());                               \
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }                                                                        \
                                                                            \
   template <typename T, typename Context>                                  \
@@ -88,10 +92,31 @@ DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
+<<<<<<< HEAD
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6, threshold)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
 
 template <typename T, typename Context>
+=======
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Relu6Raw, threshold)
+DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
+
+template <typename T, typename Context>
+void Relu6CooKernel(const Context& dev_ctx,
+                    const SparseCooTensor& x,
+                    SparseCooTensor* out) {
+  Relu6RawCooKernel<T, Context>(dev_ctx, x, 6, out);
+}
+
+template <typename T, typename Context>
+void Relu6CsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    SparseCsrTensor* out) {
+  Relu6RawCsrKernel<T, Context>(dev_ctx, x, 6, out);
+}
+
+template <typename T, typename Context>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 void ScaleCooKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     float scale,
@@ -105,6 +130,10 @@ void ScaleCooKernel(const Context& dev_ctx,
                                bias,
                                bias_after_scale,
                                out->mutable_non_zero_elements());
+<<<<<<< HEAD
+=======
+  out->SetIndicesDict(x.GetIndicesDict());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 template <typename T, typename Context>
@@ -129,11 +158,17 @@ void CastCooKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCooTensor* out) {
+<<<<<<< HEAD
   out->set_dims(x.dims());
 
   const DenseTensor& x_indices = x.non_zero_indices();
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_indices = out->mutable_non_zero_indices();
+=======
+  const DenseTensor& x_indices = x.indices();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_indices = out->mutable_indices();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {
@@ -157,6 +192,10 @@ void CastCooKernel(const Context& dev_ctx,
     meta.set_dtype(value_dtype);
     phi::CastKernel<T, Context>(dev_ctx, x_values, value_dtype, out_values);
   }
+<<<<<<< HEAD
+=======
+  out->SetIndicesDict(x.GetIndicesDict());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 template <typename T, typename Context>
@@ -165,6 +204,7 @@ void CastCsrKernel(const Context& dev_ctx,
                    DataType index_dtype,
                    DataType value_dtype,
                    SparseCsrTensor* out) {
+<<<<<<< HEAD
   out->set_dims(x.dims());
 
   const DenseTensor& x_crows = x.non_zero_crows();
@@ -172,6 +212,13 @@ void CastCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_crows = out->mutable_non_zero_crows();
   DenseTensor* out_cols = out->mutable_non_zero_cols();
+=======
+  const DenseTensor& x_crows = x.crows();
+  const DenseTensor& x_cols = x.cols();
+  const DenseTensor& x_values = x.non_zero_elements();
+  DenseTensor* out_crows = out->mutable_crows();
+  DenseTensor* out_cols = out->mutable_cols();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DenseTensor* out_values = out->mutable_non_zero_elements();
 
   if (index_dtype == DataType::UNDEFINED) {

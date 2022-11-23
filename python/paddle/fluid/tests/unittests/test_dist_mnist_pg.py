@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import paddle
@@ -30,13 +29,25 @@ class TestDistMnistNCCL2(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place("dist_mnist.py",
                                   delta=1,
                                   need_envs={
                                       "FLAGS_enable_parallel_graph": "1",
                                       "FLAGS_sync_nccl_allreduce": "1"
                                   })
+=======
+            self.check_with_place(
+                "dist_mnist.py",
+                delta=1,
+                need_envs={
+                    "FLAGS_enable_parallel_graph": "1",
+                    "FLAGS_sync_nccl_allreduce": "1",
+                },
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

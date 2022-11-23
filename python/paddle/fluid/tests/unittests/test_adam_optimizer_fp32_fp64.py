@@ -39,8 +39,14 @@ def main_test_func(place, dtype):
             adam_optimizer.minimize(avg_cost)
 
             fetch_list = [avg_cost]
+<<<<<<< HEAD
             train_reader = fluid.io.batch(paddle.dataset.uci_housing.train(),
                                           batch_size=1)
+=======
+            train_reader = fluid.io.batch(
+                paddle.dataset.uci_housing.train(), batch_size=1
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())

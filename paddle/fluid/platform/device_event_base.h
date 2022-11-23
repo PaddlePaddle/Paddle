@@ -64,11 +64,19 @@ class DeviceEvent {
                           "Required type < %d, but received type = %d",
                           MaxDeviceTypes,
                           type_id_));
+<<<<<<< HEAD
     // TODO(Aurelius84): only support CPU/CUDA/XPU/NPU.
     PADDLE_ENFORCE_LT(type_id_,
                       4,
+=======
+#ifndef PADDLE_WITH_CUSTOM_DEVICE
+    // TODO(Aurelius84): only support CPU/CUDA/NPU.
+    PADDLE_ENFORCE_LT(type_id_,
+                      3,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                       platform::errors::Unavailable(
                           "Currently DeviceEvent do not support %s", place));
+#endif
     PADDLE_ENFORCE_NOT_NULL(
         event_creator_[type_id_],
         platform::errors::Unavailable(

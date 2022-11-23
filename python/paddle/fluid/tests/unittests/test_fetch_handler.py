@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import time
 import unittest
 import numpy as np
@@ -51,6 +49,7 @@ class TestFetchHandler(unittest.TestCase):
         time.sleep(3)
         fm.stop()
 
+<<<<<<< HEAD
         default_fh = fluid.executor.FetchHandler(var_dict={
             'emb': var_emb,
             'emb2': None,
@@ -59,6 +58,15 @@ class TestFetchHandler(unittest.TestCase):
                                                  period_secs=1)
         default_fm = fluid.trainer_factory.FetchHandlerMonitor(
             scope, default_fh)
+=======
+        default_fh = fluid.executor.FetchHandler(
+            var_dict={'emb': var_emb, 'emb2': None, 'emb3': var_emb3},
+            period_secs=1,
+        )
+        default_fm = fluid.trainer_factory.FetchHandlerMonitor(
+            scope, default_fh
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         default_fm.start()
         time.sleep(5)
         default_fm.stop()

@@ -24,13 +24,13 @@ template <typename DeviceContext, typename T>
 class BoxDecoderAndAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* prior_box = context.Input<framework::LoDTensor>("PriorBox");
-    auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
-    auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
-    auto* box_score = context.Input<framework::LoDTensor>("BoxScore");
-    auto* output_box = context.Output<framework::Tensor>("DecodeBox");
+    auto* prior_box = context.Input<phi::DenseTensor>("PriorBox");
+    auto* prior_box_var = context.Input<phi::DenseTensor>("PriorBoxVar");
+    auto* target_box = context.Input<phi::DenseTensor>("TargetBox");
+    auto* box_score = context.Input<phi::DenseTensor>("BoxScore");
+    auto* output_box = context.Output<phi::DenseTensor>("DecodeBox");
     auto* output_assign_box =
-        context.Output<framework::Tensor>("OutputAssignBox");
+        context.Output<phi::DenseTensor>("OutputAssignBox");
     int roi_num = target_box->dims()[0];
     int class_num = box_score->dims()[1];
     auto* target_box_data = target_box->data<T>();

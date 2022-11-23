@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -50,7 +48,7 @@ class TestGaussianRandomOp(OpTest):
 
     def set_attrs(self):
         self.mean = 1.0
-        self.std = 2.
+        self.std = 2.0
 
     def test_check_output(self):
         self.check_output_with_place_customized(self.verify_output, self.place)
@@ -65,8 +63,12 @@ class TestGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
                         "hist: " + str(hist) + " hist2: " + str(hist2))
+=======
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestMeanStdAreInt(TestGaussianRandomOp):

@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid.core as core
-from paddle import _C_ops
 from paddle.fluid.framework import _test_eager_guard
 import copy
 
@@ -48,23 +45,38 @@ class TestMaxPool3DFunc(unittest.TestCase):
             self.setUp()
             self.dense_x.stop_gradient = False
             sparse_x = self.dense_x.to_sparse_coo(4)
+<<<<<<< HEAD
             sparse_out = paddle.incubate.sparse.nn.functional.max_pool3d(
+=======
+            sparse_out = paddle.sparse.nn.functional.max_pool3d(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 sparse_x,
                 self.kernel_sizes,
                 stride=self.strides,
-                padding=self.paddings)
+                padding=self.paddings,
+            )
             out = sparse_out.to_dense()
             out.backward(out)
 
             dense_x = copy.deepcopy(self.dense_x)
+<<<<<<< HEAD
             dense_out = paddle.nn.functional.max_pool3d(dense_x,
                                                         self.kernel_sizes,
                                                         stride=self.strides,
                                                         padding=self.paddings,
                                                         data_format='NDHWC')
+=======
+            dense_out = paddle.nn.functional.max_pool3d(
+                dense_x,
+                self.kernel_sizes,
+                stride=self.strides,
+                padding=self.paddings,
+                data_format='NDHWC',
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             dense_out.backward(dense_out)
 
-            #compare with dense
+            # compare with dense
             assert np.allclose(dense_out.numpy(), out.numpy())
             assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
 
@@ -109,6 +121,7 @@ class TestMaxPool3DAPI(unittest.TestCase):
         with _test_eager_guard():
             dense_x = paddle.randn((2, 3, 6, 6, 3))
             sparse_x = dense_x.to_sparse_coo(4)
+<<<<<<< HEAD
             max_pool3d = paddle.incubate.sparse.nn.MaxPool3D(
                 kernel_size=3, data_format='NDHWC')
             out = max_pool3d(sparse_x)
@@ -117,6 +130,17 @@ class TestMaxPool3DAPI(unittest.TestCase):
             dense_out = paddle.nn.functional.max_pool3d(dense_x,
                                                         3,
                                                         data_format='NDHWC')
+=======
+            max_pool3d = paddle.sparse.nn.MaxPool3D(
+                kernel_size=3, data_format='NDHWC'
+            )
+            out = max_pool3d(sparse_x)
+            out = out.to_dense()
+
+            dense_out = paddle.nn.functional.max_pool3d(
+                dense_x, 3, data_format='NDHWC'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             assert np.allclose(dense_out.numpy(), out.numpy())
 
 

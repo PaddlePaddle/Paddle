@@ -24,8 +24,11 @@ void SyncBatchNormGradKernel(const Context& ctx,
                              const DenseTensor& x,
                              const DenseTensor& scale,
                              const DenseTensor& bias,
+<<<<<<< HEAD
                              const paddle::optional<DenseTensor>& mean,
                              const paddle::optional<DenseTensor>& variance,
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                              const DenseTensor& saved_mean,
                              const DenseTensor& saved_variance,
                              const paddle::optional<DenseTensor>& reserve_space,
@@ -36,7 +39,10 @@ void SyncBatchNormGradKernel(const Context& ctx,
                              bool is_test,
                              bool use_global_stats,
                              bool trainable_statistics,
+<<<<<<< HEAD
                              bool fuse_with_relu,
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                              DenseTensor* x_grad,
                              DenseTensor* scale_grad,
                              DenseTensor* bias_grad) {

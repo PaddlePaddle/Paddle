@@ -24,18 +24,28 @@
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector() {
+=======
+InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
+    const std::vector<Instruction>& vec_instruction) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   WorkQueueOptions options(/*name*/ "GarbageCollector",
                            /*num_threads*/ 1,
                            /*allow_spinning*/ true,
                            /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
+  for (auto& instruc : vec_instruction) {
+    gc_event_.emplace_back(instruc.DeviceContext().GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
 }
 
 InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
   queue_.reset(nullptr);
 }
 
+<<<<<<< HEAD
 void InterpreterCoreEventGarbageCollector::Add(
     Garbage garbage,
     platform::DeviceEvent* event,
@@ -66,6 +76,18 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Add(Variable* var) is not implemented for "
       "InterpreterCoreEventGarbageCollector."));
+=======
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               const Instruction& instr) {
+  PADDLE_ENFORCE_LT(instr.Id(),
+                    gc_event_.size(),
+                    platform::errors::OutOfRange(
+                        "The index should be less than the size of gc event "
+                        ", but got index is %d and size is %d",
+                        instr.Id(),
+                        gc_event_.size()));
+  Add(var, &gc_event_.at(instr.Id()), &instr.DeviceContext());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 void InterpreterCoreEventGarbageCollector::Add(
@@ -76,8 +98,8 @@ void InterpreterCoreEventGarbageCollector::Add(
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(), event, ctx);
+  if (var->IsType<phi::DenseTensor>()) {
+    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder(), event, ctx);
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
@@ -109,13 +131,45 @@ void InterpreterCoreEventGarbageCollector::Add(
   }
 }
 
+void InterpreterCoreEventGarbageCollector::Add(
+    Garbage garbage,
+    platform::DeviceEvent* event,
+    const platform::DeviceContext* ctx) {
+  if (!garbage) {
+    return;
+  }
+
+  if (max_memory_size_ <= 1) {
+    Free(garbage, event, ctx);
+  } else {
+    {  // lock guard
+      std::lock_guard<memory::SpinLock> guard(spinlock_);
+      cur_memory_size_ += garbage->size();
+      garbages_->push_back(std::move(garbage));
+      events_[ctx] = event;
+
+      if (cur_memory_size_ >= max_memory_size_) {
+        FreeGarbages();
+      }
+    }
+  }
+}
+
 void InterpreterCoreEventGarbageCollector::Free(
+<<<<<<< HEAD
     GarbageQueue* garbages,
+=======
+    const Garbage& garbage,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   event->Record(ctx);
   event->SetFininshed();  // Only for CPU Event
+<<<<<<< HEAD
   queue_->AddTask([container = garbages, event = event]() {
+=======
+  queue_->AddTask([container = garbage, event = event]() {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     while (!event->Query()) {
 #if defined(_WIN32)
       SleepEx(50, FALSE);
@@ -124,10 +178,10 @@ void InterpreterCoreEventGarbageCollector::Free(
 #endif
       continue;
     }
-    delete container;
   });
 }
 
+<<<<<<< HEAD
 void InterpreterCoreEventGarbageCollector::Free(
     const Garbage& garbage,
     platform::DeviceEvent* event,
@@ -136,14 +190,29 @@ void InterpreterCoreEventGarbageCollector::Free(
   event->SetFininshed();  // Only for CPU Event
   queue_->AddTask([container = garbage, event = event]() {
     while (!event->Query()) {
+=======
+void InterpreterCoreEventGarbageCollector::FreeGarbages() {
+  for (auto& vals : events_) {
+    vals.second->Record(vals.first);
+    vals.second->SetFininshed();  // Only for CPU Event
+  }
+  queue_->AddTask(
+      [container = std::move(*garbages_), events = std::move(events_)]() {
+        for (auto& vals : events) {
+          while (!vals.second->Query()) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #if defined(_WIN32)
-      SleepEx(50, FALSE);
+            SleepEx(50, FALSE);
 #else
-      sched_yield();
+            sched_yield();
 #endif
-      continue;
-    }
-  });
+            continue;
+          }
+        }
+      });
+  cur_memory_size_ = 0;
+  garbages_->clear();
+  events_.clear();
 }
 
 }  // namespace framework

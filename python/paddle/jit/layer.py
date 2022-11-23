@@ -17,8 +17,12 @@ from paddle.fluid import core
 from paddle.fluid.core import Load
 
 
+<<<<<<< HEAD
 class Layer(object):
 
+=======
+class Layer:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def __init__(self):
         self.cpp_layer = None
         # {name: Function}
@@ -26,6 +30,7 @@ class Layer(object):
 
     def load(self, load_path, place):
         self.cpp_layer = Load(load_path, place)
+<<<<<<< HEAD
         function_dict = self.cpp_layer.function_dict()
 
         for name, function in function_dict.items():
@@ -38,13 +43,31 @@ class Function():
     def __init__(self, function):
         self.function = function
         self.info = FunctionInfo(function.info())
+=======
+
+        for name in self.cpp_layer.function_names():
+            function = self.cpp_layer.function(name)
+            info = self.cpp_layer.function_info(name)
+            self.functions[name] = Function(function, info)
+            setattr(self, name, self.functions[name])
+
+
+class Function:
+    def __init__(self, function, info):
+        self.function = function
+        self.info = FunctionInfo(info)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def __call__(self, *args):
         return core.eager.jit_function_call(self.function, args)
 
 
+<<<<<<< HEAD
 class FunctionInfo():
 
+=======
+class FunctionInfo:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def __init__(self, info):
         self.info = info
 

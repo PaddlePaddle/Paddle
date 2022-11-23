@@ -26,12 +26,21 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
+<<<<<<< HEAD
   out->set_dims(x.dims());
   *(out->mutable_non_zero_indices()) = x.non_zero_indices();
 
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_values = out->mutable_non_zero_elements();
   out_values->Resize(x_values.dims());
+=======
+  *(out->mutable_indices()) = x.indices();
+
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
+  out_values->Resize(x_values.dims());
+  out->set_meta(x.meta());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   dev_ctx.template Alloc<T>(out_values);
 }
 
@@ -39,6 +48,7 @@ template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out) {
+<<<<<<< HEAD
   out->set_dims(x.dims());
   *(out->mutable_non_zero_crows()) = x.non_zero_crows();
   *(out->mutable_non_zero_cols()) = x.non_zero_cols();
@@ -46,6 +56,15 @@ void EmptyLikeCsrKernel(const Context& dev_ctx,
   const DenseTensor& x_values = x.non_zero_elements();
   DenseTensor* out_values = out->mutable_non_zero_elements();
   out_values->Resize(x_values.dims());
+=======
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
+
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
+  out_values->Resize(x_values.dims());
+  out->set_meta(x.meta());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   dev_ctx.template Alloc<T>(out_values);
 }
 

@@ -600,9 +600,9 @@ void StatisticsEngine::Log(const std::string& filepath) {
   for (size_t idx = 0; idx < statistics_.size(); ++idx) {
     const auto& evt_stat = statistics_[idx];
     ofs << platform::string_format(std::string(R"JSON(
-  { 
-    "statistical item" : "%s", 
-    "total time(ns)" : %llu, 
+  {
+    "statistical item" : "%s",
+    "total time(ns)" : %llu,
     "total number of times" : %llu,
     "normalization time(ns)" : %llu
   },)JSON"),

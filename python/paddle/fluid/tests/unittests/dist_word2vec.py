@@ -12,20 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
 import os
-import signal
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 IS_SPARSE = True
@@ -51,7 +40,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1)))
+                    initializer=fluid.initializer.Constant(value=0.1),
+                ),
+            )
             embed_second = fluid.layers.embedding(
                 input=words[1],
                 size=[dict_size, EMBED_SIZE],
@@ -59,7 +50,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1)))
+                    initializer=fluid.initializer.Constant(value=0.1),
+                ),
+            )
             embed_third = fluid.layers.embedding(
                 input=words[2],
                 size=[dict_size, EMBED_SIZE],
@@ -67,7 +60,9 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1)))
+                    initializer=fluid.initializer.Constant(value=0.1),
+                ),
+            )
             embed_forth = fluid.layers.embedding(
                 input=words[3],
                 size=[dict_size, EMBED_SIZE],
@@ -75,25 +70,39 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
                     name='shared_w',
-                    initializer=fluid.initializer.Constant(value=0.1)))
+                    initializer=fluid.initializer.Constant(value=0.1),
+                ),
+            )
 
             concat_embed = fluid.layers.concat(
                 input=[embed_first, embed_second, embed_third, embed_forth],
-                axis=1)
+                axis=1,
+            )
             hidden1 = fluid.layers.fc(
                 input=concat_embed,
                 size=HIDDEN_SIZE,
                 act='sigmoid',
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)))
+                    initializer=fluid.initializer.Constant(value=0.1)
+                ),
+            )
             predict_word = fluid.layers.fc(
                 input=hidden1,
                 size=dict_size,
                 act='softmax',
                 param_attr=fluid.ParamAttr(
+<<<<<<< HEAD
                     initializer=fluid.initializer.Constant(value=0.1)))
             cost = fluid.layers.cross_entropy(input=predict_word,
                                               label=words[4])
+=======
+                    initializer=fluid.initializer.Constant(value=0.1)
+                ),
+            )
+            cost = fluid.layers.cross_entropy(
+                input=predict_word, label=words[4]
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             avg_cost = paddle.mean(cost)
             return avg_cost, predict_word
 
@@ -101,30 +110,54 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
         dict_size = len(word_dict)
 
         first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
+<<<<<<< HEAD
         second_word = fluid.layers.data(name='secondw',
                                         shape=[1],
                                         dtype='int64')
+=======
+        second_word = fluid.layers.data(
+            name='secondw', shape=[1], dtype='int64'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
         forth_word = fluid.layers.data(name='forthw', shape=[1], dtype='int64')
         next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
         avg_cost, predict_word = __network__(
-            [first_word, second_word, third_word, forth_word, next_word])
+            [first_word, second_word, third_word, forth_word, next_word]
+        )
 
         inference_program = paddle.fluid.default_main_program().clone()
 
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
         train_reader = paddle.batch(paddle.dataset.imikolov.train(word_dict, N),
                                     BATCH_SIZE)
         test_reader = paddle.batch(paddle.dataset.imikolov.test(word_dict, N),
                                    BATCH_SIZE)
+=======
+        train_reader = paddle.batch(
+            paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-        return inference_program, avg_cost, train_reader, test_reader, None, predict_word
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            None,
+            predict_word,
+        )
 
 
 if __name__ == "__main__":
     import os
+
     os.environ['CPU_NUM'] = '1'
     os.environ['USE_CUDA'] = "FALSE"
     runtime_main(TestDistWord2vec2x2)

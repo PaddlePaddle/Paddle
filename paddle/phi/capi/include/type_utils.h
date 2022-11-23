@@ -78,9 +78,15 @@ inline ::paddle::experimental::DataType ToPhiDataType(PD_DataType dtype) {
 #undef return_result
 }
 
+<<<<<<< HEAD
 inline PD_DataLayout ToPDDataLayout(::paddle::experimental::DataLayout layout) {
 #define return_result(in, ret)                 \
   case ::paddle::experimental::DataLayout::in: \
+=======
+inline PD_DataLayout ToPDDataLayout(::phi::DataLayout layout) {
+#define return_result(in, ret) \
+  case ::phi::DataLayout::in:  \
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return PD_DataLayout::ret
   switch (layout) {
     return_result(ANY, ANY);
@@ -97,11 +103,18 @@ inline PD_DataLayout ToPDDataLayout(::paddle::experimental::DataLayout layout) {
 #undef return_result
 }
 
+<<<<<<< HEAD
 inline ::paddle::experimental::DataLayout ToPhiDataLayout(
     PD_DataLayout layout) {
 #define return_result(in, ret) \
   case PD_DataLayout::in:      \
     return ::paddle::experimental::DataLayout::ret
+=======
+inline ::phi::DataLayout ToPhiDataLayout(PD_DataLayout layout) {
+#define return_result(in, ret) \
+  case PD_DataLayout::in:      \
+    return ::phi::DataLayout::ret
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   switch (layout) {
     return_result(ANY, ANY);
     return_result(NHWC, NHWC);
@@ -111,7 +124,11 @@ inline ::paddle::experimental::DataLayout ToPhiDataLayout(
     default: {
       PADDLE_THROW(::phi::errors::Unavailable("DataLayout %d is not supported.",
                                               layout));
+<<<<<<< HEAD
       return ::paddle::experimental::DataLayout::ANY;
+=======
+      return ::phi::DataLayout::ANY;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
   }
 #undef return_result

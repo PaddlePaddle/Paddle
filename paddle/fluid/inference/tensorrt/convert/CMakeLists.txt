@@ -3,6 +3,11 @@ list(
   APPEND
   CONVERT_FILES
   matmul_op.cc
+<<<<<<< HEAD
+=======
+  matmul_v2_op.cc
+  bmm_op.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   conv2d_op.cc
   fc_op.cc
   pool2d_op.cc
@@ -21,14 +26,26 @@ list(
   gelu_op.cc
   layer_norm_op.cc
   multihead_matmul_op.cc
+<<<<<<< HEAD
   shuffle_channel_op.cc
   swish_op.cc
+=======
+  multihead_matmul_roformer_op.cc
+  shuffle_channel_op.cc
+  fill_any_like_op.cc
+  where_op.cc
+  swish_op.cc
+  silu_op.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   instance_norm_op.cc
   stack_op.cc
   transpose_op.cc
   flatten_op.cc
   flatten_contiguous_range_op.cc
+<<<<<<< HEAD
   emb_eltwise_layernorm.cc
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   skip_layernorm.cc
   scale_op.cc
   slice_op.cc
@@ -55,7 +72,10 @@ list(
   bilinear_interp_v2_op.cc
   pool3d_op.cc
   deformable_conv_op.cc
+<<<<<<< HEAD
   preln_emb_eltwise_layernorm.cc
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   strided_slice_op.cc
   preln_skip_layernorm.cc
   roll_op.cc
@@ -69,11 +89,36 @@ list(
   top_k_op.cc
   squeeze2_op.cc
   unsqueeze2_op.cc
+<<<<<<< HEAD
   sum_op.cc
   shape_op.cc
   fill_constant_op.cc
   fused_token_prune_op.cc)
 
+=======
+  rnn_op.cc
+  fill_constant_batch_size_like_op.cc
+  sum_op.cc
+  shape_op.cc
+  fill_constant_op.cc
+  fused_token_prune_op.cc
+  celu_op.cc
+  layernorm_shift_partition_op.cc
+  tanhshrink_op.cc
+  logsigmoid_op.cc
+  preln_layernorm_shift_partition_op.cc
+  merge_layernorm_op.cc
+  skip_merge_layernorm_op.cc
+  generic_and_custom_plugin_creater.cc
+  fused_lookup_tables_op.cc
+  expand_v2_op.cc)
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc
+       preln_emb_eltwise_layernorm.cc)
+endif()
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND CONVERT_FILES sparse_fc_op.cc sparse_multihead_matmul_op.cc)
 endif()
@@ -81,7 +126,16 @@ endif()
 nv_library(
   tensorrt_converter
   SRCS ${CONVERT_FILES}
+<<<<<<< HEAD
   DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto
+=======
+  DEPS tensorrt_engine
+       tensorrt_plugin
+       operator
+       scope
+       framework_proto
+       tensorrt_op_teller
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
        op_registry)
 
 nv_test(
@@ -90,6 +144,14 @@ nv_test(
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_engine
        tensorrt_converter)
 
+<<<<<<< HEAD
+=======
+nv_test(
+  test_custom_plugin_creater
+  SRCS test_custom_plugin_creater.cc
+  DEPS paddle_framework tensorrt_converter op_meta_info custom_operator)
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
   # be build only in CI, so suppose the generator in Windows is Ninja.

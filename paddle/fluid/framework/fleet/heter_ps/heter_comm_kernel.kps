@@ -206,8 +206,13 @@ __global__ void fill_shard_grads_kernel(KeyType* d_shard_keys,
     GM2LM(idx + i, local_idx, read_len * sizeof(T));
     for (int k = 0; k < read_len; k++) {
       GM2LM(d_keys + local_idx[k], &local_shard_keys[k], 1 * sizeof(KeyType));
+<<<<<<< HEAD
       GM2LM(
           d_grads + local_idx[k], &local_shard_grads[k], 1 * sizeof(GradType));
+=======
+      GM2LM(d_grads + local_idx[k], &local_shard_grads[k],
+            1 * sizeof(GradType));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       // local_shard_keys[k] = local_keys[local_idx[k]];
       // local_shard_grads[k] = local_grads[local_idx[k]];
     }

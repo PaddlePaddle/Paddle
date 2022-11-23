@@ -20,9 +20,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -175,16 +172,8 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return framework::OpKernelType(data_type, ctx.GetPlace());
 }
 
 void FusionLSTMOpMaker::Make() {
@@ -309,11 +298,19 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 #define INIT_BASE_DEFINES                               \
   using DeviceContext = phi::CPUContext;                \
   auto* x = ctx.Input<LoDTensor>("X");                  \
+<<<<<<< HEAD
   auto* h0 = ctx.Input<Tensor>("H0");                   \
   auto* c0 = ctx.Input<Tensor>("C0");                   \
   auto* wx = ctx.Input<Tensor>("WeightX");              \
   auto* wh = ctx.Input<Tensor>("WeightH");              \
   auto* bias = ctx.Input<Tensor>("Bias");               \
+=======
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");         \
+  auto* c0 = ctx.Input<phi::DenseTensor>("C0");         \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");    \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");    \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");     \
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto* xx = ctx.Output<LoDTensor>("XX");               \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
   auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
@@ -336,7 +333,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   auto place = ctx.GetPlace();                                                 \
   if (use_peepholes) {                                                         \
     /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                    \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");          \
     checked_cell_data = checked_cell->mutable_data<T>(place);                  \
   }                                                                            \
   const jit::lstm_attr_t attr(                                                 \
@@ -448,8 +445,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
     INIT_OTHER_DEFINES;
 
-    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
-    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
+    auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");

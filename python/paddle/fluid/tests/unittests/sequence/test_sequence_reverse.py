@@ -14,7 +14,6 @@
 
 import unittest
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import numpy as np
 import sys
 
@@ -37,6 +36,7 @@ class TestSequenceReverseBase(OpTest):
         self.y = self.get_output()
 
         self.inputs = {
+<<<<<<< HEAD
             'X': (self.x, [
                 self.lod,
             ]),
@@ -45,6 +45,22 @@ class TestSequenceReverseBase(OpTest):
             'Y': (self.y, [
                 self.lod,
             ]),
+=======
+            'X': (
+                self.x,
+                [
+                    self.lod,
+                ],
+            ),
+        }
+        self.outputs = {
+            'Y': (
+                self.y,
+                [
+                    self.lod,
+                ],
+            ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def get_output(self):

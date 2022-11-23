@@ -94,7 +94,7 @@ CINN(https://github.com/PaddlePaddle/CINN/blob/develop/README.md) instruction ex
 Both the input and output of this operator are a set of variables
 which are the input and output arguments of the bound cinn instruction respectively.
 In addition, there is an attribute named 'cached_index' should be
-set necessarily to get the CinnCompiledObject where the instruction is included 
+set necessarily to get the CinnCompiledObject where the instruction is included
 and 'instruction_index' is fetch the instruction object from complied runtime prograrm.
 
 It accomplishes the execution of the instruction according to the following steps:

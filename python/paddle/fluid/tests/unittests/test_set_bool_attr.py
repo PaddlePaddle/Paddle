@@ -22,13 +22,22 @@ class TestAttrSet(unittest.TestCase):
         x = fluid.layers.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
         param_attr = fluid.ParamAttr(
             name='batch_norm_w',
-            initializer=fluid.initializer.Constant(value=1.0))
+            initializer=fluid.initializer.Constant(value=1.0),
+        )
         bias_attr = fluid.ParamAttr(
             name='batch_norm_b',
+<<<<<<< HEAD
             initializer=fluid.initializer.Constant(value=0.0))
         bn = fluid.layers.batch_norm(input=x,
                                      param_attr=param_attr,
                                      bias_attr=bias_attr)
+=======
+            initializer=fluid.initializer.Constant(value=0.0),
+        )
+        bn = fluid.layers.batch_norm(
+            input=x, param_attr=param_attr, bias_attr=bias_attr
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         block = fluid.default_main_program().desc.block(0)
         op = block.op(0)
         before_type = op.attr_type('is_test')

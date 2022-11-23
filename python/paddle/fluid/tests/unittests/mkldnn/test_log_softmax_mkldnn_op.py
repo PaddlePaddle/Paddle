@@ -17,7 +17,11 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 from paddle.fluid.tests.unittests.test_log_softmax import ref_log_softmax
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -83,9 +87,15 @@ class TestLogSoftmax1DBF16OneDNNOp(TestLogSoftmax1DOneDNNOp):
         self.dtype = np.uint16
 
 
+<<<<<<< HEAD
 class TestLogSoftmaxPositiveAxisBF16OneDNNOp(TestLogSoftmaxPositiveAxisOneDNNOp
                                              ):
 
+=======
+class TestLogSoftmaxPositiveAxisBF16OneDNNOp(
+    TestLogSoftmaxPositiveAxisOneDNNOp
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_dtype(self):
         self.dtype = np.uint16
 

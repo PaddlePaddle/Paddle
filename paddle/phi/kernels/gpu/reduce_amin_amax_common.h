@@ -32,6 +32,10 @@ void ReduceCudaAMaxAMinGrad(const Context& dev_ctx,
                             bool keep_dim,
                             bool reduce_all,
                             DenseTensor* x_grad) {
+<<<<<<< HEAD
+=======
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto* in_x = &x;
   auto* out_y = &out;
   auto* d_out = &out_grad;

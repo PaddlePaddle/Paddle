@@ -1195,7 +1195,7 @@ void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
         dst, src, num, reinterpret_cast<mluStream>(stream));
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(dst_place))->Wait();
 
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;

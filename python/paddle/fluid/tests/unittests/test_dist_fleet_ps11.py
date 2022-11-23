@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
-import tempfile
-import shutil
 
 import paddle
 import paddle.fluid as fluid
@@ -45,16 +41,27 @@ class TestPSPassWithBow(unittest.TestCase):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
             cond_3 = fluid.layers.reduce_sum(cond)
+<<<<<<< HEAD
             acc = fluid.layers.elementwise_div(cond_3,
                                                fluid.layers.fill_constant(
                                                    shape=[1],
                                                    value=batch_size * 1.0,
                                                    dtype='float64'),
                                                name="simnet_acc")
+=======
+            acc = fluid.layers.elementwise_div(
+                cond_3,
+                fluid.layers.fill_constant(
+                    shape=[1], value=batch_size * 1.0, dtype='float64'
+                ),
+                name="simnet_acc",
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
             loss_op1 = fluid.layers.elementwise_sub(
+<<<<<<< HEAD
                 fluid.layers.fill_constant_batch_size_like(input=cos_q_pt,
                                                            shape=[-1, 1],
                                                            value=margin,
@@ -67,6 +74,20 @@ class TestPSPassWithBow(unittest.TestCase):
                                                            value=0.0,
                                                            dtype='float32'),
                 loss_op2)
+=======
+                fluid.layers.fill_constant_batch_size_like(
+                    input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
+                ),
+                cos_q_pt,
+            )
+            loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
+            loss_op3 = paddle.maximum(
+                fluid.layers.fill_constant_batch_size_like(
+                    input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
+                ),
+                loss_op2,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             avg_cost = paddle.mean(loss_op3)
             return avg_cost
 
@@ -82,11 +103,13 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr))
-        q_emb = fluid.layers.reshape(q_emb, [-1, emb_dim])
+                learning_rate=emb_lr,
+            ),
+        )
+        q_emb = paddle.reshape(q_emb, [-1, emb_dim])
         # vsum
         q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
-        q_ss = fluid.layers.softsign(q_sum)
+        q_ss = paddle.nn.functional.softsign(q_sum)
         # fc layer after conv
         q_fc = fluid.layers.fc(
             input=q_ss,
@@ -94,7 +117,9 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__q_fc__",
-                learning_rate=base_lr))
+                learning_rate=base_lr,
+            ),
+        )
         # label data
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         # pt
@@ -106,11 +131,13 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr))
-        pt_emb = fluid.layers.reshape(pt_emb, [-1, emb_dim])
+                learning_rate=emb_lr,
+            ),
+        )
+        pt_emb = paddle.reshape(pt_emb, [-1, emb_dim])
         # vsum
         pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
-        pt_ss = fluid.layers.softsign(pt_sum)
+        pt_ss = paddle.nn.functional.softsign(pt_sum)
         # fc layer
         pt_fc = fluid.layers.fc(
             input=pt_ss,
@@ -118,8 +145,10 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__fc__",
-                learning_rate=base_lr),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"))
+                learning_rate=base_lr,
+            ),
+            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+        )
         # nt
         nt = fluid.layers.data(name="3", shape=[1], dtype="int64", lod_level=1)
         # embedding
@@ -129,11 +158,13 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__emb__",
-                learning_rate=emb_lr))
-        nt_emb = fluid.layers.reshape(nt_emb, [-1, emb_dim])
+                learning_rate=emb_lr,
+            ),
+        )
+        nt_emb = paddle.reshape(nt_emb, [-1, emb_dim])
         # vsum
         nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
-        nt_ss = fluid.layers.softsign(nt_sum)
+        nt_ss = paddle.nn.functional.softsign(nt_sum)
         # fc layer
         nt_fc = fluid.layers.fc(
             input=nt_ss,
@@ -141,8 +172,10 @@ class TestPSPassWithBow(unittest.TestCase):
             param_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01),
                 name="__fc__",
-                learning_rate=base_lr),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"))
+                learning_rate=base_lr,
+            ),
+            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+        )
         cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
         cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
         # loss
@@ -159,9 +192,11 @@ class TestPSPassWithBow(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002,127.0.0.2:36002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36002,127.0.0.2:36002"
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["FLAGS_selected_gpus"] = "0"
         role = role_maker.PaddleCloudRoleMaker()
@@ -195,14 +230,21 @@ class TestPSPassWithBow(unittest.TestCase):
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         for slot in slots:
+<<<<<<< HEAD
             var = fluid.layers.data(name=slot,
                                     shape=[1],
                                     dtype="int64",
                                     lod_level=1)
+=======
+            var = fluid.layers.data(
+                name=slot, shape=[1], dtype="int64", lod_level=1
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             slots_vars.append(var)
 
         dataset = paddle.distributed.InMemoryDataset()
         dataset._set_use_ps_gpu(True)
+<<<<<<< HEAD
         dataset.init(batch_size=32,
                      thread_num=3,
                      pipe_command="cat",
@@ -211,6 +253,17 @@ class TestPSPassWithBow(unittest.TestCase):
             "test_in_memory_dataset_run_a.txt",
             "test_in_memory_dataset_run_b.txt"
         ])
+=======
+        dataset.init(
+            batch_size=32, thread_num=3, pipe_command="cat", use_var=slots_vars
+        )
+        dataset.set_filelist(
+            [
+                "test_in_memory_dataset_run_a.txt",
+                "test_in_memory_dataset_run_b.txt",
+            ]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")

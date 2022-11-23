@@ -101,3 +101,12 @@ fused_attention_dygraph_function(
     const paddle::experimental::Tensor& Ln2Scale,
     const paddle::experimental::Tensor& Ln2Bias,
     const paddle::framework::AttributeMap& attr_map);
+<<<<<<< HEAD
+=======
+
+paddle::experimental::Tensor fused_gemm_epilogue_dygraph_function(
+    const paddle::experimental::Tensor& X,
+    const paddle::experimental::Tensor& Y,
+    const paddle::experimental::Tensor& Bias,
+    const paddle::framework::AttributeMap& attr_map);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

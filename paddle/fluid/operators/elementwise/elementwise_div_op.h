@@ -24,7 +24,7 @@ namespace operators {
 class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
+  using Tensor = phi::DenseTensor;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto y_grad_name = framework::GradVarName("Y");
@@ -45,6 +45,7 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -54,13 +55,20 @@ class ElementwiseDivOpDoubleGrad : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
+=======
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

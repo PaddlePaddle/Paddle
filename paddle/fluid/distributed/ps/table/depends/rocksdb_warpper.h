@@ -94,6 +94,7 @@ class RocksDBHandler {
     VLOG(0) << "db path: " << db_path << " colnum: " << colnum;
     _dbs.resize(colnum);
     for (int i = 0; i < colnum; i++) {
+<<<<<<< HEAD
       rocksdb::Options options;
       options.comparator = &_comparator;
       rocksdb::BlockBasedTableOptions bbto;
@@ -151,6 +152,10 @@ class RocksDBHandler {
       }
 
       rocksdb::Status s = rocksdb::DB::Open(options, shard_path, &_dbs[i]);
+=======
+      s = _db->CreateColumnFamily(
+          options, "shard_" + std::to_string(i), &_handles[i]);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       assert(s.ok());
     }
     VLOG(0) << "DB initialize success, colnum:" << colnum;
@@ -161,9 +166,16 @@ class RocksDBHandler {
       int id, const char* key, int key_len, const char* value, int value_len) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
+<<<<<<< HEAD
     rocksdb::Status s = _dbs[id]->Put(options,
                                       rocksdb::Slice(key, key_len),
                                       rocksdb::Slice(value, value_len));
+=======
+    rocksdb::Status s = _db->Put(options,
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 rocksdb::Slice(value, value_len));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     assert(s.ok());
     return 0;
   }
@@ -185,8 +197,15 @@ class RocksDBHandler {
   }
 
   int get(int id, const char* key, int key_len, std::string& value) {
+<<<<<<< HEAD
     rocksdb::Status s = _dbs[id]->Get(
         rocksdb::ReadOptions(), rocksdb::Slice(key, key_len), &value);
+=======
+    rocksdb::Status s = _db->Get(rocksdb::ReadOptions(),
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 &value);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if (s.IsNotFound()) {
       return 1;
     }

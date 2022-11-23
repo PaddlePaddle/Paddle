@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -52,7 +50,8 @@ class ConditionalBlockTest(unittest.TestCase):
             outs = exe.run(
                 main_program,
                 feed={'X': x},
-                fetch_list=[main_program.block(0).var(data.name + "@GRAD")])[0]
+                fetch_list=[main_program.block(0).var(data.name + "@GRAD")],
+            )[0]
             print(outs)
 
 
@@ -66,6 +65,7 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
             sub_block = main_program._create_block()
             main_program._rollback()
             step_scope = global_block.create_var(
+<<<<<<< HEAD
                 type=core.VarDesc.VarType.STEP_SCOPES)
             cond_var = layers.fill_constant(shape=[1],
                                             dtype='bool',
@@ -84,6 +84,23 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
                                             'sub_block': sub_block,
                                             'is_scalar_condition': True
                                         })
+=======
+                type=core.VarDesc.VarType.STEP_SCOPES
+            )
+            cond_var = layers.fill_constant(
+                shape=[1], dtype='bool', value=False
+            )
+
+            op = global_block.append_op(
+                type='conditional_block',
+                inputs={
+                    'Cond': [cond_var],
+                    'Input': [],
+                },
+                outputs={'Out': [], 'Scope': [step_scope]},
+                attrs={'sub_block': sub_block, 'is_scalar_condition': True},
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             op.desc.infer_shape(global_block.desc)
 
 

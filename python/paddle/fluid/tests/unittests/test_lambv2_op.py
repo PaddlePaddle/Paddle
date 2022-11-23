@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle
 import paddle.fluid as fluid
@@ -31,14 +27,18 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
         assert isinstance(block, fluid.framework.Block)
         block.program._use_lamb = True
 
-        m = moment1 = self._get_accumulator(self._moment1_acc_str,
-                                            param_and_grad[0])
+        m = moment1 = self._get_accumulator(
+            self._moment1_acc_str, param_and_grad[0]
+        )
         v = self._get_accumulator(self._moment2_acc_str, param_and_grad[0])
-        beta_1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                               param_and_grad[0])
-        beta_2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                               param_and_grad[0])
+        beta_1_pow_acc = self._get_accumulator(
+            self._beta1_pow_acc_str, param_and_grad[0]
+        )
+        beta_2_pow_acc = self._get_accumulator(
+            self._beta2_pow_acc_str, param_and_grad[0]
+        )
 
+<<<<<<< HEAD
         beta_1 = layers.fill_constant(dtype='float32',
                                       shape=[1],
                                       value=self._beta1,
@@ -51,14 +51,31 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
                                        shape=[1],
                                        value=self._epsilon,
                                        name='epsilon')
+=======
+        beta_1 = layers.fill_constant(
+            dtype='float32', shape=[1], value=self._beta1, name='lamb_beta_1'
+        )
+        beta_2 = layers.fill_constant(
+            dtype='float32', shape=[1], value=self._beta2, name='lamb_beta_2'
+        )
+        epsilon = layers.fill_constant(
+            dtype='float32', shape=[1], value=self._epsilon, name='epsilon'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         one = paddle.ones(shape=[1]).astype('float32')
         zero = paddle.zeros(shape=[1]).astype('float32')
 
         next_m = paddle.multiply(m, beta_1) + paddle.multiply(
+<<<<<<< HEAD
             param_and_grad[1], one - beta_1)
+=======
+            param_and_grad[1], one - beta_1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         next_v = paddle.multiply(v, beta_2) + paddle.multiply(
-            paddle.pow(param_and_grad[1], 2), one - beta_2)
+            paddle.pow(param_and_grad[1], 2), one - beta_2
+        )
 
         beta1_correction = one - beta_1_pow_acc
         beta2_correction = one - beta_2_pow_acc
@@ -68,8 +85,10 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
 
         update = next_m_unbiased / (paddle.sqrt(next_v_unbiased) + epsilon)
 
-        if self._exclude_from_weight_decay_fn is not None and self._exclude_from_weight_decay_fn(
-                param_and_grad[0]):
+        if (
+            self._exclude_from_weight_decay_fn is not None
+            and self._exclude_from_weight_decay_fn(param_and_grad[0])
+        ):
             self._lamb_weight_decay = 0.0
         update += self._lamb_weight_decay * param_and_grad[0]
 
@@ -80,8 +99,16 @@ class LAMBOptimizer(paddle.optimizer.Lamb):
 
         ratio = paddle.where(
             paddle.greater_than(w_norm, zero),
+<<<<<<< HEAD
             paddle.where(paddle.greater_than(g_norm, zero), (w_norm / g_norm),
                          one), one)
+=======
+            paddle.where(
+                paddle.greater_than(g_norm, zero), (w_norm / g_norm), one
+            ),
+            one,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         update_with_lr = ratio * learning_rate * update
         next_param = param_and_grad[0] - update_with_lr
 
@@ -103,9 +130,15 @@ class TestLambOpV2(unittest.TestCase):
         conv = paddle.nn.Conv2D(4, 6, (3, 3))
         data = conv(data)
         loss = paddle.mean(data)
+<<<<<<< HEAD
         opt = paddle.optimizer.Lamb(learning_rate=1e-5,
                                     epsilon=1e-8,
                                     parameters=conv.parameters())
+=======
+        opt = paddle.optimizer.Lamb(
+            learning_rate=1e-5, epsilon=1e-8, parameters=conv.parameters()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         loss.backward()
         opt.minimize(loss)
 
@@ -144,12 +177,20 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
 
             executor = fluid.Executor(place)
             executor.run(startup_program)
+<<<<<<< HEAD
             output = executor.run(program=main_program,
                                   feed={
                                       'X': feed_x,
                                       'Y': feed_y
                                   },
                                   fetch_list=[avg_loss.name])
+=======
+            output = executor.run(
+                program=main_program,
+                feed={'X': feed_x, 'Y': feed_y},
+                fetch_list=[avg_loss.name],
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             main = fluid.Program()
             startup = fluid.Program()
@@ -160,14 +201,22 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
 
             exe = fluid.Executor(place)
             exe.run(startup)
+<<<<<<< HEAD
             out = exe.run(program=main,
                           feed={
                               'X': feed_x,
                               'Y': feed_y
                           },
                           fetch_list=[loss.name])
+=======
+            out = exe.run(
+                program=main,
+                feed={'X': feed_x, 'Y': feed_y},
+                fetch_list=[loss.name],
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-            self.assertTrue(np.allclose(out, output))
+            np.testing.assert_allclose(out, output, rtol=1e-05)
 
 
 class TestLambOpV2Group(TestLambOpV2):
@@ -179,6 +228,7 @@ class TestLambOpV2Group(TestLambOpV2):
         linear_1 = paddle.nn.Linear(13, 5)
         linear_2 = paddle.nn.Linear(5, 3)
         # This can be any optimizer supported by dygraph.
+<<<<<<< HEAD
         adam = paddle.optimizer.Lamb(learning_rate=0.01,
                                      parameters=[{
                                          'params': linear_1.parameters()
@@ -189,6 +239,21 @@ class TestLambOpV2Group(TestLambOpV2):
                                          'beta2': 0.99
                                      }],
                                      lamb_weight_decay=0.01)
+=======
+        adam = paddle.optimizer.Lamb(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'lamb_weight_decay': 0.001,
+                    'beta1': 0.9,
+                    'beta2': 0.99,
+                },
+            ],
+            lamb_weight_decay=0.01,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = linear_1(a)
         out = linear_2(out)
         out.backward()
@@ -204,9 +269,15 @@ class TestLambOpMultiPrecision(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             paddle.seed(seed)
             with paddle.static.amp.fp16_guard():
+<<<<<<< HEAD
                 x = paddle.static.data(name='x',
                                        shape=[None, 10],
                                        dtype='float32')
+=======
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 linear = paddle.nn.Linear(10, 2)
                 hidden = linear(x)
                 loss = paddle.mean(hidden)
@@ -214,9 +285,15 @@ class TestLambOpMultiPrecision(unittest.TestCase):
             original_optimizer = paddle.optimizer.Lamb(learning_rate=1e-3)
             original_optimizer._multi_precision = multi_precision
             if multi_precision:
+<<<<<<< HEAD
                 optimizer = paddle.static.amp.decorate(original_optimizer,
                                                        use_pure_fp16=True,
                                                        use_fp16_guard=True)
+=======
+                optimizer = paddle.static.amp.decorate(
+                    original_optimizer, use_pure_fp16=True, use_fp16_guard=True
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             else:
                 optimizer = original_optimizer
             optimizer.minimize(loss)
@@ -237,12 +314,13 @@ class TestLambOpMultiPrecision(unittest.TestCase):
             if multi_precision:
                 params[0] = np.array(params[0])
                 params[1] = np.array(params[1])
-                self.assertTrue(
-                    np.array_equal(params[0], params[1].astype(np.float16)))
+                np.testing.assert_array_equal(
+                    params[0], params[1].astype(np.float16)
+                )
                 return params[0].astype(np.float32)
             else:
-                self.assertTrue(params[0] is not None)
-                self.assertTrue(params[1] is None)
+                self.assertIsNotNone(params[0])
+                self.assertIsNone(params[1])
                 params[0] = np.array(params[0])
                 return params[0]
 
@@ -254,14 +332,19 @@ class TestLambOpMultiPrecision(unittest.TestCase):
             weight_np, bias_np = None, None
             for i in range(n):
                 feed_dict = {x.name: x_np}
-                weight_np, bias_np = exe.run(main_prog,
-                                             feed=feed_dict,
-                                             fetch_list=[weight, bias])
+                weight_np, bias_np = exe.run(
+                    main_prog, feed=feed_dict, fetch_list=[weight, bias]
+                )
                 weight_np = weight_np.astype('float32')
                 bias_np = bias_np.astype('float32')
+<<<<<<< HEAD
                 self.assertTrue(np.array_equal(weight_np,
                                                get_parameter(weight)))
                 self.assertTrue(np.array_equal(bias_np, get_parameter(bias)))
+=======
+                np.testing.assert_array_equal(weight_np, get_parameter(weight))
+                np.testing.assert_array_equal(bias_np, get_parameter(bias))
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             return weight_np, bias_np
 
     @switch_to_static_graph

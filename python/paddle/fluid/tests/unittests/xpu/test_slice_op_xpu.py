@@ -18,9 +18,12 @@ import sys
 import unittest
 
 sys.path.append("..")
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -47,7 +50,7 @@ class XPUTestSliceOp(XPUOpTestWrapper):
                 'starts': self.starts,
                 'ends': self.ends,
                 'infer_flags': self.infer_flags,
-                "use_xpu": True
+                "use_xpu": True,
             }
 
         def config(self):
@@ -63,11 +66,14 @@ class XPUTestSliceOp(XPUOpTestWrapper):
                 self.check_grad_with_place(self.place, ['Input'], 'Out')
             else:
                 user_defined_grad_outputs = np.random.random(
-                    self.out.shape).astype(self.dtype)
+                    self.out.shape
+                ).astype(self.dtype)
                 self.check_grad_with_place(
-                    self.place, ['Input'],
+                    self.place,
+                    ['Input'],
                     'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                    user_defined_grad_outputs=user_defined_grad_outputs,
+                )
 
     class TestCase1(TestSliceOp):
 
@@ -112,7 +118,7 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
                 'ends': self.ends,
                 'infer_flags': self.infer_flags,
                 'decrease_axis': self.decrease_axis,
-                "use_xpu": True
+                "use_xpu": True,
             }
 
         def config(self):
@@ -132,11 +138,14 @@ class XPUTestSliceOp_decs_dim(XPUOpTestWrapper):
                 self.check_grad_with_place(self.place, ['Input'], 'Out')
             else:
                 user_defined_grad_outputs = np.random.random(
-                    self.out.shape).astype(self.dtype)
+                    self.out.shape
+                ).astype(self.dtype)
                 self.check_grad_with_place(
-                    self.place, ['Input'],
+                    self.place,
+                    ['Input'],
                     'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                    user_defined_grad_outputs=user_defined_grad_outputs,
+                )
 
     class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
 

@@ -35,7 +35,11 @@
 
 namespace paddle {
 
+<<<<<<< HEAD
 using framework::LoDTensor;
+=======
+using LoDTensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 using framework::Variable;
 using framework::ir::Graph;
 using platform::CPUPlace;
@@ -131,7 +135,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         is_unsigned = true;
       } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||
                  op->Type() == "pool2d" || op->Type() == "nearest_interp" ||
-                 op->Type() == "nearest_interp_v2") {
+                 op->Type() == "nearest_interp_v2" || op->Type() == "split") {
         auto input_var_name = op->Input("X")[0];
         PADDLE_ENFORCE_NE(scales_.find(input_var_name),
                           scales_.end(),
@@ -539,7 +543,11 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
 
 std::pair<std::vector<int>, float>
 AnalysisPredictor::MkldnnQuantizer::Histogram(
+<<<<<<< HEAD
     const framework::LoDTensor& var_tensor,
+=======
+    const phi::DenseTensor& var_tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     float min_val,
     float max_val,
     size_t num_bins) const {

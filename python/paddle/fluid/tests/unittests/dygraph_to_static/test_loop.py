@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 import inspect
 import numpy as np
@@ -65,12 +63,15 @@ def while_loop_dyfun_with_conflict_var(x):
 
 
 def while_loop_dyfunc_with_none(x):
-    i = fluid.dygraph.to_variable(x)\
-        if x is not None \
-        else fluid.dygraph.to_variable(x+1)
+    i = (
+        fluid.dygraph.to_variable(x)
+        if x is not None
+        else fluid.dygraph.to_variable(x + 1)
+    )
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
     x = fluid.dygraph.to_variable(
-        x)  # TODO(liym27): Delete it if the type of parameter x can be resolved
+        x
+    )  # TODO(liym27): Delete it if the type of parameter x can be resolved
     flag = 1
     while x < 10:
         i = i + x if flag is not None else x + i
@@ -152,9 +153,13 @@ def while_loop_bool_op2(x):
 
 
 def while_loop_class_var(x):
+<<<<<<< HEAD
 
     class Foo(object):
 
+=======
+    class Foo:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -180,9 +185,13 @@ def loop_var_contains_property(x):
 
 
 def for_loop_class_var(max_len):
+<<<<<<< HEAD
 
     class Foo(object):
 
+=======
+    class Foo:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -191,9 +200,15 @@ def for_loop_class_var(max_len):
     foo = Foo()
 
     # Use `to_variable` so that static analysis can analyze the type of X is Tensor
+<<<<<<< HEAD
     max_len = fluid.layers.fill_constant(shape=[1],
                                          value=max_len,
                                          dtype="int32")
+=======
+    max_len = fluid.layers.fill_constant(
+        shape=[1], value=max_len, dtype="int32"
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     for i in range(max_len):
         foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
@@ -235,14 +250,20 @@ class TestNameVisitor(unittest.TestCase):
 
     def setUp(self):
         self.loop_funcs = [
-            while_loop_dyfunc, for_loop_dyfunc, while_loop_dyfunc_with_none,
-            for_loop_dufunc_with_listcomp
+            while_loop_dyfunc,
+            for_loop_dyfunc,
+            while_loop_dyfunc_with_none,
+            for_loop_dufunc_with_listcomp,
         ]
         self.loop_var_names = [
             set(["i", "x"]),
             set(["i", "ret", "max_len"]),
             set(["i", "x"]),
+<<<<<<< HEAD
             set(["j", "array", "res", "x"])
+=======
+            set(["j", "array", "res", "x"]),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ]
         self.create_var_names = [set(), set(["ret"]), set(), set(["res", "x"])]
 
@@ -256,8 +277,10 @@ class TestNameVisitor(unittest.TestCase):
             name_visitor = NameVisitor(gast_root)
             for node in gast.walk(gast_root):
                 if isinstance(node, (gast.While, gast.For)):
-                    loop_var_names, create_var_names = name_visitor.get_loop_var_names(
-                        node)
+                    (
+                        loop_var_names,
+                        create_var_names,
+                    ) = name_visitor.get_loop_var_names(node)
                     self.assertEqual(loop_var_names, self.loop_var_names[i])
                     self.assertEqual(create_var_names, self.create_var_names[i])
 
@@ -270,34 +293,57 @@ class TestNameVisitor(unittest.TestCase):
         self.loop_var_names = [
             set(["j", "two"]),
             set(["i", "three", "b"]),
+<<<<<<< HEAD
             set(["i"])
+=======
+            set(["i"]),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ]
         self.create_var_names = [set(), set(["b"]), set()]
 
         i = 0
         for node in gast.walk(gast_root):
             if isinstance(node, (gast.While, gast.For)):
-                loop_var_names, create_var_names = name_visitor.get_loop_var_names(
-                    node)
+                (
+                    loop_var_names,
+                    create_var_names,
+                ) = name_visitor.get_loop_var_names(node)
                 self.assertEqual(
                     loop_var_names,
                     self.loop_var_names[i],
-                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".
-                    format(loop_var_names, self.loop_var_names[i]))
+                    msg="loop_var_names : {}, \nexpected loop_var_names : {}".format(
+                        loop_var_names, self.loop_var_names[i]
+                    ),
+                )
                 self.assertEqual(
                     create_var_names,
                     self.create_var_names[i],
+<<<<<<< HEAD
                     msg=
                     "i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}"
                     .format(i, create_var_names, self.create_var_names[i]))
+=======
+                    msg="i = {}\ncreate_var_names : {}, \nexpected create_var_names : {}".format(
+                        i, create_var_names, self.create_var_names[i]
+                    ),
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 i += 1
 
 
 class TestTransformWhileLoop(unittest.TestCase):
 
     def setUp(self):
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
 
@@ -327,7 +373,11 @@ class TestTransformWhileLoop(unittest.TestCase):
         static_numpy = self._run_static()
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_numpy, static_numpy))
+=======
+        np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestTransformWhileLoopWithoutTensor(TestTransformWhileLoop):
@@ -381,8 +431,16 @@ class TestLoopVarContainsProperty(TestTransformWhileLoop):
 class TestTransformForLoop(unittest.TestCase):
 
     def setUp(self):
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.len = 100
         self._init_dyfunc()
 
@@ -404,7 +462,9 @@ class TestTransformForLoop(unittest.TestCase):
             return ret.numpy()
 
     def test_ast_to_func(self):
-        self.assertTrue(np.allclose(self._run_dygraph(), self._run_static()))
+        np.testing.assert_allclose(
+            self._run_dygraph(), self._run_static(), rtol=1e-05
+        )
 
 
 class TestTransformForLoop2(TestTransformForLoop):

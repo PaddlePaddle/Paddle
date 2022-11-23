@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import unittest
+import paddle
 
 
 def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
@@ -25,8 +26,10 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     np.random.seed(2)
 
     x = layers.assign(
-        np.random.rand(batch_size, beam_size, 32).astype("float32"))
+        np.random.rand(batch_size, beam_size, 32).astype("float32")
+    )
     indices = fluid.data(shape=[None, beam_size], dtype="int64", name="indices")
+<<<<<<< HEAD
     step_idx = layers.fill_constant(shape=[1],
                                     dtype="int64",
                                     value=0,
@@ -35,6 +38,14 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
                                    dtype="int64",
                                    value=10,
                                    force_cpu=True)
+=======
+    step_idx = layers.fill_constant(
+        shape=[1], dtype="int64", value=0, force_cpu=True
+    )
+    max_len = layers.fill_constant(
+        shape=[1], dtype="int64", value=10, force_cpu=True
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     cond = layers.less_than(x=step_idx, y=max_len)
     while_op = layers.While(cond)
     scores = layers.array_write(x, step_idx)
@@ -44,9 +55,16 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
         batch_pos = layers.expand(
+<<<<<<< HEAD
             layers.unsqueeze(layers.range(0, bs, 1, dtype=bs.dtype), [1]),
             [1, beam_size])
         topk_coordinates = layers.stack([batch_pos, indices], axis=2)
+=======
+            layers.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
+            [1, beam_size],
+        )
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         topk_coordinates.stop_gradient = stop_gradient
         score = layers.gather_nd(x, topk_coordinates)
         layers.increment(x=step_idx, value=1.0, in_place=True)
@@ -59,11 +77,18 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
     opt = fluid.optimizer.Adam(0.01)
     opt.minimize(loss)
     exe = fluid.Executor(place)
+<<<<<<< HEAD
     data = np.random.random_integers(low=0,
                                      high=beam_size - 1,
                                      size=(batch_size,
                                            beam_size)).astype("int64")
     loss_val, = exe.run(feed={"indices": data}, fetch_list=[loss])
+=======
+    data = np.random.random_integers(
+        low=0, high=beam_size - 1, size=(batch_size, beam_size)
+    ).astype("int64")
+    (loss_val,) = exe.run(feed={"indices": data}, fetch_list=[loss])
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     return loss_val
 
@@ -77,12 +102,14 @@ class TestDynRNNStopGradient(unittest.TestCase):
     def run_main(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(fluid.Scope()):
-                value1 = build_and_run_program(place, self.batch_size,
-                                               self.beam_size, False)
-                value2 = build_and_run_program(place, self.batch_size,
-                                               self.beam_size, True)
+                value1 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, False
+                )
+                value2 = build_and_run_program(
+                    place, self.batch_size, self.beam_size, True
+                )
 
-                self.assertTrue(np.array_equal(value1, value2))
+                np.testing.assert_array_equal(value1, value2)
 
     def test_check_main(self):
         places = [fluid.CPUPlace()]

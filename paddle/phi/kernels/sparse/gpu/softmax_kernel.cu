@@ -105,6 +105,7 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
   dim3 grid((total_row_number + 3) / 4);
   dim3 block(32, 4);
 
+<<<<<<< HEAD
   PD_VISIT_INTEGRAL_TYPES(x.non_zero_crows().dtype(), "CsrSoftmaxKernel", ([&] {
                             SoftmaxGpuKernel<T, data_t>
                                 <<<grid, block, 0, dev_ctx.stream()>>>(
@@ -114,6 +115,17 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
                                     row_number,
                                     total_row_number);
                           }));
+=======
+  PD_VISIT_BASE_INTEGRAL_TYPES(x.crows().dtype(), "CsrSoftmaxKernel", ([&] {
+                                 SoftmaxGpuKernel<T, data_t>
+                                     <<<grid, block, 0, dev_ctx.stream()>>>(
+                                         x.crows().data<data_t>(),
+                                         x.values().data<T>(),
+                                         out->mutable_values()->data<T>(),
+                                         row_number,
+                                         total_row_number);
+                               }));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 }  // namespace sparse

@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,11 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/optimizers/lamb_op.h"
 
 #include <string>
 
+=======
+#include <string>
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/lamb_kernel.h"
 
 namespace paddle {
 namespace operators {
@@ -25,6 +36,7 @@ class LambOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Param"),
                       true,
@@ -144,6 +156,8 @@ class LambOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
     auto input_data_type =
@@ -152,7 +166,11 @@ class LambOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
+=======
+      const phi::DenseTensor &tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
       return expected_kernel_type;
@@ -216,8 +234,8 @@ class LambOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LAMB (Layer-wise Adaptive Moments optimizer for Batching training) Optimizer.
 
-LAMB Optimizer is designed to scale up the batch size of training without losing 
-accuracy, which supports adaptive element-wise updating and accurate layer-wise 
+LAMB Optimizer is designed to scale up the batch size of training without losing
+accuracy, which supports adaptive element-wise updating and accurate layer-wise
 correction. For more information, please refer to https://arxiv.org/abs/1904.00962.
 
 The updating of parameters follows:
@@ -236,7 +254,7 @@ r_t &= \frac{m_t}{\sqrt{v_t}+\epsilon} \\
 w_t &= w_{t-1} -\eta_t \frac{\left \| w_{t-1}\right \|}{\left \| r_t + \lambda w_{t-1}\right \|} (r_t + \lambda w_{t-1})
 $$
 
-where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the 
+where $m$ is the 1st moment, and $v$ the 2nd moment, $\eta$ the
 learning rate, $\lambda$ the weight decay rate.
 )DOC");
   }
@@ -246,10 +264,23 @@ learning rate, $\lambda$ the weight decay rate.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
 REGISTER_OP_CPU_KERNEL(lamb,
                        ops::LambOpKernel<phi::CPUContext, float>,
                        ops::LambOpKernel<phi::CPUContext, double>);
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(lamb,
+                            LambInferMetaFunctor,
+                            PD_INFER_META(phi::LambInferMeta));
+REGISTER_OPERATOR(
+    lamb,
+    ops::LambOp,
+    ops::LambOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    LambInferMetaFunctor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(lamb).AddCheckpoint(

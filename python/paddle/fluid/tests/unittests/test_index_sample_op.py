@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -28,10 +26,16 @@ class TestIndexSampleOp(OpTest):
         self.python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
+<<<<<<< HEAD
         indexnp = np.random.randint(low=0,
                                     high=self.x_shape[1],
                                     size=self.index_shape).astype(
                                         self.index_type)
+=======
+        indexnp = np.random.randint(
+            low=0, high=self.x_shape[1], size=self.index_shape
+        ).astype(self.index_type)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.inputs = {'X': xnp, 'Index': indexnp}
         index_array = []
         for i in range(self.index_shape[0]):
@@ -117,8 +121,14 @@ class TestIndexSampleShape(unittest.TestCase):
         # create index value
         index_shape = (2, 3)
         index_type = "int32"
+<<<<<<< HEAD
         index_np = np.random.randint(low=0, high=x_shape[1],
                                      size=index_shape).astype(index_type)
+=======
+        index_np = np.random.randint(
+            low=0, high=x_shape[1], size=index_shape
+        ).astype(index_type)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         x = fluid.data(name='x', shape=[-1, 5], dtype='float64')
         index = fluid.data(name='index', shape=[-1, 3], dtype='int32')
@@ -136,6 +146,7 @@ class TestIndexSampleDynamic(unittest.TestCase):
 
     def test_result(self):
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
                                   [9.0, 10.0, 11.0, 12.0]],
                                  dtype='float32')
@@ -145,6 +156,24 @@ class TestIndexSampleDynamic(unittest.TestCase):
 
             except_output = np.array([[1.0, 2.0, 3.0], [6.0, 7.0, 8.0],
                                       [9.0, 9.0, 9.0]])
+=======
+            x = paddle.to_tensor(
+                [
+                    [1.0, 2.0, 3.0, 4.0],
+                    [5.0, 6.0, 7.0, 8.0],
+                    [9.0, 10.0, 11.0, 12.0],
+                ],
+                dtype='float32',
+            )
+            index = paddle.to_tensor(
+                [[0, 1, 2], [1, 2, 3], [0, 0, 0]], dtype='int32'
+            )
+            out_z1 = paddle.index_sample(x, index)
+
+            except_output = np.array(
+                [[1.0, 2.0, 3.0], [6.0, 7.0, 8.0], [9.0, 9.0, 9.0]]
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             assert out_z1.numpy().all() == except_output.all()
 
 

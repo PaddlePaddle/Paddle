@@ -16,11 +16,16 @@
 
 #include "paddle/phi/core/enforce.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/jit/base_function.h"
+=======
+#include "paddle/fluid/jit/engine/base_engine.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace paddle {
 namespace jit {
 
+<<<<<<< HEAD
 std::shared_ptr<BaseFunction> CompilationUnit::Function(
     const std::string &name) const {
   PADDLE_ENFORCE_EQ(
@@ -47,6 +52,24 @@ std::vector<std::string> CompilationUnit::FunctionNames() const {
 const Name2FunctionMap &CompilationUnit::FunctionMap() const {
   return function_map_;
 }
+=======
+std::shared_ptr<BaseEngine> CompilationUnit::GetEngine(
+    const std::string &name) const {
+  PADDLE_ENFORCE_EQ(
+      engine_map_.count(name),
+      1,
+      phi::errors::InvalidArgument(
+          "Funciton named %s is not existed in engine_map_.", name));
+  return engine_map_.at(name);
+}
+
+void CompilationUnit::SetEngine(const std::string &name,
+                                const std::shared_ptr<BaseEngine> &engine) {
+  engine_map_[name] = engine;
+}
+
+const jit::EngineMap &CompilationUnit::EngineMap() const { return engine_map_; }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 }  // namespace jit
 }  // namespace paddle

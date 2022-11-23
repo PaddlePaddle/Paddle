@@ -31,7 +31,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 __device__ T gpu_adjust_prob(const T prob,
@@ -129,9 +129,15 @@ void GPUSampleWithProb<T>::operator()(const phi::GPUContext& context,
                                       const int dict_size,
                                       const bool uniq,
                                       const std::size_t num_samples,
+<<<<<<< HEAD
                                       const Tensor* L,
                                       Tensor* S,
                                       Tensor* P) {
+=======
+                                      const phi::DenseTensor* L,
+                                      phi::DenseTensor* S,
+                                      phi::DenseTensor* P) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   // UNDERSTAND: dimension issues
   const auto lbl_dim = L->dims();
   const int batch_size = lbl_dim[0];

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from collections import OrderedDict
 
 from ..framework import Program
@@ -44,8 +43,10 @@ def op_freq_statistic(program):
     """
 
     if not isinstance(program, Program):
-        raise TypeError("The input type should be Porgram."
-                        "But you passed in %s" % (type(program)))
+        raise TypeError(
+            "The input type should be Porgram."
+            "But you passed in %s" % (type(program))
+        )
 
     uni_op_freq = OrderedDict()
     adj_2_op_freq = OrderedDict()
@@ -79,8 +80,10 @@ def op_freq_statistic(program):
                 else:
                     op_in_ops[op.type] = [var_gen_op[var_name][-1]]
             else:
-                print("Var's generate op is not found,%s, %s" %
-                      (var_name, op.type))
+                print(
+                    "Var's generate op is not found,%s, %s"
+                    % (var_name, op.type)
+                )
 
         for var_name in op.output_arg_names:
             if var_gen_op.has_key(var_name):
@@ -96,11 +99,20 @@ def op_freq_statistic(program):
             else:
                 adj_2_op_freq[op_op] = 1
 
+<<<<<<< HEAD
     uni_op_freq = sorted(uni_op_freq.items(),
                          key=lambda item: item[1],
                          reverse=True)
     adj_2_op_freq = sorted(adj_2_op_freq.items(),
                            key=lambda item: item[1],
                            reverse=True)
+=======
+    uni_op_freq = sorted(
+        uni_op_freq.items(), key=lambda item: item[1], reverse=True
+    )
+    adj_2_op_freq = sorted(
+        adj_2_op_freq.items(), key=lambda item: item[1], reverse=True
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     return uni_op_freq, adj_2_op_freq

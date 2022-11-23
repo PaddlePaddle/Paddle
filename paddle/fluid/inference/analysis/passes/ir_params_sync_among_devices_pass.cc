@@ -14,6 +14,10 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 
+<<<<<<< HEAD
+=======
+#include <string>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include <unordered_set>
 
 #include "paddle/fluid/framework/data_layout.h"
@@ -56,12 +60,11 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
         var,
         platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-    if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
-      auto *t = var->GetMutable<framework::LoDTensor>();
+    if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+      auto *t = var->GetMutable<phi::DenseTensor>();
 
       platform::CPUPlace cpu_place;
-      framework::LoDTensor temp_tensor;
+      phi::DenseTensor temp_tensor;
       temp_tensor.Resize(t->dims());
       temp_tensor.mutable_data<float>(cpu_place);
 
@@ -113,6 +116,10 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
     reserve_cpu_weights = true;
   }
 
+<<<<<<< HEAD
+=======
+  std::unordered_set<std::string> visited;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   for (auto *node : paddle::framework::ir::TopologySortOperations(graph)) {
     if (!node->IsOp()) continue;
     if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch") continue;
@@ -123,6 +130,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
               repetitive_params.begin(), repetitive_params.end(), var_name)) {
         if (!reserve_cpu_weights) {
           scope->EraseVars({var_name});
+<<<<<<< HEAD
         }
         continue;
       }
@@ -168,6 +176,28 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
           t->clear();
           paddle::framework::TensorCopySync(temp_tensor, place, t);
         }
+=======
+        }
+        continue;
+      }
+      if (visited.count(var_name)) continue;
+      visited.insert(var_name);
+      auto *var = scope->FindLocalVar(var_name);
+      PADDLE_ENFORCE_NOT_NULL(var,
+                              platform::errors::PreconditionNotMet(
+                                  "The var should not be nullptr"));
+      if (var->IsType<phi::DenseTensor>() || var->IsType<phi::DenseTensor>()) {
+        auto *t = var->GetMutable<phi::DenseTensor>();
+        auto var_data_type = var_node->Var()->GetDataType();
+        VLOG(5) << "var_name is " << var_name << ", data type is "
+                << var_data_type;
+        platform::CPUPlace cpu_place;
+        phi::DenseTensor temp_tensor;
+        temp_tensor.Resize(t->dims());
+        paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
+        t->clear();
+        paddle::framework::TensorCopySync(temp_tensor, place, t);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       }
     }
   }

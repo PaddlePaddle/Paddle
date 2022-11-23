@@ -181,7 +181,11 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
+<<<<<<< HEAD
 ^disable_wingpu_test$"
+=======
+^disable_win_inference_test$"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -252,6 +256,7 @@ NIGHTLY_MODE=$1
 PRECISION_TEST=$2
 WITH_GPU=$3
 
+# Step1: Print disable_ut_quickly
 export PADDLE_ROOT="$(cd "$PWD/../" && pwd )"
 if [ ${NIGHTLY_MODE:-OFF} == "ON" ]; then
     nightly_label=""
@@ -271,8 +276,7 @@ else
     disable_ut_quickly=''
 fi
 
-# check added ut
-
+# Step2: Check added ut
 set +e
 cp $PADDLE_ROOT/tools/check_added_ut.sh $PADDLE_ROOT/tools/check_added_ut_win.sh
 bash $PADDLE_ROOT/tools/check_added_ut_win.sh
@@ -280,7 +284,11 @@ rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+<<<<<<< HEAD
     rm -f $PADDLE_ROOT/added_ut
+=======
+    #rm -f $PADDLE_ROOT/added_ut
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
         echo "Added UT should pass three additional executions"
@@ -288,9 +296,10 @@ if [ -f "$PADDLE_ROOT/added_ut" ];then
         exit 8;
     fi
 fi
+
+
+# Step3: Get precision UT and intersect with parallel UT, generate tools/*_new file
 set -e
-
-
 if [ ${WITH_GPU:-OFF} == "ON" ];then
     export CUDA_VISIBLE_DEVICES=0
 
@@ -437,10 +446,12 @@ function show_ut_retry_result() {
     fi
 }
 
+# Step4: Run UT gpu or cpu
 set +e
-
 export FLAGS_call_stack_level=2
+if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
+<<<<<<< HEAD
 # if nvcc --version | grep 11.2; then
 #     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
 #     export CUDA_VISIBLE_DEVICES=0
@@ -469,6 +480,17 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
     echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
 
+=======
+    single_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 16
+    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+    single_ut_mem_0_endTime_s=`date +%s`
+    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     single_ut_startTime_s=`date +%s`
     while read line
     do

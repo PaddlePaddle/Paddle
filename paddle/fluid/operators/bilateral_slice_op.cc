@@ -20,8 +20,7 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class BilateralSliceOp : public framework::OperatorWithKernel {
  public:
@@ -91,6 +90,7 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
+<<<<<<< HEAD
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
@@ -99,6 +99,8 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class BilateralSliceOpMaker : public framework::OpProtoAndCheckerMaker {

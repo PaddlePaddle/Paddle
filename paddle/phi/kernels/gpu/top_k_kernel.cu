@@ -31,11 +31,26 @@ namespace ops = paddle::operators;
     __VA_ARGS__;                       \
   } break
 
-#define FIXED_BLOCK_DIM(...)                \
-  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
-  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+#define FIXED_MAXLENGTH_BASE(MaxLength, ...) \
+  case (MaxLength): {                        \
+    constexpr auto maxLength = (MaxLength);  \
+    __VA_ARGS__;                             \
+  } break
+
+#define FIXED_BLOCK_DIM(...)                 \
+  FIXED_BLOCK_DIM_BASE(1024, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(512, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
+
+#define FIXED_MAXLENGTH(...)              \
+  FIXED_MAXLENGTH_BASE(1, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(2, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(3, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(4, ##__VA_ARGS__); \
+  FIXED_MAXLENGTH_BASE(5, ##__VA_ARGS__)
 
 template <typename T, typename Context>
 void TopkKernel(const Context& dev_ctx,
@@ -158,7 +173,9 @@ void TopkKernel(const Context& dev_ctx,
     // NOTE: old matrix implementation of stride is different to eigen.
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    switch (ops::GetDesiredBlockDim(input_width)) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
+    switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
           ops::KeMatrixTopK<T, 20, kBlockDim>
@@ -173,6 +190,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
+<<<<<<< HEAD
       FIXED_BLOCK_DIM(
           ops::KeMatrixTopK<T, 5, kBlockDim>
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
@@ -185,6 +203,26 @@ void TopkKernel(const Context& dev_ctx,
                                                       gridx,
                                                       input_height,
                                                       largest));
+=======
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
+        FIXED_MAXLENGTH(
+            ops::KeMatrixTopK<T, maxLength, kBlockDim>
+            <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(output_data,
+                                                        k,
+                                                        indices_data,
+                                                        input_data,
+                                                        input_width,
+                                                        input_width,
+                                                        static_cast<int>(k),
+                                                        gridx,
+                                                        input_height,
+                                                        largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
+      });
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
       default:
         PADDLE_THROW(errors::Fatal(
@@ -259,7 +297,9 @@ void TopkKernel(const Context& dev_ctx,
 
     const int kMaxHeight = 2048;
     int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
-    switch (ops::GetDesiredBlockDim(input_width)) {
+    auto config =
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_width);
+    switch (config.thread_per_block.x) {
 #ifdef PADDLE_WITH_HIP
       FIXED_BLOCK_DIM(
           ops::KeMatrixTopK<T, 20, kBlockDim>
@@ -274,6 +314,7 @@ void TopkKernel(const Context& dev_ctx,
                                                       input_height,
                                                       largest));
 #else
+<<<<<<< HEAD
       FIXED_BLOCK_DIM(
           ops::KeMatrixTopK<T, 5, kBlockDim>
           <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(trans_out.data<T>(),
@@ -286,6 +327,26 @@ void TopkKernel(const Context& dev_ctx,
                                                       gridx,
                                                       input_height,
                                                       largest));
+=======
+      FIXED_BLOCK_DIM(switch (ops::getMaxLength(k)) {
+        FIXED_MAXLENGTH(ops::KeMatrixTopK<T, maxLength, kBlockDim>
+                        <<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+                            trans_out.data<T>(),
+                            k,
+                            trans_ind.data<int64_t>(),
+                            trans_input.data<T>(),
+                            input_width,
+                            input_width,
+                            static_cast<int>(k),
+                            gridx,
+                            input_height,
+                            largest));
+        default:
+          PADDLE_THROW(
+              errors::Fatal("the input k has error when use getMaxLength "
+                            "function to get the maxLength."));
+      });
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
       default:
         PADDLE_THROW(errors::Fatal(

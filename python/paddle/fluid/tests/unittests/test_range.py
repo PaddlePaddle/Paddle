@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import unittest
 import numpy as np
@@ -33,13 +31,19 @@ class TestRangeOp(OpTest):
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
-            'Step': np.array([self.case[2]]).astype(self.dtype)
+            'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.arange(self.case[0], self.case[1],
                       self.case[2]).astype(self.dtype)
+=======
+            'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
+                self.dtype
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def init_config(self):

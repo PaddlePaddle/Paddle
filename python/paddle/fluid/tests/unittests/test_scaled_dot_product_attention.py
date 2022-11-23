@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -24,6 +22,7 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             queries = fluid.data(name="queries",
                                  shape=[3, 5, 9],
                                  dtype="float32")
@@ -31,29 +30,42 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
             values = fluid.data(name="values",
                                 shape=[3, 6, 10],
                                 dtype="float32")
+=======
+            queries = fluid.data(
+                name="queries", shape=[3, 5, 9], dtype="float32"
+            )
+            keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
+            values = fluid.data(
+                name="values", shape=[3, 6, 10], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             def test_queries_Variable():
                 queries_data = np.random.rand(3, 5, 9).astype("float32")
-                fluid.nets.scaled_dot_product_attention(queries_data, keys,
-                                                        values)
+                fluid.nets.scaled_dot_product_attention(
+                    queries_data, keys, values
+                )
 
             self.assertRaises(TypeError, test_queries_Variable)
 
             def test_keys_Variable():
                 keys_data = np.random.rand(3, 6, 9).astype("float32")
-                fluid.nets.scaled_dot_product_attention(queries, keys_data,
-                                                        values)
+                fluid.nets.scaled_dot_product_attention(
+                    queries, keys_data, values
+                )
 
             self.assertRaises(TypeError, test_keys_Variable)
 
             def test_values_Variable():
                 values_data = np.random.rand(3, 6, 10).astype("float32")
-                fluid.nets.scaled_dot_product_attention(queries, keys,
-                                                        values_data)
+                fluid.nets.scaled_dot_product_attention(
+                    queries, keys, values_data
+                )
 
             self.assertRaises(TypeError, test_values_Variable)
 
             def test_diff_dtype():
+<<<<<<< HEAD
                 keys_error = fluid.data(name="keys_error",
                                         shape=[3, 6, 9],
                                         dtype="float64")
@@ -62,10 +74,22 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                                           dtype="float64")
                 fluid.nets.scaled_dot_product_attention(queries, keys_error,
                                                         values_error)
+=======
+                keys_error = fluid.data(
+                    name="keys_error", shape=[3, 6, 9], dtype="float64"
+                )
+                values_error = fluid.data(
+                    name="values_error", shape=[3, 6, 10], dtype="float64"
+                )
+                fluid.nets.scaled_dot_product_attention(
+                    queries, keys_error, values_error
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.assertRaises(TypeError, test_diff_dtype)
 
             def test_diff_dim():
+<<<<<<< HEAD
                 keys_error_dim = fluid.data(name="keys_error_dim",
                                             shape=[3, 6],
                                             dtype="float32")
@@ -74,10 +98,22 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                                               dtype="float32")
                 fluid.nets.scaled_dot_product_attention(queries, keys_error_dim,
                                                         values_error_dim)
+=======
+                keys_error_dim = fluid.data(
+                    name="keys_error_dim", shape=[3, 6], dtype="float32"
+                )
+                values_error_dim = fluid.data(
+                    name="values_error_dim", shape=[3], dtype="float32"
+                )
+                fluid.nets.scaled_dot_product_attention(
+                    queries, keys_error_dim, values_error_dim
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.assertRaises(ValueError, test_diff_dim)
 
             def test_diff_hidden_size():
+<<<<<<< HEAD
                 queries_error_hs = fluid.data(name="queries_error_hs",
                                               shape=[3, 5, 9],
                                               dtype="float32")
@@ -86,10 +122,22 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                                            dtype="float32")
                 fluid.nets.scaled_dot_product_attention(queries_error_hs,
                                                         keys_error_hs, values)
+=======
+                queries_error_hs = fluid.data(
+                    name="queries_error_hs", shape=[3, 5, 9], dtype="float32"
+                )
+                keys_error_hs = fluid.data(
+                    name="keys_error_hs", shape=[3, 6, 10], dtype="float32"
+                )
+                fluid.nets.scaled_dot_product_attention(
+                    queries_error_hs, keys_error_hs, values
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.assertRaises(ValueError, test_diff_hidden_size)
 
             def test_diff_max_len():
+<<<<<<< HEAD
                 keys_error_len = fluid.data(name="keys_error_len",
                                             shape=[3, 7, 9],
                                             dtype="float32")
@@ -98,6 +146,17 @@ class TestScaledDotProductAttentionError(unittest.TestCase):
                                               dtype="float32")
                 fluid.nets.scaled_dot_product_attention(queries, keys_error_len,
                                                         values_error_len)
+=======
+                keys_error_len = fluid.data(
+                    name="keys_error_len", shape=[3, 7, 9], dtype="float32"
+                )
+                values_error_len = fluid.data(
+                    name="values_error_len", shape=[3, 6, 10], dtype="float32"
+                )
+                fluid.nets.scaled_dot_product_attention(
+                    queries, keys_error_len, values_error_len
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.assertRaises(ValueError, test_diff_max_len)
 

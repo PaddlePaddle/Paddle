@@ -94,6 +94,13 @@ class PD_INFER_DECL Predictor {
   explicit Predictor(const Config& config);
 
   ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, DataType> GetInputTypes();
+
+  ///
   /// \brief Get the input names
   ///
   /// \return input names
@@ -152,6 +159,19 @@ class PD_INFER_DECL Predictor {
   uint64_t TryShrinkMemory();
 
   ///
+<<<<<<< HEAD
+=======
+  /// \brief Register a output hook function to operate the intermediate tensor
+  /// of op output. when using this function, memory reuse should be tured off.
+  /// The hook function signature is void(const std::string&, const
+  /// std::string&, const Tensor&>). Here, the first parameter is op's
+  /// type, the second param is output var name of the op, and the third
+  /// parameter is output tensor with the var name.
+  ///
+  void RegisterOutputHook(const Exp_OutputHookFunc& hookfunc);
+
+  ///
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.
   ///
@@ -191,7 +211,11 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     const std::string& mixed_model_file,
     const std::string& mixed_params_file,
     PrecisionType mixed_precision,
+<<<<<<< HEAD
     BackendType backend,
+=======
+    PlaceType backend,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     bool keep_io_types = true,
     std::unordered_set<std::string> black_list = {});
 

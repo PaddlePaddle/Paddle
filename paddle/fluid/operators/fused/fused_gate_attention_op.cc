@@ -20,7 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 using DDim = framework::DDim;
 
 class FusedGateAttentionOp : public framework::OperatorWithKernel {
@@ -174,7 +178,11 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
   {
+<<<<<<< HEAD
     q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w) 
+=======
+    q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     k = paddle.einsum('nbka,ahc->nbkhc', m_data, self.key_w)
     v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
 
@@ -189,10 +197,17 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                     self.gating_w) + self.gating_b
         gate_values_1 = nn.functional.sigmoid(gate_values)
         weighted_avg *= gate_values_1
+<<<<<<< HEAD
     
     output = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
                           self.output_w) + self.output_b
                 
+=======
+
+    output = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
+                          self.output_w) + self.output_b
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
     )DOC");
   }

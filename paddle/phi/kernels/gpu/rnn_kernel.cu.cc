@@ -14,9 +14,13 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/generator.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/gpu/rnn_functor.h"
@@ -175,8 +179,12 @@ void RnnKernel(const Context &dev_ctx,
   if (!is_test) {
     if (seed == 0) {
       // If not specify seed, use global Generator to generate seed.
+<<<<<<< HEAD
       int device_id = dev_ctx.GetPlace().GetDeviceId();
       auto gen_cuda = paddle::framework::DefaultCUDAGenerator(device_id);
+=======
+      auto gen_cuda = dev_ctx.GetGenerator();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       seed = static_cast<int>(gen_cuda->Random64());
     }
     // else use `ctx.Attr<int>("seed")` specified seed

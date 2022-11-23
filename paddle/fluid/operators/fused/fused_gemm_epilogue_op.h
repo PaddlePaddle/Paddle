@@ -15,7 +15,15 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+
 #include <cuda_runtime_api.h>
+<<<<<<< HEAD
+=======
+#include "cuda.h"  // NOLINT
+
+#if CUDA_VERSION >= 11060
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #include <algorithm>
 #include <mutex>
@@ -321,3 +329,6 @@ class GemmEpilogueAlgoCache {
 
 }  // namespace operators
 }  // namespace paddle
+
+#endif
+#endif

@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
 
 
@@ -51,11 +47,21 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
+<<<<<<< HEAD
                 return np.random.random([batch_size, 16, 64,
                                          64]).astype(np.float32)
             else:
                 return np.random.random([batch_size, 64, 64,
                                          16]).astype(np.float32)
+=======
+                return np.random.random([batch_size, 16, 64, 64]).astype(
+                    np.float32
+                )
+            else:
+                return np.random.random([batch_size, 64, 64, 16]).astype(
+                    np.float32
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         def generate_weight1():
             return np.random.random([16, 16, 3, 3]).astype(np.float32)
@@ -63,6 +69,7 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         def generate_weight2():
             return np.random.random([16 * groups]).astype(np.float32)
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(type="conv2d_transpose",
                              inputs={
                                  "Input": ["input_data"],
@@ -88,21 +95,49 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
                           },
                           outputs={"Out": ["elementwise_output"]},
                           attrs={'axis': axis})
+=======
+        conv2d_op = OpConfig(
+            type="conv2d_transpose",
+            inputs={"Input": ["input_data"], "Filter": ["conv2d_weight"]},
+            outputs={"Output": ["conv_output"]},
+            attrs={
+                "data_format": data_format,
+                "dilations": dilations,
+                "padding_algorithm": padding_algorithm,
+                "groups": groups,
+                "paddings": paddings,
+                "strides": strides,
+                "output_size": [],
+                "output_padding": [],
+                "is_test": True,
+            },
+        )
+
+        elt_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["conv_output"], "Y": ["elementwise_weight"]},
+            outputs={"Out": ["elementwise_output"]},
+            attrs={'axis': axis},
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         model_net = [conv2d_op, elt_op]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "conv2d_weight":
-                TensorConfig(data_gen=partial(generate_weight1)),
-                "elementwise_weight":
-                TensorConfig(data_gen=partial(generate_weight2))
+                "conv2d_weight": TensorConfig(
+                    data_gen=partial(generate_weight1)
+                ),
+                "elementwise_weight": TensorConfig(
+                    data_gen=partial(generate_weight2)
+                ),
             },
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input))
             },
-            outputs=["elementwise_output"])
+            outputs=["elementwise_output"],
+        )
 
         return program_config
 
@@ -111,9 +146,17 @@ class TestConvTransposeMkldnnFusePass(PassAutoScanTest):
         yield config, ['conv2d_transpose'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             max_duration=300,
                             passes=["conv_transpose_bias_mkldnn_fuse_pass"])
+=======
+        self.run_and_statis(
+            quant=False,
+            max_duration=300,
+            passes=["conv_transpose_bias_mkldnn_fuse_pass"],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

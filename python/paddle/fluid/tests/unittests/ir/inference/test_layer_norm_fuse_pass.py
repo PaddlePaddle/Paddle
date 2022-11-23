@@ -15,18 +15,13 @@
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestFcFusePass(PassAutoScanTest):
-    """
+    r"""
              x_var
               / \
              /   reduce_mean "u(x)"
@@ -81,15 +76,27 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=8),
                      min_size=4,
                      max_size=5))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=4, max_size=5
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x_shape_rank = len(x_shape)
         # 2. Generate attrs of reduce_mean
         keep_dim = draw(st.booleans())
         reduce_all = False
         begin_norm_axis = draw(
+<<<<<<< HEAD
             st.integers(min_value=1, max_value=x_shape_rank - 1))
+=======
+            st.integers(min_value=1, max_value=x_shape_rank - 1)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if begin_norm_axis == x_shape_rank - 1 and draw(st.booleans()):
             reduce_mean_dim = [-1]
         else:
@@ -113,13 +120,23 @@ class TestFcFusePass(PassAutoScanTest):
         pow_axis = -1
 
         def generate_pow_data():
+<<<<<<< HEAD
             return np.array([
                 2,
             ], dtype="float32")
+=======
+            return np.array(
+                [
+                    2,
+                ],
+                dtype="float32",
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 5. Generate attrs of elementwise_add
         if keep_dim:
             add_axis = draw(
+<<<<<<< HEAD
                 st.integers(min_value=-1, max_value=x_shape_rank - 1))
         else:
             add_axis = draw(
@@ -129,6 +146,22 @@ class TestFcFusePass(PassAutoScanTest):
             return np.array([
                 1e-5,
             ], dtype="float32")
+=======
+                st.integers(min_value=-1, max_value=x_shape_rank - 1)
+            )
+        else:
+            add_axis = draw(
+                st.integers(min_value=-1, max_value=begin_norm_axis - 1)
+            )
+
+        def generate_epsilon_data():
+            return np.array(
+                [
+                    1e-5,
+                ],
+                dtype="float32",
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # 6. Generate attrs of elementwise_div
         div_axis = 0
@@ -156,19 +189,27 @@ class TestFcFusePass(PassAutoScanTest):
         )
         sub_op = OpConfig(
             "elementwise_sub",
+<<<<<<< HEAD
             inputs={
                 "X": ["x"],
                 "Y": ["mean_out"]
             },
+=======
+            inputs={"X": ["x"], "Y": ["mean_out"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["sub_out"]},
             axis=sub_axis,
         )
         pow_op = OpConfig(
             "elementwise_pow",
+<<<<<<< HEAD
             inputs={
                 "X": ["sub_out"],
                 "Y": ["pow_y"]
             },
+=======
+            inputs={"X": ["sub_out"], "Y": ["pow_y"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["pow_out"]},
             axis=pow_axis,
         )
@@ -184,10 +225,14 @@ class TestFcFusePass(PassAutoScanTest):
         )
         add_op = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={
                 "X": ["mean_out2"],
                 "Y": ["epsilon_var"]
             },
+=======
+            inputs={"X": ["mean_out2"], "Y": ["epsilon_var"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["add_out"]},
             axis=add_axis,
         )
@@ -200,35 +245,54 @@ class TestFcFusePass(PassAutoScanTest):
         )
         div_op = OpConfig(
             "elementwise_div",
+<<<<<<< HEAD
             inputs={
                 "X": ["sub_out"],
                 "Y": ["sqrt_out"]
             },
+=======
+            inputs={"X": ["sub_out"], "Y": ["sqrt_out"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["div_out"]},
             axis=div_axis,
         )
         mul_op = OpConfig(
             "elementwise_mul",
+<<<<<<< HEAD
             inputs={
                 "X": ["div_out"],
                 "Y": ["gamma_var"]
             },
+=======
+            inputs={"X": ["div_out"], "Y": ["gamma_var"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["mul_out"]},
             axis=mul_axis,
         )
         add_op2 = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={
                 "X": ["mul_out"],
                 "Y": ["beta_var"]
             },
+=======
+            inputs={"X": ["mul_out"], "Y": ["beta_var"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             outputs={"Out": ["add_out2"]},
             axis=add_axis2,
         )
 
         ops = [
-            mean_op1, sub_op, pow_op, mean_op2, add_op, sqrt_op, div_op, mul_op,
-            add_op2
+            mean_op1,
+            sub_op,
+            pow_op,
+            mean_op2,
+            add_op,
+            sqrt_op,
+            div_op,
+            mul_op,
+            add_op2,
         ]
 
         program_config = ProgramConfig(

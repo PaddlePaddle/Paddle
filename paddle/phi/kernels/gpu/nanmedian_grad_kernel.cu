@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/nanmedian_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -24,7 +30,11 @@
 
 namespace phi {
 
+<<<<<<< HEAD
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+=======
+using phi::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
 }

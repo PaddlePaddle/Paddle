@@ -9,6 +9,12 @@ file(
 )
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
+<<<<<<< HEAD
+=======
+set(kernel_declare_file_prune
+    ${PADDLE_BINARY_DIR}/paddle/phi/kernels/declarations.h.prune
+    CACHE INTERNAL "declarations.h file")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
@@ -22,14 +28,25 @@ set_property(GLOBAL PROPERTY PHI_KERNELS "")
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS
     dense_tensor
+<<<<<<< HEAD
     sparse_coo_tensor
     sparse_csr_tensor
+=======
+    string_tensor
+    sparse_coo_tensor
+    sparse_csr_tensor
+    tensor_array
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     kernel_context
     kernel_factory
     arg_map_context
     convert_utils
     lod_utils
     custom_kernel
+<<<<<<< HEAD
+=======
+    string_infermeta
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -42,6 +59,7 @@ set(COMMON_KERNEL_DEPS
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+<<<<<<< HEAD
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
 
@@ -81,12 +99,53 @@ set(COMMON_KERNEL_DEPS
     custom_kernel
     string_infermeta
     utf8proc)
+=======
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
+                       sparse_infermeta)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
+set(COMMON_KERNEL_DEPS
+    ${COMMON_KERNEL_DEPS}
+    threadpool
+    jit_kernel_helper
+    softmax
+    cross_entropy
+    matrix_bit_code
+    lapack_function
+    lstm_compute
+    gru_compute
+    deformable_conv_functor
+    matrix_reduce
+    segment_pooling
+    gather_scatter_kernel
+    pooling
+    maxouting
+    matrix_inverse
+    matrix_solve
+    phi_dynload_warpctc
+    sequence_padding
+    sequence_scale
+    fft
+    phi_data_layout_transform
+    gpc
+    utf8proc
+    device_memory_aligment)
+
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup)
+if(WITH_NCCL OR WITH_RCCL)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_nccl)
+endif()
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} processgroup_comm_utils)
+if(WITH_CUDNN_FRONTEND)
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} cudnn-frontend)
+endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
+<<<<<<< HEAD
 file(
   GLOB
   kernel_cc
@@ -98,6 +157,8 @@ file(
   "sparse/cpu/*.cc"
   "strings/*.cc"
   "strings/cpu/*.cc")
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 file(
   GLOB
@@ -108,6 +169,7 @@ file(
   "kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
+<<<<<<< HEAD
   "strings/*.cu"
   "strings/gpu/*.cu")
 
@@ -115,6 +177,43 @@ file(
 # file(GLOB kernel_kps "kps/*.cu")
 file(GLOB kernel_xpu "xpu/*.cc")
 file(GLOB kernel_onednn "onednn/*.cc")
+=======
+  "strings/gpu/*.cu"
+  "fusion/gpu/*.cu")
+
+if(WITH_MKLDNN)
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc"
+    "onednn/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
+else()
+  file(
+    GLOB
+    kernel_cc
+    "*.cc"
+    "cpu/*.cc"
+    "selected_rows/*.cc"
+    "selected_rows/cpu/*.cc"
+    "sparse/*.cc"
+    "sparse/cpu/*.cc"
+    "strings/*.cc"
+    "strings/cpu/*.cc"
+    "fusion/*.cc"
+    "fusion/cpu/*.cc")
+endif()
+
+file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
@@ -154,6 +253,7 @@ if(WITH_XPU)
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
 endif()
 
+<<<<<<< HEAD
 if(WITH_MKLDNN)
   add_library(phi_onednn ${kernel_onednn})
   kernel_declare(${kernel_onednn})
@@ -163,3 +263,10 @@ if(WITH_MKLDNN)
 endif()
 
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
+=======
+set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
+
+if(NOT "${KERNEL_LIST}" STREQUAL "")
+  prune_declaration_h()
+endif()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

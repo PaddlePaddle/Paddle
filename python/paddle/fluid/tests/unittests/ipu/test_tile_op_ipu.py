@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -46,9 +49,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.tile(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -64,7 +73,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {
             "repeat_times": [2, 3, 2],
@@ -73,7 +85,10 @@ class TestCase1(TestBase):
 
 @unittest.skip('dynamic graph is not support on IPU')
 class TestCase3(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_data_feed(self):
         x = np.random.uniform(size=[4, 5, 6])
         r = np.array([3, 2, 4])
@@ -91,12 +106,21 @@ class TestCase3(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
         r = paddle.static.data(name=self.feed_list[1],
                                shape=self.feed_shape[1],
                                dtype='int32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        r = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.tile(x, repeat_times=r, **self.attrs)
         self.fetch_list = [out.name]
 

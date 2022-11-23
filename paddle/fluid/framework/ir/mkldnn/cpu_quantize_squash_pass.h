@@ -44,18 +44,17 @@ class CPUQuantizeSquashPass : public FusePassBase {
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   /*
-   * Check if input to dequantize is uint8
-   */
-  bool IsDequantizeInputUint8(const Node* dequant_in) const;
-
-  /*
    * Don't squash unsigned dequantize with signed quantize.
    * This is important for concat and elementwise ops.
    * When inputs have different sign, concat will assume signed type and
    * elementwise assumes first input type.
    */
   bool IsDequantizeQuantizeIncompatible(Node* quant_op,
+<<<<<<< HEAD
                                         Node* dequant_in,
+=======
+                                        Node* dequant_op,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                         Node* next_op) const;
 
   /*

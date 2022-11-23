@@ -35,6 +35,22 @@ void Copy(const Context& dev_ctx,
   auto* src_ptr = src.data();
   const auto& src_place = src.place();
 
+<<<<<<< HEAD
+=======
+  if (&src == dst) {
+    if (paddle::platform::is_same_place(src_place, dst_place)) {
+      VLOG(6) << "Skip copy the same data(" << src_ptr << ") from " << src_place
+              << " to " << dst_place;
+    } else {
+      VLOG(6) << "Src and dst are the same Tensor, in-place copy data("
+              << src_ptr << ") from " << src_place << " to " << dst_place;
+      const DenseTensor src_copy = src;
+      Copy(dev_ctx, src_copy, dst_place, blocking, dst);
+    }
+    return;
+  }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
 
@@ -283,7 +299,11 @@ void Copy(const Context& dev_ctx,
                      dst_place,
                      blocking,
                      dst->mutable_non_zero_elements());
+<<<<<<< HEAD
   dst->set_dims(src.dims());
+=======
+  dst->set_meta(src.meta());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   dst->SetCoalesced(src.coalesced());
 }
 

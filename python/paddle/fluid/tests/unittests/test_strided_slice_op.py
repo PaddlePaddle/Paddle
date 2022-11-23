@@ -37,18 +37,38 @@ def strided_slice_native_forward(input, axes, starts, ends, strides):
         stride[axes[i]] = strides[i]
 
     result = {
-        1: lambda input, start, end, stride: input[start[0]:end[0]:stride[0]],
-        2: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
-                start[1]:end[1]:stride[1]],
-        3: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
-                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2]],
-        4: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
-                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3]],
-        5: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
-                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3], start[4]:end[4]:stride[4]],
-        6: lambda input, start, end, stride: input[start[0]:end[0]:stride[0], \
-                start[1]:end[1]:stride[1], start[2]:end[2]:stride[2], start[3]:end[3]:stride[3], \
-                start[4]:end[4]:stride[4], start[5]:end[5]:stride[5]]
+        1: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0]
+        ],
+        2: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0], start[1] : end[1] : stride[1]
+        ],
+        3: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0],
+            start[1] : end[1] : stride[1],
+            start[2] : end[2] : stride[2],
+        ],
+        4: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0],
+            start[1] : end[1] : stride[1],
+            start[2] : end[2] : stride[2],
+            start[3] : end[3] : stride[3],
+        ],
+        5: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0],
+            start[1] : end[1] : stride[1],
+            start[2] : end[2] : stride[2],
+            start[3] : end[3] : stride[3],
+            start[4] : end[4] : stride[4],
+        ],
+        6: lambda input, start, end, stride: input[
+            start[0] : end[0] : stride[0],
+            start[1] : end[1] : stride[1],
+            start[2] : end[2] : stride[2],
+            start[3] : end[3] : stride[3],
+            start[4] : end[4] : stride[4],
+            start[5] : end[5] : stride[5],
+        ],
     }[dim](input, start, end, stride)
 
     return result
@@ -60,9 +80,15 @@ class TestStrideSliceOp(OpTest):
         self.initTestCase()
         self.op_type = 'strided_slice'
         self.python_api = paddle.strided_slice
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.inputs = {'Input': self.input}
         self.outputs = {'Out': self.output}
@@ -71,7 +97,7 @@ class TestStrideSliceOp(OpTest):
             'starts': self.starts,
             'ends': self.ends,
             'strides': self.strides,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def test_check_output(self):
@@ -323,8 +349,9 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
 
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            starts_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
         self.outputs = {'Out': self.output}
@@ -333,7 +360,7 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
             'starts': self.starts_infer,
             'ends': self.ends,
             'strides': self.strides,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -343,9 +370,15 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, 1, 1]
         self.infer_flags = [1, -1, 1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.starts_infer = [1, 10, 2]
 
@@ -364,8 +397,9 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
 
         ends_tensor = []
         for index, ele in enumerate(self.ends):
-            ends_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            ends_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {'Input': self.input, 'EndsTensorList': ends_tensor}
         self.outputs = {'Out': self.output}
@@ -374,7 +408,7 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
             'starts': self.starts,
             'ends': self.ends_infer,
             'strides': self.strides,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -384,9 +418,15 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, 1, 2]
         self.infer_flags = [1, -1, 1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.ends_infer = [3, 1, 4]
 
@@ -404,12 +444,16 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
+<<<<<<< HEAD
             "StartsTensor": np.array(self.starts, dtype="int32")
+=======
+            "StartsTensor": np.array(self.starts, dtype="int32"),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
+            # 'starts': self.starts,
             'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
@@ -422,9 +466,15 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, 1, 1]
         self.infer_flags = [-1, -1, -1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         self.check_output()
@@ -440,13 +490,17 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
+<<<<<<< HEAD
             "EndsTensor": np.array(self.ends, dtype="int32")
+=======
+            "EndsTensor": np.array(self.ends, dtype="int32"),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
             'starts': self.starts,
-            #'ends': self.ends,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -458,9 +512,15 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, 1, 1]
         self.infer_flags = [-1, -1, -1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         self.check_output()
@@ -475,20 +535,25 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         self.config()
         ends_tensor = []
         for index, ele in enumerate(self.ends):
-            ends_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            ends_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
         self.op_type = "strided_slice"
 
         self.inputs = {
             'Input': self.input,
             "StartsTensor": np.array(self.starts, dtype="int32"),
+<<<<<<< HEAD
             "EndsTensorList": ends_tensor
+=======
+            "EndsTensorList": ends_tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
-            #'starts': self.starts,
-            #'ends': self.ends,
+            # 'starts': self.starts,
+            # 'ends': self.ends,
             'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
@@ -500,9 +565,15 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, 1, 1]
         self.infer_flags = [-1, -1, -1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         self.check_output()
@@ -518,14 +589,18 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         self.config()
         self.inputs = {
             'Input': self.input,
+<<<<<<< HEAD
             "StridesTensor": np.array(self.strides, dtype="int32")
+=======
+            "StridesTensor": np.array(self.strides, dtype="int32"),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
         self.outputs = {'Out': self.output}
         self.attrs = {
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            #'strides': self.strides,
+            # 'strides': self.strides,
             'infer_flags': self.infer_flags,
         }
 
@@ -536,9 +611,15 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         self.axes = [0, 1, 2]
         self.strides = [1, -1, 1]
         self.infer_flags = [-1, -1, -1]
+<<<<<<< HEAD
         self.output = strided_slice_native_forward(self.input, self.axes,
                                                    self.starts, self.ends,
                                                    self.strides)
+=======
+        self.output = strided_slice_native_forward(
+            self.input, self.axes, self.starts, self.ends, self.strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         self.check_output()
@@ -554,6 +635,7 @@ class TestStridedSliceAPI(unittest.TestCase):
         input = np.random.random([3, 4, 5, 6]).astype("float64")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
         minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+<<<<<<< HEAD
         starts = fluid.layers.data(name='starts',
                                    shape=[3],
                                    dtype='int32',
@@ -591,6 +673,48 @@ class TestStridedSliceAPI(unittest.TestCase):
                                      starts=starts,
                                      ends=ends,
                                      strides=strides)
+=======
+        starts = fluid.layers.data(
+            name='starts', shape=[3], dtype='int32', append_batch_size=False
+        )
+        ends = fluid.layers.data(
+            name='ends', shape=[3], dtype='int32', append_batch_size=False
+        )
+        strides = fluid.layers.data(
+            name='strides', shape=[3], dtype='int32', append_batch_size=False
+        )
+
+        x = fluid.layers.data(
+            name="x",
+            shape=[3, 4, 5, 6],
+            append_batch_size=False,
+            dtype="float64",
+        )
+        out_1 = paddle.strided_slice(
+            x,
+            axes=[0, 1, 2],
+            starts=[-3, 0, 2],
+            ends=[3, 100, -1],
+            strides=[1, 1, 1],
+        )
+        out_2 = paddle.strided_slice(
+            x,
+            axes=[0, 1, 3],
+            starts=[minus_3, 0, 2],
+            ends=[3, 100, -1],
+            strides=[1, 1, 1],
+        )
+        out_3 = paddle.strided_slice(
+            x,
+            axes=[0, 1, 3],
+            starts=[minus_3, 0, 2],
+            ends=[3, 100, minus_1],
+            strides=[1, 1, 1],
+        )
+        out_4 = paddle.strided_slice(
+            x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out_5 = x[-3:3, 0:100:2, -1:2:-1]
         out_6 = x[minus_3:3:1, 0:100:2, :, minus_1:2:minus_1]
@@ -603,9 +727,10 @@ class TestStridedSliceAPI(unittest.TestCase):
                 "x": input,
                 'starts': np.array([-3, 0, 2]).astype("int32"),
                 'ends': np.array([3, 2147483648, -1]).astype("int64"),
-                'strides': np.array([1, 1, 1]).astype("int32")
+                'strides': np.array([1, 1, 1]).astype("int32"),
             },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
+        )
         assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
         assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
         assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
@@ -620,19 +745,33 @@ class TestStridedSliceAPI(unittest.TestCase):
         starts = [-3, 0, 2]
         ends = [3, 2, 4]
         strides_1 = [1, 1, 1]
+<<<<<<< HEAD
         sliced_1 = paddle.strided_slice(x,
                                         axes=axes,
                                         starts=starts,
                                         ends=ends,
                                         strides=strides_1)
+=======
+        sliced_1 = paddle.strided_slice(
+            x, axes=axes, starts=starts, ends=ends, strides=strides_1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert sliced_1.shape == (3, 2, 2, 2)
 
-    @unittest.skipIf(not paddle.is_compiled_with_cuda(),
-                     "Cannot use CUDAPinnedPlace in CPU only version")
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(),
+        "Cannot use CUDAPinnedPlace in CPU only version",
+    )
     def test_cuda_pinned_place(self):
         with paddle.fluid.dygraph.guard():
+<<<<<<< HEAD
             x = paddle.to_tensor(np.random.randn(2, 10),
                                  place=paddle.CUDAPinnedPlace())
+=======
+            x = paddle.to_tensor(
+                np.random.randn(2, 10), place=paddle.CUDAPinnedPlace()
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertTrue(x.place.is_cuda_pinned_place())
             y = x[:, ::2]
             self.assertFalse(x.place.is_cuda_pinned_place())
@@ -642,13 +781,21 @@ class TestStridedSliceAPI(unittest.TestCase):
 class ArrayLayer(paddle.nn.Layer):
 
     def __init__(self, input_size=224, output_size=10, array_size=1):
-        super(ArrayLayer, self).__init__()
+        super().__init__()
         self.input_size = input_size
         self.output_size = output_size
         self.array_size = array_size
         for i in range(self.array_size):
+<<<<<<< HEAD
             setattr(self, self.create_name(i),
                     paddle.nn.Linear(input_size, output_size))
+=======
+            setattr(
+                self,
+                self.create_name(i),
+                paddle.nn.Linear(input_size, output_size),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def create_name(self, index):
         return 'linear_' + str(index)
@@ -718,15 +865,23 @@ class TestStridedSliceTensorArray(unittest.TestCase):
     def is_grads_equal(self, g1, g2):
         for i, g in enumerate(g1):
 
+<<<<<<< HEAD
             self.assertTrue(self.grad_equal(g, g2[i]),
                             msg="gradient_1:\n{} \ngradient_2:\n{}".format(
                                 g, g2))
+=======
+            self.assertTrue(
+                self.grad_equal(g, g2[i]),
+                msg="gradient_1:\n{} \ngradient_2:\n{}".format(g, g2),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def is_grads_equal_zeros(self, grads):
         for g in grads:
             self.assertTrue(
                 self.grad_equal(np.zeros_like(g), g),
-                msg="The gradient should be zeros, but received \n{}".format(g))
+                msg="The gradient should be zeros, but received \n{}".format(g),
+            )
 
     def create_case(self, net):
         inps1 = paddle.randn([1, net.input_size], dtype='float32')
@@ -748,10 +903,13 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         net.clear_all_grad()
         # compare result of dygraph and static
         self.is_grads_equal(grads_static, grads_dy)
-        self.assertTrue(
-            np.array_equal(s1, s2),
-            msg="dygraph graph result:\n{} \nstatic dygraph result:\n{}".format(
-                l1.numpy(), l2.numpy()))
+        np.testing.assert_array_equal(
+            s1,
+            s2,
+            err_msg='dygraph graph result:\n{} \nstatic dygraph result:\n{}'.format(
+                l1.numpy(), l2.numpy()
+            ),
+        )
 
     def test_strided_slice_tensor_array_cuda_pinned_place(self):
         if paddle.device.is_compiled_with_cuda():
@@ -760,21 +918,34 @@ class TestStridedSliceTensorArray(unittest.TestCase):
                 class Simple(paddle.nn.Layer):
 
                     def __init__(self):
-                        super(Simple, self).__init__()
+                        super().__init__()
 
                     def forward(self, inps):
                         tensor_array = None
                         for i, tensor in enumerate(inps):
+<<<<<<< HEAD
                             index = paddle.full(shape=[1],
                                                 dtype='int64',
                                                 fill_value=i)
+=======
+                            index = paddle.full(
+                                shape=[1], dtype='int64', fill_value=i
+                            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                             if tensor_array is None:
                                 tensor_array = paddle.tensor.array_write(
-                                    tensor, i=index)
+                                    tensor, i=index
+                                )
                             else:
+<<<<<<< HEAD
                                 paddle.tensor.array_write(tensor,
                                                           i=index,
                                                           array=tensor_array)
+=======
+                                paddle.tensor.array_write(
+                                    tensor, i=index, array=tensor_array
+                                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
                         array1 = paddle.concat(tensor_array)
                         array2 = paddle.concat(tensor_array[::-1])
@@ -783,12 +954,25 @@ class TestStridedSliceTensorArray(unittest.TestCase):
                 net = Simple()
                 func = paddle.jit.to_static(net.forward)
 
+<<<<<<< HEAD
                 inps1 = paddle.to_tensor(np.random.randn(2, 10),
                                          place=paddle.CUDAPinnedPlace(),
                                          stop_gradient=False)
                 inps2 = paddle.to_tensor(np.random.randn(2, 10),
                                          place=paddle.CUDAPinnedPlace(),
                                          stop_gradient=False)
+=======
+                inps1 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False,
+                )
+                inps2 = paddle.to_tensor(
+                    np.random.randn(2, 10),
+                    place=paddle.CUDAPinnedPlace(),
+                    stop_gradient=False,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
                 self.assertTrue(inps1.place.is_cuda_pinned_place())
                 self.assertTrue(inps2.place.is_cuda_pinned_place())
@@ -987,6 +1171,45 @@ class TestStridedSliceTensorArray(unittest.TestCase):
                 return tensors[-3:-60:-3]
 
         self.create_case(Net27(input_size=112, array_size=13))
+
+
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestStridedSliceFloat16(unittest.TestCase):
+    def init_test_case(self):
+        self.op_type = 'strided_slice'
+        self.input_shape = [3, 3, 3, 6, 7, 8]
+        self.axes = [0, 1, 2, 3, 4, 5]
+        self.starts = [1, 0, 0, 0, 1, 2]
+        self.ends = [2, 2, 3, 1, 2, 8]
+        self.strides = [1, 1, 1, 1, 1, 2]
+        self.infer_flags = [1, 1, 1, 1, 1]
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x_np = x_np.astype(dtype)
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        output = strided_slice_native_forward(
+            x, self.axes, self.starts, self.ends, self.strides
+        )
+        x_grad = paddle.grad(output, x)
+        output_np = output[0].numpy().astype('float32')
+        x_grad_np = x_grad[0].numpy().astype('float32')
+        paddle.enable_static()
+        return output_np, x_grad_np
+
+    def test_check(self):
+        self.init_test_case()
+        x_np = np.random.random(self.input_shape).astype("float16")
+
+        output_np_fp16, x_grad_np_fp16 = self.check_main(x_np, 'float16')
+        output_np_fp32, x_grad_np_fp32 = self.check_main(x_np, 'float32')
+
+        np.testing.assert_allclose(output_np_fp16, output_np_fp32)
+
+        np.testing.assert_allclose(x_grad_np_fp16, x_grad_np_fp32)
 
 
 if __name__ == "__main__":

@@ -54,7 +54,6 @@ def set_config(config=None):
 
     Examples:
         .. code-block:: python
-            :name: auto-tuning
 
             import paddle
             import json
@@ -148,7 +147,8 @@ def set_config(config=None):
         if "tuning_steps" in dataloader_config:
             if isinstance(dataloader_config['tuning_steps'], int):
                 paddle.fluid.reader.set_autotune_config(
-                    use_autoune, dataloader_config['tuning_steps'])
+                    use_autoune, dataloader_config['tuning_steps']
+                )
             else:
                 warnings.warn(
                     "The auto-tuning configuration of the dataloader is incorrect."

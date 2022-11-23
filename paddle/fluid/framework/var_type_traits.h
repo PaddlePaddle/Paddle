@@ -54,6 +54,8 @@
 namespace phi {
 class DenseTensor;
 class SelectedRows;
+class SparseCooTensor;
+class SparseCsrTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -78,7 +80,7 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
-class ScopeBase;
+class Scope;
 class ReaderHolder;
 class Scope;
 }  // namespace framework
@@ -178,8 +180,15 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
+<<<<<<< HEAD
     Tensor,
     phi::SelectedRows,
+=======
+    phi::DenseTensor,
+    phi::SelectedRows,
+    phi::SparseCooTensor,
+    phi::SparseCsrTensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     std::vector<Scope *>,
     LoDRankTable,
     Strings,
@@ -213,7 +222,13 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,
     float,
+<<<<<<< HEAD
     Vocab>;
+=======
+    Vocab,
+    std::vector<int>,
+    std::vector<float>>;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -236,7 +251,7 @@ struct VarTypeTrait {
 
 // Users should set some of variable type ids to be what is defined in
 // framework.proto below
-REG_PROTO_VAR_TYPE_TRAIT(LoDTensor, proto::VarType::LOD_TENSOR);
+REG_PROTO_VAR_TYPE_TRAIT(phi::DenseTensor, proto::VarType::LOD_TENSOR);
 REG_PROTO_VAR_TYPE_TRAIT(phi::SelectedRows, proto::VarType::SELECTED_ROWS);
 REG_PROTO_VAR_TYPE_TRAIT(std::vector<Scope *>, proto::VarType::STEP_SCOPES);
 REG_PROTO_VAR_TYPE_TRAIT(LoDRankTable, proto::VarType::LOD_RANK_TABLE);
@@ -250,6 +265,7 @@ REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
 REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
 REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SparseCooTensor, proto::VarType::SPARSE_COO);
 
 /** End of variable type registration */
 

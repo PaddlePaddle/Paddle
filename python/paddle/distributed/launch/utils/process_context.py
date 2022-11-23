@@ -16,6 +16,7 @@ import subprocess
 import os, sys, signal, time
 
 
+<<<<<<< HEAD
 class ProcessContext(object):
 
     def __init__(self,
@@ -26,6 +27,19 @@ class ProcessContext(object):
                  group=True,
                  preexec_fn=None,
                  shell=False):
+=======
+class ProcessContext:
+    def __init__(
+        self,
+        cmd,
+        env=os.environ,
+        out=sys.stdout,
+        err=sys.stderr,
+        group=True,
+        preexec_fn=None,
+        shell=False,
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self._cmd = cmd
         self._env = env
         self._preexec_fn = preexec_fn
@@ -38,12 +52,23 @@ class ProcessContext(object):
 
     def _start(self):
         pre_fn = os.setsid if self._group else None
+<<<<<<< HEAD
         self._proc = subprocess.Popen(self._cmd,
                                       env=self._env,
                                       stdout=self._stdout,
                                       stderr=self._stderr,
                                       preexec_fn=self._preexec_fn or pre_fn,
                                       shell=self._shell)
+=======
+        self._proc = subprocess.Popen(
+            self._cmd,
+            env=self._env,
+            stdout=self._stdout,
+            stderr=self._stderr,
+            preexec_fn=self._preexec_fn or pre_fn,
+            shell=self._shell,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def _close_std(self):
         try:

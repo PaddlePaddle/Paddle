@@ -24,19 +24,22 @@ namespace operators {
 
 using dnnl::memory;
 using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::stream;
 using paddle::platform::MKLDNNDeviceContext;
-using platform::to_void_cast;
 
 template <typename T>
+<<<<<<< HEAD
 class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
+=======
+class BatchNormMKLDNNHandler : public phi::funcs::OneDNNHandlerNoCachingT<
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                    T,
                                    dnnl::batch_normalization_forward,
                                    dnnl::batch_normalization_backward> {
  public:
   BatchNormMKLDNNHandler(const paddle::framework::ExecutionContext &ctx,
                          const dnnl::engine mkldnn_engine,
+<<<<<<< HEAD
                          const Tensor *x,
                          const bool global_stats,
                          const bool test_mode)
@@ -75,6 +78,14 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
       : platform::MKLDNNHandlerNoCachingT<T,
                                           dnnl::batch_normalization_forward,
                                           dnnl::batch_normalization_backward>(
+=======
+                         const Tensor *in_x,
+                         const Tensor *scale,
+                         const Tensor *out_grad)
+      : phi::funcs::OneDNNHandlerNoCachingT<T,
+                                            dnnl::batch_normalization_forward,
+                                            dnnl::batch_normalization_backward>(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             mkldnn_engine, ctx.GetPlace()) {
     auto scale_tz = phi::vectorize<int64_t>(scale->dims());
     PADDLE_ENFORCE_EQ(
@@ -128,13 +139,13 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(
-      const framework::Tensor *mean) {
+      const phi::DenseTensor *mean) {
     const T *mean_data = mean->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
-                                            to_void_cast<T>(mean_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->mean_desc(), phi::funcs::to_void_cast<T>(mean_data));
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMeanMemory(framework::Tensor *mean) {
+  std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor *mean) {
     T *mean_data = mean->mutable_data<T>(this->place_,
                                          this->fwd_pd_->mean_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
@@ -142,14 +153,15 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      const framework::Tensor *variance) {
+      const phi::DenseTensor *variance) {
     const T *variance_data = variance->data<T>();
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
-                                            to_void_cast<T>(variance_data));
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->variance_desc(),
+        phi::funcs::to_void_cast<T>(variance_data));
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
-      framework::Tensor *variance) {
+      phi::DenseTensor *variance) {
     T *variance_data = variance->mutable_data<T>(
         this->place_, this->fwd_pd_->variance_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
@@ -158,6 +170,7 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
 };
 
 template <typename T>
+<<<<<<< HEAD
 class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -240,21 +253,26 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 };
 
 template <typename T>
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto &dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
 
-    const auto *x = ctx.Input<Tensor>("X");
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *shift = ctx.Input<Tensor>("Bias");
-    const auto *batch_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *batch_variance = ctx.Input<Tensor>("SavedVariance");
-    const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *diff_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto *diff_shift = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *shift = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *batch_mean = ctx.Input<phi::DenseTensor>("SavedMean");
+    const auto *batch_variance = ctx.Input<phi::DenseTensor>("SavedVariance");
+    const auto *diff_y =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto *diff_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *diff_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *diff_shift =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     BatchNormMKLDNNHandler<T> handler(ctx, mkldnn_engine, x, scale, diff_y);
 
@@ -305,10 +323,13 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
 REGISTER_OP_KERNEL(batch_norm,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::BatchNormMKLDNNOpKernel<float>);
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OP_KERNEL(batch_norm_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,

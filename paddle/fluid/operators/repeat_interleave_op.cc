@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/repeat_interleave_op.h"
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include <memory>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/index_select_op.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class RepeatInterleaveOp : public framework::OperatorWithKernel {
  public:
@@ -164,11 +169,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(RepeatInterleaveGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OPERATOR(repeat_interleave,
                   ops::RepeatInterleaveOp,
                   ops::RepeatInterleaveOpMaker,
                   ops::RepeatInterleaveGradMaker<paddle::framework::OpDesc>,
                   ops::RepeatInterleaveGradMaker<paddle::imperative::OpBase>);
+<<<<<<< HEAD
 REGISTER_OPERATOR(repeat_interleave_grad,
                   ops::RepeatInterleaveGradOp,
                   ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
@@ -183,3 +193,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::RepeatInterleaveGradKernel<phi::CPUContext, double>,
     ops::RepeatInterleaveGradKernel<phi::CPUContext, int>,
     ops::RepeatInterleaveGradKernel<phi::CPUContext, int64_t>);
+=======
+
+REGISTER_OPERATOR(repeat_interleave_grad,
+                  ops::RepeatInterleaveGradOp,
+                  ops::RepeatInterleaveGradNoNeedBufferVarsInferer);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

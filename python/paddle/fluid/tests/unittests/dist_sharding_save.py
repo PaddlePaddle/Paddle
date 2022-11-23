@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase
-from dist_mnist import cnn_model
-# from paddle.fluid.incubate.fleet.collective import fleet
-import paddle.distributed.fleet as fleet
+from dist_mnist import cnn_model  # noqa: F401
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
@@ -42,6 +37,7 @@ def runtime_main():
     fleet.init(role)
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
+<<<<<<< HEAD
             input_x = paddle.fluid.layers.data(name="x",
                                                shape=[32],
                                                dtype='float32')
@@ -56,6 +52,23 @@ def runtime_main():
                                                 act='softmax')
             cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                      label=input_y)
+=======
+            input_x = paddle.fluid.layers.data(
+                name="x", shape=[32], dtype='float32'
+            )
+            input_y = paddle.fluid.layers.data(
+                name="y", shape=[1], dtype='int64'
+            )
+
+            fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
+            fc_2 = paddle.fluid.layers.fc(input=fc_1, size=256, act='tanh')
+            prediction = paddle.fluid.layers.fc(
+                input=[fc_2], size=2, act='softmax'
+            )
+            cost = paddle.fluid.layers.cross_entropy(
+                input=prediction, label=input_y
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
@@ -66,10 +79,19 @@ def runtime_main():
                 "sharding_degree": 2,
             }
 
+<<<<<<< HEAD
             optimizer = paddle.fluid.optimizer.Momentum(learning_rate=0.01,
                                                         momentum=0.9)
             optimizer = fleet.distributed_optimizer(optimizer,
                                                     strategy=strategy)
+=======
+            optimizer = paddle.fluid.optimizer.Momentum(
+                learning_rate=0.01, momentum=0.9
+            )
+            optimizer = fleet.distributed_optimizer(
+                optimizer, strategy=strategy
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             optimizer.minimize(avg_cost)
 
     # execution
@@ -78,17 +100,27 @@ def runtime_main():
     exe = fluid.Executor(place)
     exe.run(startup_prog)
     dirname = "./ut_sharding_save_model"
+<<<<<<< HEAD
     sharding.utils.save_persistables(exe,
                                      dirname,
                                      main_program=train_prog,
                                      filename=None)
+=======
+    sharding.utils.save_persistables(
+        exe, dirname, main_program=train_prog, filename=None
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     out_losses = []
     sys.stdout.buffer.write(pickle.dumps(out_losses))
 
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     #NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
+=======
+    # NOTE(liangjianzhong): dist unittest should be imlpement using runtime_main in test_dist_base.py
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     # but the runtime_main in test_dist_base.py use the fleet, DistributedStrategy from
     # paddle.fluid.incubate.fleet.collective which is not support by sharding (paddle.distributed.fleet).
     # this should be update in future.

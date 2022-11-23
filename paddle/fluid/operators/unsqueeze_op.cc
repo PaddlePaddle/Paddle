@@ -148,13 +148,17 @@ class UnsqueezeOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::TransToProtoVarType(
-            ctx.Input<framework::LoDTensor>("X")->type()),
+            ctx.Input<phi::DenseTensor>("X")->type()),
         ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
+=======
+      const phi::DenseTensor &tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxesTensor" || var_name == "AxesTensorList") {
       return expected_kernel_type;

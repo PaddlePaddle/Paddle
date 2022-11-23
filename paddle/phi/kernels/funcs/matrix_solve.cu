@@ -80,7 +80,14 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
 
   // Copy the addresses of A and tmp_b from host to device.
   paddle::memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
+<<<<<<< HEAD
       paddle::memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
+=======
+      paddle::memory::Alloc(
+          context.GetPlace(),
+          cpu_ptrs.size() * sizeof(T*),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   paddle::memory::Copy(context.GetPlace(),
                        tmp_gpu_ptrs_data->ptr(),
                        phi::CPUPlace(),
@@ -94,7 +101,14 @@ void MatrixSolveFunctor<Context, T>::operator()(const Context& context,
   // Allocate device memory for BatchedGETRF's info and pivots.
   int num_ints = n < 32 ? batch_size : batch_size * (n + 1);
   paddle::memory::allocation::AllocationPtr tmp_gpu_info_data =
+<<<<<<< HEAD
       paddle::memory::Alloc(context, num_ints * sizeof(int));
+=======
+      paddle::memory::Alloc(
+          context.GetPlace(),
+          num_ints * sizeof(int),
+          phi::Stream(reinterpret_cast<phi::StreamId>(context.stream())));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int* gpu_info_ptr = reinterpret_cast<int*>(tmp_gpu_info_data->ptr());
 
   auto blas = phi::funcs::GetBlas<Context, T>(context);

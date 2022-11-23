@@ -31,8 +31,13 @@ void AddmmKernelImpl(const Context& dev_ctx,
                      const DenseTensor& input,
                      const TensorType& x,
                      const DenseTensor& y,
+<<<<<<< HEAD
                      float alpha,
                      float beta,
+=======
+                     float beta,
+                     float alpha,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      DenseTensor* out) {
 #if CUDA_VERSION >= 11000
   std::vector<int64_t> input_dim = phi::vectorize(input.dims());
@@ -107,10 +112,17 @@ void AddmmCooDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCooTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float alpha,
                          float beta,
                          DenseTensor* out) {
   AddmmKernelImpl<T>(dev_ctx, input, x, y, alpha, beta, out);
+=======
+                         float beta,
+                         float alpha,
+                         DenseTensor* out) {
+  AddmmKernelImpl<T>(dev_ctx, input, x, y, beta, alpha, out);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 template <typename T, typename Context>
@@ -118,10 +130,17 @@ void AddmmCsrDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCsrTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float alpha,
                          float beta,
                          DenseTensor* out) {
   AddmmKernelImpl<T>(dev_ctx, input, x, y, alpha, beta, out);
+=======
+                         float beta,
+                         float alpha,
+                         DenseTensor* out) {
+  AddmmKernelImpl<T>(dev_ctx, input, x, y, beta, alpha, out);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 }  // namespace sparse

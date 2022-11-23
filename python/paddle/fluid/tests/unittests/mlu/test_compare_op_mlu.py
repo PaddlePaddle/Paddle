@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -79,46 +77,76 @@ def create_test_class(op_type, typename, callback):
         def test_broadcast_api_1(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
+<<<<<<< HEAD
                 x = paddle.static.data(name='x',
                                        shape=[1, 2, 1, 3],
                                        dtype=typename)
                 y = paddle.static.data(name='y',
                                        shape=[1, 2, 3],
                                        dtype=typename)
+=======
+                x = paddle.static.data(
+                    name='x', shape=[1, 2, 1, 3], dtype=typename
+                )
+                y = paddle.static.data(
+                    name='y', shape=[1, 2, 3], dtype=typename
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
                 input_x = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(typename)
                 input_y = np.arange(0, 6).reshape((1, 2, 3)).astype(typename)
                 real_result = callback(input_x, input_y)
+<<<<<<< HEAD
                 res, = exe.run(feed={
                     "x": input_x,
                     "y": input_y
                 },
                                fetch_list=[out])
+=======
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")
         def test_broadcast_api_2(self):
             paddle.enable_static()
             with program_guard(Program(), Program()):
+<<<<<<< HEAD
                 x = paddle.static.data(name='x',
                                        shape=[1, 2, 3],
                                        dtype=typename)
                 y = paddle.static.data(name='y',
                                        shape=[1, 2, 1, 3],
                                        dtype=typename)
+=======
+                x = paddle.static.data(
+                    name='x', shape=[1, 2, 3], dtype=typename
+                )
+                y = paddle.static.data(
+                    name='y', shape=[1, 2, 1, 3], dtype=typename
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 op = eval("paddle.%s" % (self.op_type))
                 out = op(x, y)
                 exe = paddle.static.Executor(self.place)
                 input_x = np.arange(0, 6).reshape((1, 2, 3)).astype(typename)
                 input_y = np.arange(1, 7).reshape((1, 2, 1, 3)).astype(typename)
                 real_result = callback(input_x, input_y)
+<<<<<<< HEAD
                 res, = exe.run(feed={
                     "x": input_x,
                     "y": input_y
                 },
                                fetch_list=[out])
+=======
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")
@@ -133,11 +161,17 @@ def create_test_class(op_type, typename, callback):
                 input_x = np.arange(0, 5).reshape((5)).astype(typename)
                 input_y = np.array([5, 3, 2]).reshape((3, 1)).astype(typename)
                 real_result = callback(input_x, input_y)
+<<<<<<< HEAD
                 res, = exe.run(feed={
                     "x": input_x,
                     "y": input_y
                 },
                                fetch_list=[out])
+=======
+                (res,) = exe.run(
+                    feed={"x": input_x, "y": input_y}, fetch_list=[out]
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertEqual((res == real_result).all(), True)
 
         @unittest.skipIf(typename == 'float16', "float16 is not supported now")

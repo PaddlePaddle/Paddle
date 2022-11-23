@@ -12,28 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import PassAutoScanTest, SkipReasons
+from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
 import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
-    """
-        y_var  
-          |          
-       unsqueeze2 
+    r"""
+        y_var
+          |
+       unsqueeze2
           \
     unsqueeze2_out_var    x_var
              \           /
-            elementwise_mul 
+            elementwise_mul
     """
 
     def sample_predictor_configs(self, program_config):
@@ -45,7 +40,12 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False)
+=======
+            use_calib_mode=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         yield config, [
             'elementwise_mul',
         ], (1e-5, 1e-5)
@@ -53,9 +53,16 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of mul
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=10),
                      min_size=4,
                      max_size=4))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=10), min_size=4, max_size=4
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         axis = -1
 
         # 2. Generate legal shape and attr of input:Y of unsqueeze2
@@ -67,9 +74,10 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
             inputs={
                 "X": ["unsqueeze2_x"],
                 "AxesTensor": [],
-                "AxesTensorList": []
+                "AxesTensorList": [],
             },
             axes=unsqueeze2_axes,
+<<<<<<< HEAD
             outputs={
                 "Out": ["unsqueeze2_out"],
                 "XShape": ["xshape"]
@@ -81,6 +89,13 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
                 "Y": ["unsqueeze2_out"],
                 "X": ["mul_x"]
             },
+=======
+            outputs={"Out": ["unsqueeze2_out"], "XShape": ["xshape"]},
+        )
+        mul_op = OpConfig(
+            "elementwise_mul",
+            inputs={"Y": ["unsqueeze2_out"], "X": ["mul_x"]},
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             axis=axis,
             outputs={"Out": ["mul_out"]},
         )
@@ -102,9 +117,17 @@ class TestUnsqueezeEltwiseFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             max_examples=300,
                             passes=["unsqueeze2_eltwise_fuse_pass"])
+=======
+        self.run_and_statis(
+            quant=False,
+            max_examples=300,
+            passes=["unsqueeze2_eltwise_fuse_pass"],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

@@ -43,8 +43,11 @@ class OptimizerConfig {
 
   float nodeid_slot = 9008;
   float feature_learning_rate = 0.05;
+<<<<<<< HEAD
   // multi node
   bool multi_node = false;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   void set_sparse_sgd(float nonclk_coeff,
                       float clk_coeff,
@@ -117,8 +120,13 @@ class OptimizerConfig {
     this->mf_beta2_decay_rate = optimizer_config.mf_beta2_decay_rate;
     this->mf_ada_epsilon = optimizer_config.mf_ada_epsilon;
 
+<<<<<<< HEAD
     this->nodeid_slot = optimizer_config.nodeid_slot;
     this->feature_learning_rate = optimizer_config.feature_learning_rate;
+=======
+    this->nodeid_slot = nodeid_slot;
+    this->feature_learning_rate = feature_learning_rate;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 };
 

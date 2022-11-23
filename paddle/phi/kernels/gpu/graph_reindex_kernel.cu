@@ -20,8 +20,11 @@
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
 
+<<<<<<< HEAD
 #include "cub/cub.cuh"
 #include "paddle/fluid/memory/memory.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
@@ -392,12 +395,41 @@ void GraphReindexKernel(const Context& dev_ctx,
   int num_edge_types = num_ac_count / bs;
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());
+<<<<<<< HEAD
   reindex_dst->Resize({num_edges});
   T* reindex_dst_data = dev_ctx.template Alloc<T>(reindex_dst);
 
   ReindexDst<T, Context>(dev_ctx, reindex_dst_data,
                          thrust::raw_pointer_cast(unique_dst_reindex.data()),
                          count_data, num_edge_types, bs);
+=======
+  constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
+  constexpr int TILE_SIZE = BLOCK_WARPS * 16;
+  const dim3 block(WARP_SIZE, BLOCK_WARPS);
+  const dim3 grid((bs + TILE_SIZE - 1) / TILE_SIZE);
+  reindex_dst->Resize({num_edges});
+  T* reindex_dst_data = dev_ctx.template Alloc<T>(reindex_dst);
+  int begin = 0;
+  for (int i = 0; i < num_edge_types; i++) {
+    thrust::device_vector<int> dst_ptr(bs);
+    thrust::exclusive_scan(
+        count_data + i * bs, count_data + (i + 1) * bs, dst_ptr.begin());
+
+    GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
+        <<<grid, block, 0, dev_ctx.stream()>>>(
+            bs,
+            thrust::raw_pointer_cast(unique_dst_reindex.data()),
+            count_data + i * bs,
+            thrust::raw_pointer_cast(dst_ptr.data()),
+            reindex_dst_data + begin);
+
+    int count_i =
+        thrust::reduce(thrust::device_pointer_cast(count_data) + i * bs,
+                       thrust::device_pointer_cast(count_data) + (i + 1) * bs);
+    begin += count_i;
+  }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});
   T* out_nodes_data = dev_ctx.template Alloc<T>(out_nodes);
   thrust::copy(unique_nodes.begin(), unique_nodes.end(), out_nodes_data);

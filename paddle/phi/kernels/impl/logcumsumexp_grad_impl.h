@@ -12,9 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include <limits>
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+=======
+#pragma once
+
+#include <limits>
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -55,6 +63,7 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   auto eigen_d_out = EigenVector<T>::Flatten(d_out);
   auto& place = *dev_ctx.eigen_device();
 
+<<<<<<< HEAD
   DenseTensor output_pos;
   output_pos.Resize(d_out.dims());
   dev_ctx.template Alloc<T>(&output_pos);
@@ -82,5 +91,40 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
 
   auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
   eigen_d_x.device(place) = eigen_output_pos - eigen_output_neg;
+=======
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  DenseTensor output_pos;
+  output_pos.Resize(d_out.dims());
+  dev_ctx.template Alloc<MT>(&output_pos);
+  auto eigen_output_pos = EigenVector<MT>::Flatten(output_pos);
+  DenseTensor output_neg;
+  output_neg.Resize(d_out.dims());
+  dev_ctx.template Alloc<MT>(&output_neg);
+  auto eigen_output_neg = EigenVector<MT>::Flatten(output_neg);
+  DenseTensor tmp;
+  tmp.Resize(d_out.dims());
+  dev_ctx.template Alloc<MT>(&tmp);
+  auto eigen_tmp = EigenVector<MT>::Flatten(tmp);
+
+  eigen_tmp.device(place) =
+      eigen_d_out.template cast<MT>().unaryExpr(LogGradPositiveFunctor<MT>()) -
+      eigen_out.template cast<MT>();
+  LogcumsumexpKernel<MT, Context>(
+      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_pos);
+  auto out_pos = eigen_output_pos + eigen_x.template cast<MT>();
+  eigen_output_pos.device(place) = out_pos.exp();
+
+  eigen_tmp.device(place) =
+      eigen_d_out.template cast<MT>().unaryExpr(LogGradNegativeFunctor<MT>()) -
+      eigen_out.template cast<MT>();
+  LogcumsumexpKernel<MT, Context>(
+      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_neg);
+  auto out_neg = eigen_output_neg + eigen_x.template cast<MT>();
+  eigen_output_neg.device(place) = out_neg.exp();
+
+  auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
+  eigen_d_x.device(place) =
+      (eigen_output_pos - eigen_output_neg).template cast<T>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 }  // namespace phi

@@ -8,12 +8,19 @@ list(
   gelu_op_plugin.cu
   pool_op_plugin.cu
   swish_op_plugin.cu
+<<<<<<< HEAD
+=======
+  group_norm_op_plugin.cu
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   layer_norm_op_plugin.cu
   instance_norm_op_plugin.cu
   emb_eltwise_layernorm_plugin.cu
   qkv_to_context_plugin.cu
   skip_layernorm_op_plugin.cu
+<<<<<<< HEAD
   slice_op_plugin.cu
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   hard_swish_op_plugin.cu
   stack_op_plugin.cu
   anchor_generator_op_plugin.cu
@@ -25,13 +32,34 @@ list(
   pool3d_op_plugin.cu
   deformable_conv_op_plugin.cu
   matmul_op_int8_plugin.cu
+<<<<<<< HEAD
+=======
+  multihead_matmul_roformer_plugin.cu
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   transformer_input_convert_plugin.cu
   remove_padding_plugin.cu
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu
   preln_residual_bias_plugin.cu
+<<<<<<< HEAD
   fused_token_prune_op_plugin.cu)
 
+=======
+  fused_token_prune_op_plugin.cu
+  layernorm_shift_partition_op.cu
+  prelnlayernorm_shift_partition_op.cu
+  merge_layernorm_op_plugin.cu
+  skip_merge_layernorm_op_plugin.cu
+  generic_plugin.cu
+  lookup_table.cu)
+
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
+       many_emb_Layernorm_varseqlen_kernelMTron.cu
+       many_emb_Layernorm_varseqlen_kernelHFace.cu)
+endif()
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
 endif()
@@ -39,7 +67,17 @@ endif()
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
+<<<<<<< HEAD
   DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
+=======
+  DEPS enforce
+       tensorrt_engine
+       prelu
+       tensor
+       bert_encoder_functor
+       tensorrt_dynamic_shape_infermeta_factory
+       tensorrt_plugin_arg_mapping_context)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 nv_test(
   test_split_plugin

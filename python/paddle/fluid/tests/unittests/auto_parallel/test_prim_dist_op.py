@@ -14,17 +14,18 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 
-from paddle.fluid import program_guard
-from paddle.incubate.autograd import prim2orig, enable_prim, prim_enabled
+from paddle.incubate.autograd import enable_prim
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import set_var_dist_attr
-from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context, set_default_distributed_context
+from paddle.distributed.auto_parallel.dist_context import (
+    DistributedContext,
+    get_default_distributed_context,
+)
 
 paddle.enable_static()
 enable_prim()
@@ -39,13 +40,15 @@ class TestPrimDistOp(unittest.TestCase):
         self.startup_program = paddle.static.Program()
         self.layer_help = LayerHelper('TestPrimDistOp')
 
-        with paddle.static.program_guard(self.main_program,
-                                         self.startup_program):
+        with paddle.static.program_guard(
+            self.main_program, self.startup_program
+        ):
             self.init_prog()
 
     def init_prog(self):
         # block = self.main_program.global_block()
         # block = self.main_program.global_block()
+<<<<<<< HEAD
         self.w = self.layer_help.create_parameter(dtype="float",
                                                   shape=[20],
                                                   attr=None)
@@ -57,10 +60,24 @@ class TestPrimDistOp(unittest.TestCase):
         self.batch_reduced = paddle.static.data(name='batch_reduced',
                                                 shape=[1],
                                                 dtype='float')
+=======
+        self.w = self.layer_help.create_parameter(
+            dtype="float", shape=[20], attr=None
+        )
+        self.w_grad = paddle.static.data(
+            name='w_grad', shape=[20], dtype='float'
+        )
+        self.tmp1 = paddle.static.data(name='tmp1', shape=[20], dtype='float')
+        self.tmp2 = paddle.static.data(name='tmp2', shape=[20], dtype='float')
+        self.batch_reduced = paddle.static.data(
+            name='batch_reduced', shape=[1], dtype='float'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.attrs = {}
 
         default_dist_context = get_default_distributed_context()
         _global_process_mesh = auto.ProcessMesh(list(range(nranks)))
+<<<<<<< HEAD
         tensor_dist_attr = set_var_dist_attr(default_dist_context,
                                              self.tmp1, [-1],
                                              _global_process_mesh,
@@ -82,11 +99,42 @@ class TestPrimDistOp(unittest.TestCase):
                                        inputs={'X': self.tmp2},
                                        outputs={'Y': self.batch_reduced},
                                        attrs={"axis": [0]})
+=======
+        tensor_dist_attr = set_var_dist_attr(
+            default_dist_context,
+            self.tmp1,
+            [-1],
+            _global_process_mesh,
+            mark_annotated=True,
+        )
+        tensor_dist_attr = set_var_dist_attr(
+            default_dist_context,
+            self.tmp1,
+            [-1],
+            _global_process_mesh,
+            mark_annotated=True,
+        )
+
+        op = self.layer_help.append_op(
+            type="add_p",
+            inputs={'X': self.tmp1, 'Y': self.w},
+            outputs={'Z': self.w_grad},
+            attrs=self.attrs,
+        )
+
+        op = self.layer_help.append_op(
+            type="reduce_sum_p",
+            inputs={'X': self.tmp2},
+            outputs={'Y': self.batch_reduced},
+            attrs={"axis": [0]},
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_loss_and_grad_allreduce(self):
 
-        dist_context = DistributedContext(self.main_program,
-                                          self.startup_program)
+        dist_context = DistributedContext(
+            self.main_program, self.startup_program
+        )
         completer = Completer(dist_context)
         completer.complete_prim_annotation(self.main_program)
         dist_context.block_state.parse_forward_blocks(self.main_program)
@@ -97,7 +145,8 @@ class TestPrimDistOp(unittest.TestCase):
         dist_context.data_parallel_group = list(range(nranks))
         partitioner = Partitioner(dist_context, rank)
         dist_main_prog, dist_startup_prog, _ = partitioner.partition(
-            self.main_program, self.startup_program, [(self.w, self.w_grad)])
+            self.main_program, self.startup_program, [(self.w, self.w_grad)]
+        )
         ops = dist_main_prog.global_block().ops
 
         self.assertTrue(ops[1].type == "c_allreduce_sum")

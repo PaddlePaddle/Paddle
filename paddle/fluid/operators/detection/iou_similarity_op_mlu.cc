@@ -18,7 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T>
 struct IouFunction {
@@ -26,11 +30,23 @@ struct IouFunction {
   explicit IouFunction(const framework::ExecutionContext& ctx) : ctx(ctx) {
     place = ctx.GetPlace();
   }
+<<<<<<< HEAD
   void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
     //  y should be init first
     TransposeFromMLUTensor<T>(ctx, axis, x, y, false /*need_reshape_or_alloc*/);
   }
   void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
+    //  y should be init first
+    TransposeFromMLUTensor<T>(ctx, axis, x, y, false /*need_reshape_or_alloc*/);
+  }
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -49,7 +65,13 @@ struct IouFunction {
                       ToCnnlDataType<T>());
   }
 
+<<<<<<< HEAD
   void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -67,7 +89,13 @@ struct IouFunction {
                       GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
+<<<<<<< HEAD
   void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -85,7 +113,13 @@ struct IouFunction {
                       GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
+<<<<<<< HEAD
   void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void DivNoNan(const phi::DenseTensor* x,
+                const phi::DenseTensor* y,
+                phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -102,7 +136,11 @@ struct IouFunction {
                       z_desc.get(),
                       GetBasePtr(z));
   }
+<<<<<<< HEAD
   void Adds(const Tensor* x, float scalar, Tensor* y) {
+=======
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -116,7 +154,13 @@ struct IouFunction {
                        y_desc.get(),
                        GetBasePtr(y));
   }
+<<<<<<< HEAD
   void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void Maximum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -130,7 +174,13 @@ struct IouFunction {
                      z_desc.get(),
                      GetBasePtr(z));
   }
+<<<<<<< HEAD
   void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
+=======
+  void Minimum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -154,10 +204,17 @@ template <typename T>
 class IouSimilarityMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
     auto* out = ctx.Output<framework::LoDTensor>("Out");
+=======
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    bool normalized = ctx.Attr<bool>("box_normalized");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     auto _type = x->dtype();
     auto place = ctx.GetPlace();

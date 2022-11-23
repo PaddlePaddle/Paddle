@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -41,11 +39,22 @@ class TestImperativePartitialBackward(unittest.TestCase):
                 self.assertIsNone(param._grad_ivar())
 
             optimizer = fluid.optimizer.AdamOptimizer(
+<<<<<<< HEAD
                 parameter_list=(linear1.parameters() + linear2.parameters()))
             _, params_grads = optimizer.minimize(loss)
 
             self.assertListEqual(sorted([p.name for p in linear1.parameters()]),
                                  sorted([p_g[0].name for p_g in params_grads]))
+=======
+                parameter_list=(linear1.parameters() + linear2.parameters())
+            )
+            _, params_grads = optimizer.minimize(loss)
+
+            self.assertListEqual(
+                sorted([p.name for p in linear1.parameters()]),
+                sorted([p_g[0].name for p_g in params_grads]),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             linear1.clear_gradients()
             linear2.clear_gradients()

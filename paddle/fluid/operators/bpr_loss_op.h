@@ -21,7 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 /*Todo:
  *Find a way to adapt TolerableValue, using blas or eigen.
  */
@@ -39,19 +38,19 @@ template <typename DeviceContext, typename T>
 class BprLossOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
     int rank = x->dims().size();
 
-    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d = framework::ReshapeToMatrix(*label, rank - 1);
-    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+    phi::DenseTensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d = framework::ReshapeToMatrix(*label, rank - 1);
+    phi::DenseTensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
-    const framework::Tensor* logits = &x_2d;
-    const framework::Tensor* labels = &labels_2d;
-    framework::Tensor* out = &y_2d;
+    const phi::DenseTensor* logits = &x_2d;
+    const phi::DenseTensor* labels = &labels_2d;
+    phi::DenseTensor* out = &y_2d;
 
     const int step_size = logits->dims()[0];
     const int class_num = logits->dims()[1];
@@ -87,10 +86,10 @@ template <typename DeviceContext, typename T>
 class BprLossGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const size_t step_size = static_cast<size_t>(x->dims()[0]);
     const size_t num_classes = static_cast<size_t>(x->dims()[1]);

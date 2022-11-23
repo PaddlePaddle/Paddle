@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import os
@@ -294,7 +292,7 @@ def for_tuple_as_enumerate_value(x_array):
 class ForwardContainsForLayer(paddle.nn.Layer):
 
     def __init__(self):
-        super(ForwardContainsForLayer, self).__init__()
+        super().__init__()
         self.high = 5
         self.low = 3
 
@@ -328,8 +326,13 @@ def for_original_tuple():
 
 # 23. for zip error
 @paddle.jit.to_static(
+<<<<<<< HEAD
     input_spec=[InputSpec(shape=[None, 10]),
                 InputSpec(shape=[None, 10])])
+=======
+    input_spec=[InputSpec(shape=[None, 10]), InputSpec(shape=[None, 10])]
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 def for_zip_error(x, y):
     for i, j in zip(x, y):
         a = i + j
@@ -338,8 +341,13 @@ def for_zip_error(x, y):
 
 # 24. for zip
 @paddle.jit.to_static(
+<<<<<<< HEAD
     input_spec=[InputSpec(shape=[2, 10]),
                 InputSpec(shape=[2, 10])])
+=======
+    input_spec=[InputSpec(shape=[2, 10]), InputSpec(shape=[2, 10])]
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 def for_zip(x, y):
     for i, j in zip(x, y):
         a = i + j
@@ -349,8 +357,16 @@ def for_zip(x, y):
 class TestTransformBase(unittest.TestCase):
 
     def setUp(self):
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.set_input()
         self.set_test_func()
 
@@ -359,7 +375,8 @@ class TestTransformBase(unittest.TestCase):
 
     def set_test_func(self):
         raise NotImplementedError(
-            "For Enumerate test should implement set_test_func")
+            "For Enumerate test should implement set_test_func"
+        )
 
     def _run(self, to_static):
         program_translator.enable(to_static)
@@ -378,14 +395,14 @@ class TestTransform(TestTransformBase):
     def transformed_result_compare(self):
         dy_outs = self.get_dygraph_output()
         if not isinstance(dy_outs, (tuple, list)):
-            dy_outs = (dy_outs, )
+            dy_outs = (dy_outs,)
 
         st_outs = self.get_static_output()
         if not isinstance(st_outs, (tuple, list)):
-            st_outs = (st_outs, )
+            st_outs = (st_outs,)
 
         for x, y in zip(dy_outs, st_outs):
-            self.assertTrue(np.allclose(x.numpy(), y.numpy()))
+            np.testing.assert_allclose(x.numpy(), y.numpy(), rtol=1e-05)
 
 
 class TestTransformForOriginalList(TestTransform):

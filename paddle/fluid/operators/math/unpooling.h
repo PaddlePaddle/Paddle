@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -22,38 +23,66 @@ template <typename DeviceContext, typename T>
 class Unpool2dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output);
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 template <typename DeviceContext, class T>
 class Unpool2dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   framework::Tensor* input_grad);
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 template <typename DeviceContext, typename T>
 class Unpool3dMaxFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output);
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 template <typename DeviceContext, class T>
 class Unpool3dMaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   framework::Tensor* input_grad);
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 }  // namespace math
 }  // namespace operators

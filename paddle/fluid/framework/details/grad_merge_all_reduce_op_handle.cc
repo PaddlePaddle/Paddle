@@ -65,7 +65,11 @@ void GradMergeAllReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(cond_var,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", cond_var));
+<<<<<<< HEAD
   bool cond = *cond_var->Get<LoDTensor>().data<bool>();
+=======
+  bool cond = *cond_var->Get<phi::DenseTensor>().data<bool>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   if (cond) {
     AllReduceOpHandle::RunImpl();
@@ -123,7 +127,11 @@ void FusedGradMergeAllReduceOpHandle::RunImpl() {
   PADDLE_ENFORCE_NOT_NULL(cond_var,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", cond_var));
+<<<<<<< HEAD
   bool cond = *cond_var->Get<LoDTensor>().data<bool>();
+=======
+  bool cond = *cond_var->Get<phi::DenseTensor>().data<bool>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   if (cond) {
     VLOG(10) << "run fused grad merge all reduce";

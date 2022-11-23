@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -38,37 +38,44 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
 
         for axis in [[1, 2]]:
             for shifts in [[-1, -1], [-3, -3]]:
-                dics = [{
-                    "axis": axis,
-                    "shifts": shifts,
-                }]
+                dics = [
+                    {
+                        "axis": axis,
+                        "shifts": shifts,
+                    }
+                ]
 
-                ops_config = [{
-                    "op_type": "roll",
-                    "op_inputs": {
-                        "X": ["input_data"]
-                    },
-                    "op_outputs": {
-                        "Out": ["roll_output_data"]
-                    },
-                    "op_attrs": dics[0]
-                }]
+                ops_config = [
+                    {
+                        "op_type": "roll",
+                        "op_inputs": {"X": ["input_data"]},
+                        "op_outputs": {"Out": ["roll_output_data"]},
+                        "op_attrs": dics[0],
+                    }
+                ]
                 ops = self.generate_op_config(ops_config)
 
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
-                        "input_data":
-                        TensorConfig(data_gen=partial(generate_input1, dics))
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1, dics)
+                        )
                     },
-                    outputs=["roll_output_data"])
+                    outputs=["roll_output_data"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 56, 56, 192]
@@ -103,19 +110,30 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-4
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-4
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test(self):
         self.run_test()

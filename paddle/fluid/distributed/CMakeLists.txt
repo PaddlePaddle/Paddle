@@ -1,3 +1,4 @@
+add_subdirectory(auto_parallel)
 add_subdirectory(collective)
 add_subdirectory(store)
 if(WITH_PYTHON)
@@ -25,6 +26,13 @@ if(WITH_PYTHON)
         "Copy generated python the_one_ps_pb2 into directory ${fleet_proto_dstpath}."
     )
   endif()
+<<<<<<< HEAD
+=======
+endif()
+
+if(WITH_RPC)
+  add_subdirectory(rpc)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 endif()
 
 if(NOT WITH_PSCORE)
@@ -35,13 +43,16 @@ endif()
 proto_library(ps_framework_proto SRCS the_one_ps.proto)
 
 set(DISTRIBUTE_COMPILE_FLAGS
+<<<<<<< HEAD
     "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+=======
+    "-Wno-error=unused-value -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 )
 
 if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
   set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
 endif()
-
 add_subdirectory(common)
 add_subdirectory(ps)
 add_subdirectory(test)

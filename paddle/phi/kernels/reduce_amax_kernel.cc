@@ -25,7 +25,11 @@ void AMaxKernel(const Context& dev_ctx,
                 const std::vector<int64_t>& dims,
                 bool keep_dim,
                 DenseTensor* out) {
+<<<<<<< HEAD
   bool reduce_all = false;
+=======
+  bool reduce_all = recompute_reduce_all(x, dims);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   AMaxRawKernel<T>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 

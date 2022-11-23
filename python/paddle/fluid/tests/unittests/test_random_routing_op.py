@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import op_test
 import numpy as np
 import unittest
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
 from paddle.distributed.models.moe import utils
 from paddle.fluid.framework import _test_eager_guard
 
@@ -39,8 +32,9 @@ def random_routing(topk_idx, topk_value, prob, topk=2):
         raise RuntimeError("only topk=2 is supported now")
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPIFp32(unittest.TestCase):
 
     def setUp(self):
@@ -49,12 +43,20 @@ class TestNumberCountAPIFp32(unittest.TestCase):
 
     def init(self):
         self.upper_range = 8
+<<<<<<< HEAD
         self.x = np.random.randint(-1, self.upper_range,
                                    size=(200, 2)).astype('int64')
         self.prob = np.random.random((self.x.shape[0], )).astype(self.dtype)
+=======
+        self.x = np.random.randint(-1, self.upper_range, size=(200, 2)).astype(
+            'int64'
+        )
+        self.prob = np.random.random((self.x.shape[0],)).astype(self.dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.topk_value = np.random.random(self.x.shape).astype(self.dtype)
-        self.out = random_routing(self.x, self.topk_value,
-                                  self.prob).astype(self.dtype)
+        self.out = random_routing(self.x, self.topk_value, self.prob).astype(
+            self.dtype
+        )
         self.place = paddle.CUDAPlace(0)
 
     def func_api_dygraph(self):
@@ -71,8 +73,9 @@ class TestNumberCountAPIFp32(unittest.TestCase):
         self.func_api_dygraph()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNumberCountAPIFp16(TestNumberCountAPIFp32):
 
     def setUp(self):

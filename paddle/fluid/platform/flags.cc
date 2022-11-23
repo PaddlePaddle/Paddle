@@ -68,6 +68,38 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Checking whether operator produce NAN/INF or not. It will be "
     "extremely slow so please use this flag wisely.");
 
+<<<<<<< HEAD
+=======
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_nan_inf_level
+ * Since Version: 2.5.0
+ * Value Range: int32, default=0
+ * Example:
+ * Note: Used to debug. Setting the check and print level when
+ * FLAGS_check_nan_inf is set.
+ * - 0, abort the process when any operator produce NAN/INF and only print the
+ * information of tensor which holds NAN/INF.
+ * - 1, continue the training or inference process and print the information of
+ * all tensors which holds NAN/INF.
+ * - 2, print the information of float tensors when the max or min value
+ * overflowing float16's limit.
+ * - 3, print the information of all tensors.
+ */
+PADDLE_DEFINE_EXPORTED_int32(
+    check_nan_inf_level,
+    0,
+    "Setting the check and print level when FLAGS_check_nan_inf is set.");
+
+/**
+ * Operator related FLAG
+ * Name: FLAGS_check_nan_inf
+ * Since Version: 0.13.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Used to debug. Checking whether operator produce NAN/INF or not.
+ */
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 PADDLE_DEFINE_EXPORTED_bool(
     enable_opt_get_features,
     false,
@@ -380,11 +412,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  *       enable garbage collection strategy when training large networks.
  */
 // Disable gc by default when inference library is built
-#ifdef PADDLE_ON_INFERENCE
-static const double kDefaultEagerDeleteTensorGB = -1;
-#else
 static const double kDefaultEagerDeleteTensorGB = 0;
-#endif
 
 PADDLE_DEFINE_EXPORTED_double(
     eager_delete_tensor_gb,
@@ -655,7 +683,7 @@ PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
  * If FLAGS_call_stack_level == 2, the python stack, c++ stack, and error
  * message summary will be shown.
  */
-#ifdef PADDLE_ON_INFERENCE
+#ifdef PADDLE_NO_PYTHON
 static const int32_t kDefaultCallStackLevel = 2;
 #else
 static const int32_t kDefaultCallStackLevel = 1;
@@ -820,6 +848,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "It controls get all neighbor id when running sub part graph.");
 
 /**
+<<<<<<< HEAD
  * Distributed related FLAG
  * Name: enable_exit_when_partial_worker
  * Since Version: 2.2.0
@@ -846,6 +875,8 @@ PADDLE_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
                              "gpugraph storage mode, default 1");
 
 /**
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  * KP kernel related FLAG
  * Name: FLAGS_run_kp_kernel
  * Since Version: 2.3.0
@@ -973,9 +1004,12 @@ PADDLE_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size,
     128,
     "segment size with segment gradient merge, default 128");
+<<<<<<< HEAD
 PADDLE_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
                               5,
                               "max feasign number in one slot, default 5");
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
@@ -983,6 +1017,7 @@ PADDLE_DEFINE_EXPORTED_int32(
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
                             true,
                             "enable load_node_list_into_hbm, default true");
+<<<<<<< HEAD
 PADDLE_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
                              0,
                              "parse_table_storage_mode, default 0");
@@ -1004,6 +1039,9 @@ PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
 PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
                             false,
                             "enable debug gpu memory, default false");
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
@@ -1026,6 +1064,20 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
+<<<<<<< HEAD
+=======
+ * Conv Search cache max number related FLAG
+ * Name: FLAGS_search_cache_max_number
+ * Since Version: 2.3.0
+ * Value Range: int32, default=1000000
+ * Example:
+ */
+PADDLE_DEFINE_EXPORTED_int32(search_cache_max_number,
+                             1000000,
+                             "search_cache_max_number.");
+
+/**
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  * Preformance related FLAG
  * Name: einsum_opt
  * Since Version: 2.3.0
@@ -1044,6 +1096,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Name: FLAGS_jit_engine_type
  * Since Version: 2.3.0
  * Value Range: string, {Executor, PE},
+<<<<<<< HEAD
  * default=PE
  * Example:
  * Note:
@@ -1053,3 +1106,41 @@ PADDLE_DEFINE_EXPORTED_bool(
 PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
                               "PE",
                               "Choose default funciton type in JitLayer.");
+=======
+ * default=Predictor
+ * Example:
+ * Note:
+ * FLAGS_jit_engine_type == Executor, using ExecutorEngine by default
+ * FLAGS_jit_engine_type == PE, using PEEngine by default
+ * FLAGS_jit_engine_type == New, using InterpreterEngine by default
+ * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
+ */
+PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
+                              "Predictor",
+                              "Choose default funciton type in JitLayer.");
+
+#ifdef PADDLE_WITH_CUDNN_FRONTEND
+/**
+ * CUDNNv8 related FLAG
+ * Name: enable_cudnn_frontend
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
+ */
+PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+
+/**
+ * CUDNNv8 related FLAG
+ * Name: cudnn_cache_saturation_count
+ * Since Version: 2.5.0
+ * Value Range: int64_t, default=1
+ * Example:
+ * Note: Set saturation count for CUDNNv8 cache. A candidate execution
+ * plan need to be considered as the fastest plan by exhaustive search
+ * N times before it is actually added in the cache. It is useful when
+ * the result of exhaustive search is unstable.
+ */
+PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
+#endif  // PADDLE_WITH_CUDNN_FRONTEND
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

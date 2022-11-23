@@ -49,31 +49,49 @@ class TensorCost:
 
     def _check_args(self, tensor, dist_tensor, shape, dtype):
         if tensor is not None:
-            assert (shape is None and dist_tensor is None and dtype is None)
+            assert shape is None and dist_tensor is None and dtype is None
 
             if not isinstance(tensor, Variable):
                 raise TypeError(
                     "Please check tensor type is Variable, but got {}".format(
-                        type(tensor)))
+                        type(tensor)
+                    )
+                )
 
         elif dist_tensor is not None:
-            assert (tensor is None and shape is None)
+            assert tensor is None and shape is None
             if not isinstance(dist_tensor, DistributedTensor):
                 raise TypeError(
+<<<<<<< HEAD
                     "Please check dist_tensor type is DistributedTensor, but got {}"
                     .format(type(dist_tensor)))
 
         elif shape is not None:
             assert (tensor is None and dist_tensor is None
                     and dtype is not None)
+=======
+                    "Please check dist_tensor type is DistributedTensor, but got {}".format(
+                        type(dist_tensor)
+                    )
+                )
+
+        elif shape is not None:
+            assert tensor is None and dist_tensor is None and dtype is not None
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             if not isinstance(shape, (list, set)):
                 raise TypeError(
                     "Please check shape type is list or set, but got {}".format(
-                        type(shape)))
+                        type(shape)
+                    )
+                )
 
         elif dtype is not None:
+<<<<<<< HEAD
             assert (tensor is None and dist_tensor is None
                     and shape is not None)
+=======
+            assert tensor is None and dist_tensor is None and shape is not None
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     @property
     def cost(self):
@@ -97,9 +115,9 @@ class TensorCost:
 
         if dtype == paddle.float32 or dtype == paddle.int32:
             dtype_factor = 4
-        elif node.dtype == paddle.int64:
+        elif dtype == paddle.int64:
             dtype_factor = 8
-        elif node.dtype == paddle.uint8:
+        elif dtype == paddle.uint8:
             dtype_factor = 1
         else:
             dtype_factor = 2

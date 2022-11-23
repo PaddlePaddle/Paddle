@@ -49,10 +49,7 @@ class Ast3ToGAst(AstToGAst):
     if sys.version_info.minor < 8:
 
         def visit_Module(self, node):
-            new_node = gast.Module(
-                self._visit(node.body),
-                []  # type_ignores
-            )
+            new_node = gast.Module(self._visit(node.body), [])  # type_ignores
             return new_node
 
         def visit_Num(self, node):
@@ -231,7 +228,8 @@ class Ast3ToGAst(AstToGAst):
             new_node = gast.ExceptHandler(
                 self._visit(node.type),
                 gast.Name(node.name, gast.Store(), None, None),
-                self._visit(node.body))
+                self._visit(node.body),
+            )
             ast.copy_location(new_node, node)
             return new_node
         else:
@@ -263,7 +261,12 @@ class GAstToAst3(GAstToAst):
             if isinstance(node.slice, gast.Tuple):
                 if any(isinstance(elt, gast.slice) for elt in node.slice.elts):
                     new_slice = ast.ExtSlice(
+<<<<<<< HEAD
                         [adjust_slice(x) for x in self._visit(node.slice.elts)])
+=======
+                        [adjust_slice(x) for x in self._visit(node.slice.elts)]
+                    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 else:
                     value = ast.Tuple(self._visit(node.slice.elts), ast.Load())
                     ast.copy_location(value, node.slice)
@@ -309,10 +312,16 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor < 8:
             extra_args = tuple()
         else:
-            extra_args = self._visit(node.type_comment),
+            extra_args = (self._visit(node.type_comment),)
 
+<<<<<<< HEAD
         new_node = ast.arg(self._visit(node.id), self._visit(node.annotation),
                            *extra_args)
+=======
+        new_node = ast.arg(
+            self._visit(node.id), self._visit(node.annotation), *extra_args
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return ast.copy_location(new_node, node)
 
     def visit_Name(self, node):
@@ -325,8 +334,14 @@ class GAstToAst3(GAstToAst):
 
     def visit_ExceptHandler(self, node):
         if node.name:
+<<<<<<< HEAD
             new_node = ast.ExceptHandler(self._visit(node.type), node.name.id,
                                          self._visit(node.body))
+=======
+            new_node = ast.ExceptHandler(
+                self._visit(node.type), node.name.id, self._visit(node.body)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             return ast.copy_location(new_node, node)
         else:
             return self.generic_visit(node)
@@ -452,10 +467,13 @@ class GAstToAst3(GAstToAst):
         if sys.version_info.minor >= 8:
             new_node = ast.arguments(
                 [self._make_arg(arg) for arg in node.posonlyargs],
-                [self._make_arg(n) for n in node.args], *extra_args)
+                [self._make_arg(n) for n in node.args],
+                *extra_args
+            )
         else:
-            new_node = ast.arguments([self._make_arg(n) for n in node.args],
-                                     *extra_args)
+            new_node = ast.arguments(
+                [self._make_arg(n) for n in node.args], *extra_args
+            )
         return new_node
 
 

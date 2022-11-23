@@ -56,7 +56,12 @@ class ElementwiseModOpMaker : public ElementwiseOpMaker {
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(elementwise_mod,
                              ops::ElementwiseOp,
+<<<<<<< HEAD
                              ops::ElementwiseModOpMaker);
+=======
+                             ops::ElementwiseModOpMaker,
+                             ops::ElementwiseOpInplaceInferer);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 REGISTER_OP_VERSION(elementwise_mod)
     .AddCheckpoint(

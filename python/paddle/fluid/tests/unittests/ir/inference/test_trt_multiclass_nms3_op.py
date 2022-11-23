@@ -22,21 +22,24 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
-def multiclass_nms(bboxes,
-                   scores,
-                   score_threshold,
-                   nms_top_k,
-                   keep_top_k,
-                   nms_threshold=0.3,
-                   normalized=True,
-                   nms_eta=1.,
-                   background_label=-1,
-                   return_index=False,
-                   return_rois_num=True,
-                   rois_num=None,
-                   name=None):
+def multiclass_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    nms_threshold=0.3,
+    normalized=True,
+    nms_eta=1.0,
+    background_label=-1,
+    return_index=False,
+    return_rois_num=True,
+    rois_num=None,
+    name=None,
+):
     """
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
@@ -86,9 +89,9 @@ def multiclass_nms(bboxes,
                           step. -1 means keeping all bboxes after NMS step.
         normalized (bool): Whether detections are normalized. Default: True
         return_index(bool): Whether return selected index. Default: False
-        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image. 
+        rois_num(Tensor): 1-D Tensor contains the number of RoIs in each image.
             The shape is [B] and data type is int32. B is the number of images.
-            If it is not None then return a list of 1-D Tensor. Each element 
+            If it is not None then return a list of 1-D Tensor. Each element
             is the output RoIs' number of each image on the corresponding level
             and the shape is [B]. None by default.
         name(str): Name of the multiclass nms op. Default: None.
@@ -127,12 +130,34 @@ def multiclass_nms(bboxes,
                                             return_index=True)
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         attrs = ('background_label', background_label, 'score_threshold',
                  score_threshold, 'nms_top_k', nms_top_k, 'nms_threshold',
                  nms_threshold, 'keep_top_k', keep_top_k, 'nms_eta', nms_eta,
                  'normalized', normalized)
         output, index, nms_rois_num = core.ops.multiclass_nms3(
             bboxes, scores, rois_num, *attrs)
+=======
+        attrs = (
+            'background_label',
+            background_label,
+            'score_threshold',
+            score_threshold,
+            'nms_top_k',
+            nms_top_k,
+            'nms_threshold',
+            nms_threshold,
+            'keep_top_k',
+            keep_top_k,
+            'nms_eta',
+            nms_eta,
+            'normalized',
+            normalized,
+        )
+        output, index, nms_rois_num = core.ops.multiclass_nms3(
+            bboxes, scores, rois_num, *attrs
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if not return_index:
             index = None
         return output, nms_rois_num, index
@@ -150,9 +175,11 @@ def multiclass_nms(bboxes,
 
         if return_rois_num:
             nms_rois_num = helper.create_variable_for_type_inference(
-                dtype='int32')
+                dtype='int32'
+            )
             outputs['NmsRoisNum'] = nms_rois_num
 
+<<<<<<< HEAD
         helper.append_op(type="multiclass_nms3",
                          inputs=inputs,
                          attrs={
@@ -165,6 +192,22 @@ def multiclass_nms(bboxes,
                              'normalized': normalized
                          },
                          outputs=outputs)
+=======
+        helper.append_op(
+            type="multiclass_nms3",
+            inputs=inputs,
+            attrs={
+                'background_label': background_label,
+                'score_threshold': score_threshold,
+                'nms_top_k': nms_top_k,
+                'nms_threshold': nms_threshold,
+                'keep_top_k': keep_top_k,
+                'nms_eta': nms_eta,
+                'normalized': normalized,
+            },
+            outputs=outputs,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         output.stop_gradient = True
         index.stop_gradient = True
         if not return_index:
@@ -184,25 +227,37 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         self.serialize = False
         self.bs = 1
         self.background_label = -1
-        self.score_threshold = .5
+        self.score_threshold = 0.5
         self.nms_top_k = 8
-        self.nms_threshold = .3
+        self.nms_threshold = 0.3
         self.keep_top_k = 8
         self.normalized = False
         self.num_classes = 8
         self.num_boxes = 8
         self.nms_eta = 1.1
         self.trt_parameters = InferencePassTest.TensorRTParam(
-            1 << 30, self.bs, 2, self.precision, self.serialize, False)
+            1 << 30, self.bs, 2, self.precision, self.serialize, False
+        )
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             boxes = fluid.data(name='bboxes',
                                shape=[-1, self.num_boxes, 4],
                                dtype='float32')
             scores = fluid.data(name='scores',
                                 shape=[-1, self.num_classes, self.num_boxes],
                                 dtype='float32')
+=======
+            boxes = fluid.data(
+                name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32'
+            )
+            scores = fluid.data(
+                name='scores',
+                shape=[-1, self.num_classes, self.num_boxes],
+                dtype='float32',
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             multiclass_nms_out, _, _ = multiclass_nms(
                 bboxes=boxes,
                 scores=scores,
@@ -212,17 +267,26 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 nms_threshold=self.nms_threshold,
                 keep_top_k=self.keep_top_k,
                 normalized=self.normalized,
-                nms_eta=self.nms_eta)
-            mutliclass_nms_out = multiclass_nms_out + 1.
-            multiclass_nms_out = fluid.layers.reshape(
-                multiclass_nms_out, [self.bs, 1, self.keep_top_k, 6],
-                name='reshape')
+                nms_eta=self.nms_eta,
+            )
+            mutliclass_nms_out = multiclass_nms_out + 1.0
+            multiclass_nms_out = paddle.reshape(
+                multiclass_nms_out,
+                [self.bs, 1, self.keep_top_k, 6],
+                name='reshape',
+            )
             out = fluid.layers.batch_norm(multiclass_nms_out, is_test=True)
 
-        boxes_data = np.arange(self.num_boxes * 4).reshape(
-            [self.bs, self.num_boxes, 4]).astype('float32')
-        scores_data = np.arange(1 * self.num_classes * self.num_boxes).reshape(
-            [self.bs, self.num_classes, self.num_boxes]).astype('float32')
+        boxes_data = (
+            np.arange(self.num_boxes * 4)
+            .reshape([self.bs, self.num_boxes, 4])
+            .astype('float32')
+        )
+        scores_data = (
+            np.arange(1 * self.num_classes * self.num_boxes)
+            .reshape([self.bs, self.num_classes, self.num_boxes])
+            .astype('float32')
+        )
         self.feeds = {
             'bboxes': boxes_data,
             'scores': scores_data,
@@ -235,7 +299,8 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
 
     def run_test_all(self):
         precision_opt = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_opt = [False, True]
         max_shape = {
@@ -246,13 +311,22 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         dynamic_shape_opt = [
             None,
             InferencePassTest.DynamicShapeParam(
+<<<<<<< HEAD
                 {
                     'bboxes': [1, 1, 4],
                     'scores': [1, 1, 1]
                 }, max_shape, opt_shape, False)
+=======
+                {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
+                max_shape,
+                opt_shape,
+                False,
+            ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         ]
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_opt, serialize_opt, dynamic_shape_opt):
+            precision_opt, serialize_opt, dynamic_shape_opt
+        ):
             self.precision = precision
             self.serialize = serialize
             self.dynamic_shape_params = dynamic_shape
@@ -264,7 +338,8 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def test_base(self):
         self.run_test()
@@ -284,10 +359,18 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         }
         opt_shape = max_shape
         self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+<<<<<<< HEAD
             {
                 'bboxes': [1, 1, 4],
                 'scores': [1, 1, 1]
             }, max_shape, opt_shape, False)
+=======
+            {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
+            max_shape,
+            opt_shape,
+            False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.run_test()
 
     def test_background(self):

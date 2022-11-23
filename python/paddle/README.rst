@@ -48,7 +48,7 @@ We provide users with four installation methods ,which are pip, conda, docker an
 
 - **pip or pip3 version 9.0.1+ (64 bit)**
 
-  
+
 
 #### <a id="Commands to install">Commands to install</a>
 
@@ -115,12 +115,12 @@ If you want to install witch conda or docker or pip,please see commands to insta
 
     PaddlePaddle is not only compatible with other open-source frameworks for models training, but also works well on the ubiquitous developments, varying from platforms to devices. More specifically, PaddlePaddle accelerates the inference procedure with the fastest speed-up. Note that, a recent breakthrough of inference speed has been made by PaddlePaddle on Huawei's Kirin NPU, through the hardware/software co-optimization.
      [Click here to learn more](https://github.com/PaddlePaddle/Paddle-Lite)
-    
+
 - **Industry-Oriented Models and Libraries with Open Source Repositories**
 
      PaddlePaddle includes and maintains more than 100 mainstream models that have been practiced and polished for a long time in the industry. Some of these models have won major prizes from key international competitions. In the meanwhile, PaddlePaddle has further more than 200 pre-training models (some of them with source codes) to facilitate the rapid development of industrial applications.
      [Click here to learn more](https://github.com/PaddlePaddle/models)
-     
+
 
 ## Documentation
 
@@ -135,10 +135,10 @@ We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.8/be
 - [User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/user_guides/index_en.html)
 
   You might have got the hang of Beginner’s Guide, and wish to model practical problems and build your original networks.
-  
+
 - [Advanced User Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/advanced_guide/index_en.html)
 
-  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator. 
+  So far you have already been familiar with Fluid. And the next step should be building a more efficient model or inventing your original Operator.
 
 
 - [API Reference](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)

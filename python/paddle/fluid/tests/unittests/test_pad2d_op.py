@@ -30,25 +30,45 @@ class TestPad2dOp(OpTest):
         self.attrs = {}
         if self.variable_paddings:
             self.attrs['paddings'] = []
+<<<<<<< HEAD
             self.inputs['Paddings'] = np.array(
                 self.paddings).flatten().astype("int32")
         else:
             self.attrs['paddings'] = np.array(
                 self.paddings).flatten().astype("int32")
+=======
+            self.inputs['Paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
+        else:
+            self.attrs['paddings'] = (
+                np.array(self.paddings).flatten().astype("int32")
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.attrs['pad_value'] = self.pad_value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
         if self.data_format == "NCHW":
-            paddings = [(0, 0), (0, 0), (self.paddings[0], self.paddings[1]),
-                        (self.paddings[2], self.paddings[3])]
+            paddings = [
+                (0, 0),
+                (0, 0),
+                (self.paddings[0], self.paddings[1]),
+                (self.paddings[2], self.paddings[3]),
+            ]
         else:
-            paddings = [(0, 0), (self.paddings[0], self.paddings[1]),
-                        (self.paddings[2], self.paddings[3]), (0, 0)]
+            paddings = [
+                (0, 0),
+                (self.paddings[0], self.paddings[1]),
+                (self.paddings[2], self.paddings[3]),
+                (0, 0),
+            ]
         if self.mode == "constant":
-            out = np.pad(self.inputs['X'],
-                         paddings,
-                         mode=self.mode,
-                         constant_values=self.pad_value)
+            out = np.pad(
+                self.inputs['X'],
+                paddings,
+                mode=self.mode,
+                constant_values=self.pad_value,
+            )
         else:
             out = np.pad(self.inputs['X'], paddings, mode=self.mode)
         self.outputs = {'Out': out}
@@ -145,9 +165,15 @@ class TestPad2dOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable)
 
+<<<<<<< HEAD
             data = fluid.data(name='data',
                               shape=[None, 3, 20, 20],
                               dtype='float16')
+=======
+            data = fluid.data(
+                name='data', shape=[None, 3, 20, 20], dtype='float16'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             fluid.layers.pad2d(input=data, paddings=[1, 1, 1, 1])
 
 

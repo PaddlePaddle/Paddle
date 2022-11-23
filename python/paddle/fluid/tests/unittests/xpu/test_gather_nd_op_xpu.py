@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -22,7 +20,11 @@ sys.path.append("..")
 
 import paddle
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -53,7 +55,8 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([[], []]).astype("int32")
             self.output = np.vstack(
-                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :]))
+                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :])
+            )
 
     class XPUTestGatherNdOpWithEmptyIndex1(XPUTestGatherNdBase):
 
@@ -61,7 +64,8 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([[], []]).astype("int32")
             self.output = np.vstack(
-                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :]))
+                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :])
+            )
 
     class XPUTestGatherNdOpWithEmptyIndex2(XPUTestGatherNdBase):
 
@@ -69,7 +73,8 @@ class XPUTestGatherNd(XPUOpTestWrapper):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([[], []]).astype("int64")
             self.output = np.vstack(
-                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :]))
+                (self.xnp[np.newaxis, :], self.xnp[np.newaxis, :])
+            )
 
     class XPUTestGatherNdOpWithIndex1(XPUTestGatherNdBase):
 
@@ -104,9 +109,15 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             shape = (5, 2, 3, 1, 10)
             self.xnp = np.random.rand(*shape).astype(self.in_type)
+<<<<<<< HEAD
             self.inp = np.vstack([
                 np.random.randint(0, s, size=2) for s in shape
             ]).T.astype("int32")
+=======
+            self.inp = np.vstack(
+                [np.random.randint(0, s, size=2) for s in shape]
+            ).T.astype("int32")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.output = self.xnp[tuple(self.inp.T)]
 
     class XPUTestGatherNdOpWithHighRankSame2(XPUTestGatherNdBase):
@@ -114,9 +125,15 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             shape = (5, 2, 3, 1, 10)
             self.xnp = np.random.rand(*shape).astype(self.in_type)
+<<<<<<< HEAD
             self.inp = np.vstack([
                 np.random.randint(0, s, size=2) for s in shape
             ]).T.astype("int64")
+=======
+            self.inp = np.vstack(
+                [np.random.randint(0, s, size=2) for s in shape]
+            ).T.astype("int64")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.output = self.xnp[tuple(self.inp.T)]
 
     class XPUTestGatherNdOpWithHighRankDiff1(XPUTestGatherNdBase):
@@ -124,9 +141,15 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             shape = (2, 3, 4, 1, 10)
             self.xnp = np.random.rand(*shape).astype(self.in_type)
+<<<<<<< HEAD
             self.inp = np.vstack([
                 np.random.randint(0, s, size=200) for s in shape
             ]).T.astype("int32")
+=======
+            self.inp = np.vstack(
+                [np.random.randint(0, s, size=200) for s in shape]
+            ).T.astype("int32")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.output = self.xnp[tuple(self.inp.T)]
 
     class XPUTestGatherNdOpWithHighRankDiff2(XPUTestGatherNdBase):
@@ -134,9 +157,15 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             shape = (2, 3, 4, 1, 10)
             self.xnp = np.random.rand(*shape).astype(self.in_type)
+<<<<<<< HEAD
             self.inp = np.vstack([
                 np.random.randint(0, s, size=200) for s in shape
             ]).T.astype("int64")
+=======
+            self.inp = np.vstack(
+                [np.random.randint(0, s, size=200) for s in shape]
+            ).T.astype("int64")
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.output = self.xnp[tuple(self.inp.T)]
 
     class XPUTestGatherNdOpWithSameIndexAsX1(XPUTestGatherNdBase):

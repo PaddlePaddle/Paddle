@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.jit import declarative
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+=======
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    ProgramTranslator,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 
 SEED = 2020
@@ -27,7 +31,10 @@ np.random.seed(SEED)
 
 
 class TestDy2staticException(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
@@ -161,9 +168,13 @@ def test_for_in_else(x):
 
 
 def while_loop_class_var(x):
+<<<<<<< HEAD
 
     class Foo(object):
 
+=======
+    class Foo:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def __init__(self):
             self.a = 3
             self.b = 4
@@ -210,8 +221,16 @@ class TestContinueInFor(unittest.TestCase):
 
     def setUp(self):
         self.input = np.zeros((1)).astype('int64')
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.init_dygraph_func()
 
     def init_dygraph_func(self):
@@ -230,9 +249,20 @@ class TestContinueInFor(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.run_static_mode()
         dygraph_res = self.run_dygraph_mode()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph res is {}\nstatic_res is {}'.format(
                             dygraph_res, static_res))
+=======
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestContinueInForAtEnd(TestContinueInFor):
@@ -284,7 +314,10 @@ class TestWhileLoopClassVar(TestContinueInWhile):
 
 
 class TestOptimBreakInFor(TestDy2staticException):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = test_optim_break_in_for

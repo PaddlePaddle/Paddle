@@ -77,6 +77,18 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set("optim_input_shape",
               new std::map<std::string, std::vector<int>>(
                   argument->optim_input_shape()));
+<<<<<<< HEAD
+=======
+    // Now, shape tensor value is not explicit set by user,
+    // it is collected through API CollectShapeRangeInfo.
+    pass->Set("max_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("min_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+    pass->Set("optim_shape_tensor",
+              new std::map<std::string, std::vector<int>>());
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     // tuned trt dynamic_shape
     pass->Set("trt_tuned_dynamic_shape",
               new bool(argument->tensorrt_tuned_dynamic_shape()));
@@ -133,7 +145,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->bfloat16_enabled_op_types()));
 #endif
     } else if (pass_name == "tensorrt_subgraph_pass") {
-      pass->Set("workspace_size", new int(argument->tensorrt_workspace_size()));
+      pass->Set("workspace_size",
+                new int64_t(argument->tensorrt_workspace_size()));
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
@@ -144,7 +157,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_calib_mode", new bool(use_calib_mode));
       pass->Set("precision_mode",
                 new AnalysisConfig::Precision(precision_mode));
-
+      pass->Set("context_memory_sharing",
+                new bool(argument->trt_engine_memory_sharing()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -208,8 +222,23 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
     } else if (pass_name == "dlnne_subgraph_pass") {
+      auto precision_mode = argument->dlnne_precision_mode();
       pass->Set("min_subgraph_size",
                 new int(argument->dlnne_min_subgraph_size()));
+      pass->Set("max_batch_size", new int(argument->dlnne_max_batch_size()));
+      pass->Set("use_static_batch",
+                new bool(argument->dlnne_use_static_batch()));
+      pass->Set("weight_share_mode",
+                new std::string(argument->dlnne_weight_share_mode()));
+      pass->Set("disable_nodes_by_outputs",
+                new std::unordered_set<std::string>(
+                    argument->dlnne_disable_nodes_by_outputs()));
+      pass->Set("use_calib_mode", new bool(argument->dlnne_use_calib_mode()));
+      pass->Set("precision_mode",
+                new AnalysisConfig::Precision(precision_mode));
+      pass->Set("input_shape_dict",
+                new std::map<std::string, std::vector<int64_t>>(
+                    argument->dlnne_input_shape_dict()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
     }
@@ -228,6 +257,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
+      pass->Set("use_opencl", new bool(argument->use_opencl()));
       pass->Set("cpu_math_library_num_threads",
                 new int(argument->cpu_math_library_num_threads()));
       pass->Set("locked", new bool(argument->xpu_locked()));
@@ -237,6 +267,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
       pass->Set("xpu_device_id", new int(argument->xpu_device_id()));
+      pass->Set("enable_multi_stream",
+                new bool(argument->xpu_enable_multi_stream()));
       // NNAdapter Related
       pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
       pass->Set("nnadapter_model_cache_dir",

@@ -16,6 +16,10 @@ import unittest
 import paddle
 import paddle.fluid as fluid
 import numpy as np
+from paddle.fluid.framework import (
+    _enable_legacy_dygraph,
+    _disable_legacy_dygraph,
+)
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
@@ -97,8 +101,14 @@ class TestUniformRandomInplaceOpWithinRange(unittest.TestCase):
         tensor = paddle.ones(self.shape)
         tensor.uniform_(min=self.min, max=self.max, seed=self.seed)
         tensor_data = tensor.numpy()
+<<<<<<< HEAD
         self.assertTrue((tensor_data > self.min).all()
                         and (tensor_data < self.max).all())
+=======
+        self.assertTrue(
+            (tensor_data > self.min).all() and (tensor_data < self.max).all()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestUniformRandomInplaceOpShape(unittest.TestCase):
@@ -129,8 +139,8 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
 
         hist, _ = np.histogram(tensor.numpy()[0], bins=self.bins)
         prob = hist / float(self.shape[0])
-        prob_expect = np.ones((self.bins, )) / float(self.bins)
-        self.assertTrue(np.allclose(prob, prob_expect, rtol=0, atol=1e-2))
+        prob_expect = np.ones((self.bins,)) / float(self.bins)
+        np.testing.assert_allclose(prob, prob_expect, rtol=0, atol=0.01)
 
 
 class TestUniformRandomInplaceOpError(unittest.TestCase):
@@ -169,7 +179,11 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
+<<<<<<< HEAD
     def test_uniform_random_inplace_grad(self):
+=======
+    def run_(self):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         def test_grad():
@@ -189,6 +203,17 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             paddle.set_device(place)
             test_grad()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+<<<<<<< HEAD
+=======
+
+    def test_uniform_random_inplace_grad(self):
+        self.run_()
+
+    def test_uniform_random_inplace_grad_old_dygraph(self):
+        _enable_legacy_dygraph()
+        self.run_()
+        _disable_legacy_dygraph()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

@@ -14,8 +14,7 @@
 
 import unittest
 import paddle
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
+from paddle.distributed.fleet import auto
 
 paddle.enable_static()
 
@@ -25,15 +24,23 @@ def make_program_dp2():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(x,
                           dist_attr={
                               "process_mesh": auto.ProcessMesh([0, 1]),
                               "dims_mapping": [0, -1, -1]
                           })
+=======
+        auto.shard_tensor(
+            x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
+        )
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
         tmp_3 = x[:2, :2, :2]
+        tmp_3 = x[:4, :2, :2]
     return main_program, start_program
 
 
@@ -42,11 +49,18 @@ def make_program_serial():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(x,
                           dist_attr={
                               "process_mesh": auto.ProcessMesh([0]),
                               "dims_mapping": [-1, -1, -1]
                           })
+=======
+        auto.shard_tensor(
+            x, auto.ProcessMesh([0], dim_names=["x"]), [None, None, None]
+        )
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -69,8 +83,9 @@ def parallelizer(program_func, rank):
 
     dist_context.block_state.parse_forward_blocks(main_program)
     partitioner = Partitioner(dist_context, rank)
-    dist_main_prog, _, _ = partitioner.partition(main_program, start_program,
-                                                 [])
+    dist_main_prog, _, _ = partitioner.partition(
+        main_program, start_program, []
+    )
 
     return dist_main_prog, dist_context
 

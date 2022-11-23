@@ -44,8 +44,13 @@ struct ArrayToLoDFunctorImpl {
 };
 
 struct ArrayToLoDFunctor : public std::unary_function<platform::Place, void> {
+<<<<<<< HEAD
   std::vector<framework::Tensor> in;
   mutable framework::Tensor *out;
+=======
+  std::vector<phi::DenseTensor> in;
+  mutable phi::DenseTensor *out;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   template <typename Place>
   void operator()(Place place) const {
@@ -93,8 +98,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     auto &x = scope.FindVar(Input("X"))->Get<framework::LoDTensorArray>();
     auto &rank_table =
         scope.FindVar(Input("RankTable"))->Get<framework::LoDRankTable>();
-    auto *out =
-        scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    auto *out = scope.FindVar(Output("Out"))->GetMutable<phi::DenseTensor>();
 
     // Check dims, place and data type of input's elements and infer output's
     // dim
@@ -223,10 +227,10 @@ class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "'paddle/framework/lod_rank_table.h' for more details.");
     AddOutput("Out", "(LoDTensor) The LoDTensor formed by input tensor array.");
     AddComment(
-        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor> 
+        R"DOC(This Op build a big LoDTensor from a std::vector<LoDTensor>
           and a LoDRankTable. It is supposed to be used in getting dynamic RNN's
-          outputs back to a normal LoDTensor. The std::vector<LoDTensor> 
-          would be the output of RNN Op and the LoDRankTable would be build 
+          outputs back to a normal LoDTensor. The std::vector<LoDTensor>
+          would be the output of RNN Op and the LoDRankTable would be build
           with RNN's input.)DOC");
   }
 };

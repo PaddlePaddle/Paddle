@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
@@ -47,19 +45,31 @@ class TestDeQuantizeOp(OpTest):
     def prepare_input_int8(self):
         if self.data_type == 'int8':
             # input data values are integers from interval [-128, 128)
+<<<<<<< HEAD
             self.input = (np.random.randint(0, 256, self.input_size) -
                           128).astype(self.data_type)
         else:
             # input data values are integers from interval [0, 256)
             self.input = (np.random.randint(0, 256, self.input_size)).astype(
                 self.data_type)
+=======
+            self.input = (
+                np.random.randint(0, 256, self.input_size) - 128
+            ).astype(self.data_type)
+        else:
+            # input data values are integers from interval [0, 256)
+            self.input = (np.random.randint(0, 256, self.input_size)).astype(
+                self.data_type
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.inputs = {'Input': OpTest.np_dtype_to_fluid_dtype(self.input)}
         self.attrs = {'Scale': self.scale, 'Shift': self.shift}
 
     def prepare_output_int8(self):
-        output = (self.input / self.scale -
-                  (self.shift / self.scale)).astype('float')
+        output = (self.input / self.scale - (self.shift / self.scale)).astype(
+            'float'
+        )
         self.outputs = {'Output': output}
 
     def test_check_output(self):

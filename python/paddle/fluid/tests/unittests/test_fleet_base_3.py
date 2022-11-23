@@ -17,7 +17,10 @@ import os
 import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+<<<<<<< HEAD
 import paddle.fluid as fluid
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 paddle.enable_static()
 
@@ -28,20 +31,33 @@ class TestFleetBase_1(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_collective_minimize(self):
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(name="x",
                                            shape=[32],
                                            dtype='float32')
+=======
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
+=======
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         avg_cost = paddle.mean(x=cost)
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -58,20 +74,33 @@ class TestFleetBase(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-                       "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_fleet_get_applied_optimizer(self):
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(name="x",
                                            shape=[32],
                                            dtype='float32')
+=======
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
+=======
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         avg_cost = paddle.mean(x=cost)
 
         fleet.init(is_collective=True)

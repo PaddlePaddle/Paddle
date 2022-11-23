@@ -64,7 +64,11 @@ CUSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 CUSPARSE_ROUTINE_EACH_R2(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 #endif
 
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11070
+=======
+#if CUDA_VERSION >= 11080
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #define CUSPARSE_ROUTINE_EACH_R3(__macro) \
   __macro(cusparseDnMatSetStridedBatch);  \
   __macro(cusparseCooSetStridedBatch);    \

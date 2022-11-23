@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -51,10 +49,20 @@ class TestSwishOp(OpTest):
         dx = beta * out + expit(x) * (1 - beta * out)
         dx = dx / x.size
 
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    max_relative_error=0.01,
                                    user_defined_grads=[dx])
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            max_relative_error=0.01,
+            user_defined_grads=[dx],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def set_npu(self):
         self.__class__.use_npu = True

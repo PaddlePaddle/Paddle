@@ -17,6 +17,17 @@ from .primx import prim2orig
 from .utils import disable_prim, enable_prim, prim_enabled
 
 __all__ = [  # noqa
+<<<<<<< HEAD
     'vjp', 'jvp', 'Jacobian', 'Hessian', 'enable_prim', 'disable_prim',
     'forward_grad', 'grad'
+=======
+    'vjp',
+    'jvp',
+    'Jacobian',
+    'Hessian',
+    'enable_prim',
+    'disable_prim',
+    'forward_grad',
+    'grad',
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 ]

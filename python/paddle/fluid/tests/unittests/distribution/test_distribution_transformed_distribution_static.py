@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numbers
 import unittest
 
 import numpy as np
 import paddle
-import scipy.stats
 
 import config
 import parameterize as param
@@ -25,15 +23,22 @@ paddle.enable_static()
 
 
 @param.place(config.DEVICES)
-@param.param_cls((param.TEST_CASE_NAME, 'base', 'transforms'),
-                 [('base_normal', paddle.distribution.Normal,
-                   [paddle.distribution.ExpTransform()])])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'base', 'transforms'),
+    [
+        (
+            'base_normal',
+            paddle.distribution.Normal,
+            [paddle.distribution.ExpTransform()],
+        )
+    ],
+)
 class TestIndependent(unittest.TestCase):
 
     def setUp(self):
         value = np.array([0.5])
-        loc = np.array([0.])
-        scale = np.array([1.])
+        loc = np.array([0.0])
+        scale = np.array([1.0])
         shape = [5, 10, 8]
         self.dtype = value.dtype
         exe = paddle.static.Executor()
@@ -45,13 +50,16 @@ class TestIndependent(unittest.TestCase):
             static_scale = paddle.static.data('scale', scale.shape, scale.dtype)
             self.base = self.base(static_loc, static_scale)
             self._t = paddle.distribution.TransformedDistribution(
-                self.base, self.transforms)
+                self.base, self.transforms
+            )
             actual_log_prob = self._t.log_prob(static_value)
             expected_log_prob = self.transformed_log_prob(
-                static_value, self.base, self.transforms)
+                static_value, self.base, self.transforms
+            )
             sample_data = self._t.sample(shape)
 
         exe.run(sp)
+<<<<<<< HEAD
         [self.actual_log_prob, self.expected_log_prob,
          self.sample_data] = exe.run(
              mp,
@@ -67,6 +75,25 @@ class TestIndependent(unittest.TestCase):
                                    self.expected_log_prob,
                                    rtol=config.RTOL.get(str(self.dtype)),
                                    atol=config.ATOL.get(str(self.dtype)))
+=======
+        [
+            self.actual_log_prob,
+            self.expected_log_prob,
+            self.sample_data,
+        ] = exe.run(
+            mp,
+            feed={'value': value, 'loc': loc, 'scale': scale},
+            fetch_list=[actual_log_prob, expected_log_prob, sample_data],
+        )
+
+    def test_log_prob(self):
+        np.testing.assert_allclose(
+            self.actual_log_prob,
+            self.expected_log_prob,
+            rtol=config.RTOL.get(str(self.dtype)),
+            atol=config.ATOL.get(str(self.dtype)),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def transformed_log_prob(self, value, base, transforms):
         log_prob = 0.0

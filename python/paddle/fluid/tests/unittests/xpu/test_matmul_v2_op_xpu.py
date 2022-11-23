@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
 import unittest
 import numpy as np
 from op_test_xpu import XPUOpTest
-import paddle.fluid.core as core
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import _test_eager_guard
 
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 
 def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
@@ -35,7 +34,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
     # transpose X and Y appropriately.
     if transpose_X:
         if X.ndim == 1:
-            X = X.reshape((X.size, ))
+            X = X.reshape((X.size,))
         elif X.ndim == 2:
             X = X.T
         else:
@@ -44,7 +43,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             X = np.transpose(X, tuple(dim))
     if transpose_Y:
         if Y.ndim == 1:
-            Y = Y.reshape((Y.size, ))
+            Y = Y.reshape((Y.size,))
         else:
             dim = [i for i in range(len(Y.shape))]
             dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
@@ -71,8 +70,8 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100, )
-            self.y_shape = (100, )
+            self.x_shape = (100,)
+            self.y_shape = (100,)
             self.trans_x = False
             self.trans_y = False
 
@@ -101,8 +100,15 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
+<<<<<<< HEAD
             if hasattr(self.__class__, "no_need_check_grad"
                        ) and self.__class__.no_need_check_grad == True:
+=======
+            if (
+                hasattr(self.__class__, "no_need_check_grad")
+                and self.__class__.no_need_check_grad
+            ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 return
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(place, ['X', 'Y'], 'Out')
@@ -113,7 +119,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100)
+            self.x_shape = 100
             self.y_shape = (100, 3)
             self.trans_x = False
             self.trans_y = False
@@ -124,7 +130,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
         """
 
         def config(self):
-            self.x_shape = (100, )
+            self.x_shape = (100,)
             self.y_shape = (1, 1, 100, 2)
             self.trans_x = False
             self.trans_y = False
@@ -147,7 +153,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (1, 1, 100, 1)
-            self.y_shape = (100, )
+            self.y_shape = (100,)
             self.trans_x = True
             self.trans_y = False
 
@@ -224,7 +230,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (1, 20, 100)
-            self.y_shape = (100, )
+            self.y_shape = (100,)
             self.trans_x = False
             self.trans_y = False
 
@@ -279,7 +285,7 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (2, 1, 100)
-            self.y_shape = (100)
+            self.y_shape = 100
             self.trans_x = False
             self.trans_y = False
 
@@ -290,8 +296,32 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
 
         def config(self):
             self.x_shape = (8, 111, 4, 17)
-            self.y_shape = (17)
+            self.y_shape = 17
             self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp19(TestMatMulV2Op):
+        """
+        case 19 : (x.ndim <= 2) && (y.ndim >= 3),
+                  x need to broadcast and trans_y is false
+        """
+
+        def config(self):
+            self.x_shape = (10, 20)
+            self.y_shape = (2, 20, 4)
+            self.trans_x = False
+            self.trans_y = False
+
+    class TestMatMulOp20(TestMatMulV2Op):
+        """
+        case 20 : (x.ndim <= 2) && (y.ndim >= 3),
+                  x need to broadcast and trans_y is false
+        """
+
+        def config(self):
+            self.x_shape = (20, 10)
+            self.y_shape = (2, 20, 4)
+            self.trans_x = True
             self.trans_y = False
 
 

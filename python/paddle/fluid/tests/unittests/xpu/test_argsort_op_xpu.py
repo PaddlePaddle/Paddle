@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -21,9 +19,12 @@ import sys
 sys.path.append("..")
 
 import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -39,8 +40,9 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
         classes = []
         for descending in [True, False]:
             for axis in [0, 1, 2, -1, -2]:
-                class_name = 'XPUTestArgsortOp_axis_' + str(axis) + '_' + str(
-                    descending)
+                class_name = (
+                    'XPUTestArgsortOp_axis_' + str(axis) + '_' + str(descending)
+                )
                 attr_dict = {'init_axis': axis, 'init_descending': descending}
                 classes.append([class_name, attr_dict])
         return base_class, classes
@@ -54,16 +56,25 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
             self.dtype = self.in_type
             self.input_shape = (2, 2, 2, 3, 3)
             self.axis = -1 if not hasattr(self, 'init_axis') else self.init_axis
-            self.descending = False if not hasattr(
-                self, 'init_descending') else self.init_descending
+            self.descending = (
+                False
+                if not hasattr(self, 'init_descending')
+                else self.init_descending
+            )
 
             if self.dtype == np.float32:
                 self.x = np.random.random(self.input_shape).astype(self.dtype)
             else:
+<<<<<<< HEAD
                 self.x = np.random.randint(low=-1000,
                                            high=1000,
                                            size=self.input_shape).astype(
                                                self.dtype)
+=======
+                self.x = np.random.randint(
+                    low=-1000, high=1000, size=self.input_shape
+                ).astype(self.dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.inputs = {"X": self.x}
             self.attrs = {"axis": self.axis, "descending": self.descending}
@@ -74,6 +85,7 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
             if self.descending:
                 self.indices = np.flip(
                     np.argsort(self.x, kind='heapsort', axis=self.axis),
+<<<<<<< HEAD
                     self.axis)
                 self.sorted_x = np.flip(
                     np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
@@ -81,6 +93,17 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
                 self.indices = np.argsort(self.x,
                                           kind='heapsort',
                                           axis=self.axis)
+=======
+                    self.axis,
+                )
+                self.sorted_x = np.flip(
+                    np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
+                )
+            else:
+                self.indices = np.argsort(
+                    self.x, kind='heapsort', axis=self.axis
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
 
         def set_xpu(self):
@@ -89,6 +112,9 @@ class XPUTestArgsortOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(self.place)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, {'X'}, 'Out')
 
 
 support_types = get_xpu_op_support_types('argsort')

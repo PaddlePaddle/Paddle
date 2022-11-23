@@ -40,6 +40,7 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     in_param_type = framework::proto::VarType::FP64;
   }
   if (ctx.HasInput("Scale")) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(
         in_param_type,
         framework::TransToProtoVarType(ctx.Input<Tensor>("Scale")->dtype()),
@@ -52,6 +53,20 @@ framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
         framework::TransToProtoVarType(ctx.Input<Tensor>("Bias")->dtype()),
         platform::errors::InvalidArgument(
             "Bias input should be of float type"));
+=======
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());

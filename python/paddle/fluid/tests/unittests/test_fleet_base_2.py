@@ -28,7 +28,7 @@ class TestFleetBase(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
-        #os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
+        # os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
         #    "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_ps_minimize(self):
@@ -38,6 +38,7 @@ class TestFleetBase(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         os.environ["PADDLE_TRAINER_ID"] = "1"
 
+<<<<<<< HEAD
         input_x = paddle.fluid.layers.data(name="x",
                                            shape=[32],
                                            dtype='float32')
@@ -49,12 +50,31 @@ class TestFleetBase(unittest.TestCase):
         emb = paddle.fluid.layers.embedding(input=input_slot,
                                             size=[10, 9],
                                             is_sparse=True)
+=======
+        input_x = paddle.fluid.layers.data(
+            name="x", shape=[32], dtype='float32'
+        )
+        input_slot = paddle.fluid.layers.data(
+            name="slot", shape=[1], dtype='int64'
+        )
+        input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+        emb = paddle.fluid.layers.embedding(
+            input=input_slot, size=[10, 9], is_sparse=True
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         input_x = paddle.concat(x=[input_x, emb], axis=1)
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
+=======
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         avg_cost = paddle.mean(x=cost)
 
         role = fleet.PaddleCloudRoleMaker(is_collective=False)
@@ -73,16 +93,26 @@ class TestFleetBase(unittest.TestCase):
         exe.run(paddle.static.default_startup_program())
         pe = fluid.ParallelExecutor(use_cuda=False, loss_name=avg_cost.name)
         compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program())
+            fluid.default_main_program()
+        )
 
         temp_dir = tempfile.TemporaryDirectory()
         fleet.init_worker()
+<<<<<<< HEAD
         fleet.fleet.save(dirname=temp_dir.name,
                          feed=['x', 'y'],
                          fetch=[avg_cost])
         fleet.fleet.save(dirname=temp_dir.name,
                          feed=[input_x, input_y],
                          fetch=[avg_cost])
+=======
+        fleet.fleet.save(
+            dirname=temp_dir.name, feed=['x', 'y'], fetch=[avg_cost]
+        )
+        fleet.fleet.save(
+            dirname=temp_dir.name, feed=[input_x, input_y], fetch=[avg_cost]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         fleet.fleet.save(dirname=temp_dir.name)
 
         fleet.load_model(path=temp_dir.name, mode=0)

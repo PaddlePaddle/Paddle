@@ -14,9 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+=======
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace phi {
 namespace sparse {
@@ -43,15 +54,25 @@ namespace sparse {
   SparseCsrTensor ElementWise##name##Csr(const Context& dev_ctx,     \
                                          const SparseCsrTensor& x,   \
                                          const SparseCsrTensor& y) { \
+<<<<<<< HEAD
     DenseTensor non_zero_crows;                                      \
     DenseTensor non_zero_cols;                                       \
     DenseTensor non_zero_elements;                                   \
     SparseCsrTensor out(                                             \
         non_zero_crows, non_zero_cols, non_zero_elements, x.dims()); \
+=======
+    DenseTensor crows;                                               \
+    DenseTensor cols;                                                \
+    DenseTensor values;                                              \
+    SparseCsrTensor out(crows, cols, values, x.dims());              \
+    MetaTensor meta_out(out);                                        \
+    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     ElementWise##name##CsrKernel<T, Context>(dev_ctx, x, y, &out);   \
     return out;                                                      \
   }
 
+<<<<<<< HEAD
 #define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                        \
   template <typename T, typename Context>                               \
   SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,        \
@@ -62,6 +83,20 @@ namespace sparse {
     SparseCooTensor out(non_zero_indices, non_zero_elements, x.dims()); \
     ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);      \
     return out;                                                         \
+=======
+#define DEFINE_COO_ELEMENTWISE_KERNEL_FUNC(name)                     \
+  template <typename T, typename Context>                            \
+  SparseCooTensor ElementWise##name##Coo(const Context& dev_ctx,     \
+                                         const SparseCooTensor& x,   \
+                                         const SparseCooTensor& y) { \
+    DenseTensor indices;                                             \
+    DenseTensor values;                                              \
+    SparseCooTensor out(indices, values, x.dims());                  \
+    MetaTensor meta_out(out);                                        \
+    phi::ElementwiseInferMeta(x, y, &meta_out);                      \
+    ElementWise##name##CooKernel<T, Context>(dev_ctx, x, y, &out);   \
+    return out;                                                      \
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
 DEFINE_ELEMENTWISE_KERNEL_HEAD(Add)
@@ -74,5 +109,24 @@ DEFINE_ELEMENTWISE_KERNEL_FUNC(Subtract)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Multiply)
 DEFINE_ELEMENTWISE_KERNEL_FUNC(Divide)
 
+<<<<<<< HEAD
+=======
+template <typename T, typename Context>
+void ElementWiseAddDenseKernel(const Context& dev_ctx,
+                               const SparseCooTensor& x,
+                               const DenseTensor& y,
+                               SparseCooTensor* out) {
+  // TODO(zhangkaiuo): to support universal sparse + dense
+  if (y.dims().size() == 1 && y.dims()[0] == x.dims()[x.dims().size() - 1]) {
+    EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+    phi::AddKernel<T, Context>(dev_ctx, x.values(), y, out->mutable_values());
+    out->SetIndicesDict(x.GetIndicesDict());
+  } else {
+    PADDLE_THROW(
+        errors::Unimplemented("Not support Sparse + Dense in GPU mode"));
+  }
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace sparse
 }  // namespace phi

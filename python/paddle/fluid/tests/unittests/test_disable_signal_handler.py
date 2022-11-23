@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
-import signal, os
-import paddle
+import signal
 import subprocess
 
 SignalsToTest = {
-    signal.SIGTERM, signal.SIGBUS, signal.SIGABRT, signal.SIGSEGV,
-    signal.SIGILL, signal.SIGFPE
+    signal.SIGTERM,
+    signal.SIGBUS,
+    signal.SIGABRT,
+    signal.SIGSEGV,
+    signal.SIGILL,
+    signal.SIGFPE,
 }
 
 
@@ -31,11 +31,22 @@ class TestSignOpError(unittest.TestCase):
     def test_errors(self):
         try:
             for sig in SignalsToTest:
+<<<<<<< HEAD
                 output = subprocess.check_output([
                     "python", "-c",
                     f"import paddle; import signal,os; paddle.disable_signal_handler(); os.kill(os.getpid(), {sig})"
                 ],
                                                  stderr=subprocess.STDOUT)
+=======
+                output = subprocess.check_output(
+                    [
+                        "python",
+                        "-c",
+                        f"import paddle; import signal,os; paddle.disable_signal_handler(); os.kill(os.getpid(), {sig})",
+                    ],
+                    stderr=subprocess.STDOUT,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         except Exception as e:
             # If paddle signal handler is enabled
             # One would expect "paddle::framework::SignalHandle" in STDERR

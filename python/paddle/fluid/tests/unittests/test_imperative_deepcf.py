@@ -30,7 +30,7 @@ from paddle.fluid.framework import _test_eager_guard
 class DMF(fluid.Layer):
 
     def __init__(self):
-        super(DMF, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
 
@@ -41,6 +41,7 @@ class DMF(fluid.Layer):
             self._user_layers.append(
                 self.add_sublayer(
                     'user_layer_%d' % i,
+<<<<<<< HEAD
                     Linear(256 if i == 0 else self._hid_sizes[i - 1],
                            self._hid_sizes[i],
                            act='relu')))
@@ -50,6 +51,25 @@ class DMF(fluid.Layer):
                     Linear(256 if i == 0 else self._hid_sizes[i - 1],
                            self._hid_sizes[i],
                            act='relu')))
+=======
+                    Linear(
+                        256 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu',
+                    ),
+                )
+            )
+            self._item_layers.append(
+                self.add_sublayer(
+                    'item_layer_%d' % i,
+                    Linear(
+                        256 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu',
+                    ),
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, users, items):
         users = self._user_latent(users)
@@ -64,7 +84,7 @@ class DMF(fluid.Layer):
 class MLP(fluid.Layer):
 
     def __init__(self):
-        super(MLP, self).__init__()
+        super().__init__()
         self._user_latent = Linear(1000, 256)
         self._item_latent = Linear(100, 256)
         self._match_layers = []
@@ -73,15 +93,31 @@ class MLP(fluid.Layer):
             self._match_layers.append(
                 self.add_sublayer(
                     'match_layer_%d' % i,
+<<<<<<< HEAD
                     Linear(256 * 2 if i == 0 else self._hid_sizes[i - 1],
                            self._hid_sizes[i],
                            act='relu')))
+=======
+                    Linear(
+                        256 * 2 if i == 0 else self._hid_sizes[i - 1],
+                        self._hid_sizes[i],
+                        act='relu',
+                    ),
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, users, items):
         users = self._user_latent(users)
         items = self._item_latent(items)
+<<<<<<< HEAD
         match_vec = fluid.layers.concat([users, items],
                                         axis=len(users.shape) - 1)
+=======
+        match_vec = fluid.layers.concat(
+            [users, items], axis=len(users.shape) - 1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         for l in self._match_layers:
             match_vec = l(match_vec)
         return match_vec
@@ -90,7 +126,7 @@ class MLP(fluid.Layer):
 class DeepCF(fluid.Layer):
 
     def __init__(self, num_users, num_items, matrix):
-        super(DeepCF, self).__init__()
+        super().__init__()
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(
@@ -98,7 +134,8 @@ class DeepCF(fluid.Layer):
             shape=matrix.shape,
             dtype=matrix.dtype,
             is_bias=False,
-            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix))
+            default_initializer=fluid.initializer.NumpyArrayInitializer(matrix),
+        )
         self._rating_matrix.stop_gradient = True
 
         self._mlp = MLP()
@@ -108,22 +145,33 @@ class DeepCF(fluid.Layer):
     def forward(self, users, items):
         # users_emb = self._user_emb(users)
         # items_emb = self._item_emb(items)
-        users_emb = fluid.layers.gather(self._rating_matrix, users)
-        items_emb = fluid.layers.gather(
-            fluid.layers.transpose(self._rating_matrix, [1, 0]), items)
+
+        users_emb = paddle.gather(self._rating_matrix, users)
+        items_emb = paddle.gather(
+            paddle.transpose(self._rating_matrix, [1, 0]), items
+        )
         users_emb.stop_gradient = True
         items_emb.stop_gradient = True
 
         mlp_predictive = self._mlp(users_emb, items_emb)
         dmf_predictive = self._dmf(users_emb, items_emb)
+<<<<<<< HEAD
         predictive = fluid.layers.concat([mlp_predictive, dmf_predictive],
                                          axis=len(mlp_predictive.shape) - 1)
+=======
+        predictive = fluid.layers.concat(
+            [mlp_predictive, dmf_predictive], axis=len(mlp_predictive.shape) - 1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         prediction = self._match_fc(predictive)
         return prediction
 
 
 class TestDygraphDeepCF(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         # Can use Amusic dataset as the DeepCF describes.
         self.data_path = os.environ.get('DATA_PATH', '')
@@ -152,9 +200,20 @@ class TestDygraphDeepCF(unittest.TestCase):
         users_np = np.array(user_ids, dtype=np.int32)[indices]
         items_np = np.array(item_ids, dtype=np.int32)[indices]
         labels_np = np.array(labels, dtype=np.float32)[indices]
+<<<<<<< HEAD
         return np.expand_dims(users_np, -1), \
             np.expand_dims(items_np, -1), \
             np.expand_dims(labels_np, -1), NUM_USERS, NUM_ITEMS, matrix
+=======
+        return (
+            np.expand_dims(users_np, -1),
+            np.expand_dims(items_np, -1),
+            np.expand_dims(labels_np, -1),
+            NUM_USERS,
+            NUM_ITEMS,
+            matrix,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def load_data(self):
         sys.stderr.write('loading from %s\n' % self.data_path)
@@ -194,18 +253,49 @@ class TestDygraphDeepCF(unittest.TestCase):
         users_np = np.array(user_ids, dtype=np.int32)[indices]
         items_np = np.array(item_ids, dtype=np.int32)[indices]
         labels_np = np.array(labels, dtype=np.float32)[indices]
+<<<<<<< HEAD
         return np.expand_dims(users_np, -1), \
             np.expand_dims(items_np, -1), \
             np.expand_dims(labels_np, -1), num_users, num_items, matrix
+=======
+        return (
+            np.expand_dims(users_np, -1),
+            np.expand_dims(items_np, -1),
+            np.expand_dims(labels_np, -1),
+            num_users,
+            num_items,
+            matrix,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_deefcf(self):
         seed = 90
         if self.data_path:
+<<<<<<< HEAD
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = self.load_data()
         else:
             (users_np, items_np, labels_np, num_users, num_items,
              matrix) = self.get_data()
+=======
+            (
+                users_np,
+                items_np,
+                labels_np,
+                num_users,
+                num_items,
+                matrix,
+            ) = self.load_data()
+        else:
+            (
+                users_np,
+                items_np,
+                labels_np,
+                num_users,
+                num_items,
+                matrix,
+            ) = self.get_data()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         paddle.seed(seed)
         paddle.framework.random._manual_program_seed(seed)
         startup = fluid.Program()
@@ -220,28 +310,51 @@ class TestDygraphDeepCF(unittest.TestCase):
             deepcf = DeepCF(num_users, num_items, matrix)
             prediction = deepcf(users, items)
             loss = fluid.layers.reduce_sum(
-                fluid.layers.log_loss(prediction, labels))
+                fluid.layers.log_loss(prediction, labels)
+            )
             adam = fluid.optimizer.AdamOptimizer(0.01)
             adam.minimize(loss)
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe = fluid.Executor(
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
             exe.run(startup)
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)
+<<<<<<< HEAD
                 for slice in range(0, self.batch_size * self.num_batches,
                                    self.batch_size):
+=======
+                for slice in range(
+                    0, self.batch_size * self.num_batches, self.batch_size
+                ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     if slice + self.batch_size >= users_np.shape[0]:
                         break
                     static_loss = exe.run(
                         main,
                         feed={
+<<<<<<< HEAD
                             users.name: users_np[slice:slice + self.batch_size],
                             items.name: items_np[slice:slice + self.batch_size],
                             labels.name:
                             labels_np[slice:slice + self.batch_size]
+=======
+                            users.name: users_np[
+                                slice : slice + self.batch_size
+                            ],
+                            items.name: items_np[
+                                slice : slice + self.batch_size
+                            ],
+                            labels.name: labels_np[
+                                slice : slice + self.batch_size
+                            ],
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                         },
-                        fetch_list=[loss])[0]
+                        fetch_list=[loss],
+                    )[0]
                     sys.stderr.write('static loss %s\n' % static_loss)
 
         with fluid.dygraph.guard():
@@ -250,6 +363,7 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf = DeepCF(num_users, num_items, matrix)
             adam = fluid.optimizer.AdamOptimizer(
+<<<<<<< HEAD
                 0.01, parameter_list=deepcf.parameters())
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)
@@ -265,6 +379,29 @@ class TestDygraphDeepCF(unittest.TestCase):
                             prediction,
                             to_variable(labels_np[slice:slice +
                                                   self.batch_size])))
+=======
+                0.01, parameter_list=deepcf.parameters()
+            )
+            for e in range(self.num_epoches):
+                sys.stderr.write('epoch %d\n' % e)
+                for slice in range(
+                    0, self.batch_size * self.num_batches, self.batch_size
+                ):
+                    if slice + self.batch_size >= users_np.shape[0]:
+                        break
+                    prediction = deepcf(
+                        to_variable(users_np[slice : slice + self.batch_size]),
+                        to_variable(items_np[slice : slice + self.batch_size]),
+                    )
+                    loss = fluid.layers.reduce_sum(
+                        fluid.layers.log_loss(
+                            prediction,
+                            to_variable(
+                                labels_np[slice : slice + self.batch_size]
+                            ),
+                        )
+                    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     loss.backward()
                     adam.minimize(loss)
                     deepcf.clear_gradients()
@@ -277,10 +414,12 @@ class TestDygraphDeepCF(unittest.TestCase):
 
             deepcf2 = DeepCF(num_users, num_items, matrix)
             adam2 = fluid.optimizer.AdamOptimizer(
-                0.01, parameter_list=deepcf2.parameters())
+                0.01, parameter_list=deepcf2.parameters()
+            )
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
             for e in range(self.num_epoches):
                 sys.stderr.write('epoch %d\n' % e)
+<<<<<<< HEAD
                 for slice in range(0, self.batch_size * self.num_batches,
                                    self.batch_size):
                     if slice + self.batch_size >= users_np.shape[0]:
@@ -293,12 +432,32 @@ class TestDygraphDeepCF(unittest.TestCase):
                             prediction2,
                             to_variable(labels_np[slice:slice +
                                                   self.batch_size])))
+=======
+                for slice in range(
+                    0, self.batch_size * self.num_batches, self.batch_size
+                ):
+                    if slice + self.batch_size >= users_np.shape[0]:
+                        break
+                    prediction2 = deepcf2(
+                        to_variable(users_np[slice : slice + self.batch_size]),
+                        to_variable(items_np[slice : slice + self.batch_size]),
+                    )
+                    loss2 = fluid.layers.reduce_sum(
+                        fluid.layers.log_loss(
+                            prediction2,
+                            to_variable(
+                                labels_np[slice : slice + self.batch_size]
+                            ),
+                        )
+                    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     loss2.backward()
                     adam2.minimize(loss2)
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
-                    sys.stderr.write('dynamic loss: %s %s\n' %
-                                     (slice, dy_loss2))
+                    sys.stderr.write(
+                        'dynamic loss: %s %s\n' % (slice, dy_loss2)
+                    )
 
         with fluid.dygraph.guard():
             with _test_eager_guard():
@@ -309,10 +468,12 @@ class TestDygraphDeepCF(unittest.TestCase):
 
                 deepcf = DeepCF(num_users, num_items, matrix)
                 adam = fluid.optimizer.AdamOptimizer(
-                    0.01, parameter_list=deepcf.parameters())
+                    0.01, parameter_list=deepcf.parameters()
+                )
 
                 for e in range(self.num_epoches):
                     sys.stderr.write('epoch %d\n' % e)
+<<<<<<< HEAD
                     for slice in range(0, self.batch_size * self.num_batches,
                                        self.batch_size):
                         if slice + self.batch_size >= users_np.shape[0]:
@@ -327,12 +488,36 @@ class TestDygraphDeepCF(unittest.TestCase):
                                 prediction,
                                 to_variable(labels_np[slice:slice +
                                                       self.batch_size])))
+=======
+                    for slice in range(
+                        0, self.batch_size * self.num_batches, self.batch_size
+                    ):
+                        if slice + self.batch_size >= users_np.shape[0]:
+                            break
+                        prediction = deepcf(
+                            to_variable(
+                                users_np[slice : slice + self.batch_size]
+                            ),
+                            to_variable(
+                                items_np[slice : slice + self.batch_size]
+                            ),
+                        )
+                        loss = fluid.layers.reduce_sum(
+                            fluid.layers.log_loss(
+                                prediction,
+                                to_variable(
+                                    labels_np[slice : slice + self.batch_size]
+                                ),
+                            )
+                        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                         loss.backward()
                         adam.minimize(loss)
                         deepcf.clear_gradients()
                         eager_loss = loss.numpy()
-                        sys.stderr.write('eager loss: %s %s\n' %
-                                         (slice, eager_loss))
+                        sys.stderr.write(
+                            'eager loss: %s %s\n' % (slice, eager_loss)
+                        )
 
         self.assertEqual(static_loss, dy_loss)
         self.assertEqual(static_loss, dy_loss2)

@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+import paddle
 
 
 class TestCenterLossOp(OpTest):
@@ -50,7 +47,7 @@ class TestCenterLossOp(OpTest):
             cout[labels[i]] += 1
             var_sum[labels[i]] += output[i]
         for i in range(cluster_num):
-            var_sum[i] /= (1 + cout[i])
+            var_sum[i] /= 1 + cout[i]
         var_sum *= 0.1
         result = centers + var_sum
         rate = np.array([0.1]).astype(np.float64)
@@ -59,20 +56,20 @@ class TestCenterLossOp(OpTest):
             'X': feat,
             'Label': labels,
             'Centers': centers,
-            'CenterUpdateRate': rate
+            'CenterUpdateRate': rate,
         }
 
-        if self.need_update == True:
+        if self.need_update:
             self.outputs = {
                 'SampleCenterDiff': output,
                 'Loss': loss,
-                'CentersOut': result
+                'CentersOut': result,
             }
         else:
             self.outputs = {
                 'SampleCenterDiff': output,
                 'Loss': loss,
-                'CentersOut': centers
+                'CentersOut': centers,
             }
 
     def config(self):
@@ -94,6 +91,7 @@ class TestCenterLossOpNoUpdate(TestCenterLossOp):
         self.need_update = False
 
 
+<<<<<<< HEAD
 class BadInputTestCenterLoss(unittest.TestCase):
 
     def test_error(self):
@@ -153,5 +151,8 @@ class BadInputTestCenterLoss(unittest.TestCase):
             self.assertRaises(TypeError, test_bad_alpha)
 
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

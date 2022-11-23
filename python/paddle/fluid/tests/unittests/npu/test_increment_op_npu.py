@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -39,8 +37,9 @@ class TestIncrement(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X':
-            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.array([1]).astype(self.dtype)
+            ),
         }
 
         self.attrs = {"Step": 1}
@@ -66,8 +65,9 @@ class TestIncrementFP16(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X':
-            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.array([1]).astype(self.dtype)
+            ),
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -93,8 +93,9 @@ class TestIncrementINT64(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X':
-            OpTest.np_dtype_to_fluid_dtype(np.array([1]).astype(self.dtype)),
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.array([1]).astype(self.dtype)
+            ),
         }
         self.pre_input_id = id(self.inputs['X'])
 
@@ -131,9 +132,19 @@ class TestIncrementInplace(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(startup_prog)
 
+<<<<<<< HEAD
         b_value = exe.run(main_prog, feed={
             "a": a_np,
         }, fetch_list=[b])
+=======
+        b_value = exe.run(
+            main_prog,
+            feed={
+                "a": a_np,
+            },
+            fetch_list=[b],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         print('input a id is : {}'.format(id(a)))
         print('input b id is : {}'.format(id(b)))

@@ -25,15 +25,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/pool_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace platform {
 
-using framework::DataLayout;
-using framework::Tensor;
-using user_function = std::function<std::shared_ptr<float>(const float*)>;
 using memory = dnnl::memory;
 
+<<<<<<< HEAD
 template <typename T,
           typename TForward,
           typename TBackward = mkldnn_dummy_primitive,
@@ -488,36 +487,106 @@ class MKLDNNHandlerT {
       dev_ctx_.SetBlob(key_pd, bwd_w_pd_);
     }
   }
+=======
+static void AppendActivation(const framework::ExecutionContext& ctx,
+                             dnnl::post_ops& post_ops,  // NOLINT
+                             float activation_scale = 1.0f) {
+  const auto invalid_attribute =
+      ctx.HasAttr("fuse_activation")
+          ? ctx.Attr<std::string>("fuse_activation").empty()
+          : true;
+  if (invalid_attribute) return;
 
-  std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
-      const std::string& suffix) {
-    return std::static_pointer_cast<dnnl::memory>(
-        dev_ctx_.GetBlob(key_ + suffix));
+  const auto fuse_activation = ctx.Attr<std::string>("fuse_activation");
+  const auto fuse_alpha =
+      ctx.HasAttr("fuse_alpha") ? ctx.Attr<float>("fuse_alpha") : 0.0f;
+  const auto fuse_beta =
+      ctx.HasAttr("fuse_beta") ? ctx.Attr<float>("fuse_beta") : 0.0f;
+
+  if (fuse_activation == "hard_sigmoid") {
+    post_ops.append_eltwise(activation_scale,
+                            dnnl::algorithm::eltwise_linear,
+                            fuse_alpha,
+                            fuse_beta);
+    post_ops.append_eltwise(
+        activation_scale, dnnl::algorithm::eltwise_clip, 0.0f, 1.0f);
+  } else {
+    const std::unordered_map<std::string, dnnl::algorithm> activation_map = {
+        {"abs", dnnl::algorithm::eltwise_abs},
+        {"clip", dnnl::algorithm::eltwise_clip},
+        {"gelu", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
+        {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
+        {"hard_swish", dnnl::algorithm::eltwise_hardswish},
+        {"leaky_relu", dnnl::algorithm::eltwise_relu},
+        {"mish", dnnl::algorithm::eltwise_mish},
+        {"relu", dnnl::algorithm::eltwise_relu},
+        {"relu6", dnnl::algorithm::eltwise_bounded_relu},
+        {"sigmoid", dnnl::algorithm::eltwise_logistic},
+        {"sqrt", dnnl::algorithm::eltwise_sqrt},
+        {"swish", dnnl::algorithm::eltwise_swish},
+        {"tanh", dnnl::algorithm::eltwise_tanh}};
+
+    const auto& activation_type = activation_map.find(fuse_activation);
+
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        platform::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+
+    post_ops.append_eltwise(
+        activation_scale, activation_type->second, fuse_alpha, fuse_beta);
+  }
+}
+
+static void SetOutMemDescWithUnsqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  const std::vector<int>& fused_unsqueeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_unsqueeze2_axes");
+  const std::vector<int64_t>& op_tz = out_md.dims();
+  std::vector<int64_t> unsqueezed_op_tz(
+      op_tz.size() + fused_unsqueeze2_axes.size(), 0);
+
+  for (const auto& axis : fused_unsqueeze2_axes) {
+    int positive_axis = axis < 0 ? unsqueezed_op_tz.size() + axis : axis;
+    unsqueezed_op_tz[positive_axis] = 1;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
-      dnnl::memory::desc md, void* ptr, const std::string& suffix) {
-    const auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<dnnl::memory>(md, engine_, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
+  int j = 0;
+  for (size_t i = 0; i < unsqueezed_op_tz.size(); ++i) {
+    if (unsqueezed_op_tz[i] == 0) {
+      unsqueezed_op_tz[i] = op_tz[j++];
     }
-    return mem_p;
   }
+  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  out->Resize(phi::make_ddim(unsqueezed_op_tz));
+}
 
-  std::shared_ptr<dnnl::memory> AcquireMemoryFromPrimitive(
-      dnnl::memory::desc md, const std::string& suffix) {
-    const auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<dnnl::memory>(md, engine_);
-      dev_ctx_.SetBlob(local_key, mem_p);
+static void SetOutMemDescWithReshape2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  std::vector<int64_t> fused_reshape2_shape(
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").begin(),
+      ctx.Attr<std::vector<int>>("fused_reshape2_shape").end());
+
+  const int out_shape_numel = out->numel();
+  const int new_shape_numel = std::accumulate(fused_reshape2_shape.begin(),
+                                              fused_reshape2_shape.end(),
+                                              1,
+                                              std::multiplies<int64_t>());
+
+  for (size_t i = 0; i < fused_reshape2_shape.size(); ++i) {
+    if (fused_reshape2_shape[i] == -1) {
+      fused_reshape2_shape[i] = -out_shape_numel / new_shape_numel;
+      break;
     }
+<<<<<<< HEAD
     return mem_p;
   }
 
@@ -619,12 +688,31 @@ class MKLDNNHandlerT {
     }
     return target_memory_p;
   }
-
-  std::shared_ptr<dnnl::memory> AcquireMemory(const std::string& suffix) {
-    const auto local_key = key_ + suffix;
-    return std::static_pointer_cast<dnnl::memory>(dev_ctx_.GetBlob(local_key));
+=======
   }
 
+  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  out->Resize(phi::make_ddim(fused_reshape2_shape));
+}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+
+static void SetOutMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* out,
+    const dnnl::memory::desc& out_md) {
+  if (ctx.HasAttr("fused_unsqueeze2_axes")) {
+    SetOutMemDescWithUnsqueeze2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_reshape2_shape")) {
+    SetOutMemDescWithReshape2FuseSupport(ctx, out, out_md);
+  } else if (ctx.HasAttr("fused_squeeze2_axes")) {
+    out->set_mem_desc(out_md);
+    out->Resize(phi::make_ddim(out_md.dims()));
+  } else {
+    out->set_mem_desc(out_md);
+  }
+}
+
+<<<<<<< HEAD
   const MKLDNNDeviceContext& dev_ctx_;
   dnnl::engine engine_;
   platform::Place place_;
@@ -856,12 +944,55 @@ class ReductionMKLDNNHandler
     else
       this->AcquireForwardPrimitiveDescriptor(
           algo, x->mem_desc(), out_md, p, eps);
-  }
-};
+=======
+static void SetInMemDescWithSqueeze2FuseSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const std::vector<int> fused_squeeze2_axes =
+      ctx.Attr<std::vector<int>>("fused_squeeze2_axes");
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
 
-template <typename T>
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          platform::errors::InvalidArgument(
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(phi::make_ddim(squeezed_op_tz));
+}
+
+static void SetInMemDescWithLogicalLayoutFusesSupport(
+    const framework::ExecutionContext& ctx,
+    phi::DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  if (ctx.HasAttr("fused_squeeze2_axes")) {
+    SetInMemDescWithSqueeze2FuseSupport(ctx, in, in_md);
+  } else {
+    in->set_mem_desc(in_md);
+    in->Resize(phi::make_ddim(in_md.dims()));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+  }
+}
+
+template <typename XT, typename YT, typename OT>
 class MatMulV2MKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
+    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatMulV2MKLDNNHandler(const framework::ExecutionContext& ctx,
                         const dnnl::engine engine,
@@ -873,8 +1004,8 @@ class MatMulV2MKLDNNHandler
                         bool is_output_fused,
                         const std::vector<int64_t>& x_strides_override,
                         const std::vector<int64_t>& y_strides_override)
-      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
-                                                                   cpu_place) {
+      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(engine,
+                                                              cpu_place) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -934,14 +1065,49 @@ class MatMulV2MKLDNNHandler
       out_strides[i] = out_ddims[i + 1] * out_strides[i + 1];
     }
 
-    if (is_output_fused) {
+    // TODO(jczaja): Why not for int8??
+    if (!phi::funcs::is_int8<OT>() && is_output_fused) {
       out_strides = FakeTransposeStrides(out_ddims);
     }
 
-    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-    auto out_md = memory::desc(out_ddims, MKLDNNGetDataType<T>(), out_strides);
+    auto x_md =
+        memory::desc(x_dims, phi::funcs::OneDNNGetDataType<XT>(), x_strides);
+    auto y_md =
+        memory::desc(y_dims, phi::funcs::OneDNNGetDataType<YT>(), y_strides);
+    auto out_md = memory::desc(
+        out_ddims, phi::funcs::OneDNNGetDataType<OT>(), out_strides);
 
+    const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
+
+    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
+  }
+
+  float ComputeOutputScale(const framework::ExecutionContext& ctx) {
+    float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
+    if (ctx.HasAttr("Scale_x") && ctx.HasAttr("Scale_y") &&
+        ctx.HasAttr("Scale_out")) {
+      float scale_x = ctx.Attr<float>("Scale_x");
+      float scale_y = ctx.Attr<float>("Scale_y");
+      bool force_fp32_out = ctx.HasAttr("force_fp32_output")
+                                ? ctx.Attr<bool>("force_fp32_output")
+                                : false;
+      float scale_out = force_fp32_out ? 1.f : ctx.Attr<float>("Scale_out");
+      alpha *= scale_out / (scale_x * scale_y);
+    }
+    return alpha;
+  }
+
+  dnnl::primitive_attr CreateMatmulAttrs(
+      const framework::ExecutionContext& ctx) {
+    dnnl::primitive_attr matmul_attrs;
+    dnnl::post_ops post_operations;
+
+    float scale_out = ComputeOutputScale(ctx);
+    if (scale_out != 1.0f) {
+      matmul_attrs.set_output_scales(0, {scale_out});
+    }
+
+<<<<<<< HEAD
     const dnnl::primitive_attr matmul_attrs = CreateMatmulAttrs(ctx);
 
     this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
@@ -956,10 +1122,33 @@ class MatMulV2MKLDNNHandler
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
     if (alpha != 1.0f) {
       matmul_attrs.set_output_scales(0, {alpha});
+=======
+    if (ctx.HasInput("ResidualData")) {
+      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
+      auto residual_data_tz = phi::vectorize(residual_data->dims());
+      auto residual_data_md = memory::desc(residual_data_tz,
+                                           phi::funcs::OneDNNGetDataType<OT>(),
+                                           dnnl::memory::format_tag::any);
+      post_operations.append_binary(dnnl::algorithm::binary_add,
+                                    residual_data_md);
+      if (ctx.HasAttr("Scale_in_eltwise")) {
+        float sum_scale = scale_out / ctx.Attr<float>("Scale_in_eltwise");
+        post_operations.append_sum(sum_scale);
+      }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
 
     AppendActivation(ctx, post_operations);
 
+<<<<<<< HEAD
+=======
+    if (ctx.HasAttr("fused_output_scale")) {
+      float scale_alpha = ctx.Attr<float>("fused_output_scale");
+      post_operations.append_eltwise(
+          1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     matmul_attrs.set_post_ops(post_operations);
     return matmul_attrs;
   }
@@ -982,6 +1171,7 @@ class MatMulV2MKLDNNHandler
     return fake_strides;
   }
 
+<<<<<<< HEAD
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
@@ -1218,15 +1408,29 @@ class ReorderMKLDNNHandler {
       const dnnl::primitive_attr& attrs) {
     return std::make_shared<dnnl::reorder>(
         *(src_memory_p), *(dst_memory_p), attrs);
+=======
+  std::shared_ptr<memory> AcquireWeightsMemory(const phi::DenseTensor* input) {
+    const YT* input_data = input->data<YT>();
+    return this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(),
+        phi::funcs::to_void_cast<YT>(input_data));
   }
 
- private:
-  std::vector<int64_t> dims_;
-  framework::proto::VarType::Type vtype_, vtype_dst_;
-  dnnl::memory::data_type dtype_, dtype_dst_;
-  dnnl::engine engine_;
+  std::shared_ptr<dnnl::memory> AcquireDstMemory(phi::DenseTensor* output) {
+    // We cannot use base AcquireDstMemory as it makes an allocation request
+    // base on DST memory primitive size. This is fine in general, but in MatMul
+    // we have primitive that covers only one batch of Data and then shift
+    // pointer for every new batch. Hence phi::DenseTensor size is bigger that
+    // dst memory primitive size. So would we request less memory that is there
+    // and it triggers an assertion.  So as there is no 'any' format here we can
+    // leave default size of phi::DenseTensor as computed in ComputeInferShape
+    OT* ptr = output->mutable_data<OT>(this->place_);
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+  }
 };
 
+<<<<<<< HEAD
 template <typename T>
 static void SetDstMemoryQuantized(
     const framework::ExecutionContext& ctx,
@@ -1258,5 +1462,7 @@ static void SetDstMemoryQuantized(
       new dnnl::memory(*dst_md, engine, to_void_cast<T>(output_data)));
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace platform
 }  // namespace paddle

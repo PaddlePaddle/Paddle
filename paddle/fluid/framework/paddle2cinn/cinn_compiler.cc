@@ -67,7 +67,11 @@ CinnCompiler *CinnCompiler::GetInstance() {
 
 const CinnCompiledObject &CinnCompiler::Compile(
     const Graph &graph,
+<<<<<<< HEAD
     const std::map<std::string, const LoDTensor *> &input_tensors,
+=======
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const Target &target,
     void *stream) {
   VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
@@ -107,7 +111,11 @@ const CinnCompiledObject &CinnCompiler::Compile(
 
 const CinnCompiledObject &CinnCompiler::Compile(
     int64_t compilation_key,
+<<<<<<< HEAD
     const std::map<std::string, const LoDTensor *> &input_tensors,
+=======
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const Target &target,
     void *stream) {
   const auto &graph = FindGraph(compilation_key);
@@ -236,7 +244,11 @@ void CinnCompiler::Clear() {
 
 void CinnCompiler::CheckCompiledValid(
     const ir::Graph &graph,
+<<<<<<< HEAD
     const std::map<std::string, const LoDTensor *> &input_tensors,
+=======
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const CinnCompiledObject &compiled_obj) const {
   const auto &input_var_names = graph.Get<std::vector<std::string>>(kInputVars);
   const auto &output_var_names =
@@ -264,7 +276,11 @@ void CinnCompiler::CheckCompiledValid(
 
 std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
     const ir::Graph &graph,
+<<<<<<< HEAD
     const std::map<std::string, const LoDTensor *> &input_tensors,
+=======
+    const std::map<std::string, const phi::DenseTensor *> &input_tensors,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const Target &target,
     std::int64_t compiled_num,
     void *stream) const {

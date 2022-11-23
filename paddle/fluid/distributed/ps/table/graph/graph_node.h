@@ -56,11 +56,14 @@ class Node {
   virtual int get_feature_ids(int slot_idx, std::vector<uint64_t> *res) const {
     return 0;
   }
+<<<<<<< HEAD
   virtual int get_feature_ids(int slot_idx,
                               std::vector<uint64_t> &feature_id,
                               std::vector<uint8_t> &slot_id) const {
     return 0;
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   virtual void set_feature(int idx, const std::string &str) {}
   virtual void set_feature_size(int size) {}
   virtual void shrink_to_fit() {}
@@ -161,6 +164,7 @@ class FeatureNode : public Node {
     return 0;
   }
 
+<<<<<<< HEAD
   virtual int get_feature_ids(int slot_idx,
                               std::vector<uint64_t> &feature_id,
                               std::vector<uint8_t> &slot_id) const {
@@ -185,6 +189,8 @@ class FeatureNode : public Node {
     return num;
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   virtual std::string *mutable_feature(int idx) {
     if (idx >= (int)this->feature.size()) {
       this->feature.resize(idx + 1);

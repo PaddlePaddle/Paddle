@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from xml.etree import ElementTree
-import re
 import time
 import queue
 import threading
 import os
-import json
 import sys
 
 taskQueue = queue.Queue()
@@ -35,9 +32,18 @@ def worker(fun):
 def threadPool(threadPoolNum):
     threadPool = []
     for i in range(threadPoolNum):
+<<<<<<< HEAD
         thread = threading.Thread(target=worker, args={
             doFun,
         })
+=======
+        thread = threading.Thread(
+            target=worker,
+            args={
+                doFun,
+            },
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         thread.daemon = True
         threadPool.append(thread)
     return threadPool
@@ -52,8 +58,9 @@ def getPyCovResult(params):
     os.system('cd %s && coverage combine `ls python-coverage.data.*`' % path)
     os.system('cd %s && pwd && coverage xml -i -o python-coverage.xml' % path)
     xml_path = '%s/python-coverage.xml' % path
-    os.system("python2.7 %s/tools/analysisPyXml.py %s %s" %
-              (rootPath, rootPath, ut))
+    os.system(
+        "python2.7 %s/tools/analysisPyXml.py %s %s" % (rootPath, rootPath, ut)
+    )
     endTime = int(time.time())
     print('pyCov Time: %s' % (endTime - startTime))
 

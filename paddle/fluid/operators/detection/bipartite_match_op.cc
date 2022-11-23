@@ -18,8 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
@@ -72,7 +72,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
+<<<<<<< HEAD
   void BipartiteMatch(const Tensor& dist,
+=======
+  void BipartiteMatch(const phi::DenseTensor& dist,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                       int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
@@ -157,7 +161,11 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
+<<<<<<< HEAD
   void ArgMaxMatch(const Tensor& dist,
+=======
+  void ArgMaxMatch(const phi::DenseTensor& dist,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                    int* match_indices,
                    T* match_dist,
                    T overlap_threshold) const {
@@ -197,8 +205,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
 
   void Compute(const framework::ExecutionContext& context) const override {
     auto* dist_mat = context.Input<LoDTensor>("DistMat");
-    auto* match_indices = context.Output<Tensor>("ColToRowMatchIndices");
-    auto* match_dist = context.Output<Tensor>("ColToRowMatchDist");
+    auto* match_indices =
+        context.Output<phi::DenseTensor>("ColToRowMatchIndices");
+    auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
 
     auto& dev_ctx = context.device_context<phi::CPUContext>();
 

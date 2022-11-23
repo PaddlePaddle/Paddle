@@ -130,6 +130,7 @@ class GraphShard {
     return node_location;
   }
 
+<<<<<<< HEAD
   void shrink_to_fit() {
     bucket.shrink_to_fit();
     for (size_t i = 0; i < bucket.size(); i++) {
@@ -153,6 +154,9 @@ class GraphShard {
   }
 
  public:
+=======
+ private:
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::unordered_map<uint64_t, int> node_location;
   std::vector<Node *> bucket;
 };
@@ -558,6 +562,7 @@ class GraphTable : public Table {
   virtual int32_t Initialize(const GraphParameter &config);
   void init_worker_poll(int gpu_num);
   int32_t Load(const std::string &path, const std::string &param);
+<<<<<<< HEAD
   int32_t load_node_and_edge_file(std::string etype2files,
                                   std::string ntype2files,
                                   std::string graph_data_local_path,
@@ -579,6 +584,22 @@ class GraphTable : public Table {
   int32_t load_edges(const std::string &path,
                      bool reverse,
                      const std::string &edge_type);
+=======
+
+  int32_t load_node_and_edge_file(std::string etype,
+                                  std::string ntype,
+                                  std::string epath,
+                                  std::string npath,
+                                  int part_num,
+                                  bool reverse);
+
+  std::string get_inverse_etype(std::string &etype);
+
+  int32_t load_edges(const std::string &path,
+                     bool reverse,
+                     const std::string &edge_type);
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int get_all_id(int type,
                  int slice_num,
                  std::vector<std::vector<uint64_t>> *output);
@@ -597,8 +618,11 @@ class GraphTable : public Table {
                           int idx,
                           int slice_num,
                           std::vector<std::vector<uint64_t>> *output);
+<<<<<<< HEAD
   int get_node_embedding_ids(int slice_num,
                              std::vector<std::vector<uint64_t>> *output);
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int32_t load_nodes(const std::string &path,
                      std::string node_type = std::string());
   std::pair<uint64_t, uint64_t> parse_edge_file(const std::string &path,
@@ -705,17 +729,26 @@ class GraphTable : public Table {
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
+<<<<<<< HEAD
       int idx, const std::vector<uint64_t> &ids);
   virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);
+=======
+      int idx, std::vector<uint64_t> ids);
+  virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
+      std::vector<uint64_t> &node_ids, int slot_num);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx, std::vector<uint64_t> &ids);
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
+<<<<<<< HEAD
   std::vector<int> slot_feature_num_map() const {
     return slot_feature_num_map_;
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::vector<uint64_t> get_partition(int idx, int index) {
     if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
       return std::vector<uint64_t>();
@@ -733,6 +766,7 @@ class GraphTable : public Table {
 #endif
   virtual int32_t add_comm_edge(int idx, uint64_t src_id, uint64_t dst_id);
   virtual int32_t build_sampler(int idx, std::string sample_type = "random");
+<<<<<<< HEAD
   void set_slot_feature_separator(const std::string &ch);
   void set_feature_separator(const std::string &ch);
 
@@ -746,6 +780,12 @@ class GraphTable : public Table {
   std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
   size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
   int task_pool_size_ = 64;
+=======
+  void set_feature_separator(const std::string &ch);
+  std::vector<std::vector<GraphShard *>> edge_shards, feature_shards;
+  size_t shard_start, shard_end, server_num, shard_num_per_server, shard_num;
+  int task_pool_size_ = 24;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int load_thread_num = 160;
 
   const int random_sample_nodes_ranges = 3;
@@ -772,7 +812,10 @@ class GraphTable : public Table {
   int cache_ttl;
   mutable std::mutex mutex_;
   bool build_sampler_on_cpu;
+<<<<<<< HEAD
   bool is_load_reverse_edge = false;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::shared_ptr<pthread_rwlock_t> rw_lock;
 #ifdef PADDLE_WITH_HETERPS
   // paddle::framework::GpuPsGraphTable gpu_graph_table;
@@ -781,9 +824,13 @@ class GraphTable : public Table {
   // std::shared_ptr<GraphSampler> graph_sampler;
   // REGISTER_GRAPH_FRIEND_CLASS(2, CompleteGraphSampler, BasicBfsGraphSampler)
 #endif
+<<<<<<< HEAD
   std::string slot_feature_separator_ = std::string(" ");
   std::string feature_separator_ = std::string(" ");
   std::vector<int> slot_feature_num_map_;
+=======
+  std::string feature_separator_ = std::string(" ");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 /*

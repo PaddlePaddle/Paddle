@@ -1,4 +1,4 @@
-#Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.op import Operator
-from paddle.fluid.backward import append_backward
+from paddle.fluid import Program
 
 
 class TestLoDAppendAPI(unittest.TestCase):
@@ -30,10 +24,16 @@ class TestLoDAppendAPI(unittest.TestCase):
         main_program = Program()
         with fluid.program_guard(main_program):
             x = fluid.layers.data(name='x', shape=[6], dtype='float32')
+<<<<<<< HEAD
             level = fluid.layers.data(name='level',
                                       shape=[3],
                                       dtype='int32',
                                       lod_level=0)
+=======
+            level = fluid.layers.data(
+                name='level', shape=[3], dtype='int32', lod_level=0
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result = fluid.layers.lod_append(x, level)
 
             x_i = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).astype("float32")
@@ -44,6 +44,7 @@ class TestLoDAppendAPI(unittest.TestCase):
                     return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 [out] = exe.run(fluid.default_main_program(),
                                 feed={
                                     'x': x_i,
@@ -51,6 +52,14 @@ class TestLoDAppendAPI(unittest.TestCase):
                                 },
                                 fetch_list=[result],
                                 return_numpy=False)
+=======
+                [out] = exe.run(
+                    fluid.default_main_program(),
+                    feed={'x': x_i, 'level': level_i},
+                    fetch_list=[result],
+                    return_numpy=False,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertEqual(out.recursive_sequence_lengths(), [[2, 4]])
 
 
@@ -62,17 +71,23 @@ class TestLodAppendOpError(unittest.TestCase):
         level1 = [0, 2, 4]
         self.assertRaises(TypeError, fluid.layers.lod_append, x1, level1)
 
-        #The input(level) must be Variable or list.
+        # The input(level) must be Variable or list.
         x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
         self.assertRaises(ValueError, fluid.layers.lod_append, x2, 2)
 
         # Input(x) dtype must be float32 or float64 or int32 or int64
         for dtype in ["bool", "float16"]:
             x3 = fluid.layers.data(name='x3_' + dtype, shape=[4], dtype=dtype)
+<<<<<<< HEAD
             level3 = fluid.layers.data(name='level3' + dtype,
                                        shape=[4],
                                        dtype='int32',
                                        lod_level=2)
+=======
+            level3 = fluid.layers.data(
+                name='level3' + dtype, shape=[4], dtype='int32', lod_level=2
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertRaises(TypeError, fluid.layers.lod_append, x3, level3)
 
 

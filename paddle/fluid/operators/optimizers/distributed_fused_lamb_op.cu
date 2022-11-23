@@ -19,12 +19,12 @@
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
 #include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
-#include "paddle/fluid/operators/tensor_to_string.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/funcs/tensor_to_string.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -43,6 +43,8 @@ namespace operators {
 
 template <typename T>
 using MasterT = typename details::MPTypeTrait<T>::Type;
+using phi::funcs::FlattenToString;
+using phi::funcs::ToVector;
 
 template <typename T>
 static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
@@ -223,10 +225,10 @@ static void LogParamAndTrustRatioDivSquareNorm(
     const float *trust_ratio_div_square_norm) {
   if (!VLOG_IS_ON(LogLevel)) return;
 
-  auto tensors = ctx.MultiInput<framework::Tensor>("Param");
+  auto tensors = ctx.MultiInput<phi::DenseTensor>("Param");
   if (tensors.empty()) return;
 
-  const auto *order = ctx.Input<framework::Tensor>("ParamOrder")->data<int>();
+  const auto *order = ctx.Input<phi::DenseTensor>("ParamOrder")->data<int>();
 
   size_t n = tensors.size();
   auto place = tensors[0]->place();
@@ -262,7 +264,11 @@ template <typename T>
 static const T *GetInputTensorPtr(const framework::ExecutionContext &ctx,
                                   const char *in_name,
                                   int64_t *numel = nullptr) {
+<<<<<<< HEAD
   const auto *in_tensor = ctx.Input<framework::Tensor>(in_name);
+=======
+  const auto *in_tensor = ctx.Input<phi::DenseTensor>(in_name);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -281,7 +287,7 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
                                 const char *in_name,
                                 const char *out_name,
                                 int64_t *numel = nullptr) {
-  const auto *in_tensor = ctx.Input<framework::Tensor>(in_name);
+  const auto *in_tensor = ctx.Input<phi::DenseTensor>(in_name);
   if (in_tensor == nullptr || !in_tensor->IsInitialized()) {
     PADDLE_ENFORCE_EQ(AllowNotExist,
                       true,
@@ -291,7 +297,11 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
     return nullptr;
   }
 
+<<<<<<< HEAD
   auto *out_tensor = ctx.Output<framework::Tensor>(out_name);
+=======
+  auto *out_tensor = ctx.Output<phi::DenseTensor>(out_name);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -1143,8 +1153,7 @@ static std::string GetMinMaxStr(const T *x,
 }
 
 struct VisitDTypeFunctor {
-  VisitDTypeFunctor(const framework::Tensor *x, std::string *s)
-      : x_(x), s_(s) {}
+  VisitDTypeFunctor(const phi::DenseTensor *x, std::string *s) : x_(x), s_(s) {}
 
   template <typename T>
   void apply() const {
@@ -1152,11 +1161,11 @@ struct VisitDTypeFunctor {
   }
 
  private:
-  const framework::Tensor *x_;
+  const phi::DenseTensor *x_;
   std::string *s_;
 };
 
-static std::string GetMinMaxStr(const framework::Tensor *x) {
+static std::string GetMinMaxStr(const phi::DenseTensor *x) {
   if (x == nullptr) return "null";
   if (!x->IsInitialized()) return "not_inited";
   if (!platform::is_gpu_place(x->place())) return "CPUTensor";
@@ -1171,7 +1180,7 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   if (!VLOG_IS_ON(1)) return;
   for (const auto &pair : ctx.GetOp().Inputs()) {
     const auto &key = pair.first;
-    const auto tensors = ctx.MultiInput<framework::Tensor>(key);
+    const auto tensors = ctx.MultiInput<phi::DenseTensor>(key);
     size_t n = tensors.size();
     for (size_t i = 0; i < n; ++i) {
       VLOG(1) << "Input(" << key + ")[" << i << "] = " << pair.second[i]
@@ -1182,7 +1191,7 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   if (only_inputs) return;
   for (const auto &pair : ctx.GetOp().Outputs()) {
     const auto &key = pair.first;
-    const auto tensors = ctx.MultiOutput<framework::Tensor>(key);
+    const auto tensors = ctx.MultiOutput<phi::DenseTensor>(key);
     size_t n = tensors.size();
     for (size_t i = 0; i < n; ++i) {
       VLOG(1) << "Output(" << key + ")[" << i << "] = " << pair.second[i]
@@ -1191,6 +1200,41 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   }
 }
 
+<<<<<<< HEAD
+=======
+template <typename T>
+static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
+  if (numel <= 0) return false;
+  cub::TransformInputIterator<bool, IsNanInfFunctor<T>, const T *> iter(
+      x, IsNanInfFunctor<T>());
+  memory::Buffer buffer(dev_ctx.GetPlace());
+  memory::Buffer out(dev_ctx.GetPlace());
+  CubDeviceReduce(iter,
+                  out.Alloc<bool>(1),
+                  numel,
+                  OrFunctor(),
+                  false,
+                  dev_ctx.stream(),
+                  &buffer);
+  bool flag;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipMemcpyAsync(&flag,
+                                            out.Get<bool>(),
+                                            sizeof(flag),
+                                            hipMemcpyDeviceToHost,
+                                            dev_ctx.stream()));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(&flag,
+                                             out.Get<bool>(),
+                                             sizeof(flag),
+                                             cudaMemcpyDeviceToHost,
+                                             dev_ctx.stream()));
+#endif
+  dev_ctx.Wait();
+  return flag;
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 static void CheckHasNanInfGrad(const float *fp32_grad,
                                int fp32_numel,
                                const platform::float16 *fp16_grad,
@@ -1306,7 +1350,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     auto stream = dev_ctx.stream();
     auto place = dev_ctx.GetPlace();
 
-    auto *found_inf_t = ctx.Output<framework::Tensor>("FoundInf");
+    auto *found_inf_t = ctx.Output<phi::DenseTensor>("FoundInf");
     found_inf_t->Resize({1});
 
     // Step 1: Get fp16 param and grad tensors
@@ -1363,7 +1407,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         platform::errors::InvalidArgument(
             "The gradient accumulation steps should be not less than 1."));
     if (acc_steps > 1) {
-      auto *step_t = ctx.Output<framework::Tensor>("AccStep");
+      auto *step_t = ctx.Output<phi::DenseTensor>("AccStep");
       PADDLE_ENFORCE_NOT_NULL(
           step_t,
           platform::errors::InvalidArgument(
@@ -1383,7 +1427,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       float *fp32_acc_grad = nullptr;
       if (has_fp32_param) {
         auto *fp32_acc_grad_t =
-            ctx.Output<framework::Tensor>("FP32AccFusedGrad");
+            ctx.Output<phi::DenseTensor>("FP32AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
             fp32_acc_grad_t,
             platform::errors::InvalidArgument(
@@ -1403,7 +1447,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       if (has_fp16_param) {
         use_master_acc_grad = ctx.Attr<bool>("use_master_acc_grad");
         auto *fp16_acc_grad_t =
-            ctx.Output<framework::Tensor>("FP16AccFusedGrad");
+            ctx.Output<phi::DenseTensor>("FP16AccFusedGrad");
         PADDLE_ENFORCE_NOT_NULL(
             fp16_acc_grad_t,
             platform::errors::InvalidArgument(
@@ -1493,7 +1537,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         }
       }
 
-      auto *stop_update_t = ctx.Output<framework::Tensor>("StopUpdate");
+      auto *stop_update_t = ctx.Output<phi::DenseTensor>("StopUpdate");
       stop_update_t->Resize({1});
       auto *stop_update =
           stop_update_t->mutable_data<bool>(platform::CPUPlace());
@@ -1614,15 +1658,28 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     const auto &ring_ids = ctx.Attr<std::vector<int>>("ring_id");
     auto use_master_param_norm = ctx.Attr<bool>("use_master_param_norm");
     auto is_grad_scaled_by_nranks = ctx.Attr<bool>("is_grad_scaled_by_nranks");
+    auto use_hierarchical_allreduce =
+        ctx.Attr<bool>("use_hierarchical_allreduce");
     VLOG(10) << "max_global_grad_norm = " << max_global_grad_norm
              << " , clip_after_allreduce = " << clip_after_allreduce
              << " , use_master_param_norm = " << use_master_param_norm
              << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks
+<<<<<<< HEAD
              << " , local_shard = " << local_shard;
 
     // Step 6: allreduce + global norm gradient clip
     int64_t global_rank = 0, local_rank = 0;
     ncclComm_t global_comm = nullptr, local_comm = nullptr;
+=======
+             << " , local_shard = " << local_shard
+             << " , use_hierarchical_allreduce = "
+             << use_hierarchical_allreduce;
+
+    // Step 6: allreduce + global norm gradient clip
+    int64_t global_rank = 0, local_rank = 0;
+    ncclComm_t global_comm = nullptr, local_comm = nullptr,
+               external_comm = nullptr;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if (nranks > 1) {
       auto *nccl_comm_handle =
           platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
@@ -1634,6 +1691,14 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
             platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
         local_comm = local_nccl_comm_handle->comm();
         local_rank = local_nccl_comm_handle->rank();
+<<<<<<< HEAD
+=======
+        if (use_hierarchical_allreduce) {
+          external_comm = platform::NCCLCommContext::Instance()
+                              .Get(ring_ids[2], place)
+                              ->comm();
+        }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       } else {
         local_comm = global_comm;
         local_rank = global_rank;
@@ -1686,6 +1751,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       if (clip_after_allreduce) {
         // (1) ReduceScater first
         if (local_shard) {
+<<<<<<< HEAD
           NCCLAllReduceWithScale(fp32_grad,
                                  fp32_sum_grad,
                                  fp32_numel,
@@ -1700,6 +1766,58 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                  global_comm,
                                  stream,
                                  dev_ctx);
+=======
+          if (use_hierarchical_allreduce) {
+            NCCLReduceScatterWithScale(
+                fp32_grad,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+            NCCLAllReduceWithScale(
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
+                dev_ctx);
+
+            NCCLReduceScatterWithScale(
+                fp16_grad,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx);
+            NCCLAllReduceWithScale(
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
+                dev_ctx);
+          } else {
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx);
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx);
+          }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
           fp32_sum_grad += (local_rank * fp32_numel_each_device);
           fp16_sum_grad += (local_rank * fp16_numel_each_device);
         } else {
@@ -1782,13 +1900,109 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         } else {
           VLOG(1) << "Grad scale: " << FlattenToString(fp16_scale, 1, place);
         }
+<<<<<<< HEAD
         if (nranks > 1) {
+=======
+        // (3) Do ReduceScatter with scale
+        VLOG(1) << "FP32 HasNanInf before all reduce: "
+                << HasNanInf(dev_ctx, fp32_grad, fp32_numel);
+        VLOG(1) << "FP16 HasNanInf before all reduce: "
+                << HasNanInf(dev_ctx, fp16_grad, fp16_numel);
+        if (local_shard) {
+          if (use_hierarchical_allreduce) {
+            NCCLReduceScatterWithScale(
+                fp32_grad,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx,
+                fp32_scale);
+            NCCLAllReduceWithScale(
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_sum_grad + local_rank * fp32_numel_each_device,
+                fp32_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
+                dev_ctx);
+
+            NCCLReduceScatterWithScale(
+                fp16_grad,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                num_devices,
+                local_comm,
+                stream,
+                dev_ctx,
+                fp16_scale);
+            NCCLAllReduceWithScale(
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_sum_grad + local_rank * fp16_numel_each_device,
+                fp16_numel_each_device,
+                nranks / num_devices,
+                external_comm,
+                stream,
+                dev_ctx);
+          } else {
+            NCCLAllReduceWithScale(fp32_grad,
+                                   fp32_sum_grad,
+                                   fp32_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp32_scale);
+            NCCLAllReduceWithScale(fp16_grad,
+                                   fp16_sum_grad,
+                                   fp16_numel,
+                                   nranks,
+                                   global_comm,
+                                   stream,
+                                   dev_ctx,
+                                   fp16_scale);
+          }
+          fp32_sum_grad += (local_rank * fp32_numel_each_device);
+          fp16_sum_grad += (local_rank * fp16_numel_each_device);
+        } else {
+          NCCLReduceScatterWithScale(fp32_grad,
+                                     fp32_sum_grad,
+                                     fp32_numel_each_device,
+                                     nranks,
+                                     global_comm,
+                                     stream,
+                                     dev_ctx,
+                                     fp32_scale);
+          NCCLReduceScatterWithScale(fp16_grad,
+                                     fp16_sum_grad,
+                                     fp16_numel_each_device,
+                                     nranks,
+                                     global_comm,
+                                     stream,
+                                     dev_ctx,
+                                     fp16_scale);
+        }
+        VLOG(1) << "FP32 HasNanInf after all reduce: "
+                << HasNanInf(dev_ctx, fp32_sum_grad, fp32_numel_each_device);
+        VLOG(1) << "FP16 HasNanInf after all reduce: "
+                << HasNanInf(dev_ctx, fp16_sum_grad, fp16_numel_each_device);
+        CheckHasNanInfGrad(fp32_sum_grad,
+                           fp32_numel_each_device,
+                           fp16_sum_grad,
+                           fp16_numel_each_device,
+                           fp32_square_grad_norm,
+                           stream,
+                           &cub_tmp_buffer);
+        if (num_devices > 1) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclAllReduce(fp32_square_grad_norm,
                                                fp32_square_grad_norm,
                                                1,
                                                ncclFloat32,
                                                ncclSum,
+<<<<<<< HEAD
                                                global_comm,
                                                stream));
         }
@@ -1830,12 +2044,20 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                      dev_ctx,
                                      fp16_scale);
         }
+=======
+                                               local_comm,
+                                               stream));
+          VLOG(1) << "Grad square norm after all reduce: "
+                  << FlattenToString(fp32_square_grad_norm, 1, place);
+        }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
         max_global_grad_norm = 0;
       }
     } else {
       if (local_shard) {
+<<<<<<< HEAD
         NCCLAllReduceWithScale(fp32_grad,
                                fp32_sum_grad,
                                fp32_numel,
@@ -1850,6 +2072,58 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                global_comm,
                                stream,
                                dev_ctx);
+=======
+        if (use_hierarchical_allreduce) {
+          NCCLReduceScatterWithScale(
+              fp32_grad,
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_numel_each_device,
+              num_devices,
+              local_comm,
+              stream,
+              dev_ctx);
+          NCCLAllReduceWithScale(
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_sum_grad + local_rank * fp32_numel_each_device,
+              fp32_numel_each_device,
+              nranks / num_devices,
+              external_comm,
+              stream,
+              dev_ctx);
+
+          NCCLReduceScatterWithScale(
+              fp16_grad,
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_numel_each_device,
+              num_devices,
+              local_comm,
+              stream,
+              dev_ctx);
+          NCCLAllReduceWithScale(
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_sum_grad + local_rank * fp16_numel_each_device,
+              fp16_numel_each_device,
+              nranks / num_devices,
+              external_comm,
+              stream,
+              dev_ctx);
+        } else {
+          NCCLAllReduceWithScale(fp32_grad,
+                                 fp32_sum_grad,
+                                 fp32_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+          NCCLAllReduceWithScale(fp16_grad,
+                                 fp16_sum_grad,
+                                 fp16_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+        }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
@@ -1890,18 +2164,18 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     VLOG(10) << "ReduceScatter done";
 
     // Step 7: update the moment1, moment2. Calcuate the trust_ratio_div
-    auto *fused_offsets_t = ctx.Input<framework::Tensor>("FusedParamOffsets");
+    auto *fused_offsets_t = ctx.Input<phi::DenseTensor>("FusedParamOffsets");
     auto *fused_offsets = fused_offsets_t->data<int>();
     auto *fp32_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP32ShardFusedParamOffsets");
+        ctx.Input<phi::DenseTensor>("FP32ShardFusedParamOffsets");
     const auto *fp32_partial_fused_offsets =
         fp32_partial_fused_offsets_t->data<int>();
     auto *fp16_partial_fused_offsets_t =
-        ctx.Input<framework::Tensor>("FP16ShardFusedParamOffsets");
+        ctx.Input<phi::DenseTensor>("FP16ShardFusedParamOffsets");
     const auto *fp16_partial_fused_offsets =
         fp16_partial_fused_offsets_t->data<int>();
 
-    auto *step = ctx.Output<framework::Tensor>("Step")->data<int64_t>();
+    auto *step = ctx.Output<phi::DenseTensor>("Step")->data<int64_t>();
 
     VLOG(1) << "FusedParamOffsets: "
             << FlattenToString(fused_offsets,

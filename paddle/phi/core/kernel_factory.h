@@ -32,7 +32,6 @@
 namespace phi {
 
 using DataType = paddle::experimental::DataType;
-using DataLayout = paddle::experimental::DataLayout;
 
 /**
  * [ Naming considerations ]
@@ -210,7 +209,7 @@ class KernelArgsDef {
 
 class Kernel {
  public:
-  // for map element contruct
+  // for map element construct
   Kernel() = default;
 
   explicit Kernel(KernelFn fn, void* variadic_fn)
@@ -272,9 +271,13 @@ class KernelFactory {
 
   KernelNameMap& kernels() { return kernels_; }
 
+<<<<<<< HEAD
   bool HasCompatiblePhiKernel(const std::string& op_type) const {
     return kernels_.find(TransToPhiKernelName(op_type)) != kernels_.end();
   }
+=======
+  bool HasCompatiblePhiKernel(const std::string& op_type) const;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
                                         const KernelKey& kernel_key,

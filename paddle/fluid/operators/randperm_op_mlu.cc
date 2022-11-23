@@ -25,10 +25,17 @@ class RandpermMLUKernel : public framework::OpKernel<T> {
     int n = ctx.Attr<int>("n");
     unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
     framework::Variable* out_var = ctx.OutputVar("Out");
+<<<<<<< HEAD
     framework::Tensor* out_tensor =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
 
     framework::Tensor tmp_tensor;
+=======
+    phi::DenseTensor* out_tensor =
+        framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
+
+    phi::DenseTensor tmp_tensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     tmp_tensor.Resize(phi::make_ddim({n}));
     T* tmp_data = tmp_tensor.mutable_data<T>(platform::CPUPlace());
     random_permate<T>(tmp_data, n, seed);

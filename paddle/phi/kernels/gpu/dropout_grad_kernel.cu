@@ -24,29 +24,55 @@ template <typename T, typename Context>
 void DropoutGradRawKernel(const Context& dev_ctx,
                           const DenseTensor& mask,
                           const DenseTensor& out_grad,
-                          float p,
+                          const Scalar& p,
                           bool is_test,
                           const std::string& mode,
                           DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
   x_grad->mutable_data<T>(dev_ctx.GetPlace());
+<<<<<<< HEAD
   paddle::operators::DropoutGradGPUKernelDriver<T>(
       dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, false);
+=======
+  paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
+                                                   is_test,
+                                                   p.to<float>(),
+                                                   upscale_in_train,
+                                                   out_grad,
+                                                   mask,
+                                                   x_grad,
+                                                   false);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 template <typename T, typename Context>
 void DropoutNdGradKernel(const Context& dev_ctx,
                          const DenseTensor& mask,
                          const DenseTensor& out_grad,
+<<<<<<< HEAD
                          float p,
+=======
+                         const Scalar& p,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                          bool is_test,
                          const std::string& mode,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(x_grad);
+<<<<<<< HEAD
   paddle::operators::DropoutGradGPUKernelDriver<T>(
       dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, true);
+=======
+  paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
+                                                   is_test,
+                                                   p.to<float>(),
+                                                   upscale_in_train,
+                                                   out_grad,
+                                                   mask,
+                                                   x_grad,
+                                                   true);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 }  // namespace phi

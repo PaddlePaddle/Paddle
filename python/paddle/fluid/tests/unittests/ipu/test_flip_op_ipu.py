@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -51,9 +54,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype=self.feed_dtype[0])
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.flip(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -69,7 +80,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_feed(self):
         data = np.random.randint(0, 10, size=[3, 2, 2])
         self.feed_fp32 = {'x': data.astype(np.int32)}
@@ -77,7 +91,10 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_feed(self):
         data = np.random.randint(0, 2, size=[4, 3, 2, 2])
         self.feed_fp32 = {'x': data.astype(np.bool)}

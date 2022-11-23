@@ -22,6 +22,7 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CoalesceKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCooTensor* out);
@@ -30,6 +31,16 @@ template <typename T, typename Context>
 SparseCooTensor Coalesce(const Context& dev_ctx, const SparseCooTensor& x) {
   SparseCooTensor coo;
   CoalesceKernel<T, Context>(dev_ctx, x, &coo);
+=======
+void CoalesceCooKernel(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       SparseCooTensor* out);
+
+template <typename T, typename Context>
+SparseCooTensor CoalesceCoo(const Context& dev_ctx, const SparseCooTensor& x) {
+  SparseCooTensor coo;
+  CoalesceCooKernel<T, Context>(dev_ctx, x, &coo);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return coo;
 }
 

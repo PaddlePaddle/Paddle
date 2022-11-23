@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import numpy as np
 import unittest
 import sys
@@ -30,11 +33,18 @@ np.random.seed(SEED)
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
+<<<<<<< HEAD
     return np.maximum(np.minimum(x * slope + offset, 1.), 0.).astype(x.dtype)
 
 
 class TestMLUHardSigmoid(OpTest):
 
+=======
+    return np.maximum(np.minimum(x * slope + offset, 1.0), 0.0).astype(x.dtype)
+
+
+class TestMLUHardSigmoid(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.enable_static()
 
@@ -45,7 +55,11 @@ class TestMLUHardSigmoid(OpTest):
 
         x = np.random.uniform(-5, 5, [10, 12]).astype(self.dtype)
         lower_threshold = -self.offset / self.slope
+<<<<<<< HEAD
         upper_threshold = (1. - self.offset) / self.slope
+=======
+        upper_threshold = (1.0 - self.offset) / self.slope
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # Same reason as TestAbs
         delta = 0.005
@@ -77,21 +91,30 @@ class TestMLUHardSigmoid(OpTest):
 
 
 class TestMLUHardSigmoid2(TestMLUHardSigmoid):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.5
 
 
 class TestMLUHardSigmoid3(TestMLUHardSigmoid):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_attrs(self):
         self.slope = 0.2
         self.offset = 0.4
 
 
 class TestMLUHardSigmoidFp16(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.disable_static()
 
@@ -116,6 +139,7 @@ class TestMLUHardSigmoidFp16(unittest.TestCase):
 
         cpu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - self.float16_y)),
+<<<<<<< HEAD
             np.sum(np.abs(self.float32_y.numpy())))
         mlu_diff_1 = np.divide(
             np.sum(np.abs(self.float32_y.numpy() - mlu_float16_y.numpy())),
@@ -127,6 +151,23 @@ class TestMLUHardSigmoidFp16(unittest.TestCase):
         mlu_diff_2 = np.divide(
             np.sum(np.square(self.float32_y.numpy() - mlu_float16_y.numpy())),
             np.sum(np.square(self.float32_y.numpy())))
+=======
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
+        mlu_diff_1 = np.divide(
+            np.sum(np.abs(self.float32_y.numpy() - mlu_float16_y.numpy())),
+            np.sum(np.abs(self.float32_y.numpy())),
+        )
+
+        cpu_diff_2 = np.divide(
+            np.sum(np.square(self.float32_y.numpy() - self.float16_y)),
+            np.sum(np.square(self.float32_y.numpy())),
+        )
+        mlu_diff_2 = np.divide(
+            np.sum(np.square(self.float32_y.numpy() - mlu_float16_y.numpy())),
+            np.sum(np.square(self.float32_y.numpy())),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert mlu_diff_1 <= cpu_diff_1
         assert mlu_diff_2 <= cpu_diff_2
 
@@ -147,7 +188,11 @@ class TestHardsigmoidAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
         out_ref = ref_hardsigmoid(self.x_np)
         for r in res:
+<<<<<<< HEAD
             self.assertTrue(np.allclose(out_ref, r))
+=======
+            np.testing.assert_allclose(out_ref, r, rtol=1e-6)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -157,6 +202,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
         out2 = m(x)
         out_ref = ref_hardsigmoid(self.x_np)
         for r in [out1, out2]:
+<<<<<<< HEAD
             self.assertTrue(np.allclose(out_ref, r.numpy()))
         paddle.enable_static()
 
@@ -173,6 +219,25 @@ class TestHardsigmoidAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x_np)
         out = paddle.fluid.layers.hard_sigmoid(x)
         self.assertTrue(np.allclose(out_ref, out.numpy()))
+=======
+            np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-6)
+        paddle.enable_static()
+
+    def test_fluid_api(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            x = fluid.data('X', self.x_np.shape, self.x_np.dtype)
+            out = paddle.nn.functional.hardsigmoid(x)
+            exe = fluid.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_hardsigmoid(self.x_np, 0.2, 0.5)
+        np.testing.assert_allclose(out_ref, res[0])
+
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.nn.functional.hardsigmoid(x)
+        np.testing.assert_allclose(out_ref, out.numpy())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         paddle.enable_static()
 
     def test_errors(self):
@@ -180,6 +245,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.hardsigmoid, 1)
             # The input dtype must be float16, float32, float64.
+<<<<<<< HEAD
             x_int32 = paddle.fluid.data(name='x_int32',
                                         shape=[12, 10],
                                         dtype='int32')
@@ -188,6 +254,16 @@ class TestHardsigmoidAPI(unittest.TestCase):
             x_fp16 = paddle.fluid.data(name='x_fp16',
                                        shape=[12, 10],
                                        dtype='float16')
+=======
+            x_int32 = paddle.fluid.data(
+                name='x_int32', shape=[12, 10], dtype='int32'
+            )
+            self.assertRaises(TypeError, F.hardsigmoid, x_int32)
+            # support the input dtype is float16
+            x_fp16 = paddle.fluid.data(
+                name='x_fp16', shape=[12, 10], dtype='float16'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             F.hardsigmoid(x_fp16)
 
 

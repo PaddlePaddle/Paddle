@@ -15,15 +15,10 @@
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
-import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume
 import hypothesis.strategies as st
-from functools import reduce
 
 
 class TestSeqConcatFcFusePass(PassAutoScanTest):
@@ -49,6 +44,7 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.random.random(shape).astype(np.float32)
 
+<<<<<<< HEAD
         sequence_expand_op1 = OpConfig(type="sequence_expand",
                                        inputs={
                                            "X": ["input_data1"],
@@ -64,13 +60,30 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
                                        },
                                        outputs={"Out": ["seq_exp2_out"]},
                                        attrs={"ref_level": ref_level})
+=======
+        sequence_expand_op1 = OpConfig(
+            type="sequence_expand",
+            inputs={"X": ["input_data1"], "Y": ["input_data2"]},
+            outputs={"Out": ["seq_exp1_out"]},
+            attrs={"ref_level": ref_level},
+        )
+
+        sequence_expand_op2 = OpConfig(
+            type="sequence_expand",
+            inputs={"X": ["input_data1"], "Y": ["input_data3"]},
+            outputs={"Out": ["seq_exp2_out"]},
+            attrs={"ref_level": ref_level},
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         concat_op = OpConfig(
             type="concat",
             inputs={"X": ["input_data1", "seq_exp1_out", "seq_exp2_out"]},
             outputs={"Out": ["concat_output"]},
-            attrs={'axis': axis1})
+            attrs={'axis': axis1},
+        )
 
+<<<<<<< HEAD
         mul_op = OpConfig(type="mul",
                           inputs={
                               "X": ["concat_output"],
@@ -97,21 +110,50 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
                               "use_cudnn": use_cudnn,
                               "use_mkldnn": use_mkldnn
                           })
+=======
+        mul_op = OpConfig(
+            type="mul",
+            inputs={"X": ["concat_output"], "Y": ["mul_weight"]},
+            outputs={"Out": ["mul_out"]},
+            attrs={"x_num_col_dims": x_col, "y_num_col_dims": y_col},
+        )
+
+        elt_op = OpConfig(
+            type="elementwise_add",
+            inputs={"X": ["mul_out"], "Y": ["elt_weight"]},
+            outputs={"Out": ["elt_out"]},
+            attrs={"axis": axis2},
+        )
+
+        act_op = OpConfig(
+            type=act_type,
+            inputs={"X": ["elt_out"]},
+            outputs={"Out": ["act_out"]},
+            attrs={"use_cudnn": use_cudnn, "use_mkldnn": use_mkldnn},
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         model_net = [
-            sequence_expand_op1, sequence_expand_op2, concat_op, mul_op, elt_op,
-            act_op
+            sequence_expand_op1,
+            sequence_expand_op2,
+            concat_op,
+            mul_op,
+            elt_op,
+            act_op,
         ]
 
         program_config = ProgramConfig(
             ops=model_net,
             weights={
-                "mul_weight":
-                TensorConfig(data_gen=partial(generate_weight, [384, dim])),
-                "elt_weight":
-                TensorConfig(data_gen=partial(generate_weight, [dim]))
+                "mul_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [384, dim])
+                ),
+                "elt_weight": TensorConfig(
+                    data_gen=partial(generate_weight, [dim])
+                ),
             },
             inputs={
+<<<<<<< HEAD
                 "input_data1":
                 TensorConfig(data_gen=partial(generate_input,
                                               [batch_size, 128]),
@@ -124,8 +166,23 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
                 TensorConfig(data_gen=partial(generate_input,
                                               [batch_size, 128]),
                              lod=[[0, 1]])
+=======
+                "input_data1": TensorConfig(
+                    data_gen=partial(generate_input, [batch_size, 128]),
+                    lod=[[0, 1]],
+                ),
+                "input_data2": TensorConfig(
+                    data_gen=partial(generate_input, [batch_size, 128]),
+                    lod=[[0, 1]],
+                ),
+                "input_data3": TensorConfig(
+                    data_gen=partial(generate_input, [batch_size, 128]),
+                    lod=[[0, 1]],
+                ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             },
-            outputs=["act_out"])
+            outputs=["act_out"],
+        )
 
         return program_config
 
@@ -141,8 +198,9 @@ class TestSeqConcatFcFusePass(PassAutoScanTest):
             return False
 
         self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass output has diff in a specific case. We need to fix it as soon as possible."
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The pass output has diff in a specific case. We need to fix it as soon as possible.",
         )
 
     def test(self):

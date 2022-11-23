@@ -49,7 +49,8 @@ class TestDeviceCapability(unittest.TestCase):
     def test_device_capability_CUDAPlace(self):
         if paddle.is_compiled_with_cuda():
             capability = paddle.device.cuda.get_device_capability(
-                paddle.CUDAPlace(0))
+                paddle.CUDAPlace(0)
+            )
             self.assertIsNotNone(capability)
 
 

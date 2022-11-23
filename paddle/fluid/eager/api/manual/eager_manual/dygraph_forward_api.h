@@ -16,14 +16,22 @@
 
 #include "paddle/phi/api/include/tensor.h"
 
+<<<<<<< HEAD
 paddle::experimental::Tensor add_n_final_state_dygraph_function(
     const std::vector<paddle::experimental::Tensor>& x);
 
 paddle::experimental::Tensor conv2d_final_state_dygraph_function(
+=======
+paddle::experimental::Tensor add_n_ad_func(
+    const std::vector<paddle::experimental::Tensor>& x);
+
+paddle::experimental::Tensor conv2d_ad_func(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
     std::vector<int> paddings,
+<<<<<<< HEAD
     std::string paddding_algorithm,
     int groups,
     std::vector<int> dilations,
@@ -31,3 +39,9 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search);
+=======
+    std::string padding_algorithm,
+    std::vector<int> dilations,
+    int groups,
+    std::string data_format);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

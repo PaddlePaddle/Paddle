@@ -16,6 +16,10 @@
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/phi/common/scalar.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 namespace phi {
@@ -23,11 +27,11 @@ template <typename T, typename Context>
 void PadKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int>& paddings,
-               float pad_value,
+               const Scalar& pad_value,
                DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
   int rank = x.dims().size();
   funcs::PaddingFunctor<Context, T>(
-      rank, dev_ctx, paddings, static_cast<T>(pad_value), x, out);
+      rank, dev_ctx, paddings, pad_value.to<T>(), x, out);
 }
 }  // namespace phi

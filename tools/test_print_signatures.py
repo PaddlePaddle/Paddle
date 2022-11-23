@@ -42,7 +42,7 @@ def func_example_2(func=functools.partial(func_example, 1)):
     pass
 
 
-class ClassExample():
+class ClassExample:
     """
     example Class
     """
@@ -69,8 +69,14 @@ class Test_is_primitive(unittest.TestCase):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
+<<<<<<< HEAD
         self.assertFalse(is_primitive(
             "hello paddle".encode('UTF-8')))  # True for python2
+=======
+        self.assertFalse(
+            is_primitive("hello paddle".encode('UTF-8'))
+        )  # True for python2
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 

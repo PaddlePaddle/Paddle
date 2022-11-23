@@ -11,8 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import paddle
 import unittest
 import numpy as np
@@ -59,10 +57,16 @@ class TestKLDivLossOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(['X'],
                         'Loss',
                         no_grad_set=set(["Target"]),
                         check_eager=True)
+=======
+        self.check_grad(
+            ['X'], 'Loss', no_grad_set=set(["Target"]), check_eager=True
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def initTestCase(self):
         self.x_shape = (4, 5, 5)
@@ -99,9 +103,16 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
         with paddle.fluid.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
+<<<<<<< HEAD
             pred_loss = kldiv_criterion(paddle.to_tensor(x),
                                         paddle.to_tensor(target))
             self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
+=======
+            pred_loss = kldiv_criterion(
+                paddle.to_tensor(x), paddle.to_tensor(target)
+            )
+            np.testing.assert_allclose(pred_loss.numpy(), gt_loss, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')

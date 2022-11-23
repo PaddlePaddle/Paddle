@@ -30,22 +30,36 @@ class TestComplexReshape(unittest.TestCase):
 
     def test_shape_norm_dims(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x_np = np.random.randn(
                 2, 3,
                 4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+=======
+            x_np = np.random.randn(2, 3, 4).astype(
+                dtype
+            ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             shape = (2, -1)
             for place in self._places:
                 with dg.guard(place):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    self.assertTrue(np.allclose(np.reshape(x_np, shape), y_np))
+                    np.testing.assert_allclose(
+                        np.reshape(x_np, shape), y_np, rtol=1e-05
+                    )
 
     def test_shape_omit_dims(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x_np = np.random.randn(
                 2, 3,
                 4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+=======
+            x_np = np.random.randn(2, 3, 4).astype(
+                dtype
+            ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             shape = (0, -1)
             shape_ = (2, 12)
             for place in self._places:
@@ -53,7 +67,9 @@ class TestComplexReshape(unittest.TestCase):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    self.assertTrue(np.allclose(np.reshape(x_np, shape_), y_np))
+                    np.testing.assert_allclose(
+                        np.reshape(x_np, shape_), y_np, rtol=1e-05
+                    )
 
     def test_eager(self):
         with _test_eager_guard():

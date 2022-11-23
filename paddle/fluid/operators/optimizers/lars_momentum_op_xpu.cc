@@ -27,6 +27,7 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool multi_precision = ctx.Attr<bool>("multi_precision");
+<<<<<<< HEAD
     auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
     auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
     auto param = ctx.MultiInput<framework::LoDTensor>("Param");
@@ -37,6 +38,17 @@ class LarsMomentumOpXPUKernel : public framework::OpKernel<T> {
     auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
     auto master_param_out =
         ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
+=======
+    auto param_out = ctx.MultiOutput<phi::DenseTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<phi::DenseTensor>("VelocityOut");
+    auto param = ctx.MultiInput<phi::DenseTensor>("Param");
+    auto velocity = ctx.MultiInput<phi::DenseTensor>("Velocity");
+    auto learning_rate = ctx.MultiInput<phi::DenseTensor>("LearningRate");
+    auto grad = ctx.MultiInput<phi::DenseTensor>("Grad");
+    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
+    auto master_param = ctx.MultiInput<phi::DenseTensor>("MasterParam");
+    auto master_param_out = ctx.MultiOutput<phi::DenseTensor>("MasterParamOut");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     float mu = static_cast<T>(ctx.Attr<float>("mu"));
     float lars_coeff = ctx.Attr<float>("lars_coeff");
     float epsilon = ctx.Attr<float>("epsilon");

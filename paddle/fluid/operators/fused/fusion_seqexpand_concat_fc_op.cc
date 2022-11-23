@@ -151,10 +151,10 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
     auto ins = ctx.MultiInput<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("FCWeight");
-    auto* b = ctx.Input<Tensor>("FCBias");
+    auto* w = ctx.Input<phi::DenseTensor>("FCWeight");
+    auto* b = ctx.Input<phi::DenseTensor>("FCBias");
     auto* out = ctx.Output<LoDTensor>("Out");
-    auto* fc_out = ctx.Output<Tensor>("FCOut");
+    auto* fc_out = ctx.Output<phi::DenseTensor>("FCOut");
 
     auto* ref_in = ins[0];
     auto ref_lod = ref_in->lod();

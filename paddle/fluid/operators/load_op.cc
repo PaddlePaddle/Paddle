@@ -12,7 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/load_op.h"
+=======
+#include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #include <string>
 
@@ -65,6 +71,7 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(load, ops::LoadOp, ops::LoadOpProtoMaker);
+<<<<<<< HEAD
 
 REGISTER_OP_CPU_KERNEL(
     load,
@@ -74,3 +81,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::LoadOpKernel<phi::CPUContext, int>,
     ops::LoadOpKernel<phi::CPUContext, int8_t>,
     ops::LoadOpKernel<phi::CPUContext, int64_t>);
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

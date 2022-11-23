@@ -38,9 +38,15 @@ template <typename DeviceContext, typename T>
 class ConcatFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const std::vector<framework::Tensor>& input,
                   int axis,
                   framework::Tensor* output);
+=======
+                  const std::vector<phi::DenseTensor>& input,
+                  int axis,
+                  phi::DenseTensor* output);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 /*
@@ -59,10 +65,17 @@ template <typename DeviceContext, typename T>
 class SplitFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
                   int axis,
                   std::vector<framework::Tensor*>* outputs);
+=======
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  int axis,
+                  std::vector<phi::DenseTensor*>* outputs);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 }  // namespace math

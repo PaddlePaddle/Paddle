@@ -24,10 +24,17 @@ template <typename DeviceContext, typename T>
 class WhereMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* condition = context.Input<framework::Tensor>("Condition");
     auto* X = context.Input<framework::Tensor>("X");
     auto* Y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
+=======
+    auto* condition = context.Input<phi::DenseTensor>("Condition");
+    auto* X = context.Input<phi::DenseTensor>("X");
+    auto* Y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto place = context.GetPlace();
     out->mutable_data<T>(place);
     MLUCnnlTensorDesc x_desc(*X);

@@ -40,7 +40,7 @@ class TestProgressBar(unittest.TestCase):
         progbar.update(1, [['loss', int(1)]])
         progbar.update(1, [['loss', 'INF']])
         progbar.update(1, [['loss', 1e-4]])
-        progbar.update(1, [['loss', np.array([1.])]])
+        progbar.update(1, [['loss', np.array([1.0])]])
         progbar.update(1, [['loss', np.array([1e-4])]])
         progbar.update(1, [['loss', np.array([1]).astype(np.uint16)]])
         progbar.start()

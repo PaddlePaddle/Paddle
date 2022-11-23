@@ -17,7 +17,7 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -41,8 +41,10 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         def generate_alpha(attrs: List[Dict[str, Any]], dim1, dim2, dim3):
             if attrs[0]["mode"] == "all":
                 return np.random.random(size=(1)).astype(np.float32)
-            elif attrs[0]["mode"] == "channel" and attrs[0][
-                    "data_format"] == "NCHW":
+            elif (
+                attrs[0]["mode"] == "channel"
+                and attrs[0]["data_format"] == "NCHW"
+            ):
                 shape = [1]
                 if dim1 != 0:
                     shape.append(dim1)
@@ -51,8 +53,10 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 if dim3 != 0:
                     shape.append(1)
                 return np.random.random(size=shape).astype(np.float32)
-            elif attrs[0]["mode"] == "channel" and attrs[0][
-                    "data_format"] == "NHWC":
+            elif (
+                attrs[0]["mode"] == "channel"
+                and attrs[0]["data_format"] == "NHWC"
+            ):
                 shape = [1]
                 if dim1 != 0:
                     shape.append(1)
@@ -86,30 +90,38 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
 
                         for mode in ["all", "channel", "element"]:
                             for data_format in ['NCHW', 'NHWC']:
-                                if mode == "channel" and dim1 == 0 and data_format == "NCHW":
+                                if (
+                                    mode == "channel"
+                                    and dim1 == 0
+                                    and data_format == "NCHW"
+                                ):
                                     continue
-                                if mode == "channel" and dim3 == 0 and data_format == "NHWC":
+                                if (
+                                    mode == "channel"
+                                    and dim3 == 0
+                                    and data_format == "NHWC"
+                                ):
                                     continue
-                                dics = [{
-                                    "mode": mode,
-                                    "data_format": data_format
-                                }]
-                                ops_config = [{
-                                    "op_type": "prelu",
-                                    "op_inputs": {
-                                        "X": ["input_data"],
-                                        "Alpha": ["alpha_weight"]
-                                    },
-                                    "op_outputs": {
-                                        "Out": ["output_data"]
-                                    },
-                                    "op_attrs": dics[0]
-                                }]
+                                dics = [
+                                    {"mode": mode, "data_format": data_format}
+                                ]
+                                ops_config = [
+                                    {
+                                        "op_type": "prelu",
+                                        "op_inputs": {
+                                            "X": ["input_data"],
+                                            "Alpha": ["alpha_weight"],
+                                        },
+                                        "op_outputs": {"Out": ["output_data"]},
+                                        "op_attrs": dics[0],
+                                    }
+                                ]
                                 ops = self.generate_op_config(ops_config)
 
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={
+<<<<<<< HEAD
                                         "alpha_weight":
                                         TensorConfig(data_gen=partial(
                                             generate_alpha, dics, dim1, dim2,
@@ -120,14 +132,42 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                                         TensorConfig(data_gen=partial(
                                             generate_input, batch, dim1, dim2,
                                             dim3)),
+=======
+                                        "alpha_weight": TensorConfig(
+                                            data_gen=partial(
+                                                generate_alpha,
+                                                dics,
+                                                dim1,
+                                                dim2,
+                                                dim3,
+                                            )
+                                        )
                                     },
-                                    outputs=["output_data"])
+                                    inputs={
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input,
+                                                batch,
+                                                dim1,
+                                                dim2,
+                                                dim3,
+                                            )
+                                        ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+                                    },
+                                    outputs=["output_data"],
+                                )
 
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def generate_dynamic_shape(attrs):
             if self.dim1 == 0:
                 self.dynamic_shape.min_input_shape = {
@@ -181,7 +221,12 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         ]
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape and self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
+            if (
+                not dynamic_shape
+                and self.dim1 == 0
+                and self.dim2 == 0
+                and self.dim3 == 0
+            ):
                 return 0, 3
             return 1, 2
 
@@ -189,19 +234,30 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-3, 1e-3)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def add_skip_trt_case(self):
         ver = paddle_infer.get_trt_compile_version()
@@ -213,8 +269,9 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 return False
 
             self.add_skip_case(
-                teller, SkipReasons.TRT_NOT_IMPLEMENTED,
-                "Need to repair the case: the output of GPU and tensorrt has diff in trt6, the prelu static plugin has bug."
+                teller,
+                SkipReasons.TRT_NOT_IMPLEMENTED,
+                "Need to repair the case: the output of GPU and tensorrt has diff in trt6, the prelu static plugin has bug.",
             )
 
     def test(self):

@@ -1,4 +1,4 @@
-add_subdirectory(final_state_generator)
+add_subdirectory(generator)
 
 set(EAGER_GENERETOR_DEPS
     ${GLOB_OP_LIB}
@@ -88,7 +88,11 @@ if(WIN32)
   endif()
 
   add_custom_target(
+<<<<<<< HEAD
     eager_codegen
+=======
+    legacy_eager_codegen
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     COMMAND
       "${eager_generator_path}/eager_generator.exe"
       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
@@ -97,10 +101,17 @@ if(WIN32)
     VERBATIM)
 else()
   add_custom_target(
+<<<<<<< HEAD
     eager_codegen
     COMMAND
       ${CMAKE_COMMAND} -E env
       "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind"
+=======
+    legacy_eager_codegen
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
       "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
       "${CODE_GEN_SPLIT_FILE_COUNT}"

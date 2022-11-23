@@ -14,47 +14,59 @@
 
 import unittest
 
-import numpy as np
 import paddle
 from paddle.distribution import variable
 from paddle.distribution import constraint
 
-import config
 import parameterize as param
+
+paddle.seed(2022)
 
 
 @param.param_cls(
     (param.TEST_CASE_NAME, 'is_discrete', 'event_rank', 'constraint'),
-    [('NotImplement', False, 0, constraint.Constraint())])
+    [('NotImplement', False, 0, constraint.Constraint())],
+)
 class TestVariable(unittest.TestCase):
 
     def setUp(self):
-        self._var = variable.Variable(self.is_discrete, self.event_rank,
-                                      self.constraint)
+        self._var = variable.Variable(
+            self.is_discrete, self.event_rank, self.constraint
+        )
 
-    @param.param_func([(1, )])
+    @param.param_func([(1,)])
     def test_costraint(self, value):
         with self.assertRaises(NotImplementedError):
             self._var.constraint(value)
 
 
-@param.param_cls((param.TEST_CASE_NAME, 'base', 'rank'),
-                 [('real_base', variable.real, 10)])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'base', 'rank'), [('real_base', variable.real, 10)]
+)
 class TestIndependent(unittest.TestCase):
 
     def setUp(self):
         self._var = variable.Independent(self.base, self.rank)
 
+<<<<<<< HEAD
     @param.param_func([
         (paddle.rand([2, 3, 4]), ValueError),
     ])
+=======
+    @param.param_func(
+        [
+            (paddle.rand([2, 3, 4]), ValueError),
+        ]
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_costraint(self, value, expect):
         with self.assertRaises(expect):
             self._var.constraint(value)
 
 
-@param.param_cls((param.TEST_CASE_NAME, 'vars', 'axis'),
-                 [('real_base', [variable.real], 10)])
+@param.param_cls(
+    (param.TEST_CASE_NAME, 'vars', 'axis'), [('real_base', [variable.real], 10)]
+)
 class TestStack(unittest.TestCase):
 
     def setUp(self):
@@ -63,9 +75,17 @@ class TestStack(unittest.TestCase):
     def test_is_discrete(self):
         self.assertEqual(self._var.is_discrete, False)
 
+<<<<<<< HEAD
     @param.param_func([
         (paddle.rand([2, 3, 4]), ValueError),
     ])
+=======
+    @param.param_func(
+        [
+            (paddle.rand([2, 3, 4]), ValueError),
+        ]
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_costraint(self, value, expect):
         with self.assertRaises(expect):
             self._var.constraint(value)

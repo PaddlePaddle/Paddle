@@ -43,12 +43,15 @@ int CtrDymfAccessor::Initialize() {
   if (_config.ctr_accessor_param().show_scale()) {
     _show_scale = true;
   }
+<<<<<<< HEAD
   for (int i = 0; i < _config.ctr_accessor_param().load_filter_slots_size();
        i++) {
     _filtered_slots.insert(_config.ctr_accessor_param().load_filter_slots(i));
     VLOG(0) << "CtrDymfAccessor::Initialize() load filter slot:"
             << _config.ctr_accessor_param().load_filter_slots(i);
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   VLOG(0) << " INTO CtrDymfAccessor::Initialize(); embed_sgd_dim:"
           << common_feature_value.embed_sgd_dim
           << " embedx_dim:" << common_feature_value.embedx_dim

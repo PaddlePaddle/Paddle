@@ -12,16 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/eigvalsh_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class EigvalshOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigvalsh");
@@ -59,6 +62,8 @@ class EigvalshOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Eigenvectors", input_dim);
     }
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class EigvalshOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,6 +105,7 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(
         ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors", "EigvalshGrad");
@@ -114,6 +120,8 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
     }
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -144,10 +152,21 @@ class EigvalshGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(eigvalsh,
+                            EigvalshInferShapeFunctor,
+                            PD_INFER_META(phi::EigvalshInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(eigvalsh_grad,
+                            EigvalshGradInferShapeFunctor,
+                            PD_INFER_META(phi::EigvalshGradInferMeta));
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OPERATOR(eigvalsh,
                   ops::EigvalshOp,
                   ops::EigvalshOpMaker,
                   ops::EigvalshGradOpMaker<paddle::framework::OpDesc>,
+<<<<<<< HEAD
                   ops::EigvalshGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
 
@@ -171,3 +190,10 @@ REGISTER_OP_CPU_KERNEL(
     ops::EigvalshGradKernel<phi::CPUContext,
                             double,
                             paddle::platform::complex<double>>);
+=======
+                  ops::EigvalshGradOpMaker<paddle::imperative::OpBase>,
+                  EigvalshInferShapeFunctor);
+REGISTER_OPERATOR(eigvalsh_grad,
+                  ops::EigvalshGradOp,
+                  EigvalshGradInferShapeFunctor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

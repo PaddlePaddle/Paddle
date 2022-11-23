@@ -18,16 +18,16 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 
 namespace paddle {
 namespace operators {
 
 namespace math {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 /*
  * \brief Context projection concatenates features in adjacent time-steps in
@@ -90,17 +90,26 @@ class ContextProjectFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const LoDTensor& in,
+<<<<<<< HEAD
                   const Tensor* padding_data,
+=======
+                  const phi::DenseTensor* padding_data,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   bool padding_trainable,
                   const int context_start,
                   const int context_length,
                   const int context_stride,
                   const int up_pad,
                   const int down_pad,
+<<<<<<< HEAD
                   Tensor* col) {
+=======
+                  phi::DenseTensor* col) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto lod_level_0 = in.lod()[0];
 
-    math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, float> im2col_ocf;
+    phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        im2col_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});
@@ -226,11 +235,17 @@ class ContextProjectGradFunctor {
                   const int down_pad,
                   bool pad_grad,
                   bool input_grad,
+<<<<<<< HEAD
                   Tensor* padding_data,
                   Tensor* col) {
+=======
+                  phi::DenseTensor* padding_data,
+                  phi::DenseTensor* col) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto lod_level_0 = in.lod()[0];
 
-    math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, float> col2im_ocf;
+    phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, float>
+        col2im_ocf;
 
     std::vector<int> dilation({1, 1});
     std::vector<int> padding({up_pad, 0, down_pad, 0});

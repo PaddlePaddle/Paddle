@@ -110,10 +110,36 @@ int RemovePaddingPlugin::enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
   const int32_t* input1 =
       static_cast<const int32_t*>(inputs[1]);  // pos_id_tensor
   float* output = static_cast<float*>(outputs[0]);
+<<<<<<< HEAD
 
   const auto input0_desc = inputDesc[0];
 
   const int32_t num_threads = 256;
+=======
+  const auto input0_desc = inputDesc[0];
+  int32_t num_threads;
+  if (input0_desc.dims.d[2] % 512 == 0) {
+    num_threads = 512;
+  } else if (input0_desc.dims.d[2] % 256 == 0) {
+    num_threads = 256;
+  } else if (input0_desc.dims.d[2] % 128 == 0) {
+    num_threads = 128;
+  } else if (input0_desc.dims.d[2] % 64 == 0) {
+    num_threads = 64;
+  } else if (input0_desc.dims.d[2] % 32 == 0) {
+    num_threads = 32;
+  } else if (input0_desc.dims.d[2] % 16 == 0) {
+    num_threads = 16;
+  } else if (input0_desc.dims.d[2] % 8 == 0) {
+    num_threads = 8;
+  } else if (input0_desc.dims.d[2] % 4 == 0) {
+    num_threads = 4;
+  } else if (input0_desc.dims.d[2] % 2 == 0) {
+    num_threads = 2;
+  } else {
+    num_threads = 1;
+  }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   const dim3 num_blocks(
       input0_desc.dims.d[0],
       input0_desc.dims.d[1],

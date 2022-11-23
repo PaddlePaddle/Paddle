@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import unittest
 import numpy as np
 import sys
@@ -29,7 +32,10 @@ paddle.enable_static()
 
 
 class TestMeshgridOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = "meshgrid"
         self.place = paddle.device.MLUPlace(0)
@@ -52,7 +58,11 @@ class TestMeshgridOp(OpTest):
         ins = []
         outs = []
         for i in range(len(self.shape)):
+<<<<<<< HEAD
             ins.append(np.random.random((self.shape[i], )).astype(self.dtype))
+=======
+            ins.append(np.random.random((self.shape[i],)).astype(self.dtype))
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         for i in range(len(self.shape)):
             out_reshape = [1] * len(self.shape)
@@ -66,23 +76,46 @@ class TestMeshgridOp(OpTest):
 
 
 class TestMeshgridOp2(TestMeshgridOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def get_x_shape(self):
         return [100, 300]
 
 
 class TestMeshgridOp3(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_api(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(0, 100, [
             100,
         ]).astype('int32')
         input_2 = np.random.randint(0, 100, [
             200,
         ]).astype('int32')
+=======
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -91,28 +124,56 @@ class TestMeshgridOp3(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid(x, y)
+<<<<<<< HEAD
         res_1, res_2 = exe.run(fluid.default_main_program(),
                                feed={
                                    'x': input_1,
                                    'y': input_2
                                },
                                fetch_list=[grid_x, grid_y])
+=======
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_list_input(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(0, 100, [
             100,
         ]).astype('int32')
         input_2 = np.random.randint(0, 100, [
             200,
         ]).astype('int32')
+=======
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -121,29 +182,57 @@ class TestMeshgridOp4(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+<<<<<<< HEAD
         res_1, res_2 = exe.run(fluid.default_main_program(),
                                feed={
                                    'x': input_1,
                                    'y': input_2
                                },
                                fetch_list=[grid_x, grid_y])
+=======
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_tuple_input(self):
         x = fluid.data(shape=[100], dtype='int32', name='x')
         y = fluid.data(shape=[200], dtype='int32', name='y')
 
+<<<<<<< HEAD
         input_1 = np.random.randint(0, 100, [
             100,
         ]).astype('int32')
         input_2 = np.random.randint(0, 100, [
             200,
         ]).astype('int32')
+=======
+        input_1 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_2 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out_1 = np.reshape(input_1, [100, 1])
         out_1 = np.broadcast_to(out_1, [100, 200])
@@ -152,18 +241,27 @@ class TestMeshgridOp5(unittest.TestCase):
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
         grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+<<<<<<< HEAD
         res_1, res_2 = exe.run(fluid.default_main_program(),
                                feed={
                                    'x': input_1,
                                    'y': input_2
                                },
                                fetch_list=[grid_x, grid_y])
+=======
+        res_1, res_2 = exe.run(
+            fluid.default_main_program(),
+            feed={'x': input_1, 'y': input_2},
+            fetch_list=[grid_x, grid_y],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         assert np.array_equal(res_1, out_1)
         assert np.array_equal(res_2, out_2)
 
 
 class TestMeshgridOp7(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_api_with_dygraph_list_input(self):
         input_3 = np.random.randint(0, 100, [
@@ -172,6 +270,23 @@ class TestMeshgridOp7(unittest.TestCase):
         input_4 = np.random.randint(0, 100, [
             200,
         ]).astype('int32')
+=======
+    def test_api_with_dygraph_list_input(self):
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)
@@ -183,6 +298,7 @@ class TestMeshgridOp7(unittest.TestCase):
 
 
 class TestMeshgridOp8(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_api_with_dygraph_tuple_input(self):
         input_3 = np.random.randint(0, 100, [
@@ -191,6 +307,23 @@ class TestMeshgridOp8(unittest.TestCase):
         input_4 = np.random.randint(0, 100, [
             200,
         ]).astype('int32')
+=======
+    def test_api_with_dygraph_tuple_input(self):
+        input_3 = np.random.randint(
+            0,
+            100,
+            [
+                100,
+            ],
+        ).astype('int32')
+        input_4 = np.random.randint(
+            0,
+            100,
+            [
+                200,
+            ],
+        ).astype('int32')
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         with fluid.dygraph.guard():
             tensor_3 = fluid.dygraph.to_variable(input_3)

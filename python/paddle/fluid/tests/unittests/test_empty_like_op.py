@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid.data_feeder import convert_dtype
 import paddle.fluid.core as core
 from paddle.static import program_guard, Program
@@ -28,6 +25,7 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
     def __check_out__(self, out):
         data_type = convert_dtype(out.dtype)
         self.assertEqual(
+<<<<<<< HEAD
             data_type, self.dst_dtype,
             'dtype should be %s, but get %s' % (self.dst_dtype, data_type))
 
@@ -35,20 +33,37 @@ class TestEmptyLikeAPICommon(unittest.TestCase):
         self.assertTupleEqual(
             shape, self.dst_shape,
             'shape should be %s, but get %s' % (self.dst_shape, shape))
+=======
+            data_type,
+            self.dst_dtype,
+            'dtype should be %s, but get %s' % (self.dst_dtype, data_type),
+        )
+
+        shape = out.shape
+        self.assertTupleEqual(
+            shape,
+            self.dst_shape,
+            'shape should be %s, but get %s' % (self.dst_shape, shape),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         if data_type in ['float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(out)
             min_value = np.nanmin(out)
             always_non_full_zero = max_value >= min_value
             always_full_zero = max_value == 0.0 and min_value == 0.0
-            self.assertTrue(always_full_zero or always_non_full_zero,
-                            'always_full_zero or always_non_full_zero.')
+            self.assertTrue(
+                always_full_zero or always_non_full_zero,
+                'always_full_zero or always_non_full_zero.',
+            )
         elif data_type in ['bool']:
             total_num = out.size
-            true_num = np.sum(out == True)
-            false_num = np.sum(out == False)
-            self.assertTrue(total_num == true_num + false_num,
-                            'The value should always be True or False.')
+            true_num = np.sum(out)
+            false_num = np.sum(~out)
+            self.assertTrue(
+                total_num == true_num + false_num,
+                'The value should always be True or False.',
+            )
         else:
             self.assertTrue(False, 'invalid data type')
 
@@ -167,6 +182,7 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
         with program_guard(train_program, startup_program):
             x = np.random.random(self.x_shape).astype(dtype)
+<<<<<<< HEAD
             data_x = paddle.static.data('x',
                                         shape=self.data_x_shape,
                                         dtype=dtype)
@@ -175,6 +191,19 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
         place = paddle.CUDAPlace(
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+=======
+            data_x = paddle.static.data(
+                'x', shape=self.data_x_shape, dtype=dtype
+            )
+
+            out = paddle.empty_like(data_x)
+
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         exe = paddle.static.Executor(place)
         res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
 

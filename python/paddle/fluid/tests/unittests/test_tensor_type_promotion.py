@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
-import numpy as np
 import warnings
 import paddle
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorTypePromotion(unittest.TestCase):
@@ -26,34 +24,71 @@ class TestTensorTypePromotion(unittest.TestCase):
         self.x = paddle.to_tensor([2, 3])
         self.y = paddle.to_tensor([1.0, 2.0])
 
-    def test_operator(self):
+    def add_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x + self.y
             self.assertTrue(
+<<<<<<< HEAD
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
+=======
+                "The dtype of left and right variables are not the same"
+                in str(context[-1].message)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
+    def sub_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x - self.y
             self.assertTrue(
+<<<<<<< HEAD
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
+=======
+                "The dtype of left and right variables are not the same"
+                in str(context[-1].message)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
+    def mul_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x * self.y
             self.assertTrue(
+<<<<<<< HEAD
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
+=======
+                "The dtype of left and right variables are not the same"
+                in str(context[-1].message)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
+    def div_operator(self):
         with warnings.catch_warnings(record=True) as context:
             warnings.simplefilter("always")
             self.x / self.y
             self.assertTrue(
+<<<<<<< HEAD
                 "The dtype of left and right variables are not the same" in str(
                     context[-1].message))
+=======
+                "The dtype of left and right variables are not the same"
+                in str(context[-1].message)
+            )
+
+    def test_operator(self):
+        with _test_eager_guard():
+            pass
+            # add / sub / mul / div has been sunk to cpp level, there is no warnings to catch by this test.
+        self.setUp()
+        self.add_operator()
+        self.sub_operator()
+        self.mul_operator()
+        self.div_operator()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

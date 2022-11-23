@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy
+import numpy as np
 import paddle
 import unittest
 
@@ -37,9 +35,13 @@ class TestTensorClone(unittest.TestCase):
     def test_tensor_clone(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)
+<<<<<<< HEAD
         self.assertTrue(numpy.allclose(dygraph_res, static_res),
                         msg='dygraph res is {}\nstatic_res is {}'.format(
                             dygraph_res, static_res))
+=======
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 @paddle.jit.to_static
@@ -62,6 +64,51 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
         dygraph_res = self._run(to_static=False)
         with self.assertRaises(AssertionError):
             static_res = self._run(to_static=True)
+
+
+@paddle.jit.to_static
+def tensor_item(x):
+    x = paddle.to_tensor(x)
+    y = x.clone()
+    return y.item()
+
+
+class TestTensorItem(unittest.TestCase):
+    def _run(self, to_static):
+        prog_trans = paddle.jit.ProgramTranslator()
+        prog_trans.enable(to_static)
+        x = paddle.ones([1])
+        if to_static:
+            return tensor_item(x).numpy()
+        return tensor_item(x)
+
+    def test_tensor_clone(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        np.testing.assert_allclose(dygraph_res, static_res)
+
+
+@paddle.jit.to_static
+def tensor_size(x):
+    x = paddle.to_tensor(x)
+    x = paddle.reshape(x, paddle.shape(x))  # dynamic shape
+    y = x.size
+    return y
+
+
+class TestTensorSize(unittest.TestCase):
+    def _run(self, to_static):
+        prog_trans = paddle.jit.ProgramTranslator()
+        prog_trans.enable(to_static)
+        x = paddle.ones([1, 2, 3])
+        if not to_static:
+            return tensor_size(x)
+        return tensor_size(x).numpy()
+
+    def test_tensor_clone(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
 
 if __name__ == '__main__':

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import unittest
 import numpy as np
@@ -63,15 +62,16 @@ class TestConv2DTransposeOp(OpTest):
             'use_cudnn': False,
             'is_test': False,
             'use_mkldnn': False,
-            'data_format': self.data_format
+            'data_format': self.data_format,
         }
         if self.output_size is not None:
             self.attrs['output_size'] = self.output_size
 
         if len(self.output_padding) > 0:
             self.attrs['output_padding'] = self.output_padding
-        output = conv2dtranspose_forward_naive(input_, filter_,
-                                               self.attrs).astype(self.dtype)
+        output = conv2dtranspose_forward_naive(
+            input_, filter_, self.attrs
+        ).astype(self.dtype)
 
         self.outputs = {'Output': output}
 
@@ -80,6 +80,7 @@ class TestConv2DTransposeOp(OpTest):
 
     def test_check_grad_no_input(self):
         if self.need_check_grad:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['Filter'],
                                        'Output',
                                        no_grad_set=set(['Input']),
@@ -100,6 +101,36 @@ class TestConv2DTransposeOp(OpTest):
                                        'Output',
                                        max_relative_error=0.02,
                                        numeric_place=paddle.CPUPlace())
+=======
+            self.check_grad_with_place(
+                self.place,
+                ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                numeric_place=paddle.CPUPlace(),
+            )
+
+    def test_check_grad_no_filter(self):
+        if self.need_check_grad:
+            self.check_grad_with_place(
+                self.place,
+                ['Input'],
+                'Output',
+                no_grad_set=set(['Filter']),
+                max_relative_error=0.006,
+                numeric_place=paddle.CPUPlace(),
+            )
+
+    def test_check_grad(self):
+        if self.need_check_grad:
+            self.check_grad_with_place(
+                self.place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.02,
+                numeric_place=paddle.CPUPlace(),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -446,8 +477,13 @@ class TestWithEvenUpsample_NHWC_output_padding(TestConv2DTransposeOp):
 
 
 class TestWithEvenUpsample_NHWC_output_padding_FP16(
+<<<<<<< HEAD
         TestWithEvenUpsample_NHWC_output_padding):
 
+=======
+    TestWithEvenUpsample_NHWC_output_padding
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def init_dtype(self):
         self.dtype = np.float16
         self.need_check_grad = False
@@ -456,6 +492,7 @@ class TestWithEvenUpsample_NHWC_output_padding_FP16(
 class TestConv2DTransposeAPI(unittest.TestCase):
 
     def test_case1(self):
+<<<<<<< HEAD
         data1 = fluid.layers.data(name='data1',
                                   shape=[3, 5, 5],
                                   dtype='float32')
@@ -504,6 +541,68 @@ class TestConv2DTransposeAPI(unittest.TestCase):
                                              output_size=[7, 7],
                                              padding=[0, 0],
                                              data_format='NHWC')
+=======
+        data1 = fluid.layers.data(
+            name='data1', shape=[3, 5, 5], dtype='float32'
+        )
+        data2 = fluid.layers.data(
+            name='data2', shape=[5, 5, 3], dtype='float32'
+        )
+        out1 = paddle.static.nn.conv2d_transpose(
+            input=data1,
+            groups=1,
+            num_filters=6,
+            filter_size=3,
+            data_format='NCHW',
+        )
+        out2 = paddle.static.nn.conv2d_transpose(
+            input=data2,
+            groups=1,
+            num_filters=6,
+            filter_size=3,
+            data_format='NHWC',
+        )
+        out3 = paddle.static.nn.conv2d_transpose(
+            input=data1,
+            groups=1,
+            num_filters=6,
+            filter_size=3,
+            padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
+            data_format='NHWC',
+        )
+        out4 = paddle.static.nn.conv2d_transpose(
+            input=data1,
+            groups=3,
+            num_filters=6,
+            filter_size=3,
+            padding=[[0, 0], [0, 0], [2, 1], [0, 0]],
+            data_format='NCHW',
+        )
+        out5 = paddle.static.nn.conv2d_transpose(
+            input=data2,
+            groups=1,
+            num_filters=6,
+            filter_size=3,
+            padding='SAME',
+            data_format='NCHW',
+        )
+        out6 = paddle.static.nn.conv2d_transpose(
+            input=data1,
+            groups=1,
+            num_filters=6,
+            filter_size=3,
+            padding='VALID',
+            data_format='NHWC',
+        )
+        out7 = paddle.static.nn.conv2d_transpose(
+            input=data1,
+            groups=1,
+            num_filters=6,
+            output_size=[7, 7],
+            padding=[0, 0],
+            data_format='NHWC',
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         data1_np = np.random.random((2, 3, 5, 5)).astype("float32")
         data2_np = np.random.random((2, 5, 5, 3)).astype("float32")
@@ -511,6 +610,7 @@ class TestConv2DTransposeAPI(unittest.TestCase):
         place = core.NPUPlace(0)
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "data1": data1_np,
@@ -518,6 +618,14 @@ class TestConv2DTransposeAPI(unittest.TestCase):
                           },
                           fetch_list=[out1, out2, out3, out4, out5, out6, out7],
                           return_numpy=True)
+=======
+        results = exe.run(
+            fluid.default_main_program(),
+            feed={"data1": data1_np, "data2": data2_np},
+            fetch_list=[out1, out2, out3, out4, out5, out6, out7],
+            return_numpy=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.assertIsNotNone(results[0])
         self.assertIsNotNone(results[1])
         self.assertIsNotNone(results[2])
@@ -531,7 +639,7 @@ class TestConv2DTransposeRepr(unittest.TestCase):
 
     def test_case(self):
         paddle.disable_static(paddle.NPUPlace(0))
-        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+        x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1.0, max=1.0)
         conv = nn.Conv2DTranspose(4, 6, (3, 3), output_padding=1, stride=2)
         print(conv)
         y_var = conv(x_var)

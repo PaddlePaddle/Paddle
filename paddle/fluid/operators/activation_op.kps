@@ -13,7 +13,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/bfloat16.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
@@ -72,13 +76,13 @@ class ActivationCudaKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor* x = nullptr;
-    framework::Tensor* out = nullptr;
+    const phi::DenseTensor* x = nullptr;
+    phi::DenseTensor* out = nullptr;
     ExtractActivationTensor(ctx, &x, &out);
     out->mutable_data<T>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    std::vector<const framework::Tensor*> ins = {x};
-    std::vector<framework::Tensor*> outs = {out};
+    std::vector<const phi::DenseTensor*> ins = {x};
+    std::vector<phi::DenseTensor*> outs = {out};
     auto functor = Functor();
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -95,8 +99,8 @@ class ActivationGradCudaKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const framework::Tensor *x, *out, *d_out;
-    framework::Tensor* d_x = nullptr;
+    const phi::DenseTensor *x, *out, *d_out;
+    phi::DenseTensor* d_x = nullptr;
     x = out = d_out = nullptr;
     ExtractActivationGradTensor<Functor::FwdDeps()>(
         ctx, &x, &out, &d_out, &d_x);
@@ -108,8 +112,8 @@ class ActivationGradCudaKernel
       *attr.second = ctx.Attr<float>(attr.first);
     }
 
-    std::vector<const framework::Tensor*> ins = {d_out};
-    std::vector<framework::Tensor*> outs = {d_x};
+    std::vector<const phi::DenseTensor*> ins = {d_out};
+    std::vector<phi::DenseTensor*> outs = {d_x};
 
     if (static_cast<int>(Functor::FwdDeps()) ==
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
@@ -130,6 +134,11 @@ class ActivationGradCudaKernel
   }
 };
 
+template <typename T>
+using CudaBReluFunctor = phi::funcs::CudaHardTanhFunctor<T>;
+template <typename T>
+using CudaBReluGradFunctor = phi::funcs::CudaHardTanhGradFunctor<T>;
+
 USE_PHI_FUNCTOR(CudaCos)
 USE_PHI_FUNCTOR(CudaTan)
 USE_PHI_FUNCTOR(CudaAcos)
@@ -142,7 +151,6 @@ USE_PHI_FUNCTOR(CudaAsinh)
 USE_PHI_FUNCTOR(CudaAcosh)
 USE_PHI_FUNCTOR(CudaAtanh)
 USE_PHI_FUNCTOR(CudaTanh)
-USE_PHI_FUNCTOR(CudaBRelu)
 USE_PHI_FUNCTOR(CudaLeakyRelu)
 USE_PHI_FUNCTOR(CudaThresholdedRelu)
 USE_PHI_FUNCTOR(CudaRelu6)
@@ -239,6 +247,7 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<phi::GPUContext,                           \
                                     ops::grad_functor<plat::bfloat16>>);
 
+<<<<<<< HEAD
 REGISTER_OP_CUDA_KERNEL(
     relu6,
     ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<float>>,
@@ -250,6 +259,19 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationCudaKernel<phi::GPUContext,
                               ops::CudaRelu6Functor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
+=======
+REGISTER_OP_CUDA_KERNEL(
+    relu6,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<float>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<double>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int64_t>>,
+    ops::ActivationCudaKernel<phi::GPUContext,
+                              ops::CudaRelu6Functor<plat::float16>>,
+    ops::ActivationCudaKernel<phi::GPUContext,
+                              ops::CudaRelu6Functor<plat::bfloat16>>);
+REGISTER_OP_CUDA_KERNEL(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     relu6_grad,
     ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<float>>,
@@ -276,13 +298,13 @@ REGISTER_OP_KERNEL(
     KP,
     plat::XPUPlace,
     ops::ActivationCudaKernel<paddle::platform::XPUDeviceContext,
-                              phi::funcs::CudaBReluFunctor<float>>);
+                              phi::funcs::CudaHardTanhFunctor<float>>);
 REGISTER_OP_KERNEL(
     brelu_grad,
     KP,
     plat::XPUPlace,
     ops::ActivationGradCudaKernel<paddle::platform::XPUDeviceContext,
-                                  phi::funcs::CudaBReluGradFunctor<float>>);
+                                  phi::funcs::CudaHardTanhGradFunctor<float>>);
 
 REGISTER_OP_KERNEL(ceil,
                    KP,

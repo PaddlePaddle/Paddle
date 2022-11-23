@@ -41,11 +41,14 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Input(Bias) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
         context->HasInput("BiasQK"),
         true,
         platform::errors::InvalidArgument(
             "Input(BiasQK) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         context->HasOutput("Out"),
         true,
         platform::errors::InvalidArgument(
@@ -69,6 +72,7 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
             "%d-D tensor now.",
             dim_bias_q.size()));
 
+<<<<<<< HEAD
     auto dim_bias_qk = context->GetInputDim("BiasQK");
     PADDLE_ENFORCE_GT(
         dim_bias_qk.size(),
@@ -78,6 +82,8 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
             "but it's %d-D tensor now.",
             dim_bias_qk.size()));
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto dim_input = context->GetInputDim("Input");
     context->SetOutputDim("Out", dim_input);
     context->ShareLoD("Input", /*->*/ "Out");
@@ -90,7 +96,8 @@ class MultiHeadMatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "The input of MultiHeadMatMul op");
     AddInput("W", "The weight input of MultiHeadMatMul op");
     AddInput("Bias", "The bias input of MultiHeadMatMul op");
-    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op");
+    AddInput("BiasQK", "The QK bias input of MultiHeadMatMul op")
+        .AsDispensable();
     AddOutput("Out", "The output of MultiHeadMatMul op");
     AddAttr<bool>("transpose_Q",
                   R"DOC(If true, use the transpose of `Q`.

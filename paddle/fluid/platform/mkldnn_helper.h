@@ -21,38 +21,16 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNMemoryFormat = dnnl::memory::format_tag;
+using OneDNNMemoryFormat = dnnl::memory::format_tag;
 #endif
 namespace platform {
-
-using MKLDNNStream = dnnl::stream;
-using MKLDNNEngine = dnnl::engine;
-using MKLDNNMemory = dnnl::memory;
-using MKLDNNMemoryDescriptor = dnnl::memory::desc;
-using MKLDNNPrimitive = dnnl::primitive;
-using MKLDNNPrimitiveDesc = dnnl::handle<dnnl_primitive_desc_t>;
-
-typedef std::unique_ptr<MKLDNNStream> MKLDNNStreamPtr;
-typedef std::unique_ptr<MKLDNNEngine> MKLDNNEnginePtr;
-typedef std::unique_ptr<MKLDNNMemory> MKLDNNMemoryPtr;
-typedef std::unique_ptr<MKLDNNPrimitive> MKLDNNPrimitivePtr;
-typedef std::unique_ptr<MKLDNNPrimitiveDesc> MKLDNNPrimitiveDescPtr;
-
-template <typename Type>
-void* to_void_cast(const Type* t) {
-  return static_cast<void*>(const_cast<Type*>(t));
-}
-
-template <typename Type>
-void* to_void_reinterpret_cast(const Type* t) {
-  return reinterpret_cast<void*>(const_cast<Type*>(t));
-}
 
 template <class Type>
 using tf_desc = typename Type::desc;
@@ -60,6 +38,7 @@ using tf_desc = typename Type::desc;
 template <class Type>
 using tf_pd = typename Type::primitive_desc;
 
+<<<<<<< HEAD
 template <typename Type, typename Engine, typename... Args>
 std::shared_ptr<tf_pd<Type>> MKLDNNFwdPrimitiveDesc(const Engine& e,
                                                     Args&&... args) {
@@ -141,6 +120,8 @@ inline dnnl::memory::desc MKLDNNMemDesc(const std::vector<int64_t>& dims,
   return dnnl::memory::desc({dims}, data_type, format);
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 inline void ClearMKLDNNCache(const platform::Place& place,
                              void* ptr = nullptr) {
   // Clear mkl-dnn cache,
@@ -162,6 +143,7 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
   }
 }
 
+<<<<<<< HEAD
 template <typename Type>
 dnnl::memory::data_type MKLDNNGetDataType() {
   return dnnl::memory::data_type::undef;
@@ -189,6 +171,8 @@ inline dnnl::memory::data_type MKLDNNGetDataType<paddle::platform::bfloat16>() {
   return dnnl::memory::data_type::bf16;
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 inline void Reorder(dnnl::memory src,
                     dnnl::memory dst,
                     const dnnl::engine& engine) {
@@ -202,6 +186,7 @@ inline void Reorder(dnnl::memory src,
   astream.wait();
 }
 
+<<<<<<< HEAD
 inline dnnl::memory::format_tag GetMKLDNNFormat(dnnl::memory::desc mem_desc) {
   auto ndims = mem_desc.data.ndims;
   auto strides = mem_desc.data.format_desc.blocking.strides;
@@ -449,6 +434,8 @@ inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
   }
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 inline std::string ThreadIDasStr(void) {
   return std::to_string(
       std::hash<std::thread::id>()(std::this_thread::get_id()));
@@ -541,49 +528,14 @@ inline std::string ExtendKeyWithThreadInfoIfNeeded(
              : key;
 }
 
-inline std::vector<std::vector<int64_t>> ToMkldnnPadding(
-    const std::vector<int64_t>& paddings) {
-  if (paddings.size() == 6) {
-    int padding_front = paddings[0];
-    int padding_back = paddings[1];
-    int padding_top = paddings[2];
-    int padding_bottom = paddings[3];
-    int padding_left = paddings[4];
-    int padding_right = paddings[5];
-
-    return {{padding_front, padding_top, padding_left},
-            {padding_back, padding_bottom, padding_right}};
-  } else {
-    int padding_top = paddings[0];
-    int padding_bottom = paddings[1];
-    int padding_left = paddings[2];
-    int padding_right = paddings[3];
-
-    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
-  }
-}
-
-// The function adjusts the vector of weight dimensions for group convolutions
-inline void GetGroupConvWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
-                                  const int groups) {
-  if (groups > 1) {
-    // if (is_conv3d) [o, i, d, h, w]->[g, o/g, i, d, h, w]
-    // else [o, i, h, w] -> [g, o/g, i, h, w]
-    weights_tz.push_back(0);
-    std::rotate(weights_tz.begin(), weights_tz.end() - 1, weights_tz.end());
-    weights_tz[0] = groups;
-    weights_tz[1] = weights_tz[1] / groups;
-  }
-}
-
 inline void RegisterModelLayout(
-    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,
+    std::vector<std::unique_ptr<framework::OperatorBase>>& ops,  // NOLINT
     const platform::Place& place) {
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
     if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-        framework::DataLayout::kNHWC)
+        phi::DataLayout::kNHWC)
       return;
 
     VLOG(4) << "RegisterModelLayout for mkldnn";
@@ -592,8 +544,8 @@ inline void RegisterModelLayout(
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);
         platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
-            data_format.compare("NHWC") == 0 ? framework::DataLayout::kNHWC
-                                             : framework::DataLayout::kNCHW);
+            data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
+                                             : phi::DataLayout::kNCHW);
         return true;
       } else {
         return false;
@@ -620,16 +572,25 @@ inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
   return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "bfloat16";
 }
 
-inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
-  return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
-}
-
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
 
-template <typename T>
-bool constexpr is_int8() {
-  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}  // namespace platform
+
+inline std::string FindInputNameByVarName(framework::OpDesc* op,
+                                          const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->InputNames())
+    for (const auto& input_name : op->Input(name))
+      if (input_name == searched_name) ret = name;
+  return ret;
 }
 
-}  // namespace platform
+inline std::string FindOutputNameByVarName(framework::OpDesc* op,
+                                           const std::string& searched_name) {
+  std::string ret;
+  for (const auto& name : op->OutputNames())
+    for (const auto& output_name : op->Output(name))
+      if (output_name == searched_name) ret = name;
+  return ret;
+}
 }  // namespace paddle

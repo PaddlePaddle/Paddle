@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
@@ -36,11 +34,9 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -60,9 +56,15 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False)
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
@@ -72,7 +74,8 @@ class TestGeoSgdTranspiler(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"],
+        )
 
         fleet.init(role)
 

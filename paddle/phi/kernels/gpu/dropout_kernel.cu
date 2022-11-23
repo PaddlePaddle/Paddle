@@ -24,7 +24,11 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                       float p,
+=======
+                      const Scalar& p,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -32,11 +36,21 @@ void DropoutRawKernel(const Context& dev_ctx,
                       DenseTensor* out,
                       DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
+<<<<<<< HEAD
   out->mutable_data<T>(dev_ctx.GetPlace());
   mask->mutable_data<uint8_t>(dev_ctx.GetPlace());
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
                                                  p,
+=======
+  dev_ctx.template Alloc<T>(out);
+  if (mask) {
+    dev_ctx.template Alloc<uint8_t>(mask);
+  }
+  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                                 is_test,
+                                                 p.to<float>(),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                                  upscale_in_train,
                                                  fix_seed,
                                                  seed,
@@ -51,7 +65,11 @@ template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                      float p,
+=======
+                     const Scalar& p,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      bool is_test,
                      const std::string& mode,
                      int seed,
@@ -61,10 +79,19 @@ void DropoutNdKernel(const Context& dev_ctx,
                      DenseTensor* mask) {
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(out);
+<<<<<<< HEAD
   dev_ctx.template Alloc<uint8_t>(mask);
   paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
                                                  is_test,
                                                  p,
+=======
+  if (mask) {
+    dev_ctx.template Alloc<uint8_t>(mask);
+  }
+  paddle::operators::DropoutFwGPUKernelDriver<T>(dev_ctx,
+                                                 is_test,
+                                                 p.to<float>(),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                                  upscale_in_train,
                                                  fix_seed,
                                                  seed,

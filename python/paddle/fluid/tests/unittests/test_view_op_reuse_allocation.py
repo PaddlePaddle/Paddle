@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
 
-from op_test import OpTest
 import paddle
-from paddle.fluid.framework import _test_eager_guard, in_dygraph_mode
+from paddle.fluid.framework import _test_eager_guard
 
 
 # NOTE(pangyoki): Tensor View Strategy.
@@ -42,13 +40,13 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
     def func_test_view_api(self):
         var = paddle.rand(self.input_shape)
         view_var = self.view_api_processing(var)
-        view_var[0] = 2.
+        view_var[0] = 2.0
         self.assertEqual(var.shape, self.input_shape)
         self.assertEqual(view_var.shape, self.output_shape)
 
         var_numpy = var.numpy().reshape(self.output_shape)
         view_var_numpy = view_var.numpy()
-        self.assertTrue(np.array_equal(var_numpy, view_var_numpy))
+        np.testing.assert_array_equal(var_numpy, view_var_numpy)
 
     def test_view_api(self):
         with _test_eager_guard():
@@ -61,14 +59,14 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
         view_var = self.view_api_processing(var)
         self.assertEqual(view_var.inplace_version, 0)
 
-        var[0] = 2.
+        var[0] = 2.0
         self.assertEqual(var.inplace_version, 1)
         self.assertEqual(view_var.inplace_version, 1)
 
         view_var_2 = self.view_api_processing(var)
         self.assertEqual(view_var_2.inplace_version, 1)
 
-        var[0] = 3.
+        var[0] = 3.0
         self.assertEqual(view_var.inplace_version, 2)
         self.assertEqual(view_var_2.inplace_version, 2)
 
@@ -89,13 +87,15 @@ class TestDygraphViewReuseAllocation(unittest.TestCase):
             # Here, the gradient computation will use the value of var_b
             var_c = var_b**2
             view_var_b = self.view_api_processing(var_b)
-            view_var_b[0] = 2.  # var_b is modified inplace
+            view_var_b[0] = 2.0  # var_b is modified inplace
 
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegexp(
-                    RuntimeError,
-                    "received tensor_version:{} != wrapper_version_snapshot:{}".
-                    format(1, 0)):
+                RuntimeError,
+                "received tensor_version:{} != wrapper_version_snapshot:{}".format(
+                    1, 0
+                ),
+            ):
                 loss.backward()
 
     def test_backward_error(self):

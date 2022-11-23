@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -36,7 +34,7 @@ class TestMultiplexOp(OpTest):
         ins4 = np.random.random((rows, 25)).astype("float64")
         self.inputs = {
             'Ids': index,
-            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)]
+            'X': [('x1', ins1), ('x2', ins2), ('x3', ins3), ('x4', ins4)],
         }
         # multiplex output
         output = np.zeros_like(ins1)
@@ -88,9 +86,15 @@ class TestMultiplexOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type)
 
             def test_type2():
+<<<<<<< HEAD
                 index2 = fluid.data(name='index2',
                                     shape=[None, 1],
                                     dtype='int16')
+=======
+                index2 = fluid.data(
+                    name='index2', shape=[None, 1], dtype='int16'
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 paddle.multiplex(inputs=[x1, x2], index=index2)
 
             self.assertRaises(TypeError, test_type2)
@@ -107,7 +111,7 @@ class TestMultiplexODygrap(unittest.TestCase):
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with fluid.dygraph.guard():
             img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
             img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
@@ -120,18 +124,33 @@ class TestMultiplexODygrap(unittest.TestCase):
             with _test_eager_guard():
                 inputs_eager = [paddle.to_tensor(img1), paddle.to_tensor(img2)]
                 index_eager = paddle.to_tensor(
-                    np.array([[1], [0]]).astype(np.int32))
+                    np.array([[1], [0]]).astype(np.int32)
+                )
                 inputs_eager[0].stop_gradient = False
                 inputs_eager[1].stop_gradient = False
                 res_eager = paddle.multiplex(inputs_eager, index_eager)
                 res_eager.backward()
                 self.assertEqual((res.numpy() == res_eager.numpy()).all(), True)
                 self.assertEqual(
+<<<<<<< HEAD
                     (inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
                      ).all(), True)
                 self.assertEqual(
                     (inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()
                      ).all(), True)
+=======
+                    (
+                        inputs[0].grad.numpy() == inputs_eager[0].grad.numpy()
+                    ).all(),
+                    True,
+                )
+                self.assertEqual(
+                    (
+                        inputs[1].grad.numpy() == inputs_eager[1].grad.numpy()
+                    ).all(),
+                    True,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

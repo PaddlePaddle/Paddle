@@ -14,8 +14,16 @@
 
 import unittest
 import numpy as np
+<<<<<<< HEAD
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
 import paddle.fluid as fluid
+=======
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    skip_check_grad_ci,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import paddle
 
 
@@ -51,8 +59,13 @@ class TestReduceSum4DOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 
 
 class TestReduceSum4DReduceAllDimAttributeBF16OneDNNOp(
+<<<<<<< HEAD
         TestReduceDefaultWithGradOneDNNOp):
 
+=======
+    TestReduceDefaultWithGradOneDNNOp
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -71,6 +84,7 @@ class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.inputs = {'X': np.random.random((2, 5, 3, 2, 2)).astype("float32")}
         self.attrs = {'dim': (2, 3, 4), 'keep_dim': True, 'use_mkldnn': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
                                  keepdims=self.attrs['keep_dim'])
@@ -80,6 +94,17 @@ class TestReduceSum5DKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 class TestReduceSum5DReduceAllKeepDimsOneDNNOp(TestReduceDefaultWithGradOneDNNOp
                                                ):
 
+=======
+            'Out': self.inputs['X'].sum(
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
+        }
+
+
+class TestReduceSum5DReduceAllKeepDimsOneDNNOp(
+    TestReduceDefaultWithGradOneDNNOp
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -102,8 +127,13 @@ class TestReduceSum4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
 
 @OpTestTool.skip_if_not_cpu()
 class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
+<<<<<<< HEAD
         TestReduceDefaultWithGradOneDNNOp):
 
+=======
+    TestReduceDefaultWithGradOneDNNOp
+):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = "reduce_sum"
         self.use_mkldnn = True
@@ -114,7 +144,8 @@ class TestReduceSum4DNoReduceSimpleCopyOneDNNOp(
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
@@ -130,9 +161,11 @@ class TestReduceMax3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
 
 @skip_check_grad_ci(
     reason="reduce_max is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMax4DNegativeAndPositiveDimsOneDNNOp(
-        TestReduceSumDefaultOneDNNOp):
+    TestReduceSumDefaultOneDNNOp
+):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -147,7 +180,8 @@ class TestReduceMax4DNegativeAndPositiveDimsOneDNNOp(
 
 @skip_check_grad_ci(
     reason="reduce_min is discontinuous non-derivable function,"
-    " its gradient check is not supported by unittest framework.")
+    " its gradient check is not supported by unittest framework."
+)
 class TestReduceMin3DOneDNNOp(TestReduceSumDefaultOneDNNOp):
     """Remove Min with subgradient from gradient check to confirm the success of CI."""
 
@@ -181,8 +215,8 @@ class TestReduceMean4DReduceAllOneDNNOp(TestReduceDefaultWithGradOneDNNOp):
         self.inputs = {'X': np.random.random((5, 6, 8, 10)).astype("float32")}
         self.attrs = {'reduce_all': True, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {
-            'Out':
-            self.inputs['X'].sum() / np.asarray(self.inputs['X'].shape).prod()
+            'Out': self.inputs['X'].sum()
+            / np.asarray(self.inputs['X'].shape).prod()
         }
 
 

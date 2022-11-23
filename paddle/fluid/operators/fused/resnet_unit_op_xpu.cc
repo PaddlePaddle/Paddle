@@ -19,7 +19,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T>
 class ResNetUnitXPUKernel : public framework::OpKernel<T> {
@@ -35,6 +39,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
     // input x
+<<<<<<< HEAD
     const Tensor *input_x = ctx.Input<Tensor>("X");
     const Tensor *filter_x = ctx.Input<Tensor>("FilterX");
     const Tensor *scale_x = ctx.Input<Tensor>("ScaleX");
@@ -48,6 +53,21 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     Tensor *running_var_x = ctx.Output<Tensor>("RunningVarX");
 
     Tensor *output = ctx.Output<Tensor>("Y");
+=======
+    const Tensor *input_x = ctx.Input<phi::DenseTensor>("X");
+    const Tensor *filter_x = ctx.Input<phi::DenseTensor>("FilterX");
+    const Tensor *scale_x = ctx.Input<phi::DenseTensor>("ScaleX");
+    const Tensor *bias_x = ctx.Input<phi::DenseTensor>("BiasX");
+
+    // output x
+    Tensor *conv_out_x = ctx.Output<phi::DenseTensor>("ConvX");
+    Tensor *saved_mean_x = ctx.Output<phi::DenseTensor>("SavedMeanX");
+    Tensor *saved_invstd_x = ctx.Output<phi::DenseTensor>("SavedInvstdX");
+    Tensor *running_mean_x = ctx.Output<phi::DenseTensor>("RunningMeanX");
+    Tensor *running_var_x = ctx.Output<phi::DenseTensor>("RunningVarX");
+
+    Tensor *output = ctx.Output<phi::DenseTensor>("Y");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     //  attrs
     int padding = ctx.Attr<int>("padding");
@@ -101,6 +121,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
     std::vector<const float *> w_maxlist = {nullptr};
     if (has_shortcut) {
       // input z
+<<<<<<< HEAD
       const Tensor *input_z = ctx.Input<Tensor>("Z");
       const Tensor *filter_z = ctx.Input<Tensor>("FilterZ");
       const Tensor *scale_z = ctx.Input<Tensor>("ScaleZ");
@@ -111,6 +132,18 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       Tensor *saved_invstd_z = ctx.Output<Tensor>("SavedInvstdZ");
       Tensor *running_mean_z = ctx.Output<Tensor>("RunningMeanZ");
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
+=======
+      const Tensor *input_z = ctx.Input<phi::DenseTensor>("Z");
+      const Tensor *filter_z = ctx.Input<phi::DenseTensor>("FilterZ");
+      const Tensor *scale_z = ctx.Input<phi::DenseTensor>("ScaleZ");
+      const Tensor *bias_z = ctx.Input<phi::DenseTensor>("BiasZ");
+
+      Tensor *conv_out_z = ctx.Output<phi::DenseTensor>("ConvZ");
+      Tensor *saved_mean_z = ctx.Output<phi::DenseTensor>("SavedMeanZ");
+      Tensor *saved_invstd_z = ctx.Output<phi::DenseTensor>("SavedInvstdZ");
+      Tensor *running_mean_z = ctx.Output<phi::DenseTensor>("RunningMeanZ");
+      Tensor *running_var_z = ctx.Output<phi::DenseTensor>("RunningVarZ");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
       x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
       w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
@@ -137,7 +170,11 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
       w_maxlist.push_back(nullptr);
     } else {
       if (fuse_add) {
+<<<<<<< HEAD
         const Tensor *input_z = ctx.Input<Tensor>("Z");
+=======
+        const Tensor *input_z = ctx.Input<phi::DenseTensor>("Z");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         auto input_z_shape = phi::vectorize<int>(input_z->dims());
         x_list.push_back(reinterpret_cast<const XPUType *>(input_z->data<T>()));
         x_shape_list.push_back(input_z_shape);
@@ -189,6 +226,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         platform::errors::PreconditionNotMet("It must use XPUPlace."));
 
     bool is_nchw = (ctx.Attr<std::string>("data_format") == "NCHW");
+<<<<<<< HEAD
     const Tensor *y_grad = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const Tensor *x = ctx.Input<Tensor>("X");
     const Tensor *filter_x = ctx.Input<Tensor>("FilterX");
@@ -203,6 +241,25 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
         ctx.Output<Tensor>(framework::GradVarName("FilterX"));
     Tensor *scale_x_grad = ctx.Output<Tensor>(framework::GradVarName("ScaleX"));
     Tensor *bias_x_grad = ctx.Output<Tensor>(framework::GradVarName("BiasX"));
+=======
+    const Tensor *y_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const Tensor *x = ctx.Input<phi::DenseTensor>("X");
+    const Tensor *filter_x = ctx.Input<phi::DenseTensor>("FilterX");
+    const Tensor *scale_x = ctx.Input<phi::DenseTensor>("ScaleX");
+    const Tensor *saved_mean_x = ctx.Input<phi::DenseTensor>("SavedMeanX");
+    const Tensor *saved_invstd_x = ctx.Input<phi::DenseTensor>("SavedInvstdX");
+    const Tensor *conv_out_x = ctx.Input<phi::DenseTensor>("ConvX");
+    const Tensor *output = ctx.Input<phi::DenseTensor>("Y");
+
+    Tensor *x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    Tensor *filter_x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("FilterX"));
+    Tensor *scale_x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("ScaleX"));
+    Tensor *bias_x_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("BiasX"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     int padding = ctx.Attr<int>("padding");
     int stride = ctx.Attr<int>("stride");
@@ -262,6 +319,7 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       //          ScaleBiasAddRelu
       //                  |
       //                  Y
+<<<<<<< HEAD
       const Tensor *z = ctx.Input<Tensor>("Z");
       const Tensor *filter_z = ctx.Input<Tensor>("FilterZ");
       const Tensor *scale_z = ctx.Input<Tensor>("ScaleZ");
@@ -275,6 +333,24 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       Tensor *scale_z_grad =
           ctx.Output<Tensor>(framework::GradVarName("ScaleZ"));
       Tensor *bias_z_grad = ctx.Output<Tensor>(framework::GradVarName("BiasZ"));
+=======
+      const Tensor *z = ctx.Input<phi::DenseTensor>("Z");
+      const Tensor *filter_z = ctx.Input<phi::DenseTensor>("FilterZ");
+      const Tensor *scale_z = ctx.Input<phi::DenseTensor>("ScaleZ");
+      const Tensor *saved_mean_z = ctx.Input<phi::DenseTensor>("SavedMeanZ");
+      const Tensor *saved_invstd_z =
+          ctx.Input<phi::DenseTensor>("SavedInvstdZ");
+      const Tensor *conv_out_z = ctx.Input<phi::DenseTensor>("ConvZ");
+
+      Tensor *z_grad =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("Z"));
+      Tensor *filter_z_grad =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("FilterZ"));
+      Tensor *scale_z_grad =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("ScaleZ"));
+      Tensor *bias_z_grad =
+          ctx.Output<phi::DenseTensor>(framework::GradVarName("BiasZ"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       x_list.push_back(reinterpret_cast<const XPUType *>(z->data<T>()));
       w_list.push_back(reinterpret_cast<const XPUType *>(filter_z->data<T>()));
       conv_y_list.push_back(
@@ -303,7 +379,11 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
       dbias_list.push_back(bias_z_grad->mutable_data<float>(place));
     } else {
       if (fuse_add) {
+<<<<<<< HEAD
         auto z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
+=======
+        auto z_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("Z"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         dx_list.push_back(
             reinterpret_cast<XPUType *>(z_grad->mutable_data<T>(place)));
       }

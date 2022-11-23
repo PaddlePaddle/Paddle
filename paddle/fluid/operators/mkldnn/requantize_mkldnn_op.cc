@@ -12,19 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include <iterator>  // NOLINT
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/backends/onednn/onednn_reuse.h"
 
 namespace paddle {
 namespace operators {
 
 using dnnl::memory;
 using dnnl::reorder;
-using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 namespace {
 
@@ -38,13 +39,17 @@ template <typename T>
 class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto scale_in = ctx.Attr<float>("Scale_in");
     auto shift_in = ctx.Attr<float>("Shift_in");
     auto scale_out = ctx.Attr<float>("Scale_out");
     auto shift_out = ctx.Attr<float>("Shift_out");
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
+<<<<<<< HEAD
     auto* output = ctx.Output<Tensor>("Output");
+=======
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     PADDLE_ENFORCE_NE(
         scale_in,
@@ -56,20 +61,21 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
-          framework::TransToProtoVarType(input->dtype()),
-          framework::proto::VarType::UINT8,
+          input->dtype(),
+          DataType::UINT8,
           platform::errors::Unimplemented("Requantize does not support nonzero "
                                           "shift for signed input."));
     }
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
-    const auto& engine = dev_ctx.GetEngine();
 
     auto src_tz = phi::vectorize(input->dims());
 
-    float reorder_scale = scale_out / scale_in;
+    auto src_paddle_dt = input->dtype();
+    auto dst_paddle_dt = with_shift ? DataType::UINT8 : src_paddle_dt;
 
+<<<<<<< HEAD
     std::string key = platform::CreateKey(
         dev_ctx, src_tz, scale_in, scale_out, ctx.OutputName("Output"));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
@@ -139,15 +145,44 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
         T* output_data = output->mutable_data<T>(ctx.GetPlace());
         dst_memory->set_data_handle(output_data);
       }
+=======
+    auto xstrides = input->mem_desc().data.format_desc.blocking.strides;
+    std::vector<dnnl_dim_t> vstrides(xstrides,
+                                     xstrides + input->mem_desc().data.ndims);
+
+    dnnl::primitive_attr attrs;
+    int mask = 0;
+    float reorder_scale = scale_out / scale_in;
+    attrs.set_output_scales(mask, {reorder_scale});
+    if (with_shift) {
+      uint8_t reorder_shift =
+          clip_to_uint8(shift_out - reorder_scale * shift_in);
+      attrs.set_zero_points(
+          DNNL_ARG_DST, mask, {static_cast<int32_t>(reorder_shift)});
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        src_tz,
+        src_paddle_dt,
+        phi::funcs::ToOneDNNDataType(src_paddle_dt),
+        dst_paddle_dt,
+        phi::funcs::ToOneDNNDataType(dst_paddle_dt),
+        dev_ctx.GetEngine());
 
-    reorder_p->execute(astream, *src_memory, *dst_memory);
+    auto src_memory_p = reorder_handler.AcquireSrcMemory(
+        input->mem_desc(), phi::funcs::to_void_cast(input->data<T>()));
+    auto dst_memory_p = reorder_handler.AcquireDstMemory(
+        output, src_tz, vstrides, dev_ctx.GetPlace());
+
+    auto reorder_p =
+        reorder_handler.AcquireReorder(dst_memory_p, src_memory_p, attrs);
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    reorder_p->execute(astream, *src_memory_p, *dst_memory_p);
     astream.wait();
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 

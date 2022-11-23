@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -63,8 +61,9 @@ class TestComplexOp(OpTest):
         x = np.random.randn(*self.x_shape).astype(self.dtype)
         y = np.random.randn(*self.y_shape).astype(self.dtype)
         out_ref = ref_complex(x, y)
-        self.out_grad = np.random.randn(*self.x_shape).astype(self.dtype) \
-                      + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
+        self.out_grad = np.random.randn(*self.x_shape).astype(
+            self.dtype
+        ) + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': out_ref}
 
@@ -73,6 +72,7 @@ class TestComplexOp(OpTest):
 
     def test_check_grad(self):
         dout = self.out_grad
+<<<<<<< HEAD
         dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
                                   self.out_grad)
         self.check_grad(['X', 'Y'],
@@ -80,13 +80,27 @@ class TestComplexOp(OpTest):
                         user_defined_grads=[dx, dy],
                         user_defined_grad_outputs=[dout],
                         check_eager=True)
+=======
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[dx, dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad_ignore_x(self):
         dout = self.out_grad
-        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
-                                  self.out_grad)
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
         self.assertTupleEqual(dx.shape, tuple(self.x_shape))
         self.assertTupleEqual(dy.shape, tuple(self.y_shape))
+<<<<<<< HEAD
         self.check_grad(['Y'],
                         'Out',
                         no_grad_set=set('X'),
@@ -104,6 +118,30 @@ class TestComplexOp(OpTest):
                         user_defined_grads=[dx],
                         user_defined_grad_outputs=[dout],
                         check_eager=True)
+=======
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set('X'),
+            user_defined_grads=[dy],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+
+    def test_check_grad_ignore_y(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(
+            self.inputs['X'], self.inputs['Y'], self.out_grad
+        )
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[dx],
+            user_defined_grad_outputs=[dout],
+            check_eager=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
@@ -142,7 +180,7 @@ class TestComplexAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
             out_np = paddle.complex(x, y).numpy()
-        self.assertTrue(np.allclose(self.out, out_np))
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
 
     def test_static(self):
         mp, sp = static.Program(), static.Program()
@@ -153,6 +191,7 @@ class TestComplexAPI(unittest.TestCase):
 
         exe = static.Executor()
         exe.run(sp)
+<<<<<<< HEAD
         [out_np] = exe.run(mp,
                            feed={
                                "x": self.x,
@@ -160,6 +199,12 @@ class TestComplexAPI(unittest.TestCase):
                            },
                            fetch_list=[out])
         self.assertTrue(np.allclose(self.out, out_np))
+=======
+        [out_np] = exe.run(
+            mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
+        )
+        np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_eager(self):
         with _test_eager_guard():

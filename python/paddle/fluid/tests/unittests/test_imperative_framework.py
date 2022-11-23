@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -24,10 +22,11 @@ from paddle.fluid.framework import _test_eager_guard
 class MLP(fluid.Layer):
 
     def __init__(self, input_size):
-        super(MLP, self).__init__()
+        super().__init__()
         self._linear1 = fluid.dygraph.Linear(
             input_size,
             3,
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.1)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
@@ -39,6 +38,25 @@ class MLP(fluid.Layer):
                 value=0.1)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.1)))
+=======
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)
+            ),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)
+            ),
+        )
+        self._linear2 = fluid.dygraph.Linear(
+            3,
+            4,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)
+            ),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.1)
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, inputs):
         x = self._linear1(inputs)
@@ -52,15 +70,22 @@ class TestDygraphFramework(unittest.TestCase):
     def func_test_dygraph_backward(self):
         with new_program_scope():
             mlp = MLP(input_size=2)
+<<<<<<< HEAD
             var_inp = fluid.layers.data("input",
                                         shape=[2, 2],
                                         dtype="float32",
                                         append_batch_size=False)
+=======
+            var_inp = fluid.layers.data(
+                "input", shape=[2, 2], dtype="float32", append_batch_size=False
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = mlp(var_inp)
             try:
                 out.backward()
                 raise AssertionError(
-                    "backward should not be usable in static graph mode")
+                    "backward should not be usable in static graph mode"
+                )
             except AssertionError as e:
                 self.assertTrue((e is not None))
 

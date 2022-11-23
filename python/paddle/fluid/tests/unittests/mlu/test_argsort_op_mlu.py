@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import paddle
 import numpy as np
 import unittest
@@ -27,9 +30,13 @@ SEED = 2022
 
 
 def gen_test_class(dtype, axis, descending):
+<<<<<<< HEAD
 
     class TestArgsortOp(OpTest):
 
+=======
+    class TestArgsortOp(OpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def setUp(self):
             np.random.seed(SEED)
             self.set_mlu()
@@ -49,9 +56,17 @@ def gen_test_class(dtype, axis, descending):
         def get_output(self):
             if descending:
                 self.indices = np.flip(
+<<<<<<< HEAD
                     np.argsort(self.x, kind='heapsort', axis=axis), axis)
                 self.sorted_x = np.flip(
                     np.sort(self.x, kind='heapsort', axis=axis), axis)
+=======
+                    np.argsort(self.x, kind='heapsort', axis=axis), axis
+                )
+                self.sorted_x = np.flip(
+                    np.sort(self.x, kind='heapsort', axis=axis), axis
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             else:
                 self.indices = np.argsort(self.x, kind='heapsort', axis=axis)
                 self.sorted_x = np.sort(self.x, kind='heapsort', axis=axis)

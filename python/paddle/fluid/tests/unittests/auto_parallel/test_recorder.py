@@ -35,8 +35,14 @@ class TestRecorder(unittest.TestCase):
         recorder = rd.MetricsRecorder()
         recorder.update("metric", 4, 1000)
         self.assertEqual(recorder.records["metric"].direction, "min")
+<<<<<<< HEAD
         self.assertEqual(recorder.get_records("metric"),
                          [rd.MetricRecord(4, 1000)])
+=======
+        self.assertEqual(
+            recorder.get_records("metric"), [rd.MetricRecord(4, 1000)]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_get_records(self):
         recorder = rd.MetricsRecorder()
@@ -44,12 +50,24 @@ class TestRecorder(unittest.TestCase):
         recorder.update("metric", 2, step=1)
         recorder.update("metric", 3, step=2)
         recorder.update("metric", 4, step=3)
+<<<<<<< HEAD
         self.assertEqual(recorder.get_records("metric"), [
             rd.MetricRecord(1, 0),
             rd.MetricRecord(2, 1),
             rd.MetricRecord(3, 2),
             rd.MetricRecord(4, 3),
         ])
+=======
+        self.assertEqual(
+            recorder.get_records("metric"),
+            [
+                rd.MetricRecord(1, 0),
+                rd.MetricRecord(2, 1),
+                rd.MetricRecord(3, 2),
+                rd.MetricRecord(4, 3),
+            ],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_set_records(self):
         recorder = rd.MetricsRecorder()
@@ -62,12 +80,24 @@ class TestRecorder(unittest.TestCase):
                 rd.MetricRecord(4, 3),
             ],
         )
+<<<<<<< HEAD
         self.assertEqual(recorder.get_records("metric"), [
             rd.MetricRecord(1, 0),
             rd.MetricRecord(2, 1),
             rd.MetricRecord(3, 2),
             rd.MetricRecord(4, 3),
         ])
+=======
+        self.assertEqual(
+            recorder.get_records("metric"),
+            [
+                rd.MetricRecord(1, 0),
+                rd.MetricRecord(2, 1),
+                rd.MetricRecord(3, 2),
+                rd.MetricRecord(4, 3),
+            ],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_get_best_value(self):
         recorder = rd.MetricsRecorder()

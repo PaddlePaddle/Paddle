@@ -82,6 +82,17 @@ const std::vector<std::string> FunctionInfo::OutputArgNames() const {
   return schema_.OutputArgNames();
 }
 
+<<<<<<< HEAD
+=======
+const std::string& FunctionInfo::ProgramFilePath() const {
+  return prog_file_path_;
+}
+
+void FunctionInfo::SetProgramFilePath(const std::string& path) {
+  prog_file_path_ = path;
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 void FunctionInfo::RemoveDescFeedFetch() {
   utils::RemoveFeedFetch(program_desc_.get());
 }

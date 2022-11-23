@@ -26,7 +26,11 @@ namespace operators {
 #define NO_USE_CNCL 0
 #define GET_LAYOUT_OFFSET 2
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 static std::vector<cnnlTensorLayout_t> supported_input_layout = {
     CNNL_LAYOUT_NC, CNNL_LAYOUT_NLC, CNNL_LAYOUT_NHWC, CNNL_LAYOUT_NDHWC};
 
@@ -42,7 +46,11 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout layout = framework::StringToDataLayout(layout_str);
+=======
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     PADDLE_ENFORCE_EQ(use_global_stats,
                       false,
@@ -51,6 +59,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                           "to set use_global_stats True. Please use batch_norm "
                           "in this case."));
 
+<<<<<<< HEAD
     const auto *x = ctx.Input<Tensor>("X");
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -61,6 +70,18 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
     auto *y = ctx.Output<Tensor>("Y");
+=======
+    const auto *x = ctx.Input<phi::DenseTensor>("X");
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+    const auto *mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto *variance = ctx.Input<phi::DenseTensor>("Variance");
+    auto *mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+    auto *variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
+    auto *saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto *saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(),
@@ -136,7 +157,11 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                               nullptr);
     } else {  // training
       if (ctx.HasInput("MomentumTensor")) {
+<<<<<<< HEAD
         const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+=======
+        const auto *mom_tensor = ctx.Input<phi::DenseTensor>("MomentumTensor");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         Tensor mom_cpu;
         paddle::framework::TensorCopySync(
             *mom_tensor, platform::CPUPlace(), &mom_cpu);
@@ -159,9 +184,15 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                   GetBasePtr(&local_var));
 
       Tensor input_count;
+<<<<<<< HEAD
       input_count.mutable_data<T>(phi::make_ddim({1}), ctx.GetPlace());
       FillMLUTensorWithHostValue<T>(
           ctx, static_cast<T>(x->numel() / C), &input_count);
+=======
+      input_count.mutable_data<MPDType>(phi::make_ddim({1}), ctx.GetPlace());
+      FillMLUTensorWithHostValue<MPDType>(
+          ctx, static_cast<MPDType>(x->numel() / C), &input_count);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
       Tensor count_all;
       Tensor mean_all(mean->dtype());
@@ -170,6 +201,7 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CNCL
       auto &dev_ctx =
           ctx.template device_context<paddle::platform::MLUDeviceContext>();
+<<<<<<< HEAD
       auto stream = dev_ctx.stream();
       auto *comm = dev_ctx.cncl_comm();
       if (comm) {
@@ -179,6 +211,25 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
         int count;
         PADDLE_ENFORCE_MLU_SUCCESS(cnclGetCommCount(&count, comm));
         count_all.mutable_data<T>(phi::make_ddim({count}), ctx.GetPlace());
+=======
+      auto *comm = dev_ctx.cncl_comm();
+      if (comm) {
+        auto cncl_comm = paddle::platform::CNCLCommContext::Instance().Get(
+            0, ctx.GetPlace());
+        auto *comm = cncl_comm->comm();
+        auto comm_stream = cncl_comm->stream();
+        int count;
+        PADDLE_ENFORCE_MLU_SUCCESS(cnclGetCommCount(&count, comm));
+        count_all.mutable_data<MPDType>(phi::make_ddim({count}),
+                                        ctx.GetPlace());
+        mean_all.mutable_data<MPDType>(phi::make_ddim({count, mean->numel()}),
+                                       ctx.GetPlace());
+        invstd_all.mutable_data<MPDType>(
+            phi::make_ddim({count, variance->numel()}), ctx.GetPlace());
+        // before comm_stream exec, need sync compute_stream.
+        dev_ctx.Wait();
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         cnclDataType_t dtype = platform::ToCNCLDataType(
             framework::TransToProtoVarType(count_all.dtype()));
         PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(GetBasePtr(&input_count),
@@ -186,12 +237,16 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                                  1,
                                                  dtype,
                                                  comm,
+<<<<<<< HEAD
                                                  stream));
 
         mean_all.mutable_data<MPDType>(phi::make_ddim({count, mean->numel()}),
                                        ctx.GetPlace());
         invstd_all.mutable_data<MPDType>(
             phi::make_ddim({count, variance->numel()}), ctx.GetPlace());
+=======
+                                                 comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         auto cncl_dtype = platform::ToCNCLDataType(
             framework::TransToProtoVarType(mean_all.dtype()));
@@ -200,14 +255,25 @@ class SyncBatchNormMLUKernel : public framework::OpKernel<T> {
                                                  local_mean.numel(),
                                                  cncl_dtype,
                                                  comm,
+<<<<<<< HEAD
                                                  stream));
+=======
+                                                 comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(GetBasePtr(&local_var),
                                                  GetBasePtr(&invstd_all),
                                                  local_var.numel(),
                                                  cncl_dtype,
                                                  comm,
+<<<<<<< HEAD
                                                  stream));
+=======
+                                                 comm_stream));
+        // after comm_stream exec, need sync queue for using compute_stream
+        // correctly.
+        PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #else
       if (NO_USE_CNCL) {
 #endif
@@ -279,6 +345,7 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
+<<<<<<< HEAD
     const DataLayout layout = framework::StringToDataLayout(layout_str);
 
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
@@ -292,6 +359,22 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
+=======
+    const DataLayout layout = phi::StringToDataLayout(layout_str);
+
+    const auto *d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    const auto *scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto *bias = ctx.Input<phi::DenseTensor>("Bias");
+
+    // init output
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_scale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto *d_bias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+
+    const auto *saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
+    const auto *saved_inv_var = ctx.Input<phi::DenseTensor>("SavedVariance");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     const Tensor *x;
     if (ctx.HasInput("Y")) {
@@ -300,7 +383,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                         platform::errors::InvalidArgument(
                             "sync_batch_norm_grad doesn't support input Y"));
     } else {
+<<<<<<< HEAD
       x = ctx.Input<Tensor>("X");
+=======
+      x = ctx.Input<phi::DenseTensor>("X");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
 
     const auto &x_dims = x->dims();
@@ -412,12 +499,23 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
 #ifdef PADDLE_WITH_CNCL
     auto &dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();
+<<<<<<< HEAD
     auto stream = dev_ctx.stream();
     auto *comm = dev_ctx.cncl_comm();
     if (comm) {
       auto *comm = paddle::platform::CNCLCommContext::Instance()
                        .Get(0, ctx.GetPlace())
                        ->comm();
+=======
+    auto *comm = dev_ctx.cncl_comm();
+    if (comm) {
+      auto cncl_comm =
+          paddle::platform::CNCLCommContext::Instance().Get(0, ctx.GetPlace());
+      auto *comm = cncl_comm->comm();
+      auto comm_stream = cncl_comm->stream();
+      // before comm_stream exec, need sync compute_stream.
+      dev_ctx.Wait();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       cnclDataType_t dtype = platform::ToCNCLDataType(
           framework::TransToProtoVarType(numel_count.dtype()));
       PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(GetBasePtr(&numel_count),
@@ -426,7 +524,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                                                dtype,
                                                cnclSum,
                                                comm,
+<<<<<<< HEAD
                                                stream));
+=======
+                                               comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
       auto cncl_dtype = platform::ToCNCLDataType(
           framework::TransToProtoVarType(sum_dy.dtype()));
@@ -436,7 +538,11 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                                                cncl_dtype,
                                                cnclSum,
                                                comm,
+<<<<<<< HEAD
                                                stream));
+=======
+                                               comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
       PADDLE_ENFORCE_MLU_SUCCESS(cnclAllReduce(GetBasePtr(&sum_dy_xmu),
                                                GetBasePtr(&sum_dy_xmu),
@@ -444,7 +550,14 @@ class SyncBatchNormMLUGradKernel : public framework::OpKernel<T> {
                                                cncl_dtype,
                                                cnclSum,
                                                comm,
+<<<<<<< HEAD
                                                stream));
+=======
+                                               comm_stream));
+      // after comm_stream exec, need sync queue for using compute_stream
+      // correctly.
+      PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(comm_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
 #endif
 

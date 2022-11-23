@@ -81,6 +81,7 @@ class HBMMemoryPool : public managed {
     capacity_ = capacity;
     CUDA_CHECK(cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8));
     CUDA_CHECK(cudaMemset(mem_, 0, block_size_ * capacity));
+<<<<<<< HEAD
   }
 
   char* mem() { return mem_; }
@@ -125,6 +126,8 @@ class HBMMemoryPoolFix : public managed {
     size_ = capacity;
     block_size_ = block_size;
     capacity_ = max_byte_capacity_ / block_size;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   char* mem() { return mem_; }

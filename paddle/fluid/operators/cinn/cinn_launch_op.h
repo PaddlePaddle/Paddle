@@ -34,7 +34,7 @@ DECLARE_bool(enable_pe_launch_cinn);
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 

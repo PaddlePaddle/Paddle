@@ -19,8 +19,11 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+<<<<<<< HEAD
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,

@@ -160,11 +160,19 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
   return main_program;
 }
 
+<<<<<<< HEAD
 std::unique_ptr<framework::ProgramDesc> Load(
     framework::Executor* executor,
     framework::Scope* scope,
     const std::string& prog_filename,
     const std::string& param_filename) {
+=======
+std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
+                                             framework::Scope* scope,
+                                             const std::string& prog_filename,
+                                             const std::string& param_filename,
+                                             bool load_params) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::string program_desc_str;
   ReadBinaryFile(prog_filename, &program_desc_str);
 
@@ -175,6 +183,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
       true,
       platform::errors::Unavailable("Model version %ld is not supported.",
                                     main_program->Version()));
+<<<<<<< HEAD
 
   LoadPersistables(executor,
                    scope,
@@ -182,6 +191,16 @@ std::unique_ptr<framework::ProgramDesc> Load(
                    "",
                    param_filename,
                    false /* model_from_memory */);
+=======
+  if (load_params) {
+    LoadPersistables(executor,
+                     scope,
+                     *main_program,
+                     "",
+                     param_filename,
+                     false /* model_from_memory */);
+  }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return main_program;
 }
 

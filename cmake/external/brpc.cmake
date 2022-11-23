@@ -45,9 +45,14 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
+<<<<<<< HEAD
   # TODO(gongwb): change to de newst repo when they changed
   GIT_REPOSITORY "https://github.com/wangjiawei04/brpc"
   GIT_TAG "e203afb794caf027da0f1e0776443e7d20c0c28e"
+=======
+  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
+  GIT_TAG 1.2.0
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -60,8 +65,13 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCMAKE_PREFIX_PATH=${prefix_path}
              -DWITH_GLOG=ON
+<<<<<<< HEAD
              -DIOBUF_WITH_HUGE_BLOCK=ON
              -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
+=======
+             -DBUILD_BRPC_TOOLS=ON
+             -DBUILD_SHARED_LIBS=ON
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
              ${EXTERNAL_OPTIONAL_ARGS}
   LIST_SEPARATOR |
   CMAKE_CACHE_ARGS

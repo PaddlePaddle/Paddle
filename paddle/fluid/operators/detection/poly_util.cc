@@ -21,8 +21,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using gpc::gpc_free_polygon;
 using gpc::gpc_polygon_clip;
+=======
+using phi::funcs::gpc_free_polygon;
+using phi::funcs::gpc_polygon_clip;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <class T>
 void Array2PointVec(const T* box,
@@ -37,15 +42,29 @@ void Array2PointVec(const T* box,
 }
 
 template <class T>
+<<<<<<< HEAD
 void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly) {
+=======
+void Array2Poly(const T* box,
+                const size_t box_size,
+                phi::funcs::gpc_polygon* poly) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   (*poly).hole[0] = 0;
+<<<<<<< HEAD
   (*poly).contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
   (*poly).contour->vertex =
       (gpc::gpc_vertex*)malloc(sizeof(gpc::gpc_vertex) * pts_num);
+=======
+  (*poly).contour =
+      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour->num_vertices = pts_num;
+  (*poly).contour->vertex =
+      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
@@ -53,15 +72,28 @@ void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon* poly) {
 }
 
 template <class T>
+<<<<<<< HEAD
 void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon* poly) {
+=======
+void PointVec2Poly(const std::vector<Point_<T>>& vec,
+                   phi::funcs::gpc_polygon* poly) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int pts_num = vec.size();
   (*poly).num_contours = 1;
   (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   (*poly).hole[0] = 0;
+<<<<<<< HEAD
   (*poly).contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
   (*poly).contour->vertex =
       (gpc::gpc_vertex*)malloc(sizeof(gpc::gpc_vertex) * pts_num);
+=======
+  (*poly).contour =
+      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour->num_vertices = pts_num;
+  (*poly).contour->vertex =
+      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;
     (*poly).contour->vertex[i].y = vec[i].y;
@@ -69,7 +101,11 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon* poly) {
 }
 
 template <class T>
+<<<<<<< HEAD
 void Poly2PointVec(const gpc::gpc_vertex_list& contour,
+=======
+void Poly2PointVec(const phi::funcs::gpc_vertex_list& contour,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                    std::vector<Point_<T>>* vec) {
   int pts_num = contour.num_vertices;
   (*vec).resize(pts_num);
@@ -105,6 +141,7 @@ T PolyOverlapArea(const T* box1,
                   const T* box2,
                   const size_t box_size,
                   const bool normalized) {
+<<<<<<< HEAD
   gpc::gpc_polygon poly1;
   gpc::gpc_polygon poly2;
   Array2Poly<T>(box1, box_size, &poly1);
@@ -112,6 +149,15 @@ T PolyOverlapArea(const T* box1,
   gpc::gpc_polygon respoly;
   gpc::gpc_op op = gpc::GPC_INT;
   gpc::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
+=======
+  phi::funcs::gpc_polygon poly1;
+  phi::funcs::gpc_polygon poly2;
+  Array2Poly<T>(box1, box_size, &poly1);
+  Array2Poly<T>(box2, box_size, &poly2);
+  phi::funcs::gpc_polygon respoly;
+  phi::funcs::gpc_op op = phi::funcs::GPC_INT;
+  phi::funcs::gpc_polygon_clip(op, &poly2, &poly1, &respoly);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   T inter_area = T(0.);
   int contour_num = respoly.num_contours;
@@ -123,9 +169,9 @@ T PolyOverlapArea(const T* box1,
     inter_area += GetContourArea<T>(resvec);
   }
 
-  gpc::gpc_free_polygon(&poly1);
-  gpc::gpc_free_polygon(&poly2);
-  gpc::gpc_free_polygon(&respoly);
+  phi::funcs::gpc_free_polygon(&poly1);
+  phi::funcs::gpc_free_polygon(&poly2);
+  phi::funcs::gpc_free_polygon(&respoly);
   return inter_area;
 }
 

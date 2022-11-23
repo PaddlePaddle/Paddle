@@ -38,6 +38,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/mlu/enforce.h"
 #include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
@@ -144,6 +147,17 @@ void SynchronizeAllDevice() {
   for (int i = 0; i < count; i++) {
     SetMLUDeviceId(i);
     PADDLE_ENFORCE_MLU_SUCCESS(cnrtSyncDevice());
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto &dev_type : dev_types) {
+    auto dev_cnt = phi::DeviceManager::GetDeviceCount(dev_type);
+    for (size_t i = 0; i < dev_cnt; i++) {
+      auto place = paddle::platform::CustomPlace(dev_type, i);
+      phi::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SynchronizeDevice(place);
+    }
   }
 #endif
 }

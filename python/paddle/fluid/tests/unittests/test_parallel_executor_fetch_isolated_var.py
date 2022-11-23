@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import six
 import paddle.fluid as fluid
 import paddle
 import os
@@ -56,19 +55,41 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
                     for use_experimental_executor in [False, True]:
                         for use_parallel_ssa_executor in [False, True]:
                             func = lambda: self.run_impl(
+<<<<<<< HEAD
                                 use_gpu, dev_cnt, is_training,
                                 use_experimental_executor,
                                 use_parallel_ssa_executor)
+=======
+                                use_gpu,
+                                dev_cnt,
+                                is_training,
+                                use_experimental_executor,
+                                use_parallel_ssa_executor,
+                            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                             self.run_func_with_guard(func)
 
-    def run_impl(self, use_gpu, dev_cnt, is_training, use_experimental_executor,
-                 use_parallel_ssa_executor):
+    def run_impl(
+        self,
+        use_gpu,
+        dev_cnt,
+        is_training,
+        use_experimental_executor,
+        use_parallel_ssa_executor,
+    ):
         paddle.enable_static()
         enable_parallel_ssa_executor(use_parallel_ssa_executor)
 
         if fluid.is_compiled_with_cuda():
+<<<<<<< HEAD
             if fluid.core.globals(
             )['FLAGS_enable_parallel_graph'] and not use_gpu:
+=======
+            if (
+                fluid.core.globals()['FLAGS_enable_parallel_graph']
+                and not use_gpu
+            ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 return
             # windows has only 1 GPU
             if use_gpu and dev_cnt > 1 and os.name == "nt":
@@ -86,24 +107,41 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         prog = fluid.CompiledProgram(
+<<<<<<< HEAD
             fluid.default_main_program()).with_data_parallel(
                 loss_name=loss_name,
                 exec_strategy=self.exec_strategy(use_experimental_executor),
                 places=places)
+=======
+            fluid.default_main_program()
+        ).with_data_parallel(
+            loss_name=loss_name,
+            exec_strategy=self.exec_strategy(use_experimental_executor),
+            places=places,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         BATCH_SIZE = 8 * dev_cnt
-        for _ in six.moves.range(10):
+        for _ in range(10):
             x_np = np.random.random(size=[BATCH_SIZE, 10]).astype('float32')
             y_np = np.random.random(size=[BATCH_SIZE, 10]).astype('float32')
 
+<<<<<<< HEAD
             _, y_np_fetch = exe.run(prog,
                                     feed={
                                         'x': x_np,
                                         'y': y_np
                                     },
                                     fetch_list=[loss, isolated_var])
+=======
+            _, y_np_fetch = exe.run(
+                prog,
+                feed={'x': x_np, 'y': y_np},
+                fetch_list=[loss, isolated_var],
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-            self.assertTrue(np.array_equal(y_np, y_np_fetch))
+            np.testing.assert_array_equal(y_np, y_np_fetch)
 
         enable_parallel_ssa_executor(False)
 

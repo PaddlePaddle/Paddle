@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -27,12 +25,21 @@ class TRTReduceMeanTest(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, -1, -1],
                               dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data,
                                                    dim=[2, -1],
                                                    keep_dim=True)
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, -1, -1], dtype="float32"
+            )
+            reduce_mean = fluid.layers.reduce_mean(
+                data, dim=[2, -1], keep_dim=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -40,27 +47,43 @@ class TRTReduceMeanTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceMeanTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
             {'data': [3, 3, 56, 56]}, False)
+=======
+            {'data': [1, 3, 16, 16]},
+            {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]},
+            False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanAllNoBatchTest(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, -1, -1],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, -1, -1], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -69,30 +92,52 @@ class TRTReduceMeanAllNoBatchTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanAllNoBatchTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
+<<<<<<< HEAD
         self.dynamic_shape_params = TRTReduceMeanAllNoBatchTest.DynamicShapeParam(
             {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
             {'data': [3, 3, 56, 56]}, False)
+=======
+        self.dynamic_shape_params = (
+            TRTReduceMeanAllNoBatchTest.DynamicShapeParam(
+                {'data': [1, 3, 16, 16]},
+                {'data': [3, 3, 56, 56]},
+                {'data': [3, 3, 56, 56]},
+                False,
+            )
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanTestFP16(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, -1, -1],
                               dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data,
                                                    dim=[2, -1],
                                                    keep_dim=True)
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, -1, -1], dtype="float32"
+            )
+            reduce_mean = fluid.layers.reduce_mean(
+                data, dim=[2, -1], keep_dim=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -100,27 +145,43 @@ class TRTReduceMeanTestFP16(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanTestFP16.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceMeanTestFP16.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 3, 16, 16]}, {'data': [3, 3, 56, 56]},
             {'data': [3, 3, 56, 56]}, False)
+=======
+            {'data': [1, 3, 16, 16]},
+            {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]},
+            False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanAllTest(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, 56, 56],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, 56, 56], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -129,30 +190,49 @@ class TRTReduceMeanAllTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanAllTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
         self.dynamic_shape_params = TRTReduceMeanAllTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 3, 56, 56]}, {'data': [3, 3, 56, 56]},
             {'data': [3, 3, 56, 56]}, False)
+=======
+            {'data': [1, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]},
+            {'data': [3, 3, 56, 56]},
+            False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanTestStatic(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[3, 3, 56, 56],
                               dtype="float32")
             reduce_mean = fluid.layers.reduce_mean(data,
                                                    dim=[2, -1],
                                                    keep_dim=True)
+=======
+            data = fluid.data(
+                name="data", shape=[3, 3, 56, 56], dtype="float32"
+            )
+            reduce_mean = fluid.layers.reduce_mean(
+                data, dim=[2, -1], keep_dim=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
         self.feeds = {
@@ -160,7 +240,8 @@ class TRTReduceMeanTestStatic(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanTestStatic.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -168,16 +249,23 @@ class TRTReduceMeanTestStatic(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanStaticAllTest(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[4, 3, 56, 56],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[4, 3, 56, 56], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -186,7 +274,8 @@ class TRTReduceMeanStaticAllTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanStaticAllTest.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -194,16 +283,23 @@ class TRTReduceMeanStaticAllTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanStaticFP16(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[4, 3, 56, 56],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[4, 3, 56, 56], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -212,24 +308,34 @@ class TRTReduceMeanStaticFP16(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanStaticFP16.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            self.check_output_with_option(
+                use_gpu, flatten=True, atol=1e-3, rtol=1e-3
+            )
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTReduceMeanFP16Static(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[4, 3, 56, 56],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[4, 3, 56, 56], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             reduce_mean = fluid.layers.reduce_mean(data, keep_dim=True)
             out = fluid.layers.batch_norm(reduce_mean, is_test=True)
 
@@ -238,15 +344,19 @@ class TRTReduceMeanFP16Static(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTReduceMeanFP16Static.TensorRTParam(
-            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False)
+            1 << 30, 32, 1, AnalysisConfig.Precision.Half, True, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu, flatten=True)
+            self.check_output_with_option(
+                use_gpu, flatten=True, atol=1e-3, rtol=1e-3
+            )
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

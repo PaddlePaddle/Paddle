@@ -20,6 +20,10 @@ __all__ = []
 
 class PairwiseDistance(Layer):
     r"""
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     It computes the pairwise distance between two vectors. The
     distance is calculated by p-oreder norm:
 
@@ -38,6 +42,7 @@ class PairwiseDistance(Layer):
             Generally, no setting is required. Default: None.
 
     Shape:
+<<<<<<< HEAD
         x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
             is the dimension of the data. Available data type is float32, float64.
         y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
@@ -46,6 +51,16 @@ class PairwiseDistance(Layer):
                 depending on whether the input has data shaped as :math:`[N, D]`.
             - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
                 depending on whether the input has data shaped as :math:`[N, D]`.
+=======
+        - x: :math:`[N, D]` or :math:`[D]`, where :math:`N` is batch size, :math:`D`
+          is the dimension of the data. Available data type is float32, float64.
+        - y: :math:`[N, D]` or :math:`[D]`, y have the same dtype as x.
+        - output: The same dtype as input tensor.
+            - If :attr:`keepdim` is True, the output shape is :math:`[N, 1]` or :math:`[1]`,
+              depending on whether the input has data shaped as :math:`[N, D]`.
+            - If :attr:`keepdim` is False, the output shape is :math:`[N]` or :math:`[]`,
+              depending on whether the input has data shaped as :math:`[N, D]`.
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     Examples:
         .. code-block:: python
@@ -59,8 +74,8 @@ class PairwiseDistance(Layer):
 
     """
 
-    def __init__(self, p=2., epsilon=1e-6, keepdim=False, name=None):
-        super(PairwiseDistance, self).__init__()
+    def __init__(self, p=2.0, epsilon=1e-6, keepdim=False, name=None):
+        super().__init__()
         self.p = p
         self.epsilon = epsilon
         self.keepdim = keepdim
@@ -68,15 +83,21 @@ class PairwiseDistance(Layer):
 
     def forward(self, x, y):
 
+<<<<<<< HEAD
         return F.pairwise_distance(x, y, self.p, self.epsilon, self.keepdim,
                                    self.name)
+=======
+        return F.pairwise_distance(
+            x, y, self.p, self.epsilon, self.keepdim, self.name
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def extra_repr(self):
         main_str = 'p={p}'
         if self.epsilon != 1e-6:
             main_str += ', epsilon={epsilon}'
-        if self.keepdim != False:
+        if self.keepdim is not False:
             main_str += ', keepdim={keepdim}'
-        if self.name != None:
+        if self.name is not None:
             main_str += ', name={name}'
         return main_str.format(**self.__dict__)

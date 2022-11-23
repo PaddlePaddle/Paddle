@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.distributed.fleet.base.private_helper_function import wait_server_ready
+from paddle.distributed.fleet.base.private_helper_function import (
+    wait_server_ready,
+)
 import paddle
 
 paddle.enable_static()
@@ -45,6 +45,7 @@ class TestCCommInitOp(unittest.TestCase):
         cncl_id_var = block.create_var(
             name=fluid.unique_name.generate('cncl_id'),
             persistable=True,
+<<<<<<< HEAD
             type=fluid.core.VarDesc.VarType.RAW)
         block.append_op(type='c_gen_cncl_id',
                         inputs={},
@@ -63,6 +64,31 @@ class TestCCommInitOp(unittest.TestCase):
                             'ring_id': 0,
                             'device_id': self.mlu_id
                         })
+=======
+            type=fluid.core.VarDesc.VarType.RAW,
+        )
+        block.append_op(
+            type='c_gen_cncl_id',
+            inputs={},
+            outputs={'Out': cncl_id_var},
+            attrs={
+                'rank': self.rank,
+                'endpoint': self.current_endpoint,
+                'other_endpoints': self.other_endpoints,
+            },
+        )
+        block.append_op(
+            type='c_comm_init',
+            inputs={'X': cncl_id_var},
+            outputs={},
+            attrs={
+                'nranks': self.nranks,
+                'rank': self.rank,
+                'ring_id': 0,
+                'device_id': self.mlu_id,
+            },
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.exe.run(program)
 
 

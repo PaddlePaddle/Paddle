@@ -53,9 +53,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.pool2d(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -149,6 +155,7 @@ class TestCase6(TestBase):
         self.attrs['exclusive'] = False
 
 
+<<<<<<< HEAD
 class TestAdaptive(TestBase):
 
     def set_op_attrs(self):
@@ -167,5 +174,7 @@ class TestAdaptive(TestBase):
         self.fetch_list = [out.name]
 
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if __name__ == "__main__":
     unittest.main()

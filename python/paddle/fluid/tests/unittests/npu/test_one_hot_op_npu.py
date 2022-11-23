@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 import numpy as np
@@ -44,8 +42,9 @@ class TestOneHotOp(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -72,8 +71,9 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -101,8 +101,9 @@ class TestOneHotOp_default_dtype(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -129,8 +130,9 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0
@@ -156,8 +158,9 @@ class TestOneHotOp_out_of_range(OpTest):
         x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         self.inputs = {'X': (x, x_lod)}
         self.attrs = {'depth': depth, 'allow_out_of_range': True}
@@ -181,8 +184,9 @@ class TestOneHotOp_dtype_int64(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int64').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]),
-                              depth)).astype('float32')
+        out = np.zeros(shape=(np.product(x.shape[:-1]), depth)).astype(
+            'float32'
+        )
 
         for i in range(np.product(x.shape)):
             out[i, x[i]] = 1.0

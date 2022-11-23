@@ -45,8 +45,14 @@ def frame_from_librosa(x, frame_length, hop_length, axis=-1):
 
 def stft_np(x, window, n_fft, hop_length, **kwargs):
     frames = frame_from_librosa(x, n_fft, hop_length)
+<<<<<<< HEAD
     frames = np.multiply(frames.transpose([0, 2, 1]),
                          window).transpose([0, 2, 1])
+=======
+    frames = np.multiply(frames.transpose([0, 2, 1]), window).transpose(
+        [0, 2, 1]
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     res = np.fft.rfft(frames, axis=1)
     return res
 
@@ -61,10 +67,16 @@ class TestStftOp(OpTest):
             'Window': np.hamming(self.attrs['n_fft']).astype(self.type),
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             stft_np(x=self.inputs['X'],
                     window=self.inputs['Window'],
                     **self.attrs)
+=======
+            'Out': stft_np(
+                x=self.inputs['X'], window=self.inputs['Window'], **self.attrs
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def initTestCase(self):

@@ -78,7 +78,11 @@ class CastOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     // CastOp kernel's device type is decided by input tensor place
+<<<<<<< HEAD
     auto *tensor = ctx.Input<framework::LoDTensor>("X");
+=======
+    auto *tensor = ctx.Input<phi::DenseTensor>("X");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -91,21 +95,14 @@ class CastOp : public framework::OperatorWithKernel {
           ctx.device_context());
     }
 
-#ifdef PADDLE_WITH_MKLDNN
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     int in_dtype = ctx.Attr<int>("in_dtype");
     int out_dtype = ctx.Attr<int>("out_dtype");
 
-    auto MKLDNNSupportsCast = [&]() -> bool {
-      int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
-      int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
+    int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+    int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
 
-      if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
-          (out_dtype != dtype_fp32 && out_dtype != dtype_bf16))
-        return false;
-
-      return true;
-    };
-
+<<<<<<< HEAD
     if (this->CanMKLDNNBeUsed(
             ctx, framework::TransToProtoVarType(tensor->dtype())) &&
         MKLDNNSupportsCast()) {
@@ -114,8 +111,14 @@ class CastOp : public framework::OperatorWithKernel {
           ctx.GetPlace(),
           framework::DataLayout::kMKLDNN,
           framework::LibraryType::kMKLDNN);
+=======
+    if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
+        (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
+      this->SetDnnFallback(true);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
 #ifdef PADDLE_WITH_MLU
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));

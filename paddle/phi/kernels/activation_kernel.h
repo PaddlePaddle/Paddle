@@ -75,28 +75,54 @@ DECLARE_ACTIVATION_KERNEL(Negative)
 
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(LeakyRelu, alpha)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu, threshold)
+<<<<<<< HEAD
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6, threshold)
+=======
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Relu6Raw, threshold)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(SoftShrink, lambda)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(HardShrink, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(SoftShrink, lambda)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Elu, alpha)
+<<<<<<< HEAD
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Swish, beta)
+=======
+DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(SwishRaw, beta)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Celu, alpha)
 DECLARE_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Logit, eps)
 
-DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(BRelu, t_min, t_max)
+DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardTanh, t_min, t_max)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(STanh, scale_a, scale_b)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus, beta, threshold)
 DECLARE_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid, slope, offset)
+<<<<<<< HEAD
+=======
+
+template <typename T, typename Context>
+void HardSwishRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        float threshold,
+                        float scale,
+                        float offset,
+                        DenseTensor* out);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T, typename Context>
 void HardSwishKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     float threshold,
-                     float scale,
-                     float offset,
                      DenseTensor* out);
+
+template <typename T, typename Context>
+void Relu6Kernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out);
+
+template <typename T, typename Context>
+void SwishKernel(const Context& dev_ctx,
+                 const DenseTensor& x,
+                 DenseTensor* out);
 
 template <typename T, typename Context>
 void PowKernel(const Context& dev_ctx,

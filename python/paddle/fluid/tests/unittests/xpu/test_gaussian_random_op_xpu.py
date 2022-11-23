@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -22,20 +20,34 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
+<<<<<<< HEAD
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+=======
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import paddle
 
 paddle.enable_static()
 
 
 class XPUTestGaussianRandomOp(XPUOpTestWrapper):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def __init__(self):
         self.op_name = 'gaussian_random'
         self.use_dynamic_create_class = False
 
     class TestGaussianRandomOp(XPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def init(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -52,7 +64,11 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 "mean": self.mean,
                 "std": self.std,
                 "seed": 10,
+<<<<<<< HEAD
                 "use_mkldnn": self.use_mkldnn
+=======
+                "use_mkldnn": self.use_mkldnn,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
             paddle.seed(10)
 
@@ -60,11 +76,20 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
 
         def set_attrs(self):
             self.mean = 1.0
+<<<<<<< HEAD
             self.std = 2.
 
         def test_check_output(self):
             self.check_output_with_place_customized(self.verify_output,
                                                     self.place)
+=======
+            self.std = 2.0
+
+        def test_check_output(self):
+            self.check_output_with_place_customized(
+                self.verify_output, self.place
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         def verify_output(self, outs):
             self.assertEqual(outs[0].shape, (123, 92))
@@ -75,34 +100,55 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             hist2, _ = np.histogram(data, range=(-3, 5))
             hist2 = hist2.astype("float32")
             hist2 /= float(outs[0].size)
+<<<<<<< HEAD
             self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
                             "hist: " + str(hist) + " hist2: " + str(hist2))
 
     class TestMeanStdAreInt(TestGaussianRandomOp):
 
+=======
+            np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
+
+    class TestMeanStdAreInt(TestGaussianRandomOp):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def set_attrs(self):
             self.mean = 1
             self.std = 2
 
     # Situation 2: Attr(shape) is a list(with tensor)
     class TestGaussianRandomOp_ShapeTensorList(TestGaussianRandomOp):
+<<<<<<< HEAD
 
         def setUp(self):
             '''Test gaussian_random op with specified value
             '''
+=======
+        def setUp(self):
+            '''Test gaussian_random op with specified value'''
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.init()
             self.init_data()
             shape_tensor_list = []
             for index, ele in enumerate(self.shape):
+<<<<<<< HEAD
                 shape_tensor_list.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
+=======
+                shape_tensor_list.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.attrs = {
                 'shape': self.infer_shape,
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
+<<<<<<< HEAD
                 'use_mkldnn': self.use_mkldnn
+=======
+                'use_mkldnn': self.use_mkldnn,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
 
             self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -117,12 +163,22 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             self.seed = 10
 
         def test_check_output(self):
+<<<<<<< HEAD
             self.check_output_with_place_customized(self.verify_output,
                                                     self.place)
 
     class TestGaussianRandomOp2_ShapeTensorList(
             TestGaussianRandomOp_ShapeTensorList):
 
+=======
+            self.check_output_with_place_customized(
+                self.verify_output, self.place
+            )
+
+    class TestGaussianRandomOp2_ShapeTensorList(
+        TestGaussianRandomOp_ShapeTensorList
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [-1, -1]
@@ -132,8 +188,13 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             self.seed = 10
 
     class TestGaussianRandomOp3_ShapeTensorList(
+<<<<<<< HEAD
             TestGaussianRandomOp_ShapeTensorList):
 
+=======
+        TestGaussianRandomOp_ShapeTensorList
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [123, -1]
@@ -143,8 +204,13 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
             self.seed = 10
 
     class TestGaussianRandomOp4_ShapeTensorList(
+<<<<<<< HEAD
             TestGaussianRandomOp_ShapeTensorList):
 
+=======
+        TestGaussianRandomOp_ShapeTensorList
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def init_data(self):
             self.shape = [123, 92]
             self.infer_shape = [123, -1]
@@ -155,10 +221,15 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
 
     # Situation 3: shape is a tensor
     class TestGaussianRandomOp1_ShapeTensor(TestGaussianRandomOp):
+<<<<<<< HEAD
 
         def setUp(self):
             '''Test gaussian_random op with specified value
             '''
+=======
+        def setUp(self):
+            '''Test gaussian_random op with specified value'''
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.init()
             self.init_data()
             self.use_mkldnn = False
@@ -168,7 +239,11 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
                 'mean': self.mean,
                 'std': self.std,
                 'seed': self.seed,
+<<<<<<< HEAD
                 'use_mkldnn': self.use_mkldnn
+=======
+                'use_mkldnn': self.use_mkldnn,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
             self.outputs = {'Out': np.zeros((123, 92), dtype=self.dtype)}
 
@@ -182,11 +257,15 @@ class XPUTestGaussianRandomOp(XPUOpTestWrapper):
 
 # Test python API
 class TestGaussianRandomAPI(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_api(self):
         positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2000)
 
         positive_2_int64 = fluid.layers.fill_constant([1], "int64", 500)
+<<<<<<< HEAD
         shape_tensor_int32 = fluid.data(name="shape_tensor_int32",
                                         shape=[2],
                                         dtype="int32")
@@ -230,6 +309,59 @@ class TestGaussianRandomAPI(unittest.TestCase):
                                              mean=0.,
                                              std=1.0,
                                              seed=10)
+=======
+        shape_tensor_int32 = fluid.data(
+            name="shape_tensor_int32", shape=[2], dtype="int32"
+        )
+
+        shape_tensor_int64 = fluid.data(
+            name="shape_tensor_int64", shape=[2], dtype="int64"
+        )
+
+        out_1 = fluid.layers.gaussian_random(
+            shape=[2000, 500], dtype="float32", mean=0.0, std=1.0, seed=10
+        )
+
+        out_2 = fluid.layers.gaussian_random(
+            shape=[2000, positive_2_int32],
+            dtype="float32",
+            mean=0.0,
+            std=1.0,
+            seed=10,
+        )
+
+        out_3 = fluid.layers.gaussian_random(
+            shape=[2000, positive_2_int64],
+            dtype="float32",
+            mean=0.0,
+            std=1.0,
+            seed=10,
+        )
+
+        out_4 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int32,
+            dtype="float32",
+            mean=0.0,
+            std=1.0,
+            seed=10,
+        )
+
+        out_5 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int64,
+            dtype="float32",
+            mean=0.0,
+            std=1.0,
+            seed=10,
+        )
+
+        out_6 = fluid.layers.gaussian_random(
+            shape=shape_tensor_int64,
+            dtype=np.float32,
+            mean=0.0,
+            std=1.0,
+            seed=10,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         exe = fluid.Executor(place=fluid.XPUPlace(0))
         res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
@@ -238,6 +370,7 @@ class TestGaussianRandomAPI(unittest.TestCase):
                 "shape_tensor_int32": np.array([2000, 500]).astype("int32"),
                 "shape_tensor_int64": np.array([2000, 500]).astype("int64"),
             },
+<<<<<<< HEAD
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6])
 
         self.assertAlmostEqual(np.mean(res_1), 0.0, delta=0.1)
@@ -252,6 +385,23 @@ class TestGaussianRandomAPI(unittest.TestCase):
         self.assertAlmostEqual(np.std(res_5), 1., delta=0.1)
         self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
         self.assertAlmostEqual(np.std(res_6), 1., delta=0.1)
+=======
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+        )
+
+        self.assertAlmostEqual(np.mean(res_1), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_1), 1.0, delta=0.1)
+        self.assertAlmostEqual(np.mean(res_2), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_2), 1.0, delta=0.1)
+        self.assertAlmostEqual(np.mean(res_3), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_3), 1.0, delta=0.1)
+        self.assertAlmostEqual(np.mean(res_4), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
+        self.assertAlmostEqual(np.mean(res_5), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_5), 1.0, delta=0.1)
+        self.assertAlmostEqual(np.mean(res_6), 0.0, delta=0.1)
+        self.assertAlmostEqual(np.std(res_6), 1.0, delta=0.1)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_default_dtype(self):
         paddle.disable_static()
@@ -279,7 +429,10 @@ class TestGaussianRandomAPI(unittest.TestCase):
 
 
 class TestStandardNormalDtype(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_default_dtype(self):
         paddle.disable_static()
 

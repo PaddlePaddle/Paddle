@@ -15,7 +15,10 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/place.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/enforce.h"
 namespace paddle {

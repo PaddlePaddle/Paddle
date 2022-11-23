@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid.layers import data
 from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.executor import Executor
@@ -34,8 +32,14 @@ class TestLoDRankTable(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(numpy.random.random(size=(17, 100)), cpu)
+<<<<<<< HEAD
         tensor.set_recursive_sequence_lengths([[1, 2], [5, 1, 1],
                                                [3, 1, 5, 1, 3, 3, 1]])
+=======
+        tensor.set_recursive_sequence_lengths(
+            [[1, 2], [5, 1, 1], [3, 1, 5, 1, 3, 3, 1]]
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         exe.run(scope=scope, feed={'x': tensor})
         var = scope.find_var(rank_table.name)
         table = var.get_lod_rank_table()

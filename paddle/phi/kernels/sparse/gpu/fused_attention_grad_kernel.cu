@@ -65,7 +65,11 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
                                  DenseTensor* dquery,
                                  DenseTensor* dkey,
                                  DenseTensor* dvalue) {
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11070
+=======
+#if CUDA_VERSION >= 11080
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   /* Step1: Forward: softmax{CSR} * value{Dense} -> out{Dense}, reuse */
   SparseCsrTensor dsoftmax;
   MatmulCsrDenseGradKernel<T, Context>(
@@ -93,10 +97,17 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   dim3 block(WARP_SIZE, 8);
 
   AttnSoftmaxGpuGradKernel<T><<<grid, block, 0, dev_ctx.stream()>>>(
+<<<<<<< HEAD
       softmax.non_zero_crows().data<int64_t>(),
       softmax.non_zero_elements().data<T>(),
       dsoftmax.mutable_non_zero_elements()->data<T>(),
       d_sdd_result.mutable_non_zero_elements()->data<T>(),
+=======
+      softmax.crows().data<int64_t>(),
+      softmax.values().data<T>(),
+      dsoftmax.mutable_values()->data<T>(),
+      d_sdd_result.mutable_values()->data<T>(),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       M,
       total_row_num,
       std::sqrt(N),
@@ -129,7 +140,11 @@ void FusedAttentionCsrGradKernel(const Context& dev_ctx,
   PADDLE_THROW(
       phi::errors::Unimplemented("backward of 'sparse.nn.functional.attention' "
                                  "use 'cusparseCsrSetStridedBatch', which is "
+<<<<<<< HEAD
                                  "completed supported from CUDA 11.7"));
+=======
+                                 "completed supported from CUDA 11.8"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
 }
 

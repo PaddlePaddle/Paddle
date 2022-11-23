@@ -1,11 +1,15 @@
 #!/bin/bash
 
+<<<<<<< HEAD
 TOTAL_ERRORS=0
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 readonly VERSION="1.6.0"
 
 version=$(cpplint --version)
 
+<<<<<<< HEAD
 if [[ ! $TRAVIS_BRANCH ]]; then
   # install cpplint on local machine.
   if ! [[ $version == *"$VERSION"* ]]; then
@@ -28,5 +32,10 @@ for file in $files; do
         TOTAL_ERRORS=$(expr $TOTAL_ERRORS + $?);
     fi
 done
+=======
+if ! [[ $version == *"$VERSION"* ]]; then
+    pip install cpplint==1.6.0
+fi
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-exit $TOTAL_ERRORS
+cpplint $@

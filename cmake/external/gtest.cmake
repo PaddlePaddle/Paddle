@@ -38,6 +38,12 @@ if(WIN32)
   set(GTEST_MAIN_LIBRARIES
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib"
       CACHE FILEPATH "gtest main libraries." FORCE)
+<<<<<<< HEAD
+=======
+  set(GMOCK_LIBRARIES
+      "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgmock.lib"
+      CACHE FILEPATH "gmock libraries." FORCE)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   string(REPLACE "/w " "" GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   string(REPLACE "/w " "" GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   string(REPLACE "/W0 " "" GTEST_CMAKE_C_FLAGS "${GTEST_CMAKE_C_FLAGS}")
@@ -49,6 +55,12 @@ else()
   set(GTEST_MAIN_LIBRARIES
       "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest_main.a"
       CACHE FILEPATH "gtest main libraries." FORCE)
+<<<<<<< HEAD
+=======
+  set(GMOCK_LIBRARIES
+      "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgmock.a"
+      CACHE FILEPATH "gmock libraries." FORCE)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   set(GTEST_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
   set(GTEST_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 endif()
@@ -86,7 +98,12 @@ ExternalProject_Add(
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
     -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
   BUILD_BYPRODUCTS ${GTEST_LIBRARIES}
+<<<<<<< HEAD
   BUILD_BYPRODUCTS ${GTEST_MAIN_LIBRARIES})
+=======
+  BUILD_BYPRODUCTS ${GTEST_MAIN_LIBRARIES}
+  BUILD_BYPRODUCTS ${GMOCK_LIBRARIES})
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 add_library(gtest STATIC IMPORTED GLOBAL)
 set_property(TARGET gtest PROPERTY IMPORTED_LOCATION ${GTEST_LIBRARIES})
@@ -96,3 +113,10 @@ add_library(gtest_main STATIC IMPORTED GLOBAL)
 set_property(TARGET gtest_main PROPERTY IMPORTED_LOCATION
                                         ${GTEST_MAIN_LIBRARIES})
 add_dependencies(gtest_main extern_gtest)
+<<<<<<< HEAD
+=======
+
+add_library(gmock STATIC IMPORTED GLOBAL)
+set_property(TARGET gmock PROPERTY IMPORTED_LOCATION ${GMOCK_LIBRARIES})
+add_dependencies(gmock extern_gtest)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

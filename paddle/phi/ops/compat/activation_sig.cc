@@ -39,27 +39,9 @@ namespace phi {
 
 #define comma ,
 
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cos, "cos", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Tan, "tan", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acos, "acos", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sin, "sin", );        // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asin, "asin", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atan, "atan", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Sinh, "sinh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Cosh, "cosh", );      // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Asinh, "asinh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Acosh, "acosh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Atanh, "atanh", );    // NOLINT
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Square, "square", );  // NOLINT
-
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(BRelu, "brelu", "t_min" comma "t_max");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(LeakyRelu, "leaky_relu", "alpha");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(ThresholdedRelu,
-                               "thresholded_relu",
-                               "threshold");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(SoftShrink, "soft_shrink", "lambda");
-DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardShrink, "hard_shrink", "threshold");
+DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hard_tanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
+<<<<<<< HEAD
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(TanhShrink, "tanh_shrink", );  // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Silu, "silu", );               // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softsign, "softsign", );       // NOLINT
@@ -69,6 +51,8 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log2, "log2", );               // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log10, "log10", );             // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Log1p, "log1p", );             // NOLINT
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Celu, "celu", "alpha");        // NOLINT
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardSwish,
                                "hard_swish",
                                "threshold" comma "scale" comma
@@ -79,6 +63,7 @@ DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(STanh,
                                "stanh",
                                "scale_a" comma "scale_b");  // NOLINT
 
+<<<<<<< HEAD
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Softplus,
                                "softplus",
                                "beta" comma "threshold");  // NOLINT
@@ -103,85 +88,21 @@ KernelSignature SqrtActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
     return KernelSignature("sqrt_sr", {"X"}, {}, {"Out"});
   }
 }
+=======
+DEFINE_ACT_GRAD_DEPOUT_OP_ARGMAP(Relu6, "relu6", "threshold");  // NOLINT
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-KernelSignature SquareActiOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInput("X")) {
-    return KernelSignature("square", {"X"}, {}, {"Out"});
-  } else {
-    return KernelSignature("square_sr", {"X"}, {}, {"Out"});
-  }
-}
-
-DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Round, "round", );  // NOLINT
-DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Floor, "floor", );  // NOLINT
-DEFINE_ACT_GRAD_NODEP_OP_ARGMAP(Ceil, "ceil", );    // NOLINT
-
-KernelSignature ReluDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("relu_double_grad", {"Out", "DDX"}, {}, {"DDOut"});
-}
-
-KernelSignature TanhDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature(
-      "tanh_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
+      "hard_swish_raw", {"X"}, {"threshold", "scale", "offset"}, {"Out"});
 }
 
-KernelSignature TanhTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("tanh_triple_grad",
-                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
-                         {},
-                         {"D_OutNew", "D_DOut", "D_DDx"});
+KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("swish_raw", {"X"}, {"beta"}, {"Out"});
 }
 
-KernelSignature SigmoidDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "sigmoid_double_grad", {"Out", "DOut", "DDX"}, {}, {"DOutNew", "DDOut"});
-}
-
-KernelSignature SigmoidTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("sigmoid_triple_grad",
-                         {"Out", "DOut", "DDX", "D_DOut_New", "D_DDOut"},
-                         {},
-                         {"D_OutNew", "D_DOut", "D_DDx"});
-}
-
-KernelSignature LeakyReluDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "leaky_relu_double_grad", {"X", "DDX"}, {"alpha"}, {"DDOut"});
-}
-
-KernelSignature LeakyReluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("leaky_relu", {"X"}, {"alpha"}, {"Out"});
-}
-
-KernelSignature EluOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("elu", {"X"}, {"alpha"}, {"Out"});
-}
-
-KernelSignature LogitGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("logit_grad", {"X", "Out@GRAD"}, {"eps"}, {"X@GRAD"});
-}
-
-KernelSignature EluGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "elu_grad", {"X", "Out", "Out@GRAD"}, {"alpha"}, {"X@GRAD"});
-}
-
-KernelSignature EluDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "elu_double_grad", {"X", "DOut", "DDX"}, {"alpha"}, {"DX", "DDOut"});
-}
-
-KernelSignature LogDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "log_double_grad", {"X", "DOut", "DDX"}, {}, {"DX", "DDOut"});
+KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
+  return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
 }
 
 KernelSignature SqrtDoubleGradOpArgumentMapping(
@@ -226,8 +147,20 @@ KernelSignature PowGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   }
 }
 
-}  // namespace phi
+KernelSignature PowDoubleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("FactorTensor")) {
+    return KernelSignature("pow_double_grad",
+                           {"X", "DOut", "DDX"},
+                           {"FactorTensor"},
+                           {"DX", "DDOut"});
+  } else {
+    return KernelSignature(
+        "pow_double_grad", {"X", "DOut", "DDX"}, {"factor"}, {"DX", "DDOut"});
+  }
+}
 
+<<<<<<< HEAD
 PD_REGISTER_BASE_KERNEL_NAME(relu_grad_grad, relu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(tanh_grad_grad, tanh_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(leaky_relu_grad_grad, leaky_relu_double_grad);
@@ -240,20 +173,28 @@ PD_REGISTER_BASE_KERNEL_NAME(sqrt_grad_grad, sqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(rsqrt_grad_grad, rsqrt_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(celu_grad_grad, celu_double_grad);
 PD_REGISTER_BASE_KERNEL_NAME(square_grad_grad, square_double_grad);
+=======
+KernelSignature PowTripleGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  if (ctx.HasInput("FactorTensor")) {
+    return KernelSignature("pow_triple_grad",
+                           {"X", "DOut", "DDX", "D_DX", "D_DDOut"},
+                           {"FactorTensor"},
+                           {"D_X", "D_DOut", "D_DDX"});
+  } else {
+    return KernelSignature("pow_triple_grad",
+                           {"X", "DOut", "DDX", "D_DX", "D_DDOut"},
+                           {"factor"},
+                           {"D_X", "D_DOut", "D_DDX"});
+  }
+}
+}  // namespace phi
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-PD_REGISTER_ARG_MAPPING_FN(cos_grad, phi::CosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(tan_grad, phi::TanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acos_grad, phi::AcosGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sin_grad, phi::SinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asin_grad, phi::AsinGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atan_grad, phi::AtanGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(sinh_grad, phi::SinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(cosh_grad, phi::CoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(asinh_grad, phi::AsinhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(acosh_grad, phi::AcoshGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(atanh_grad, phi::AtanhGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(relu_grad, phi::ReluGradOpArgumentMapping);
+PD_REGISTER_BASE_KERNEL_NAME(brelu, hard_tanh);
+PD_REGISTER_BASE_KERNEL_NAME(brelu_grad, hard_tanh_grad);
 
+<<<<<<< HEAD
 PD_REGISTER_ARG_MAPPING_FN(exp_grad, phi::ExpGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(expm1_grad, phi::Expm1GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(square_grad, phi::SquareGradOpArgumentMapping);
@@ -312,16 +253,24 @@ PD_REGISTER_ARG_MAPPING_FN(log_grad_grad, phi::LogDoubleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log2_grad, phi::Log2GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log10_grad, phi::Log10GradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(log1p_grad, phi::Log1pGradOpArgumentMapping);
+=======
+PD_REGISTER_ARG_MAPPING_FN(mish_grad, phi::MishGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(stanh_grad, phi::STanhGradOpArgumentMapping);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
-PD_REGISTER_ARG_MAPPING_FN(sqrt, phi::SqrtActiOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(square, phi::SquareActiOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(brelu_grad, phi::HardTanhGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(relu6_grad, phi::Relu6GradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(relu6, phi::Relu6OpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(hard_swish_grad,
                            phi::HardSwishGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(hard_swish, phi::HardSwishOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(swish_grad, phi::SwishGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(round_grad, phi::RoundGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(floor_grad, phi::FloorGradOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(ceil_grad, phi::CeilGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(swish, phi::SwishOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow_grad, phi::PowGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow_double_grad,
+                           phi::PowDoubleGradOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow_triple_grad,
+                           phi::PowTripleGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pow, phi::PowOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(celu_grad, phi::CeluGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(celu_grad_grad,

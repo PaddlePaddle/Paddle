@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -22,9 +20,12 @@ sys.path.append("..")
 
 import paddle
 
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -48,21 +49,27 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
             self.attrs = {
                 'dim': self.axis,
                 'keep_dim': self.keep_dim,
-                'reduce_all': self.reduce_all
+                'reduce_all': self.reduce_all,
             }
             self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].prod()}
             else:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out':
                     self.inputs['X'].prod(axis=self.axis,
                                           keepdims=self.attrs['keep_dim'])
+=======
+                    'Out': self.inputs['X'].prod(
+                        axis=self.axis, keepdims=self.attrs['keep_dim']
+                    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 }
 
         def initTestCase(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
 
         def init_dtype(self):
             self.dtype = self.in_type
@@ -77,13 +84,13 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
 
         def initTestCase(self):
             self.shape = (1, 2, 5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
 
     class TestProdOp6D(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (1, 1, 2, 5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
 
     class TestProdOp8D(TestXPUReduceProdOp):
 
@@ -95,37 +102,37 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
 
         def initTestCase(self):
             self.shape = 120
-            self.axis = (0, )
+            self.axis = (0,)
 
     class Test2DReduce0(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (20, 10)
-            self.axis = (0, )
+            self.axis = (0,)
 
     class Test2DReduce1(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (20, 10)
-            self.axis = (1, )
+            self.axis = (1,)
 
     class Test3DReduce0(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (5, 6, 7)
-            self.axis = (1, )
+            self.axis = (1,)
 
     class Test3DReduce1(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (5, 6, 7)
-            self.axis = (2, )
+            self.axis = (2,)
 
     class Test3DReduce2(TestXPUReduceProdOp):
 
         def initTestCase(self):
             self.shape = (5, 6, 7)
-            self.axis = (-2, )
+            self.axis = (-2,)
 
     class Test3DReduce3(TestXPUReduceProdOp):
 
@@ -137,7 +144,7 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
 
         def initTestCase(self):
             self.shape = (5, 6, 10)
-            self.axis = (1, )
+            self.axis = (1,)
             self.keep_dim = True
 
     class TestKeepDim8DReduce(TestXPUReduceProdOp):
@@ -151,7 +158,7 @@ class XPUTestReduceProdOP(XPUOpTestWrapper):
 
         def initTestCase(self):
             self.shape = (5, 6, 2, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = True
 
 

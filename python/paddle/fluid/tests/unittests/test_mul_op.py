@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle
 import paddle.fluid.core as core
 import sys
 
@@ -34,7 +31,7 @@ class TestMulOp(OpTest):
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((20, 5)).astype(self.dtype),
-            'Y': np.random.random((5, 21)).astype(self.dtype)
+            'Y': np.random.random((5, 21)).astype(self.dtype),
         }
         self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
 
@@ -48,6 +45,7 @@ class TestMulOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad(['Y'],
                         'Out',
                         max_relative_error=0.5,
@@ -58,6 +56,16 @@ class TestMulOp(OpTest):
                         'Out',
                         max_relative_error=0.5,
                         no_grad_set=set('Y'))
+=======
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set("X")
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y')
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestMulOpError(unittest.TestCase):
@@ -65,10 +73,19 @@ class TestMulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mul_op must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
                                          fluid.CPUPlace())
             x2 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
                                          fluid.CPUPlace())
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+            x2 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace()
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertRaises(TypeError, fluid.layers.mul, x1, x2)
             # The input dtype of mul_op must be float32 or float64.
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="int32")
@@ -84,14 +101,16 @@ class TestMulOp2(OpTest):
         self.init_dtype_type()
         self.inputs = {
             'X': np.random.random((3, 4, 2, 9)).astype(self.dtype),
-            'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.dtype)
+            'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.dtype),
         }
         self.attrs = {
             'x_num_col_dims': 2,
             'y_num_col_dims': 2,
         }
-        result = np.dot(self.inputs['X'].reshape(3 * 4, 2 * 9),
-                        self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3))
+        result = np.dot(
+            self.inputs['X'].reshape(3 * 4, 2 * 9),
+            self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3),
+        )
         result = result.reshape(3, 4, 1, 2, 3)
         self.outputs = {'Out': result}
 
@@ -105,6 +124,7 @@ class TestMulOp2(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
+<<<<<<< HEAD
         self.check_grad(['Y'],
                         'Out',
                         max_relative_error=0.5,
@@ -115,10 +135,21 @@ class TestMulOp2(OpTest):
                         'Out',
                         max_relative_error=0.5,
                         no_grad_set=set('Y'))
+=======
+        self.check_grad(
+            ['Y'], 'Out', max_relative_error=0.5, no_grad_set=set('X')
+        )
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y')
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16MulOp1(TestMulOp):
 
     def init_dtype_type(self):
@@ -132,29 +163,56 @@ class TestFP16MulOp1(TestMulOp):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['X', 'Y'],
                                        'Out',
                                        max_relative_error=0.5)
+=======
+            self.check_grad_with_place(
+                place, ['X', 'Y'], 'Out', max_relative_error=0.5
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['Y'],
                                        'Out',
                                        max_relative_error=0.5,
                                        no_grad_set=set("X"))
+=======
+            self.check_grad_with_place(
+                place,
+                ['Y'],
+                'Out',
+                max_relative_error=0.5,
+                no_grad_set=set("X"),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['X'],
                                        'Out',
                                        max_relative_error=0.5,
                                        no_grad_set=set('Y'))
+=======
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+                max_relative_error=0.5,
+                no_grad_set=set('Y'),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16MulOp2(TestMulOp2):
 
     def init_dtype_type(self):
@@ -168,25 +226,51 @@ class TestFP16MulOp2(TestMulOp2):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['X', 'Y'],
                                        'Out',
                                        max_relative_error=0.9)
+=======
+            self.check_grad_with_place(
+                place, ['X', 'Y'], 'Out', max_relative_error=0.9
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['Y'],
                                        'Out',
                                        max_relative_error=0.5,
                                        no_grad_set=set("X"))
+=======
+            self.check_grad_with_place(
+                place,
+                ['Y'],
+                'Out',
+                max_relative_error=0.5,
+                no_grad_set=set("X"),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad_ingore_y(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['X'],
                                        'Out',
                                        max_relative_error=0.9,
                                        no_grad_set=set('Y'))
+=======
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+                max_relative_error=0.9,
+                no_grad_set=set('Y'),
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

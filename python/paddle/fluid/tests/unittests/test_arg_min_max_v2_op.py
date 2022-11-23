@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -37,7 +35,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.initTestCase()
             self.dims = (4, 5, 6)
             self.dtype = "float64"
-            self.x = (1000 * np.random.random(self.dims).astype(self.dtype))
+            self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis}
             self.numpy_op = eval("np.%s" % (numpy_op_type))
@@ -81,7 +79,7 @@ def create_kernel_case(op_type, numpy_op_type):
             self.initTestCase()
             self.dims = (4, 5, 6)
             self.dtype = "float64"
-            self.x = (1000 * np.random.random(self.dims).astype(self.dtype))
+            self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "keepdims": True}
             self.numpy_op = eval("np.%s" % (numpy_op_type))
@@ -93,9 +91,9 @@ def create_kernel_case(op_type, numpy_op_type):
 
         def setUp(self):
             self.initTestCase()
-            self.dims = (4)
+            self.dims = 4
             self.dtype = "float64"
-            self.x = (1000 * np.random.random(self.dims).astype(self.dtype))
+            self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "flatten": True}
             self.numpy_op = eval("np.%s" % (numpy_op_type))
@@ -107,9 +105,9 @@ def create_kernel_case(op_type, numpy_op_type):
 
         def setUp(self):
             self.initTestCase()
-            self.dims = (4)
+            self.dims = 4
             self.dtype = "float64"
-            self.x = (1000 * np.random.random(self.dims).astype(self.dtype))
+            self.x = 1000 * np.random.random(self.dims).astype(self.dtype)
             self.inputs = {'X': self.x}
             self.attrs = {"axis": self.axis, "flatten": True, "keepdims": True}
             self.numpy_op = eval("np.%s" % (numpy_op_type))
@@ -171,61 +169,104 @@ def create_test_case(op_type):
         def run_static(self, place):
             paddle.enable_static()
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 data_var = paddle.static.data(name="data",
                                               shape=[10, 10],
                                               dtype="float32")
+=======
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var)
                 exe = paddle.static.Executor(place)
-                result_data = exe.run(feed={"data": self.input_data},
-                                      fetch_list=[result])
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
                 expected_data = self.numpy_op(self.input_data)
-                self.assertTrue((result_data == np.array(expected_data)).all(),
-                                True)
+                self.assertTrue(
+                    (result_data == np.array(expected_data)).all(), True
+                )
 
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 data_var = paddle.static.data(name="data",
                                               shape=[10, 10],
                                               dtype="float32")
+=======
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var, axis=1)
                 exe = paddle.static.Executor(place)
-                result_data = exe.run(feed={"data": self.input_data},
-                                      fetch_list=[result])
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
                 expected_data = self.numpy_op(self.input_data, axis=1)
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 data_var = paddle.static.data(name="data",
                                               shape=[10, 10],
                                               dtype="float32")
+=======
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var, axis=-1)
                 exe = paddle.static.Executor(place)
-                result_data = exe.run(feed={"data": self.input_data},
-                                      fetch_list=[result])
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
                 expected_data = self.numpy_op(self.input_data, axis=-1)
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
                 data_var = paddle.static.data(name="data",
                                               shape=[10, 10],
                                               dtype="float32")
+=======
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
                 op = eval("paddle.%s" % (op_type))
                 result = op(data_var, axis=-1, keepdim=True)
                 exe = paddle.static.Executor(place)
+<<<<<<< HEAD
                 result_data = exe.run(feed={"data": self.input_data},
                                       fetch_list=[result])
                 expected_data = self.numpy_op(self.input_data, axis=-1).reshape(
                     (10, 1))
+=======
+                result_data = exe.run(
+                    feed={"data": self.input_data}, fetch_list=[result]
+                )
+                expected_data = self.numpy_op(self.input_data, axis=-1).reshape(
+                    (10, 1)
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertTrue((result_data == expected_data).all(), True)
 
             with paddle.static.program_guard(paddle.static.Program()):
                 op = eval("paddle.%s" % (op_type))
+<<<<<<< HEAD
                 data_var = paddle.static.data(name="data",
                                               shape=[10, 10],
                                               dtype="float32")
+=======
+                data_var = paddle.static.data(
+                    name="data", shape=[10, 10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 result = op(data_var, axis=-1, name="test_arg_api")
                 self.assertTrue("test_arg_api" in result.name)
 
@@ -234,28 +275,48 @@ def create_test_case(op_type):
             op = eval("paddle.%s" % (op_type))
             data_tensor = paddle.to_tensor(self.input_data)
 
+<<<<<<< HEAD
             #case 1
+=======
+            # case 1
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result_data = op(data_tensor)
             excepted_data = self.numpy_op(self.input_data)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
+<<<<<<< HEAD
             #case 2
+=======
+            # case 2
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result_data = op(data_tensor, axis=1)
             excepted_data = self.numpy_op(self.input_data, axis=1)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
+<<<<<<< HEAD
             #case 3
+=======
+            # case 3
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result_data = op(data_tensor, axis=-1)
             excepted_data = self.numpy_op(self.input_data, axis=-1)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
+<<<<<<< HEAD
             #case 4
+=======
+            # case 4
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result_data = op(data_tensor, axis=-1, keepdim=True)
             excepted_data = self.numpy_op(self.input_data, axis=-1)
             excepted_data = excepted_data.reshape((10, 1))
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
+<<<<<<< HEAD
             #case 5
+=======
+            # case 5
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             result_data = op(data_tensor, axis=-1, keepdim=True, dtype="int32")
             self.assertTrue(result_data.numpy().dtype == np.int32)
 
@@ -308,49 +369,85 @@ class TestArgMinMaxOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_argmin_x_type)
 
             def test_argmax_attr_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmax",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmax", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmax(x=data, dtype="float32")
 
             self.assertRaises(TypeError, test_argmax_attr_type)
 
             def test_argmin_attr_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmax",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmax", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmin(x=data, dtype="float32")
 
             self.assertRaises(TypeError, test_argmin_attr_type)
 
             def test_argmax_axis_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmax",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmax", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmax(x=data, axis=1.2)
 
             self.assertRaises(TypeError, test_argmax_axis_type)
 
             def test_argmin_axis_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmin",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmin", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmin(x=data, axis=1.2)
 
             self.assertRaises(TypeError, test_argmin_axis_type)
 
             def test_argmax_dtype_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmax",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmax", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmax(x=data, dtype=None)
 
             self.assertRaises(ValueError, test_argmax_dtype_type)
 
             def test_argmin_dtype_type():
+<<<<<<< HEAD
                 data = paddle.static.data(name="test_argmin",
                                           shape=[10],
                                           dtype="float32")
+=======
+                data = paddle.static.data(
+                    name="test_argmin", shape=[10], dtype="float32"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 output = paddle.argmin(x=data, dtype=None)
 
             self.assertRaises(ValueError, test_argmin_dtype_type)

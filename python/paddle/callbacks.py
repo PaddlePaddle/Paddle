@@ -19,8 +19,21 @@ from .hapi.callbacks import VisualDL  # noqa: F401
 from .hapi.callbacks import LRScheduler  # noqa: F401
 from .hapi.callbacks import EarlyStopping  # noqa: F401
 from .hapi.callbacks import ReduceLROnPlateau  # noqa: F401
+from .hapi.callbacks import WandbCallback  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  #noqa
     'Callback', 'ProgBarLogger', 'ModelCheckpoint', 'VisualDL', 'LRScheduler',
     'EarlyStopping', 'ReduceLROnPlateau'
+=======
+__all__ = [  # noqa
+    'Callback',
+    'ProgBarLogger',
+    'ModelCheckpoint',
+    'VisualDL',
+    'LRScheduler',
+    'EarlyStopping',
+    'ReduceLROnPlateau',
+    'WandbCallback',
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 ]

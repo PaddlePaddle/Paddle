@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/memory/memcpy.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/operators/math/beam_search.h"
 
 namespace phi {
@@ -28,11 +32,37 @@ class XPUDeviceContext;
 namespace paddle {
 namespace operators {
 namespace math {
+<<<<<<< HEAD
+=======
+template <typename T>
+int CopyData(const T *x, T **y, int len, const Place &place) {
+  if (nullptr == x || nullptr == y || len <= 0)
+    return xpu::Error_t::INVALID_PARAM;
+
+  *y = reinterpret_cast<T *>(malloc(sizeof(T) * len));
+
+  paddle::memory::Copy(
+      paddle::platform::CPUPlace(), *y, place, x, len * sizeof(T));
+  return xpu::Error_t::SUCCESS;
+}
+
+template <typename T>
+void CopyDataByCondition(const T *x, T **y, int len, const Place &place) {
+  if (x != nullptr) {
+    int r = CopyData(x, y, len, place);
+    PADDLE_ENFORCE_EQ(
+        r,
+        xpu::Error_t::SUCCESS,
+        platform::errors::External("Copy data form xpu to cpu failed"));
+  }
+}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T>
 class BeamSearchFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext &context,
+<<<<<<< HEAD
                   const framework::LoDTensor *pre_ids,
                   const framework::LoDTensor *pre_scores,
                   const framework::LoDTensor *ids,
@@ -40,6 +70,15 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                   framework::LoDTensor *selected_ids,
                   framework::LoDTensor *selected_scores,
                   framework::Tensor *parent_idx,
+=======
+                  const phi::DenseTensor *pre_ids,
+                  const phi::DenseTensor *pre_scores,
+                  const phi::DenseTensor *ids,
+                  const phi::DenseTensor *scores,
+                  phi::DenseTensor *selected_ids,
+                  phi::DenseTensor *selected_scores,
+                  phi::DenseTensor *parent_idx,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   size_t level,
                   size_t beam_size,
                   int end_id,
@@ -54,7 +93,12 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
                                         level,
                                         beam_size,
                                         end_id,
+<<<<<<< HEAD
                                         is_accumulated);
+=======
+                                        is_accumulated,
+                                        ids->place());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto selected_items = ToMap(items, high_level.back());
     if (FLAGS_v == 3) {
       VLOG(3) << "selected_items:";
@@ -66,7 +110,12 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
       }
     }
 
+<<<<<<< HEAD
     PruneEndBeams(pre_ids, abs_lod, &selected_items, level, end_id);
+=======
+    PruneEndBeams(
+        pre_ids, abs_lod, &selected_items, level, end_id, ids->place());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     // calculate the output tensor's height
     size_t num_instances = std::accumulate(
         std::begin(selected_items),
@@ -160,12 +209,26 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
    * Pruning must one step later than finishing (thus pre_ids is needed here),
    * since the end tokens must be writed out.
    */
+<<<<<<< HEAD
   void PruneEndBeams(const framework::LoDTensor *pre_ids,
                      const framework::LoD &abs_lod,
                      std::vector<std::vector<Item>> *items,
                      size_t lod_level,
                      int end_id) {
     auto *pre_ids_data = pre_ids->data<int64_t>();
+=======
+  void PruneEndBeams(const phi::DenseTensor *pre_ids,
+                     const framework::LoD &abs_lod,
+                     std::vector<std::vector<Item>> *items,
+                     size_t lod_level,
+                     int end_id,
+                     const Place &place) {
+    auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
+    int64_t *pre_ids_data = nullptr;
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     auto &high_level = abs_lod[lod_level];
     for (size_t src_idx = 0; src_idx < high_level.size() - 1; ++src_idx) {
       size_t src_prefix_start = high_level[src_idx];
@@ -189,6 +252,10 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
           items->at(offset).clear();
       }
     }
+<<<<<<< HEAD
+=======
+    free(pre_ids_data);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   /*
@@ -213,6 +280,10 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
     std::vector<Item> &top_beam = *top_beam_ptr;
 
     size_t num_beams = top_beam.size();
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     if (num_beams < beam_size) {
       top_beam.resize(num_beams + 1);
       num_beams++;
@@ -237,6 +308,7 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
    * For each source, select top beam_size records.
    */
   std::vector<std::vector<Item>> SelectTopBeamSizeItems(
+<<<<<<< HEAD
       const framework::LoDTensor *pre_ids,
       const framework::LoDTensor *pre_scores,
       const framework::LoDTensor *ids,
@@ -245,16 +317,48 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
       size_t beam_size,
       int end_id,
       bool is_accumulated) {
+=======
+      const phi::DenseTensor *pre_ids,
+      const phi::DenseTensor *pre_scores,
+      const phi::DenseTensor *ids,
+      const phi::DenseTensor *scores,
+      size_t lod_level,
+      size_t beam_size,
+      int end_id,
+      bool is_accumulated,
+      const Place &place) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     std::vector<std::vector<Item>> result;
 
     // find the current candidates
     auto abs_lod = framework::ToAbsOffset(scores->lod());
 
+<<<<<<< HEAD
     auto *pre_ids_data = pre_ids->data<int64_t>();
     auto *pre_scores_data = pre_scores->data<float>();
 
     auto *ids_data = ids ? ids->data<int64_t>() : nullptr;
     auto *scores_data = scores->data<float>();
+=======
+    auto *pre_ids_data_xpu = pre_ids->data<int64_t>();
+    int64_t *pre_ids_data = nullptr;
+    CopyDataByCondition<int64_t>(
+        pre_ids_data_xpu, &pre_ids_data, pre_ids->numel(), place);
+
+    auto *pre_scores_data_xpu = pre_scores->data<float>();
+    float *pre_scores_data = nullptr;
+    CopyDataByCondition<float>(
+        pre_scores_data_xpu, &pre_scores_data, pre_scores->numel(), place);
+
+    auto *ids_data_xpu = ids ? ids->data<int64_t>() : nullptr;
+    int64_t *ids_data = nullptr;
+    CopyDataByCondition<int64_t>(ids_data_xpu, &ids_data, ids->numel(), place);
+
+    auto *scores_data_xpu = scores->data<float>();
+    float *scores_data = nullptr;
+    CopyDataByCondition<float>(
+        scores_data_xpu, &scores_data, scores->numel(), place);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     size_t num_seqs = scores->NumElements(lod_level);
     size_t seq_width = 1;
@@ -273,6 +377,10 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
            ++offset) {
         auto pre_id = pre_ids_data[offset];
         auto pre_score = pre_scores_data[offset];
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if (pre_id == end_id) {
           // Allocate all probability mass to end_id for finished branchs and
           // the other candidate ids can be ignored.
@@ -285,6 +393,10 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
             float score = is_accumulated
                               ? scores_data[index]
                               : pre_score + std::log(scores_data[index]);
+<<<<<<< HEAD
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             Item item(offset, id, score);
             Insert(&top_beam, item, beam_size);
           }
@@ -304,6 +416,14 @@ class BeamSearchFunctor<platform::XPUDeviceContext, T> {
       }
     }
 
+<<<<<<< HEAD
+=======
+    free(pre_ids_data);
+    free(pre_scores_data);
+    free(ids_data);
+    free(scores_data);
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return result;
   }
 };

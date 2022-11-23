@@ -23,7 +23,11 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
+=======
+#include "paddle/phi/backends/onednn/onednn_context.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 

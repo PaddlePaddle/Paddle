@@ -16,13 +16,34 @@
 
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
+=======
+#include "paddle/phi/backends/c_comm_lib.h"
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+namespace detail {
+
+// FIXME(paddle-dev): Since the singleton of ProcessGroup in fluid is used in
+// SyncBN, the fluid symbol will be dependent on external hardware access.
+// Here, the part that depends on the fluid symbol is individually encapsulated
+// as a temporary function to isolate external symbol dependencies.
+// In the future, the dependence on the singleton in fluid in SyncBN needs
+// to be removed.
+// In principle, the PHI Kernel cannot use the global singleton internally,
+// and the required members need to be passed in from the eucalyptus tree.
+ccl::CCLComm GetCCLComm(const Place& place, int global_gid = 0);
+
+}  // namespace detail
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context& dev_ctx,
                          const DenseTensor& x,
+<<<<<<< HEAD
                          const DenseTensor& scale,
                          const DenseTensor& bias,
                          const DenseTensor& mean,
@@ -34,6 +55,18 @@ void SyncBatchNormKernel(const Context& dev_ctx,
                          bool use_global_stats,
                          bool trainable_statistics,
                          bool fuse_with_relu,
+=======
+                         const DenseTensor& mean,
+                         const DenseTensor& variance,
+                         const DenseTensor& scale,
+                         const DenseTensor& bias,
+                         bool is_test,
+                         float momentum,
+                         float epsilon,
+                         const std::string& data_layout,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                          DenseTensor* y,
                          DenseTensor* mean_out,
                          DenseTensor* variance_out,

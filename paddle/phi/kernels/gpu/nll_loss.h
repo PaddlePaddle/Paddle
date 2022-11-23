@@ -19,10 +19,15 @@
 #include <functional>
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/kernels/funcs/math.h"
 
 namespace phi {
 static constexpr int kNumCUDAThreads = 512;
@@ -270,8 +275,8 @@ __global__ void GPUNLLLossForward2D_with_reduce(T* out_data,
       partial_sums, blockDim.x, acc_weight, thrust::plus<T>(), (T)0);
 
   if (threadIdx.x == 0) {
-    paddle::platform::CudaAtomicAdd(total_weight_data, acc_weight);
-    paddle::platform::CudaAtomicAdd(out_data, input_sum);
+    phi::CudaAtomicAdd(total_weight_data, acc_weight);
+    phi::CudaAtomicAdd(out_data, input_sum);
   }
 }
 

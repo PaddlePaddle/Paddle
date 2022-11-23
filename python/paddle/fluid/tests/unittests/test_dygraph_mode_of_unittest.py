@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 
@@ -23,7 +21,11 @@ class TestDygraphModeOfUnittest(unittest.TestCase):
     def test_dygraph_mode(self):
         self.assertTrue(
             paddle.in_dynamic_mode(),
+<<<<<<< HEAD
             'Default Mode of Unittest should be dygraph mode, but get static mode.'
+=======
+            'Default Mode of Unittest should be dygraph mode, but get static mode.',
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         )
 
 

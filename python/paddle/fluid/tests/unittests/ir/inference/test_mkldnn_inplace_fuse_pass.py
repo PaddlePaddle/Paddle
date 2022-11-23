@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import PassVersionChecker
 
 
@@ -29,6 +25,7 @@ class MkldnnInplacePassTest(InferencePassTest):
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             paddle.enable_static()
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, 100, 100],
                               dtype="float32")
@@ -41,6 +38,19 @@ class MkldnnInplacePassTest(InferencePassTest):
             eltwise_out = fluid.layers.elementwise_add(softmax_out,
                                                        relu_out,
                                                        axis=-1)
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, 100, 100], dtype="float32"
+            )
+            conv_out_1 = fluid.layers.conv2d(
+                data, num_filters=3, filter_size=3, bias_attr=False
+            )
+            softmax_out = fluid.layers.softmax(conv_out_1)
+            relu_out = fluid.layers.relu(conv_out_1)
+            eltwise_out = fluid.layers.elementwise_add(
+                softmax_out, relu_out, axis=-1
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         self.pass_name = 'mkldnn_inplace_pass'
         self.feeds = {

@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -39,6 +42,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -48,6 +52,17 @@ class TestBase(IPUOpTest):
         self.main_prog.global_block().append_op(type="share_data",
                                                 inputs={"X": x},
                                                 outputs={'Out': y})
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        self.main_prog.global_block().append_op(
+            type="share_data", inputs={"X": x}, outputs={'Out': y}
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.elementwise_add(y, y)
         self.fetch_list = [out.name]
 
@@ -63,7 +78,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
@@ -74,6 +92,7 @@ class TestCase1(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -83,6 +102,17 @@ class TestCase1(TestBase):
         self.main_prog.global_block().append_op(type="share_data",
                                                 inputs={"X": x},
                                                 outputs={'Out': y})
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        self.main_prog.global_block().append_op(
+            type="share_data", inputs={"X": x}, outputs={'Out': y}
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.elementwise_add(x, y)
         self.fetch_list = [out.name]
 

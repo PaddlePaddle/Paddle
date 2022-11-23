@@ -337,7 +337,6 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
  * Ty: The type of data that needs to be stored in registers.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -354,12 +353,7 @@ __device__ __forceinline__ void WriteData(T _global_ptr_* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadData(Ty* dst,
                                     const Tx _global_ptr_* src,
                                     int size_nx,
@@ -472,7 +466,6 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -484,7 +477,7 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
  * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num) {
@@ -502,7 +495,7 @@ __device__ __inline__ void ReadData(T* dst,
   }
 }
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ __inline__ void ReadData(T* dst,
                                     const T _global_ptr_* src,
                                     int num,
@@ -531,7 +524,6 @@ __device__ __inline__ void ReadData(T* dst,
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
  * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
  * Index: The index of data stored in dst.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -546,7 +538,6 @@ __device__ __inline__ void ReadData(T* dst,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           typename ArgsT,
           int Index,
           bool IsBoundary>
@@ -582,7 +573,6 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * T: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -599,7 +589,7 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
@@ -634,7 +624,6 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * T: The type of data.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
@@ -662,7 +651,6 @@ template <typename Tx,
           typename Ty,
           int NX,
           int NY,
-          int BlockSize,
           int Rank,
           typename IndexCal,
           typename Functor,
@@ -733,7 +721,6 @@ __device__ __forceinline__ void ReadDataReduce(
  * T: The type of data.
  * NX: The number of data continuously writed by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -746,7 +733,7 @@ __device__ __forceinline__ void ReadDataReduce(
  * size: The current block needs to load size elements continuously.
  */
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst,
                           const T* src,
                           int num,
@@ -766,7 +753,7 @@ __device__ void WriteData(T _global_ptr_* dst,
   }
 }
 
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary>
+template <typename T, int NX, int NY, bool IsBoundary>
 __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
   int thread_offset = core_id() * NX;
   mfence_local();
@@ -793,7 +780,6 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
  * Ty: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -810,12 +796,7 @@ __device__ void WriteData(T _global_ptr_* dst, const T* src, int num) {
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void WriteData(Ty _global_ptr_* dst,
                                      const Tx* src,
                                      int size_nx,
@@ -1190,7 +1171,6 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * T: The type of data stored in the global memory.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -1206,7 +1186,7 @@ __device__ __inline__ void ReadDataBcCanNotCmp(
  * read_lens: The number of data continuously loaded by each thread.
  * total_num_output: Total number of original output.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __inline__ void ReadDataBc(T* dst,
                                       const T _global_ptr_* src,
                                       uint32_t block_offset,
@@ -1238,14 +1218,13 @@ __device__ __inline__ void ReadDataBc(T* dst,
  * T: Data type of register.
  * NX: Number of data to initialize.
  * NY: Number of data to initialize, NY only can be 1.
- * BlockSize: Identifies the current device thread index method. For xpu,
  * core_id() is used as the index.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
  * init_data: The register pointer of init data, the size is NX.
  */
-template <typename T, int NX, int NY, int BlockSize>
+template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
   int thread_offset = block_offset + core_id() * NX;
 #pragma unroll

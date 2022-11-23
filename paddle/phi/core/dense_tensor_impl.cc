@@ -18,14 +18,17 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_utils.h"
 #endif
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace phi {
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
   meta_.dtype = paddle::experimental::DataType::FLOAT32;
@@ -53,7 +56,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }
@@ -68,9 +71,7 @@ const Place& DenseTensor::place() const {
 
 paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
-  meta_.layout = layout;
-}
+void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
@@ -206,7 +207,7 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
@@ -350,16 +351,7 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
 }
 
 #ifdef PADDLE_WITH_MKLDNN
-dnnl::memory::desc DenseTensor::mem_desc() const {
-  return mem_desc_ ? mem_desc_
-                   : dnnl::memory::desc(phi::vectorize(meta_.dims),
-                                        phi::TransToMKLDNNDataType(meta_.dtype),
-                                        format_);
-}
-
-dnnl::memory::format_tag DenseTensor::format() const {
-  return mem_desc_ ? paddle::platform::GetMKLDNNFormat(mem_desc_) : format_;
-}
+const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
 #endif
 
 // NOTE: For historical reasons, this interface has a special behavior,
@@ -372,8 +364,9 @@ DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   meta_.dtype = src.meta_.dtype;
   meta_.layout = src.meta_.layout;
   meta_.offset = src.meta_.offset;
+  storage_properties_ =
+      std::move(CopyStorageProperties(src.storage_properties_));
 #ifdef PADDLE_WITH_MKLDNN
-  format_ = src.format_;
   mem_desc_ = src.mem_desc_;
 #endif
   return *this;

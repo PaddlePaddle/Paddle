@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import math
 import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
+from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):
@@ -36,7 +34,13 @@ class RangeIterableDatasetSplit(IterableDataset):
         else:
             per_worker = int(
                 math.ceil(
+<<<<<<< HEAD
                     (self.end - self.start) / float(worker_info.num_workers)))
+=======
+                    (self.end - self.start) / float(worker_info.num_workers)
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             worker_id = worker_info.id
             iter_start = self.start + worker_id * per_worker
             iter_end = min(iter_start + per_worker, self.end)
@@ -51,11 +55,21 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RangeIterableDatasetSplit(0, 10)
+<<<<<<< HEAD
             dataloader = DataLoader(dataset,
                                     places=place,
                                     num_workers=2,
                                     batch_size=1,
                                     drop_last=True)
+=======
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=2,
+                batch_size=1,
+                drop_last=True,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             rets = []
             for d in dataloader:
@@ -89,18 +103,30 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 start = dataset.start
                 end = dataset.end
                 num_per_worker = int(
-                    math.ceil((end - start) / float(worker_info.num_workers)))
+                    math.ceil((end - start) / float(worker_info.num_workers))
+                )
 
                 worker_id = worker_info.id
                 dataset.start = start + worker_id * num_per_worker
                 dataset.end = min(dataset.start + num_per_worker, end)
 
+<<<<<<< HEAD
             dataloader = DataLoader(dataset,
                                     places=place,
                                     num_workers=1,
                                     batch_size=1,
                                     drop_last=True,
                                     worker_init_fn=worker_spliter)
+=======
+            dataloader = DataLoader(
+                dataset,
+                places=place,
+                num_workers=1,
+                batch_size=1,
+                drop_last=True,
+                worker_init_fn=worker_spliter,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             rets = []
             for d in dataloader:

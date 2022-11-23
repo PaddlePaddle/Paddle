@@ -21,6 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
 
 framework::OpKernelType innerGetKernelTypeForVar(
@@ -42,6 +43,9 @@ framework::OpKernelType innerGetKernelTypeForVar(
   return framework::OpKernelType(
       expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 class PReluOp : public framework::OperatorWithKernel {
  public:
@@ -56,6 +60,7 @@ class PReluOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -74,6 +79,10 @@ class PReluOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
+=======
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -104,21 +113,6 @@ There are modes:
     AddAttr<std::string>("data_format",
                          "Data format that specifies the layout of input")
         .SetDefault("NCHW");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
   }
 };
 
@@ -150,6 +144,7 @@ class PReluGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -168,6 +163,10 @@ class PReluGradOp : public framework::OperatorWithKernel {
       const framework::OpKernelType &expected_kernel_type) const {
     return innerGetKernelTypeForVar(tensor, expected_kernel_type);
   }
+=======
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 template <typename T>

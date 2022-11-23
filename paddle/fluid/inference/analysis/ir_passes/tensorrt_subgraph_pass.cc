@@ -1,3 +1,4 @@
+
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +32,7 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
+#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -116,6 +118,14 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
     framework::ir::Graph *graph) const {
   framework::ir::FusePassBase::Init("tensorrt_subgraph_pass", graph);
 
+<<<<<<< HEAD
+=======
+  static std::once_flag trt_plugin_registered;
+  std::call_once(trt_plugin_registered, []() {
+    tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+  });
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto model_precision =
       static_cast<phi::DataType>(Get<int>("model_precision"));
   if (model_precision == phi::DataType::BFLOAT16) {
@@ -157,11 +167,9 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
-
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
       CreateTensorRTOp(node, graph, graph_param_names, &repetitive_params);
-
       std::unordered_set<const Node *> nodes2remove(
           framework::ir::Agent(node).subgraph()->begin(),
           framework::ir::Agent(node).subgraph()->end());
@@ -312,6 +320,13 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   auto opt_input_shape =
       Get<std::map<std::string, std::vector<int>>>("optim_input_shape");
 
+  auto min_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("min_shape_tensor");
+  auto max_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("max_shape_tensor");
+  auto opt_shape_tensor =
+      Get<std::map<std::string, std::vector<int>>>("optim_shape_tensor");
+
   auto allow_build_at_runtime = Get<bool>("trt_allow_build_at_runtime");
   auto shape_range_info_path = Get<std::string>("trt_shape_range_info_path");
   auto trt_tuned_dynamic_shape = Get<bool>("trt_tuned_dynamic_shape");
@@ -321,7 +336,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     inference::DeserializeShapeRangeInfo(shape_range_info_path,
                                          &min_input_shape,
                                          &max_input_shape,
+<<<<<<< HEAD
                                          &opt_input_shape);
+=======
+                                         &opt_input_shape,
+                                         &min_shape_tensor,
+                                         &max_shape_tensor,
+                                         &opt_shape_tensor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   // The following procedure is used to rename all the intermediate
@@ -378,7 +400,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetBlockAttr("sub_block", new_block);
   op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
   op_desc->SetAttr("max_batch_size", max_batch_size);
-  op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
+  op_desc->SetAttr("workspace_size", Get<int64_t>("workspace_size"));
   op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
   op_desc->SetAttr("output_name_mapping", output_mapping);
   op_desc->SetAttr("origin_output_dims", renamed_output_dims);
@@ -499,13 +521,23 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id),
                   max_batch_size,
+<<<<<<< HEAD
                   Get<int>("workspace_size"),
+=======
+                  Get<int64_t>("workspace_size"),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   precision_mode,
                   calibrator.get(),
                   Get<int>("gpu_device_id"),
                   min_input_shape,
                   max_input_shape,
                   opt_input_shape,
+<<<<<<< HEAD
+=======
+                  min_shape_tensor,
+                  max_shape_tensor,
+                  opt_shape_tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   disable_trt_plugin_fp16,
                   static_cast<phi::DataType>(Get<int>("model_precision")));
   trt_engine->SetUseOSS(Get<bool>("use_varseqlen"));
@@ -520,6 +552,10 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
+<<<<<<< HEAD
+=======
+  trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -599,6 +635,7 @@ REGISTER_PASS_CAPABILITY(tensorrt_subgraph_pass)
             .EQ("fc", 0)
             .EQ("shuffle_channel", 0)
             .EQ("swish", 0)
+            .EQ("silu", 0)
             .EQ("split", 0)
             .LE("instance_norm", 1)
             .EQ("gelu", 0)

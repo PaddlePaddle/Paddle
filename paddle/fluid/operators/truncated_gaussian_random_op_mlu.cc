@@ -28,10 +28,17 @@ class TruncatedGaussianRandomMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
+<<<<<<< HEAD
     auto* tensor = context.Output<framework::Tensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     framework::Tensor cpu_tensor(tensor->dtype());
+=======
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
+    tensor->mutable_data<T>(context.GetPlace());
+
+    phi::DenseTensor cpu_tensor(tensor->dtype());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     cpu_tensor.Resize(tensor->dims());
     T* data_cpu = cpu_tensor.mutable_data<T>(platform::CPUPlace());
 

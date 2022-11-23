@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy
 import unittest
 
@@ -51,6 +49,7 @@ class TestAssertVariable(unittest.TestCase):
         self._run(func, x, with_exception, False)
 
     def test_non_variable(self):
+<<<<<<< HEAD
         self._run_dy_static(dyfunc_assert_non_variable,
                             x=False,
                             with_exception=True)
@@ -73,6 +72,30 @@ class TestAssertVariable(unittest.TestCase):
         self._run_dy_static(dyfunc_assert_variable,
                             x=numpy.array([1]),
                             with_exception=False)
+=======
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=False, with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_non_variable, x=True, with_exception=False
+        )
+
+    def test_bool_variable(self):
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
+        )
+
+    def test_int_variable(self):
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([0]), with_exception=True
+        )
+        self._run_dy_static(
+            dyfunc_assert_variable, x=numpy.array([1]), with_exception=False
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

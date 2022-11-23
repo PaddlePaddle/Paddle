@@ -15,8 +15,10 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.core import PassVersionChecker
+import paddle
 
 
 class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
@@ -24,16 +26,27 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
     def setUp(self):
         self.init_data()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             x = fluid.data(name='x',
                            shape=[-1] + self.shape_x,
                            dtype=self.d_type)
             out = fluid.layers.transpose(x, perm=[0, 1, 2, 3])
             out = fluid.layers.reshape(out, [0, 0, 0, 0])
+=======
+            x = fluid.data(
+                name='x', shape=[-1] + self.shape_x, dtype=self.d_type
+            )
+
+            out = paddle.transpose(x, perm=[0, 1, 2, 3])
+            out = paddle.reshape(out, [0, 0, 0, 0])
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             out = fluid.layers.fc(out, size=1)
 
             self.feeds = {
-                "x":
-                np.random.random([self.bs] + self.shape_x).astype(self.d_type)
+                "x": np.random.random([self.bs] + self.shape_x).astype(
+                    self.d_type
+                )
             }
             self.fetch_list = [out]
 

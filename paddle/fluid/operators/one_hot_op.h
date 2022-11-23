@@ -21,14 +21,19 @@ namespace operators {
 
 template <typename DeviceContext, typename InT>
 struct OneHotOpFunctor {
-  const framework::LoDTensor* in_;
-  framework::LoDTensor* out_;
+  const phi::DenseTensor* in_;
+  phi::DenseTensor* out_;
   int depth_;
   const DeviceContext& ctx_;
   bool allow_out_of_range_;
 
+<<<<<<< HEAD
   OneHotOpFunctor(const framework::LoDTensor* in,
                   framework::LoDTensor* out,
+=======
+  OneHotOpFunctor(const phi::DenseTensor* in,
+                  phi::DenseTensor* out,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   int depth,
                   const DeviceContext& ctx,
                   bool allow_out_of_range = false)
@@ -76,8 +81,8 @@ struct OneHotOpFunctor {
   }
 };
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class OneHotKernel : public framework::OpKernel<T> {
  public:
@@ -87,7 +92,7 @@ class OneHotKernel : public framework::OpKernel<T> {
     int depth = context.Attr<int>("depth");
     bool allow_out_of_range = context.Attr<bool>("allow_out_of_range");
     if (context.HasInput("depth_tensor")) {
-      auto* depth_tensor = context.Input<Tensor>("depth_tensor");
+      auto* depth_tensor = context.Input<phi::DenseTensor>("depth_tensor");
       auto* depth_data = depth_tensor->data<int32_t>();
       depth = depth_data[0];
       auto in_dims = in->dims();

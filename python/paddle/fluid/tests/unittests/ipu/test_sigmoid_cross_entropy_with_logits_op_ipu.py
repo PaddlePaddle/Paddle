@@ -18,11 +18,17 @@ import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+<<<<<<< HEAD
 import paddle.nn.functional as F
 
 
 class TestBase(IPUOpTest):
 
+=======
+
+
+class TestBase(IPUOpTest):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -35,11 +41,19 @@ class TestBase(IPUOpTest):
         label = np.arange(10).reshape([10])
         self.feed_fp32 = {
             "x": x.astype(np.float32),
+<<<<<<< HEAD
             "label": label.astype(np.float32)
         }
         self.feed_fp16 = {
             "x": x.astype(np.float16),
             "label": label.astype(np.float16)
+=======
+            "label": label.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.float16),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def set_feed_attr(self):
@@ -53,6 +67,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self, on_ipu):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
@@ -61,6 +76,17 @@ class TestBase(IPUOpTest):
                                    dtype='float32')
         out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
             x, label, **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        label = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        out = paddle.fluid.layers.sigmoid_cross_entropy_with_logits(
+            x, label, **self.attrs
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -75,7 +101,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {
             'ignore_index': 1,
@@ -83,7 +112,10 @@ class TestCase1(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_atol(self):
         # epsilon is added when normalize is True, use larger atol.
         self.atol = 1e-6

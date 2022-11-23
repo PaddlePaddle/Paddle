@@ -43,7 +43,11 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
+=======
+      const phi::DenseTensor &tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType &expected_kernel_type) const override {
     return framework::OpKernelType(expected_kernel_type.data_type_,
                                    expected_kernel_type.place_,
@@ -58,7 +62,7 @@ class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The variable will be filled up with specified value.");
     AddAttr<float>("value", "The filled value").SetDefault(0.0);
     AddAttr<int>("dtype",
-                 "Output tensor data type. defalut value is -1,"
+                 "Output tensor data type. default value is -1,"
                  "according to the input dtype.")
         .SetDefault(-1);
     AddComment(R"DOC(

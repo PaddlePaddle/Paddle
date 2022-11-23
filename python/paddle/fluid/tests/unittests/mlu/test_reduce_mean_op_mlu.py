@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -166,9 +164,15 @@ class TestKeepDimReduce(Test1DReduce):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
         self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
                                   keepdims=self.attrs['keep_dim'])
+=======
+            'Out': self.inputs['X'].mean(
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
 
@@ -182,9 +186,15 @@ class TestKeepDim8DReduce(Test1DReduce):
         }
         self.attrs = {'dim': (3, 4, 5), 'keep_dim': True}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             self.inputs['X'].mean(axis=tuple(self.attrs['dim']),
                                   keepdims=self.attrs['keep_dim'])
+=======
+            'Out': self.inputs['X'].mean(
+                axis=tuple(self.attrs['dim']), keepdims=self.attrs['keep_dim']
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
 

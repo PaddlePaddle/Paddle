@@ -32,15 +32,21 @@ class TestComplexSumLayer(unittest.TestCase):
 
     def test_complex_basic_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([
                 2, 10, 10
             ]).astype(dtype) + 1j * rand([2, 10, 10]).astype(dtype)
+=======
+            input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
+                [2, 10, 10]
+            ).astype(dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for place in self._places:
                 with dg.guard(place):
                     var_x = dg.to_variable(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

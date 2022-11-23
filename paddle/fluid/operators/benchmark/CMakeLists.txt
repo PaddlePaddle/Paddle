@@ -1,6 +1,10 @@
 cc_test(
   op_tester
+<<<<<<< HEAD
   SRCS op_tester.cc op_tester_config.cc
+=======
+  SRCS op_tester.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DEPS memory
        timer
        framework_proto

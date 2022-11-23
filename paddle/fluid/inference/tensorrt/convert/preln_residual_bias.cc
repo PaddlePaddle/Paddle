@@ -42,7 +42,11 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                                     framework::DDim* dims) -> float* {
       std::string var_name = op_desc.Input(arg_name).front();
       auto* temp_var = scope.FindVar(var_name);
+<<<<<<< HEAD
       auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+=======
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       (*dims) = temp_tensor->dims();
       auto* temp_data = const_cast<float*>(static_cast<const float*>(
           engine_->GetFp32TrtWeight(var_name, *temp_tensor).get().values));
@@ -51,12 +55,23 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     framework::DDim bias_dims, scale_dims, ele_bias_dims;
     auto* bias = get_persistable_data("Bias", &bias_dims);
     auto* scale = get_persistable_data("Scale", &scale_dims);
+<<<<<<< HEAD
     auto* ele_bias = get_persistable_data("EleBias", &ele_bias_dims);
+=======
+    auto const& vars = op_desc.Inputs(false);
+    bool has_bias = vars.find("EleBias") != vars.end();
+    float* ele_bias =
+        has_bias ? get_persistable_data("EleBias", &ele_bias_dims) : nullptr;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     int bias_size = phi::product(bias_dims);
 
     int scale_size = phi::product(scale_dims);
+<<<<<<< HEAD
     int ele_bias_size = phi::product(ele_bias_dims);
+=======
+    int ele_bias_size = has_bias ? phi::product(ele_bias_dims) : 0;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     float epsilon = PADDLE_GET_CONST(float, op_desc.GetAttr("epsilon"));
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
     if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
@@ -66,6 +81,7 @@ class PrelnResidualBiasOpConverter : public OpConverter {
     nvinfer1::ILayer* layer = nullptr;
     plugin::DynamicPluginTensorRT* plugin = nullptr;
     if (with_fp16) {
+<<<<<<< HEAD
       auto half_ele_bias_data = new half[bias_size];
       for (int i = 0; i < bias_size; i++) {
         half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
@@ -78,6 +94,24 @@ class PrelnResidualBiasOpConverter : public OpConverter {
                                                           ele_bias_size,
                                                           epsilon,
                                                           with_fp16);
+=======
+      half* half_ele_bias_data = nullptr;
+      if (ele_bias_size > 0) {
+        half_ele_bias_data = new half[ele_bias_size];
+        for (int i = 0; i < ele_bias_size; i++) {
+          half_ele_bias_data[i] = static_cast<half>(ele_bias[i]);
+        }
+      }
+      plugin = new plugin::PrelnResidualBiasPluginDynamic(
+          bias,
+          scale,
+          ele_bias_size > 0 ? half_ele_bias_data : nullptr,
+          bias_size,
+          scale_size,
+          ele_bias_size,
+          epsilon,
+          with_fp16);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     } else {
       plugin = new plugin::PrelnResidualBiasPluginDynamic(bias,
                                                           scale,

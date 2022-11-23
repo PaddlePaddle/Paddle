@@ -78,8 +78,14 @@ class TestBuffered(unittest.TestCase):
 class TestCompose(unittest.TestCase):
 
     def test_compse(self):
+<<<<<<< HEAD
         reader = paddle.reader.compose(reader_creator_10(0),
                                        reader_creator_10(0))
+=======
+        reader = paddle.reader.compose(
+            reader_creator_10(0), reader_creator_10(0)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         for idx, e in enumerate(reader()):
             self.assertEqual(e, (idx, idx))
 
@@ -87,7 +93,8 @@ class TestCompose(unittest.TestCase):
         total = 0
         reader = paddle.reader.compose(
             paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
-            reader_creator_10(0))
+            reader_creator_10(0),
+        )
         with self.assertRaises(paddle.reader.ComposeNotAligned):
             for e in reader():
                 total += 1
@@ -96,10 +103,18 @@ class TestCompose(unittest.TestCase):
 
     def test_compose_not_aligned_no_check(self):
         total = 0
+<<<<<<< HEAD
         reader = paddle.reader.compose(paddle.reader.chain(
             reader_creator_10(0), reader_creator_10(0)),
                                        reader_creator_10(0),
                                        check_alignment=False)
+=======
+        reader = paddle.reader.compose(
+            paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
+            reader_creator_10(0),
+            check_alignment=False,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         for e in reader():
             total += 1
         # expecting 10, not 20
@@ -137,7 +152,7 @@ class TestXmap(unittest.TestCase):
     def test_xmap(self):
 
         def mapper(x):
-            return (x + 1)
+            return x + 1
 
         orders = (True, False)
         thread_nums = (1, 2, 4, 8, 16)
@@ -145,9 +160,9 @@ class TestXmap(unittest.TestCase):
         for order in orders:
             for tNum in thread_nums:
                 for size in buffered_size:
-                    reader = paddle.reader.xmap_readers(mapper,
-                                                        reader_creator_10(0),
-                                                        tNum, size, order)
+                    reader = paddle.reader.xmap_readers(
+                        mapper, reader_creator_10(0), tNum, size, order
+                    )
                     for n in range(3):
                         result = []
                         for i in reader():
@@ -178,7 +193,8 @@ class TestMultiProcessReader(unittest.TestCase):
         self.setup()
         results = []
         for data in paddle.reader.multiprocess_reader(
-            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+            [self.reader0, self.reader1, self.reader2], 100, use_pipe
+        )():
             results.append(data)
         self.assertEqual(sorted(self.samples), sorted(results))
 

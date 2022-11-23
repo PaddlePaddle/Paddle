@@ -45,7 +45,7 @@ class TestSequenceScatterOp(OpTest):
         self.inputs = {
             'X': X_data,
             'Ids': (Ids_data, Ids_lod),
-            'Updates': (Updates_data, Updates_lod)
+            'Updates': (Updates_data, Updates_lod),
         }
         self.outputs = {'Out': Out_data}
 

@@ -31,6 +31,7 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+<<<<<<< HEAD
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     const Tensor& param,
     const Tensor& grad,
@@ -77,6 +78,9 @@ Tensor conv2d_impl(const Tensor& input,
                    bool use_addto,
                    int workspace_size_MB,
                    bool exhaustive_search);
+=======
+Tensor add_n_impl(const std::vector<Tensor>& x);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 Tensor conv3d_impl(const Tensor& input,
                    const Tensor& filter,
@@ -92,6 +96,7 @@ Tensor conv3d_impl(const Tensor& input,
 
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking);
 
+<<<<<<< HEAD
 Tensor embedding_impl(const Tensor& x,
                       const Tensor& weight,
                       int64_t padding_idx,
@@ -146,6 +151,10 @@ void conv3d_grad_impl(const Tensor& input,
                       Tensor* input_grad,
                       Tensor* filter_grad);
 
+=======
+////////////////// Backward(grad) api impls //////////////////////
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad);
 
 void embedding_grad_impl(const Tensor& x,

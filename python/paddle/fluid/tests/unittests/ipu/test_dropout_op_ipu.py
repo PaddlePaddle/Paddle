@@ -42,14 +42,20 @@ class TestBase(IPUOpTest):
         self.attrs = {
             "dropout_prob": 0.5,
             "is_test": True,
-            "dropout_implementation": "downgrade_in_infer"
+            "dropout_implementation": "downgrade_in_infer",
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.fluid.layers.dropout(x, **self.attrs)
         out = paddle.fluid.layers.elementwise_add(x, x)
         self.fetch_list = [out.name]
@@ -71,7 +77,7 @@ class TestCase1(TestBase):
         self.attrs = {
             "dropout_prob": 0.5,
             "is_test": True,
-            "dropout_implementation": "upscale_in_train"
+            "dropout_implementation": "upscale_in_train",
         }
 
 
@@ -81,7 +87,7 @@ class TestCase2(TestBase):
         self.attrs = {
             "dropout_prob": 0.0,
             "is_test": False,
-            "dropout_implementation": "upscale_in_train"
+            "dropout_implementation": "upscale_in_train",
         }
 
 

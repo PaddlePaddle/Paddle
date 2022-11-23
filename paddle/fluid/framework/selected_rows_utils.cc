@@ -14,32 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/selected_rows_utils.h"
 
+#include "paddle/phi/core/serialization.h"
+
 namespace paddle {
 namespace framework {
 
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows,
                        const platform::DeviceContext& dev_ctx) {
-  {  // the 1st field, uint32_t version
-    constexpr uint32_t version = 0;
-    os.write(reinterpret_cast<const char*>(&version), sizeof(version));
-  }
-  {
-    // the 2st field, rows information
-    auto& rows = selected_rows.rows();
-    uint64_t size = rows.size();
-    os.write(reinterpret_cast<const char*>(&size), sizeof(size));
-    for (uint64_t i = 0; i < size; ++i) {
-      os.write(reinterpret_cast<const char*>(&rows[i]), sizeof(rows[i]));
-    }
-  }
-  {
-    // the 3st field, the height of SelectedRows
-    int64_t height = selected_rows.height();
-    os.write(reinterpret_cast<const char*>(&height), sizeof(height));
-  }
-  // the 4st field, Tensor data
-  TensorToStream(os, selected_rows.value(), dev_ctx);
+  phi::SerializeToStream(os, selected_rows, dev_ctx);
 }
 
 void SerializeToStream(std::ostream& os,
@@ -48,19 +31,20 @@ void SerializeToStream(std::ostream& os,
   const platform::DeviceContext* dev_ctx;
   auto place = selected_rows.place();
   dev_ctx = pool.Get(place);
-  SerializeToStream(os, selected_rows, *dev_ctx);
+  phi::SerializeToStream(os, selected_rows, *dev_ctx);
 }
 
-void DeserializeFromStream(std::istream& os, phi::SelectedRows* selected_rows) {
+void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
   dev_ctx = pool.Get(platform::CPUPlace());
-  DeserializeFromStream(os, selected_rows, *dev_ctx);
+  phi::DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
 
 void DeserializeFromStream(std::istream& is,
                            phi::SelectedRows* selected_rows,
                            const platform::DeviceContext& dev_ctx) {
+<<<<<<< HEAD
   {
     // the 1st field, unit32_t version for SelectedRows
     uint32_t version;
@@ -88,6 +72,10 @@ void DeserializeFromStream(std::istream& is,
   }
   // the 4st field, tensor which contains the data
   TensorFromStream(is, selected_rows->mutable_value(), dev_ctx);
+=======
+  phi::DeserializeFromStream(is, selected_rows, dev_ctx);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
+
 }  // namespace framework
 }  // namespace paddle

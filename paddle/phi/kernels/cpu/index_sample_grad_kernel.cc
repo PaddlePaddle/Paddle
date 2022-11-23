@@ -14,11 +14,15 @@
 
 #include "paddle/phi/kernels/index_sample_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/convert_utils.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleGradInner(const Context& context,
@@ -76,18 +80,14 @@ void IndexSampleGradKernel(const Context& ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      errors::InvalidArgument(
-          "Input(Index) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(index_type)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(DataType::INT32)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        phi::DataType2String(index_type),
+                        phi::DataType2String(DataType::INT32),
+                        phi::DataType2String(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleGradInner<T, Context, int>(ctx, out_grad, index, x_grad);
   } else if (index_type == DataType::INT64) {

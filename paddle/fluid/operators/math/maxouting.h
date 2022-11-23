@@ -26,8 +26,13 @@ template <typename DeviceContext, typename T>
 class MaxOutFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   framework::Tensor* output,
+=======
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* output,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   const int groups,
                   const int axis = 1);
 };
@@ -36,10 +41,17 @@ template <typename DeviceContext, typename T>
 class MaxOutGradFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   framework::Tensor* input_grad,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
+=======
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* input_grad,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   const int groups,
                   const int axis = 1);
 };

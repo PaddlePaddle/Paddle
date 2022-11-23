@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import re
 import sys
-import unittest
 
 import numpy as np
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid.dygraph as dg
-import paddle.static as static
 import scipy.stats
+<<<<<<< HEAD
 from numpy.random import random as rand
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 sys.path.append("../")
 from op_test import OpTest
-from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -39,7 +34,7 @@ class TestDirichletOp(OpTest):
 
     def setUp(self):
         self.op_type = "dirichlet"
-        self.alpha = np.array((1., 2.))
+        self.alpha = np.array((1.0, 2.0))
         self.sample_shape = (100000, 2)
 
         self.inputs = {'Alpha': np.broadcast_to(self.alpha, self.sample_shape)}
@@ -56,5 +51,12 @@ class TestDirichletOp(OpTest):
             scipy.stats.kstest(
                 outs[0][:, 0],
                 # scipy dirichlet have not cdf, use beta to replace it.
+<<<<<<< HEAD
                 scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf)[0],
             0.01)
+=======
+                scipy.stats.beta(a=self.alpha[0], b=self.alpha[1]).cdf,
+            )[0],
+            0.01,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

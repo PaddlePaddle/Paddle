@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -21,9 +19,12 @@ import sys
 sys.path.append("..")
 
 import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -45,11 +46,17 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': True,
-                'dim': (3, 5, 4)
+                'dim': (3, 5, 4),
             }
             self.inputs = {
+<<<<<<< HEAD
                 'X':
                 np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+=======
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 
@@ -67,7 +74,7 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': True,
-                'dim': [1]
+                'dim': [1],
             }
             self.inputs = {
                 'X': np.random.randint(0, 2, (5, 6, 10)).astype("bool")
@@ -82,11 +89,17 @@ class XPUTestReduceAllOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': False,
-                'dim': (3, 6)
+                'dim': (3, 6),
             }
             self.inputs = {
+<<<<<<< HEAD
                 'X':
                 np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+=======
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
             self.outputs = {'Out': self.inputs['X'].all(axis=self.attrs['dim'])}
 

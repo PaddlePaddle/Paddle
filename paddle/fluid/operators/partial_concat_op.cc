@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class PartialConcatOp : public framework::OperatorWithKernel {
  public:
@@ -92,7 +92,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
@@ -108,6 +108,7 @@ class PartialConcatOp : public framework::OperatorWithKernel {
                           "All Inputs of PartialSum OP are Empty!"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+<<<<<<< HEAD
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
@@ -116,6 +117,8 @@ class PartialConcatOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 class PartialConcatGradOp : public framework::OperatorWithKernel {

@@ -17,7 +17,6 @@ import unittest
 import random
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.contrib.slim.quantization import QuantizationFreezePass
@@ -30,6 +29,7 @@ os.environ["CPU_NUM"] = "1"
 
 
 def conv_net(img, label):
+<<<<<<< HEAD
     conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
                                                   filter_size=5,
                                                   num_filters=20,
@@ -43,6 +43,25 @@ def conv_net(img, label):
                                                   pool_size=2,
                                                   pool_stride=2,
                                                   act="relu")
+=======
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu",
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     avg_loss = paddle.mean(loss)
@@ -55,7 +74,7 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         self.quantizable_op_and_inputs = {
             'conv2d': ['Input', 'Filter'],
             'depthwise_conv2d': ['Input', 'Filter'],
-            'mul': ['X', 'Y']
+            'mul': ['X', 'Y'],
         }
 
     def check_program(self, program):
@@ -75,25 +94,36 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         startup.random_seed = seed
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 img = fluid.layers.data(name='image',
                                         shape=[1, 28, 28],
                                         dtype='float32')
                 label = fluid.layers.data(name='label',
                                           shape=[1],
                                           dtype='int64')
+=======
+                img = fluid.layers.data(
+                    name='image', shape=[1, 28, 28], dtype='float32'
+                )
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64'
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 loss = conv_net(img, label)
                 if not is_test:
                     opt = fluid.optimizer.Adam(learning_rate=0.001)
                     opt.minimize(loss)
         return [img, label], loss
 
-    def mkldnn_based_freeze_graph(self,
-                                  use_cuda,
-                                  seed,
-                                  activation_quant_type,
-                                  weight_quant_type='abs_max',
-                                  quant_perf=False,
-                                  for_ci=False):
+    def mkldnn_based_freeze_graph(
+        self,
+        use_cuda,
+        seed,
+        activation_quant_type,
+        weight_quant_type='abs_max',
+        quant_perf=False,
+        for_ci=False,
+    ):
         random.seed(0)
         np.random.seed(0)
 
@@ -116,37 +146,56 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
             scope=scope,
             place=place,
             activation_quantize_type=activation_quant_type,
-            weight_quantize_type=weight_quant_type)
+            weight_quantize_type=weight_quant_type,
+        )
         transform_pass.apply(main_graph)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quant_type,
+        )
         transform_pass.apply(test_graph)
 
         build_strategy = fluid.BuildStrategy()
         build_strategy.memory_optimize = False
         build_strategy.enable_inplace = False
         binary = fluid.CompiledProgram(main_graph.graph).with_data_parallel(
-            loss_name=loss.name, build_strategy=build_strategy)
+            loss_name=loss.name, build_strategy=build_strategy
+        )
         quantized_test_program = test_graph.to_program()
         iters = 5
         batch_size = 8
 
+<<<<<<< HEAD
         train_reader = paddle.batch(paddle.reader.shuffle(
             paddle.dataset.mnist.train(), buf_size=500),
                                     batch_size=batch_size)
         test_reader = paddle.batch(paddle.dataset.mnist.test(),
                                    batch_size=batch_size)
+=======
+        train_reader = paddle.batch(
+            paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
+            batch_size=batch_size,
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
 
         # Training the model to get the weights value
         with fluid.scope_guard(scope):
             for _ in range(iters):
                 data = next(train_reader())
-                loss_v = exe.run(binary,
-                                 feed=feeder.feed(data),
-                                 fetch_list=[loss])
+                loss_v = exe.run(
+                    binary, feed=feeder.feed(data), fetch_list=[loss]
+                )
 
         # Freeze graph for inference, but the weight of fc/conv is still float type.
         freeze_pass = QuantizationFreezePass(
-            scope=scope, place=place, weight_quantize_type=weight_quant_type)
+            scope=scope, place=place, weight_quantize_type=weight_quant_type
+        )
         freeze_pass.apply(test_graph)
 
         # Transform quantized graph for MKL-DNN INT8 inference
@@ -159,8 +208,19 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                 if op.name().find('quantize') > -1:
                     marked_nodes.add(op)
             test_graph.draw(
+<<<<<<< HEAD
                 '.', 'test_mkldnn' + dev_name + activation_quant_type + '_' +
                 weight_quant_type, marked_nodes)
+=======
+                '.',
+                'test_mkldnn'
+                + dev_name
+                + activation_quant_type
+                + '_'
+                + weight_quant_type,
+                marked_nodes,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         mkldnn_program = test_graph.to_program()
 
         # Check the transformation weights of conv2d and mul
@@ -174,9 +234,22 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
         # output
         self.check_program(mkldnn_program)
         if not for_ci:
+<<<<<<< HEAD
             print('{}: {}'.format(
                 'w_mkldnn' + dev_name + activation_quant_type + '_' +
                 weight_quant_type, np.sum(w_mkldnn)))
+=======
+            print(
+                '{}: {}'.format(
+                    'w_mkldnn'
+                    + dev_name
+                    + activation_quant_type
+                    + '_'
+                    + weight_quant_type,
+                    np.sum(w_mkldnn),
+                )
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_mkldnn_graph_cpu_static(self):
         with fluid.unique_name.guard():
@@ -185,13 +258,15 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
                 seed=2,
                 activation_quant_type='range_abs_max',
                 weight_quant_type='abs_max',
-                for_ci=True)
+                for_ci=True,
+            )
             self.mkldnn_based_freeze_graph(
                 False,
                 seed=2,
                 activation_quant_type='moving_average_abs_max',
                 weight_quant_type='abs_max',
-                for_ci=True)
+                for_ci=True,
+            )
 
 
 if __name__ == '__main__':

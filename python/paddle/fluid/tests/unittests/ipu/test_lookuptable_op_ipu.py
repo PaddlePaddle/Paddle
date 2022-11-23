@@ -45,14 +45,20 @@ class TestBase(IPUOpTest):
             "is_sparse": False,
             "is_distributed": False,
             "padding_idx": -1,
-            "dtype": 'float32'
+            "dtype": 'float32',
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='int64')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.embedding(x, **self.attrs)
         if self.is_training:
             loss = paddle.mean(out)

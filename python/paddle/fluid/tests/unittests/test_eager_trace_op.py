@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
-from paddle import _C_ops
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -33,19 +26,33 @@ class TestEagerTraceOp(unittest.TestCase):
             x = paddle.to_tensor(data)
 
             paddle.fluid.framework._dygraph_tracer().trace_op(
+<<<<<<< HEAD
                 'broadcast_tensors', {
                     'X': [x, x],
                     'Out': [x, x]
                 }, {'Out': [x, x]}, {})
+=======
+                'broadcast_tensors',
+                {'X': [x, x], 'Out': [x, x]},
+                {'Out': [x, x]},
+                {},
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             paddle.fluid.framework._dygraph_tracer().trace_op(
-                'scale', {'X': x}, {'Out': x}, {'scale': 0.5})
+                'scale', {'X': x}, {'Out': x}, {'scale': 0.5}
+            )
 
             scale = paddle.to_tensor(np.random.random([1]).astype(np.float32))
             paddle.fluid.framework._dygraph_tracer().trace_op(
+<<<<<<< HEAD
                 'instance_norm', {
                     'Scale': [scale],
                     'X': [x]
                 }, {'Y': [x]}, {})
+=======
+                'instance_norm', {'Scale': [scale], 'X': [x]}, {'Y': [x]}, {}
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

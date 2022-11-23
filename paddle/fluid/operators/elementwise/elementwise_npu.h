@@ -20,14 +20,21 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
+<<<<<<< HEAD
                   const Tensor* src,
                   int axis,
                   const framework::DDim& dst_dims,
                   Tensor* transformed_src) {
+=======
+                  const phi::DenseTensor* src,
+                  int axis,
+                  const framework::DDim& dst_dims,
+                  phi::DenseTensor* transformed_src) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto stream = dev_ctx.stream();
 
   // 1. expand the axis with dim 1
@@ -96,11 +103,19 @@ void NpuBroadcast(const platform::NPUDeviceContext& dev_ctx,
 
 template <typename T>
 void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
+<<<<<<< HEAD
                                const Tensor* x,
                                const Tensor* y,
                                int axis,
                                Tensor* transformed_x,
                                Tensor* transformed_y) {
+=======
+                               const phi::DenseTensor* x,
+                               const phi::DenseTensor* y,
+                               int axis,
+                               phi::DenseTensor* transformed_x,
+                               phi::DenseTensor* transformed_y) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -123,12 +138,22 @@ void NpuElementWiseOpBroadcast(const platform::NPUDeviceContext& dev_ctx,
       platform::errors::InvalidArgument(
           "Axis should be great than or equal to 0, but received axis is %d.",
           axis));
+<<<<<<< HEAD
   PADDLE_ENFORCE_LT(axis,
                     max_dim,
                     platform::errors::InvalidArgument(
                         "Axis should be less than %d, but received axis is %d.",
                         max_dim,
                         axis));
+=======
+  PADDLE_ENFORCE_LE(
+      axis,
+      max_dim,
+      platform::errors::InvalidArgument(
+          "Axis should be less than or equal to %d, but received axis is %d.",
+          max_dim,
+          axis));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   for (int i = 0; i < x_dims.size(); ++i) {
     dst_dims_vec[i + x_axis] =

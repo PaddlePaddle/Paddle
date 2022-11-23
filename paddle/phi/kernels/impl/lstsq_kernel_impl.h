@@ -69,8 +69,13 @@ inline void GetResidualsTensor(const DeviceContext& dev_ctx,
     dev_ctx.template Alloc<T>(pow_tensor);
     phi::PowKernel<T>(dev_ctx, sub_tensor, Scalar(2), pow_tensor);
 
+<<<<<<< HEAD
     auto sum_tensor =
         phi::Sum<T>(dev_ctx, *pow_tensor, {-2}, pow_tensor->dtype(), false);
+=======
+    auto sum_tensor = phi::Sum<T>(
+        dev_ctx, *pow_tensor, phi::IntArray({-2}), pow_tensor->dtype(), false);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     phi::Copy<DeviceContext>(
         dev_ctx, sum_tensor, dev_ctx.GetPlace(), true, residuals);
   } else {

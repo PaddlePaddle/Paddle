@@ -17,11 +17,8 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
 
 namespace paddle {
 namespace framework {
@@ -31,7 +28,11 @@ template <typename DeviceContext>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& op_type,
                        const std::string& var_name,
+<<<<<<< HEAD
                        const framework::Tensor& tensor,
+=======
+                       const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                        const platform::Place& place)
       : op_type_(op_type),
         var_name_(var_name),
@@ -54,14 +55,18 @@ struct TensorCheckerVisitor {
 
   std::string op_type_;
   std::string var_name_;
-  const framework::Tensor& tensor_;
+  const phi::DenseTensor& tensor_;
   const platform::Place& place_;
 };
 
 template <typename DeviceContext>
 void tensor_check(const std::string& op_type,
                   const std::string& var_name,
+<<<<<<< HEAD
                   const framework::Tensor& tensor,
+=======
+                  const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                   const platform::Place& place);
 
 }  // namespace details

@@ -92,6 +92,7 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   dim3 grid((total_row_number + 3) / 4);
   dim3 block(32, 4);
 
+<<<<<<< HEAD
   PD_VISIT_INTEGRAL_TYPES(
       out.non_zero_crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
         SoftmaxGradGpuKernel<T, data_t><<<grid, block, 0, dev_ctx.stream()>>>(
@@ -99,6 +100,15 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
             out.non_zero_elements().data<T>(),
             dout.non_zero_elements().data<T>(),
             dx->mutable_non_zero_elements()->data<T>(),
+=======
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      out.crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
+        SoftmaxGradGpuKernel<T, data_t><<<grid, block, 0, dev_ctx.stream()>>>(
+            out.crows().data<data_t>(),
+            out.values().data<T>(),
+            dout.values().data<T>(),
+            dx->mutable_values()->data<T>(),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             row_number,
             total_row_number);
       }));

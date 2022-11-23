@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -45,8 +43,14 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+=======
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def set_mlu(self):
@@ -80,7 +84,8 @@ class TestConcatOp2(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
+    reason="The function 'check_grad' for large inputs is too slow."
+)
 class TestConcatOp3(TestConcatOp):
 
     def init_test_data(self):
@@ -118,7 +123,7 @@ class TestConcatOp5(TestConcatOp):
         self.axis = -3
 
 
-#----------------Concat Fp16----------------
+# ----------------Concat Fp16----------------
 def create_test_fp16(parent):
 
     class TestConcatFp16(parent):
@@ -138,7 +143,7 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
-#----------------Concat Int64----------------
+# ----------------Concat Int64----------------
 def create_test_int64(parent):
 
     class TestConcatInt64(parent):
@@ -161,7 +166,7 @@ create_test_int64(TestConcatOp4)
 create_test_int64(TestConcatOp5)
 
 
-#----------------Concat Int32----------------
+# ----------------Concat Int32----------------
 def create_test_int32(parent):
 
     class TestConcatInt32(parent):
@@ -184,7 +189,7 @@ create_test_int32(TestConcatOp4)
 create_test_int32(TestConcatOp5)
 
 
-#----------------Concat AxisTensor----------------
+# ----------------Concat AxisTensor----------------
 def create_test_AxisTensor(parent):
 
     class TestConcatAxisTensor(parent):
@@ -196,20 +201,28 @@ def create_test_AxisTensor(parent):
 
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
-                'AxisTensor': np.array([self.axis]).astype("int32")
+                'AxisTensor': np.array([self.axis]).astype("int32"),
             }
             self.attrs = {}
 
             if self.axis < 0:
                 self.actual_axis = self.axis + len(self.x0.shape)
-                self.actual_axis = self.actual_axis if self.actual_axis > 0 else 0
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
             else:
                 self.actual_axis = self.axis
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 np.concatenate((self.x0, self.x1, self.x2),
                                axis=self.actual_axis)
+=======
+                'Out': np.concatenate(
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
 
             self.place = paddle.device.MLUPlace(0)

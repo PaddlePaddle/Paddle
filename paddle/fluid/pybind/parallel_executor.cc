@@ -55,7 +55,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/save_load_util.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -296,9 +299,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 Default 100.
 
                 .. note::
+<<<<<<< HEAD
                     1. If you fetch data when calling the 'run', the ParallelExecutor 
                     will clean up the temp variables at the end of the current iteration. 
                     2. In some NLP model, it may cause the GPU memory is insufficient, 
+=======
+                    1. If you fetch data when calling the 'run', the ParallelExecutor
+                    will clean up the temp variables at the end of the current iteration.
+                    2. In some NLP model, it may cause the GPU memory is insufficient,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     in this case, you should reduce `num_iteration_per_drop_scope`.
 
                 Examples:
@@ -859,7 +868,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
                 Current implementation doesn't support FP16 training and CPU.
+<<<<<<< HEAD
                 And only synchronous on one machine, not all machines. 
+=======
+                And only synchronous on one machine, not all machines.
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 Default is False.
 
                 Examples:
@@ -897,9 +910,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
+<<<<<<< HEAD
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
+=======
+                Default None. None means framework would choose to use or not use
+                this strategy automatically. Currently, None means that it is
+                enabled when GC is disabled, and disabled when GC is enabled.
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 True means enabling and False means disabling. Default is None.
 
                 Examples:
@@ -912,7 +931,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.memory_optimize = True
+<<<<<<< HEAD
                 
+=======
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 )DOC")
       .def_property(
           "is_distribution",
@@ -987,6 +1010,15 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
              new_bs.ClearFinalized();
              return new_bs;
            })
+<<<<<<< HEAD
+=======
+      .def("__str__",
+           [](const BuildStrategy &self) {
+             std::stringstream ss;
+             ss << self;
+             return ss.str();
+           })
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       .def(
           "_finalize_strategy_and_create_passes",
           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
@@ -1049,7 +1081,11 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
   using VarQuantScale =
+<<<<<<< HEAD
       std::unordered_map<std::string, std::pair<bool, LoDTensor>>;
+=======
+      std::unordered_map<std::string, std::pair<bool, phi::DenseTensor>>;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
   pass.def(py::init())
       .def("has", &ir::Pass::Has)

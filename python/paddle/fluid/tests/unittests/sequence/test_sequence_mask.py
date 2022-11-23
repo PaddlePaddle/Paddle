@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, Program, program_guard
-import paddle.fluid.core as core
+from paddle.fluid.framework import (
+    convert_np_dtype_to_dtype_,
+    Program,
+    program_guard,
+)
 import numpy as np
-import copy
 import unittest
 import sys
 
@@ -45,11 +47,12 @@ class SequenceMaskTestBase(OpTest):
         self.outputs = {'Y': self.calc_ground_truth_mask()}
         self.attrs = {
             'maxlen': self.maxlen,
-            'out_dtype': convert_np_dtype_to_dtype_(self.mask_dtype)
+            'out_dtype': convert_np_dtype_to_dtype_(self.mask_dtype),
         }
 
     def calc_ground_truth_mask(self):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
+<<<<<<< HEAD
         shape = self.x.shape + (maxlen, )
         index_broadcast = np.broadcast_to(np.reshape(
             range(maxlen), newshape=[1] * self.x.ndim + [-1]),
@@ -58,6 +61,16 @@ class SequenceMaskTestBase(OpTest):
                                                  newshape=self.x.shape +
                                                  (-1, )),
                                       shape=shape)
+=======
+        shape = self.x.shape + (maxlen,)
+        index_broadcast = np.broadcast_to(
+            np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
+            shape=shape,
+        )
+        x_broadcast = np.broadcast_to(
+            np.reshape(self.x, newshape=self.x.shape + (-1,)), shape=shape
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
@@ -124,6 +137,7 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
 
     def calc_ground_truth_mask(self):
         maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
+<<<<<<< HEAD
         shape = self.x.shape + (maxlen, )
         index_broadcast = np.broadcast_to(np.reshape(
             range(maxlen), newshape=[1] * self.x.ndim + [-1]),
@@ -132,6 +146,16 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
                                                  newshape=self.x.shape +
                                                  (-1, )),
                                       shape=shape)
+=======
+        shape = self.x.shape + (maxlen,)
+        index_broadcast = np.broadcast_to(
+            np.reshape(range(maxlen), newshape=[1] * self.x.ndim + [-1]),
+            shape=shape,
+        )
+        x_broadcast = np.broadcast_to(
+            np.reshape(self.x, newshape=self.x.shape + (-1,)), shape=shape
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -28,9 +26,15 @@ class TRTTileTest(InferencePassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[4, 3, 224, 256],
                               dtype="float32")
+=======
+            data = fluid.data(
+                name="data", shape=[4, 3, 224, 256], dtype="float32"
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             tile_out = paddle.tile(x=data, repeat_times=[1, 1, 1, 1])
             out = fluid.layers.batch_norm(tile_out, is_test=True)
 
@@ -39,7 +43,8 @@ class TRTTileTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTTileTest.TensorRTParam(
-            1 << 30, 16, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 16, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -47,7 +52,8 @@ class TRTTileTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTTileExpandTest(InferencePassTest):
@@ -63,7 +69,8 @@ class TRTTileExpandTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTTileExpandTest.TensorRTParam(
-            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False)
+            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -71,7 +78,8 @@ class TRTTileExpandTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTTileExpandStaticTest(InferencePassTest):
@@ -87,7 +95,8 @@ class TRTTileExpandStaticTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTTileExpandStaticTest.TensorRTParam(
-            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, True, False)
+            1 << 30, 1, 1, AnalysisConfig.Precision.Float32, True, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -95,7 +104,8 @@ class TRTTileExpandStaticTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 class TRTTileExpandHalfTest(InferencePassTest):
@@ -111,7 +121,8 @@ class TRTTileExpandHalfTest(InferencePassTest):
         }
         self.enable_trt = True
         self.trt_parameters = TRTTileExpandHalfTest.TensorRTParam(
-            1 << 30, 1, 1, AnalysisConfig.Precision.Half, False, False)
+            1 << 30, 1, 1, AnalysisConfig.Precision.Half, False, False
+        )
         self.fetch_list = [out]
 
     def test_check_output(self):
@@ -119,7 +130,8 @@ class TRTTileExpandHalfTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu, 1e-4, flatten=True)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
 
 if __name__ == "__main__":

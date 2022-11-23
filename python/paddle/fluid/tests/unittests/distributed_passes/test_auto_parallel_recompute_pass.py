@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import random
 import numpy as np
 
 import unittest
 import paddle
-import paddle.nn as nn
 import paddle.distributed.fleet as fleet
-import paddle.distributed.auto_parallel as auto
-from paddle.distributed.passes import new_pass, PassManager
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 
@@ -46,21 +42,29 @@ class TestRecomputePass(AutoPallelPassTestBase):
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def test_bs_8(self):
+<<<<<<< HEAD
         self.check_main(gpus=[0, 1],
                         batch_size=8,
                         sequence_len=512,
                         vocab_size=1000)
+=======
+        self.check_main(
+            gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-        return self.get_gpt_model("mp", place, batch_size, sequence_len,
-                                  vocab_size)
+        return self.get_gpt_model(
+            "mp", place, batch_size, sequence_len, vocab_size
+        )
 
 
 class TestRecomputePassDP(TestRecomputePass):
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-        return self.get_gpt_model("dp", place, batch_size, sequence_len,
-                                  vocab_size)
+        return self.get_gpt_model(
+            "dp", place, batch_size, sequence_len, vocab_size
+        )
 
 
 if __name__ == "__main__":

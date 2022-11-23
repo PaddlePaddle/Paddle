@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -33,9 +31,15 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_true(self):
 
         def net_func():
+<<<<<<< HEAD
             condition = layers.fill_constant(shape=[1],
                                              dtype='bool',
                                              value=True)
+=======
+            condition = layers.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             layers.Assert(condition, [])
 
         self.run_network(net_func)
@@ -43,9 +47,15 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_false(self):
 
         def net_func():
+<<<<<<< HEAD
             condition = layers.fill_constant(shape=[1],
                                              dtype='bool',
                                              value=False)
+=======
+            condition = layers.fill_constant(
+                shape=[1], dtype='bool', value=False
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             layers.Assert(condition)
 
         with self.assertRaises(ValueError):
@@ -54,9 +64,15 @@ class TestAssertOp(unittest.TestCase):
     def test_assert_cond_numel_error(self):
 
         def net_func():
+<<<<<<< HEAD
             condition = layers.fill_constant(shape=[1, 2],
                                              dtype='bool',
                                              value=True)
+=======
+            condition = layers.fill_constant(
+                shape=[1, 2], dtype='bool', value=True
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             layers.Assert(condition, [])
 
         with self.assertRaises(ValueError):
@@ -78,8 +94,8 @@ class TestAssertOp(unittest.TestCase):
 
         def net_func():
             x = layers.fill_constant(shape=[10], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
-            layers.Assert(condition, (x, ), 5)
+            condition = paddle.max(x) < 1.0
+            layers.Assert(condition, (x,), 5)
 
         print("test_assert_summary")
         with self.assertRaises(ValueError):
@@ -89,7 +105,7 @@ class TestAssertOp(unittest.TestCase):
 
         def net_func():
             x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
+            condition = paddle.max(x) < 1.0
             layers.Assert(condition, [x], 10, name="test")
 
         print("test_assert_summary_greater_than_size")

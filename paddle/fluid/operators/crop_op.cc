@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class CropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -102,14 +100,19 @@ Crop Operator.
 Crop input into output, as specified by offsets and shape.
 
 There are two ways to set the offsets:
+<<<<<<< HEAD
 1. In runtime: Using the input 'Offsets', which is a Variable and can be 
                output of other operators. This way is suitable for 
+=======
+1. In runtime: Using the input 'Offsets', which is a Variable and can be
+               output of other operators. This way is suitable for
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                dynamic offsets.
-2. In network configuration: Using the attribute 'offsets', which will be 
-                             set in Python configure script. This way is 
+2. In network configuration: Using the attribute 'offsets', which will be
+                             set in Python configure script. This way is
                              suitable for fixed offsets.
-You CANNOT use these two ways at the same time. An exception will be raised 
-if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+You CANNOT use these two ways at the same time. An exception will be raised
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is
 not empty.
 
 There are two ways to set shape:

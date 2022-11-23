@@ -22,6 +22,15 @@ from .extension_utils import parse_op_info  # noqa: F401
 from .extension_utils import get_build_directory  # noqa: F401
 from .extension_utils import load_op_meta_info_and_register_op  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  #noqa
     'CppExtension', 'CUDAExtension', 'load', 'setup', 'get_build_directory'
+=======
+__all__ = [  # noqa
+    'CppExtension',
+    'CUDAExtension',
+    'load',
+    'setup',
+    'get_build_directory',
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 ]

@@ -41,6 +41,7 @@ class MemcpyFunctor {
     XPU = 3,
     NPU = 4,
     NPU_PINNED = 5,
+    CUSTOM_DEVICE = 6,
   };
 
  public:
@@ -49,8 +50,8 @@ class MemcpyFunctor {
                 const int dst_place_type)
       : out_(out), dev_ctx_(dev_ctx), dst_place_type_(dst_place_type) {}
 
-  void operator()(const framework::LoDTensor &lod_tensor) const {
-    auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
+  void operator()(const phi::DenseTensor &lod_tensor) const {
+    auto &out_tensor = *out_->GetMutable<phi::DenseTensor>();
 
     if (dst_place_type_ == DeviceType::CUDA_PINNED) {
       framework::TensorCopy(
@@ -67,6 +68,14 @@ class MemcpyFunctor {
     } else if (dst_place_type_ == DeviceType::NPU_PINNED) { /* npu->npu_pin */
       framework::TensorCopy(
           lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
+<<<<<<< HEAD
+=======
+#endif
+#ifdef PADDLE_WTIH_CUSTOM_DEVICE
+    } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
+      framework::TensorCopy(
+          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -87,7 +96,7 @@ class MemcpyFunctor {
         true,
         false,
         platform::errors::PermissionDenied(
-            "Not support type for Memcpy  op with type %s", typeid(T).name()));
+            "Not support type for Memcpy op with type %s", typeid(T).name()));
   }
 
  private:

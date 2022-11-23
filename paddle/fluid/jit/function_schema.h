@@ -72,6 +72,13 @@ class FunctionInfo {
 
   const std::vector<std::string> OutputArgNames() const;
 
+<<<<<<< HEAD
+=======
+  const std::string& ProgramFilePath() const;
+
+  void SetProgramFilePath(const std::string& path);
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void RemoveDescFeedFetch();
 
  private:
@@ -79,6 +86,10 @@ class FunctionInfo {
   std::vector<std::string> param_names_;
   std::shared_ptr<framework::ProgramDesc> program_desc_;
   FunctionSchema schema_;
+<<<<<<< HEAD
+=======
+  std::string prog_file_path_;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 }  // namespace jit

@@ -114,7 +114,7 @@ Lookup Table Dequant Operator.
 
 The `W` input is a quantized parameter for the sake of saving memories.
 This operator first index embeddings with `Ids`,
-then dequantizes them and contact them as output (`Out`). 
+then dequantizes them and contact them as output (`Out`).
 
 The input Ids can carry the LoD (Level of Details) information,
 or not. And the output only shares the LoD information with input Ids.

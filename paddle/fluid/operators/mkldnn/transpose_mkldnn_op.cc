@@ -21,6 +21,7 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
 using framework::DataLayout;
 
@@ -87,6 +88,10 @@ class TransposeMKLDNNHandler {
   std::vector<int> logical_axis_;
   dnnl::engine engine_;
 };
+=======
+using Tensor = phi::DenseTensor;
+using phi::DataLayout;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 template <typename T>
 class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
@@ -98,37 +103,94 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                           "Operator DNNL Transpose must use CPUPlace"));
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
-    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
-    int ndims = axis.size();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    const T* input_data = input->data<T>();
+    const auto& dnnl_engine = dev_ctx.GetEngine();
+    std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
+    int ndims = transpose_axis.size();
+    const phi::DenseTensor* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    platform::SetInMemDescWithLogicalLayoutFusesSupport(
+        ctx, const_cast<phi::DenseTensor*>(x), x->mem_desc());
 
     if (ndims == 1) {
-      framework::TensorCopy(*input, input->place(), output);
-      output->set_format(input->format());
+      framework::TensorCopy(*x, x->place(), out);
+      out->set_mem_desc(x->mem_desc());
       return;
     }
 
-    auto nchw_tz = phi::vectorize<int64_t>(input->dims());
+    auto x_vec_dims = phi::vectorize(x->dims());
 
-    TransposeMKLDNNHandler<T> handler(nchw_tz, axis, mkldnn_engine);
+    auto x_type = phi::funcs::ToOneDNNDataType(x->dtype());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        x_vec_dims, x->dtype(), x_type, dnnl_engine);
 
-    auto transpose_src_memory_p = handler.AcquireSrcMemory(
-        input->format(), platform::to_void_cast<T>(input_data));
-    auto transpose_dst_memory_p =
-        handler.AcquireDstMemory(output, ctx.GetPlace());
-    auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
-                                                transpose_src_memory_p);
+    auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+        x->mem_desc(), phi::funcs::to_void_cast(x->data<T>()));
 
+<<<<<<< HEAD
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     transpose_p->execute(
         astream, *transpose_src_memory_p, *transpose_dst_memory_p);
+=======
+    auto dst_md =
+        dnnl::memory::desc(x_vec_dims,
+                           x->mem_desc().data_type(),
+                           phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
+    // a trick is used here to fake transpose of out_md, so later it will be
+    // "untransposed", leaving output data in plain format tag
+    auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
+
+    dst_md =
+        dnnl::memory::desc(x_vec_dims, x->mem_desc().data_type(), dst_strides);
+    auto dst_data =
+        out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
+
+    auto reorder_dst_memory_p =
+        std::make_shared<dnnl::memory>(dst_md, dnnl_engine, dst_data);
+
+    auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
+                                                    reorder_src_memory_p);
+
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     astream.wait();
 
-    output->set_layout(DataLayout::kNCHW);
-    output->set_format(MKLDNNMemoryFormat::undef);
+    platform::SetOutMemDescWithLogicalLayoutFusesSupport(
+        ctx,
+        out,
+        reorder_dst_memory_p->get_desc().permute_axes(
+            TransposeToPermuteAxis(transpose_axis)));
+  }
+
+ private:
+  // it is needed because oneDNN's permute axis understand axes order in
+  // different way PaddlePaddle's transpose
+  std::vector<int> TransposeToPermuteAxis(
+      const std::vector<int>& transpose_axis) const {
+    std::vector<int> permute_axis(transpose_axis.size());
+
+    for (size_t i = 0; i < transpose_axis.size(); ++i) {
+      permute_axis[transpose_axis[i]] = i;
+    }
+    return permute_axis;
+  }
+
+  std::vector<int64_t> FakeTranposeStrides(
+      const dnnl::memory::desc& dst_md,
+      const std::vector<int>& transpose_axis) const {
+    std::vector<int64_t> fake_strides(transpose_axis.size());
+    auto dims = dst_md.dims();
+    int total_stride = 1;
+    int ndims = static_cast<int>(dims.size());
+
+    for (int i = ndims - 1; i >= 0; --i) {
+      fake_strides[transpose_axis[i]] = total_stride;
+      total_stride *= dims[transpose_axis[i]];
+    }
+
+    return fake_strides;
   }
 };
 
@@ -140,44 +202,49 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                       true,
                       paddle::platform::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    if (!x_grad) return;
+
+    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    if (!dx) return;
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
-    const auto& mkldnn_engine = dev_ctx.GetEngine();
-    std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
-    std::vector<int> reversed_axis(axis);
-    int ndims = axis.size();
+    const auto& dnnl_engine = dev_ctx.GetEngine();
+    std::vector<int> transpose_axis = ctx.Attr<std::vector<int>>("axis");
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    int ndims = transpose_axis.size();
     if (ndims == 1) {
-      framework::TensorCopy(*out_grad, out_grad->place(), x_grad);
-      x_grad->set_format(out_grad->format());
+      framework::TensorCopy(*dout, dout->place(), dx);
+      dx->set_mem_desc(dout->mem_desc());
       return;
     }
 
-    for (size_t i = 0; i < axis.size(); i++) {
-      reversed_axis[axis[i]] = i;
-    }
+    auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
 
-    const T* out_grad_data = out_grad->data<T>();
-    x_grad->mutable_data<T>(ctx.GetPlace());
+    phi::funcs::ReorderOneDNNHandler reorder_handler(
+        dout_vec_dims, dout->dtype(), dout_type, dnnl_engine);
 
-    auto nchw_tz = phi::vectorize<int64_t>(out_grad->dims());
+    auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
+        dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
 
-    TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, mkldnn_engine);
+    auto reorder_dst_memory_p =
+        reorder_handler.AcquireDstMemory(dx, dout->mem_desc(), ctx.GetPlace());
 
-    auto transpose_src_memory_p = handler.AcquireSrcMemory(
-        out_grad->format(), platform::to_void_cast<T>(out_grad_data));
-    auto transpose_dst_memory_p =
-        handler.AcquireDstMemory(x_grad, ctx.GetPlace());
-    auto transpose_p = handler.AcquireTranspose(transpose_dst_memory_p,
-                                                transpose_src_memory_p);
+    auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
+                                                    reorder_src_memory_p);
 
+<<<<<<< HEAD
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     transpose_p->execute(
         astream, *transpose_src_memory_p, *transpose_dst_memory_p);
+=======
+    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     astream.wait();
+    dx->set_mem_desc(
+        reorder_dst_memory_p->get_desc().permute_axes(transpose_axis));
   }
 };
 
@@ -186,6 +253,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
 REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2,
                                     MKLDNN,
                                     ::paddle::platform::CPUPlace,
@@ -215,6 +283,8 @@ REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
     ops::kTransposeMKLDNNFP32,
     ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OP_KERNEL(transpose,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
@@ -225,7 +295,17 @@ REGISTER_OP_KERNEL(transpose_grad,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
 
+<<<<<<< HEAD
 REGISTER_OP_KERNEL(transpose2_grad,
                    MKLDNN,
                    ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);
+=======
+REGISTER_OP_KERNEL(transpose2,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::TransposeMKLDNNOpKernel<float>,
+                   ops::TransposeMKLDNNOpKernel<uint8_t>,
+                   ops::TransposeMKLDNNOpKernel<int8_t>,
+                   ops::TransposeMKLDNNOpKernel<paddle::platform::bfloat16>);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

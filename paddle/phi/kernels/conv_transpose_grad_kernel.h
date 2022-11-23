@@ -17,6 +17,10 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/phi/common/int_array.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -29,7 +33,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
                                const std::vector<int>& strides,
                                const std::vector<int>& paddings,
                                const std::vector<int>& output_padding,
-                               const std::vector<int>& output_size,
+                               const IntArray& output_size,
                                const std::string& padding_algorithm,
                                int groups,
                                const std::vector<int>& dilations,
@@ -47,7 +51,7 @@ void Conv2dTransposeDoubleGradKernel(const Context& ctx,
                                      const std::vector<int>& strides,
                                      const std::vector<int>& paddings,
                                      const std::vector<int>& output_padding,
-                                     const std::vector<int>& output_size,
+                                     const IntArray& output_size,
                                      const std::string& padding_algorithm,
                                      int groups,
                                      const std::vector<int>& dilations,
@@ -80,7 +84,7 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
                                         const std::vector<int>& strides,
                                         const std::vector<int>& paddings,
                                         const std::vector<int>& output_padding,
-                                        const std::vector<int>& output_size,
+                                        const IntArray& output_size,
                                         const std::string& padding_algorithm,
                                         int groups,
                                         const std::vector<int>& dilations,

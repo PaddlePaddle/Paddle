@@ -22,8 +22,8 @@ template <typename DeviceContext, typename T>
 class PnormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_x = ctx.Input<framework::Tensor>("X");
-    auto* out_norm = ctx.Output<framework::Tensor>("Out");
+    auto* in_x = ctx.Input<phi::DenseTensor>("X");
+    auto* out_norm = ctx.Output<phi::DenseTensor>("Out");
     out_norm->mutable_data<T>(ctx.GetPlace());
 
     float porder = ctx.Attr<float>("porder");
@@ -93,11 +93,11 @@ template <typename DeviceContext, typename T>
 class PnormGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using Tensor = framework::Tensor;
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Out");
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    using Tensor = phi::DenseTensor;
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Out");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);

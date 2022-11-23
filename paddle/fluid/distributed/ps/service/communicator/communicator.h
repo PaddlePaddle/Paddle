@@ -37,13 +37,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace paddle {
 namespace distributed {
@@ -154,7 +157,7 @@ class BlockingQueue {
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 inline void MergeVars(const std::string &var_name,
@@ -169,16 +172,16 @@ inline void MergeVars(const std::string &var_name,
   auto &var0 = vars[0];
   auto *out_var = scope->Var(var_name);
 
-  if (var0->IsType<framework::LoDTensor>()) {
-    auto dims = var0->Get<framework::LoDTensor>().dims();
+  if (var0->IsType<phi::DenseTensor>()) {
+    auto dims = var0->Get<phi::DenseTensor>().dims();
     VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
             << "; merge add: " << merge_add;
     // init output tensor
-    auto *out_t = out_var->GetMutable<framework::LoDTensor>();
+    auto *out_t = out_var->GetMutable<phi::DenseTensor>();
     out_t->mutable_data<T>(dims, cpu_place);
     // check the input dims
     for (auto &var : vars) {
-      auto &var_t = var->Get<framework::LoDTensor>();
+      auto &var_t = var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           var_t.dims(),
           dims,
@@ -192,7 +195,7 @@ inline void MergeVars(const std::string &var_name,
     // sum all vars to out
     auto result = EigenVector<T>::Flatten(*out_t);
     for (auto &var : vars) {
-      auto &in_t = var->Get<framework::LoDTensor>();
+      auto &in_t = var->Get<phi::DenseTensor>();
       auto in = EigenVector<T>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
@@ -212,11 +215,18 @@ inline void MergeVars(const std::string &var_name,
     }
     phi::CPUContext dev_ctx;
     if (merge_add) {
+<<<<<<< HEAD
       paddle::operators::math::scatter::MergeAdd<phi::CPUContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
       paddle::operators::math::scatter::MergeAverage<phi::CPUContext, T>
           merge_average;
+=======
+      phi::funcs::scatter::MergeAdd<phi::CPUContext, T> merge_add;
+      merge_add(dev_ctx, inputs, out_slr);
+    } else {
+      phi::funcs::scatter::MergeAverage<phi::CPUContext, T> merge_average;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       merge_average(dev_ctx, inputs, out_slr);
     }
 
@@ -370,7 +380,7 @@ class Communicator {
     return communicator_.get();
   }
 
-  // Init is called by InitInstance.
+  // called by InitInstance.
   template <typename T>
   static void InitWithRpcCtx(const RpcCtxMap &send_ctx,
                              const RecvCtxMap &recv_ctx,
@@ -378,6 +388,7 @@ class Communicator {
                              const std::vector<std::string> &host_sign_list,
                              Scope *recv_scope,
                              const std::map<std::string, std::string> &envs) {
+    VLOG(0) << "Communicator type is: " << typeid(T).name();
     if (communicator_.get() == nullptr) {
       communicator_.reset(new T(std::ref(envs)));
       communicator_->InitEnvs();
@@ -484,6 +495,7 @@ class AsyncCommunicator : public Communicator {
       uint64_t padding_id,
       platform::Place place,
       bool is_training,
+<<<<<<< HEAD
       std::vector<const framework::LoDTensor *> *inputs,  // NOLINT
       std::vector<framework::LoDTensor *> *outputs);      // NOLINT
 
@@ -496,6 +508,19 @@ class AsyncCommunicator : public Communicator {
       const framework::LoDTensor *shows,
       const framework::LoDTensor *clicks,
       std::vector<framework::LoDTensor *> *outputs);
+=======
+      std::vector<const phi::DenseTensor *> *inputs,  // NOLINT
+      std::vector<phi::DenseTensor *> *outputs);      // NOLINT
+
+  void PushSparseFromTensorAsync(const uint64_t table_id,
+                                 int fea_dim,
+                                 uint64_t padding_id,
+                                 platform::Place place,
+                                 std::vector<const phi::DenseTensor *> *inputs,
+                                 const phi::DenseTensor *shows,
+                                 const phi::DenseTensor *clicks,
+                                 std::vector<phi::DenseTensor *> *outputs);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
  protected:
   std::unordered_map<std::string,
@@ -601,10 +626,6 @@ class GeoCommunicator : public AsyncCommunicator {
   explicit GeoCommunicator(const std::map<std::string, std::string> &envs)
       : AsyncCommunicator(envs) {}
 
-  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                const RecvCtxMap &recv_varname_to_ctx,
-                Scope *recv_scope) override;
-
   void InitParams(const RecvCtxMap &recv_varname_to_ctx) override;
   void InitDense(std::vector<std::string> &varnames, int table_id);  // NOLINT
   void InitSparse(const std::string &var_name, int table_id);
@@ -621,7 +642,7 @@ class GeoCommunicator : public AsyncCommunicator {
 
   void MainThread() override;
 
-  void InitEnvs() {
+  virtual void InitEnvs() {
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     send_wait_times_ = std::stoi(envs.at("communicator_send_wait_times"));
@@ -631,6 +652,10 @@ class GeoCommunicator : public AsyncCommunicator {
     send_queue_size_ = max_merge_var_num_;
     VLOG(1) << "GeoCommunicator Initialized";
   }
+
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
+                const RecvCtxMap &recv_varname_to_ctx,
+                Scope *recv_scope) override;
 
   void Send(const std::vector<std::string> &var_names,
             const framework::Scope &scope) override;
@@ -651,7 +676,7 @@ class GeoCommunicator : public AsyncCommunicator {
     return param_name;
   }
 
- private:
+ public:
   // parameter for delta calc and send
   std::shared_ptr<Scope> delta_scope_;
   // parameter for storage the pserver param after last recv
@@ -684,7 +709,11 @@ class FLCommunicator : public GeoCommunicator {
 
   void InitImpl(const RpcCtxMap &send_varname_to_ctx,
                 const RecvCtxMap &recv_varname_to_ctx,
+<<<<<<< HEAD
                 Scope *recv_scope) override {}
+=======
+                Scope *recv_scope) {}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   void StartCoordinatorClient(
       const std::vector<std::string> &trainer_endpoints);

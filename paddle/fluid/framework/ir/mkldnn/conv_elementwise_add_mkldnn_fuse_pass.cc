@@ -113,10 +113,17 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
     if (FindFuseOption(*conv_op, *elementwise_op) != FUSE_MKLDNN) return;
     if (!IsReachable(g, residual_data, conv_output)) return;
     if (HasFusedActivation(conv_op)) return;
+    if (HasFusedElementwiseAdd(conv_op)) return;
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)
           << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+      return;
+    }
+
+    if (residual_data->Var()->GetShape() != conv_output->Var()->GetShape()) {
+      LOG(WARNING) << "conv_elementwise_add_mkldnn_fuse_pass doesn't support " -
+                          "broadcasting";
       return;
     }
 
@@ -133,7 +140,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConv(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_conv_count > 0)) {
     std::stringstream msg_ss;
     std::string fusionMode = as_x ? "x" : "y";
     msg_ss << "---    Fused " << found_conv_count << " conv (as " << fusionMode
@@ -221,7 +229,8 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
   };
 
   gpd(graph_with_stats.first, handler);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_projection_conv_count > 0)) {
     std::stringstream msg_ss;
     msg_ss << "---    Fused " << found_projection_conv_count
            << " projection conv (as y) + elementwise_add patterns";

@@ -18,10 +18,16 @@ from unittest import TestCase
 
 def create_model():
     hidden_size = 32
+<<<<<<< HEAD
     bilstm = paddle.nn.LSTM(hidden_size,
                             hidden_size,
                             num_layers=1,
                             direction='bidirectional')
+=======
+    bilstm = paddle.nn.LSTM(
+        hidden_size, hidden_size, num_layers=1, direction='bidirectional'
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return bilstm
 
 

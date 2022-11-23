@@ -15,7 +15,6 @@
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-import six
 import paddle
 from paddle.fluid.framework import _test_eager_guard
 
@@ -37,15 +36,21 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
+<<<<<<< HEAD
             np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
                                 self.shape)
+=======
+            np_arr = np.reshape(
+                np.array(range(np.prod(self.shape))), self.shape
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for dtype in typelist:
-                var = 1.
+                var = 1.0
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 target = tensor.numpy()
                 target[...] = var
 
-                tensor.fill_(var)  #var type is basic type in typelist
+                tensor.fill_(var)  # var type is basic type in typelist
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_true(self):
@@ -65,8 +70,14 @@ class TensorFill_Test(unittest.TestCase):
                 paddle.set_device('cpu')
             else:
                 paddle.set_device('gpu')
+<<<<<<< HEAD
             np_arr = np.reshape(np.array(six.moves.range(np.prod(self.shape))),
                                 self.shape)
+=======
+            np_arr = np.reshape(
+                np.array(range(np.prod(self.shape))), self.shape
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             for dtype in typelist:
                 var = int(1)
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)

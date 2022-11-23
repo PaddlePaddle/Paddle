@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 import unittest
 import numpy
 
@@ -32,14 +35,22 @@ paddle.enable_static()
 
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.op_type = "truncated_gaussian_random"
         self.inputs = {}
         self.attrs = {
             "shape": [10000],
+<<<<<<< HEAD
             "mean": .0,
             "std": 1.,
+=======
+            "mean": 0.0,
+            "std": 1.0,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             "seed": 10,
         }
         self.outputs = ["Out"]
@@ -58,9 +69,15 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         vout = block.create_var(name="Out")
+<<<<<<< HEAD
         op = block.append_op(type=self.op_type,
                              outputs={"Out": vout},
                              attrs=self.attrs)
+=======
+        op = block.append_op(
+            type=self.op_type, outputs={"Out": vout}, attrs=self.attrs
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
@@ -72,7 +89,11 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
         exe = Executor(place)
         outs = exe.run(program, fetch_list=fetch_list)
         tensor = outs[0]
+<<<<<<< HEAD
         self.assertAlmostEqual(numpy.mean(tensor), .0, delta=0.1)
+=======
+        self.assertAlmostEqual(numpy.mean(tensor), 0.0, delta=0.1)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.assertAlmostEqual(numpy.var(tensor), 0.773, delta=0.1)
 
     # TruncatedNormal.__call__ has no return value, so here call _C_ops api
@@ -80,10 +101,22 @@ class TestTrunctedGaussianRandomOp(unittest.TestCase):
     def gaussian_random_test_eager(self, place):
         with fluid.dygraph.guard(place):
             with _test_eager_guard():
+<<<<<<< HEAD
                 out = paddle._C_ops.final_state_truncated_gaussian_random(
                     self.attrs["shape"], self.attrs["mean"], self.attrs["std"],
                     self.attrs["seed"], core.VarDesc.VarType.FP32, place)
                 self.assertAlmostEqual(numpy.mean(out.numpy()), .0, delta=0.1)
+=======
+                out = paddle._C_ops.truncated_gaussian_random(
+                    self.attrs["shape"],
+                    self.attrs["mean"],
+                    self.attrs["std"],
+                    self.attrs["seed"],
+                    core.VarDesc.VarType.FP32,
+                    place,
+                )
+                self.assertAlmostEqual(numpy.mean(out.numpy()), 0.0, delta=0.1)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 self.assertAlmostEqual(numpy.var(out.numpy()), 0.773, delta=0.1)
 
 

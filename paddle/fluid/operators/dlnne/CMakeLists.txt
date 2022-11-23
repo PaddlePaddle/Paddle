@@ -1,6 +1,10 @@
 # compile flags
+<<<<<<< HEAD
 set(DLNNE_FLAGS -Wno-error=non-virtual-dtor -Wno-error=unused-variable
                 -Wno-error=attributes ${fsanitize})
+=======
+set(DLNNE_FLAGS -Wno-error=non-virtual-dtor -Wno-error=attributes ${fsanitize})
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 foreach(flag ${DLNNE_FLAGS})
   safe_set_cflag(CMAKE_C_FLAGS ${flag})
   safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
@@ -9,11 +13,16 @@ endforeach()
 # add nne
 find_path(
   DLNNE_INCLUDE_DIR dlnne.h
+<<<<<<< HEAD
   PATHS $ENV{SOFTWARE_SOURCE_DIR} $ENV{SOFTWARE_SOURCE_DIR}/driver/nne/include
+=======
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/include/dlnne
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   NO_DEFAULT_PATH)
 
 find_library(
   DLNNE_LIB libdlnne.so
+<<<<<<< HEAD
   PATHS $ENV{SOFTWARE_BUILD_DIR} $ENV{SOFTWARE_BUILD_DIR}/driver/nne
   NO_DEFAULT_PATH)
 
@@ -24,6 +33,16 @@ find_library(
   CURT_LIB libcurt.so
   PATHS $ENV{SOFTWARE_BUILD_DIR}
         $ENV{SOFTWARE_BUILD_DIR}/llvm-project-10/cuda/lib
+=======
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/lib
+  NO_DEFAULT_PATH)
+
+find_path(CUDA_INCLUDE_DIR cuda.h $ENV{DL_SDK_DIR}/include)
+
+find_library(
+  CURT_LIB libcurt.so
+  PATHS $ENV{DL_SDK_DIR} $ENV{DL_SDK_DIR}/lib
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   NO_DEFAULT_PATH)
 
 message("DLNNE_INCLUDE_DIR: "${DLNNE_INCLUDE_DIR})

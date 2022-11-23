@@ -40,8 +40,11 @@ def get_pull(pull_id):
             repo = github.get_repo('PaddlePaddle/Paddle')
         except Exception as e:
             print(e)
-            print("get_repo error, retry {} times after {} secs.".format(
-                idx, idx * 10))
+            print(
+                "get_repo error, retry {} times after {} secs.".format(
+                    idx, idx * 10
+                )
+            )
         else:
             break
         idx += 1
@@ -87,12 +90,15 @@ def clean(pull_id):
 
                 # convert paddle/fluid/imperative/CMakeFiles/layer.dir/layer.cc.gcda
                 # to paddle/fluid/imperative/layer.cc.gcda
-
-                if trimmed.endswith('.dir'):
-                    trimmed = os.path.dirname(trimmed)
-
-                if trimmed.endswith('CMakeFiles'):
-                    trimmed = os.path.dirname(trimmed)
+                # modifed to make it more robust
+                # covert /paddle/build/paddle/phi/backends/CMakeFiles/phi_backends.dir/gpu/cuda/cuda_info.cc.gcda
+                # to /paddle/build/paddle/phi/backends/gpu/cuda/cuda_info.cc.gcda
+                trimmed_tmp = []
+                for p in trimmed.split('/'):
+                    if p.endswith('.dir') or p.endswith('CMakeFiles'):
+                        continue
+                    trimmed_tmp.append(p)
+                trimmed = '/'.join(trimmed_tmp)
 
                 # remove no changed gcda
 

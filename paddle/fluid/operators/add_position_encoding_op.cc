@@ -87,7 +87,7 @@ class AddPositionEncodingOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddComment(R"DOC(
     Add Position Encoding Operator.
-    
+
     The add position encoding calculates the output based on the input, alpha, beta.
     The size of each dimension of the parameters checked in the infer-shape.
   )DOC");

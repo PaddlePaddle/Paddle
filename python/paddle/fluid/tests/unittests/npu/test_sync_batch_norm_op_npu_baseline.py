@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -21,7 +20,10 @@ import sys
 
 sys.path.append("..")
 
-from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    _set_use_system_allocator,
+)
 
 from test_sync_batch_norm_base_npu import TestDistBase
 
@@ -36,9 +38,15 @@ class TestSyncBatchNormOp(TestDistBase):
 
     def test_identity(self, col_type="identity"):
         dist_env = os.environ
+<<<<<<< HEAD
         self.check_with_place("sync_batch_norm_op_npu.py",
                               col_type,
                               need_envs=dist_env)
+=======
+        self.check_with_place(
+            "sync_batch_norm_op_npu.py", col_type, need_envs=dist_env
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

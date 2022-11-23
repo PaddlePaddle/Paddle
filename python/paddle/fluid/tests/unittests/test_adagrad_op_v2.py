@@ -12,15 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
 
 
 class TestAdagradOpV2(unittest.TestCase):
@@ -31,8 +24,14 @@ class TestAdagradOpV2(unittest.TestCase):
         linear = paddle.nn.Linear(10, 10)
         out = linear(inp)
         loss = paddle.mean(out)
+<<<<<<< HEAD
         adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
                                            parameters=linear.parameters())
+=======
+        adagrad = paddle.optimizer.Adagrad(
+            learning_rate=0.1, parameters=linear.parameters()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out.backward()
         adagrad.step()
         adagrad.clear_grad()
@@ -48,6 +47,7 @@ class TestAdagradOpV2Group(TestAdagradOpV2):
         out = linear_1(inp)
         out = linear_2(out)
         loss = paddle.mean(out)
+<<<<<<< HEAD
         adagrad = paddle.optimizer.Adagrad(learning_rate=0.01,
                                            parameters=[{
                                                'params':
@@ -59,6 +59,19 @@ class TestAdagradOpV2Group(TestAdagradOpV2):
                                                0.001,
                                            }],
                                            weight_decay=0.1)
+=======
+        adagrad = paddle.optimizer.Adagrad(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                },
+            ],
+            weight_decay=0.1,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out.backward()
         adagrad.step()
         adagrad.clear_grad()

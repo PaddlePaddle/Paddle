@@ -128,7 +128,11 @@ void LstsqKernel(const Context& dev_ctx,
 
   // run once the driver, first to get the optimal workspace size
   int lwork = -1;
+<<<<<<< HEAD
   T wkopt;
+=======
+  T wkopt = 0.0;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   ValueType rwkopt;
   int iwkopt = 0;
 

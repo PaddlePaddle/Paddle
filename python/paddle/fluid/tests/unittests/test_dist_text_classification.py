@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
 import unittest
 from test_dist_base import TestDistBase
@@ -29,10 +28,19 @@ class TestDistTextClassification2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_text_classification(self):
+<<<<<<< HEAD
         self.check_with_place("dist_text_classification.py",
                               delta=1e-6,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "dist_text_classification.py",
+            delta=1e-6,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDistTextClassification2x2Async(TestDistBase):
@@ -42,10 +50,19 @@ class TestDistTextClassification2x2Async(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_se_resnext(self):
+<<<<<<< HEAD
         self.check_with_place("dist_text_classification.py",
                               delta=100,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "dist_text_classification.py",
+            delta=100,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

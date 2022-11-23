@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -44,9 +47,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.expand(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -62,13 +71,19 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_attrs(self):
         self.attrs = {"shape": [5, 2, 2, 3]}
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 1, 3])
         self.feed_fp32 = {'x': data.astype(np.float32)}
@@ -80,14 +95,20 @@ class TestCase2(TestBase):
 
 @unittest.skip("corresponding dimensions must have the same value.")
 class TestCase3(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_attrs(self):
         self.attrs = {"shape": [5, 2, 4, 3]}
 
 
 @unittest.skip("Do not support `shape` = Tensors.")
 class TestCase4(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_data_feed(self):
         data = np.random.uniform(size=[3, 3])
         self.feed_fp32 = {'x': data.astype(np.float32)}
@@ -95,9 +116,15 @@ class TestCase4(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.attrs = {
             'name': 'y',
             'shape': [3],

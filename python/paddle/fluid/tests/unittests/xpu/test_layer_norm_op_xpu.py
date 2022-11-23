@@ -1,4 +1,4 @@
-#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,10 +19,20 @@ import unittest
 from functools import reduce
 
 sys.path.append("..")
+<<<<<<< HEAD
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 from operator import mul
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+=======
+from op_test_xpu import XPUOpTest
+from operator import mul
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 paddle.enable_static()
 
@@ -30,12 +40,13 @@ paddle.enable_static()
 def ref_layer_norm(x, scale, bias, epsilon, begin_norm_axis=1):
     x_shape = x.shape
     left = reduce(mul, x_shape[0:begin_norm_axis], 1)
-    right = reduce(mul, x_shape[begin_norm_axis:len(x_shape)], 1)
+    right = reduce(mul, x_shape[begin_norm_axis : len(x_shape)], 1)
     x.shape = [left, right]
     mean = np.mean(x, axis=1)
     variance = np.var(x, axis=1) + epsilon
-    y = np.divide((x - mean.reshape([left, 1])),
-                  (np.sqrt(variance)).reshape([left, 1]))
+    y = np.divide(
+        (x - mean.reshape([left, 1])), (np.sqrt(variance)).reshape([left, 1])
+    )
     if scale is not None:
         y = scale.reshape([1, right]) * y
     if bias is not None:
@@ -45,13 +56,19 @@ def ref_layer_norm(x, scale, bias, epsilon, begin_norm_axis=1):
 
 
 class XPUTestLayerNormOp(XPUOpTestWrapper):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def __init__(self):
         self.op_name = 'layer_norm'
         self.use_dynamic_create_class = False
 
     class TestXPULayerNormOp(XPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def setUp(self):
             self.op_type = "layer_norm"
             self.dtype = self.in_type
@@ -60,6 +77,7 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             self.begin_norm_axis = 1
             self.set_attrs()
 
+<<<<<<< HEAD
             right = reduce(mul,
                            self.shape[self.begin_norm_axis:len(self.shape)], 1)
             np.random.seed(10)
@@ -68,22 +86,48 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
             bias_np = np.random.uniform(0.1, 1, [right]).astype(self.dtype)
             ref_y_np, ref_mean_np, ref_variance_np = ref_layer_norm(
                 x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis)
+=======
+            self.atol = 1e-4
+            if self.dtype == np.float16:
+                self.atol = 1e-2
+
+            right = reduce(
+                mul, self.shape[self.begin_norm_axis : len(self.shape)], 1
+            )
+            np.random.seed(10)
+            x_np = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            scale_np = np.random.uniform(0.1, 1, [right]).astype('float32')
+            bias_np = np.random.uniform(0.1, 1, [right]).astype('float32')
+            ref_y_np, ref_mean_np, ref_variance_np = ref_layer_norm(
+                x_np, scale_np, bias_np, self.epsilon, self.begin_norm_axis
+            )
+            ref_y_np = ref_y_np.astype(self.dtype)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             self.inputs = {'X': x_np, 'Scale': scale_np, 'Bias': bias_np}
             self.outputs = {
                 'Y': ref_y_np,
                 'Mean': ref_mean_np,
+<<<<<<< HEAD
                 'Variance': ref_variance_np
             }
             self.attrs = {
                 'begin_norm_axis': self.begin_norm_axis,
                 'use_xpu': True
+=======
+                'Variance': ref_variance_np,
+            }
+            self.attrs = {
+                'begin_norm_axis': self.begin_norm_axis,
+                'use_xpu': True,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
 
         def set_attrs(self):
             pass
 
         def test_check_output(self):
+<<<<<<< HEAD
             self.check_output_with_place(paddle.XPUPlace(0), atol=1e-4)
 
         def test_check_grad(self):
@@ -93,21 +137,40 @@ class XPUTestLayerNormOp(XPUOpTestWrapper):
 
     class TestXPULayerNormOpAxis2(TestXPULayerNormOp):
 
+=======
+            self.check_output_with_place(paddle.XPUPlace(0), atol=self.atol)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(
+                paddle.XPUPlace(0), ['X'], 'Y', max_relative_error=self.atol
+            )
+
+    class TestXPULayerNormOpAxis2(TestXPULayerNormOp):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def set_attrs(self):
             self.begin_norm_axis = 2
 
     class TestXPULayerNormOpAxis3(TestXPULayerNormOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def set_attrs(self):
             self.begin_norm_axis = 3
 
     class TestXPULayerNormOp2D(TestXPULayerNormOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def set_attrs(self):
             self.shape = [10, 12]
 
     class TestXPULayerNormOp3D(TestXPULayerNormOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def set_attrs(self):
             self.shape = [4, 5, 6]
 

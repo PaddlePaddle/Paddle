@@ -95,7 +95,11 @@ class Executor {
   // This API is very slow.
   void Run(const ProgramDesc& program,
            Scope* scope,
+<<<<<<< HEAD
            std::map<std::string, const LoDTensor*>* feed_targets,
+=======
+           std::map<std::string, const phi::DenseTensor*>* feed_targets,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
            std::map<std::string, FetchType*>* fetch_targets,
            bool create_local_scope = true,
            bool create_vars = true,
@@ -103,6 +107,7 @@ class Executor {
            const std::string& fetch_holder_name = "fetch");
 
   // This API is very slow.
+<<<<<<< HEAD
   void RunPreparedContext(ExecutorPrepareContext* ctx,
                           Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
@@ -111,6 +116,17 @@ class Executor {
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
+=======
+  void RunPreparedContext(
+      ExecutorPrepareContext* ctx,
+      Scope* scope,
+      std::map<std::string, const phi::DenseTensor*>* feed_targets,
+      std::map<std::string, FetchType*>* fetch_targets,
+      bool create_local_scope = true,
+      bool create_vars = true,
+      const std::string& feed_holder_name = "feed",
+      const std::string& fetch_holder_name = "fetch");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program,

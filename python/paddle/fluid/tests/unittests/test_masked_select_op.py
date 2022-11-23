@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
 import paddle
 
 
@@ -60,7 +57,7 @@ class TestMaskedSelectOp1(TestMaskedSelectOp):
 class TestMaskedSelectOp2(TestMaskedSelectOp):
 
     def init(self):
-        self.shape = (168, )
+        self.shape = (168,)
 
 
 class TestMaskedSelectAPI(unittest.TestCase):
@@ -74,7 +71,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
         mask = paddle.to_tensor(np_mask)
         out = paddle.masked_select(x, mask)
         np_out = np_masked_select(np_x, np_mask)
-        self.assertEqual(np.allclose(out.numpy(), np_out), True)
+        np.testing.assert_allclose(out.numpy(), np_out, rtol=1e-05)
         paddle.enable_static()
 
     def test_static_mode(self):
@@ -89,6 +86,7 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.CPUPlace())
 
+<<<<<<< HEAD
         res = exe.run(paddle.static.default_main_program(),
                       feed={
                           "x": np_x,
@@ -96,20 +94,35 @@ class TestMaskedSelectAPI(unittest.TestCase):
                       },
                       fetch_list=[out])
         self.assertEqual(np.allclose(res, np_out), True)
+=======
+        (res,) = exe.run(
+            paddle.static.default_main_program(),
+            feed={"x": np_x, "mask": np_mask},
+            fetch_list=[out],
+        )
+        np.testing.assert_allclose(res, np_out, rtol=1e-05)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestMaskedSelectError(unittest.TestCase):
 
     def test_error(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+<<<<<<< HEAD
             mask_float = paddle.fluid.data(shape=shape,
                                            dtype='float32',
                                            name='mask_float')
+=======
+            mask_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='mask_float'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             np_x = np.random.random(shape).astype('float32')
             np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 

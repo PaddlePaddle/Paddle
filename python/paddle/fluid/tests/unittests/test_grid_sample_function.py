@@ -14,13 +14,14 @@
 
 import numpy as np
 import paddle
-from paddle import fluid, nn
+from paddle import fluid
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
 import unittest
 
 
 class GridSampleTestCase(unittest.TestCase):
+<<<<<<< HEAD
 
     def __init__(self,
                  methodName='runTest',
@@ -30,6 +31,18 @@ class GridSampleTestCase(unittest.TestCase):
                  padding_mode="zeros",
                  align_corners=False):
         super(GridSampleTestCase, self).__init__(methodName)
+=======
+    def __init__(
+        self,
+        methodName='runTest',
+        x_shape=[2, 2, 3, 3],
+        grid_shape=[2, 3, 3, 2],
+        mode="bilinear",
+        padding_mode="zeros",
+        align_corners=False,
+    ):
+        super().__init__(methodName)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.padding_mode = padding_mode
         self.x_shape = x_shape
         self.grid_shape = grid_shape
@@ -49,25 +62,45 @@ class GridSampleTestCase(unittest.TestCase):
             with fluid.program_guard(main, start):
                 x = fluid.data("x", self.x_shape, dtype=self.dtype)
                 grid = fluid.data("grid", self.grid_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 y_var = F.grid_sample(x,
                                       grid,
                                       mode=self.mode,
                                       padding_mode=self.padding_mode,
                                       align_corners=self.align_corners)
+=======
+                y_var = F.grid_sample(
+                    x,
+                    grid,
+                    mode=self.mode,
+                    padding_mode=self.padding_mode,
+                    align_corners=self.align_corners,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         feed_dict = {"x": self.x, "grid": self.grid}
         exe = fluid.Executor(place)
         exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def dynamic_functional(self):
         x_t = paddle.to_tensor(self.x)
         grid_t = paddle.to_tensor(self.grid)
+<<<<<<< HEAD
         y_t = F.grid_sample(x_t,
                             grid_t,
                             mode=self.mode,
                             padding_mode=self.padding_mode,
                             align_corners=self.align_corners)
+=======
+        y_t = F.grid_sample(
+            x_t,
+            grid_t,
+            mode=self.mode,
+            padding_mode=self.padding_mode,
+            align_corners=self.align_corners,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         y_np = y_t.numpy()
         return y_np
 
@@ -97,6 +130,7 @@ class GridSampleErrorTestCase(GridSampleTestCase):
 def add_cases(suite):
     suite.addTest(GridSampleTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         GridSampleTestCase(methodName='runTest',
                            mode='bilinear',
                            padding_mode='reflection',
@@ -106,13 +140,38 @@ def add_cases(suite):
                            mode='bilinear',
                            padding_mode='zeros',
                            align_corners=True))
+=======
+        GridSampleTestCase(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='reflection',
+            align_corners=True,
+        )
+    )
+    suite.addTest(
+        GridSampleTestCase(
+            methodName='runTest',
+            mode='bilinear',
+            padding_mode='zeros',
+            align_corners=True,
+        )
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID"))
     suite.addTest(
         GridSampleErrorTestCase(methodName='runTest', align_corners="VALID"))
+=======
+        GridSampleErrorTestCase(methodName='runTest', padding_mode="VALID")
+    )
+    suite.addTest(
+        GridSampleErrorTestCase(methodName='runTest', align_corners="VALID")
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     suite.addTest(GridSampleErrorTestCase(methodName='runTest', mode="VALID"))
 
 

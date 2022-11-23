@@ -18,8 +18,11 @@
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/place.h"
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -48,15 +51,25 @@ struct Data {
 struct TestScope {
   void CreateTensor(const std::string& var_name, const Data& data) {
     auto variable = scope.Var(var_name);
+<<<<<<< HEAD
     auto tensor = variable->GetMutable<LoDTensor>();
+=======
+    auto tensor = variable->GetMutable<phi::DenseTensor>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     tensor->Resize(phi::make_ddim(data.getShape()));
     auto dptr = tensor->mutable_data<float>(place);
     std::copy(data.getData().begin(), data.getData().end(), dptr);
   }
 
+<<<<<<< HEAD
   const LoDTensor& GetTensor(const std::string& input) const {
     Variable* var = scope.FindVar(input);
     return var->Get<LoDTensor>();
+=======
+  const phi::DenseTensor& GetTensor(const std::string& input) const {
+    Variable* var = scope.FindVar(input);
+    return var->Get<phi::DenseTensor>();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   framework::Scope* Scope() { return &scope; }
@@ -89,8 +102,19 @@ struct ProgramStrategy {
 
   virtual void CheckOp(const OpDesc& op) const = 0;
 
+<<<<<<< HEAD
   VarDesc* AddInput(OpDesc* op, std::string input_name, const Data& data) {
     const std::string var_name = input_name + "_var";
+=======
+  VarDesc* AddInput(OpDesc* op,
+                    std::string input_name,
+                    const Data& data,
+                    const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
+    if (var_name.empty()) {
+      var_name = input_name + "_var";
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     op->SetInput(input_name, {var_name});
     auto var = program.MutableBlock(0)->Var(var_name);
     var->SetShape(data.getShape());
@@ -98,8 +122,19 @@ struct ProgramStrategy {
     return var;
   }
 
+<<<<<<< HEAD
   void AddOutput(OpDesc* op, std::string output_name, const Data& data) {
     const std::string var_name = output_name + "_var";
+=======
+  void AddOutput(OpDesc* op,
+                 std::string output_name,
+                 const Data& data,
+                 const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
+    if (var_name.empty()) {
+      var_name = output_name + "_var";
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     op->SetOutput(output_name, {var_name});
     program.MutableBlock(0)->Var(var_name);
     test_scope.CreateTensor(var_name, data);
@@ -117,13 +152,19 @@ struct ConvProgramStrategy : public ProgramStrategy {
                       std::vector<float>&& scale_weights,
                       int groups = 1,
                       Data&& bias = Data(),
+<<<<<<< HEAD
                       std::vector<float>&& scale_bias = {})
+=======
+                      std::vector<float>&& scale_bias = {},
+                      bool share_weight = false)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       : input(std::move(input)),
         filter(std::move(filter)),
         output(std::move(output)),
         scale_weights(std::move(scale_weights)),
         groups(std::move(groups)),
         bias(std::move(bias)),
+<<<<<<< HEAD
         scale_bias(std::move(scale_bias)) {}
 
  protected:
@@ -132,6 +173,17 @@ struct ConvProgramStrategy : public ProgramStrategy {
     op->SetType("conv2d");
     op->SetAttr("use_mkldnn", true);
     op->SetAttr("name", std::string{"Conv1"});
+=======
+        scale_bias(std::move(scale_bias)),
+        share_weight(std::move(share_weight)) {}
+
+ protected:
+  OpDesc* CreateBasicConvOp(const std::string conv_name = "Conv1") {
+    auto op = program.MutableBlock(0)->AppendOp();
+    op->SetType("conv2d");
+    op->SetAttr("use_mkldnn", true);
+    op->SetAttr("name", conv_name);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     op->SetAttr("mkldnn_data_type", std::string{"int8"});
     op->SetAttr("data_format", std::string{"NCHW"});
     op->SetAttr("dilations", std::vector<int>({1, 1}));
@@ -155,6 +207,23 @@ struct ConvProgramStrategy : public ProgramStrategy {
       AddInput(op, "Bias", bias);
       op->SetAttr("Bias_scales", scale_bias);
     }
+<<<<<<< HEAD
+=======
+
+    if (share_weight) {
+      OpDesc* op2 = CreateBasicConvOp("Conv2");
+      AddInput(op2, "Input", input);
+      AddInput(op2, "Filter", filter)->SetPersistable(true);
+      AddOutput(op2, "Output", output, "output2");
+      op2->SetAttr("Scale_weights", scale_weights);
+      op2->SetAttr("Scale_in", 1.0f);
+      op2->SetAttr("groups", groups);
+      if (HasBias()) {
+        AddInput(op2, "Bias", bias, "Bias2");
+        op2->SetAttr("Bias_scales", scale_bias);
+      }
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   void CheckOp(const OpDesc& op) const override {
@@ -210,9 +279,15 @@ struct ConvProgramStrategy : public ProgramStrategy {
   const Data output;
   const std::vector<float> scale_weights;
   const int groups;
+<<<<<<< HEAD
 
   const Data bias;
   const std::vector<float> scale_bias;
+=======
+  const Data bias;
+  const std::vector<float> scale_bias;
+  const bool share_weight;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };
 
 struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
@@ -340,6 +415,22 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   RunPassTest(std::move(program));
 }
 
+<<<<<<< HEAD
+=======
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(),
+      Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      2,
+      Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      true);
+  RunPassTest(std::move(program));
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace
 }  // namespace ir
 }  // namespace framework

@@ -12,10 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #include "paddle/phi/api/ext/dispatch.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+=======
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+
+#include <memory>
+#include <string>
+
+#include "paddle/phi/api/ext/dispatch.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/xpu/elementwise.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace phi {
 
@@ -38,6 +54,20 @@ void GradAddXPUKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
 }
 
+<<<<<<< HEAD
+=======
+template <typename T, typename Context>
+void AddRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  int axis,
+                  DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  XPUElementwise<T, XPUType>(
+      dev_ctx, x, y, axis, out, xpu::broadcast_add<XPUType>);
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }  // namespace phi
 
 PD_REGISTER_KERNEL(grad_add,
@@ -46,3 +76,8 @@ PD_REGISTER_KERNEL(grad_add,
                    phi::GradAddXPUKernel,
                    phi::dtype::float16,
                    float) {}
+<<<<<<< HEAD
+=======
+PD_REGISTER_KERNEL(
+    add_raw, XPU, ALL_LAYOUT, phi::AddRawKernel, phi::dtype::float16, float) {}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

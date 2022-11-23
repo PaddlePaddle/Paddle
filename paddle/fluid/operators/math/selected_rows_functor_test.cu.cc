@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+=======
+#include "paddle/phi/kernels/funcs/selected_rows_functor.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 #include "gtest/gtest.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -61,7 +65,11 @@ TEST(selected_rows_functor, gpu_add) {
   // simply concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
 
+<<<<<<< HEAD
   paddle::operators::math::SelectedRowsAdd<phi::GPUContext, float> add_functor;
+=======
+  phi::funcs::SelectedRowsAdd<phi::GPUContext, float> add_functor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -79,7 +87,7 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_rows[5], 7);
   EXPECT_EQ(out_rows[6], 9);
 
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor out_cpu;
   paddle::framework::TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
@@ -96,20 +104,22 @@ TEST(selected_rows_functor, gpu_add) {
   EXPECT_EQ(out_cpu_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_cpu_data[6 * row_numel + 9], 2.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor1{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor2{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor2{new phi::DenseTensor()};
   tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
 
+<<<<<<< HEAD
   paddle::operators::math::SelectedRowsAddTensor<phi::GPUContext, float>
       add_tensor_functor;
+=======
+  phi::funcs::SelectedRowsAddTensor<phi::GPUContext, float> add_tensor_functor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
-  paddle::framework::Tensor tensor2_cpu;
+  phi::DenseTensor tensor2_cpu;
   paddle::framework::TensorCopy(*tensor2, cpu_place, ctx, &tensor2_cpu);
   ctx.Wait();
 
@@ -164,8 +174,12 @@ TEST(selected_rows_functor, gpu_add_to) {
   // simply concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), gpu_place);
 
+<<<<<<< HEAD
   paddle::operators::math::SelectedRowsAddTo<phi::GPUContext, float>
       add_to_functor;
+=======
+  phi::funcs::SelectedRowsAddTo<phi::GPUContext, float> add_to_functor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -184,7 +198,7 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_rows[5], 7);
   EXPECT_EQ(out_rows[6], 9);
 
-  paddle::framework::Tensor out_cpu;
+  phi::DenseTensor out_cpu;
   paddle::framework::TensorCopy(*out_value, cpu_place, ctx, &out_cpu);
   ctx.Wait();
 
@@ -201,16 +215,19 @@ TEST(selected_rows_functor, gpu_add_to) {
   EXPECT_EQ(out_cpu_data[5 * row_numel + 7], 2.0);
   EXPECT_EQ(out_cpu_data[6 * row_numel + 9], 2.0);
 
-  std::unique_ptr<paddle::framework::Tensor> tensor1{
-      new paddle::framework::Tensor()};
+  std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), gpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
+<<<<<<< HEAD
   paddle::operators::math::SelectedRowsAddToTensor<phi::GPUContext, float>
+=======
+  phi::funcs::SelectedRowsAddToTensor<phi::GPUContext, float>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
-  paddle::framework::Tensor tensor1_cpu;
+  phi::DenseTensor tensor1_cpu;
   paddle::framework::TensorCopy(*tensor1, cpu_place, ctx, &tensor1_cpu);
   ctx.Wait();
 
@@ -261,15 +278,19 @@ TEST(selected_rows_functor, gpu_merge_add) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
+<<<<<<< HEAD
   paddle::operators::math::scatter::MergeAdd<phi::GPUContext, float>
       merge_add_functor;
+=======
+  phi::funcs::scatter::MergeAdd<phi::GPUContext, float> merge_add_functor;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
   inputs.push_back(selected_rows2.get());
   merge_add_functor(ctx, inputs, output.get());
 
-  paddle::framework::Tensor output_cpu;
+  phi::DenseTensor output_cpu;
   paddle::framework::TensorCopy(output->value(), cpu_place, ctx, &output_cpu);
   ctx.Wait();
 

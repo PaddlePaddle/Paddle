@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
 import unittest
 import os
 import sys
@@ -48,10 +45,19 @@ class TestFlagsUseMkldnn(unittest.TestCase):
     def test_flags_use_mkl_dnn(self):
         cmd = self._python_interp
 
+<<<<<<< HEAD
         proc = subprocess.Popen(cmd.split(" "),
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 env=self.env)
+=======
+        proc = subprocess.Popen(
+            cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         out, err = proc.communicate()
         returncode = proc.returncode

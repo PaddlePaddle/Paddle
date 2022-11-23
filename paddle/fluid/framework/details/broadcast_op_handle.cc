@@ -62,7 +62,11 @@ void BroadcastOpHandle::BroadcastOneVar(
       in_var,
       platform::errors::NotFound("Variable %s is not found in scopes.",
                                  in_var_handle.name()));
+<<<<<<< HEAD
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
+=======
+  phi::DenseTensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   if (UNLIKELY(!in_tensor.IsInitialized())) {
     VLOG(3) << "in var " << in_var_handle.name() << "not inited, return!";
     return;
@@ -236,7 +240,7 @@ void BroadcastOpHandle::InitOutputValue(
   auto *in_var =
       var_scopes.at(in_var_handle.scope_idx())->FindVar(in_var_handle.name());
 
-  Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
+  phi::DenseTensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.

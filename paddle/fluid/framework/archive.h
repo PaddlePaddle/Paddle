@@ -32,8 +32,12 @@
 #include <valarray>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/expect.h"
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace framework {

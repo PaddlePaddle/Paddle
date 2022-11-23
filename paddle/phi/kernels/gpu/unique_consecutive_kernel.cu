@@ -21,8 +21,11 @@
 #include "paddle/phi/core/errors.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/data_type.h"
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 namespace phi {
 
 template <typename T, typename Context>
@@ -35,8 +38,13 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
                              DenseTensor* out,
                              DenseTensor* index,
                              DenseTensor* counts) {
+<<<<<<< HEAD
   auto data_type = static_cast<paddle::framework::proto::VarType::Type>(dtype);
   if (data_type == paddle::framework::proto::VarType::INT32) {
+=======
+  auto data_type = var_type_map[dtype];
+  if (data_type == phi::DataType::INT32) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     PADDLE_ENFORCE_LE(
         x.numel() + 1,
         INT_MAX,
@@ -49,14 +57,22 @@ void UniqueConsecutiveKernel(const Context& dev_ctx,
 
   // if 'axis' is not required, flatten the Tensor.
   if (axis.empty()) {
+<<<<<<< HEAD
     paddle::framework::VisitDataTypeTiny(
+=======
+    phi::VisitDataTypeTiny(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         data_type,
         UniqueConsecutiveFlattenedCUDAFunctor<Context, T>(
             dev_ctx, x, out, return_inverse, return_counts, index, counts));
   } else {
     // 'axis' is required.
     int valid_axis = axis[0];
+<<<<<<< HEAD
     paddle::framework::VisitDataTypeTiny(
+=======
+    phi::VisitDataTypeTiny(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         data_type,
         UniqueConsecutiveDimsCUDAFunctor<Context, T>(dev_ctx,
                                                      x,

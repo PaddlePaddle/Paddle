@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -21,7 +19,6 @@ import sys
 import signal
 import time
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -46,14 +43,21 @@ class TestCollectiveAllgather(TestCollectiveRunnerBase):
         ring_id = 0
         nranks = 2
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(name="tindata",
                                   shape=[10, 1000],
                                   dtype='float32')
+=======
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             toutdata = main_prog.current_block().create_var(
                 name="outofallgather",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False)
             main_prog.global_block().append_op(type="c_allgather",
                                                inputs={'X': tindata},
@@ -66,6 +70,22 @@ class TestCollectiveAllgather(TestCollectiveRunnerBase):
                                                inputs={'X': toutdata},
                                                outputs={'Out': toutdata},
                                                attrs={'ring_id': ring_id})
+=======
+                stop_gradient=False,
+            )
+            main_prog.global_block().append_op(
+                type="c_allgather",
+                inputs={'X': tindata},
+                attrs={'ring_id': ring_id, 'nranks': nranks},
+                outputs={'Out': toutdata},
+            )
+            main_prog.global_block().append_op(
+                type="c_sync_comm_stream",
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id},
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             return toutdata
 
 

@@ -43,12 +43,21 @@ class TestMul(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
         y = paddle.static.data(name=self.feed_list[1],
                                shape=self.feed_shape[1],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = self.op(x, y, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -145,19 +154,19 @@ class TestDiv(TestMul):
 class TestMin(TestMul):
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_min
+        self.op = paddle.minimum
 
 
 class TestMax(TestMul):
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_max
+        self.op = paddle.maximum
 
 
 class TestPow(TestMul):
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_pow
+        self.op = paddle.pow
 
 
 class TestMod(TestMul):
@@ -169,7 +178,7 @@ class TestMod(TestMul):
         self.rtol_fp16 = 1e-3
 
     def set_test_op(self):
-        self.op = paddle.fluid.layers.elementwise_mod
+        self.op = paddle.remainder
 
 
 if __name__ == "__main__":

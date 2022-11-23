@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -30,9 +29,15 @@ class TestIdentityOp(TestDistBase):
 
     def test_identity(self, col_type="identity"):
         dist_env = os.environ
+<<<<<<< HEAD
         self.check_with_place("collective_identity_op_npu.py",
                               col_type,
                               need_envs=dist_env)
+=======
+        self.check_with_place(
+            "collective_identity_op_npu.py", col_type, need_envs=dist_env
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

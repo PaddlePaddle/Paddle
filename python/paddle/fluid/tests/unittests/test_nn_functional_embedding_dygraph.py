@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
-import paddle.nn as nn
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
 
@@ -36,8 +33,14 @@ class EmbeddingDygraph(unittest.TestCase):
         w0 = np.full(shape=(10, 3), fill_value=2).astype(np.float32)
         embedding.weight.set_value(w0)
 
+<<<<<<< HEAD
         adam = paddle.optimizer.Adam(parameters=[embedding.weight],
                                      learning_rate=0.01)
+=======
+        adam = paddle.optimizer.Adam(
+            parameters=[embedding.weight], learning_rate=0.01
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         adam.clear_grad()
 
         out = embedding(x)

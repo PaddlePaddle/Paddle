@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -45,8 +43,14 @@ class TestConcatOp(OpTest):
             self.actual_axis = self.axis
 
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((self.x0, self.x1, self.x2), axis=self.actual_axis)
+=======
+            'Out': np.concatenate(
+                (self.x0, self.x1, self.x2), axis=self.actual_axis
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def set_npu(self):
@@ -80,7 +84,8 @@ class TestConcatOp2(TestConcatOp):
 
 
 @skip_check_grad_ci(
-    reason="The function 'check_grad' for large inputs is too slow.")
+    reason="The function 'check_grad' for large inputs is too slow."
+)
 class TestConcatOp3(TestConcatOp):
 
     def init_test_data(self):
@@ -118,7 +123,7 @@ class TestConcatOp5(TestConcatOp):
         self.axis = -3
 
 
-#----------------Concat Fp16----------------
+# ----------------Concat Fp16----------------
 def create_test_fp16(parent):
 
     class TestConcatFp16(parent):
@@ -138,7 +143,7 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
-#----------------Concat Int64----------------
+# ----------------Concat Int64----------------
 def create_test_int64(parent):
 
     class TestConcatInt64(parent):
@@ -181,9 +186,15 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
             with fluid.program_guard(self.program):
                 input = fluid.layers.assign(self.x)
                 tensor_array = fluid.layers.create_array(dtype='float32')
+<<<<<<< HEAD
                 zero = fluid.layers.fill_constant(shape=[1],
                                                   value=0,
                                                   dtype="int64")
+=======
+                zero = fluid.layers.fill_constant(
+                    shape=[1], value=0, dtype="int64"
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
                 for i in range(self.iter_num):
                     fluid.layers.array_write(input, zero + i, tensor_array)
@@ -218,10 +229,16 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
+<<<<<<< HEAD
         self.assertTrue(
             np.array_equal(
                 res[0], np.concatenate([self.x] * self.iter_num,
                                        axis=self.axis)))
+=======
+        np.testing.assert_allclose(
+            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == '__main__':

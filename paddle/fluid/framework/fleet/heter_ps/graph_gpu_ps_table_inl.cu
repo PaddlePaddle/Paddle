@@ -15,6 +15,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
+
 #include <functional>
 #include "cub/cub.cuh"
 #pragma once
@@ -78,6 +79,7 @@ __global__ void copy_buffer_ac_to_final_place(uint64_t* gpu_buffer,
   }
 }
 
+<<<<<<< HEAD
 __global__ void get_features_size(GpuPsFeaInfo* fea_info_array,
                                   uint32_t* feature_size,
                                   int n) {
@@ -108,10 +110,13 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph,
   }
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 __global__ void get_features_kernel(GpuPsCommGraphFea graph,
                                     GpuPsFeaInfo* fea_info_array,
                                     int* actual_size,
                                     uint64_t* feature,
+<<<<<<< HEAD
                                     int* slot_feature_num_map,
                                     int slot_num,
                                     int n,
@@ -147,15 +152,47 @@ __global__ void get_features_kernel(GpuPsCommGraphFea graph,
             dst_feature[dst_fea_idx] = 0;
           }
         }
+=======
+                                    int slot_num,
+                                    int n) {
+  int idx = blockIdx.x * blockDim.y + threadIdx.y;
+  if (idx < n) {
+    int feature_size = fea_info_array[idx].feature_size;
+    int offset = idx * slot_num;
+    if (feature_size == 0) {
+      for (int k = 0; k < slot_num; ++k) {
+        feature[offset + k] = 0;
+      }
+      actual_size[idx] = slot_num;
+      return;
+    }
+
+    uint64_t* feature_start =
+        &(graph.feature_list[fea_info_array[idx].feature_offset]);
+    uint8_t* slot_id_start =
+        &(graph.slot_id_list[fea_info_array[idx].feature_offset]);
+    int m = 0;
+    for (int k = 0; k < slot_num; ++k) {
+      if (m >= fea_info_array[idx].feature_size || k < slot_id_start[m]) {
+        feature[offset + k] = 0;
+      } else if (k == slot_id_start[m]) {
+        feature[offset + k] = feature_start[m];
+        ++m;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       } else {
         assert(0);
       }
     }
+<<<<<<< HEAD
     actual_size[idx] = fea_num_per_node;
+=======
+    actual_size[idx] = slot_num;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 }
 
 template <int WARP_SIZE, int BLOCK_WARPS, int TILE_SIZE>
+<<<<<<< HEAD
 __global__ void neighbor_sample_kernel_walking(GpuPsCommGraph graph,
                                                GpuPsNodeInfo* node_info_list,
                                                int* actual_size,
@@ -168,6 +205,15 @@ __global__ void neighbor_sample_kernel_walking(GpuPsCommGraph graph,
   // actual_size: The actual sample size of the input nodes.
   // res: The output sample neighbors of the input nodes.
   // sample_len: The fix sample size.
+=======
+__global__ void neighbor_sample_kernel(GpuPsCommGraph graph,
+                                       GpuPsNodeInfo* node_info_list,
+                                       int* actual_size,
+                                       uint64_t* res,
+                                       int sample_len,
+                                       int n,
+                                       int default_value) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   assert(blockDim.x == WARP_SIZE);
   assert(blockDim.y == BLOCK_WARPS);
 
@@ -213,6 +259,7 @@ __global__ void neighbor_sample_kernel_walking(GpuPsCommGraph graph,
   }
 }
 
+<<<<<<< HEAD
 __global__ void neighbor_sample_kernel_all_edge_type(
     GpuPsCommGraph* graphs,
     GpuPsNodeInfo* node_info_base,
@@ -282,6 +329,12 @@ int GpuPsGraphTable::init_cpu_table(
   cpu_graph_table_.reset(new paddle::distributed::GraphTable);
   cpu_table_status = cpu_graph_table_->Initialize(graph);
   cpu_graph_table_->init_worker_poll(gpu_num);
+=======
+int GpuPsGraphTable::init_cpu_table(
+    const paddle::distributed::GraphParameter& graph) {
+  cpu_graph_table_.reset(new paddle::distributed::GraphTable);
+  cpu_table_status = cpu_graph_table_->Initialize(graph);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   // if (cpu_table_status != 0) return cpu_table_status;
   // std::function<void(std::vector<GpuPsCommGraph>&)> callback =
   //     [this](std::vector<GpuPsCommGraph>& res) {
@@ -346,6 +399,7 @@ void GpuPsGraphTable::display_sample_res(void* key,
 
 void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
                                                 int gpu_num,
+<<<<<<< HEAD
                                                 int* h_left,
                                                 int* h_right,
                                                 int* fea_left,
@@ -407,6 +461,8 @@ void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
 
 void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
                                                 int gpu_num,
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                                 int sample_size,
                                                 int* h_left,
                                                 int* h_right,
@@ -450,6 +506,7 @@ void GpuPsGraphTable::move_result_to_source_gpu(int start_index,
     CUDA_CHECK(cudaStreamSynchronize(node.out_stream));
     // cudaStreamSynchronize(resource_->remote_stream(i, start_index));
   }
+<<<<<<< HEAD
 }
 
 void GpuPsGraphTable::move_result_to_source_gpu_all_edge_type(
@@ -543,6 +600,8 @@ __global__ void fill_feature_and_slot(uint64_t* dst_feature_list,
       dst_slot_list[dst_index + j] = src_slot_list[src_index + j];
     }
   }
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 /*
@@ -601,6 +660,23 @@ __global__ void fill_dvalues(uint64_t* d_shard_vals,
   }
 }
 
+<<<<<<< HEAD
+=======
+__global__ void fill_dvalues(uint64_t* d_shard_vals,
+                             uint64_t* d_vals,
+                             int* d_shard_actual_sample_size,
+                             int* idx,
+                             int sample_size,
+                             int len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    for (int j = 0; j < sample_size; j++) {
+      d_vals[idx[i] * sample_size + j] = d_shard_vals[i * sample_size + j];
+    }
+  }
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 __global__ void fill_actual_vals(uint64_t* vals,
                                  uint64_t* actual_vals,
                                  int* actual_sample_size,
@@ -649,6 +725,7 @@ void GpuPsGraphTable::clear_feature_info(int gpu_id) {
   if (graph.slot_id_list != NULL) {
     cudaFree(graph.slot_id_list);
     graph.slot_id_list = NULL;
+<<<<<<< HEAD
   }
   graph.feature_capacity = 0;
 }
@@ -688,6 +765,8 @@ void GpuPsGraphTable::reset_feature_info(int gpu_id,
         cudaMemset(graph.feature_list, 0, feature_size * sizeof(uint64_t)));
     CUDA_CHECK(
         cudaMemset(graph.slot_id_list, 0, feature_size * sizeof(uint8_t)));
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 }
 
@@ -721,6 +800,7 @@ gpu i saves the ith graph from cpu_graph_list
 */
 void GpuPsGraphTable::build_graph_fea_on_single_gpu(const GpuPsCommGraphFea& g,
                                                     int gpu_id) {
+<<<<<<< HEAD
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   size_t capacity = std::max((uint64_t)1, g.node_size) / load_factor_;
   reset_feature_info(gpu_id, capacity, g.feature_size);
@@ -728,6 +808,21 @@ void GpuPsGraphTable::build_graph_fea_on_single_gpu(const GpuPsCommGraphFea& g,
   int offset = gpu_id * feature_table_num_ + ntype_id;
   int table_offset =
       get_table_offset(gpu_id, GraphTableType::FEATURE_TABLE, ntype_id);
+=======
+  clear_feature_info(gpu_id);
+  int ntype_id = 0;
+
+  platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
+
+  int offset = gpu_id * feature_table_num_ + ntype_id;
+  gpu_graph_fea_list_[offset] = GpuPsCommGraphFea();
+
+  int table_offset =
+      get_table_offset(gpu_id, GraphTableType::FEATURE_TABLE, ntype_id);
+
+  size_t capacity = std::max((uint64_t)1, g.node_size) / load_factor_;
+  tables_[table_offset] = new Table(capacity);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   if (g.node_size > 0) {
     build_ps(gpu_id,
              g.node_list,
@@ -736,16 +831,40 @@ void GpuPsGraphTable::build_graph_fea_on_single_gpu(const GpuPsCommGraphFea& g,
              1024,
              8,
              table_offset);
+<<<<<<< HEAD
     gpu_graph_fea_list_[offset].node_size = g.node_size;
   } else {
     build_ps(gpu_id, NULL, NULL, 0, 1024, 8, table_offset);
     gpu_graph_fea_list_[offset].node_size = 0;
   }
   if (g.feature_size) {
+=======
+    gpu_graph_fea_list_[offset].node_list = NULL;
+    gpu_graph_fea_list_[offset].node_size = g.node_size;
+  } else {
+    build_ps(gpu_id, NULL, NULL, 0, 1024, 8, table_offset);
+    gpu_graph_fea_list_[offset].node_list = NULL;
+    gpu_graph_fea_list_[offset].node_size = 0;
+  }
+  if (g.feature_size) {
+    // TODO
+    cudaError_t cudaStatus =
+        cudaMalloc((void**)&gpu_graph_fea_list_[offset].feature_list,
+                   g.feature_size * sizeof(uint64_t));
+    PADDLE_ENFORCE_EQ(
+        cudaStatus,
+        cudaSuccess,
+        platform::errors::InvalidArgument(
+            "ailed to allocate memory for graph-feature on gpu "));
+    VLOG(0) << "sucessfully allocate " << g.feature_size * sizeof(uint64_t)
+            << " bytes of memory for graph-feature on gpu "
+            << resource_->dev_id(gpu_id);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     CUDA_CHECK(cudaMemcpy(gpu_graph_fea_list_[offset].feature_list,
                           g.feature_list,
                           g.feature_size * sizeof(uint64_t),
                           cudaMemcpyHostToDevice));
+<<<<<<< HEAD
     CUDA_CHECK(cudaMemcpy(gpu_graph_fea_list_[offset].slot_id_list,
                           g.slot_id_list,
                           g.feature_size * sizeof(uint8_t),
@@ -786,6 +905,34 @@ GpuPsGraphTable::get_edge_type_graph(int gpu_id, int edge_type_len) {
   }
 
   return graphs_vec;
+=======
+
+    // TODO
+    cudaStatus = cudaMalloc((void**)&gpu_graph_fea_list_[offset].slot_id_list,
+                            g.feature_size * sizeof(uint8_t));
+    PADDLE_ENFORCE_EQ(
+        cudaStatus,
+        cudaSuccess,
+        platform::errors::InvalidArgument(
+            "ailed to allocate memory for graph-feature on gpu "));
+    VLOG(0) << "sucessfully allocate " << g.feature_size * sizeof(uint8_t)
+            << " bytes of memory for graph-feature on gpu "
+            << resource_->dev_id(gpu_id);
+    cudaMemcpy(gpu_graph_fea_list_[offset].slot_id_list,
+               g.slot_id_list,
+               g.feature_size * sizeof(uint8_t),
+               cudaMemcpyHostToDevice);
+
+    gpu_graph_fea_list_[offset].feature_size = g.feature_size;
+  } else {
+    gpu_graph_fea_list_[offset].feature_list = NULL;
+    gpu_graph_fea_list_[offset].slot_id_list = NULL;
+    gpu_graph_fea_list_[offset].feature_size = 0;
+  }
+  VLOG(0) << "gpu node_feature info card :" << gpu_id << " ,node_size is "
+          << gpu_graph_fea_list_[offset].node_size << ", feature_size is "
+          << gpu_graph_fea_list_[offset].feature_size;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 /*
@@ -976,22 +1123,34 @@ void GpuPsGraphTable::build_graph_from_cpu(
 }
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v3(
+<<<<<<< HEAD
     NeighborSampleQuery q, bool cpu_switch, bool compress = true) {
+=======
+    NeighborSampleQuery q, bool cpu_switch) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return graph_neighbor_sample_v2(global_device_map[q.gpu_id],
                                   q.table_idx,
                                   q.src_nodes,
                                   q.sample_size,
                                   q.len,
+<<<<<<< HEAD
                                   cpu_switch,
                                   compress);
+=======
+                                  cpu_switch);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample(int gpu_id,
                                                             uint64_t* key,
                                                             int sample_size,
                                                             int len) {
+<<<<<<< HEAD
   return graph_neighbor_sample_v2(
       gpu_id, 0, key, sample_size, len, false, true);
+=======
+  return graph_neighbor_sample_v2(gpu_id, 0, key, sample_size, len, false);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
@@ -1000,8 +1159,12 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     uint64_t* key,
     int sample_size,
     int len,
+<<<<<<< HEAD
     bool cpu_query_switch,
     bool compress) {
+=======
+    bool cpu_query_switch) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   NeighborSampleResult result;
   auto stream = resource_->local_stream(gpu_id, 0);
   result.set_stream(stream);
@@ -1047,6 +1210,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
 
+<<<<<<< HEAD
   auto d_shard_keys =
       memory::Alloc(place,
                     len * sizeof(uint64_t),
@@ -1061,6 +1225,14 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
       memory::Alloc(place,
                     len * sizeof(int),
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+=======
+  auto d_shard_keys = memory::Alloc(place, len * sizeof(uint64_t));
+  uint64_t* d_shard_keys_ptr = reinterpret_cast<uint64_t*>(d_shard_keys->ptr());
+  auto d_shard_vals =
+      memory::Alloc(place, sample_size * len * sizeof(uint64_t));
+  uint64_t* d_shard_vals_ptr = reinterpret_cast<uint64_t*>(d_shard_vals->ptr());
+  auto d_shard_actual_sample_size = memory::Alloc(place, len * sizeof(int));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int* d_shard_actual_sample_size_ptr =
       reinterpret_cast<int*>(d_shard_actual_sample_size->ptr());
 
@@ -1072,6 +1244,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
 
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
+<<<<<<< HEAD
   CUDA_CHECK(cudaMemcpyAsync(h_left,
                              d_left_ptr,
                              total_gpu * sizeof(int),
@@ -1084,6 +1257,12 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                              stream));
   CUDA_CHECK(cudaStreamSynchronize(stream));
   device_mutex_[gpu_id]->lock();
+=======
+  CUDA_CHECK(cudaMemcpy(
+      h_left, d_left_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaMemcpy(
+      h_right, d_right_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
     if (shard_len == 0) {
@@ -1107,7 +1286,11 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     auto& node = path_[gpu_id][i].nodes_.back();
 
     CUDA_CHECK(cudaMemsetAsync(
+<<<<<<< HEAD
         node.val_storage, 0, shard_len * sizeof(uint64_t), node.in_stream));
+=======
+        node.val_storage, 0, shard_len * sizeof(int64_t), node.in_stream));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     CUDA_CHECK(cudaStreamSynchronize(node.in_stream));
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     // If not found, val is -1.
@@ -1124,13 +1307,21 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     int* actual_size_array = (int*)(node_info_list + shard_len);
     uint64_t* sample_array =
         (uint64_t*)(actual_size_array + shard_len + shard_len % 2);
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     constexpr int WARP_SIZE = 32;
     constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
     constexpr int TILE_SIZE = BLOCK_WARPS * 16;
     const dim3 block(WARP_SIZE, BLOCK_WARPS);
     const dim3 grid((shard_len + TILE_SIZE - 1) / TILE_SIZE);
+<<<<<<< HEAD
     neighbor_sample_kernel_walking<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+=======
+
+    neighbor_sample_kernel<WARP_SIZE, BLOCK_WARPS, TILE_SIZE>
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         <<<grid, block, 0, resource_->remote_stream(i, gpu_id)>>>(
             graph,
             node_info_list,
@@ -1154,6 +1345,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
                             h_right,
                             d_shard_vals_ptr,
                             d_shard_actual_sample_size_ptr);
+<<<<<<< HEAD
 
   for (int i = 0; i < total_gpu; ++i) {
     int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
@@ -1164,6 +1356,8 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
   }
   device_mutex_[gpu_id]->unlock();
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   fill_dvalues<<<grid_size, block_size_, 0, stream>>>(
       d_shard_vals_ptr,
       val,
@@ -1268,6 +1462,7 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     CUDA_CHECK(cudaStreamSynchronize(stream));
   }
 
+<<<<<<< HEAD
   if (compress) {
     CUDA_CHECK(cudaStreamSynchronize(stream));
     platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
@@ -1311,11 +1506,39 @@ NeighborSampleResult GpuPsGraphTable::graph_neighbor_sample_v2(
     result.actual_val = (uint64_t*)(result.actual_val_mem)->ptr();
 
     result.set_total_sample_size(total_sample_size);
+=======
+  {
+    CUDA_CHECK(cudaStreamSynchronize(stream));
+    platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
+    platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
+
+    thrust::device_vector<int> t_actual_sample_size(len);
+    thrust::copy(actual_sample_size,
+                 actual_sample_size + len,
+                 t_actual_sample_size.begin());
+    int total_sample_size = thrust::reduce(t_actual_sample_size.begin(),
+                                           t_actual_sample_size.end());
+
+    result.actual_val_mem =
+        memory::AllocShared(place, total_sample_size * sizeof(uint64_t));
+    result.actual_val = (uint64_t*)(result.actual_val_mem)->ptr();
+
+    result.set_total_sample_size(total_sample_size);
+    thrust::device_vector<int> cumsum_actual_sample_size(len);
+    thrust::exclusive_scan(t_actual_sample_size.begin(),
+                           t_actual_sample_size.end(),
+                           cumsum_actual_sample_size.begin(),
+                           0);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     fill_actual_vals<<<grid_size, block_size_, 0, stream>>>(
         val,
         result.actual_val,
         actual_sample_size,
+<<<<<<< HEAD
         cumsum_actual_sample_size_p,
+=======
+        thrust::raw_pointer_cast(cumsum_actual_sample_size.data()),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         sample_size,
         len);
     CUDA_CHECK(cudaStreamSynchronize(stream));  // hbm safe
@@ -1485,7 +1708,11 @@ NeighborSampleResultV2 GpuPsGraphTable::graph_neighbor_sample_all_edge_type(
     }
     destroy_storage(gpu_id, i);
   }
+<<<<<<< HEAD
   device_mutex_[gpu_id]->unlock();
+=======
+  cudaStreamSynchronize(stream);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   return result;
 }
 
@@ -1538,6 +1765,7 @@ NodeQueryResult GpuPsGraphTable::query_node_list(int gpu_id,
   return result;
 }
 
+<<<<<<< HEAD
 int GpuPsGraphTable::get_feature_info_of_nodes(
     int gpu_id,
     uint64_t* d_nodes,
@@ -1549,11 +1777,23 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
   if (node_num == 0) {
     return 0;
   }
+=======
+int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
+                                          uint64_t* d_nodes,
+                                          uint64_t* d_feature,
+                                          int node_num,
+                                          int slot_num) {
+  if (node_num == 0) {
+    return -1;
+  }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   platform::CUDAPlace place = platform::CUDAPlace(resource_->dev_id(gpu_id));
   platform::CUDADeviceGuard guard(resource_->dev_id(gpu_id));
   int total_gpu = resource_->total_device();
   auto stream = resource_->local_stream(gpu_id, 0);
 
+<<<<<<< HEAD
   auto d_left =
       memory::Alloc(place,
                     total_gpu * sizeof(int),
@@ -1562,11 +1802,16 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
       memory::Alloc(place,
                     total_gpu * sizeof(int),
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+=======
+  auto d_left = memory::Alloc(place, total_gpu * sizeof(int));
+  auto d_right = memory::Alloc(place, total_gpu * sizeof(int));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int* d_left_ptr = reinterpret_cast<int*>(d_left->ptr());
   int* d_right_ptr = reinterpret_cast<int*>(d_right->ptr());
 
   CUDA_CHECK(cudaMemsetAsync(d_left_ptr, -1, total_gpu * sizeof(int), stream));
   CUDA_CHECK(cudaMemsetAsync(d_right_ptr, -1, total_gpu * sizeof(int), stream));
+<<<<<<< HEAD
   auto d_idx =
       memory::Alloc(place,
                     node_num * sizeof(int),
@@ -1584,6 +1829,21 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
                     phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
   int* d_shard_actual_size_ptr =
       reinterpret_cast<int*>(d_shard_actual_size->ptr());
+=======
+  //
+  auto d_idx = memory::Alloc(place, node_num * sizeof(int));
+  int* d_idx_ptr = reinterpret_cast<int*>(d_idx->ptr());
+
+  auto d_shard_keys = memory::Alloc(place, node_num * sizeof(uint64_t));
+  uint64_t* d_shard_keys_ptr = reinterpret_cast<uint64_t*>(d_shard_keys->ptr());
+  auto d_shard_vals =
+      memory::Alloc(place, slot_num * node_num * sizeof(uint64_t));
+  uint64_t* d_shard_vals_ptr = reinterpret_cast<uint64_t*>(d_shard_vals->ptr());
+  auto d_shard_actual_size = memory::Alloc(place, node_num * sizeof(int));
+  int* d_shard_actual_size_ptr =
+      reinterpret_cast<int*>(d_shard_actual_size->ptr());
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   split_input_to_shard(
       d_nodes, d_idx_ptr, node_num, d_left_ptr, d_right_ptr, gpu_id);
 
@@ -1591,18 +1851,22 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
       d_shard_keys_ptr, d_nodes, d_idx_ptr, node_num, stream);
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
+<<<<<<< HEAD
   std::vector<void*> d_fea_info(total_gpu, NULL);
   std::vector<void*> d_fea_size(total_gpu, NULL);
   std::vector<void*> d_fea_size_prefix_sum(total_gpu, NULL);
   std::vector<uint32_t> fea_num_list(total_gpu, 0);
   std::vector<int> fea_left(total_gpu, -1);
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   int h_left[total_gpu];  // NOLINT
   CUDA_CHECK(cudaMemcpy(
       h_left, d_left_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost));
   int h_right[total_gpu];  // NOLINT
   CUDA_CHECK(cudaMemcpy(
       h_right, d_right_ptr, total_gpu * sizeof(int), cudaMemcpyDeviceToHost));
+<<<<<<< HEAD
   device_mutex_[gpu_id]->lock();
   int shard_len[total_gpu];
   void* d_temp_storage[total_gpu];
@@ -1649,10 +1913,29 @@ int GpuPsGraphTable::get_feature_info_of_nodes(
       gpu_id, total_gpu, h_left, h_right, (uint64_t*)(d_shard_keys_ptr), NULL);
 
   // no sync so 8 card can parallel execute
+=======
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
+    if (shard_len == 0) {
+      continue;
+    }
+    create_storage(gpu_id,
+                   i,
+                   shard_len * sizeof(uint64_t),
+                   shard_len * slot_num * sizeof(uint64_t) +
+                       shard_len * sizeof(uint64_t) +
+                       sizeof(int) * (shard_len + shard_len % 2));
+  }
+
+  walk_to_dest(
+      gpu_id, total_gpu, h_left, h_right, (uint64_t*)(d_shard_keys_ptr), NULL);
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   for (int i = 0; i < total_gpu; ++i) {
     if (h_left[i] == -1) {
       continue;
     }
+<<<<<<< HEAD
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     auto& node = path_[gpu_id][i].nodes_.back();
     // If not found, val is -1.
@@ -2014,11 +2297,83 @@ int GpuPsGraphTable::get_feature_of_nodes(int gpu_id,
                                                       fea_num_per_node,
                                                       node_num);
 
+=======
+    int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
+    auto& node = path_[gpu_id][i].nodes_.back();
+
+    CUDA_CHECK(cudaMemsetAsync(
+        node.val_storage, 0, shard_len * sizeof(uint64_t), node.in_stream));
+    CUDA_CHECK(cudaStreamSynchronize(node.in_stream));
+    platform::CUDADeviceGuard guard(resource_->dev_id(i));
+    // If not found, val is -1.
+    int table_offset = get_table_offset(i, GraphTableType::FEATURE_TABLE, 0);
+    tables_[table_offset]->get(reinterpret_cast<uint64_t*>(node.key_storage),
+                               reinterpret_cast<uint64_t*>(node.val_storage),
+                               (size_t)(h_right[i] - h_left[i] + 1),
+                               resource_->remote_stream(i, gpu_id));
+
+    int offset = i * feature_table_num_;
+    auto graph = gpu_graph_fea_list_[offset];
+
+    GpuPsFeaInfo* val_array = reinterpret_cast<GpuPsFeaInfo*>(node.val_storage);
+    int* actual_size_array = (int*)(val_array + shard_len);
+    uint64_t* feature_array =
+        (uint64_t*)(actual_size_array + shard_len + shard_len % 2);
+    dim3 grid((shard_len - 1) / dim_y + 1);
+    dim3 block(1, dim_y);
+    get_features_kernel<<<grid,
+                          block,
+                          0,
+                          resource_->remote_stream(i, gpu_id)>>>(
+        graph,
+        val_array,
+        actual_size_array,
+        feature_array,
+        slot_num,
+        shard_len);
+  }
+
+  for (int i = 0; i < total_gpu; ++i) {
+    if (h_left[i] == -1) {
+      continue;
+    }
+    CUDA_CHECK(cudaStreamSynchronize(resource_->remote_stream(i, gpu_id)));
+  }
+
+  move_result_to_source_gpu(gpu_id,
+                            total_gpu,
+                            slot_num,
+                            h_left,
+                            h_right,
+                            d_shard_vals_ptr,
+                            d_shard_actual_size_ptr);
+
+  int grid_size = (node_num - 1) / block_size_ + 1;
+  fill_dvalues<<<grid_size, block_size_, 0, stream>>>(d_shard_vals_ptr,
+                                                      d_feature,
+                                                      d_shard_actual_size_ptr,
+                                                      d_idx_ptr,
+                                                      slot_num,
+                                                      node_num);
+
+  for (int i = 0; i < total_gpu; ++i) {
+    int shard_len = h_left[i] == -1 ? 0 : h_right[i] - h_left[i] + 1;
+    if (shard_len == 0) {
+      continue;
+    }
+    destroy_storage(gpu_id, i);
+  }
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   CUDA_CHECK(cudaStreamSynchronize(stream));
 
   return 0;
 }
+<<<<<<< HEAD
 
 };  // namespace framework
+=======
+}  // namespace framework
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 };  // namespace paddle
 #endif

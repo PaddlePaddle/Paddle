@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -26,8 +24,14 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             model1 = fluid.dygraph.Sequential(fluid.Linear(10, 1),
                                               fluid.Linear(1, 2))
+=======
+            model1 = fluid.dygraph.Sequential(
+                fluid.Linear(10, 1), fluid.Linear(1, 2)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = fluid.Linear(1, 3)
@@ -66,8 +70,14 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             model1 = fluid.dygraph.Sequential(fluid.Linear(10, 1),
                                               fluid.Linear(1, 2))
+=======
+            model1 = fluid.dygraph.Sequential(
+                fluid.Linear(10, 1), fluid.Linear(1, 2)
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             model1[1] = fluid.Linear(1, 3)

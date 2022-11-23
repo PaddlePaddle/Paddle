@@ -18,7 +18,6 @@
 import hashlib
 import random
 import time
-from enum import Enum
 
 from .storable import Storable
 from .recorder import MetricsRecorder
@@ -33,11 +32,17 @@ class TrialStatus:
 
 
 class Trial(Storable):
+<<<<<<< HEAD
 
     def __init__(self,
                  tunable_space,
                  trial_id=None,
                  status=TrialStatus.RUNNING):
+=======
+    def __init__(
+        self, tunable_space, trial_id=None, status=TrialStatus.RUNNING
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self._id = _generate_trial_id() if trial_id is None else trial_id
         self._space = tunable_space
         self._recorder = MetricsRecorder()
@@ -116,6 +121,7 @@ class Trial(Storable):
 
 
 class OptimizationTunerTrial(Trial):
+<<<<<<< HEAD
 
     def __init__(self,
                  config,
@@ -124,6 +130,17 @@ class OptimizationTunerTrial(Trial):
                  trial_id=None,
                  status=TrialStatus.RUNNING):
         super(OptimizationTunerTrial, self).__init__(config, trial_id, status)
+=======
+    def __init__(
+        self,
+        config,
+        name,
+        changed_configs,
+        trial_id=None,
+        status=TrialStatus.RUNNING,
+    ):
+        super().__init__(config, trial_id, status)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self._name = name
         self._changed_configs = changed_configs
 
@@ -141,7 +158,12 @@ class OptimizationTunerTrial(Trial):
 
         h1_format = "    " + "|{{:^{}s}}|\n".format(length)
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
+<<<<<<< HEAD
             max_k, " " * spacing, max_v)
+=======
+            max_k, " " * spacing, max_v
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         border = "    +" + "".join(["="] * length) + "+"
         line = "    +" + "".join(["-"] * length) + "+"
@@ -156,9 +178,17 @@ class OptimizationTunerTrial(Trial):
             draws += h1_format.format("{} auto=True <-> {}".format(name, name))
             draws += line + "\n"
             my_configs = getattr(self.space, name)
+<<<<<<< HEAD
             keys = my_configs.keys()
             for key in keys:
                 draws += h2_format.format(key, str(my_configs.get(key, None)))
+=======
+            keys = my_configs.to_dict().keys()
+            for key in keys:
+                draws += h2_format.format(
+                    key, str(my_configs.to_dict().get(key, None))
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         result_res = draws + border
         return result_res

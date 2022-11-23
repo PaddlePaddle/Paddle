@@ -25,6 +25,10 @@
 
 using ::paddle::platform::kCPU;
 using ::paddle::platform::kCUDA;
+<<<<<<< HEAD
+=======
+using ::paddle::platform::kCUSTOM_DEVICE;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 using ::paddle::platform::kNPU;
 using ::paddle::platform::kXPU;
 
@@ -37,14 +41,26 @@ USE_EVENT_WAIT(kCUDA, kCUDA)
 USE_EVENT_WAIT(kCPU, kCUDA)
 #endif
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_XPU
 USE_EVENT(kXPU);
 USE_EVENT_WAIT(kXPU, kXPU)
 USE_EVENT_WAIT(kCPU, kXPU)
 #endif
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #ifdef PADDLE_WITH_ASCEND_CL
 USE_EVENT(kNPU);
 USE_EVENT_WAIT(kNPU, kNPU)
 USE_EVENT_WAIT(kCPU, kNPU)
 #endif
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+USE_EVENT(kCUSTOM_DEVICE);
+USE_EVENT_WAIT(kCUSTOM_DEVICE, kCUSTOM_DEVICE)
+USE_EVENT_WAIT(kCPU, kCUSTOM_DEVICE)
+#endif
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

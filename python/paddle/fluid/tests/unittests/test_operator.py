@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import numpy as np
 
 import paddle.fluid.op as op
 import paddle.fluid.proto.framework_pb2 as framework_pb2
@@ -112,10 +112,16 @@ class TestOpDescCreationMethod(unittest.TestCase):
         expected1.type = 'fc'
         self.assertEqual(expected1, generated1)
 
+<<<<<<< HEAD
         generated2 = method(X=['x1', 'x2', 'x3'],
                             b='b',
                             W=['w1', 'w2', 'w3'],
                             Y='y')
+=======
+        generated2 = method(
+            X=['x1', 'x2', 'x3'], b='b', W=['w1', 'w2', 'w3'], Y='y'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         expected2 = framework_pb2.OpDesc()
 
         tmp = expected2.inputs.add()
@@ -152,6 +158,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
         __add_attr__("int_attr", framework_pb2.INT)
         __add_attr__("float_attr", framework_pb2.FLOAT)
+        __add_attr__("float64_attr", framework_pb2.FLOAT64)
         __add_attr__("string_attr", framework_pb2.STRING)
         __add_attr__("ints_attr", framework_pb2.INTS)
         __add_attr__("floats_attr", framework_pb2.FLOATS)
@@ -162,6 +169,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
         method = op.OpDescCreationMethod(op_proto)
 
+<<<<<<< HEAD
         generated = method(X="a",
                            int_attr=10,
                            float_attr=3.2,
@@ -169,6 +177,18 @@ class TestOpDescCreationMethod(unittest.TestCase):
                            ints_attr=[0, 1, 2, 3, 4],
                            floats_attr=[0.2, 3.2, 4.5],
                            strings_attr=["a", "b", "c"])
+=======
+        generated = method(
+            X="a",
+            int_attr=10,
+            float_attr=3.2,
+            float64_attr=np.finfo("float64").max,
+            string_attr="test_str",
+            ints_attr=[0, 1, 2, 3, 4],
+            floats_attr=[0.2, 3.2, 4.5],
+            strings_attr=["a", "b", "c"],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         expected = framework_pb2.OpDesc()
         expected.type = "test"
@@ -186,6 +206,11 @@ class TestOpDescCreationMethod(unittest.TestCase):
         attr.name = "float_attr"
         attr.type = framework_pb2.FLOAT
         attr.f = 3.2
+
+        attr = expected.attrs.add()
+        attr.name = "float64_attr"
+        attr.type = framework_pb2.FLOAT64
+        attr.float64 = np.finfo("float64").max
 
         attr = expected.attrs.add()
         attr.name = "string_attr"
@@ -216,8 +241,9 @@ class TestOpCreations(unittest.TestCase):
         add_op = op.Operator("sum", X=["a", "b"], Out="z")
         self.assertIsNotNone(add_op)
         # Invoke C++ DebugString()
-        self.assertEqual('Op(sum), inputs:{X[a, b]}, outputs:{Out[z]}.',
-                         str(add_op))
+        self.assertEqual(
+            'Op(sum), inputs:{X[a, b]}, outputs:{Out[z]}.', str(add_op)
+        )
 
 
 if __name__ == "__main__":

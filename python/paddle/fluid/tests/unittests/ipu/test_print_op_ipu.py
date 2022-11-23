@@ -49,9 +49,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype=self.feed_dtype[0])
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
         out = paddle.fluid.layers.Print(out, **self.attrs)
 
@@ -103,11 +111,12 @@ class TestCase2(TestBase):
             "print_tensor_type": True,
             "print_tensor_shape": True,
             "print_tensor_layout": True,
-            "print_tensor_lod": True
+            "print_tensor_lod": True,
         }
 
 
 class SimpleLayer(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(SimpleLayer, self).__init__()
@@ -115,6 +124,13 @@ class SimpleLayer(paddle.nn.Layer):
                                      out_channels=1,
                                      kernel_size=2,
                                      stride=1)
+=======
+    def __init__(self):
+        super().__init__()
+        self.conv = paddle.nn.Conv2D(
+            in_channels=3, out_channels=1, kernel_size=2, stride=1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     @to_static()
     def forward(self, x, target=None):
@@ -130,7 +146,10 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestD2S(IPUD2STest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_data_feed()
 
@@ -142,16 +161,31 @@ class TestD2S(IPUD2STest):
         paddle.seed(self.SEED)
         np.random.seed(self.SEED)
         model = SimpleLayer()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(learning_rate=0.01,
                                       parameters=model.parameters())
+=======
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
+<<<<<<< HEAD
             ipu_strategy.set_graph_config(num_ipus=1,
                                           is_training=True,
                                           micro_batch_size=1,
                                           enable_manual_shard=False)
+=======
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=True,
+                micro_batch_size=1,
+                enable_manual_shard=False,
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             ipu_strategy.set_optimizer(optim)
 
         result = []
@@ -172,7 +206,11 @@ class TestD2S(IPUD2STest):
     def test_training(self):
         ipu_loss = self._test(True).flatten()
         cpu_loss = self._test(False).flatten()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
+=======
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-4)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

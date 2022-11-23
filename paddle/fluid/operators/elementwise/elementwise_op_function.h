@@ -42,8 +42,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 
 #endif
@@ -69,9 +69,9 @@ namespace operators {
  */
 template <typename OutT>
 int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
-                          std::vector<const framework::Tensor *> *ins,
-                          std::vector<framework::Tensor *> *outs,
-                          framework::Tensor *x_for_selectedrows = nullptr) {
+                          std::vector<const phi::DenseTensor *> *ins,
+                          std::vector<phi::DenseTensor *> *outs,
+                          phi::DenseTensor *x_for_selectedrows = nullptr) {
   int axis = -1;
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE_NOT_NULL(
@@ -79,12 +79,21 @@ int PackTensorsIntoVector(const framework::ExecutionContext &ctx,
       platform::errors::InvalidArgument(
           "Unable to get input Variable X, Variable name is %s.\n",
           ctx.InputName("X")));
+<<<<<<< HEAD
   auto *y = ctx.Input<framework::LoDTensor>("Y");
   framework::Tensor *z;
 
   if (x_var->IsType<framework::LoDTensor>()) {
     auto *x = ctx.Input<framework::LoDTensor>("X");
     z = ctx.Output<framework::LoDTensor>("Out");
+=======
+  auto *y = ctx.Input<phi::DenseTensor>("Y");
+  phi::DenseTensor *z;
+
+  if (x_var->IsType<phi::DenseTensor>()) {
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    z = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     ins->emplace_back(x);
   } else if (x_var->IsType<phi::SelectedRows>()) {
     PADDLE_ENFORCE_EQ(y->dims().size() == 1 && y->dims()[0] == 1,
@@ -152,6 +161,7 @@ template <typename DeviceContext,
           typename DY_OP,
           typename Tout = T>
 void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                          const framework::Tensor &x,
                          const framework::Tensor &y,
                          const framework::Tensor &out,
@@ -159,6 +169,15 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
                          int axis,
                          framework::Tensor *dx,
                          framework::Tensor *dy,
+=======
+                         const phi::DenseTensor &x,
+                         const phi::DenseTensor &y,
+                         const phi::DenseTensor &out,
+                         const phi::DenseTensor &dout,
+                         int axis,
+                         phi::DenseTensor *dx,
+                         phi::DenseTensor *dy,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                          DX_OP dx_op,
                          DY_OP dy_op) {
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
@@ -180,11 +199,19 @@ template <typename Functor,
           typename T,
           typename OutType = T>
 void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                           const framework::Tensor *x,
                           const framework::Tensor *y,
                           int axis,
                           Functor func,
                           framework::Tensor *z) {
+=======
+                          const phi::DenseTensor *x,
+                          const phi::DenseTensor *y,
+                          int axis,
+                          Functor func,
+                          phi::DenseTensor *z) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   z->mutable_data<OutType>(ctx.GetPlace());
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
   phi::funcs::ElementwiseCompute<Functor, T, OutType>(
@@ -468,11 +495,19 @@ template <typename DeviceContext,
 void FusedElemwiseAndActComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
+<<<<<<< HEAD
     const framework::Tensor &x,
     const framework::Tensor &y,
     CompoundFunctor compound_functor,
     framework::Tensor *out,
     framework::Tensor *intermediate_out) {
+=======
+    const phi::DenseTensor &x,
+    const phi::DenseTensor &y,
+    CompoundFunctor compound_functor,
+    phi::DenseTensor *out,
+    phi::DenseTensor *intermediate_out) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   size_t N = static_cast<size_t>(phi::product(x_dim));
 
   platform::ForRange<DeviceContext> for_range(
@@ -499,12 +534,21 @@ void FusedElemwiseAndActComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
     const framework::DDim &y_dim_untrimed,
+<<<<<<< HEAD
     const framework::Tensor &x,
     const framework::Tensor &y,
     CompoundFunctor compound_functor,
     int axis,
     framework::Tensor *out,
     framework::Tensor *intermediate_out) {
+=======
+    const phi::DenseTensor &x,
+    const phi::DenseTensor &y,
+    CompoundFunctor compound_functor,
+    int axis,
+    phi::DenseTensor *out,
+    phi::DenseTensor *intermediate_out) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   axis = (axis == -1 ? x_dim.size() - y_dim_untrimed.size() : axis);
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
@@ -642,6 +686,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
     const framework::DDim &y_dim,
+<<<<<<< HEAD
     const framework::Tensor *x,
     const framework::Tensor *y,
     const framework::Tensor *intermediate_out,
@@ -651,6 +696,17 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
     framework::Tensor *dx,
     framework::Tensor *dy,
     framework::Tensor *dintermediate,
+=======
+    const phi::DenseTensor *x,
+    const phi::DenseTensor *y,
+    const phi::DenseTensor *intermediate_out,
+    const phi::DenseTensor *out,
+    const phi::DenseTensor *dout,
+    int axis,
+    phi::DenseTensor *dx,
+    phi::DenseTensor *dy,
+    phi::DenseTensor *dintermediate,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
@@ -982,7 +1038,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
     for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
       // reduce sum with wrap
-      val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+      val += phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, val, i);
     }
 
     size_t idx_j = j + threadIdx.y;
@@ -1004,7 +1060,8 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
 #pragma unroll
         for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
           // reduce sum with wrap
-          inter_val += platform::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+          inter_val +=
+              phi::backends::gpu::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
         }
         if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }
@@ -1160,14 +1217,14 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
   if (BcastY) {
     if (dy) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dy[j] = val;
       }
     }
   } else {
     if (dx) {
-      val = paddle::platform::reduceSum(val, tid, h);
+      val = phi::backends::gpu::reduceSum(val, tid, h);
       if (threadIdx.x == 0) {
         dx[j] = val;
       }
@@ -1175,7 +1232,7 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
   }
   if (!SameShapeOfIntermediateOutAndOut) {
     if (d_intermediate) {
-      inter_val = paddle::platform::reduceSum(inter_val, tid, h);
+      inter_val = phi::backends::gpu::reduceSum(inter_val, tid, h);
       if (threadIdx.x == 0) {
         d_intermediate[j] = inter_val;
       }
@@ -1244,6 +1301,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
     const framework::DDim &y_dim_untrimed,
+<<<<<<< HEAD
     const framework::Tensor *x,
     const framework::Tensor *y,
     const framework::Tensor *intermediate_out,
@@ -1253,6 +1311,17 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
     framework::Tensor *dx,
     framework::Tensor *dy,
     framework::Tensor *dintermediate,
+=======
+    const phi::DenseTensor *x,
+    const phi::DenseTensor *y,
+    const phi::DenseTensor *intermediate_out,
+    const phi::DenseTensor *out,
+    const phi::DenseTensor *dout,
+    int axis,
+    phi::DenseTensor *dx,
+    phi::DenseTensor *dy,
+    phi::DenseTensor *dintermediate,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     DX_OP dx_op,
     DY_OP dy_op,
     DIntermediate_OP dintermediate_op) {
@@ -1385,6 +1454,7 @@ template <typename DeviceContext,
           bool UseIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                                       const framework::Tensor *x,
                                       const framework::Tensor *y,
                                       const framework::Tensor *out,
@@ -1394,6 +1464,17 @@ void FusedElemwiseAndActGradComputeEx(const framework::ExecutionContext &ctx,
                                       framework::Tensor *dx,
                                       framework::Tensor *dy,
                                       framework::Tensor *dintermediate,
+=======
+                                      const phi::DenseTensor *x,
+                                      const phi::DenseTensor *y,
+                                      const phi::DenseTensor *out,
+                                      const phi::DenseTensor *intermediate_out,
+                                      const phi::DenseTensor *dout,
+                                      int axis,
+                                      phi::DenseTensor *dx,
+                                      phi::DenseTensor *dy,
+                                      phi::DenseTensor *dintermediate,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                       DX_OP dx_op,
                                       DY_OP dy_op,
                                       DIntermediate_OP dintermediate_op) {
@@ -1497,12 +1578,17 @@ template <typename DeviceContext,
           bool KeepIntermediateOut,
           bool SameShapeOfIntermediateOutAndOut>
 void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
                                   const framework::Tensor &x,
                                   const framework::Tensor &y,
+=======
+                                  const phi::DenseTensor &x,
+                                  const phi::DenseTensor &y,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                   int axis,
                                   CompoundFunctor compound_functor,
-                                  framework::Tensor *out,
-                                  framework::Tensor *intermediate_out) {
+                                  phi::DenseTensor *out,
+                                  phi::DenseTensor *intermediate_out) {
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE_NOT_NULL(
         intermediate_out,
@@ -1578,9 +1664,15 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
 template <typename DeviceContext, typename T>
 static inline void GetDoubleGradSafeTensor(
     const framework::ExecutionContext &ctx,
+<<<<<<< HEAD
     const framework::Tensor *x,
     const framework::Tensor *ddx,
     framework::Tensor *ddx_safe) {
+=======
+    const phi::DenseTensor *x,
+    const phi::DenseTensor *ddx,
+    phi::DenseTensor *ddx_safe) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
   phi::funcs::GetDoubleGradSafeTensor<DeviceContext, T>(
       dev_ctx, *x, ddx, ddx_safe);
@@ -1599,10 +1691,17 @@ template <ElementwiseType ET, typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      const platform::Place &place,
                      int axis,
+<<<<<<< HEAD
                      std::vector<const framework::Tensor *> ins,
                      const framework::Tensor *dout,
                      framework::Tensor *dx,
                      framework::Tensor *dy,
+=======
+                     std::vector<const phi::DenseTensor *> ins,
+                     const phi::DenseTensor *dout,
+                     phi::DenseTensor *dx,
+                     phi::DenseTensor *dy,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                      Functor func) {
   phi::GetGradXAndYOut<ET, T, Functor>(
       dev_ctx, place, axis, ins, *dout, dx, dy, func);
@@ -1612,9 +1711,15 @@ template <ElementwiseType ET, typename T, typename Functor>
 void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const platform::Place &place,
                     int axis,
+<<<<<<< HEAD
                     std::vector<const framework::Tensor *> ins,
                     const framework::Tensor *dout,
                     framework::Tensor *dxy,
+=======
+                    std::vector<const phi::DenseTensor *> ins,
+                    const phi::DenseTensor *dout,
+                    phi::DenseTensor *dxy,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                     Functor func) {
   phi::GetGradXOrYOut<ET, T, Functor>(
       dev_ctx, place, axis, ins, *dout, dxy, func);

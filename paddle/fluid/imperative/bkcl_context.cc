@@ -33,8 +33,13 @@
 namespace paddle {
 namespace imperative {
 
+<<<<<<< HEAD
 static void AllReduce(const framework::Tensor &src,
                       framework::Tensor *dst,
+=======
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                       const XPUStream stream,
                       const platform::BKCLComm *comm) {
   const auto &place = src.place();
@@ -163,12 +168,17 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
   XPUStream stream =
       use_calc_stream ? dev_ctx->x_context()->xpu_stream : comm->stream();
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
+<<<<<<< HEAD
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(),
+=======
+    AllReduce(src.Get<phi::DenseTensor>(),
+              dst->GetMutable<phi::DenseTensor>(),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
               stream,
               comm);
   } else {
@@ -181,7 +191,7 @@ void BKCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void BKCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
   const auto &place = src_tensor->place();
   platform::BKCLComm *comm =
       platform::BKCLCommContext::Instance().Get(ring_id, place);

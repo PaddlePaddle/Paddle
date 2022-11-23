@@ -16,6 +16,7 @@ import unittest
 import paddle
 import numpy as np
 from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 
 
@@ -23,6 +24,16 @@ class Net(paddle.nn.Layer):
 
     def __init__(self):
         super(Net, self).__init__()
+=======
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    StaticFunction,
+)
+
+
+class Net(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.sub = SubNet()
 
     def forward(self, x):
@@ -38,9 +49,14 @@ class Net(paddle.nn.Layer):
 
 
 class SubNet(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(SubNet, self).__init__()
+=======
+    def __init__(self):
+        super().__init__()
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, x, flag=True):
         if flag:
@@ -59,15 +75,24 @@ class SubNet(paddle.nn.Layer):
 
 def foo(x, flag=False):
     if flag:
+<<<<<<< HEAD
         out = x * 2.
     else:
         out = x / 2.
+=======
+        out = x * 2.0
+    else:
+        out = x / 2.0
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     return out
 
 
 class TestRollBackPlainFunction(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.set_device("cpu")
 
@@ -82,11 +107,18 @@ class TestRollBackPlainFunction(unittest.TestCase):
         dy_out = st_foo(x)
 
         self.assertTrue(func_to_source_code(foo) == func_to_source_code(st_foo))
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(st_out.numpy(), dy_out.numpy()))
 
 
 class TestRollBackNet(unittest.TestCase):
 
+=======
+        np.testing.assert_array_equal(st_out.numpy(), dy_out.numpy())
+
+
+class TestRollBackNet(unittest.TestCase):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         paddle.set_device("cpu")
 
@@ -111,15 +143,25 @@ class TestRollBackNet(unittest.TestCase):
         self.assertFalse(isinstance(net.forward, StaticFunction))
         self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
         dy_fwd_out = net(x)
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(st_fwd_out.numpy(), dy_fwd_out.numpy()))
+=======
+        np.testing.assert_array_equal(st_fwd_out.numpy(), dy_fwd_out.numpy())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         # rollback infer into original dygraph method
         net.infer.rollback()
         self.assertFalse(isinstance(net.infer, StaticFunction))
         self.assertFalse("true_fn" in func_to_source_code(net.sub.forward))
         dy_infer_out = net.infer(x)
+<<<<<<< HEAD
         self.assertTrue(
             np.array_equal(st_infer_out.numpy(), dy_infer_out.numpy()))
+=======
+        np.testing.assert_array_equal(
+            st_infer_out.numpy(), dy_infer_out.numpy()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

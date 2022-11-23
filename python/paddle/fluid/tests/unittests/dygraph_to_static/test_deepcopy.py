@@ -15,14 +15,23 @@
 import unittest
 import paddle
 import numpy as np
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+=======
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    StaticFunction,
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 from test_rollback import Net, foo
 from copy import deepcopy
 
 
 class TestDeepCopy(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def test_net(self):
         net = Net()
         net = paddle.jit.to_static(net)
@@ -36,7 +45,11 @@ class TestDeepCopy(unittest.TestCase):
 
         self.assertFalse(isinstance(net.forward, StaticFunction))
         self.assertTrue(id(copy_net), id(copy_net.forward.__self__))
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(src_out.numpy(), copy_out.numpy()))
+=======
+        np.testing.assert_array_equal(src_out.numpy(), copy_out.numpy())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_func(self):
         st_foo = paddle.jit.to_static(foo)
@@ -48,7 +61,11 @@ class TestDeepCopy(unittest.TestCase):
         new_foo = deepcopy(st_foo)
         self.assertFalse(isinstance(new_foo, StaticFunction))
         new_out = new_foo(x)
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(st_out.numpy(), new_out.numpy()))
+=======
+        np.testing.assert_array_equal(st_out.numpy(), new_out.numpy())
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 if __name__ == "__main__":

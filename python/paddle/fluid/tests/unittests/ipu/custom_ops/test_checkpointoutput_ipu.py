@@ -27,16 +27,29 @@ from op_test_ipu import IPUOpTest
 
 def load_custom_ops():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
+<<<<<<< HEAD
     custom_ops = load(name="checkpointoutput",
                       sources=[
                           f"{cur_dir}/custom_checkpointoutput.cc",
                       ],
                       extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'])
+=======
+    custom_ops = load(
+        name="checkpointoutput",
+        sources=[
+            f"{cur_dir}/custom_checkpointoutput.cc",
+        ],
+        extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+    )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     return custom_ops
 
 
 class TestCheckpointoutput(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.load_custom_ops()
         self.set_atol()
@@ -66,9 +79,15 @@ class TestCheckpointoutput(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.add(x, x)
         x = self.op(x, **self.op_attrs)
         x = paddle.mean(x)

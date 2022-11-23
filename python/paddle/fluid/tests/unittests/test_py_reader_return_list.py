@@ -31,14 +31,21 @@ class TestPyReader(unittest.TestCase):
 
             def reader():
                 for i in range(self.sample_num):
+<<<<<<< HEAD
                     yield np.random.uniform(low=0,
                                             high=255,
                                             size=[height, width]),
+=======
+                    yield np.random.uniform(
+                        low=0, high=255, size=[height, width]
+                    ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
             return reader
 
         for return_list in [True, False]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
                 image = fluid.layers.data(name='image',
                                           shape=[784, 784],
                                           dtype='float32')
@@ -52,6 +59,25 @@ class TestPyReader(unittest.TestCase):
                     paddle.batch(user_defined_reader,
                                  batch_size=self.batch_size),
                     fluid.core.CPUPlace())
+=======
+                image = fluid.layers.data(
+                    name='image', shape=[784, 784], dtype='float32'
+                )
+                reader = fluid.io.PyReader(
+                    feed_list=[image],
+                    capacity=4,
+                    iterable=True,
+                    return_list=return_list,
+                )
+
+                user_defined_reader = reader_creator_random_image(784, 784)
+                reader.decorate_sample_list_generator(
+                    paddle.batch(
+                        user_defined_reader, batch_size=self.batch_size
+                    ),
+                    fluid.core.CPUPlace(),
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 # definition of network is omitted
                 executor = fluid.Executor(fluid.core.CPUPlace())
                 executor.run(fluid.default_main_program())
@@ -69,7 +95,8 @@ class TestPyReader(unittest.TestCase):
                 batch_py_reader.decorate_sample_generator(
                     user_defined_reader,
                     batch_size=self.batch_size,
-                    places=fluid.core.CPUPlace())
+                    places=fluid.core.CPUPlace(),
+                )
 
                 for epoch in range(self.epoch_num):
                     for _, data in enumerate(batch_py_reader()):

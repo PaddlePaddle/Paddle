@@ -108,7 +108,10 @@ register_unity_group(
 register_unity_group(
   cc
   flatten_op.cc
+<<<<<<< HEAD
   flip_op.cc
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   fsp_op.cc
   gather_nd_op.cc
   gather_op.cc
@@ -363,9 +366,13 @@ register_unity_group(
   lstm_op.cu.cc
   rnn_op.cu.cc
   split_op.cu.cc
+<<<<<<< HEAD
   activation_cudnn_op.cu.cc
   assign_value_op.cu.cc
   merge_selected_rows_op.cu.cc
+=======
+  assign_value_op.cu.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
@@ -424,7 +431,10 @@ register_unity_group(cu expand_v2_op.cu fake_dequantize_op.cu
                      fill_any_like_op.cu)
 register_unity_group(
   cu
+<<<<<<< HEAD
   flip_op.cu
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   fsp_op.cu
   gather_nd_op.cu
   gather_op.cu
@@ -469,7 +479,10 @@ register_unity_group(
   lookup_table_v2_op.cu
   margin_rank_loss_op.cu
   masked_select_op.cu
+<<<<<<< HEAD
   merge_selected_rows_op.cu
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   lstmp_op.cu
   shuffle_channel_op.cu
   softmax_cudnn_op.cu

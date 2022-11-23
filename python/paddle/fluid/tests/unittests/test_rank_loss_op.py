@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 class TestRankLossOp(OpTest):
@@ -36,7 +32,7 @@ class TestRankLossOp(OpTest):
         self.inputs = {
             'Label': label.reshape(label_shape),
             'Left': left.reshape(left_shape),
-            'Right': right.reshape(right_shape)
+            'Right': right.reshape(right_shape),
         }
         self.outputs = {'Out': loss.reshape(label_shape)}
 
@@ -92,6 +88,7 @@ class TestRankLossOp5(TestRankLossOp):
         return (batch_size), (batch_size), (batch_size)
 
 
+<<<<<<< HEAD
 class TestRankLossOpError(unittest.TestCase):
 
     def test_errors(self):
@@ -119,5 +116,7 @@ class TestRankLossOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_right_Variable)
 
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if __name__ == '__main__':
     unittest.main()

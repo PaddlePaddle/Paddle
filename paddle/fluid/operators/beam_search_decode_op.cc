@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/beam_search_decode_op.h"
+<<<<<<< HEAD
 
 #include <string>
 
@@ -31,10 +32,15 @@ namespace imperative {
 class OpBase;
 }  // namespace imperative
 }  // namespace paddle
+=======
+#include <string>
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 struct BeamSearchDecodeFunctor {
   BeamSearchDecodeFunctor(const LoDTensorArray& step_ids,
                           const LoDTensorArray& step_scores,
@@ -202,6 +208,20 @@ class BeamSearchDecodeOp : public framework::OperatorBase {
         framework::TransToProtoVarType(scores->at(0).dtype()),
         BeamSearchDecodeFunctor(
             *ids, *scores, sentenceIds, sentenceScores, beam_size, end_id));
+=======
+class BeamSearchDecodeOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    for (const std::string &arg : std::vector<std::string>({"Ids", "Scores"})) {
+      OP_INOUT_CHECK(ctx->HasInput(arg), "Input", arg, "BeamSeachDecode");
+    }
+    for (const std::string &arg :
+         std::vector<std::string>({"SentenceIds", "SentenceScores"})) {
+      OP_INOUT_CHECK(ctx->HasOutput(arg), "Output", arg, "BeamSeachDecode");
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 };
 
@@ -240,7 +260,7 @@ hypothesis has.
   }
 };
 
-class BeamSearchDecodeInferShape : public framework::InferShapeBase {
+/*class BeamSearchDecodeInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     OP_INOUT_CHECK(
@@ -256,11 +276,15 @@ class BeamSearchDecodeInferShape : public framework::InferShapeBase {
                    "SentenceScores",
                    "BeamSearchDecode");
   }
-};
+};*/
 
 class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
  public:
+<<<<<<< HEAD
   void operator()(framework::InferVarTypeContext* ctx) const override {
+=======
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     ctx->SetOutputType("SentenceIds",
                        framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
@@ -273,6 +297,7 @@ class BeamSearchDecodeInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(
     beam_search_decode,
     paddle::operators::BeamSearchDecodeOp,
@@ -281,3 +306,18 @@ REGISTER_OPERATOR(
     paddle::operators::BeamSearchDecodeInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+=======
+namespace ops = paddle::operators;
+REGISTER_OPERATOR(beam_search_decode,
+                  paddle::operators::BeamSearchDecodeOp,
+                  paddle::operators::BeamSearchDecodeOpProtoMaker,
+                  paddle::operators::BeamSearchDecodeInferVarType);
+
+REGISTER_OP_CPU_KERNEL(
+    beam_search_decode,
+    ops::BeamSearchDecodeOpKernel<phi::CPUContext, float>,
+    ops::BeamSearchDecodeOpKernel<phi::CPUContext, double>,
+    ops::BeamSearchDecodeOpKernel<phi::CPUContext, paddle::platform::float16>,
+    ops::BeamSearchDecodeOpKernel<phi::CPUContext, int>,
+    ops::BeamSearchDecodeOpKernel<phi::CPUContext, int64_t>);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

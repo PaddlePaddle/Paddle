@@ -15,8 +15,12 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import StrategyFactory
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
+)
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
+    StrategyFactory,
+)
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
@@ -49,7 +53,8 @@ class TestPyramidHashOpApi(unittest.TestCase):
             ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None)
+            name=None,
+        )
 
         cost = fluid.layers.reduce_sum(hash_embd)
 
@@ -57,7 +62,8 @@ class TestPyramidHashOpApi(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"],
+        )
 
         fleet.init(role)
 

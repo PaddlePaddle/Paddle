@@ -126,12 +126,9 @@ class FCOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-    int customized_type_value =
-        framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+<<<<<<< HEAD
     if (ctx.Attr<bool>("use_mkldnn")) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
@@ -146,6 +143,9 @@ class FCOp : public framework::OperatorWithKernel {
                                    layout,
                                    library,
                                    customized_type_value);
+=======
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 };
 

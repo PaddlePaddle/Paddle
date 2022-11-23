@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -52,7 +50,8 @@ class TestStackOpBase(OpTest):
         self.x = []
         for i in range(self.num_inputs):
             self.x.append(
-                np.random.random(size=self.input_dim).astype(self.dtype))
+                np.random.random(size=self.input_dim).astype(self.dtype)
+            )
 
         tmp = []
         x_names = self.get_x_names()
@@ -137,43 +136,11 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
         self.iter_num = 3
         self.input_shape = [2, 3]
         self.x = np.random.random(self.input_shape).astype("float32")
-        self.place = paddle.NPUPlace(0) \
-            if paddle.is_compiled_with_npu() else paddle.CPUPlace()
-        self.set_program()
-
-    def set_program(self):
-        self.program = fluid.Program()
-        with fluid.program_guard(self.program):
-            input = fluid.layers.assign(self.x)
-            tensor_array = fluid.layers.create_array(dtype='float32')
-            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
-
-            for i in range(self.iter_num):
-                fluid.layers.array_write(input, zero + i, tensor_array)
-
-            self.out_var = fluid.layers.stack(tensor_array, axis=self.axis)
-
-    def test_case(self):
-        self.assertTrue(self.out_var.shape[self.axis] == -1)
-        exe = fluid.Executor(self.place)
-        res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(res[0],
-                           np.stack([self.x] * self.iter_num, axis=self.axis)))
-
-
-class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
-    """
-    Test stack api when the input(x) is a LoDTensorArray.
-    """
-
-    def setUp(self):
-        self.axis = 1
-        self.iter_num = 3
-        self.input_shape = [2, 3]
-        self.x = np.random.random(self.input_shape).astype("float32")
-        self.place = paddle.NPUPlace(0) \
-            if paddle.is_compiled_with_npu() else paddle.CPUPlace()
+        self.place = (
+            paddle.NPUPlace(0)
+            if paddle.is_compiled_with_npu()
+            else paddle.CPUPlace()
+        )
         self.set_program()
 
     def set_program(self):
@@ -192,9 +159,59 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
+<<<<<<< HEAD
         self.assertTrue(
             np.array_equal(res[0],
                            np.stack([self.x] * self.iter_num, axis=self.axis)))
+=======
+        np.testing.assert_allclose(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
+
+
+class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
+    """
+    Test stack api when the input(x) is a LoDTensorArray.
+    """
+
+    def setUp(self):
+        self.axis = 1
+        self.iter_num = 3
+        self.input_shape = [2, 3]
+        self.x = np.random.random(self.input_shape).astype("float32")
+        self.place = (
+            paddle.NPUPlace(0)
+            if paddle.is_compiled_with_npu()
+            else paddle.CPUPlace()
+        )
+        self.set_program()
+
+    def set_program(self):
+        self.program = fluid.Program()
+        with fluid.program_guard(self.program):
+            input = fluid.layers.assign(self.x)
+            tensor_array = fluid.layers.create_array(dtype='float32')
+            zero = fluid.layers.fill_constant(shape=[1], value=0, dtype="int64")
+
+            for i in range(self.iter_num):
+                fluid.layers.array_write(input, zero + i, tensor_array)
+
+            self.out_var = paddle.stack(tensor_array, axis=self.axis)
+
+    def test_case(self):
+        self.assertTrue(self.out_var.shape[self.axis] == -1)
+        exe = fluid.Executor(self.place)
+        res = exe.run(self.program, fetch_list=self.out_var)
+<<<<<<< HEAD
+        self.assertTrue(
+            np.array_equal(res[0],
+                           np.stack([self.x] * self.iter_num, axis=self.axis)))
+=======
+        np.testing.assert_allclose(
+            res[0], np.stack([self.x] * self.iter_num, axis=self.axis)
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class API_test(unittest.TestCase):
@@ -210,14 +227,21 @@ class API_test(unittest.TestCase):
             input1 = np.random.random([1, 2]).astype('float32')
             input2 = np.random.random([1, 2]).astype('float32')
             input3 = np.random.random([1, 2]).astype('float32')
+<<<<<<< HEAD
             result, = exe.run(feed={
                 "data1": input1,
                 "data2": input2,
                 "data3": input3
             },
                               fetch_list=[result_stack])
+=======
+            (result,) = exe.run(
+                feed={"data1": input1, "data2": input2, "data3": input3},
+                fetch_list=[result_stack],
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             expected_result = np.stack([input1, input2, input3], axis=0)
-            self.assertTrue(np.allclose(expected_result, result))
+            np.testing.assert_allclose(expected_result, result)
 
     def test_single_tensor_error(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -238,14 +262,14 @@ class API_DygraphTest(unittest.TestCase):
             result = paddle.stack([x1, x2, x3])
             result_np = result.numpy()
         expected_result = np.stack([data1, data2, data3])
-        self.assertTrue(np.allclose(expected_result, result_np))
+        np.testing.assert_allclose(expected_result, result_np)
 
         with fluid.dygraph.guard(place=paddle.NPUPlace(0)):
             y1 = fluid.dygraph.to_variable(data1)
             result = paddle.stack([y1], axis=0)
             result_np_2 = result.numpy()
         expected_result_2 = np.stack([data1], axis=0)
-        self.assertTrue(np.allclose(expected_result_2, result_np_2))
+        np.testing.assert_allclose(expected_result_2, result_np_2)
 
     def test_single_tensor_error(self):
         with fluid.dygraph.guard(place=paddle.NPUPlace(0)):

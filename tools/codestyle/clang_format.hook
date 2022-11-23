@@ -6,14 +6,22 @@ readonly VERSION="13.0.0"
 version=$(clang-format -version)
 
 if ! [[ $(python -V 2>&1 | awk '{print $2}' | awk -F '.' '{print $1$2}') -ge 36 ]]; then
+<<<<<<< HEAD
     echo "clang-format installation by pip need python version great equal 3.6, 
+=======
+    echo "clang-format installation by pip need python version great equal 3.6,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
           please change the default python to higher version."
     exit 1
 fi
 
 if ! [[ $version == *"$VERSION"* ]]; then
     # low version of pip may not have the source of clang-format whl
+<<<<<<< HEAD
     pip install --upgrade pip 
+=======
+    pip install --upgrade pip
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     pip install clang-format==13.0.0
 fi
 

@@ -52,6 +52,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -59,6 +60,14 @@ class TestBase(IPUOpTest):
                                     num_filters=3,
                                     filter_size=3,
                                     bias_attr=False)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        x = paddle.static.nn.conv2d(
+            x, num_filters=3, filter_size=3, bias_attr=False
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.fluid.layers.batch_norm(x, **self.attrs)
         self.fetch_list = [x.name]
 

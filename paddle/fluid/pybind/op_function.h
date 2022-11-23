@@ -126,6 +126,7 @@ CastPyHandleToVarBaseList(const std::string& op_type,
   return result;
 }  // namespace pybind
 
+<<<<<<< HEAD
 static inline void ConstructAttrMapFromPyArgs(const std::string& op_type,
                                               int start_idx,
                                               framework::AttributeMap* attrs,
@@ -165,6 +166,8 @@ static inline void ConstructAttrMapFromPyArgs(const std::string& op_type,
   }
 }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 static inline std::vector<std::shared_ptr<imperative::VarBase>>
 ConstructDuplicableOutput(const size_t num) {
   auto tracer = imperative::GetCurrentTracer();
@@ -186,8 +189,8 @@ static inline void HandleViewBetweenInputAndOutput(
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         input_var->Name()));
 
-  if (input_var->Var().IsType<framework::LoDTensor>()) {
-    const auto& input_tensor = input_var->Var().Get<framework::LoDTensor>();
+  if (input_var->Var().IsType<phi::DenseTensor>()) {
+    const auto& input_tensor = input_var->Var().Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
         input_tensor.IsInitialized(),
         true,
@@ -195,7 +198,7 @@ static inline void HandleViewBetweenInputAndOutput(
             "LoDTensor %s has not been initialized!", input_var->Name()));
 
     auto* view_output_tensor =
-        view_output_var->MutableVar()->GetMutable<framework::LoDTensor>();
+        view_output_var->MutableVar()->GetMutable<phi::DenseTensor>();
     view_output_tensor->ShareBufferWith(input_tensor);
     view_output_tensor->ShareInplaceVersionCounterWith(input_tensor);
 

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 
 
 class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
@@ -34,48 +34,67 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
         for batch in [1, 2, 4]:
             for anchor_sizes in [[64.0, 128.0, 256.0, 512.0]]:
                 for aspect_ratios in [[0.5, 1, 2], [0.4, 1.2, 3]]:
-                    for variances in [[1.0, 1.0, 1.0, 1.0],
-                                      [0.5, 1.0, 0.5, 1.0]]:
+                    for variances in [
+                        [1.0, 1.0, 1.0, 1.0],
+                        [0.5, 1.0, 0.5, 1.0],
+                    ]:
                         for stride in [[16.0, 16.0], [16.0, 32.0]]:
                             for offset in [0.5, 0.8]:
-                                dics = [{
-                                    "anchor_sizes": anchor_sizes,
-                                    "aspect_ratios": aspect_ratios,
-                                    "variances": variances,
-                                    "stride": stride,
-                                    "offset": offset
-                                }]
+                                dics = [
+                                    {
+                                        "anchor_sizes": anchor_sizes,
+                                        "aspect_ratios": aspect_ratios,
+                                        "variances": variances,
+                                        "stride": stride,
+                                        "offset": offset,
+                                    }
+                                ]
 
-                                ops_config = [{
-                                    "op_type": "anchor_generator",
-                                    "op_inputs": {
-                                        "Input": ["input_data"]
-                                    },
-                                    "op_outputs": {
-                                        "Anchors": ["output_anchors"],
-                                        "Variances": ["output_variances"]
-                                    },
-                                    "op_attrs": dics[0]
-                                }]
+                                ops_config = [
+                                    {
+                                        "op_type": "anchor_generator",
+                                        "op_inputs": {"Input": ["input_data"]},
+                                        "op_outputs": {
+                                            "Anchors": ["output_anchors"],
+                                            "Variances": ["output_variances"],
+                                        },
+                                        "op_attrs": dics[0],
+                                    }
+                                ]
                                 ops = self.generate_op_config(ops_config)
 
                                 program_config = ProgramConfig(
                                     ops=ops,
                                     weights={},
                                     inputs={
+<<<<<<< HEAD
                                         "input_data":
                                         TensorConfig(data_gen=partial(
                                             generate_input1, batch, dics))
+=======
+                                        "input_data": TensorConfig(
+                                            data_gen=partial(
+                                                generate_input1, batch, dics
+                                            )
+                                        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                                     },
                                     outputs=[
-                                        "output_anchors", "output_variances"
-                                    ])
+                                        "output_anchors",
+                                        "output_variances",
+                                    ],
+                                )
 
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -100,19 +119,30 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test(self):
         self.run_test()

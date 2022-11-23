@@ -18,7 +18,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):
@@ -42,6 +41,7 @@ class TestInf(OpTest):
         self.check_output()
 
 
+<<<<<<< HEAD
 class TestRaiseError(unittest.TestCase):
 
     def test_errors(self):
@@ -60,6 +60,11 @@ class TestRaiseError(unittest.TestCase):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
+=======
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 class TestFP16Inf(TestInf):
 
     def init_dtype(self):
@@ -87,8 +92,9 @@ class TestNAN(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16NAN(TestNAN):
 
     def init_dtype(self):
@@ -117,8 +123,9 @@ class TestIsfinite(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16Isfinite(TestIsfinite):
 
     def init_dtype(self):
@@ -136,18 +143,10 @@ class BadInputTest(unittest.TestCase):
 
             self.assertRaises(TypeError, test_has_inf_bad_x)
 
-            def test_has_nan_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_nan(data)
-
-            self.assertRaises(TypeError, test_has_nan_bad_x)
-
         with fluid.dygraph.guard():
             data = paddle.zeros([2, 3])
             result = paddle.fluid.layers.has_inf(data)
             expect_value = np.array([False])
-            self.assertEqual((result.numpy() == expect_value).all(), True)
-            result = paddle.fluid.layers.has_nan(data)
             self.assertEqual((result.numpy() == expect_value).all(), True)
 
 

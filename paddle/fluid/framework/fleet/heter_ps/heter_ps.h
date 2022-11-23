@@ -53,8 +53,12 @@ class HeterPs : public HeterPsBase {
 #if defined(PADDLE_WITH_CUDA)
   void set_nccl_comm_and_size(const std::vector<ncclComm_t>& inner_comms,
                               const std::vector<ncclComm_t>& inter_comms,
+<<<<<<< HEAD
                               int comm_size,
                               int rank_id) override;
+=======
+                              int comm_size) override;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   void set_multi_mf_dim(int multi_mf_dim, int max_mf_dim) override;
 
 #endif
@@ -80,6 +84,7 @@ class HeterPs : public HeterPsBase {
                              uint32_t* d_merged_cnts,
                              bool filter_zero);
 #endif
+<<<<<<< HEAD
   // reset table
   void reset_table(const int dev_id,
                    size_t capacity,
@@ -89,6 +94,8 @@ class HeterPs : public HeterPsBase {
     comm_->reset_table(dev_id, capacity, sgd_config, embedx_config, infer_mode);
   }
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
  private:
   std::shared_ptr<HeterComm<FeatureKey, float*, float*, GPUAccessor>> comm_;
 #if defined(PADDLE_WITH_CUDA)

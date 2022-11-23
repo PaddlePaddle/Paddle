@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy
 import sys
@@ -41,7 +39,8 @@ class TestAssignValueMLUOp(op_test.OpTest):
 
         self.attrs["shape"] = self.value.shape
         self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
-            self.value.dtype)
+            self.value.dtype
+        )
         self.outputs = {"Out": self.value}
 
     def set_mlu(self):
@@ -73,8 +72,14 @@ class TestAssignValueMLUOp3(TestAssignValueMLUOp):
 class TestAssignValueMLUOp4(TestAssignValueMLUOp):
 
     def init_data(self):
+<<<<<<< HEAD
         self.value = numpy.random.choice(a=[False, True],
                                          size=(2, 5)).astype(numpy.bool)
+=======
+        self.value = numpy.random.choice(a=[False, True], size=(2, 5)).astype(
+            numpy.bool
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 

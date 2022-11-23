@@ -82,14 +82,14 @@ This operator clips input boxes to original input images.
 For each input box, The formula is given as follows:
 
        $$xmin = \max(\min(xmin, im_w - 1), 0)$$
-       $$ymin = \max(\min(ymin, im_h - 1), 0)$$     
+       $$ymin = \max(\min(ymin, im_h - 1), 0)$$
        $$xmax = \max(\min(xmax, im_w - 1), 0)$$
        $$ymax = \max(\min(ymax, im_h - 1), 0)$$
 
 where im_w and im_h are computed from ImInfo, the formula is given as follows:
 
        $$im_w = \round(width / im_scale)$$
-       $$im_h = \round(height / im_scale)$$ 
+       $$im_h = \round(height / im_scale)$$
 )DOC");
   }
 };

@@ -10,22 +10,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.tensor as tensor
 import unittest
 import numpy as np
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from paddle.fluid.framework import Program, program_guard
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -47,9 +46,15 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
             self.op_type = "tril_triu"
             self.place = paddle.XPUPlace(0)
             if self.dtype == np.int32:
+<<<<<<< HEAD
                 self.X = np.arange(1,
                                    self.get_Xshape_prod() + 1,
                                    dtype=self.dtype).reshape(self.Xshape)
+=======
+                self.X = np.arange(
+                    1, self.get_Xshape_prod() + 1, dtype=self.dtype
+                ).reshape(self.Xshape)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             else:
                 self.X = np.random.random(self.Xshape).astype(dtype=self.dtype)
             self.inputs = {'X': self.X}
@@ -58,9 +63,15 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
                 'lower': True if self.real_op_type == 'tril' else False,
             }
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 self.real_np_op(self.X, self.diagonal)
                 if self.diagonal else self.real_np_op(self.X)
+=======
+                'Out': self.real_np_op(self.X, self.diagonal)
+                if self.diagonal
+                else self.real_np_op(self.X)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             }
 
         def init_dtype(self):
@@ -83,11 +94,14 @@ class XPUTestTrilTriuOp(XPUOpTestWrapper):
         def test_check_grad_normal(self):
             if self.dtype == np.int32:
                 user_defined_grad_outputs = np.random.random(
-                    self.Xshape).astype('float32')
+                    self.Xshape
+                ).astype('float32')
                 self.check_grad_with_place(
-                    self.place, ['X'],
+                    self.place,
+                    ['X'],
                     'Out',
-                    user_defined_grad_outputs=user_defined_grad_outputs)
+                    user_defined_grad_outputs=user_defined_grad_outputs,
+                )
             else:
                 self.check_grad_with_place(self.place, ['X'], 'Out')
 
@@ -145,25 +159,39 @@ class TestTrilTriuOpError(unittest.TestCase):
         data = fluid.data(shape=(20, 22), dtype='float32', name="data1")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "diagonal: TypeError":
-            "diagonal in {} must be a python Int".format(op_type),
+            "diagonal: TypeError": "diagonal in {} must be a python Int".format(
+                op_type
+            ),
         }
         expected = list(errmsg.keys())[0]
+<<<<<<< HEAD
         with self.assertRaisesRegex(eval(expected.split(':')[-1]),
                                     errmsg[expected]):
+=======
+        with self.assertRaisesRegex(
+            eval(expected.split(':')[-1]), errmsg[expected]
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             getattr(tensor, op_type)(x=data, diagonal='2022')
 
     def test_errors2(self):
         paddle.enable_static()
-        data = fluid.data(shape=(200, ), dtype='float32', name="data2")
+        data = fluid.data(shape=(200,), dtype='float32', name="data2")
         op_type = np.random.choice(['triu', 'tril'])
         errmsg = {
-            "input: ValueError":
-            "x shape in {} must be at least 2-D".format(op_type),
+            "input: ValueError": "x shape in {} must be at least 2-D".format(
+                op_type
+            ),
         }
         expected = list(errmsg.keys())[0]
+<<<<<<< HEAD
         with self.assertRaisesRegex(eval(expected.split(':')[-1]),
                                     errmsg[expected]):
+=======
+        with self.assertRaisesRegex(
+            eval(expected.split(':')[-1]), errmsg[expected]
+        ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             getattr(tensor, op_type)(x=data, diagonal=[None])
 
 

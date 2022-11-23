@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import time
-import json
 import unittest
-import argparse
 import tempfile
-import traceback
-from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective
@@ -32,11 +25,19 @@ print("test")
 
 
 class TestCollectiveLauncher(unittest.TestCase):
+<<<<<<< HEAD
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.code_path = os.path.join(self.temp_dir.name,
                                       "fake_python_for_elastic.py")
+=======
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.code_path = os.path.join(
+            self.temp_dir.name, "fake_python_for_elastic.py"
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         with open(self.code_path, "w") as f:
             f.write(fake_python_code)
 

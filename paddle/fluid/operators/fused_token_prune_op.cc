@@ -15,8 +15,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using framework::Tensor;
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -81,7 +84,11 @@ class FusedTokenPruneOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
             fused_token_prune op is used to fuse multiple ops to perform token pruning.
             In this op:
+<<<<<<< HEAD
                 1. Elements of Attn will be set to zero if their corresponding mask is smaller than 0. 
+=======
+                1. Elements of Attn will be set to zero if their corresponding mask is smaller than 0.
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 2. The second dimension of X will be sorted by Attn.
                 3. The last (max_seq_len - slimmed_seq_len) lines of X will be pruned.
                 4. The remainning part of sorted X will output.

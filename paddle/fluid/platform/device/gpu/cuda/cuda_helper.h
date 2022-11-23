@@ -70,10 +70,19 @@ namespace platform {
  *
  */
 
+<<<<<<< HEAD
 #define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
   int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
   for (index_type i = __index__; __index__ < (num);          \
        __index__ += blockDim.x * gridDim.x, i = __index__)
+=======
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                    \
+  int64_t __index__ =                                                \
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;   \
+  int64_t __stride__ = static_cast<int64_t>(blockDim.x) * gridDim.x; \
+  for (index_type i = __index__; __index__ < (num);                  \
+       __index__ += __stride__, i = __index__)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 class CublasHandleHolder {
  public:

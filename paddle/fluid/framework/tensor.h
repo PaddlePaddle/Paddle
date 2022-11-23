@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -29,48 +30,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
+=======
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/mixed_vector.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 
 namespace paddle {
-
 namespace framework {
 
 using LoD = std::vector<paddle::framework::Vector<size_t>>;
 
-/*
- NOTE(liym27): [ What is TensorInplaceVersion used for? ]
-
- TensorInplaceVersion is a version counter and every Tensor has a version
- counter. It's used to check whether an inplace operation will result in an
- incorrect gradient calculation. Version is incremented when the data of the
- Variable is modified in place.
-
- - Question: In what scenarios will version counters be shared?
- - Answer: When two Variables/VarBases share the same C++ Tensor(its Allocation
- may change), both of them share the same version counter. For examples:
-  1. `z = paddle.assign(input=x, output=y)`, `z` shares the same version counter
-    of `y` because z and y is the same VarBase;
-  2. `y = x.detach()`, `y` shares the same version counter of `x`.
-
- - Question: In what scenarios will version counters NOT be shared?
- - Answer: Replacing a `Variable`'s data by calling `Tensor::ShareDataWith(...)`
- or `Tensor::ShareBufferWith(...)`. Because they share the same Allocation but
- not framework::Tensor.
-
- - Question: Why put the inplace_version_counter_ in framework::Tensor instead
- of Allocation or Variable?
- - Answer:
-  1. Tensor can call ResetHolder() to reset the corresponding Allocation so that
-  the inplace_version_counter_ changes if it's in Allocation, which will lead to
-  confusing information about inplace version.
-  2. If inplace_version_counter_ is in Variable, different VariableWrappers
-  should be able to share the same Variable. However, a VariableWrapper hold a
-  Variable object but not a pointer.
-*/
-
-using Tensor = phi::DenseTensor;
-
 }  // namespace framework
 }  // namespace paddle
-
-#include "paddle/fluid/framework/tensor_impl.h"

@@ -14,11 +14,9 @@
 
 import os
 import sys
-import six
 import unittest
 import time
 import math
-import multiprocessing
 import numpy as np
 
 import paddle
@@ -37,6 +35,7 @@ class BuildIrMemOptBase(unittest.TestCase):
     def setup_reader(self):
         self.batch_size = 32
         self.word_dict = paddle.dataset.imdb.word_dict()
+<<<<<<< HEAD
         self.train_reader = paddle.batch(paddle.dataset.imdb.train(
             self.word_dict),
                                          batch_size=self.batch_size)
@@ -47,6 +46,21 @@ class BuildIrMemOptBase(unittest.TestCase):
                                   use_ir_memory_optimize=True,
                                   enable_inplace=True,
                                   iter=5):
+=======
+        self.train_reader = paddle.batch(
+            paddle.dataset.imdb.train(self.word_dict),
+            batch_size=self.batch_size,
+        )
+
+    def check_network_convergence(
+        self,
+        network,
+        use_cuda=True,
+        use_ir_memory_optimize=True,
+        enable_inplace=True,
+        iter=5,
+    ):
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         if use_cuda and not core.is_compiled_with_cuda():
             print('Skip use_cuda=True because Paddle is not compiled with cuda')
             return
@@ -59,10 +73,16 @@ class BuildIrMemOptBase(unittest.TestCase):
         fluid.default_startup_program().random_seed = 100
         fluid.default_main_program().random_seed = 100
 
+<<<<<<< HEAD
         data = fluid.layers.data(name="words",
                                  shape=[1],
                                  dtype="int64",
                                  lod_level=1)
+=======
+        data = fluid.layers.data(
+            name="words", shape=[1], dtype="int64", lod_level=1
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
@@ -81,15 +101,21 @@ class BuildIrMemOptBase(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         train_cp = compiler.CompiledProgram(fluid.default_main_program())
+<<<<<<< HEAD
         train_cp = train_cp.with_data_parallel(loss_name=cost.name,
                                                build_strategy=build_strategy)
+=======
+        train_cp = train_cp.with_data_parallel(
+            loss_name=cost.name, build_strategy=build_strategy
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         fetch_list = [cost.name]
 
         begin = time.time()
         first_loss, last_loss = None, None
         step_id = 0
         custom_iter = getattr(self, "iter", None)
-        if not custom_iter == None:
+        if custom_iter is not None:
             iter = custom_iter
         for data in reader():
             ret = exe.run(train_cp, feed=data, fetch_list=fetch_list)
@@ -102,14 +128,22 @@ class BuildIrMemOptBase(unittest.TestCase):
                 break
         end = time.time()
 
+<<<<<<< HEAD
         print("%.4f Instance per second" % ((self.batch_size * iter) /
                                             (end - begin)))
+=======
+        print(
+            "%.4f Instance per second"
+            % ((self.batch_size * iter) / (end - begin))
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
         print(first_loss, last_loss)
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()
         if math.isnan(float(avg_last_loss_val)) or math.isnan(
-                float(avg_first_loss_val)):
+            float(avg_first_loss_val)
+        ):
             sys.exit("got NaN loss, training failed.")
 
         return first_loss, last_loss
@@ -128,15 +162,31 @@ class TestIrMemOptBase(BuildIrMemOptBase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             with fluid.scope_guard(core.Scope()):
-                baseline_first_loss, baseline_last_loss = self.check_network_convergence(
-                    self.network)
+                (
+                    baseline_first_loss,
+                    baseline_last_loss,
+                ) = self.check_network_convergence(self.network)
 
                 cur_first_loss, cur_last_loss = self.check_network_convergence(
-                    self.network)
+                    self.network
+                )
 
+<<<<<<< HEAD
                 self.assertAlmostEquals(np.mean(baseline_last_loss),
                                         np.mean(cur_last_loss),
                                         delta=1e-6)
                 self.assertAlmostEquals(np.mean(baseline_first_loss),
                                         np.mean(cur_first_loss),
                                         delta=1e-6)
+=======
+                self.assertAlmostEquals(
+                    np.mean(baseline_last_loss),
+                    np.mean(cur_last_loss),
+                    delta=1e-6,
+                )
+                self.assertAlmostEquals(
+                    np.mean(baseline_first_loss),
+                    np.mean(cur_first_loss),
+                    delta=1e-6,
+                )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91

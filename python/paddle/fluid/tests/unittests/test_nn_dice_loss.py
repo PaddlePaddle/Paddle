@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
-import paddle
-import paddle.fluid.layers.nn as nn
 
 num_classes = 4
 eps = 1e-6
 
 
+<<<<<<< HEAD
 class TestDiceLossValue(unittest.TestCase):
 
     def test_dice_loss(self):
@@ -64,5 +60,7 @@ class TestDiceLossInvalidInput(unittest.TestCase):
         self.assertRaises(AssertionError, test_zero_shape_input)
 
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if __name__ == "__main__":
     unittest.main()

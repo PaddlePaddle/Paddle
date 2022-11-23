@@ -23,8 +23,9 @@ def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, base_lr,
-                                           end_lr)
+        lr = pow2_decay_with_linear_warmup(
+            warmup_steps, total_steps, base_lr, end_lr
+        )
         exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
         exe.run(startup)
@@ -37,6 +38,7 @@ class Pow2Warmup(LinearWarmup):
 
     def __init__(self, warmup_steps, total_steps, base_lr, end_lr):
         assert total_steps > warmup_steps
+<<<<<<< HEAD
         lr_sch = PolynomialDecay(learning_rate=base_lr,
                                  decay_steps=total_steps - warmup_steps,
                                  end_lr=end_lr,
@@ -46,6 +48,21 @@ class Pow2Warmup(LinearWarmup):
                                          warmup_steps=warmup_steps,
                                          start_lr=0.0,
                                          end_lr=base_lr)
+=======
+        lr_sch = PolynomialDecay(
+            learning_rate=base_lr,
+            decay_steps=total_steps - warmup_steps,
+            end_lr=end_lr,
+            power=2,
+        )
+
+        super().__init__(
+            learning_rate=lr_sch,
+            warmup_steps=warmup_steps,
+            start_lr=0.0,
+            end_lr=base_lr,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):

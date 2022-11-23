@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 set(pass_file
     ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h.tmp)
 set(pass_file_final
@@ -11,6 +12,8 @@ file(APPEND ${pass_file} "\#include \"paddle/fluid/framework/ir/pass.h\"\n")
 
 copy_if_different(${pass_file} ${pass_file_final})
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 add_subdirectory(fuse_optimizer_ops_pass)
 add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
@@ -20,8 +23,8 @@ if(NOT APPLE
   add_subdirectory(fusion_group)
 endif()
 
-# Usage: pass_library(target inference) will append to paddle_inference_pass.h
 unset(INFER_IR_PASSES CACHE) # clear the global variable
+<<<<<<< HEAD
 function(pass_library TARGET DEST)
   set(options "")
   set(oneValueArgs "")
@@ -56,6 +59,8 @@ function(pass_library TARGET DEST)
   endif()
 endfunction()
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 cc_library(
   node
   SRCS node.cc
@@ -67,7 +72,12 @@ cc_library(
 cc_library(
   graph_helper
   SRCS graph_helper.cc
+<<<<<<< HEAD
   DEPS graph program_utils scale_loss_grad_op_handle)
+=======
+  DEPS graph program_utils scale_loss_grad_op_handle
+       grad_merge_all_reduce_op_handle)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 cc_library(
   pass
   SRCS pass.cc
@@ -117,11 +127,13 @@ pass_library(graph_viz_pass base)
 pass_library(lock_free_optimize_pass base DEPS string_helper)
 pass_library(fc_fuse_pass inference)
 pass_library(attention_lstm_fuse_pass inference)
+pass_library(vit_attention_fuse_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
 pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
 pass_library(multi_batch_merge_pass base)
+pass_library(map_depthwise_conv_to_conv_pass inference)
 pass_library(conv_bn_fuse_pass inference)
 pass_library(seqconv_eltadd_relu_fuse_pass inference)
 pass_library(seqpool_concat_fuse_pass inference)
@@ -146,10 +158,16 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
+pass_library(constant_folding_pass inference)
+pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(multihead_matmul_roformer_fuse_pass inference)
+pass_library(fused_multi_transformer_encoder_pass inference)
+pass_library(fused_multi_transformer_decoder_pass inference)
+pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
 pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
@@ -164,14 +182,30 @@ target_link_libraries(generate_pass pass_desc_proto)
 
 if(WITH_TENSORRT)
   pass_library(trt_map_matmul_to_mul_pass inference)
+<<<<<<< HEAD
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(trt_multihead_matmul_fuse_pass inference)
   pass_library(trt_skip_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
+=======
+  pass_library(trt_multihead_matmul_fuse_pass inference)
+  pass_library(trt_skip_layernorm_fuse_pass inference)
+  pass_library(merge_layernorm_fuse_pass inference)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   pass_library(preln_skip_layernorm_fuse_pass inference)
   pass_library(set_transformer_input_convert_pass inference)
   pass_library(remove_padding_recover_padding_pass inference)
   pass_library(delete_remove_padding_recover_padding_pass inference)
+<<<<<<< HEAD
+=======
+  pass_library(layernorm_shift_partition_fuse_pass inference)
+  pass_library(preln_layernorm_x_fuse_pass inference)
+endif()
+
+if(WITH_TENSORRT AND NOT WIN32)
+  pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
+  pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -188,7 +222,11 @@ if(WITH_MKLDNN)
     mkldnn_placement_pass
     op_registry
     elementwise_add_op
+<<<<<<< HEAD
     gelu_op
+=======
+    generated_op
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     activation_op
     softmax_op
     softmax
@@ -198,7 +236,10 @@ if(WITH_MKLDNN)
   pass_library(conv_affine_channel_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_bias_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(conv_activation_mkldnn_fuse_pass inference DIR mkldnn)
+<<<<<<< HEAD
   pass_library(conv_concat_relu_mkldnn_fuse_pass inference DIR mkldnn)
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   pass_library(conv_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(int8_scale_calculation_mkldnn_pass inference DIR mkldnn)
   pass_library(params_quantization_mkldnn_pass inference DIR mkldnn)
@@ -212,15 +253,29 @@ if(WITH_MKLDNN)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+<<<<<<< HEAD
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
+=======
+  pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
+  pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
+  pass_library(operator_reshape2_onednn_fuse_pass inference DIR mkldnn)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   pass_library(cpu_quantize_placement_pass base DIR mkldnn)
   pass_library(cpu_quantize_pass inference DIR mkldnn)
   pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
   pass_library(reshape_transpose_matmul_mkldnn_fuse_pass inference DIR mkldnn)
+<<<<<<< HEAD
   pass_library(reshape_transpose_matmul_v2_mkldnn_fuse_pass inference DIR
                mkldnn)
   pass_library(matmul_transpose_reshape_fuse_pass inference DIR mkldnn)
   pass_library(matmul_v2_transpose_reshape_fuse_pass inference DIR mkldnn)
+=======
+  pass_library(matmul_transpose_reshape_mkldnn_fuse_pass inference DIR mkldnn)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   pass_library(batch_norm_act_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_fuse_pass inference DIR mkldnn)
   pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
@@ -266,7 +321,11 @@ cc_library(
   DEPS pass graph_pattern_detector)
 
 set(GLOB_PASS_LIB
+<<<<<<< HEAD
     ${PASS_LIBRARY}
+=======
+    ${INFER_IR_PASSES}
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     CACHE INTERNAL "Global PASS library")
 
 cc_library(
@@ -355,6 +414,21 @@ cc_test(
   SRCS multihead_matmul_fuse_pass_tester.cc
   DEPS multihead_matmul_fuse_pass)
 cc_test(
+<<<<<<< HEAD
+=======
+  test_fused_multi_transformer_encoder_pass
+  SRCS fused_multi_transformer_encoder_pass_tester.cc
+  DEPS fused_multi_transformer_encoder_pass)
+cc_test(
+  test_fused_multi_transformer_decoder_pass
+  SRCS fused_multi_transformer_decoder_pass_tester.cc
+  DEPS fused_multi_transformer_decoder_pass)
+cc_test(
+  test_fuse_multi_transformer_layer_pass
+  SRCS fuse_multi_transformer_layer_pass_tester.cc
+  DEPS fuse_multi_transformer_layer_pass)
+cc_test(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)
@@ -370,6 +444,13 @@ cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
+<<<<<<< HEAD
+=======
+cc_test(
+  test_delete_dropout_pass_cc
+  SRCS delete_dropout_op_pass_test.cc
+  DEPS delete_dropout_op_pass)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 if(WITH_GPU OR WITH_ROCM)
   cc_test(
     test_embedding_eltwise_layernorm_fuse_pass
@@ -410,6 +491,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_conv_concat_relu_mkldnn_fuse_pass
     SRCS mkldnn/conv_concat_relu_mkldnn_fuse_pass_tester.cc
+<<<<<<< HEAD
     DEPS conv_concat_relu_mkldnn_fuse_pass)
   cc_test(
     test_conv_elementwise_add_mkldnn_fuse_pass
@@ -435,6 +517,25 @@ if(WITH_MKLDNN)
     test_batch_norm_act_fuse_pass
     SRCS mkldnn/batch_norm_act_fuse_pass_tester.cc
     DEPS batch_norm_act_fuse_pass pass_test_util)
+=======
+    DEPS conv_activation_mkldnn_fuse_pass)
+  cc_test_old(
+    test_conv_elementwise_add_mkldnn_fuse_pass SRCS
+    mkldnn/conv_elementwise_add_mkldnn_fuse_pass_tester.cc DEPS
+    conv_elementwise_add_mkldnn_fuse_pass pass_test_util)
+  cc_test_old(
+    test_int8_scale_calculation_mkldnn_pass SRCS
+    mkldnn/int8_scale_calculation_mkldnn_pass_tester.cc DEPS
+    int8_scale_calculation_mkldnn_pass pass_test_util)
+  cc_test_old(
+    test_params_quantization_mkldnn_pass SRCS
+    mkldnn/params_quantization_mkldnn_pass_tester.cc DEPS
+    params_quantization_mkldnn_pass)
+  cc_test_old(
+    test_batch_norm_act_fuse_pass SRCS
+    mkldnn/batch_norm_act_fuse_pass_tester.cc DEPS batch_norm_act_fuse_pass
+    pass_test_util)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   set(TEST_CONV_BN_PASS_DEPS
       conv_bn_fuse_pass
       graph_to_program_pass
@@ -444,7 +545,11 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
+<<<<<<< HEAD
       gelu_op
+=======
+      generated_op
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       activation_op
       elementwise_add_op
       concat_and_split
@@ -496,6 +601,7 @@ if(WITH_MKLDNN)
   cc_test(
     test_reshape_transpose_matmul_mkldnn_fuse_pass
     SRCS mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass_tester.cc
+<<<<<<< HEAD
     DEPS reshape_transpose_matmul_mkldnn_fuse_pass
          reshape_transpose_matmul_v2_mkldnn_fuse_pass)
   cc_test(
@@ -503,6 +609,13 @@ if(WITH_MKLDNN)
     SRCS mkldnn/matmul_transpose_reshape_fuse_pass_tester.cc
     DEPS matmul_transpose_reshape_fuse_pass
          matmul_v2_transpose_reshape_fuse_pass)
+=======
+    DEPS reshape_transpose_matmul_mkldnn_fuse_pass)
+  cc_test(
+    test_matmul_transpose_reshape_fuse_pass
+    SRCS mkldnn/matmul_transpose_reshape_mkldnn_fuse_pass_tester.cc
+    DEPS matmul_transpose_reshape_mkldnn_fuse_pass)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   cc_test(
     test_shuffle_channel_mkldnn_detect_pass
     SRCS mkldnn/shuffle_channel_mkldnn_detect_pass_tester.cc

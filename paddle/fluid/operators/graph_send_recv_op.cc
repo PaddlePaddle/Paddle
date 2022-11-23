@@ -64,9 +64,9 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("Out", "Output tensor of graph_send_recv op.");
     AddOutput("Dst_count",
-              "Count tensor of Dst_index, mainly for MEAN pool_type.")
+              "Count tensor of Dst_index, mainly for MEAN reduce_op.")
         .AsIntermediate();
-    AddAttr<std::string>("pool_type",
+    AddAttr<std::string>("reduce_op",
                          "(string, default 'SUM')"
                          "Define different pool types to receive the result "
                          "tensors of Dst_index.")
@@ -81,12 +81,12 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 
-$Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
+$Out = Recv(Send(X, Src_index), Dst_index, reduce_op)$
 
-This operator is mainly used in Graph Learning domain, and the main purpose is to reduce 
-intermediate memory consumption in the process of message passing. 
-Take `x` as the input tensor, we first use `src_index` to gather corresponding data, 
-and then use `dst_index` to update the corresponding position of output tensor in different 
+This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
+intermediate memory consumption in the process of message passing.
+Take `x` as the input tensor, we first use `src_index` to gather corresponding data,
+and then use `dst_index` to update the corresponding position of output tensor in different
 pooling types, like sum, mean, max, or min.
 
 )DOC");
@@ -105,12 +105,21 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
     op->SetInput("X", this->Input("X"));
 
+<<<<<<< HEAD
     if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
     if (PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
         PADDLE_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+=======
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MEAN") {
+      op->SetInput("Dst_count", this->Output("Dst_count"));
+    }
+
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MAX") {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       op->SetInput("Out", this->Output("Out"));
     }
 
@@ -127,7 +136,11 @@ namespace ops = paddle::operators;
 
 DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv,
                             GraphSendRecvInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::GraphSendRecvInferMeta));
+=======
+                            PD_INFER_META(phi::SendURecvInferMeta));
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 REGISTER_OPERATOR(graph_send_recv,
                   ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,

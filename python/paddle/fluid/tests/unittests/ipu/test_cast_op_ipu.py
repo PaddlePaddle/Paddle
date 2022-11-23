@@ -48,9 +48,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype=self.feed_dtype[0])
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0],
+            shape=self.feed_shape[0],
+            dtype=self.feed_dtype[0],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         out = paddle.cast(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -85,7 +93,10 @@ class TestEnableFp16(TestBase):
 
 
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_atol(self):
         super().set_atol()
         self.atol = 1e-3
@@ -151,7 +162,10 @@ class TestCase6(TestBase):
 
 @unittest.skip('float64 is not supported')
 class TestCase7(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['dtype'] = 'float64'
@@ -159,7 +173,10 @@ class TestCase7(TestBase):
 
 @unittest.skip('skip float16 to float32')
 class TestCase8(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_data_feed(self):
         self.feed_fp32 = {
             "x": np.random.uniform(size=[1, 3, 3, 3]).astype('float16'),
@@ -172,16 +189,25 @@ class TestCase8(TestBase):
 
 @unittest.skip('int32 to int8 is not supported')
 class TestCase9(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_atol(self):
         super().set_atol()
         self.atol = 1
 
     def set_data_feed(self):
         self.feed_fp32 = {
+<<<<<<< HEAD
             "x":
             np.random.randint(low=1, high=100, size=[1, 3, 3,
                                                      3]).astype('int32'),
+=======
+            "x": np.random.randint(low=1, high=100, size=[1, 3, 3, 3]).astype(
+                'int32'
+            ),
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
     def set_op_attrs(self):

@@ -1,27 +1,44 @@
 if(WITH_GPU)
   nv_test(
     test_phi_tensor
+<<<<<<< HEAD
     SRCS test_pten_tensor.cc
+=======
+    SRCS test_phi_tensor.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     DEPS phi_tensor glog)
 elseif(WITH_ROCM)
   hip_test(
     test_phi_tensor
+<<<<<<< HEAD
     SRCS test_pten_tensor.cc
+=======
+    SRCS test_phi_tensor.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     DEPS phi_tensor glog)
 else()
   cc_test(
     test_phi_tensor
+<<<<<<< HEAD
     SRCS test_pten_tensor.cc
+=======
+    SRCS test_phi_tensor.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     DEPS phi_tensor glog)
 endif()
 
 cc_test(
   test_phi_exception
+<<<<<<< HEAD
   SRCS test_pten_exception.cc
+=======
+  SRCS test_phi_exception.cc
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   DEPS gtest)
 
 set(COMMON_API_TEST_DEPS phi_tensor phi_api phi_api_utils)
 cc_test(
+<<<<<<< HEAD
   test_mean_api
   SRCS test_mean_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
@@ -58,6 +75,8 @@ cc_test(
   SRCS test_reshape_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   test_to_api
   SRCS test_to_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
@@ -66,6 +85,7 @@ cc_test(
   SRCS test_slice_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+<<<<<<< HEAD
   test_sum_api
   SRCS test_sum_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
@@ -74,10 +94,13 @@ cc_test(
   SRCS test_scale_api.cc
   DEPS ${COMMON_API_TEST_DEPS} api_scalar)
 cc_test(
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   test_scale_benchmark
   SRCS test_scale_benchmark.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+<<<<<<< HEAD
   test_conj_api
   SRCS test_conj_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
@@ -90,10 +113,13 @@ cc_test(
   SRCS test_split_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   test_data_transform
   SRCS test_data_transform.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+<<<<<<< HEAD
   test_sparse_utils_api
   SRCS test_sparse_utils_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
@@ -102,6 +128,8 @@ cc_test(
   SRCS test_sparse_conv_api.cc
   DEPS ${COMMON_API_TEST_DEPS})
 cc_test(
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   test_strings_empty_api
   SRCS test_strings_empty_api.cc
   DEPS ${COMMON_API_TEST_DEPS})

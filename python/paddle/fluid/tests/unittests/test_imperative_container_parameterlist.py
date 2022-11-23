@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import numpy as np
 import paddle
-from paddle import _C_ops
+from paddle import _legacy_C_ops
 from paddle.fluid.framework import _test_eager_guard
 
 
 class MyLayer(fluid.Layer):
 
     def __init__(self, num_stacked_param, use_fluid_api):
-        super(MyLayer, self).__init__()
+        super().__init__()
         # create ParameterList with iterable Parameters
+<<<<<<< HEAD
         self.params = self.fluid_dygraph_ParameterList(
             num_stacked_param
         ) if use_fluid_api else self.paddle_imperative_ParameterList(
@@ -41,10 +40,19 @@ class MyLayer(fluid.Layer):
         return paddle.nn.ParameterList(
             [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')] *
             num_stacked_param)
+=======
+        self.params = self.paddle_imperative_ParameterList(num_stacked_param)
+
+    def paddle_imperative_ParameterList(self, num_stacked_param):
+        return paddle.nn.ParameterList(
+            [fluid.layers.create_parameter(shape=[2, 2], dtype='float32')]
+            * num_stacked_param
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, x):
         for i, p in enumerate(self.params):
-            x = _C_ops.mul(x, p)
+            x = _legacy_C_ops.mul(x, p)
         return x
 
 
@@ -63,11 +71,17 @@ class TestImperativeContainerParameterList(unittest.TestCase):
             loss.backward()
 
             model.params[num_stacked_param - 1] = fluid.layers.create_parameter(
-                shape=[2, 3], dtype='float32')
+                shape=[2, 3], dtype='float32'
+            )
             res = model(x)
             self.assertListEqual(res.shape, [5, 3])
             model.params.append(
+<<<<<<< HEAD
                 fluid.layers.create_parameter(shape=[3, 4], dtype='float32'))
+=======
+                fluid.layers.create_parameter(shape=[3, 4], dtype='float32')
+            )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
             self.assertEqual(len(model.params), num_stacked_param + 1)
             res = model(x)
             self.assertListEqual(res.shape, [5, 4])

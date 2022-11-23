@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.tensor as tensor
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
@@ -45,10 +39,19 @@ class TestDiagonalOp(OpTest):
         self.case = np.random.randn(10, 5, 2).astype('float64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+<<<<<<< HEAD
         self.target = np.diagonal(self.inputs['Input'],
                                   offset=self.attrs['offset'],
                                   axis1=self.attrs['axis1'],
                                   axis2=self.attrs['axis2'])
+=======
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDiagonalOpCase1(TestDiagonalOp):
@@ -57,10 +60,19 @@ class TestDiagonalOpCase1(TestDiagonalOp):
         self.case = np.random.randn(4, 2, 4, 4).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
+<<<<<<< HEAD
         self.target = np.diagonal(self.inputs['Input'],
                                   offset=self.attrs['offset'],
                                   axis1=self.attrs['axis1'],
                                   axis2=self.attrs['axis2'])
+=======
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDiagonalOpCase2(TestDiagonalOp):
@@ -69,19 +81,38 @@ class TestDiagonalOpCase2(TestDiagonalOp):
         self.case = np.random.randn(100, 100).astype('int64')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+<<<<<<< HEAD
         self.target = np.diagonal(self.inputs['Input'],
                                   offset=self.attrs['offset'],
                                   axis1=self.attrs['axis1'],
                                   axis2=self.attrs['axis2'])
+=======
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.grad_x = np.eye(100).astype('int64')
         self.grad_out = np.ones(100).astype('int64')
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(['Input'],
                         'Out',
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=True)
+=======
+        self.check_grad(
+            ['Input'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDiagonalOpCase3(TestDiagonalOp):
@@ -90,10 +121,19 @@ class TestDiagonalOpCase3(TestDiagonalOp):
         self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('bool')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -2, 'axis1': 3, 'axis2': 0}
+<<<<<<< HEAD
         self.target = np.diagonal(self.inputs['Input'],
                                   offset=self.attrs['offset'],
                                   axis1=self.attrs['axis1'],
                                   axis2=self.attrs['axis2'])
+=======
+        self.target = np.diagonal(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def test_check_grad(self):
         pass
@@ -115,14 +155,14 @@ class TestDiagonalAPI(unittest.TestCase):
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.diagonal(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.diagonal(x_tensor)
         out_ref = np.diagonal(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_api_eager(self):
@@ -134,13 +174,13 @@ class TestDiagonalAPI(unittest.TestCase):
             out3 = paddle.diagonal(x_tensor, offset=1, axis1=0, axis2=1)
             out4 = paddle.diagonal(x_tensor, offset=0, axis1=1, axis2=2)
         out_ref = np.diagonal(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         out2_ref = np.diagonal(self.x, offset=0, axis1=2, axis2=1)
-        self.assertEqual(np.allclose(out2.numpy(), out2_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out2.numpy(), out2_ref, rtol=1e-08)
         out3_ref = np.diagonal(self.x, offset=1, axis1=0, axis2=1)
-        self.assertEqual(np.allclose(out3.numpy(), out3_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out3.numpy(), out3_ref, rtol=1e-08)
         out4_ref = np.diagonal(self.x, offset=0, axis1=1, axis2=2)
-        self.assertEqual(np.allclose(out4.numpy(), out4_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out4.numpy(), out4_ref, rtol=1e-08)
 
         paddle.enable_static()
 

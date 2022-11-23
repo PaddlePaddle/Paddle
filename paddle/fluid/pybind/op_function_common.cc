@@ -29,7 +29,12 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/fluid/pybind/imperative.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/common/complex.h"
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 namespace py = pybind11;
 namespace paddle {
@@ -87,7 +92,8 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
   if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
-      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype)) {  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
+      PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
@@ -187,6 +193,17 @@ float CastPyArg2Float(PyObject* obj,
   return static_cast<float>(CastPyArg2Double(obj, op_type, arg_pos));
 }
 
+<<<<<<< HEAD
+=======
+void CastPyArg2AttrFloat(PyObject* obj,
+                         paddle::framework::AttributeMap& attrs,  // NOLINT
+                         const std::string& key,
+                         const std::string& op_type,
+                         ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Float(obj, op_type, arg_pos);
+}
+
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 double CastPyArg2Double(PyObject* obj,
                         const std::string& op_type,
                         ssize_t arg_pos) {
@@ -195,7 +212,11 @@ double CastPyArg2Double(PyObject* obj,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
+<<<<<<< HEAD
         "float, but got %s",
+=======
+        "double, but got %s",
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
@@ -204,12 +225,40 @@ double CastPyArg2Double(PyObject* obj,
   return 0.0;
 }
 
+<<<<<<< HEAD
 void CastPyArg2AttrFloat(PyObject* obj,
                          paddle::framework::AttributeMap& attrs,  // NOLINT
                          const std::string& key,
                          const std::string& op_type,
                          ssize_t arg_pos) {
   attrs[key] = CastPyArg2Float(obj, op_type, arg_pos);
+=======
+phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
+                                             const std::string& op_type,
+                                             ssize_t arg_pos) {
+  if (PyComplex_Check(obj)) {
+    double real = PyComplex_RealAsDouble(obj);
+    double imag = PyComplex_ImagAsDouble(obj);
+    return phi::dtype::complex<float>(real, imag);
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument (position %d) must be "
+        "complex, but got %s",
+        op_type,
+        arg_pos + 1,
+        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+  }
+
+  return phi::dtype::complex<float>(0, 0);
+}
+
+void CastPyArg2AttrDouble(PyObject* obj,
+                          paddle::framework::AttributeMap& attrs,  // NOLINT
+                          const std::string& key,
+                          const std::string& op_type,
+                          ssize_t arg_pos) {
+  attrs[key] = CastPyArg2Double(obj, op_type, arg_pos);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 }
 
 std::string CastPyArg2String(PyObject* obj,
@@ -431,7 +480,7 @@ std::vector<int64_t> CastPyArg2Longs(PyObject* obj,
             i));
       }
     }
-  } else {
+  } else if ((PyObject*)obj != Py_None) {  // NOLINT
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
         "list or tuple, but got %s",
@@ -734,6 +783,9 @@ void ConstructAttrMapFromPyArgs(
       case paddle::framework::proto::AttrType::FLOAT:
         CastPyArg2AttrFloat(obj, attrs, key, op_type, arg_pos);
         break;
+      case paddle::framework::proto::AttrType::FLOAT64:
+        CastPyArg2AttrDouble(obj, attrs, key, op_type, arg_pos);
+        break;
       case paddle::framework::proto::AttrType::STRING:
         CastPyArg2AttrString(obj, attrs, key, op_type, arg_pos);
         break;
@@ -947,6 +999,15 @@ void InitOpsAttrTypeMap() {
     auto attrs_proto = op_proto->attrs();
     for (auto& attr : attrs_proto) {
       OpAttrTypeMap::Instance().Map()[iter->first][attr.name()] = attr.type();
+    }
+  }
+  const auto& extra_attr_maps =
+      operators::ExtraInfoUtils::Instance().GetAllExtraAttrsMap();
+  for (const auto& extra_attrs : extra_attr_maps) {
+    for (auto& attr : extra_attrs.second) {
+      OpAttrTypeMap::Instance().Map()[extra_attrs.first][attr.first] =
+          static_cast<paddle::framework::proto::AttrType>(attr.second.index() -
+                                                          1);
     }
   }
 }

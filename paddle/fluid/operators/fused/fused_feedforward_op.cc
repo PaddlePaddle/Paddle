@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedFeedForwardOp : public framework::OperatorWithKernel {
  public:
@@ -276,10 +276,19 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
                    "Input",
                    "Dropout1Out",
                    "FusedFeedForwardGrad");
+<<<<<<< HEAD
     OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
                    "Input",
                    "Dropout2Out",
                    "FusedFeedForwardGrad");
+=======
+    if (!pre_layer_norm) {
+      OP_INOUT_CHECK(ctx->HasInput("Dropout2Out"),
+                     "Input",
+                     "Dropout2Out",
+                     "FusedFeedForwardGrad");
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     OP_INOUT_CHECK(ctx->HasInput("Linear1Weight"),
                    "Input",
                    "Linear1Weight",
@@ -345,7 +354,7 @@ class FusedFeedForwardOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -368,10 +377,15 @@ class FusedFeedForwardOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dropout2Mask", this->Output("Dropout2Mask"));
     op->SetInput("Linear1Out", this->Output("Linear1Out"));
     op->SetInput("Dropout1Out", this->Output("Dropout1Out"));
-    op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
 
     op->SetAttrMap(this->Attrs());
     bool pre_layer_norm = PADDLE_GET_CONST(bool, op->GetAttr("pre_layer_norm"));
+<<<<<<< HEAD
+=======
+    if (!pre_layer_norm) {
+      op->SetInput("Dropout2Out", this->Output("Dropout2Out"));
+    }
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     if (pre_layer_norm) {

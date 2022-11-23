@@ -32,7 +32,7 @@ namespace paddle {
 namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 namespace {  // NOLINT
 static std::string GetSkipEagerDeletionVarsDebugString(
@@ -86,6 +86,19 @@ class WhileOp : public framework::OperatorBase {
 
     std::set<std::string> no_copy_var_names;
     if (!is_test) {
+      // set all persistable parameters into no_copy_var_names.
+      auto *global_block = block;
+
+      while (global_block->ID() != 0)
+        global_block = global_block->ParentBlock();
+      auto all_vars = global_block->AllVars();
+      std::for_each(all_vars.begin(),
+                    all_vars.end(),
+                    [&no_copy_var_names](framework::VarDesc *var) {
+                      if (var->IsParameter())
+                        no_copy_var_names.insert(var->Name());
+                    });
+
       const std::vector<framework::OpDesc *> &all_ops = block->AllOps();
       for (const framework::OpDesc *op : all_ops) {
         const framework::VariableNameMap &input_var_names = op->Inputs();
@@ -134,7 +147,7 @@ class WhileOp : public framework::OperatorBase {
               no_copy_var_names.end()) {
             std::string input_var_rename = input_var_name + kSuffix;
             framework::Variable *input_var = scope.FindVar(input_var_name);
-            if (input_var->IsType<framework::LoDTensor>()) {
+            if (input_var->IsType<phi::DenseTensor>()) {
               rename_vars.push_back(input_var_rename);
               auto input_var_tensor = input_var->Get<LoDTensor>();
               auto *rename_input_var_tensor =
@@ -162,9 +175,9 @@ class WhileOp : public framework::OperatorBase {
       while (cond_data) {
         for (auto &name : current_scope.LocalVarNames()) {
           auto *var = current_scope.Var(name);
-          if (var->IsType<framework::LoDTensor>()) {
+          if (var->IsType<phi::DenseTensor>()) {
             // Clear all lod information for all lod_tensors.
-            auto *t = var->GetMutable<framework::LoDTensor>();
+            auto *t = var->GetMutable<phi::DenseTensor>();
             framework::LoD empty_lod;
             t->set_lod(empty_lod);
           } else if (var->IsType<framework::LoDTensorArray>()) {
@@ -208,11 +221,6 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<std::vector<std::string>>(kSkipEagerDeletionVars,
-                                      "Vars that would skip eager deletion."
-                                      "Users should not set this manually.")
-        .SetDefault(std::vector<std::string>())
-        .AsExtra();
     AddComment(R"DOC(
 )DOC");
   }
@@ -281,9 +289,9 @@ class WhileGradOp : public framework::OperatorBase {
 
         auto &og_outside = *scope.FindVar(outside_og_name);
         auto &og_inside = *cur_scope.Var(inside_og_name);
-        if (og_outside.IsType<framework::LoDTensor>()) {
-          auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
-          auto &inside_tensor = *og_inside.GetMutable<framework::LoDTensor>();
+        if (og_outside.IsType<phi::DenseTensor>()) {
+          auto &outside_tensor = og_outside.Get<phi::DenseTensor>();
+          auto &inside_tensor = *og_inside.GetMutable<phi::DenseTensor>();
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
@@ -400,7 +408,7 @@ class WhileGradOp : public framework::OperatorBase {
 
           if ((var_iter == outside_og_names.end()) &&
               var->IsType<LoDTensor>()) {
-            auto &inside_tensor = var->Get<framework::LoDTensor>();
+            auto &inside_tensor = var->Get<phi::DenseTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] =
                 framework::TransToProtoVarType(inside_tensor.dtype());
@@ -414,9 +422,8 @@ class WhileGradOp : public framework::OperatorBase {
                                                 {{"Out", {var_name}}},
                                                 attrs);
             zero_op->Run(scope, dev_place);
-            scope.FindVar(var_name)
-                ->GetMutable<framework::LoDTensor>()
-                ->set_lod(inside_tensor.lod());
+            scope.FindVar(var_name)->GetMutable<phi::DenseTensor>()->set_lod(
+                inside_tensor.lod());
           }
         }
         auto var_outside = scope.FindVar(pg_ig_names[param_id]);

@@ -33,7 +33,11 @@ class DGCClipByNormOp : public ClipByNormOp {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "current_step") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";

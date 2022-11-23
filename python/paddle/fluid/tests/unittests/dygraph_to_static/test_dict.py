@@ -12,26 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import numpy as np
 import unittest
 
 import paddle
 import paddle.fluid as fluid
 from paddle.jit import to_static
-from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    ProgramTranslator,
+)
 
+<<<<<<< HEAD
 PLACE = fluid.CUDAPlace(
     0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+PLACE = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class SubNetWithDict(fluid.dygraph.Layer):
 
     def __init__(self, hidden_size=16, output_size=16):
-        super(SubNetWithDict, self).__init__()
+        super().__init__()
 
+<<<<<<< HEAD
         init_weight = lambda x: fluid.ParamAttr(initializer=fluid.initializer.
                                                 Constant(x))
 
@@ -47,6 +53,30 @@ class SubNetWithDict(fluid.dygraph.Layer):
                                          output_dim=output_size,
                                          bias_attr=False,
                                          param_attr=init_weight(0.2))
+=======
+        init_weight = lambda x: fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(x)
+        )
+
+        self.q_fc = fluid.dygraph.Linear(
+            input_dim=hidden_size,
+            output_dim=output_size,
+            bias_attr=False,
+            param_attr=init_weight(0.6),
+        )
+        self.k_fc = fluid.dygraph.Linear(
+            input_dim=hidden_size,
+            output_dim=output_size,
+            bias_attr=False,
+            param_attr=init_weight(0.5),
+        )
+        self.v_fc = fluid.dygraph.Linear(
+            input_dim=hidden_size,
+            output_dim=output_size,
+            bias_attr=False,
+            param_attr=init_weight(0.2),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
     def forward(self, input, cache=None):
         input = fluid.dygraph.to_variable(input)
@@ -71,7 +101,7 @@ class SubNetWithDict(fluid.dygraph.Layer):
 class MainNetWithDict(fluid.dygraph.Layer):
 
     def __init__(self, batch_size=64, hidden_size=16, output_size=16):
-        super(MainNetWithDict, self).__init__()
+        super().__init__()
         self.batch_size = batch_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -85,12 +115,19 @@ class MainNetWithDict(fluid.dygraph.Layer):
             fluid.layers.fill_constant(
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
+<<<<<<< HEAD
                 value=0),
             "v":
             fluid.layers.fill_constant(
+=======
+                value=0,
+            ),
+            "v": fluid.layers.fill_constant(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
                 shape=[self.batch_size, self.output_size],
                 dtype='float32',
-                value=0),
+                value=0,
+            ),
         }
         # TODO(Aurelius84): The following code will be converted into:
         # max_len = layers.cond(layers.shape(input)[0] != max_len,
@@ -108,7 +145,7 @@ class MainNetWithDict(fluid.dygraph.Layer):
 
 # Test to call function defined outside of class.
 def update_cache(cache):
-    for k, val in six.iteritems(cache):
+    for k, val in cache.items():
         cache[k] = fluid.layers.softmax(val)
 
     return cache
@@ -171,8 +208,16 @@ class TestDictPop(unittest.TestCase):
 
     def setUp(self):
         self.input = np.random.random((3)).astype('int32')
+<<<<<<< HEAD
         self.place = paddle.CUDAPlace(
             0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+=======
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self._set_test_func()
 
     def _set_test_func(self):
@@ -195,9 +240,20 @@ class TestDictPop(unittest.TestCase):
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph result is {}\nstatic result is {}'.format(
                             dygraph_res, static_res))
+=======
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph result is {}\nstatic result is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDictPop2(TestDictPop):
@@ -209,7 +265,7 @@ class TestDictPop2(TestDictPop):
 class NetWithDictPop(paddle.nn.Layer):
 
     def __init__(self):
-        super(NetWithDictPop, self).__init__()
+        super().__init__()
 
     @to_static
     def forward(self, x, **kwargs):
@@ -240,9 +296,18 @@ class TestDictPop3(TestNetWithDict):
         dygraph_result = self._run_dygraph()
         static_result = self._run_static()
 
+<<<<<<< HEAD
         self.assertTrue((dygraph_result == static_result).all(),
                         msg="dygraph result: {}\nstatic result: {}".format(
                             dygraph_result, static_result))
+=======
+        self.assertTrue(
+            (dygraph_result == static_result).all(),
+            msg="dygraph result: {}\nstatic result: {}".format(
+                dygraph_result, static_result
+            ),
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
 
 class TestDictCmpInFor(unittest.TestCase):
@@ -257,8 +322,8 @@ class TestDictCmpInFor(unittest.TestCase):
             for (x, y) in zip(pos, neg):
                 val = x - y
                 dict_val.update(
-                    {k: val + dict_val[k]
-                     for k, v in dict_val.items()})
+                    {k: val + dict_val[k] for k, v in dict_val.items()}
+                )
 
             return dict_val
 
@@ -274,8 +339,8 @@ class TestDictCmpInFor(unittest.TestCase):
             for i, (x, y) in enumerate(zip(pos, neg)):
                 val = x - y
                 dict_val.update(
-                    {k: val + dict_val[k]
-                     for k, v in dict_val.items()})
+                    {k: val + dict_val[k] for k, v in dict_val.items()}
+                )
 
             return dict_val
 

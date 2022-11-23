@@ -44,10 +44,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
         out = paddle.fluid.layers.transpose(x, **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        out = paddle.transpose(x, **self.attrs)
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -76,6 +83,16 @@ class TestCase2(TestBase):
 
     def set_op_attrs(self):
         self.attrs = {"perm": [4, 0, 2, 3, 1]}
+
+
+class TestCase_ZeroDim(TestBase):
+    def set_data_feed(self):
+        data = np.random.uniform(size=[])
+        self.feed_fp32 = {"x": data.astype(np.float32)}
+        self.feed_fp16 = {"x": data.astype(np.float16)}
+
+    def set_op_attrs(self):
+        self.attrs = {"perm": []}
 
 
 if __name__ == "__main__":

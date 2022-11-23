@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
+<<<<<<< HEAD
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
@@ -24,10 +25,20 @@
 DECLARE_bool(check_nan_inf);
 
 paddle::experimental::Tensor conv2d_final_state_dygraph_function(
+=======
+#include "paddle/fluid/eager/eager_layout_auto_tune.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
+
+DECLARE_bool(check_nan_inf);
+
+paddle::experimental::Tensor conv2d_ad_func(
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     const paddle::experimental::Tensor& input,
     const paddle::experimental::Tensor& filter,
     std::vector<int> strides,
     std::vector<int> paddings,
+<<<<<<< HEAD
     std::string paddding_algorithm,
     int groups,
     std::vector<int> dilations,
@@ -35,6 +46,12 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
     bool use_addto,
     int workspace_size_MB,
     bool exhaustive_search) {
+=======
+    std::string padding_algorithm,
+    std::vector<int> dilations,
+    int groups,
+    std::string data_format) {
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
       "conv2d dygraph", paddle::platform::TracerEventType::Operator, 1);
@@ -50,15 +67,22 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
 
     auto amp_dst_dtype = egr::GetAmpDestDtype(op_name, amp_tensors_vector);
 
+<<<<<<< HEAD
     auto NEW_input =
         egr::EagerAmpAutoCast("input", input, amp_dst_dtype, op_name);
     auto NEW_filter =
+=======
+    auto new_input =
+        egr::EagerAmpAutoCast("input", input, amp_dst_dtype, op_name);
+    auto new_filter =
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         egr::EagerAmpAutoCast("filter", filter, amp_dst_dtype, op_name);
 
     {
       paddle::imperative::AutoCastGuard guard(
           egr::Controller::Instance().GetCurrentTracer(),
           paddle::imperative::AmpLevel::O0);
+<<<<<<< HEAD
       return conv2d_final_state_dygraph_function(NEW_input,
                                                  NEW_filter,
                                                  strides,
@@ -71,6 +95,47 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
                                                  workspace_size_MB,
                                                  exhaustive_search);
     }
+=======
+      return conv2d_ad_func(new_input,
+                            new_filter,
+                            strides,
+                            paddings,
+                            padding_algorithm,
+                            dilations,
+                            groups,
+                            data_format);
+    }
+  }
+
+  // Layout autotune
+
+  if (egr::Controller::Instance().UseLayoutAutoTune()) {
+    VLOG(5) << "Check and Prepare For LAYOUT";
+    paddle::small_vector<std::vector<paddle::experimental::Tensor>,
+                         egr::kSlotSmallVectorSize>
+        tensors_vector = {{input}, {filter}};
+
+    auto op_name = phi::TransToFluidOpName("conv2d");
+    auto transformer = egr::EagerLayoutAutotune<std::string>(
+        op_name, tensors_vector, &data_format);
+    auto new_input = transformer->TransInTensor("input", input);
+    bool need_tune = egr::Controller::Instance().UseLayoutAutoTune();
+    egr::Controller::Instance().DisableLayoutAutoTune();
+    auto out = conv2d_ad_func(new_input,
+                              filter,
+                              strides,
+                              paddings,
+                              padding_algorithm,
+                              dilations,
+                              groups,
+                              data_format);
+    transformer->SetOutTensorLayout(&out);
+    if (need_tune) {
+      egr::Controller::Instance().EnableLayoutAutoTune();
+    }
+    // Returns
+    return out;
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   }
 
   // Get Input AutoGradMeta
@@ -80,11 +145,16 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
       egr::EagerUtils::nullable_autograd_meta(filter);
   // Forward API Call
   VLOG(3) << "Final State Running: "
+<<<<<<< HEAD
           << "conv2d_final_state_dygraph_function";
+=======
+          << "conv2d_ad_func";
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   auto api_result = paddle::experimental::conv2d(input,
                                                  filter,
                                                  strides,
                                                  paddings,
+<<<<<<< HEAD
                                                  paddding_algorithm,
                                                  groups,
                                                  dilations,
@@ -92,6 +162,12 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
                                                  use_addto,
                                                  workspace_size_MB,
                                                  exhaustive_search);
+=======
+                                                 padding_algorithm,
+                                                 dilations,
+                                                 groups,
+                                                 data_format);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
@@ -123,6 +199,7 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
     // SetAttributes if needed
     grad_node->SetAttributestrides(strides);
     grad_node->SetAttributepaddings(paddings);
+<<<<<<< HEAD
     grad_node->SetAttributepaddding_algorithm(paddding_algorithm);
     grad_node->SetAttributegroups(groups);
     grad_node->SetAttributedilations(dilations);
@@ -130,6 +207,12 @@ paddle::experimental::Tensor conv2d_final_state_dygraph_function(
     grad_node->SetAttributeuse_addto(use_addto);
     grad_node->SetAttributeworkspace_size_MB(workspace_size_MB);
     grad_node->SetAttributeexhaustive_search(exhaustive_search);
+=======
+    grad_node->SetAttributepadding_algorithm(padding_algorithm);
+    grad_node->SetAttributegroups(groups);
+    grad_node->SetAttributedilations(dilations);
+    grad_node->SetAttributedata_format(data_format);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperinput(input);
     grad_node->SetTensorWrapperfilter(filter);

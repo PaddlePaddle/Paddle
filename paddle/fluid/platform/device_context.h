@@ -113,12 +113,13 @@ bool AllowTF32Cudnn();
 enum DeviceType {
   CPU = 0,
   CUDA = 1,
-  XPU = 2,
-  NPU = 3,
+  NPU = 2,
+  XPU = 3,
   IPU = 4,
   MLU = 5,
+  CUSTOM_DEVICE = 6,
 
-  MAX_DEVICE_TYPES = 6,
+  MAX_DEVICE_TYPES = 7,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -129,6 +130,7 @@ constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kMLU = DeviceType::MLU;
+constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
 using DeviceContext = phi::DeviceContext;
 
@@ -142,7 +144,9 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 
 // Graphcore IPU
 #ifdef PADDLE_WITH_IPU
-class IPUDeviceContext : public DeviceContext {
+class IPUDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, IPUDeviceContext> {
  public:
   IPUDeviceContext() = delete;
   explicit IPUDeviceContext(IPUPlace place);
@@ -151,6 +155,8 @@ class IPUDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
   /*! \brief  Wait for all operations completion in the stream. */
   void Wait() const override;
+
+  static const char* name() { return "IPUDeviceContext"; }
 
  private:
   IPUPlace place_;
@@ -186,7 +192,9 @@ struct DefaultDeviceContextType<platform::XPUPlace> {
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
-class NPUDeviceContext : public DeviceContext {
+class NPUDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, NPUDeviceContext> {
  public:
   explicit NPUDeviceContext(NPUPlace place);
   virtual ~NPUDeviceContext();
@@ -222,6 +230,8 @@ class NPUDeviceContext : public DeviceContext {
 
   // void WaitStreamCallback() const { return stream_->WaitCallback(); }
 
+  static const char* name() { return "NPUDeviceContext"; }
+
  private:
   NPUPlace place_;
   aclrtContext context_;
@@ -246,7 +256,9 @@ struct DefaultDeviceContextType<platform::NPUPlace> {
 };
 
 // Currently, NPUPinnedDeviceContext is only used to data copying.
-class NPUPinnedDeviceContext : public DeviceContext {
+class NPUPinnedDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, NPUPinnedDeviceContext> {
  public:
   NPUPinnedDeviceContext();
   explicit NPUPinnedDeviceContext(NPUPinnedPlace place);
@@ -254,6 +266,8 @@ class NPUPinnedDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "NPUPinnedDeviceContext"; }
 
  private:
   NPUPinnedPlace place_;
@@ -268,6 +282,7 @@ struct DefaultDeviceContextType<platform::NPUPinnedPlace> {
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
 class CudnnWorkspaceHandle;
 class EigenCudaStreamDevice;
 
@@ -320,13 +335,17 @@ class CudnnWorkspaceHandle {
   std::mutex* mtx_;
 };
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 template <>
 struct DefaultDeviceContextType<platform::CUDAPlace> {
   using TYPE = phi::GPUContext;
 };
 
 // Currently, CUDAPinnedDeviceContext is only used to data copying.
-class CUDAPinnedDeviceContext : public DeviceContext {
+class CUDAPinnedDeviceContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, CUDAPinnedDeviceContext> {
  public:
   CUDAPinnedDeviceContext();
   explicit CUDAPinnedDeviceContext(CUDAPinnedPlace place);
@@ -334,6 +353,8 @@ class CUDAPinnedDeviceContext : public DeviceContext {
   const Place& GetPlace() const override;
 
   Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "CUDAPinnedDeviceContext"; }
 
  private:
   CUDAPinnedPlace place_;
@@ -389,24 +410,29 @@ void EmplaceDeviceContexts(
 /*! \brief device context pool singleton */
 class DeviceContextPool {
  public:
+<<<<<<< HEAD
   static DeviceContextPool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(pool,
                             platform::errors::PreconditionNotMet(
                                 "Need to Create DeviceContextPool firstly!"));
     return *pool;
   }
+=======
+  static DeviceContextPool& Instance();
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   /*! \brief  Create should only called by Init function */
-  static DeviceContextPool& Init(const std::vector<platform::Place>& places) {
-    if (pool == nullptr) {
-      pool = new DeviceContextPool(places);
-    }
-    return *pool;
-  }
+  static DeviceContextPool& Init(const std::vector<platform::Place>& places);
 
+<<<<<<< HEAD
   static bool IsInitialized() { return pool != nullptr; }
 
   static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
+=======
+  static bool IsInitialized();
+
+  static void SetPool(DeviceContextPool* dev_pool);
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);
@@ -430,7 +456,10 @@ class DeviceContextPool {
  private:
   explicit DeviceContextPool(const std::vector<platform::Place>& places);
 
+<<<<<<< HEAD
   static DeviceContextPool* pool;
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
   std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>
       device_contexts_;
   static thread_local const std::

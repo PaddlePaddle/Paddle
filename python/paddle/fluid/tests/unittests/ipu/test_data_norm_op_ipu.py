@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -40,9 +43,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.static.nn.data_norm(input=x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -58,15 +67,24 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {"in_place": True}
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         x = paddle.static.nn.data_norm(input=x, **self.attrs)
         x = x + 1
         self.fetch_list = [x.name]
@@ -74,25 +92,37 @@ class TestCase1(TestBase):
 
 @unittest.skip("Do not support in_place=True when test single data_norm Op")
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {"in_place": True}
 
 
 class TestCase3(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {"data_layout": "NHWC"}
 
 
 class TestCase4(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {"epsilon": 0.001}
 
 
 class TestCase5(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {"do_model_average_for_mean_and_var": True}
 
@@ -101,16 +131,24 @@ class TestCase6(TestBase):
     # If enable_scale_and_shift=True, it requires to set values of scale and bias in `param_attr`
     def set_op_attrs(self):
         self.attrs = {
+<<<<<<< HEAD
             "param_attr": {
                 "scale_w": 0.5,
                 "bias": 0.1
             },
             "enable_scale_and_shift": True
+=======
+            "param_attr": {"scale_w": 0.5, "bias": 0.1},
+            "enable_scale_and_shift": True,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
 
 class TestCase7(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
     def set_op_attrs(self):
         self.attrs = {
             "param_attr": {
@@ -118,9 +156,15 @@ class TestCase7(TestBase):
                 "batch_sum": 0.1,
                 "batch_square": 1e3,
                 "scale_w": 0.5,
+<<<<<<< HEAD
                 "bias": 0.1
             },
             "enable_scale_and_shift": True
+=======
+                "bias": 0.1,
+            },
+            "enable_scale_and_shift": True,
+>>>>>>> d828ca460a89c2ce88be15bb5cdb76c676decf91
         }
 
 
