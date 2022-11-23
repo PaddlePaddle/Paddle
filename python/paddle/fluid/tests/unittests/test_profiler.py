@@ -247,7 +247,7 @@ class TestFLOPSAPI(unittest.TestCase):
         self.assertTrue(flops('reshape2', ([12, 12, 12],), {}) == 0)
         self.assertTrue(flops('unsqueeze2', ([12, 12, 12],), {}) == 0)
         self.assertTrue(
-            flops('soft_max', ([12, 12, 12],), {}) == 3 * 12 * 12 * 12
+            flops('softmax', ([12, 12, 12],), {}) == 3 * 12 * 12 * 12
         )
         self.assertTrue(flops('gelu', ([12, 12, 12],), {}) == 5 * 12 * 12 * 12)
         self.assertTrue(
@@ -307,7 +307,7 @@ class TestFLOPSAPI(unittest.TestCase):
             flops('relu', {'X': [[12, 12, 12]]}, {}) == 12 * 12 * 12
         )
         self.assertTrue(
-            flops('soft_max', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
+            flops('softmax', {'X': [[12, 12, 12]]}, {}) == 3 * 12 * 12 * 12
         )
 
 if __name__ == '__main__':
