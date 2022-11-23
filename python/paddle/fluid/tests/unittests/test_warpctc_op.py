@@ -17,9 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 from test_softmax_op import stable_softmax
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
 import paddle
 import paddle.nn.functional as F
 
@@ -206,19 +204,6 @@ class CTCForward:
         return self.loss
 
 
-def python_api(
-    logits,
-    label,
-    logits_length=None,
-    labels_length=None,
-    blank=0,
-    norm_by_times=False,
-):
-    return paddle.nn.functional.loss.warpctc(
-        logits, label, blank, norm_by_times, logits_length, labels_length
-    )
-
-
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
@@ -317,7 +302,6 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -394,7 +378,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -439,7 +423,6 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
-        self.python_api = python_api
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -516,85 +499,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_eager=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_eager=True)
-
-
-class TestWarpCTCOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            logits = fluid.data(
-                name='logits', shape=[5, 16, 6], dtype='float32'
-            )
-            logits_length = fluid.data(
-                name='logits_length', shape=[None], dtype='int64'
-            )
-            label = fluid.data(name='label', shape=[16, 3], dtype='int32')
-            label_length = fluid.data(
-                name='labels_length', shape=[None], dtype='int64'
-            )
-
-            def test_logits_Variable():
-                logits_data = np.random.rand(5, 16, 6).astype(logits.dtype)
-                paddle.nn.functional.loss.warpctc(
-                    input=logits_data,
-                    label=label,
-                    input_length=logits_length,
-                    label_length=label_length,
-                )
-
-            self.assertRaises(TypeError, test_logits_Variable)
-
-            def test_label_Variable():
-                label_data = np.random.randint(0, 5, [5, 1]).astype("int32")
-                paddle.nn.functional.loss.warpctc(
-                    input=logits,
-                    label=label_data,
-                    input_length=logits_length,
-                    label_length=label_length,
-                )
-
-            self.assertRaises(TypeError, test_label_Variable)
-
-            def test_logits_len_Variable():
-                logits_length_data = np.array([5] * 16).astype("int64")
-                paddle.nn.functional.loss.warpctc(
-                    input=logits,
-                    label=label,
-                    input_length=logits_length_data,
-                    label_length=label_length,
-                )
-
-            self.assertRaises(TypeError, test_logits_len_Variable)
-
-            def test_label_len_Variable():
-                label_length_data = np.array([3] * 16).astype("int64")
-                paddle.nn.functional.loss.warpctc(
-                    input=logits,
-                    label=label,
-                    input_length=logits_length,
-                    label_length=label_length_data,
-                )
-
-            self.assertRaises(TypeError, test_label_len_Variable)
-
-    def test_dygraph_errors(self):
-        def test_dygraph_with_lod():
-
-            logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
-            # labels should not be blank
-            labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")
-            softmax = paddle.to_tensor(logits)
-            labels = paddle.to_tensor(labels)
-
-            paddle.nn.functional.loss.warpctc(input=softmax, label=labels)
-
-        paddle.disable_static()
-        self.assertRaises(ValueError, test_dygraph_with_lod)
-        paddle.enable_static()
+        self.check_grad(["Logits"], "Loss", check_eager=False)
 
 
 class TestCTCLossAPICase(unittest.TestCase):

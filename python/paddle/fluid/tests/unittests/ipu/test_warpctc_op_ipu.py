@@ -97,11 +97,12 @@ class TestBase(IPUOpTest):
         label_length = paddle.static.data(
             name=self.feed_list[3], shape=self.feed_shape[3], dtype='int64'
         )
-        out = paddle.nn.functional.loss.warpctc(
+        out = paddle.nn.functional.ctc_loss(
             logits,
             labels,
             input_length=input_length,
             label_length=label_length,
+            reduction='mean',
             **self.attrs
         )
         loss = paddle.mean(out)

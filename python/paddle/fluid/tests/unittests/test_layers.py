@@ -4491,27 +4491,6 @@ class TestBook(LayerTest):
             )
             return nmsed_outs
 
-    def test_warpctc_with_padding(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            input_length = layers.data(
-                name='logits_length', shape=[11], dtype='int64'
-            )
-            label_length = layers.data(
-                name='labels_length', shape=[12], dtype='int64'
-            )
-            label = layers.data(name='label', shape=[12, 1], dtype='int32')
-            predict = layers.data(
-                name='predict', shape=[4, 4, 8], dtype='float32'
-            )
-            output = paddle.nn.functional.loss.warpctc(
-                input=predict,
-                label=label,
-                input_length=input_length,
-                label_length=label_length,
-            )
-            return output
-
     def test_basic_gru(self):
         input_size = 128
         hidden_size = 256
