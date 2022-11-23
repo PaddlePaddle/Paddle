@@ -599,32 +599,6 @@ def convert_range(*args):
     return range(*args)
 
 
-def convert_shape(x):
-    """
-    A function representation of the shape of variable.
-    """
-
-    def has_negative(list_shape):
-        return any([x < 0 for x in list_shape])
-
-    # When `x` is Variable:
-    #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
-    #      where var = paddle.shape(x)[1]
-
-    #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
-
-    if isinstance(x, Variable):
-        values = list(x.shape)
-        if has_negative(values):
-            shape_tensor = nn.shape(x)
-            for i, v in enumerate(values):
-                if v is None or v < 0:
-                    values[i] = shape_tensor[i]
-        return values
-    else:
-        return x.shape
-
-
 def convert_shape_compare(left, *args):
     """
     A function handles comparison difference between Paddle and Python.
