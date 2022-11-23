@@ -385,9 +385,17 @@ void ConvCudnnKernel(const Context& ctx,
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = paddle::platform::DataLayout::kNCHW;
 #else
+#if CUDNN_VERSION_MIN(8, 1, 0)
   // Tensor Core introduced from Volta GPUs supports more faster conv op
-  // with FP16 in NHWC data format.
+  // with FP16 or BF16 in NHWC data format.
+  const bool compute_in_nhwc =
+      (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+      IsVoltaOrLater(ctx);
+#else
+  // Tensor Core introduced from Volta GPUs supports more faster conv op
+  // with FP16 in NHWC data format. (BF16 require cudnn >= 8.1.0)
   const bool compute_in_nhwc = dtype == CUDNN_DATA_HALF && IsVoltaOrLater(ctx);
+#endif
   // We will only do data format conversion from NHWC to NCHW.
   // cudnn will convert NCHW to NHWC automatically on Tensor Core.
   auto compute_format = compute_in_nhwc && channel_last

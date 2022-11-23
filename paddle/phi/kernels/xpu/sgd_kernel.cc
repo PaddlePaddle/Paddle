@@ -54,12 +54,11 @@ void SGDDenseKernel(const Context &dev_ctx,
   const float *lr = nullptr;
   if (std::is_same<T, dtype::float16>::value) {
     float *lr_float = RAII_GUARD.alloc_l3_or_gm<float>(learning_rate.numel());
-    int r =
-        xpu::cast_v2<XPUType, float>(dev_ctx.x_context(),
-                                     reinterpret_cast<const XPUType *>(lr_t),
-                                     lr_float,
-                                     learning_rate.numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip_v2");
+    int r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                      reinterpret_cast<const XPUType *>(lr_t),
+                                      lr_float,
+                                      learning_rate.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     lr = lr_float;
   } else {
     lr = reinterpret_cast<const float *>(lr_t);

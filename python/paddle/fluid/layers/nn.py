@@ -59,6 +59,8 @@ from ..data_feeder import (
 )
 from paddle.utils import deprecated
 from paddle import _C_ops, _legacy_C_ops
+from collections.abc import Iterable
+
 
 __all__ = [
     'fc',
@@ -75,8 +77,6 @@ __all__ = [
     'inplace_abn',
     'instance_norm',
     'data_norm',
-    'conv2d_transpose',
-    'conv3d_transpose',
     'reduce_sum',
     'reduce_mean',
     'reduce_max',
@@ -89,7 +89,6 @@ __all__ = [
     'l2_normalize',
     'matmul',
     'topk',
-    'transpose',
     'im2sequence',
     'row_conv',
     'multiplex',
@@ -99,16 +98,13 @@ __all__ = [
     'smooth_l1',
     'one_hot',
     'autoincreased_step_counter',
-    'reshape',
     'squeeze',
     'unsqueeze',
     'lod_reset',
     'lod_append',
     'pad',
-    'label_smooth',
     'roi_pool',
     'roi_align',
-    'dice_loss',
     'image_resize',
     'image_resize_short',
     'resize_linear',
@@ -123,7 +119,6 @@ __all__ = [
     'log',
     'crop_tensor',
     'pow',
-    'hard_sigmoid',
     'prelu',
     'brelu',
     'leaky_relu',
@@ -145,11 +140,9 @@ __all__ = [
     'slice',
     'strided_slice',
     'shape',
-    'rank',
     'size',
     'logical_and',
     'logical_or',
-    'logical_not',
     'clip',
     'clip_by_norm',
     'mean',
@@ -3813,731 +3806,6 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     return out
 
 
-def conv2d_transpose(
-    input,
-    num_filters,
-    output_size=None,
-    filter_size=None,
-    padding=0,
-    stride=1,
-    dilation=1,
-    groups=None,
-    param_attr=None,
-    bias_attr=None,
-    use_cudnn=True,
-    act=None,
-    name=None,
-    data_format='NCHW',
-):
-    r"""
-    :api_attr: Static Graph
-
-    The convolution2D transpose layer calculates the output based on the input,
-    filter, and dilations, strides, paddings. Input(Input) and output(Output)
-    are in NCHW or NHWC format. Where N is batch size, C is the number of channels,
-    H is the height of the feature, and W is the width of the feature.
-    Parameters(dilations, strides, paddings) are two elements. These two elements
-    represent height and width, respectively. The details of convolution transpose
-    layer, please refer to the following explanation and references
-    `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
-    If bias attribution and activation type are provided, bias is added to
-    the output of the convolution, and the corresponding activation function
-    is applied to the final result.
-
-    For each input :math:`X`, the equation is:
-
-    .. math::
-
-        Out = \sigma (W \\ast X + b)
-
-    Where:
-
-    * :math:`X`: Input value, a 4-D Tensor with NCHW or NHWC format.
-    * :math:`W`: Filter value, a 4-D Tensor with MCHW format.
-    * :math:`\\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
-    * :math:`Out`: Output value, a 4-D Tensor with data format 'NCHW' or 'NHWC', the shape of :math:`Out` and :math:`X` may be different.
-
-    Example:
-
-        - Input:
-
-          Input shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
-          Filter shape: :math:`(C_{in}, C_{out}, H_f, W_f)`
-
-        - Output:
-
-          Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
-        Where
-
-        .. math::
-
-           H^\prime_{out} &= (H_{in} - 1) * strides[0] - pad_height_top - pad_height_bottom + dilations[0] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[1] - pad_width_left - pad_width_right + dilations[1] * (W_f - 1) + 1 \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[0] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] ]
-
-    Note:
-          The conv2d_transpose can be seen as the backward of the conv2d. For conv2d,
-          when stride > 1, conv2d maps multiple input shape to the same output shape,
-          so for conv2d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, W_{out} = W^\prime_{out}`;
-          else, the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[0]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[1]`,
-          conv2d_transpose can compute the kernel size automatically.
-
-    Args:
-        input(Tensor): 4-D Tensor with [N, C, H, W] or [N, H, W, C] format,
-                         its data type is float32 or float64.
-        num_filters(int): The number of the filter. It is as same as the output
-            image channel.
-        output_size(int|tuple, optional): The output image size. If output size is a
-            tuple, it must contain two integers, (image_height, image_width). None if use
-            filter_size, padding, and stride to calculate output_size.
-            If output_size and filter_size are specified at the same time, They
-            should follow the formula above. Default: None. output_size and filter_size
-            should not be None at the same time.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
-            use output size to calculate filter_size. Default: None. filter_size and
-            output_size should not be None at the same time.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain two integers, (stride_height, stride_width).
-            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
-        padding(str|int|list|tuple, optional): The padding size. It means the number of zero-paddings
-            on both sides for each dimension. If `padding` is a string, either 'VALID' or
-            'SAME' which is the padding algorithm. If `padding` is a tuple or list,
-            it could be in three forms: `[pad_height, pad_width]` or
-            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `"NCHW"`, `padding` can be in the form
-            `[[0,0], [0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `"NHWC"`, `padding` can be in the form
-            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain two integers, (dilation_height, dilation_width).
-            Otherwise, dilation_height = dilation_width = dilation. Default: dilation = 1.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_height, filter_size_width).
-            Otherwise, filter_size_height = filter_size_width = filter_size. None if
-            use output size to calculate filter_size. Default: None.
-        groups(int, optional): The groups number of the Conv2d transpose layer. Inspired by
-            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
-            when group=2, the first half of the filters is only connected to the
-            first half of the input channels, while the second half of the
-            filters is only connected to the second half of the input channels.
-            Default: groups = 1.
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
-            of conv2d_transpose. If it is set to None or one attribute of ParamAttr, conv2d_transpose
-            will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv2d_transpose.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv2d_transpose
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True.
-        act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        name(str, optional): For detailed information, please refer
-           to :ref:`api_guide_Name`. Usually name is no need to set and
-           None by default.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns:
-        A Tensor representing the conv2d_transpose, whose
-        data type is the same with input and shape is (num_batches, channels, out_h,
-        out_w) or (num_batches, out_h, out_w, channels). If act is None, the tensor
-        storing the transposed convolution result, and if act is not None, the
-        tensor storing transposed convolution and non-linearity activation
-        result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 4-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
-
-    Examples:
-       .. code-block:: python
-
-          import paddle
-          paddle.enable_static()
-
-          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
-          print(conv2d_transpose.shape) # [-1, 2, 34, 34]
-    """
-    assert (
-        param_attr is not False
-    ), "param_attr should not be False in conv2d_transpose."
-    if len(input.shape) != 4:
-        raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
-        )
-
-    if data_format not in ['NCHW', 'NHWC']:
-        raise ValueError(
-            "Attr(data_format) of Op(fluid.layers.conv2d_transpose) got wrong value: received "
-            + data_format
-            + " but only NCHW or NHWC supported."
-        )
-
-    input_channel = input.shape[1] if data_format == 'NCHW' else input.shape[-1]
-    op_type = 'conv2d_transpose'
-    if (
-        input_channel == groups
-        and num_filters == input_channel
-        and not use_cudnn
-    ):
-        op_type = 'depthwise_conv2d_transpose'
-
-    helper = LayerHelper(op_type, **locals())
-    if not isinstance(input, Variable):
-        raise TypeError("Input of conv2d_transpose must be Variable")
-
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
-
-    if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
-
-    def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
-
-        if is_list_or_tuple(padding) and len(padding) == 4:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCHW"):
-                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
-                    raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
-                    )
-                padding = padding[2:4]
-                padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NHWC"):
-                if not (padding[0] == [0, 0] and padding[3] == [0, 0]):
-                    raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
-                    )
-                padding = padding[1:3]
-                padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 4, 'padding')
-        else:
-            padding = utils.convert_to_list(padding, 2, 'padding')
-            padding = [padding[0], padding[0], padding[1], padding[1]]
-        return padding
-
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
-            )
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0]
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0]
-
-    padding = _update_padding(padding, data_format)
-
-    if output_size is None:
-        output_size = []
-    elif isinstance(output_size, (list, tuple)):
-        if utils._contain_var(output_size):
-            output_size = utils._convert_to_tensor_list(output_size)
-        else:
-            output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    elif isinstance(output_size, int):
-        output_size = utils.convert_to_list(output_size, 2, 'output_size')
-    elif isinstance(output_size, Variable):
-        check_dtype(
-            output_size.dtype,
-            'output_size',
-            ['int32', 'int64'],
-            'conv2d_transpose',
-        )
-        if len(output_size.shape) == 1 and (
-            output_size.shape[0] == 1 or output_size.shape[0] == 2
-        ):
-            if output_size.shape[0] == 1:
-                output_size = [output_size, output_size]
-        else:
-            raise ValueError("output_size must contain one or two integers.")
-    else:
-        raise ValueError(
-            "output_size should be int, list[int] or tuple[int] or Tensor"
-        )
-
-    if filter_size is None:
-        if output_size is []:
-            raise ValueError("output_size must be set when filter_size is None")
-        if not _non_static_mode():
-            if isinstance(output_size, Variable) or utils._contain_var(
-                output_size
-            ):
-                raise ValueError(
-                    "filter_size should not be None when output_size is Variable or contain Variable in static mode."
-                )
-        else:
-            output_size = utils.convert_shape_to_list(output_size)
-            if len(output_size) == 1:
-                output_size = utils.convert_to_list(
-                    output_size[0], 2, 'output_size'
-                )
-
-        h_in = input.shape[2] if data_format == 'NCHW' else input.shape[1]
-        w_in = input.shape[3] if data_format == 'NCHW' else input.shape[2]
-
-        filter_size_h = (
-            output_size[0]
-            - (h_in - 1) * stride[0]
-            + padding[0]
-            + padding[1]
-            - 1
-        ) // dilation[0] + 1
-        filter_size_w = (
-            output_size[1]
-            - (w_in - 1) * stride[1]
-            + padding[2]
-            + padding[3]
-            - 1
-        ) // dilation[1] + 1
-        filter_size = [filter_size_h, filter_size_w]
-    else:
-        filter_size = utils.convert_to_list(
-            filter_size, 2, 'conv2d_transpose.filter_size'
-        )
-
-    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
-        padding = [padding[0], padding[2]]
-
-    if groups is None:
-        groups = 1
-    elif groups <= 0:
-        raise ValueError(
-            "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
-        )
-
-    filter_shape = [input_channel, num_filters // groups] + filter_size
-
-    img_filter = helper.create_parameter(
-        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
-    )
-
-    pre_bias = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type=op_type,
-        inputs={'Input': [input], 'Filter': [img_filter]},
-        outputs={'Output': pre_bias},
-        attrs={
-            'output_size': output_size,
-            'strides': stride,
-            'paddings': padding,
-            'padding_algorithm': padding_algorithm,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'data_format': data_format,
-        },
-    )
-
-    if data_format == 'NCHW':
-        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-    else:
-        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
-    out = helper.append_activation(pre_act)
-    return out
-
-
-def conv3d_transpose(
-    input,
-    num_filters,
-    output_size=None,
-    filter_size=None,
-    padding=0,
-    stride=1,
-    dilation=1,
-    groups=None,
-    param_attr=None,
-    bias_attr=None,
-    use_cudnn=True,
-    act=None,
-    name=None,
-    data_format='NCDHW',
-):
-    r"""
-    :api_attr: Static Graph
-
-    The convolution3D transpose layer calculates the output based on the input,
-    filter, and dilations, strides, paddings. Input(Input) and output(Output)
-    are in NCDHW or NDHWC format. Where N is batch size, C is the number of channels,
-    D is the depth of the feature, H is the height of the feature, and W
-    is the width of the feature. Parameters(dilations, strides, paddings) are
-    two elements. These two elements represent height and width, respectively.
-    The details of convolution transpose layer, please refer to the following
-    explanation and references `therein <https://arxiv.org/pdf/1603.07285.pdf>`_.
-    If bias attribution and activation type are provided, bias is added to
-    the output of the convolution, and the corresponding activation function
-    is applied to the final result.
-
-    For each input :math:`X`, the equation is:
-
-    .. math::
-
-        Out = \sigma (W \ast X + b)
-
-    In the above equation:
-
-    * :math:`X`: Input value, a Tensor with NCDHW or NDHWC format.
-    * :math:`W`: Filter value, a Tensor with MCDHW format.
-    * :math:`\ast`: Convolution operation.
-    * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\sigma`: Activation function.
-    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
-
-    Example:
-
-        - Input:
-
-          Input shape: :math:`(N, C_{in}, D_{in}, H_{in}, W_{in})`
-
-          Filter shape: :math:`(C_{in}, C_{out}, D_f, H_f, W_f)`
-
-        - Output:
-
-          Output shape: :math:`(N, C_{out}, D_{out}, H_{out}, W_{out})`
-
-        Where
-
-        .. math::
-
-           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
-           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
-           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
-           W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[2] ]
-
-    Note:
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
-          when stride > 1, conv3d maps multiple input shape to the same output shape,
-          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
-          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
-          conv3d_transpose can compute the kernel size automatically.
-
-    Args:
-        input(Tensor): The input is 5-D Tensor with shape [N, C, D, H, W] or [N, D, H, W, C], the data type
-            of input is float32 or float64.
-        num_filters(int): The number of the filter. It is as same as the output
-            image channel.
-        output_size(int|tuple, optional): The output image size. If output size is a
-            tuple, it must contain three integers, (image_depth, image_height, image_width). This
-            parameter only works when filter_size is None. If output_size and filter_size are
-            specified at the same time, They should follow the formula above. Default: None.
-            Output_size and filter_size should not be None at the same time.
-        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain three integers, (filter_size_depth, filter_size_height,
-            filter_size_width). Otherwise, filter_size_depth = filter_size_height = \
-            filter_size_width = filter_size. None if use output size to
-            calculate filter_size. Default: None. filter_size and output_size should not be
-            None at the same time.
-        padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-            adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-            either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-            is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
-            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
-            and when `data_format` is `'NCDHW'`, `padding` can be in the form
-            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
-            when `data_format` is `'NDHWC'`, `padding` can be in the form
-            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
-            Default: padding = 0.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
-            If stride is a tuple, it must contain three integers, (stride_depth, stride_height,
-            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
-            Default: stride = 1.
-        dilation(int|tuple, optional): The dilation size. It means the spacing between the kernel points.
-            If dilation is a tuple, it must contain three integers, (dilation_depth, dilation_height,
-            dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
-            Default: dilation = 1.
-        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
-            grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
-            when group=2, the first half of the filters is only connected to the
-            first half of the input channels, while the second half of the
-            filters is only connected to the second half of the input channels.
-            Default: groups=1
-        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
-            of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
-            will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv3d_transpose.
-            If it is set to False, no bias will be added to the output units.
-            If it is set to None or one attribute of ParamAttr, conv3d_transpose
-            will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act (str, optional): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        name(str, optional): For detailed information, please refer
-           to :ref:`api_guide_Name`. Usually name is no need to set and
-           None by default.
-        data_format (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
-
-    Returns:
-        A Variable holding Tensor representing the conv3d_transpose, whose data
-        type is the same with input and shape is (num_batches, channels, out_d, out_h,
-        out_w) or (num_batches, out_d, out_h, out_w, channels). If act is None, the tensor
-        variable storing the transposed convolution result, and if act is not None, the tensor
-        variable storing transposed convolution and non-linearity activation result.
-
-    Raises:
-        ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
-        ValueError: If `padding` is a string, but not "SAME" or "VALID".
-        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0
-            or the element corresponding to the input's channel is not 0.
-        ValueError: If `output_size` and filter_size are None at the same time.
-        ShapeError: If the input is not 5-D Tensor.
-        ShapeError: If the input's dimension size and filter's dimension size not equal.
-        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
-        ShapeError: If the number of input channels is not equal to filter's channels.
-        ShapeError: If the size of `output_size` is not equal to that of `stride`.
-
-    Examples:
-       .. code-block:: python
-
-          import paddle
-          import numpy as np
-
-          paddle.enable_static()
-          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
-          res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
-          place = paddle.CPUPlace()
-          exe = paddle.static.Executor(place)
-          exe.run(paddle.static.default_startup_program())
-          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-          output = exe.run(feed={"data": x}, fetch_list=[res])
-          print(output)
-    """
-    assert (
-        param_attr is not False
-    ), "param_attr should not be False in conv3d_transpose."
-    if data_format not in ['NCDHW', 'NDHWC']:
-        raise ValueError(
-            "Param(data_format) of Op(fluid.layers.conv3d_transpose) got wrong value: received "
-            + data_format
-            + " but only NCDHW or NDHWC supported."
-        )
-
-    l_type = "conv3d_transpose"
-    helper = LayerHelper(l_type, **locals())
-    if not isinstance(input, Variable):
-        raise TypeError("Input of conv3d_transpose must be Variable")
-    if len(input.shape) != 5:
-        raise ValueError(
-            "Input should be 5D tensor, but received input with the shape of {}".format(
-                input.shape
-            )
-        )
-    input_channel = (
-        input.shape[1] if data_format == 'NCDHW' else input.shape[-1]
-    )
-
-    stride = utils.convert_to_list(stride, 3, 'stride')
-    dilation = utils.convert_to_list(dilation, 3, 'dilation')
-
-    if not isinstance(use_cudnn, bool):
-        raise ValueError("use_cudnn should be True or False")
-
-    def _update_padding(padding, data_format):
-        def is_list_or_tuple(ele):
-            if isinstance(ele, list) or isinstance(ele, tuple):
-                return True
-            return False
-
-        if is_list_or_tuple(padding) and len(padding) == 5:
-            if is_list_or_tuple(padding[0]) and (data_format == "NCDHW"):
-                if not (padding[0] == [0, 0] and padding[1] == [0, 0]):
-                    raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
-                    )
-                padding = padding[2:5]
-                padding = [ele for a_list in padding for ele in a_list]
-            elif is_list_or_tuple(padding[0]) and (data_format == "NDHWC"):
-                if not (padding[0] == [0, 0] and padding[4] == [0, 0]):
-                    raise ValueError(
-                        "Non-zero padding(%s) in the batch or channel dimensions "
-                        "is not supported." % str(padding)
-                    )
-                padding = padding[1:4]
-                padding = [ele for a_list in padding for ele in a_list]
-            padding = utils.convert_to_list(padding, 6, 'padding')
-
-        elif is_list_or_tuple(padding) and len(padding) == 6:
-            padding = utils.convert_to_list(padding, 6, 'padding')
-
-        else:
-            padding = utils.convert_to_list(padding, 3, 'padding')
-            padding = [
-                padding[0],
-                padding[0],
-                padding[1],
-                padding[1],
-                padding[2],
-                padding[2],
-            ]
-        return padding
-
-    padding_algorithm = "EXPLICIT"
-    if isinstance(padding, str):
-        padding = padding.upper()
-        if padding not in ["SAME", "VALID"]:
-            raise ValueError(
-                "Unknown padding: '%s'. It can only be 'SAME' or 'VALID'."
-                % str(padding)
-            )
-        if padding == "VALID":
-            padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0, 0, 0]
-        elif padding == "SAME":
-            padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0, 0, 0]
-
-    padding = _update_padding(padding, data_format)
-
-    if filter_size is None:
-        if output_size is None:
-            raise ValueError("output_size must be set when filter_size is None")
-        if isinstance(output_size, int):
-            output_size = [output_size, output_size, output_size]
-
-        d_in = input.shape[2] if data_format == 'NCDHW' else input.shape[1]
-        h_in = input.shape[3] if data_format == 'NCDHW' else input.shape[2]
-        w_in = input.shape[4] if data_format == 'NCDHW' else input.shape[3]
-
-        filter_size_d = (
-            output_size[0]
-            - (d_in - 1) * stride[0]
-            + padding[0]
-            + padding[1]
-            - 1
-        ) // dilation[0] + 1
-        filter_size_h = (
-            output_size[1]
-            - (h_in - 1) * stride[1]
-            + padding[2]
-            + padding[3]
-            - 1
-        ) // dilation[1] + 1
-        filter_size_w = (
-            output_size[2]
-            - (w_in - 1) * stride[2]
-            + padding[4]
-            + padding[5]
-            - 1
-        ) // dilation[2] + 1
-        filter_size = [filter_size_d, filter_size_h, filter_size_w]
-    else:
-        filter_size = utils.convert_to_list(
-            filter_size, 3, 'conv3d_transpose.filter_size'
-        )
-
-    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
-        padding = [padding[0], padding[2], padding[4]]
-
-    if output_size is None:
-        output_size = []
-    elif isinstance(output_size, (list, tuple, int)):
-        output_size = utils.convert_to_list(output_size, 3, 'output_size')
-    else:
-        raise ValueError("output_size should be int, list[int] or tuple[int]")
-
-    groups = 1 if groups is None else groups
-    if groups <= 0:
-        raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
-        )
-    if num_filters % groups != 0:
-        raise ValueError(
-            "Attr(num_filters) must be divisible by groups,"
-            "Received: Attr(num_filters) is {}, the groups is {}".format(
-                num_filters, groups
-            )
-        )
-
-    filter_shape = [input_channel, num_filters // groups] + filter_size
-    img_filter = helper.create_parameter(
-        dtype=input.dtype, shape=filter_shape, attr=helper.param_attr
-    )
-
-    if data_format == 'NCDHW':
-        data_format = 'NCHW'
-    if data_format == 'NDHWC':
-        data_format = 'NHWC'
-
-    pre_bias = helper.create_variable_for_type_inference(dtype=input.dtype)
-    helper.append_op(
-        type=l_type,
-        inputs={'Input': [input], 'Filter': [img_filter]},
-        outputs={'Output': pre_bias},
-        attrs={
-            'output_size': output_size,
-            'strides': stride,
-            'paddings': padding,
-            'padding_algorithm': padding_algorithm,
-            'dilations': dilation,
-            'groups': groups,
-            'use_cudnn': use_cudnn,
-            'data_format': data_format,
-        },
-    )
-
-    if data_format == 'NCHW':
-        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
-    else:
-        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
-    out = helper.append_activation(pre_act)
-    return out
-
-
 def reduce_sum(input, dim=None, keep_dim=False, name=None):
     """
 
@@ -5605,108 +4873,6 @@ def ctc_greedy_decoder(
         return ctc_out, ctc_out_len
 
 
-def transpose(x, perm, name=None):
-    """
-    Permute the data dimensions of `input` according to `perm`.
-
-    The `i`-th dimension  of the returned tensor will correspond to the
-    perm[i]-th dimension of `input`.
-
-    Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
-        perm (list|tuple): Permute the input according to the data of perm.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
-
-    For Example:
-
-        .. code-block:: text
-
-         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-         shape(x) =  [2,3,4]
-
-         # Example 1
-         perm0 = [1,0,2]
-         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                   [[ 5  6  7  8]  [17 18 19 20]]
-                   [[ 9 10 11 12]  [21 22 23 24]]]
-         shape(y_perm0) = [3,2,4]
-
-         # Example 2
-         perm1 = [2,1,0]
-         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                   [[ 2 14] [ 6 18] [10 22]]
-                   [[ 3 15]  [ 7 19]  [11 23]]
-                   [[ 4 16]  [ 8 20]  [12 24]]]
-         shape(y_perm1) = [4,3,2]
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.randn([2, 3, 4])
-            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
-            print(x_transposed.shape)
-            # [3L, 2L, 4L]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.transpose(x, perm)
-    else:
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
-            return out
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'transpose',
-    )
-    check_type(perm, 'perm', (list, tuple), 'transpose')
-    if isinstance(perm, tuple):
-        perm = list(perm)
-    if len(perm) != len(x.shape):
-        raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(x), "
-            "its length should be equal to dimensions of Input(x), "
-            "but received dimension of Input(x) is %s, "
-            "the length of Input(perm) is %s." % (len(x.shape), len(perm))
-        )
-    for idx, dim in enumerate(perm):
-        if dim >= len(x.shape):
-            raise ValueError(
-                "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                "dimension %d." % (idx, perm[idx], len(x.shape))
-            )
-
-    helper = LayerHelper('transpose', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out], 'XShape': [x_shape]},
-        attrs={'axis': perm},
-    )
-    return out
-
-
 def im2sequence(
     input,
     filter_size=1,
@@ -6233,240 +5399,6 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     return counter
 
 
-def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
-    r"""
-    :alias_main: paddle.reshape
-	:alias: paddle.reshape,paddle.tensor.reshape,paddle.tensor.manipulation.reshape
-
-    This operator changes the shape of ``x`` without changing its data.
-
-    The target shape can be given by ``shape`` or ``actual_shape``.
-    When ``shape`` and ``actual_shape`` are set at the same time,
-    ``actual_shape`` has a higher priority than ``shape``
-    but at this time ``shape`` can only be an integer list or tuple, and ``shape`` still should be set correctly to
-    guarantee shape inference in compile-time.
-
-    Some tricks exist when specifying the target shape.
-
-    1. -1 means the value of this dimension is inferred from the total element
-    number of x and remaining dimensions. Thus one and only one dimension can
-    be set -1.
-
-    2. 0 means the actual dimension value is going to be copied from the
-    corresponding dimension of x. The index of 0s in shape can not exceed
-    the dimension of x.
-
-    Here are some examples to explain it.
-
-    1. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [6, 8], the reshape operator will transform x into a 2-D tensor with
-    shape [6, 8] and leaving x's data unchanged.
-
-    2. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    specified is [2, 3, -1, 2], the reshape operator will transform x into a
-    4-D tensor with shape [2, 3, 4, 2] and leaving x's data unchanged. In this
-    case, one dimension of the target shape is set to -1, the value of this
-    dimension is inferred from the total element number of x and remaining
-    dimensions.
-
-    3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape
-    is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor
-    with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case,
-    besides -1, 0 means the actual dimension value is going to be copied from
-    the corresponding dimension of x.
-
-    **Note**:
-        The parameter ``actual_shape`` will be deprecated in the future and only use ``shape`` instead to represent the target shape.
-
-    Args:
-        x(Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
-        shape(list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
-                        If ``shape`` is an Tensor, it should be an 1-D Tensor .
-        actual_shape(variable, optional): An 1-D ``Tensor`` or ``LoDTensor`` . The data type is ``int32`` . If provided, reshape
-                                according to this given shape rather than ``shape`` specifying shape.
-                                That is to say ``actual_shape`` has a higher priority
-                                than ``shape(list|tuple)`` but not ``shape(Tensor)``. \
-                                This argument ``actual_shape`` will be removed in a future version. \
-                                Instructions for updating: ``actual_shape`` will be removed in future versions and replaced by ``shape``.
-        act (str, optional): The non-linear activation to be applied to the reshaped input. Default None.
-        inplace(bool, optional): If ``inplace`` is True, the input and output of ``layers.reshape``
-                       are the same variable. Otherwise, the input and output of
-                       ``layers.reshape`` are different variable. Default False. Note that if ``x``
-                       is more than one OPs' input, ``inplace`` must be False.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-                            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Tensor: A reshaped Tensor with the same data type as ``x``. It is a new tensor variable if ``inplace`` is ``False``, otherwise it is ``x``. If ``act`` is None, return the reshaped tensor variable, otherwise return the activated tensor variable.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            # example 1:
-            # attr shape is a list which doesn't contain Tensors.
-            data_1 = fluid.data(
-              name='data_1', shape=[2, 4, 6], dtype='float32')
-            reshaped_1 = fluid.layers.reshape(
-              x=data_1, shape=[-1, 0, 3, 2])
-            # the shape of reshaped_1 is [2,4,3,2].
-
-            # example 2:
-            # attr shape is a list which contains Tensors.
-            data_2 = fluid.layers.fill_constant([2,25], "int32", 3)
-            dim = fluid.layers.fill_constant([1], "int32", 5)
-            reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
-            # the shape of reshaped_2 is [5,10].
-
-            # example 3:
-            data_3 = fluid.data(
-              name="data_3", shape=[2,4,6], dtype='float32')
-            reshaped_3 = fluid.layers.reshape(x=data_3, shape=[6,8])
-            # the shape of reshaped_3 is [6,8].
-    """
-    if in_dygraph_mode():
-        tmp_tensor_type = core.eager.Tensor
-        # TODO(zhiqiu): enable inplace in dygraph mode.
-        if inplace:
-            warnings.warn(
-                "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-            )
-        if isinstance(shape, (list, tuple)):
-            shape = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in shape
-            ]
-            out = _C_ops.reshape(x, shape)
-        elif isinstance(shape, tmp_tensor_type):
-            # TODO: Tensor shape in reshape has not been tested
-            shape.stop_gradient = True
-            out = _C_ops.reshape(x, shape)
-        else:
-            raise ValueError(
-                "shape must be an instance of `list`, `tuple` or `Variable`,"
-                " got '{}.'".format(type(shape))
-            )
-
-        return dygraph_utils._append_activation_in_dygraph(out, act)
-    else:
-        if _in_legacy_dygraph():
-            tmp_tensor_type = Variable
-            if inplace:
-                warnings.warn(
-                    "Inplace on reshape is not allowed and will be discarded in dygraph mode currently."
-                )
-            if isinstance(shape, (list, tuple)):
-                shape = [
-                    item.numpy().item(0) if isinstance(item, Variable) else item
-                    for item in shape
-                ]
-                out, _ = _legacy_C_ops.reshape2(x, None, 'shape', shape)
-            elif isinstance(shape, tmp_tensor_type):
-                shape.stop_gradient = True
-                out, _ = _legacy_C_ops.reshape2(x, shape)
-            else:
-                raise ValueError(
-                    "shape must be an instance of `list`, `tuple` or `Variable`,"
-                    " got '{}.'".format(type(shape))
-                )
-
-            return dygraph_utils._append_activation_in_dygraph(out, act)
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int16',
-            'int32',
-            'int64',
-            'bool',
-            'uint16',
-        ],
-        'reshape',
-    )
-    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
-    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
-
-    helper = LayerHelper("reshape2", **locals())
-
-    def get_attr_shape(list_shape):
-        unk_dim_idx = -1
-        attrs_shape = []
-        for dim_idx, dim_size in enumerate(list_shape):
-            if isinstance(dim_size, Variable):
-                attrs_shape.append(-1)
-            else:
-                attrs_shape.append(dim_size)
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one dimension value of 'shape' in reshape can "
-                        "be -1. But received shape[%d] is also -1.\n"
-                        "\n\t# N = x.shape()[2]\t\t# N is an int. "
-                        "(NOT recommend under @to_static)\n\tN = paddle.shape(x)[2]\t\t"
-                        "# N is a Tensor. (Recommend)\n\tz = paddle.reshape([N, -1, 4])"
-                        "\t# z.shape is [-1, -1, 4]\n\n"
-                        "    If your target shape in Reshape represents dynamic shape, "
-                        "please turn it into a Tensor under @to_static. See above example for details."
-                        % dim_idx
-                    )
-                    unk_dim_idx = dim_idx
-                elif dim_size == 0:
-                    assert dim_idx < len(x.shape), (
-                        "The index of 0 in `shape` must be less than "
-                        "the input tensor X's dimensions. "
-                        "But received shape[%d] = 0, X's dimensions = %d."
-                        % (dim_idx, len(x.shape))
-                    )
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension value of 'shape' in reshape must not "
-                        "be negative except one unknown dimension. "
-                        "But received shape[%d] = %s."
-                        % (dim_idx, str(dim_size))
-                    )
-        return attrs_shape
-
-    inputs = {"X": x}
-    attrs = {}
-    if isinstance(shape, Variable):
-        shape.stop_gradient = True
-        inputs["Shape"] = shape
-    elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, (
-            "The size of 'shape' in reshape can't be zero, "
-            "but received %s." % len(shape)
-        )
-        attrs["shape"] = get_attr_shape(shape)
-        if utils._contain_var(shape):
-            inputs['ShapeTensor'] = utils._convert_to_tensor_list(shape)
-        elif isinstance(actual_shape, Variable):
-            actual_shape.stop_gradient = True
-            inputs["Shape"] = actual_shape
-
-    out = (
-        x
-        if inplace
-        else helper.create_variable_for_type_inference(dtype=x.dtype)
-    )
-    x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type="reshape2",
-        inputs=inputs,
-        attrs=attrs,
-        outputs={"Out": out, "XShape": x_shape},
-    )
-
-    return helper.append_activation(out)
-
-
 def squeeze(input, axes, name=None):
     """
     This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
@@ -6798,10 +5730,6 @@ def lod_append(x, level):
             x = fluid.layers.data(name='x', shape=[6, 10], lod_level=1)
             out = fluid.layers.lod_append(x, [1,1,1,1,1,1])
     """
-    try:
-        from collections.abc import Iterable
-    except:
-        from collections import Iterable
     if x is None:
         raise ValueError("Input(x) can't be None.")
     if (not isinstance(level, Iterable)) and (not isinstance(level, Variable)):
@@ -6912,95 +5840,6 @@ def pad(x, paddings, pad_value=0.0, name=None):
         attrs={'paddings': paddings, 'pad_value': pad_value},
     )
     return out
-
-
-def label_smooth(
-    label, prior_dist=None, epsilon=0.1, dtype="float32", name=None
-):
-    r"""
-    :alias_main: paddle.nn.functional.label_smooth
-        :alias: paddle.nn.functional.label_smooth,paddle.nn.functional.common.label_smooth
-        :old_api: paddle.fluid.layers.label_smooth
-
-    Label smoothing is a mechanism to regularize the classifier layer and is called
-    label-smoothing regularization (LSR).
-
-    Label smoothing is proposed to encourage the model to be less confident,
-    since optimizing the log-likelihood of the correct label directly may
-    cause overfitting and reduce the ability of the model to adapt. Label
-    smoothing replaces the ground-truth label :math:`y` with the weighted sum
-    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
-    i.e.
-
-    .. math::
-
-        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
-
-    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
-    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
-    uniform distribution is used for :math:`\mu`.
-
-    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
-
-    Parameters:
-        label(Variable): The input variable containing the label data. The
-                        label data should use one-hot representation. It's
-                        a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
-        prior_dist(Variable, optional): The prior distribution to be used to smooth
-                        labels. If not provided, an uniform distribution
-                        is used. It's a multidimensional tensor with a shape of
-                        :math:`[1, class\_num]` . The default value is None.
-        epsilon(float, optional): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution. The default value is
-                        0.1.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
-                        as 'float32', 'float64'. The default value is 'float32'.
-        name(str, optional): The default value is None. Normally there is no need for user
-                        to set this property. For more information, please refer to
-                        :ref:`api_guide_Name`.
-
-    Returns:
-        Variable: The tensor variable containing the smoothed labels.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            label = layers.data(name="label", shape=[1], dtype="int32")
-            one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="float32")
-    """
-    if in_dygraph_mode():
-        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
-
-    if epsilon > 1.0 or epsilon < 0.0:
-        raise ValueError("The value of epsilon must be between 0 and 1.")
-
-    if _non_static_mode():
-        return _legacy_C_ops.label_smooth(
-            label, prior_dist, 'epsilon', float(epsilon)
-        )
-
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
-    )
-
-    helper = LayerHelper("label_smooth", **locals())
-    label.stop_gradient = True
-    smooth_label = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
-        outputs={"Out": smooth_label},
-        attrs={"epsilon": float(epsilon)},
-    )
-    return smooth_label
 
 
 @templatedoc()
@@ -7235,53 +6074,6 @@ def roi_align(
         },
     )
     return align_out
-
-
-def dice_loss(input, label, epsilon=0.00001, name=None):
-    r"""
-
-    Dice loss for comparing the similarity between the input predictions and the label.
-    This implementation is for binary classification, where the input is sigmoid
-    predictions of each pixel, usually used for segmentation task. The dice loss can
-    be defined as the following equation:
-
-    .. math::
-
-        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
-                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
-                  &= \frac{(union\_area - intersection\_area)}{total\_area}
-
-
-    Parameters:
-        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_k, D]`, where :math:`N_1` is
-                          the batch_size, :math:`D` is the number of categories. It is usually the output
-                          predictions of sigmoid activation. The data type can be float32 or float64.
-        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_k, 1]`.
-                          where :math:`N_1` is the batch_size. The data type can be int32 or int64.
-        epsilon (float): The epsilon will be added to the numerator and denominator.
-                         If both input and label are empty, it makes sure dice is 1.
-                         Default: 0.00001
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor, which shape is [1], data type is the same as `input` .
-
-    Example:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.randn((3,224,224,2))
-            label = paddle.randint(high=2, shape=(3,224,224,1))
-            predictions = F.softmax(x)
-            loss = F.dice_loss(input=predictions, label=label)
-    """
-    return paddle.nn.functional.dice_loss(
-        input, label, epsilon=epsilon, name=name
-    )
 
 
 def image_resize(
@@ -9294,53 +8086,10 @@ def pow(x, factor=1.0, name=None):
     return out
 
 
-@templatedoc()
-def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
-    """
-    ${comment}
-    Parameters:
-        x (${x_type}): ${x_comment}
-        slope (float, optional): ${slope_comment}
-        offset (float, optional): ${offset_comment}
-        name (str, optional): The default value is None. Normally there is no
-            need for user to set this property. For more information, please
-            refer to :ref:`api_guide_Name`
-
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
-            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.hard_sigmoid(x, 'slope', slope, 'offset', offset)
-
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'hard_sigmoid'
-    )
-
-    helper = LayerHelper('hard_sigmoid', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='hard_sigmoid',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'slope': slope, 'offset': offset},
-    )
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
+
     prelu activation.
 
     .. math::
@@ -9355,26 +8104,20 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
-
         x (Tensor): The input Tensor or LoDTensor with data type float32.
-
         mode (str): The mode for weight sharing.
-
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
-        weight (alpha), it can be create by ParamAttr. None by default. \
-        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-
-        name (str, optional): Name for the operation (optional, default is None). \
-        For more information, please refer to :ref:`api_guide_Name`.
-
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
+            weight (alpha), it can be create by ParamAttr. None by default.
+            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor with the same shape and data type as x.
+        Tensor, A tensor with the same shape and data type as x.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
@@ -10750,34 +9493,6 @@ def shape(input):
     return out
 
 
-def rank(input):
-    """
-
-    The OP returns the number of dimensions for a tensor, which is a 0-D int32 Tensor.
-
-    Args:
-        input (Tensor): The input N-D tensor with shape of :math:`[N_1, N_2, ..., N_k]`, the data type is arbitrary.
-
-    Returns:
-        Tensor, the output data type is int32.: The 0-D tensor with the dimensions of the input Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            input = paddle.rand((3, 100, 100))
-            rank = paddle.rank(input)
-            print(rank)
-            # 3
-    """
-    check_type(input, 'input', (Variable), 'input')
-    ndims = len(input.shape)
-    out = assign(np.array(ndims, 'int32'))
-
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.numel")
 def size(input):
     """
@@ -11548,41 +10263,6 @@ def logical_or(x, y, out=None, name=None):
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-@templatedoc()
-def logical_not(x, out=None, name=None):
-    """
-
-    ``logical_not`` operator computes element-wise logical NOT on ``x``, and returns ``out``. ``out`` is N-dim boolean ``Variable``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = !x
-
-    Args:
-        x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float32, or float64.
-        out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
-        name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        Tensor: ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_not(x)
-            print(res) # [False  True False  True]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_not(x)
-    return _logical_op(
-        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
     )
 
 
@@ -12702,7 +11382,7 @@ class PyFuncRegistry:
 
         self._func = func
         # find named args using reflection
-        args = inspect.getargspec(self._func)
+        args = inspect.getfullargspec(self._func)
         if len(args[0]) == 0 and args[1] is None and args[2] is None:
             # Function with no inputs
             self._named_args = None

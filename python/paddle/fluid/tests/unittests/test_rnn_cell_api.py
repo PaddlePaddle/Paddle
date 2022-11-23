@@ -336,7 +336,7 @@ class TestRnnError(unittest.TestCase):
                 name="sequence_length", shape=[None], dtype='int64'
             )
 
-            inputs_dynamic_rnn = layers.transpose(
+            inputs_dynamic_rnn = paddle.transpose(
                 inputs_basic_lstm, perm=[1, 0, 2]
             )
             cell = LSTMCell(hidden_size, name="LSTMCell_for_rnn")
@@ -429,7 +429,7 @@ class TestRnn(unittest.TestCase):
             name="sequence_length", shape=[None], dtype='int64'
         )
 
-        inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
+        inputs_dynamic_rnn = paddle.transpose(inputs_basic_lstm, perm=[1, 0, 2])
         cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")
         output, final_state = dynamic_rnn(
             cell=cell,
@@ -437,7 +437,7 @@ class TestRnn(unittest.TestCase):
             sequence_length=sequence_length,
             is_reverse=False,
         )
-        output_new = layers.transpose(output, perm=[1, 0, 2])
+        output_new = paddle.transpose(output, perm=[1, 0, 2])
 
         rnn_out, last_hidden, last_cell = basic_lstm(
             inputs_basic_lstm,

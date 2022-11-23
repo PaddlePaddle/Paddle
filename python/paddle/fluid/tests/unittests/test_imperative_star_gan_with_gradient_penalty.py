@@ -268,7 +268,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         repeat_num = cfg.g_repeat_num
         sub_layers = []
@@ -278,7 +278,7 @@ class Generator(fluid.dygraph.Layer):
             )
             sub_layers.append(res_block)
 
-        self._res_block = fluid.dygraph.Sequential(*sub_layers)
+        self._res_block = paddle.nn.Sequential(*sub_layers)
 
         cur_channels = cfg.g_base_dims * 4
         sub_layers = []
@@ -296,7 +296,7 @@ class Generator(fluid.dygraph.Layer):
             cur_channels = cfg.g_base_dims * rate
             sub_layers.append(deconv)
 
-        self._deconv = fluid.dygraph.Sequential(*sub_layers)
+        self._deconv = paddle.nn.Sequential(*sub_layers)
 
         self._conv1 = Conv2DLayer(
             num_channels=cur_channels,
@@ -309,9 +309,7 @@ class Generator(fluid.dygraph.Layer):
 
     def forward(self, input, label_trg):
         shape = input.shape
-        label_trg_e = fluid.layers.reshape(
-            label_trg, [-1, label_trg.shape[1], 1, 1]
-        )
+        label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
         label_trg_e = fluid.layers.expand(
             x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
         )
@@ -355,7 +353,7 @@ class Discriminator(fluid.dygraph.Layer):
             cur_dim *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         kernel_size = int(cfg.image_size / np.power(2, repeat_num))
 
@@ -380,9 +378,7 @@ class Discriminator(fluid.dygraph.Layer):
 
 def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
-    cls = fluid.layers.reshape(
-        cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]]
-    )
+    cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
     return (
         fluid.layers.reduce_sum(
             fluid.layers.sigmoid_cross_entropy_with_logits(cls, label)
@@ -432,7 +428,7 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     gradient = gradient[0]
     grad_shape = gradient.shape
 
-    gradient = fluid.layers.reshape(
+    gradient = paddle.reshape(
         gradient, [-1, grad_shape[1] * grad_shape[2] * grad_shape[3]]
     )
 
