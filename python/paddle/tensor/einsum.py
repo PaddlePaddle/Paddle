@@ -863,7 +863,7 @@ def gen_einsum_op(equation, *operands):
 
 
 def einsum(equation, *operands):
-    """
+    r"""
 
     einsum(equation, *operands)
 

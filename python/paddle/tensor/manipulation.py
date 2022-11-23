@@ -2275,7 +2275,7 @@ def unique_consecutive(
     dtype="int64",
     name=None,
 ):
-    """
+    r"""
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
     Note:
