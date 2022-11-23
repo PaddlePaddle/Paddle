@@ -31,12 +31,6 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-template <typename IntT>
-__global__ void print(const IntT* rulebook, const int rulebook_len) {
-  for (int i = 0; i < rulebook_len; i++) {
-    printf("\n%d,%d,%d\n", i, *(rulebook + i), *(rulebook + rulebook_len + i));
-  }
-}
 template <typename T, typename IntT>
 void Conv3dCooGPUKernel(const GPUContext& dev_ctx,
                         const SparseCooTensor& x,
