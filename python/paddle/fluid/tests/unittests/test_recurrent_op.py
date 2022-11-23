@@ -27,7 +27,7 @@ from paddle.fluid.backward import append_backward
 np.random.seed(123)
 
 
-class PyRNNBase(object):
+class PyRNNBase:
     def __init__(self, input_shape, output_shape):
         self.x = np.ones(shape=input_shape).astype("float32")
         self.y = np.zeros(shape=output_shape).astype("float32")
@@ -46,7 +46,7 @@ class PyRNNBase(object):
 
 class PySimpleRNN1(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN1, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.h_boot = np.random.normal(size=(batch_size, input_dim)).astype(
@@ -68,7 +68,7 @@ class PySimpleRNN1(PyRNNBase):
 
 class PySimpleRNN2(PyRNNBase):
     def __init__(self, input_shape, output_shape):
-        super(PySimpleRNN2, self).__init__(input_shape, output_shape)
+        super().__init__(input_shape, output_shape)
 
         seq_len, batch_size, input_dim = input_shape
         self.W = np.ones(shape=(input_dim, input_dim)).astype("float32")
@@ -316,7 +316,9 @@ class RecurrentOpTest2(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(x=temp_l, y=temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(x=temp_l, y=temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)
@@ -324,7 +326,7 @@ class RecurrentOpTest2(RecurrentOpTest1):
         return rnn()
 
     def test_backward(self):
-        super(RecurrentOpTest2, self).test_backward(rtol=0.01)
+        super().test_backward(rtol=0.01)
 
 
 class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
@@ -344,9 +346,7 @@ class RecurrentOpMultipleMemoryTest(RecurrentOpTest1):
 
     class PySimpleRNN3(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpMultipleMemoryTest.PySimpleRNN3, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.h_boot1 = np.random.normal(
@@ -446,9 +446,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
 
     class PySimpleRNN4(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpNoMemBootTest.PySimpleRNN4, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
             men_dim = input_shape
             self.mems = np.zeros(shape=men_dim).astype("float32")
 
@@ -522,9 +520,7 @@ class RecurrentOpSubBlockTest(RecurrentOpTest1):
 
     class PySimpleRNN5(PyRNNBase):
         def __init__(self, input_shape, output_shape):
-            super(RecurrentOpSubBlockTest.PySimpleRNN5, self).__init__(
-                input_shape, output_shape
-            )
+            super().__init__(input_shape, output_shape)
 
             seq_len, batch_size, input_dim = input_shape
             self.w1 = np.random.uniform(
@@ -716,7 +712,9 @@ class RecurrentOpStopGradientTest(RecurrentOpTest1):
                 bias_attr=False,
             )
 
-            h = layers.sigmoid(x=layers.elementwise_add(temp_l, temp_r))
+            h = paddle.nn.functional.sigmoid(
+                x=layers.elementwise_add(temp_l, temp_r)
+            )
 
             rnn.update_memory(h_pre, h)
             rnn.output(h)

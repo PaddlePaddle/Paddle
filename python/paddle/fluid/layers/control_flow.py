@@ -14,7 +14,7 @@
 
 from ..wrapped_decorator import signature_safe_contextmanager
 
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import templatedoc
 from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import (
@@ -27,7 +27,7 @@ from ..framework import (
     in_dygraph_mode,
 )
 from ..layer_helper import LayerHelper, unique_name
-from .nn import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_or
 from .utils import (
     assert_same_structure,
     map_structure,
@@ -49,6 +49,7 @@ from ..data_feeder import (
     check_dtype,
 )
 from ..backward import _infer_var_data_type_shape_
+import paddle
 from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
@@ -536,7 +537,7 @@ def Assert(cond, data=None, summarize=20, name=None):
     return op
 
 
-class BlockGuard(object):
+class BlockGuard:
     """
     BlockGuard class.
 
@@ -569,24 +570,22 @@ class BlockGuardWithCompletion(BlockGuard):
     def __init__(self, rnn):
         if not isinstance(rnn, StaticRNN):
             raise TypeError("BlockGuardWithCompletion takes a StaticRNN")
-        super(BlockGuardWithCompletion, self).__init__(rnn.helper.main_program)
+        super().__init__(rnn.helper.main_program)
         self.rnn = rnn
 
     def __enter__(self):
         self.rnn.status = StaticRNN.IN_RNN_BLOCK
-        return super(BlockGuardWithCompletion, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
         self.rnn._complete_op()
-        return super(BlockGuardWithCompletion, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class StaticRNNMemoryLink(object):
+class StaticRNNMemoryLink:
     """
     StaticRNNMemoryLink class.
 
@@ -609,7 +608,7 @@ class StaticRNNMemoryLink(object):
         self.mem = mem
 
 
-class StaticRNN(object):
+class StaticRNN:
     """
     :api_attr: Static Graph
 
@@ -1104,19 +1103,19 @@ class WhileGuard(BlockGuard):
     def __init__(self, while_op):
         if not isinstance(while_op, While):
             raise TypeError("WhileGuard takes a while op")
-        super(WhileGuard, self).__init__(while_op.helper.main_program)
+        super().__init__(while_op.helper.main_program)
         self.while_op = while_op
 
     def __enter__(self):
         self.while_op.status = While.IN_WHILE_BLOCK
-        return super(WhileGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
         self.while_op._complete()
-        return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
 def get_inputs_outputs_in_block(
@@ -1181,7 +1180,7 @@ def get_inputs_outputs_in_block(
     return inner_inputs, inner_outputs
 
 
-class While(object):
+class While:
     """
     :api_attr: Static Graph
 
@@ -1953,7 +1952,7 @@ def less_than(x, y, force_cpu=None, cond=None, name=None):
     )
     if cond is not None:
         check_type(cond, "cond", Variable, "less_than")
-    if force_cpu != None:
+    if force_cpu is not None:
         check_type(force_cpu, "force_cpu", bool, "less_than")
 
     helper = LayerHelper("less_than", **locals())
@@ -2077,7 +2076,7 @@ def greater_than(x, y, cond=None, name=None):
     attrs = dict()
 
     if in_dygraph_mode():
-        return _C_ops.greater_than(x, y, -1)
+        return _C_ops.greater_than(x, y)
     else:
         helper.append_op(
             type='greater_than',
@@ -2175,8 +2174,7 @@ def equal(x, y, cond=None, name=None):
           out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
     if in_dygraph_mode():
-        default_axis = -1
-        return _C_ops.equal(x, y, default_axis)
+        return _C_ops.equal(x, y)
 
     check_variable_and_dtype(
         x, "x", ["float32", "float64", "int32", "int64"], "equal"
@@ -2454,20 +2452,18 @@ class ConditionalBlockGuard(BlockGuard):
 
     def __init__(self, block):
         check_type(block, "block", ConditionalBlock, "ConditionalBlockGuard")
-        super(ConditionalBlockGuard, self).__init__(block.helper.main_program)
+        super().__init__(block.helper.main_program)
         self.block = block
 
     def __enter__(self):
-        return super(ConditionalBlockGuard, self).__enter__()
+        return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.block.complete()
-        return super(ConditionalBlockGuard, self).__exit__(
-            exc_type, exc_val, exc_tb
-        )
+        return super().__exit__(exc_type, exc_val, exc_tb)
 
 
-class ConditionalBlock(object):
+class ConditionalBlock:
     '''
     **ConditionalBlock**
 
@@ -2812,7 +2808,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
                 )
             )
         false_cond_block = ConditionalBlock(
-            [logical_not(pred)], is_scalar_condition=True
+            [paddle.logical_not(pred)], is_scalar_condition=True
         )
         with false_cond_block.block():
             origin_false_output = false_fn()
@@ -3177,7 +3173,7 @@ def case(pred_fn_pairs, default=None, name=None):
     return final_fn()
 
 
-class Switch(object):
+class Switch:
     """
     :api_attr: Static Graph
 
@@ -3265,13 +3261,13 @@ class Switch(object):
 
         if len(self.pre_not_conditions) == 0:
             cond_block = ConditionalBlock([condition], is_scalar_condition=True)
-            not_cond = logical_not(x=condition)
+            not_cond = paddle.logical_not(x=condition)
             self.pre_not_conditions.append(not_cond)
         else:
             pre_cond_num = len(self.pre_not_conditions)
             pre_not_cond = self.pre_not_conditions[pre_cond_num - 1]
             new_not_cond = logical_and(
-                x=pre_not_cond, y=logical_not(x=condition)
+                x=pre_not_cond, y=paddle.logical_not(x=condition)
             )
             self.pre_not_conditions.append(new_not_cond)
             cond_block = ConditionalBlock(
@@ -3307,7 +3303,7 @@ class Switch(object):
         return True
 
 
-class IfElseBlockGuard(object):
+class IfElseBlockGuard:
     def __init__(self, is_true, ifelse):
         if not isinstance(ifelse, IfElse):
             raise TypeError("ifelse must be an instance of IfElse class")
@@ -3344,7 +3340,7 @@ class IfElseBlockGuard(object):
         self.ie.status = IfElse.OUT_IF_ELSE_BLOCKS
 
 
-class IfElse(object):
+class IfElse:
     """
     :api_attr: Static Graph
 
@@ -3534,7 +3530,7 @@ class IfElse(object):
         return rlist
 
 
-class DynamicRNN(object):
+class DynamicRNN:
     """
     :api_attr: Static Graph
 

@@ -191,6 +191,25 @@ class TestScatterOp5(OpTest):
             )
 
 
+class TestScatterOp6(OpTest):
+    def setUp(self):
+        self.op_type = "scatter"
+        self.python_api = paddle.scatter
+        ref_np = np.ones((3, 50)).astype("float32")
+        index_np = np.array([[1], [2]]).astype("int32")
+        updates_np = np.random.random((2, 50)).astype("float32")
+        output_np = np.copy(ref_np)
+        output_np[np.array([1, 2]).astype("int32")] = updates_np
+        self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
+        self.outputs = {'Out': output_np}
+
+    def test_check_output(self):
+        self.check_output(check_eager=False)
+
+    def test_check_grad(self):
+        self.check_grad(["X", "Updates"], "Out", check_eager=False)
+
+
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
         self.places = [fluid.CPUPlace()]

@@ -587,7 +587,7 @@ class CommContext:
                         if forward_order_beta > backward_order_beta
                         else backward_order_beta
                     )
-                    if max_beta == None:
+                    if max_beta is None:
                         max_beta = beta
                     else:
                         if beta > max_beta:
@@ -756,7 +756,7 @@ class CommOpCost(OpCost):
     OP_TYPE = "COMM"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
-        super(CommOpCost, self).__init__(op=op, op_desc=op_desc)
+        super().__init__(op=op, op_desc=op_desc)
         self._check_comm_op_type()
         self._comm_context = comm_context
         self._group_ranks = None
@@ -833,7 +833,7 @@ class CommOpCost(OpCost):
             if self.op_desc is not None:
                 self._group_ranks = self.op_desc["group_ranks"]
             elif self.op is not None:
-                ring_id = op.attrs("ring_id")
+                ring_id = self.op.attrs("ring_id")
                 process_group = get_process_group(ring_id)
                 if process_group is None:
                     raise ValueError(
@@ -859,7 +859,7 @@ class CompOpCost(OpCost):
     OP_TYPE = "COMP"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(CompOpCost, self).__init__(op=op, op_desc=op_desc)
+        super().__init__(op=op, op_desc=op_desc)
         self._check_comp_op_type()
         self._cost = self.calc_cost()
         self.cluster = cluster

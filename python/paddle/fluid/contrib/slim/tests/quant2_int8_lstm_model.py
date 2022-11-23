@@ -112,6 +112,7 @@ class TestLstmModelPTQ(unittest.TestCase):
             config.switch_use_feed_fetch_ops(True)
             config.switch_ir_optim(True)
             config.enable_mkldnn()
+            config.disable_mkldnn_fc_passes()  # fc passes caused dnnl error
             config.set_mkldnn_cache_capacity(mkldnn_cache_capacity)
             if enable_ptq:
                 # This pass to work properly, must be added before fc_fuse_pass

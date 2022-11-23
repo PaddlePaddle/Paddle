@@ -15,6 +15,7 @@
 import math
 import warnings
 
+import paddle
 from .. import unique_name
 from ..framework import Variable
 from ..data_feeder import check_type
@@ -35,7 +36,7 @@ __all__ = [
 ]
 
 
-class LearningRateDecay(object):
+class LearningRateDecay:
     """
     Base class of learning rate decay
 
@@ -179,7 +180,7 @@ class PiecewiseDecay(LearningRateDecay):
     """
 
     def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
-        super(PiecewiseDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.boundaries = boundaries
         self.values = values
 
@@ -262,19 +263,17 @@ class NaturalExpDecay(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(NaturalExpDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
         self.decay_rate = decay_rate
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
-        decayed_lr = self.learning_rate * layers.exp(
+            div_res = paddle.floor(div_res)
+        decayed_lr = self.learning_rate * paddle.exp(
             -1 * self.decay_rate * div_res
         )
 
@@ -348,18 +347,16 @@ class ExponentialDecay(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(ExponentialDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
         self.decay_rate = decay_rate
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate * (self.decay_rate**div_res)
 
@@ -429,18 +426,16 @@ class InverseTimeDecay(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(InverseTimeDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
         self.decay_rate = decay_rate
         self.staircase = staircase
 
     def step(self):
-        from .. import layers
-
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
-            div_res = layers.floor(div_res)
+            div_res = paddle.floor(div_res)
 
         decayed_lr = self.learning_rate / (1 + self.decay_rate * div_res)
 
@@ -515,7 +510,7 @@ class PolynomialDecay(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(PolynomialDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.decay_steps = decay_steps
         self.end_learning_rate = end_learning_rate
@@ -523,12 +518,10 @@ class PolynomialDecay(LearningRateDecay):
         self.cycle = cycle
 
     def step(self):
-        from .. import layers
-
         tmp_step_num = self.step_num
         tmp_decay_steps = self.decay_steps
         if self.cycle:
-            div_res = layers.ceil(
+            div_res = paddle.ceil(
                 self.create_lr_var(tmp_step_num / float(self.decay_steps))
             )
 
@@ -594,21 +587,19 @@ class CosineDecay(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(CosineDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.step_each_epoch = step_each_epoch
         self.epochs = epochs
 
     def step(self):
-        from .. import layers
-
-        cur_epoch = layers.floor(
+        cur_epoch = paddle.floor(
             self.create_lr_var(self.step_num / self.step_each_epoch)
         )
         decayed_lr = (
             self.learning_rate
             * 0.5
-            * (layers.cos(cur_epoch * math.pi / self.epochs) + 1)
+            * (paddle.cos(cur_epoch * math.pi / self.epochs) + 1)
         )
         return decayed_lr
 
@@ -668,7 +659,7 @@ class NoamDecay(LearningRateDecay):
         dtype='float32',
         learning_rate=1.0,
     ):
-        super(NoamDecay, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         self.learning_rate = learning_rate
         self.d_model = d_model
         self.warmup_steps = warmup_steps
@@ -679,9 +670,7 @@ class NoamDecay(LearningRateDecay):
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
         lr_value = (
-            self.learning_rate
-            * (self.d_model**-0.5)
-            * layers.elementwise_min(a, b)
+            self.learning_rate * (self.d_model**-0.5) * paddle.minimum(a, b)
         )
         return lr_value
 
@@ -752,7 +741,7 @@ class LinearLrWarmup(LearningRateDecay):
         step=1,
         dtype='float32',
     ):
-        super(LinearLrWarmup, self).__init__(begin, step, dtype)
+        super().__init__(begin, step, dtype)
         type_check = (
             isinstance(learning_rate, float)
             or isinstance(learning_rate, int)
@@ -880,7 +869,7 @@ class ReduceLROnPlateau(LearningRateDecay):
         eps=1e-8,
         dtype='float32',
     ):
-        super(ReduceLROnPlateau, self).__init__(dtype=dtype)
+        super().__init__(dtype=dtype)
         mode = mode.lower()
         if mode not in ['min', 'max']:
             raise ValueError('mode ' + mode + ' is unknown!')
@@ -977,11 +966,9 @@ class ReduceLROnPlateau(LearningRateDecay):
                 self.num_bad_epochs += 1
 
             if self.num_bad_epochs > self.patience:
-                from .. import layers
-
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
-                new_lr = layers.elementwise_max(
+                new_lr = paddle.maximum(
                     self.learning_rate * self.decay_rate, self.min_lr
                 )
                 if self.learning_rate - new_lr > self.eps:
@@ -1141,7 +1128,7 @@ class StepDecay(_LearningRateEpochDecay):
 
         self.step_size = step_size
         self.decay_rate = decay_rate
-        super(StepDecay, self).__init__(learning_rate)
+        super().__init__(learning_rate)
 
     def get_lr(self):
         decay_rate = self.create_lr_var(self.decay_rate)
@@ -1226,7 +1213,7 @@ class MultiStepDecay(_LearningRateEpochDecay):
 
         self.milestones = milestones
         self.decay_rate = decay_rate
-        super(MultiStepDecay, self).__init__(learning_rate)
+        super().__init__(learning_rate)
 
     def get_lr(self):
         decay_rate = self.create_lr_var(self.decay_rate)
@@ -1297,7 +1284,7 @@ class LambdaDecay(_LearningRateEpochDecay):
             )
 
         self.lr_lambda = lr_lambda
-        super(LambdaDecay, self).__init__(learning_rate)
+        super().__init__(learning_rate)
 
     def get_lr(self):
         base_lr = self.create_lr_var(self.base_lr)

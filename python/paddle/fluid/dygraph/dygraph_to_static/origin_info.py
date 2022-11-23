@@ -21,13 +21,10 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
 from paddle.fluid.framework import Program
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 
-class Location(object):
+class Location:
     """
     Location information of source code.
     """
@@ -53,7 +50,7 @@ class Location(object):
         return (self.filepath, self.lineno)
 
 
-class OriginInfo(object):
+class OriginInfo:
     """
     Original information of source code.
     """

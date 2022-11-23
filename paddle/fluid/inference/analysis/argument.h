@@ -288,6 +288,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
+  DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+
+  DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
   DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
   DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir,
@@ -350,6 +353,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_custom_patterns,
                       IpuCustomPatterns,
                       std::vector<std::vector<std::string>>);
+  DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
+                      IpuEnableModelRuntimeExecutor,
+                      bool);
 
   // npu related
   DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);

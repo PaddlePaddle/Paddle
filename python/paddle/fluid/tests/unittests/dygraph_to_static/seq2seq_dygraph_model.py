@@ -44,13 +44,13 @@ class BasicLSTMUnit(Layer):
         forget_bias=1.0,
         dtype='float32',
     ):
-        super(BasicLSTMUnit, self).__init__(dtype)
+        super().__init__(dtype)
 
         self._hiden_size = hidden_size
         self._param_attr = param_attr
         self._bias_attr = bias_attr
-        self._gate_activation = gate_activation or layers.sigmoid
-        self._activation = activation or layers.tanh
+        self._gate_activation = gate_activation or paddle.nn.functional.sigmoid
+        self._activation = activation or paddle.tanh
         self._forget_bias = forget_bias
         self._dtype = dtype
         self._input_size = input_size
@@ -76,12 +76,14 @@ class BasicLSTMUnit(Layer):
         i, j, f, o = layers.split(gate_input, num_or_sections=4, dim=-1)
         new_cell = layers.elementwise_add(
             layers.elementwise_mul(
-                pre_cell, layers.sigmoid(f + self._forget_bias)
+                pre_cell, paddle.nn.functional.sigmoid(f + self._forget_bias)
             ),
-            layers.elementwise_mul(layers.sigmoid(i), layers.tanh(j)),
+            layers.elementwise_mul(
+                paddle.nn.functional.sigmoid(i), paddle.tanh(j)
+            ),
         )
 
-        new_hidden = layers.tanh(new_cell) * layers.sigmoid(o)
+        new_hidden = paddle.tanh(new_cell) * paddle.nn.functional.sigmoid(o)
 
         return new_hidden, new_cell
 
@@ -102,7 +104,7 @@ class BaseModel(fluid.dygraph.Layer):
         beam_max_step_num=2,
         mode='train',
     ):
-        super(BaseModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.src_vocab_size = src_vocab_size
         self.tar_vocab_size = tar_vocab_size
@@ -177,10 +179,10 @@ class BaseModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
@@ -196,7 +198,7 @@ class BaseModel(fluid.dygraph.Layer):
         return new_state
 
     def _gather(self, x, indices, batch_pos):
-        topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return fluid.layers.gather_nd(x, topk_coordinates)
 
     @declarative
@@ -246,7 +248,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -278,7 +280,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -288,7 +290,7 @@ class BaseModel(fluid.dygraph.Layer):
                     step_input = new_hidden
             dec_output.append(step_input)
 
-        dec_output = fluid.layers.stack(dec_output)
+        dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False
@@ -346,7 +348,7 @@ class BaseModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -418,7 +420,7 @@ class BaseModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -452,19 +454,15 @@ class BaseModel(fluid.dygraph.Layer):
             log_probs = fluid.layers.elementwise_add(
                 x=step_log_probs, y=beam_state_log_probs, axis=0
             )
-            scores = fluid.layers.reshape(
+            scores = paddle.reshape(
                 log_probs, [-1, self.beam_size * self.tar_vocab_size]
             )
             topk_scores, topk_indices = fluid.layers.topk(
                 input=scores, k=self.beam_size
             )
 
-            beam_indices = fluid.layers.elementwise_floordiv(
-                topk_indices, vocab_size_tensor
-            )
-            token_indices = fluid.layers.elementwise_mod(
-                topk_indices, vocab_size_tensor
-            )
+            beam_indices = paddle.floor_divide(topk_indices, vocab_size_tensor)
+            token_indices = paddle.remainder(topk_indices, vocab_size_tensor)
             next_log_probs = self._gather(scores, topk_indices, batch_pos)
 
             x = 0
@@ -502,8 +500,8 @@ class BaseModel(fluid.dygraph.Layer):
             predicted_ids.append(token_indices)
             parent_ids.append(beam_indices)
 
-        predicted_ids = fluid.layers.stack(predicted_ids)
-        parent_ids = fluid.layers.stack(parent_ids)
+        predicted_ids = paddle.stack(predicted_ids)
+        parent_ids = paddle.stack(parent_ids)
         predicted_ids = fluid.layers.gather_tree(predicted_ids, parent_ids)
         predicted_ids = self._transpose_batch_time(predicted_ids)
         return predicted_ids
@@ -525,7 +523,7 @@ class AttentionModel(fluid.dygraph.Layer):
         beam_max_step_num=2,
         mode='train',
     ):
-        super(AttentionModel, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.src_vocab_size = src_vocab_size
         self.tar_vocab_size = tar_vocab_size
@@ -648,7 +646,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return fluid.layers.transpose(x, [1, 0] + list(range(2, len(x.shape))))
 
     def _merge_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, x.shape[2]))
+        return paddle.reshape(x, shape=(-1, x.shape[2]))
 
     def tile_beam_merge_with_batch(self, x):
         x = fluid.layers.unsqueeze(x, [1])  # [batch_size, 1, ...]
@@ -659,7 +657,7 @@ class AttentionModel(fluid.dygraph.Layer):
             x, list(range(2, len(x.shape))) + [0, 1]
         )  # [..., batch_size, beam_size]
         # use 0 to copy to avoid wrong shape
-        x = fluid.layers.reshape(
+        x = paddle.reshape(
             x, shape=[0] * (len(x.shape) - 2) + [-1]
         )  # [..., batch_size * beam_size]
         x = fluid.layers.transpose(
@@ -668,7 +666,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return x
 
     def _split_batch_beams(self, x):
-        return fluid.layers.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
+        return paddle.reshape(x, shape=(-1, self.beam_size, x.shape[1]))
 
     def _expand_to_beam_size(self, x):
         x = fluid.layers.unsqueeze(x, [1])
@@ -684,7 +682,7 @@ class AttentionModel(fluid.dygraph.Layer):
         return new_state
 
     def _gather(self, x, indices, batch_pos):
-        topk_coordinates = fluid.layers.stack([batch_pos, indices], axis=2)
+        topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         return fluid.layers.gather_nd(x, topk_coordinates)
 
     def attention(self, query, enc_output, mask=None):
@@ -760,7 +758,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 enc_new_hidden, enc_new_cell = self.enc_units[i](
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     enc_step_input = fluid.layers.dropout(
                         enc_new_hidden,
                         dropout_prob=self.dropout,
@@ -778,7 +776,7 @@ class AttentionModel(fluid.dygraph.Layer):
             enc_outputs.append(enc_step_input)
             enc_hidden, enc_cell = new_enc_hidden, new_enc_cell
 
-        enc_outputs = fluid.layers.stack(enc_outputs)
+        enc_outputs = paddle.stack(enc_outputs)
         enc_outputs = self._transpose_batch_time(enc_outputs)
 
         # train
@@ -803,7 +801,7 @@ class AttentionModel(fluid.dygraph.Layer):
                 )
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
-                if self.dropout != None and self.dropout > 0.0:
+                if self.dropout is not None and self.dropout > 0.0:
                     step_input = fluid.layers.dropout(
                         new_hidden,
                         dropout_prob=self.dropout,
@@ -819,7 +817,7 @@ class AttentionModel(fluid.dygraph.Layer):
             dec_output.append(out)
             dec_hidden, dec_cell = new_dec_hidden, new_dec_cell
 
-        dec_output = fluid.layers.stack(dec_output)
+        dec_output = paddle.stack(dec_output)
         dec_output = self.fc(self._transpose_batch_time(dec_output))
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=dec_output, label=label, soft_label=False

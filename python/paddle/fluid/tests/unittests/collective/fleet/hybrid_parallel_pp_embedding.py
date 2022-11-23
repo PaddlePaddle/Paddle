@@ -41,7 +41,7 @@ hidden_size = 8
 
 class SimpleNet(Layer):
     def __init__(self):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
         self.softmax_weight = self.create_parameter(
@@ -55,7 +55,7 @@ class SimpleNet(Layer):
         x_emb = self.word_embeddings(x1)
         fc = fluid.layers.matmul(x_emb, self.softmax_weight)
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=y1, soft_label=False
         )
@@ -64,7 +64,7 @@ class SimpleNet(Layer):
 
 class EmbeddingNet(Layer):
     def __init__(self):
-        super(EmbeddingNet, self).__init__()
+        super().__init__()
         self.word_embeddings = nn.Embedding(vocab_size, hidden_size)
 
     def forward(self, args):
@@ -75,7 +75,7 @@ class EmbeddingNet(Layer):
 
 class MatmulNet(Layer):
     def __init__(self):
-        super(MatmulNet, self).__init__()
+        super().__init__()
         self.softmax_weight = self.create_parameter(
             shape=[hidden_size, vocab_size]
         )
@@ -89,19 +89,19 @@ class MatmulNet(Layer):
 
 class BiasNet(Layer):
     def __init__(self):
-        super(BiasNet, self).__init__()
+        super().__init__()
         self.softmax_bias = self.create_parameter(shape=[vocab_size])
 
     def forward(self, args):
         fc, x2 = args
         fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
-        projection = fluid.layers.reshape(fc, shape=[-1, vocab_size])
+        projection = paddle.reshape(fc, shape=[-1, vocab_size])
         return projection, x2
 
 
 class LossNet(Layer):
     def __init__(self):
-        super(LossNet, self).__init__()
+        super().__init__()
 
     def forward(self, args, y1):
         projection, x2 = args
@@ -113,7 +113,7 @@ class LossNet(Layer):
 
 class SimpleNetPipe(Layer):
     def __init__(self):
-        super(SimpleNetPipe, self).__init__()
+        super().__init__()
         self.features = Sequential(EmbeddingNet(), MatmulNet(), BiasNet())
 
     def to_layers(self):

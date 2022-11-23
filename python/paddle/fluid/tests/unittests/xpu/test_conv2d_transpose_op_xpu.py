@@ -280,6 +280,17 @@ class XPUTestConv2DTransposeOp(XPUOpTestWrapper):
             f_c = self.input_size[1]
             self.filter_size = [f_c, 6, 3, 3]
 
+    class TestWithEvenUpsample(TestConv2DTransposeOp):
+        def init_test_case(self):
+            self.pad = [2, 2]
+            self.stride = [2, 2]
+            self.groups = 1
+            self.dilations = [1, 1]
+            self.output_size = [14, 14]
+            self.input_size = [2, 3, 7, 7]  # NCHW
+            f_c = self.input_size[1]
+            self.filter_size = [f_c, 6, 5, 5]
+
 
 support_types = get_xpu_op_support_types('conv2d_transpose')
 for stype in support_types:

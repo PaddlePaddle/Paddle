@@ -28,6 +28,7 @@ from paddle.fluid.layers import (
     nn,
     tensor,
 )
+import paddle
 
 
 class Uniform(distribution.Distribution):
@@ -142,7 +143,7 @@ class Uniform(distribution.Distribution):
                 self.low = tensor.cast(self.low, dtype=self.dtype)
                 self.high = tensor.cast(self.high, dtype=self.dtype)
 
-        super(Uniform, self).__init__(self.low.shape)
+        super().__init__(self.low.shape)
 
     def sample(self, shape, seed=0):
         """Generate samples of the specified shape.
@@ -174,8 +175,8 @@ class Uniform(distribution.Distribution):
                 max=1.0,
                 seed=seed,
             )
-            zero_tmp_reshape = nn.reshape(zero_tmp, output_shape)
-            uniform_random_tmp_reshape = nn.reshape(
+            zero_tmp_reshape = paddle.reshape(zero_tmp, output_shape)
+            uniform_random_tmp_reshape = paddle.reshape(
                 uniform_random_tmp, output_shape
             )
             output = uniform_random_tmp_reshape * (
@@ -193,7 +194,7 @@ class Uniform(distribution.Distribution):
             )
             output = elementwise_add(output, self.low, name=name)
             if self.all_arg_is_float:
-                return nn.reshape(output, shape, name=name)
+                return paddle.reshape(output, shape, name=name)
             else:
                 return output
 

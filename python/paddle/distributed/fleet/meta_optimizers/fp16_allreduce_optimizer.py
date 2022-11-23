@@ -11,15 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle.fluid import core, framework, unique_name
+from paddle.framework import core
+from paddle.utils import unique_name
 from .meta_optimizer_base import MetaOptimizerBase
+import paddle
 
 __all__ = []
 
 
 class FP16AllReduceOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(FP16AllReduceOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = [
@@ -36,7 +38,7 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
-        super(FP16AllReduceOptimizer, self)._set_basic_info(
+        super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
 
@@ -133,7 +135,7 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
 
             with block.program._optimized_guard(
                 [param, grad]
-            ), framework.name_scope('fp16_allreduce'):
+            ), paddle.static.name_scope('fp16_allreduce'):
                 cast_op = block.append_op(
                     type="cast",
                     inputs={"X": grad},

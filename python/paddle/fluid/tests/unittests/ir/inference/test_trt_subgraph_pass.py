@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 class TensorRTSubgraphPassFcTest(InferencePassTest):
@@ -30,7 +31,7 @@ class TensorRTSubgraphPassFcTest(InferencePassTest):
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )
             fc_out = fluid.layers.fc(input=[data], act=None, size=1000)
-            reshape_out = fluid.layers.reshape(x=fc_out, shape=[1, 1000])
+            reshape_out = paddle.reshape(x=fc_out, shape=[1, 1000])
         self.feeds = {
             "data": np.random.random([1, 6, 64, 64]).astype("float32"),
         }
@@ -398,7 +399,7 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
     TensorRTSubgraphPassElementwiseTest
 ):
     def setUp(self):
-        super(TensorRTSubgraphPassElementwiseSerializeTest, self).setUp()
+        super().setUp()
         self.trt_parameters = TensorRTSubgraphPassElementwiseTest.TensorRTParam(
             1 << 30, 32, 0, AnalysisConfig.Precision.Float32, True, False
         )
@@ -406,9 +407,7 @@ class TensorRTSubgraphPassElementwiseSerializeTest(
     def test_check_output(self):
         if os.path.exists(self.path + "_opt_cache"):
             shutil.rmtree(self.path + "_opt_cache")
-        super(
-            TensorRTSubgraphPassElementwiseSerializeTest, self
-        ).test_check_output()
+        super().test_check_output()
 
 
 class TensorRTSubgraphPassElementwiseBroadcastDynamicTest(InferencePassTest):

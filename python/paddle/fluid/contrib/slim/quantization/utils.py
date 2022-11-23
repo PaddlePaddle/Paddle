@@ -332,7 +332,7 @@ def set_variable_data(scope, place, var_name, np_value):
         np_value, np.ndarray
     ), 'The type of value should be numpy array.'
     var_node = scope.find_var(var_name)
-    if var_node != None:
+    if var_node is not None:
         tensor = var_node.get_tensor()
         tensor.set(np_value, place)
 
@@ -472,7 +472,7 @@ def l2_loss(gt, pred):
     return ((gt - pred) ** 2).mean()
 
 
-class tqdm(object):
+class tqdm:
     def __init__(self, total, bar_format='Loading|{bar}', ncols=80):
         self.total = total
         self.bar_format = bar_format

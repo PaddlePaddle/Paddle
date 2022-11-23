@@ -20,7 +20,7 @@ from paddle.utils import download
 from paddle.dataset.common import DATA_HOME
 from .dataset import AudioClassificationDataset
 
-__all__ = ['TESS']
+__all__ = []
 
 
 class TESS(AudioClassificationDataset):
@@ -107,7 +107,7 @@ class TESS(AudioClassificationDataset):
         if archive is not None:
             self.archive = archive
         files, labels = self._get_data(mode, n_folds, split)
-        super(TESS, self).__init__(
+        super().__init__(
             files=files, labels=labels, feat_type=feat_type, **kwargs
         )
 

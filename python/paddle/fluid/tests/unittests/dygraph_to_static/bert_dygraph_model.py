@@ -30,7 +30,7 @@ class PositionwiseFeedForwardLayer(Layer):
         param_initializer=None,
         name="",
     ):
-        super(PositionwiseFeedForwardLayer, self).__init__()
+        super().__init__()
 
         self._i2h = Linear(
             input_dim=d_model,
@@ -81,7 +81,7 @@ class EncoderSubLayer(Layer):
         name="",
     ):
 
-        super(EncoderSubLayer, self).__init__()
+        super().__init__()
         self.name = name
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
@@ -145,7 +145,7 @@ class EncoderLayer(Layer):
         name="",
     ):
 
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -187,7 +187,7 @@ class EncoderLayer(Layer):
 
 class BertModelLayer(Layer):
     def __init__(self, config, return_pooled_out=True, use_fp16=False):
-        super(BertModelLayer, self).__init__()
+        super().__init__()
 
         self._emb_size = config['hidden_size']
         self._n_layer = config['num_hidden_layers']
@@ -279,7 +279,7 @@ class BertModelLayer(Layer):
         self_attn_mask = fluid.layers.scale(
             x=self_attn_mask, scale=10000.0, bias=-1.0, bias_after_scale=False
         )
-        n_head_self_attn_mask = fluid.layers.stack(
+        n_head_self_attn_mask = paddle.stack(
             x=[self_attn_mask] * self._n_head, axis=1
         )
         n_head_self_attn_mask.stop_gradient = True
@@ -295,7 +295,7 @@ class BertModelLayer(Layer):
             input=enc_output, axes=[1], starts=[0], ends=[1]
         )
         next_sent_feat = self.pooled_fc(next_sent_feat)
-        next_sent_feat = fluid.layers.reshape(
+        next_sent_feat = paddle.reshape(
             next_sent_feat, shape=[-1, self._emb_size]
         )
 
@@ -310,7 +310,7 @@ class PretrainModelLayer(Layer):
         weight_sharing=False,
         use_fp16=False,
     ):
-        super(PretrainModelLayer, self).__init__()
+        super().__init__()
         self.config = config
         self._voc_size = config['vocab_size']
         self._emb_size = config['hidden_size']
@@ -391,11 +391,11 @@ class PretrainModelLayer(Layer):
         enc_output, next_sent_feat = self.bert_layer(
             src_ids, position_ids, sentence_ids, input_mask
         )
-        reshaped_emb_out = fluid.layers.reshape(
+        reshaped_emb_out = paddle.reshape(
             x=enc_output, shape=[-1, self._emb_size]
         )
 
-        mask_feat = fluid.layers.gather(input=reshaped_emb_out, index=mask_pos)
+        mask_feat = paddle.gather(reshaped_emb_out, index=mask_pos)
         mask_trans_feat = self.pooled_fc(mask_feat)
         mask_trans_feat = self.pre_process_layer(mask_trans_feat)
 

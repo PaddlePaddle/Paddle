@@ -29,7 +29,7 @@ from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 # Copy from models
-class TrainTaskConfig(object):
+class TrainTaskConfig:
     # support both CPU and GPU now.
     use_gpu = True
     # the epoch number to train.
@@ -65,7 +65,7 @@ class TrainTaskConfig(object):
     save_freq = 10000
 
 
-class InferTaskConfig(object):
+class InferTaskConfig:
     use_gpu = True
     # the number of examples in one run for sequence generation.
     batch_size = 10
@@ -82,7 +82,7 @@ class InferTaskConfig(object):
     model_path = "trained_models/pass_1.infer.model"
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     # These following five vocabularies related configurations will be set
     # automatically according to the passed vocabulary path and special tokens.
     # size of source word dictionary.
@@ -393,7 +393,7 @@ pos_inp2 = position_encoding_init(
 
 class PrePostProcessLayer(Layer):
     def __init__(self, d_model, process_cmd, shape_len=None):
-        super(PrePostProcessLayer, self).__init__()
+        super().__init__()
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
@@ -425,7 +425,7 @@ class PrePostProcessLayer(Layer):
 
 class PositionwiseFeedForwardLayer(Layer):
     def __init__(self, d_inner_hid, d_hid, dropout_rate):
-        super(PositionwiseFeedForwardLayer, self).__init__()
+        super().__init__()
         self._i2h = Linear(d_hid, d_inner_hid, act="relu")
         self._h2o = Linear(d_inner_hid, d_hid)
         self._dropout_rate = dropout_rate
@@ -455,7 +455,7 @@ class MultiHeadAttentionLayer(Layer):
         gather_idx=None,
         static_kv=False,
     ):
-        super(MultiHeadAttentionLayer, self).__init__()
+        super().__init__()
         self._n_head = n_head
         self._d_key = d_key
         self._d_value = d_value
@@ -476,16 +476,16 @@ class MultiHeadAttentionLayer(Layer):
         v = self._v_fc(values)
 
         # split head
-        reshaped_q = fluid.layers.reshape(
-            x=q, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_q = paddle.reshape(
+            x=q, shape=[0, 0, self._n_head, self._d_key]
         )
         transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
-        reshaped_k = fluid.layers.reshape(
-            x=k, shape=[0, 0, self._n_head, self._d_key], inplace=False
+        reshaped_k = paddle.reshape(
+            x=k, shape=[0, 0, self._n_head, self._d_key]
         )
         transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
-        reshaped_v = fluid.layers.reshape(
-            x=v, shape=[0, 0, self._n_head, self._d_value], inplace=False
+        reshaped_v = paddle.reshape(
+            x=v, shape=[0, 0, self._n_head, self._d_value]
         )
         transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
@@ -514,10 +514,9 @@ class MultiHeadAttentionLayer(Layer):
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
         trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
-        final_out = fluid.layers.reshape(
+        final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
-            inplace=False,
         )
 
         # fc to output
@@ -540,7 +539,7 @@ class EncoderSubLayer(Layer):
         postprocess_cmd="da",
     ):
 
-        super(EncoderSubLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._postprocess_cmd = postprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -608,7 +607,7 @@ class EncoderLayer(Layer):
         postprocess_cmd="da",
     ):
 
-        super(EncoderLayer, self).__init__()
+        super().__init__()
         self._preprocess_cmd = preprocess_cmd
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
@@ -656,7 +655,7 @@ class PrepareEncoderDecoderLayer(Layer):
         word_emb_param_name=None,
         pos_enc_param_name=None,
     ):
-        super(PrepareEncoderDecoderLayer, self).__init__()
+        super().__init__()
         self._src_max_len = src_max_len
         self._src_emb_dim = src_emb_dim
         self._src_vocab_size = src_vocab_size
@@ -732,7 +731,7 @@ class WrapEncoderLayer(Layer):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapEncoderLayer, self).__init__()
+        super().__init__()
 
         self._prepare_encoder_layer = PrepareEncoderDecoderLayer(
             src_vocab_size,
@@ -780,7 +779,7 @@ class DecoderSubLayer(Layer):
         cache=None,
         gather_idx=None,
     ):
-        super(DecoderSubLayer, self).__init__()
+        super().__init__()
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
         self._prepostprcess_dropout = prepostprocess_dropout
@@ -886,7 +885,7 @@ class DecoderLayer(Layer):
         caches=None,
         gather_idx=None,
     ):
-        super(DecoderLayer, self).__init__()
+        super().__init__()
         self._pre_process_layer = PrePostProcessLayer(
             d_model, preprocess_cmd, 3
         )
@@ -957,7 +956,7 @@ class WrapDecoderLayer(Layer):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
-        super(WrapDecoderLayer, self).__init__()
+        super().__init__()
 
         self._prepare_decoder_layer = PrepareEncoderDecoderLayer(
             trg_vocab_size,
@@ -994,8 +993,8 @@ class WrapDecoderLayer(Layer):
             dec_input, enc_output, trg_slf_attn_bias, trg_src_attn_bias
         )
 
-        dec_output_reshape = fluid.layers.reshape(
-            dec_output, shape=[-1, dec_output.shape[-1]], inplace=False
+        dec_output_reshape = paddle.reshape(
+            dec_output, shape=[-1, dec_output.shape[-1]]
         )
 
         if self._weight_sharing:
@@ -1037,7 +1036,7 @@ class TransFormer(Layer):
         is_test=False,
         is_sparse=False,
     ):
-        super(TransFormer, self).__init__()
+        super().__init__()
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
         if weight_sharing:

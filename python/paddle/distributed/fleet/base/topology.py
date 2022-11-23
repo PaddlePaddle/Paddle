@@ -23,14 +23,15 @@ __all__ = ['CommunicateTopology', 'HybridCommunicateGroup']
 _HYBRID_PARALLEL_GROUP = None
 
 
-class ParallelMode(object):
+class ParallelMode:
     """
+
     There are all the parallel modes currently supported:
-    - DATA_PARALLEL: Distribute input data to different devices.
-    - TENSOR_PARALLEL: Shards tensors in the network to different devices.
-    - PIPELINE_PARALLEL: Place different layers of the network on different devices.
-    - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states
-                         corresponding to the parameters to each device.
+
+        - DATA_PARALLEL: Distribute input data to different devices.
+        - TENSOR_PARALLEL: Shards tensors in the network to different devices.
+        - PIPELINE_PARALLEL: Place different layers of the network on different devices.
+        - SHARDING_PARALLEL: Segment the model parameters, parameter gradients and optimizer states corresponding to the parameters to each device.
 
     Examples:
         .. code-block:: python
@@ -47,7 +48,7 @@ class ParallelMode(object):
     SHARDING_PARALLEL = 3
 
 
-class CommunicateTopology(object):
+class CommunicateTopology:
     def __init__(
         self,
         hybrid_group_names=["data", "pipe", "sharding", "model"],
@@ -133,7 +134,7 @@ class CommunicateTopology(object):
         return self.get_rank(**tf)
 
 
-class HybridCommunicateGroup(object):
+class HybridCommunicateGroup:
     def __init__(self, topology):
         self.nranks = paddle.distributed.get_world_size()
         self.global_rank = paddle.distributed.get_rank()
@@ -410,7 +411,7 @@ class HybridCommunicateGroup(object):
         )
 
 
-class _CommunicateGroup(object):
+class _CommunicateGroup:
     """tmp for static"""
 
     def __init__(self):

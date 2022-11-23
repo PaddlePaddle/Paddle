@@ -21,7 +21,7 @@ from paddle.fluid import core
 __all__ = []
 
 
-class LegacyPyLayerContext(object):
+class LegacyPyLayerContext:
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -131,7 +131,7 @@ def with_mateclass(meta, *bases):
     return type.__new__(impl, "impl", (), {})
 
 
-class CPyLayer(object):
+class CPyLayer:
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
@@ -201,7 +201,7 @@ class LayerMeta(type):
             name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
         )
 
-        return super(LayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
@@ -336,7 +336,7 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         )
 
 
-class EagerPyLayerContext(object):
+class EagerPyLayerContext:
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
@@ -552,7 +552,7 @@ class EagerPyLayerMeta(type):
             name + '_backward', (EagerPyLayerBackward,), {"_forward_cls": cls}
         )
 
-        return super(EagerPyLayerMeta, cls).__init__(name, bases, attrs)
+        return super().__init__(name, bases, attrs)
 
 
 class EagerPyLayer(

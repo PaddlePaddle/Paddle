@@ -97,7 +97,7 @@ fast_decoder_data_input_fields = (
 )
 
 
-class ModelHyperParams(object):
+class ModelHyperParams:
     print_step = 2
     save_dygraph_model_path = "dygraph_trained_models"
     save_static_model_path = "static_trained_models"
@@ -290,7 +290,7 @@ def get_feed_data_reader(args, mode='train'):
     return __for_train__ if mode == 'train' else __for_test__
 
 
-class InputField(object):
+class InputField:
     def __init__(self, input_slots):
         self.feed_list = []
         for slot in input_slots:

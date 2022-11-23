@@ -225,10 +225,6 @@ cc_test(
   SRCS reader_test.cc
   DEPS reader)
 
-cc_library(
-  threadpool
-  SRCS threadpool.cc
-  DEPS enforce)
 cc_test(
   threadpool_test
   SRCS threadpool_test.cc
@@ -503,7 +499,8 @@ if(WITH_XPU)
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 else()
   cc_library(
     operator
@@ -528,7 +525,8 @@ else()
          phi_utils
          kernel_factory
          infershape_utils
-         op_utils)
+         op_utils
+         op_compat_infos)
 endif()
 
 cc_test(
@@ -1166,19 +1164,6 @@ cc_test_old(
   string_helper
   glog)
 
-cc_library(
-  save_load_util
-  SRCS save_load_util.cc
-  DEPS tensor scope layer)
-cc_test_old(
-  save_load_util_test
-  SRCS
-  save_load_util_test.cc
-  DEPS
-  save_load_util
-  tensor
-  scope
-  layer)
 cc_library(
   generator
   SRCS generator.cc

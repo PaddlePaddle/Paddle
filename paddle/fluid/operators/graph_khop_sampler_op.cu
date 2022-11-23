@@ -41,8 +41,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/graph_khop_sampler_imp.h"
 #include "paddle/fluid/operators/graph_khop_sampler_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 constexpr int WARP_SIZE = 32;
 
@@ -134,8 +134,7 @@ __global__ void GraphSampleNeighborsCUDAKernel(const uint64_t rand_seed,
         const int num = curand(&rng) % (idx + 1);
 #endif
         if (num < k) {
-          paddle::platform::CudaAtomicMax(output_idxs + out_row_start + num,
-                                          idx);
+          phi::CudaAtomicMax(output_idxs + out_row_start + num, idx);
         }
       }
 #ifdef PADDLE_WITH_CUDA
