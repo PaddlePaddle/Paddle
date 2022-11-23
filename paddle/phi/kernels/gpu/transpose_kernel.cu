@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/phi/kernels/funcs/transpose_op.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -38,7 +38,7 @@ void TransposeKernel(const Context& ctx,
     phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
     return;
   }
-  paddle::operators::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
+  phi::funcs::TransposeGPUKernelDriver<T>(ctx, x, axis, out);
 }
 
 }  // namespace phi
