@@ -80,9 +80,9 @@ static bool IsNumpyArray(PyObject* obj) {
   return type_name == "numpy.ndarray";
 }
 
-void InitTensorWithNumpyValue(Tensor* self,
-                              const py::object& array,
+void InitTensorWithNumpyValue(const py::object& array,
                               const paddle::platform::Place& place,
+                              Tensor* self,
                               bool zero_copy = false) {
   PADDLE_ENFORCE_EQ(
       self->defined(),
@@ -238,7 +238,7 @@ static PyObject* tensor__add__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__add__", 0);
@@ -339,7 +339,7 @@ static PyObject* tensor__sub__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__sub__", 0);
@@ -436,7 +436,7 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rsub__", 0);
@@ -535,7 +535,7 @@ static PyObject* tensor__mul__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mul__", 0);
@@ -641,7 +641,7 @@ static PyObject* tensor__div__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__div__", 0);
@@ -761,7 +761,7 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rdiv__", 0);
@@ -879,7 +879,7 @@ static PyObject* tensor__gt__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__gt__", 0);
@@ -969,7 +969,7 @@ static PyObject* tensor__ge__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__ge__", 0);
@@ -1060,7 +1060,7 @@ static PyObject* tensor__mod__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__mod__", 0);
@@ -1150,7 +1150,7 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__matmul__", 0);
@@ -1258,7 +1258,7 @@ static PyObject* tensor__lt__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__lt__", 0);
@@ -1348,7 +1348,7 @@ static PyObject* tensor__le__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__le__", 0);
@@ -1439,7 +1439,7 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__floordiv__", 0);
@@ -1528,7 +1528,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__pow__", 0);
@@ -1620,7 +1620,7 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__rpow__", 0);
@@ -1710,7 +1710,7 @@ static PyObject* tensor__ne__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__ne__", 0);
@@ -1800,7 +1800,7 @@ static PyObject* tensor__eq__method(TensorObject* self,
   } else if (IsNumpyArray(other_obj)) {
     py::object numpy_value = py::object(py::handle(other_obj), true);
     other_tensor = paddle::experimental::Tensor(place);
-    InitTensorWithNumpyValue(&other_tensor, numpy_value, place);
+    InitTensorWithNumpyValue(numpy_value, place, &other_tensor);
   } else {
     paddle::experimental::Scalar value =
         CastPyArg2Scalar(other_obj, "__eq__", 0);
