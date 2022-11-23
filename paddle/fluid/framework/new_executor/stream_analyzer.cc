@@ -17,6 +17,7 @@
 #include <future>
 #include <unordered_set>
 
+#include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -224,9 +225,9 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     if (op_type == "c_allreduce_sum" &&
         op->Attr<bool>("use_calc_stream") == false) {
       int ring_id = op->Attr<int>("ring_id");
-      return platform::NCCLCommContext::Instance()
-          .Get(ring_id, place_)
-          ->dev_context();
+      return distributed::ProcessGroupIdMap::GetInstance()
+          .at(ring_id)
+          ->GetDeviceContext(place_);
     }
 #endif
   }

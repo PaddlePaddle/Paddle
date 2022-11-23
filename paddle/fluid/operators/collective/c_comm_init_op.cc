@@ -32,6 +32,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/collective_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
+#endif
+
 namespace paddle {
 namespace framework {
 class Scope;
@@ -51,10 +55,21 @@ class CCommInitOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-// TODO(wangxi): Put this in the unified header file
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    using UniqueId = ncclUniqueId;
-    using CommContext = platform::NCCLCommContext;
+    auto var = scope.FindVar(Input("X"));
+    PADDLE_ENFORCE_NOT_NULL(
+        var, platform::errors::InvalidArgument("Input con not be empty."));
+
+    ncclUniqueId* comm_id = var->GetMutable<ncclUniqueId>();
+
+    int rank = Attr<int>("rank");
+    int nranks = Attr<int>("nranks");
+    int ring_id = Attr<int>("ring_id");
+    auto process_group = distributed::ProcessGroupNCCL::CreateProcessGroupNCCL(
+        nullptr, rank, nranks, ring_id);
+    process_group->SetUniqueId(place, *comm_id);
+    process_group->CreateComm(place);
+
 #elif defined(PADDLE_WITH_XPU_BKCL)
     using UniqueId = BKCLUniqueId;
     using CommContext = platform::BKCLCommContext;
@@ -73,8 +88,7 @@ class CCommInitOp : public framework::OperatorBase {
         platform::errors::PreconditionNotMet(
             "CCommInitOp can run on gpu or xpu or mlu place only."));
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
+#if defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CNCL)
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));

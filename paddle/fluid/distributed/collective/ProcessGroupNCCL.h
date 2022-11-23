@@ -163,6 +163,13 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
 
   ncclComm_t NCCLComm(const Place& place) const;
 
+  // NOTE(liyurui): The below methods only use for initialized in static mode.
+  // In static mode, we use `c_gen_nccl_id` for generate and broadcast unique
+  // nccl id, `c_comm_init` for initialize and record nccl_comm. Also, we
+  // removed the lazy init feature to fit the origin syntax in static mode.
+  void SetUniqueId(const Place& place, ncclUniqueId nccl_id);
+  void CreateComm(const Place& place);
+
   // TODO(liyurui): This API will be moved later
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& in_tensors,
@@ -250,6 +257,9 @@ class ProcessGroupNCCL final : public ProcessGroupStream {
   std::unordered_map<std::string, phi::GPUContext*> place_to_calc_ctx_;
   std::unordered_map<std::string, std::unique_ptr<phi::GPUContext>>
       place_to_comm_ctx_;
+
+  // NOTE(liyurui): This map only used in static mode for stash nccl_id
+  std::unordered_map<std::string, ncclUniqueId> place_to_nccl_id_;
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;

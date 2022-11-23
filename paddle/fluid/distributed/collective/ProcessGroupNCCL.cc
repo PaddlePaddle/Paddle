@@ -1058,5 +1058,39 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
   return process_group;
 }
 
+void ProcessGroupNCCL::SetUniqueId(const Place& place, ncclUniqueId nccl_id) {
+  const auto& key = GetKeyFromPlace(place);
+  place_to_nccl_id_.emplace(key, nccl_id);
+}
+
+void ProcessGroupNCCL::CreateComm(const Place& place) {
+  const auto& key = GetKeyFromPlace(place);
+  PADDLE_ENFORCE_NE(
+      place_to_nccl_id_.find(key),
+      place_to_nccl_id_.end(),
+      platform::errors::PreconditionNotMet(
+          "Unique nccl id is not generated, use `c_gen_nccl_id` first."));
+
+  ncclUniqueId nccl_id = place_to_nccl_id_.at(key);
+
+  auto* calc_ctx = static_cast<phi::GPUContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+
+  auto comm_ctx = std::make_unique<phi::GPUContext>(place);
+
+  ncclComm_t nccl_comm;
+  NCCL_CHECK(platform::dynload::ncclCommInitRank(
+      &nccl_comm, GetSize(), nccl_id, GetRank()));
+  comm_ctx->set_nccl_comm(nccl_comm);
+
+  place_to_calc_event_.emplace(key, place);
+  place_to_calc_ctx_.emplace(key, calc_ctx);
+  place_to_comm_ctx_.emplace(key, std::move(comm_ctx));
+
+  // TODO(sunyilun): for compatibility, will be removed later
+  std::vector<phi::GPUContext*> comm_ctx_wrapper{place_to_comm_ctx_[key].get()};
+  places_to_ctx_.emplace(key, comm_ctx_wrapper);
+}
+
 }  //  namespace distributed
 }  //  namespace paddle
