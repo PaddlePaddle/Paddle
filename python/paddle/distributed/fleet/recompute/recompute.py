@@ -14,13 +14,12 @@
 
 import paddle
 import weakref
-from paddle.fluid import core
+from paddle.framework import core, in_dygraph_mode
 from paddle.autograd import PyLayer
 from paddle.autograd.py_layer import LegacyPyLayer
 
-from paddle.fluid import framework
 import contextlib
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import framework
 
 from ..utils.log_util import logger
 
@@ -499,12 +498,13 @@ def recompute(function, *args, **kwargs):
               whose intermediate activations will be released to save memory in forward stage and will be recomputed
               in backward stage for gradient calculation.
         *args(Tensor): inputs to the function.
-        **kwargs(Dict): Kwargs should only contain the key-value pair of preserve_rng_state, which is used to
-              indicate whether to save the forward rng. If it is True, then the last forward rng value will be
-              restored when the forward recalculation of backpropagation is performed. The default
-              preserve_rng_state is True. if the Kwargs contains other key-value, it must be contain the key-value(use_reentrant=False),
-              which indicates the hook implementation of recompute. default it is the PyLayer implementation of recompute.
-
+        **kwargs(Dict): Kwargs should only contain two kinds of key-value params, the one is part of function's key-value params,
+                        and the other contains 'preserve_rng_state' and 'use_reentrant'. the key-value pair of preserve_rng_state,
+                        which is used to indicate whether to save the forward rng. If it is True, then the last forward rng value
+                        will be restored when the forward recalculation of backpropagation is performed, its default value is True.
+                        the key-value pair of use_reentrant is used to indicate which implementation of recompute you will be used.
+                        'use_reentrant=True' means to use the PyLayer implementation of recompute, 'use_reentrant=False' means to
+                        use the Hook implementation of recompute, its default value is True.
     Returns:
         Output of function on args.
 
