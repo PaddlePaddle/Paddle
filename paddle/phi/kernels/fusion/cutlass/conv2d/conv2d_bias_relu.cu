@@ -204,7 +204,7 @@ void cutlass_conv2d_bias_relu(COMMON_CONV_PARAMS) {
     cudaEventCreate(&beg);
     cudaEventCreate(&end);
     cudaEventRecord(beg);
-    for (int i = 0; i < REPEATE; i++) {
+    for (int i = 0; i < REPEAT; i++) {
       status = func(COMMON_CONV_ARGS);
     }
 

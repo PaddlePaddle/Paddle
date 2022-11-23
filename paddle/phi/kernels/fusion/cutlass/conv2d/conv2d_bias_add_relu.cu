@@ -220,7 +220,7 @@ void cutlass_conv2d_bias_add_relu(CONV_RESIDUAL_PARAMS) {
     cudaEventCreate(&beg);
     cudaEventCreate(&end);
     cudaEventRecord(beg);
-    for (int i = 0; i < REPEATE; i++) {
+    for (int i = 0; i < REPEAT; i++) {
       func(CONV_RESIDUAL_ARGS);
     }
 

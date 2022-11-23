@@ -204,6 +204,7 @@ __global__ void naive_conv2d_kernel(const half *input,
                                     const half *residual,
                                     int op_type) {
   int idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (idx >= batch * oc * oh * ow) return;
   int batch_i = idx / (oc * oh * ow);
   int remain = idx % (oc * oh * ow);
   int oc_i = remain / (oh * ow);
@@ -275,7 +276,7 @@ float conv2d_diff_gpu(COMMON_CONV_PARAMS,
   int ow = (iw + pad_w * 2 - kw) / stride_w + 1;
 
   int onhwc = batch * oh * ow * oc;
-  uint3 grid = {onhwc / 256, 1, 1};
+  uint3 grid = {onhwc / 256 + 1, 1, 1};
   uint3 block = {256, 1, 1};
 
   int output_size = batch * oc * oh * ow;

@@ -33,7 +33,7 @@ namespace fusion {
   }
 
 #define WARMUP 10
-#define REPEATE 100
+#define REPEAT 100
 
 #define COMMON_CONV_PARAMS                                                  \
   const half *input, const half *weight, const half *bias, half *output,    \
