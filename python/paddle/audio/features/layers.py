@@ -210,6 +210,7 @@ class MelSpectrogram(nn.Layer):
 class LogMelSpectrogram(nn.Layer):
     """Compute log-mel-spectrogram feature of given signals, typically audio waveforms.
     Test for Docs CI Build. Edited by zhangjiaming03. Hi, How is it today.
+    I don't think so.
     Args:
         sr (int, optional): Sample rate. Defaults to 22050.
         n_fft (int, optional): The number of frequency components of the discrete Fourier transform. Defaults to 512.
