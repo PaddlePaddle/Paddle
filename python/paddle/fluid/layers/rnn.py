@@ -696,35 +696,69 @@ def _rnn_static_graph(
 
     out_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
 
+    init_array = control_flow.create_array(dtype=flatten(inputs)[0].dtype)
+    init_array = map_structure(
+        lambda x: control_flow.create_array(dtype=x.dtype), initial_states
+    )
+
+    map_structure(
+        lambda x, y: control_flow.array_write(x, start_i, y),
+        initial_states,
+        init_array,
+    )
+
     with while_op.block():
 
         step_in = inputs[start_i]
-        outputs, new_states = cell(step_in, initial_states, **kwargs)
+        # step_in = paddle.fluid.layers.Print( step_in, message="step in")
+        pre_state = map_structure(
+            lambda x: control_flow.array_read(x, start_i), init_array
+        )
+        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
+        outputs, new_states = cell(step_in, pre_state, **kwargs)
         assert isinstance(outputs, paddle.fluid.framework.Variable)
-
-        assert_same_structure(new_states, initial_states)
+        assert_same_structure(new_states, pre_state)
         if sequence_length:
-            step_mask = mask[start_i]
+            step_mask = paddle.unsqueeze(mask[start_i], 1)
+            # paddle.fluid.layers.Print( step_mask, message="mask")
+            # new_states = map_structure(
+            #     partial(_maybe_copy, step_mask=step_mask),
+            #     pre_state, new_states
+            # )
             new_states = map_structure(
-                partial(_maybe_copy, step_mask=step_mask),
-                initial_states,
+                lambda x, y: (x * step_mask + y * (1.0 - step_mask)),
                 new_states,
+                pre_state,
             )
-        map_structure(paddle.assign, new_states, initial_states)
 
         control_flow.array_write(outputs, start_i, out_array)
 
         with paddle.fluid.framework.device_guard("cpu"):
-            new_st_i = start_i + 1
-            new_cond = new_st_i < end
-            paddle.assign(new_st_i, start_i)
-            paddle.fluid.layers.less_than(x=new_st_i, y=end, cond=cond)
+
+            start_i = paddle.fluid.layers.increment(
+                x=start_i, value=1, in_place=True
+            )
+        map_structure(
+            lambda x, y: control_flow.array_write(x, start_i, y),
+            new_states,
+            init_array,
+        )
+
+        with paddle.fluid.framework.device_guard("cpu"):
+            paddle.fluid.layers.less_than(x=start_i, y=end, cond=cond)
 
     out, _ = paddle.fluid.layers.tensor_array_to_tensor(
         out_array, axis=0, use_stack=True
     )
+
+    all_state = map_structure(
+        lambda x: paddle.fluid.layers.tensor_array_to_tensor(
+            x, axis=0, use_stack=True
+        )[0],
+        init_array,
+    )
     final_outputs = out
-    final_states = initial_states
+    final_states = map_structure(lambda x: x[-1], all_state)
 
     if is_reverse:
         final_outputs = map_structure(

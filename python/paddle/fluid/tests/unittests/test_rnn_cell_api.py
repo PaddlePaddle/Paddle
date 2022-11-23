@@ -30,6 +30,7 @@ from paddle.fluid.contrib.layers import basic_lstm
 import paddle.fluid.layers.utils as utils
 
 import numpy as np
+import paddle
 
 
 class TestLSTMCellError(unittest.TestCase):
@@ -744,4 +745,5 @@ class TestSeq2SeqModel(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
