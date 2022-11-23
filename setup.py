@@ -48,7 +48,9 @@ else:
 
 # check cmake
 CMAKE = find_executable('cmake3') or find_executable('cmake')
-assert (CMAKE), 'The "cmake" executable is not found. Please check if Cmake is installed.'
+assert (
+    CMAKE
+), 'The "cmake" executable is not found. Please check if Cmake is installed.'
 
 # get Top_dir
 TOP_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -56,6 +58,8 @@ TOP_DIR = os.path.dirname(os.path.realpath(__file__))
 IS_WINDOWS = os.name == 'nt'
 
 # filter args of setup.py
+
+
 def filter_setup_args(input_args):
     cmake_and_make = True
     only_cmake = False
@@ -63,10 +67,10 @@ def filter_setup_args(input_args):
     filter_args_list = []
     for arg in input_args:
         if arg == 'rerun-cmake':
-            rerun_cmake = True# delete Cmakecache.txt and rerun cmake
+            rerun_cmake = True  # delete Cmakecache.txt and rerun cmake
             continue
         if arg == 'only-cmake':
-            only_cmake = True# only cmake and do not make, leave a chance for users to adjust build options
+            only_cmake = True  # only cmake and do not make, leave a chance for users to adjust build options
             continue
         if arg in ['clean', 'egg_info', 'sdist']:
             cmake_and_make = False
@@ -75,7 +79,10 @@ def filter_setup_args(input_args):
     return cmake_and_make, only_cmake, rerun_cmake, filter_args_list
 
 
-cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(sys.argv)
+cmake_and_make, only_cmake, rerun_cmake, filter_args_list = filter_setup_args(
+    sys.argv
+)
+
 
 def parse_input_command(input_parameters):
     dist = Distribution()
@@ -88,7 +95,10 @@ def parse_input_command(input_parameters):
     try:
         dist.parse_command_line()
     except:
-        print("An error occurred while parsing the parameters, '%s'"% dist.script_args)
+        print(
+            "An error occurred while parsing the parameters, '%s'"
+            % dist.script_args
+        )
         sys.exit(1)
 
 
@@ -679,12 +689,12 @@ def get_package_data_and_package_dir():
 
     package_dir = {
         '': paddle_binary_dir.split('/')[-1] + '/python',
-        #'':'build/python',
-        #The paddle.fluid.proto will be generated while compiling.
-        #So that package points to other directory.
-        #'paddle.fluid.proto.profiler': 'build/paddle/fluid/platform',
-        #'paddle.fluid.proto': 'build/paddle/fluid/framework',
-        #'paddle.fluid': 'build/python/paddle/fluid',
+        # '':'build/python',
+        # The paddle.fluid.proto will be generated while compiling.
+        # So that package points to other directory.
+        # 'paddle.fluid.proto.profiler': 'build/paddle/fluid/platform',
+        # 'paddle.fluid.proto': 'build/paddle/fluid/framework',
+        # 'paddle.fluid': 'build/python/paddle/fluid',
     }
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
@@ -928,11 +938,6 @@ def get_package_data_and_package_dir():
                             + '.%s failed' % ext_suffix,
                             'command: %s' % command,
                         )
-
-    return package_data, package_dir
-
-
-def get_ext_modules():
     # A list of extensions that specify c++ -written modules that compile source code into dynamically linked libraries
     ext_modules = [Extension('_foo', [paddle_binary_dir + '/python/stub.cc'])]
     if os.name == 'nt':
@@ -945,7 +950,7 @@ def get_ext_modules():
     elif sys.platform == 'darwin':
         ext_modules = []
 
-    return ext_modules
+    return package_data, package_dir, ext_modules
 
 
 def get_headers():
@@ -963,9 +968,10 @@ def get_headers():
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
         )
-        +  # phi common headers
+        + list(
+            find_files('*.h', paddle_source_dir + '/paddle/phi')
+        )  # phi common headers
         # phi level api headers (low level api)
-        list(find_files('*.h', paddle_source_dir + '/paddle/phi'))
         + list(  # phi extension header
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
@@ -1009,24 +1015,21 @@ def get_headers():
                 '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
             )
         )
-        +  # phi kernel primitive api headers
-        # capi headers
-        list(
+        + list(  # phi kernel primitive api headers
+            # capi headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        +  # phi capi headers
-        # profiler headers
-        list(
+        + list(  # phi capi headers
+            # profiler headers
             find_files(
                 'trace_event.h',
                 paddle_source_dir + '/paddle/fluid/platform/profiler',
             )
         )
-        +  # phi profiler headers
-        # utils api headers
-        list(
+        + list(  # phi profiler headers
+            # utils api headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
@@ -1083,10 +1086,7 @@ def get_setup_parameters():
         ]
 
     # get package_data and package_dir
-    package_data, package_dir = get_package_data_and_package_dir()
-
-    # get ext_modules
-    ext_modules = get_ext_modules()
+    package_data, package_dir, ext_modules = get_package_data_and_package_dir()
 
     # get headers
     headers = get_headers()
