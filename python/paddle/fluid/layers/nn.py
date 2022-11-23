@@ -118,7 +118,6 @@ __all__ = [
     'relu',
     'log',
     'crop_tensor',
-    'pow',
     'prelu',
     'brelu',
     'flatten',
@@ -8029,59 +8028,6 @@ def pad2d(
         type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs
     )
 
-    return out
-
-
-@templatedoc()
-def pow(x, factor=1.0, name=None):
-    """
-    This is Pow Activation Operator.
-
-    :math:`out = x^{factor}`
-
-    Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
-
-            # example 1: argument factor is float
-            y_1 = fluid.layers.pow(x, factor=2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument factor is Variable
-            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = fluid.layers.pow(x, factor=factor_tensor)
-            # y_2 is x^{3.0}
-    """
-    check_variable_and_dtype(
-        x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'pow'
-    )
-
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': x}
-    attrs = {}
-    if isinstance(factor, Variable):
-        check_variable_and_dtype(factor, 'factor', ['float32'], 'pow')
-        factor.stop_gradient = True
-        inputs['FactorTensor'] = factor
-    else:
-        attrs['factor'] = factor
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
     return out
 
 
