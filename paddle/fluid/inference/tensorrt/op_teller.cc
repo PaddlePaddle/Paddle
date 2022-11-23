@@ -1326,11 +1326,17 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "logical_or" || op_type == "logical_xor" ||
         op_type == "logical_and") {
+#if !IS_TRT_VERSION_GE(8400)
+      VLOG(3) << "logical_or, logical_xor and logical_and is not supported "
+                 "when TensorRT < 8.0";
+      return false;
+#else
       if (!with_dynamic_shape) {
         VLOG(3) << "static shape mode is not supported for TRT logical_or, "
                    "logical_xor and logical_than.\n";
         return false;
       }
+#endif
     }
 
     if (op_type == "stack") {
