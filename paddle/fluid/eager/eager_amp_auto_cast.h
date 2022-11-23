@@ -27,7 +27,8 @@ static inline bool NeedCast(const paddle::experimental::Tensor& tensor,
       paddle::platform::is_xpu_place(place) ||
       paddle::platform::is_mlu_place(place) ||
       paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
+      paddle::platform::is_npu_pinned_place(place) ||
+      paddle::platform::is_custom_place(place)) {
     // CudaPinndePlace is added for varbase created by dataloader
     if ((data_type == paddle::experimental::DataType::FLOAT32 ||
          data_type == paddle::experimental::DataType::FLOAT16 ||

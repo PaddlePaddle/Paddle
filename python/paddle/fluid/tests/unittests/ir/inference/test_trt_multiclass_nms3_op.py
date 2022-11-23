@@ -22,6 +22,7 @@ from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+import paddle
 
 
 def multiclass_nms(
@@ -235,7 +236,7 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 nms_eta=self.nms_eta,
             )
             mutliclass_nms_out = multiclass_nms_out + 1.0
-            multiclass_nms_out = fluid.layers.reshape(
+            multiclass_nms_out = paddle.reshape(
                 multiclass_nms_out,
                 [self.bs, 1, self.keep_top_k, 6],
                 name='reshape',
