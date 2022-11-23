@@ -8911,6 +8911,7 @@ def pow(x, factor=1.0, name=None):
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
+
     prelu activation.
 
     .. math::
@@ -8925,26 +8926,20 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
-
         x (Tensor): The input Tensor or LoDTensor with data type float32.
-
         mode (str): The mode for weight sharing.
-
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
-        weight (alpha), it can be create by ParamAttr. None by default. \
-        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-
-        name (str, optional): Name for the operation (optional, default is None). \
-        For more information, please refer to :ref:`api_guide_Name`.
-
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
+            weight (alpha), it can be create by ParamAttr. None by default.
+            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
         data_format(str, optional): Data format that specifies the layout of input.
             It may be "NC", "NCL", "NCHW", "NCDHW", "NLC", "NHWC" or "NDHWC". Default: "NCHW".
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor with the same shape and data type as x.
+        Tensor, A tensor with the same shape and data type as x.
 
     Examples:
-
         .. code-block:: python
 
             import paddle
