@@ -15,8 +15,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class RMSPROPNPUKernel : public framework::OpKernel<T> {
@@ -62,13 +62,20 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         epsilon_tmp.mutable_data<T>({1}, ctx.GetPlace());
         FillNpuTensorWithConstant<T>(&epsilon_tmp, epsilon);
         epsilon_tensor = &epsilon_tmp;
-        auto *mg_tensor = ctx.Input<Tensor>("MeanGrad");
-        auto *mean_grad_out = ctx.Output<Tensor>("MeanGradOut");
+        auto *mg_tensor = ctx.Input<phi::DenseTensor>("MeanGrad");
+        auto *mean_grad_out = ctx.Output<phi::DenseTensor>("MeanGradOut");
         mean_grad_out->mutable_data<T>(ctx.GetPlace());
         const auto &runner_applycenterrmsprop = NpuOpRunner(
             std::string("ApplyCenteredRMSPropD"),
-            {*p_tensor, *mg_tensor, *ms_tensor, *mom_tensor, *lr_tensor,
-             *rho_tensor, *momentum_tensor, *epsilon_tensor, *grad_tensor},
+            {*p_tensor,
+             *mg_tensor,
+             *ms_tensor,
+             *mom_tensor,
+             *lr_tensor,
+             *rho_tensor,
+             *momentum_tensor,
+             *epsilon_tensor,
+             *grad_tensor},
             {*param_out, *mean_grad_out, *mean_square_out, *moment_out},
             {attr_input});
         runner_applycenterrmsprop.Run(stream);
@@ -78,11 +85,13 @@ class RMSPROPNPUKernel : public framework::OpKernel<T> {
         const auto &runner_applyrmsprop = NpuOpRunner(
             std::string("ApplyRMSPropD"),
             {*p_tensor, *ms_tensor, *mom_tensor, *lr_tensor, *grad_tensor},
-            {*param_out, *mean_square_out, *moment_out}, {attr_input});
+            {*param_out, *mean_square_out, *moment_out},
+            {attr_input});
         runner_applyrmsprop.Run(stream);
       }
     } else {
-      PADDLE_ENFORCE_EQ(false, true,
+      PADDLE_ENFORCE_EQ(false,
+                        true,
                         platform::errors::PermissionDenied(
                             "Unsupported Variable Type of Grad "
                             "in RmspropOp. Excepted LodTensor, "

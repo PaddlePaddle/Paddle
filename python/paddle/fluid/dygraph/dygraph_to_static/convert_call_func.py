@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 import copy
 import functools
@@ -28,11 +26,12 @@ import six
 
 from paddle.fluid.dygraph.container import Sequential
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_range, convert_enumerate
 from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
-from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
@@ -64,23 +63,20 @@ class ConversionOptions(object):
         self.not_convert = not_convert
 
 
-def is_builtin(func):
-    if isinstance(func, types.BuiltinFunctionType):
+def is_builtin(func, name=None):
+    """ predict whether a function is a builtin function with name={name}.
+        if name == None, then any builtin function will return True
+    """
+
+    def name_judge():
+        return name is None or func.__name__ == name
+
+    if isinstance(func, types.BuiltinFunctionType) and name_judge():
         return True
-    elif func in six.moves.builtins.__dict__.values():
+    elif func in six.moves.builtins.__dict__.values() and name_judge():
         return True
     else:
         return False
-
-
-def is_builtin_len(func):
-    if isinstance(func, types.BuiltinFunctionType) and func.__name__ == 'len':
-        return True
-    return False
-
-
-def is_builtin_zip(func):
-    return is_builtin(func) and func.__name__ == 'zip'
 
 
 def is_unsupported(func):
@@ -165,11 +161,17 @@ def convert_call(func):
             .format(func))
         return func
 
-    if is_builtin_len(func):
+    if is_builtin(func, "len"):
         return convert_len
 
-    if is_builtin_zip(func):
+    if is_builtin(func, "zip"):
         return convert_zip
+
+    if is_builtin(func, "range"):
+        return convert_range
+
+    if is_builtin(func, "enumerate"):
+        return convert_enumerate
 
     if is_builtin(func) or is_unsupported(func):
         return func
@@ -202,13 +204,19 @@ def convert_call(func):
             # `foo` will be converted into a wrapper class, suppose as `StaticFunction`.
             # And `foo.__globals__['foo']` will still return this `StaticFunction` instead of
             # `foo` function. So `isinstance(fn, StaticFunction)` is added here.
+            _origfunc = unwrap(func)
             global_functions = set()
-            for fn in func.__globals__.values():
+            for fn in _origfunc.__globals__.values():
                 if inspect.isfunction(fn):
                     global_functions.add(fn)
                 elif isinstance(fn, StaticFunction):
                     _, fn = unwrap_decorators(fn)
                     global_functions.add(fn)
+                elif inspect.isclass(fn):
+                    if isinstance(fn.__dict__.get(func.__name__, None),
+                                  staticmethod):
+                        global_functions.add(
+                            func)  # Add func to ensure that we will convert
 
             if func in global_functions:
                 converted_call = convert_to_static(func)

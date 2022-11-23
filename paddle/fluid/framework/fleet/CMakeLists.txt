@@ -25,10 +25,17 @@ endif()
 
 if(WITH_HETERPS)
   if(WITH_NCCL AND WITH_GPU)
-    nv_library(
-      ps_gpu_wrapper
-      SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
-      DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
+    if(WITH_PSCORE)
+      nv_library(
+        ps_gpu_wrapper
+        SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+        DEPS heter_ps gloo_wrapper ps_framework_proto ${BRPC_DEPS})
+    else()
+      nv_library(
+        ps_gpu_wrapper
+        SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+        DEPS heter_ps gloo_wrapper ${BRPC_DEPS})
+    endif()
     add_subdirectory(heter_ps)
   elseif(WITH_XPU_KP)
     xpu_library(

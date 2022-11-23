@@ -17,11 +17,7 @@ import unittest
 
 from op_test import OpTest
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 np.random.seed(0)
@@ -116,7 +112,7 @@ class TestAtan2API(unittest.TestCase):
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
             out_ref = np.arctan2(self.x1, self.x2)
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -129,7 +125,7 @@ class TestAtan2API(unittest.TestCase):
             X2 = paddle.to_tensor(self.x2)
             out = paddle.atan2(X1, X2)
             out_ref = np.arctan2(self.x1, self.x2)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

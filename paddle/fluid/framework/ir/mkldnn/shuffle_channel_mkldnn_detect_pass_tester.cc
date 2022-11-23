@@ -23,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void AddVarToScope(Scope* param_scope, const std::string& name,
+void AddVarToScope(Scope* param_scope,
+                   const std::string& name,
                    const DDim& dims) {
   auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
   tensor->Resize(dims);
@@ -68,7 +69,7 @@ void MainTest() {
     if (node->IsOp() && node->Op()->Type() == "shuffle_channel") {
       const auto* op = node->Op();
       ASSERT_TRUE(op->HasAttr("use_mkldnn"));
-      EXPECT_TRUE(BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")));
+      EXPECT_TRUE(PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn")));
     }
   }
 }

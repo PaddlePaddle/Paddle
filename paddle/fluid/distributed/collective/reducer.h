@@ -40,7 +40,8 @@ using IntArray =
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
-    const std::vector<Tensor>, const std::vector<bool> &is_sparse_gradient,
+    const std::vector<Tensor>,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 

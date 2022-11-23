@@ -103,7 +103,7 @@ class TestParallelExecutorFetchIsolatedVarBase(unittest.TestCase):
                                     },
                                     fetch_list=[loss, isolated_var])
 
-            self.assertTrue(np.array_equal(y_np, y_np_fetch))
+            np.testing.assert_array_equal(y_np, y_np_fetch)
 
         enable_parallel_ssa_executor(False)
 

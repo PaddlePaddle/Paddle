@@ -113,7 +113,8 @@ struct GraphTraits {
   static iterator_range<NodesTSIterator> TS(const Graph &g) {
     auto start_points = ExtractStartPoints(g);
     PADDLE_ENFORCE_EQ(
-        start_points.empty(), false,
+        start_points.empty(),
+        false,
         platform::errors::InvalidArgument(
             "Start points of topological sorting should not be empty!"));
     NodesTSIterator x(start_points);

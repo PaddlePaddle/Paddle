@@ -33,7 +33,8 @@ struct bloomfilter {
   uint64_t count;
   unsigned char bit_vector[1];
 };
-int bloomfilter_get(const struct bloomfilter *bloomfilter, const void *key,
+int bloomfilter_get(const struct bloomfilter *bloomfilter,
+                    const void *key,
                     size_t len);
 int bloomfilter_check(struct bloomfilter *filter);
 
@@ -50,7 +51,9 @@ uint64_t fmix64(uint64_t k) {
   return k;
 }
 
-void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
+void murmurhash3_x64_128(const void *key,
+                         const int len,
+                         const uint32_t seed,
                          void *out) {
   const uint8_t *data = (const uint8_t *)key;
   const int nblocks = len / 16;
@@ -153,7 +156,8 @@ int bloomfilter_check(struct bloomfilter *filter) {
   }
 }
 
-int bloomfilter_get(const struct bloomfilter *bloomfilter, const void *key,
+int bloomfilter_get(const struct bloomfilter *bloomfilter,
+                    const void *key,
                     size_t len) {
   uint32_t i;
   uint64_t result[2];

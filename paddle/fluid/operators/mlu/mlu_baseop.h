@@ -16,6 +16,7 @@ limitations under the License. */
 #include <cn_api.h>
 #include <cnnl.h>
 #include <concurrentqueue.h>
+#include <mlu_op.h>
 
 #include <string>
 #include <vector>
@@ -28,7 +29,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 using ExecutionContext = framework::ExecutionContext;
 using DeviceContextPool = platform::DeviceContextPool;
@@ -86,9 +87,9 @@ inline cnnlInterpBackwardMode_t GetMLUCnnlInterpBackwardMode(
       "Not support interp mode of MLU Device: %s", interp_mode));
 }
 
-inline const void* GetBasePtr(const Tensor* t) { return t->data(); }
+inline const void* GetBasePtr(const phi::DenseTensor* t) { return t->data(); }
 
-inline void* GetBasePtr(Tensor* t) { return t->data(); }
+inline void* GetBasePtr(phi::DenseTensor* t) { return t->data(); }
 
 inline cnnlDataType_t ToCnnlDataType(
     const paddle::experimental::DataType& dtype) {
@@ -138,6 +139,54 @@ inline cnnlDataType_t ToCnnlDataType() {
   return ToCnnlDataType(type);
 }
 
+inline mluOpDataType_t ToMluOpDataType(
+    const paddle::experimental::DataType& dtype) {
+  mluOpDataType_t type = MLUOP_DTYPE_FLOAT;
+  switch (dtype) {
+    case DataType::FLOAT16:
+      type = MLUOP_DTYPE_HALF;
+      break;
+    case DataType::FLOAT32:
+      type = MLUOP_DTYPE_FLOAT;
+      break;
+    case DataType::FLOAT64:
+      type = MLUOP_DTYPE_DOUBLE;
+      break;
+    case DataType::INT8:
+      type = MLUOP_DTYPE_INT8;
+      break;
+    case DataType::INT16:
+      type = MLUOP_DTYPE_INT16;
+      break;
+    case DataType::INT32:
+      type = MLUOP_DTYPE_INT32;
+      break;
+    case DataType::INT64:
+      type = MLUOP_DTYPE_INT64;
+      break;
+    case DataType::BOOL:
+      type = MLUOP_DTYPE_BOOL;
+      break;
+    case DataType::UINT8:
+      type = MLUOP_DTYPE_UINT8;
+      break;
+    default:
+      break;
+  }
+  return type;
+}
+
+inline mluOpDataType_t ToMluOpDataType(
+    const paddle::framework::proto::VarType::Type& type) {
+  return ToMluOpDataType(framework::TransToPhiDataType(type));
+}
+
+template <typename T>
+inline mluOpDataType_t ToMluOpDataType() {
+  auto type = framework::ToDataType(std::type_index(typeid(T)));
+  return ToMluOpDataType(type);
+}
+
 // Converts (via narrowing) a type T value to a type U, and checks that the
 // value has no value change due to the conversion.
 template <typename WideT, typename NarrowT>
@@ -150,6 +199,10 @@ NarrowT CheckedNarrowing(const WideT& wide) {
 
 inline static cnnlHandle_t GetHandleFromCTX(const ExecutionContext& ctx) {
   return ctx.template device_context<MLUDeviceContext>().cnnl_handle();
+}
+
+inline static mluOpHandle_t GetMLUOpHandleFromCTX(const ExecutionContext& ctx) {
+  return ctx.template device_context<MLUDeviceContext>().mluOp_handle();
 }
 
 inline static const MLUDeviceContext& GetDevCtxFromCTX(
@@ -256,18 +309,18 @@ class MLUCnnlTensorDesc {
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     const cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype);
 
-  explicit MLUCnnlTensorDesc(const Tensor& tensor);
+  explicit MLUCnnlTensorDesc(const phi::DenseTensor& tensor);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position);
 
-  MLUCnnlTensorDesc(const Tensor& tensor,
+  MLUCnnlTensorDesc(const phi::DenseTensor& tensor,
                     cnnlTensorLayout_t layout,
                     const cnnlDataType_t tensor_dtype,
                     int position,
@@ -279,6 +332,74 @@ class MLUCnnlTensorDesc {
 
  private:
   cnnlTensorDescriptor_t raw_tensor_desc = nullptr;
+};
+
+class MLUOpTensorDesc {
+ public:
+  MLUOpTensorDesc() {}
+
+  // SE_DISALLOW_COPY_AND_ASSIGN
+  MLUOpTensorDesc(const MLUOpTensorDesc& desc) = delete;
+  MLUOpTensorDesc& operator=(const MLUOpTensorDesc&) = delete;
+
+  MLUOpTensorDesc(MLUOpTensorDesc&& rhs)
+      : raw_tensor_desc(rhs.raw_tensor_desc) {
+    rhs.raw_tensor_desc = nullptr;
+  }
+
+  MLUOpTensorDesc& operator=(MLUOpTensorDesc&& rhs);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  const mluOpTensorLayout_t layout);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  const mluOpTensorLayout_t layout);
+
+  MLUOpTensorDesc(const int tensor_dim,
+                  const int64_t dim_sizes[],
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  const mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype);
+
+  explicit MLUOpTensorDesc(const Tensor& tensor);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype,
+                  int position);
+
+  MLUOpTensorDesc(const Tensor& tensor,
+                  mluOpTensorLayout_t layout,
+                  const mluOpDataType_t tensor_dtype,
+                  int position,
+                  float scale);
+
+  ~MLUOpTensorDesc();
+
+  const mluOpTensorDescriptor_t get() const { return raw_tensor_desc; }
+
+ private:
+  mluOpTensorDescriptor_t raw_tensor_desc = nullptr;
 };
 
 class MLUCnnlActivationDesc {
@@ -493,6 +614,104 @@ class MLUCnnlDCNDesc {
 
  private:
   cnnlDCNDescriptor_t dcn_desc_ = nullptr;
+};
+
+class MLUCnnlGridSampleDesc {
+ public:
+  MLUCnnlGridSampleDesc(const std::string& interp_mode_str,
+                        const std::string& padding_mode_str,
+                        bool align_corners);
+
+  const cnnlGridSampleDescriptor_t get() const;
+
+  ~MLUCnnlGridSampleDesc();
+
+ private:
+  cnnlGridSampleDescriptor_t grid_sample_desc_ = nullptr;
+};
+
+class MLUSeqDataDesc {
+ public:
+  MLUSeqDataDesc(const MLUSeqDataDesc& desc) = delete;
+  MLUSeqDataDesc& operator=(const MLUSeqDataDesc& desc) = delete;
+
+  MLUSeqDataDesc(cnnlSeqDataLayout_t layout,
+                 cnnlDataType_t dtype,
+                 int dimNb,
+                 const int dimSize[],
+                 int seqLengthArraySize,
+                 const int seqLengthArray[],
+                 void* paddingFill);
+
+  const cnnlSeqDataDescriptor_t get() const;
+
+  ~MLUSeqDataDesc();
+
+ private:
+  cnnlSeqDataDescriptor_t seq_data_desc_ = nullptr;
+};
+
+class MLURNNDesc {
+ public:
+  MLURNNDesc(const MLURNNDesc& desc) = delete;
+  MLURNNDesc& operator=(const MLURNNDesc& desc) = delete;
+
+  MLURNNDesc(const int hidden_size,
+             const int num_layers,
+             const cnnlRNNInputMode_t input_mode,
+             const cnnlDirectionMode_t direction,
+             const cnnlRNNMode_t rnn_mode);
+
+  MLURNNDesc(cnnlRNNMode_t cell_mode,
+             cnnlRNNBiasMode_t bias_mode,
+             cnnlDirectionMode_t direction,
+             cnnlRNNInputMode_t input_mode,
+             cnnlDataType_t data_type,
+             cnnlDataType_t math_prec,
+             int input_size,
+             int hidden_size,
+             int proj_size,
+             int layer_num,
+             void* dropout_desc,
+             cnnlRNNPaddingMode_t padding_mode);
+
+  void SetRNNProjectionLayers(const int rec_proj_size,
+                              const int out_proj_size) {
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        cnnlSetRNNProjectionLayers(rnn_desc_, rec_proj_size, out_proj_size));
+  }
+
+  void SetPeepholeMode(const cnnlRNNPeepholeMode_t peephole_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(
+        cnnlSetRNNPeepholeMode(rnn_desc_, peephole_mode));
+  }
+
+  void SetRNNBiasMode(const cnnlRNNBiasMode_t bias_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNBiasMode(rnn_desc_, bias_mode));
+  }
+
+  void SetRNNMaskMode(const cnnlRNNMaskMode_t mask_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNMaskMode(rnn_desc_, mask_mode));
+  }
+
+  void SetRNNClip(const cnnlRNNClipMode_t clip_mode,
+                  const cnnlNanPropagation_t clip_nan_opt,
+                  const double left_clip,
+                  const double right_clip) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNClip(
+        rnn_desc_, clip_mode, clip_nan_opt, left_clip, right_clip));
+  }
+
+  void SetRNNPaddingMode(const cnnlRNNPaddingMode_t padding_mode) {
+    PADDLE_ENFORCE_MLU_SUCCESS(cnnlSetRNNPaddingMode(rnn_desc_, padding_mode));
+  }
+
+  const cnnlRNNDescriptor_t get() const;
+
+  ~MLURNNDesc();
+
+ private:
+  cnnlRNNDescriptor_t rnn_desc_ = nullptr;
 };
 
 class MLUCnnl {
@@ -1192,6 +1411,15 @@ class MLUCnnl {
                       const cnnlTensorDescriptor_t output_desc,
                       void* output);
 
+  static void Pow(const ExecutionContext& ctx,
+                  cnnlComputationPreference_t prefer,
+                  const cnnlTensorDescriptor_t input1_desc,
+                  const void* input1,
+                  const cnnlTensorDescriptor_t input2_desc,
+                  const void* input2,
+                  const cnnlTensorDescriptor_t output_desc,
+                  void* output);
+
   static void PowR(const ExecutionContext& ctx,
                    cnnlComputationPreference_t prefer,
                    const cnnlTensorDescriptor_t input1_desc,
@@ -1306,6 +1534,15 @@ class MLUCnnl {
                    const void* input,
                    const cnnlTensorDescriptor_t output_desc,
                    void* output);
+
+  static void IndexSelect(const ExecutionContext& ctx,
+                          const int dim,
+                          cnnlTensorDescriptor_t input_desc,
+                          const void* input,
+                          const cnnlTensorDescriptor_t index_desc,
+                          const void* index,
+                          const cnnlTensorDescriptor_t output_desc,
+                          void* output);
 
   static void IsFinite(const ExecutionContext& ctx,
                        const cnnlTensorDescriptor_t input_desc,
@@ -1583,11 +1820,13 @@ class MLUCnnl {
                         const cnnlTensorDescriptor_t output_desc,
                         void* output);
 
-  static void TrilTriu(const ExecutionContext& ctx, const int diagonal_k,
+  static void TrilTriu(const ExecutionContext& ctx,
+                       const int diagonal_k,
                        const bool tri_up_mode,
                        const cnnlTensorDescriptor_t input_desc,
                        const void* input,
-                       const cnnlTensorDescriptor_t output_desc, void* output);
+                       const cnnlTensorDescriptor_t output_desc,
+                       void* output);
 
   static void MatrixBandPart(const ExecutionContext& ctx,
                              const cnnlTensorDescriptor_t data_desc,
@@ -1599,18 +1838,17 @@ class MLUCnnl {
   static void NumTrue(const ExecutionContext& ctx,
                       const cnnlTensorDescriptor_t x_desc,
                       const void* x,
-                      Tensor index,
-                      uint32_t* num_true);
+                      const cnnlTensorDescriptor_t num_true_desc,
+                      void* num_true);
 
   static void Where(const ExecutionContext& ctx,
                     const cnnlTensorDescriptor_t x_desc,
                     const void* x,
-                    const uint32_t* strides,
-                    const uint32_t* index,
+                    const cnnlTensorDescriptor_t num_true_desc,
+                    const void* num_true,
+                    const bool as_tuple,
                     const cnnlTensorDescriptor_t y_desc,
-                    int* y,
-                    const bool as_tuple);
-
+                    void* y);
   static void Conv2D(const ExecutionContext& ctx,
                      const cnnlConvolutionDescriptor_t conv_desc,
                      const cnnlDataType_t tensor_dtype,
@@ -1804,6 +2042,28 @@ class MLUCnnl {
                               const cnnlTensorDescriptor_t output_desc,
                               void* output);
 
+  static void SmoothL1LossForward(const ExecutionContext& ctx,
+                                  const cnnlTensorDescriptor_t x_desc,
+                                  const void* x,
+                                  const cnnlTensorDescriptor_t t_desc,
+                                  const void* target,
+                                  const float beta,
+                                  const cnnlSmoothL1LossAlgorithm_t algorithm,
+                                  const cnnlTensorDescriptor_t y_desc,
+                                  void* y);
+
+  static void SmoothL1LossBackward(const ExecutionContext& ctx,
+                                   const cnnlTensorDescriptor_t x_desc,
+                                   const void* x,
+                                   const cnnlTensorDescriptor_t target_desc,
+                                   const void* target,
+                                   const cnnlTensorDescriptor_t dy_desc,
+                                   const void* dy,
+                                   const float beta,
+                                   const cnnlSmoothL1LossAlgorithm_t algorithm,
+                                   const cnnlTensorDescriptor_t dx_desc,
+                                   void* dx);
+
   static void EmbeddingForward(const ExecutionContext& ctx,
                                const int padding_idx,
                                const cnnlTensorDescriptor_t weight_desc,
@@ -1812,6 +2072,59 @@ class MLUCnnl {
                                const int* indices,
                                const cnnlTensorDescriptor_t output_desc,
                                void* output);
+
+  static void RNNForward(const ExecutionContext& ctx,
+                         const cnnlRNNDescriptor_t rnn_desc,
+                         const int dev_seq_lengths[],
+                         const void* weight_param_ptr,
+                         size_t weightspace_size,
+                         const cnnlSeqDataDescriptor_t x_desc,
+                         const void* x,
+                         const cnnlSeqDataDescriptor_t y_desc,
+                         void* y,
+                         const cnnlTensorDescriptor_t h_desc,
+                         const void* hx,
+                         void* hy,
+                         const cnnlTensorDescriptor_t c_desc,
+                         const void* cx,
+                         void* cy,
+                         void* reservespace_ptr);
+
+  static void RNNBackward(const ExecutionContext& ctx,
+                          const cnnlRNNDescriptor_t rnn_desc,
+                          cnnlWgradMode_t add_grad,
+                          const int dev_seq_lengths[],
+                          const void* weight_param_ptr,
+                          void* dweight_param_ptr,
+                          size_t weightspace_size,
+                          const cnnlSeqDataDescriptor_t x_desc,
+                          const void* x,
+                          void* dx,
+                          const cnnlSeqDataDescriptor_t y_desc,
+                          const void* y,
+                          const void* dy,
+                          const cnnlTensorDescriptor_t hx_desc,
+                          const void* hx,
+                          const void* dhy,
+                          void* dhx,
+                          const cnnlTensorDescriptor_t cx_desc,
+                          const void* cx,
+                          const void* dcy,
+                          void* dcx,
+                          void* reservespace_ptr,
+                          size_t reservespace_size);
+
+  static void Mask(const ExecutionContext& ctx,
+                   cnnlMaskedOp_t masked_mode,
+                   const cnnlTensorDescriptor_t input_desc,
+                   const void* input,
+                   const cnnlTensorDescriptor_t masked_desc,
+                   const void* masked,
+                   const cnnlTensorDescriptor_t value_desc,
+                   const void* value,
+                   const cnnlTensorDescriptor_t output_desc,
+                   void* output,
+                   uint32_t* number);
 
   static void Transform(const ExecutionContext& ctx,
                         const void* alpha,
@@ -1859,13 +2172,234 @@ class MLUCnnl {
       const void* pos_weight,
       const cnnlTensorDescriptor_t diff_input_desc,
       void* diff_input);
+
+  static void RoiAlign(const ExecutionContext& ctx,
+                       const int pooled_height,
+                       const int pooled_width,
+                       const int sampling_ratio,
+                       const float spatial_scale,
+                       const bool aligned,
+                       const cnnlTensorDescriptor_t input_desc,
+                       const void* input,
+                       const cnnlTensorDescriptor_t boxes_desc,
+                       const void* boxes,
+                       const cnnlTensorDescriptor_t output_desc,
+                       void* output);
+
+  static void RoiAlignBackward(const ExecutionContext& ctx,
+                               const int sampling_ratio,
+                               const float spatial_scale,
+                               const bool aligned,
+                               const cnnlTensorDescriptor_t grads_desc,
+                               const void* grads,
+                               const cnnlTensorDescriptor_t boxes_desc,
+                               const void* boxes,
+                               const cnnlTensorDescriptor_t grads_image_desc,
+                               void* grads_image);
+
+  static void GridSample(const ExecutionContext& ctx,
+                         const cnnlGridSampleDescriptor_t grid_sample_desc,
+                         const cnnlTensorDescriptor_t input_desc,
+                         const void* input,
+                         const cnnlTensorDescriptor_t grid_desc,
+                         const void* grid,
+                         const cnnlTensorDescriptor_t output_desc,
+                         void* output);
+
+  static void SyncBatchNormStats(const ExecutionContext& ctx,
+                                 const cnnlTensorDescriptor_t x_desc,
+                                 const void* x,
+                                 const float eps,
+                                 const cnnlTensorDescriptor_t mean_desc,
+                                 void* mean,
+                                 const cnnlTensorDescriptor_t invstd_desc,
+                                 void* invstd);
+
+  static void SyncBatchNormGatherStatsWithCounts(
+      const ExecutionContext& ctx,
+      float momentum,
+      float eps,
+      const cnnlTensorDescriptor_t mean_all_desc,
+      const void* mean_all,
+      const cnnlTensorDescriptor_t invstd_all_desc,
+      const void* invstd_all,
+      const cnnlTensorDescriptor_t moving_mean_desc,
+      void* moving_mean,
+      const cnnlTensorDescriptor_t moving_var_desc,
+      void* moving_var,
+      const cnnlTensorDescriptor_t count_all_desc,
+      const void* count_all,
+      const cnnlTensorDescriptor_t mean_desc,
+      void* mean,
+      const cnnlTensorDescriptor_t invstd_desc,
+      void* invstd);
+
+  static void SyncBatchNormElemt(const ExecutionContext& ctx,
+                                 const cnnlTensorDescriptor_t x_desc,
+                                 const void* x,
+                                 const cnnlTensorDescriptor_t mean_desc,
+                                 const void* mean,
+                                 const cnnlTensorDescriptor_t invstd_desc,
+                                 const void* invstd,
+                                 const cnnlTensorDescriptor_t weight_desc,
+                                 const void* weight,
+                                 const cnnlTensorDescriptor_t bias_desc,
+                                 const void* bias,
+                                 const cnnlTensorDescriptor_t y_desc,
+                                 void* y);
+
+  static void SyncBatchnormBackwardReduce(
+      const ExecutionContext& ctx,
+      const cnnlTensorDescriptor_t desc_dz,
+      const void* dz,
+      const cnnlTensorDescriptor_t desc_x,
+      const void* x,
+      const cnnlTensorDescriptor_t desc_mean,
+      const void* mean,
+      const cnnlTensorDescriptor_t desc_invstd,
+      const void* invstd,
+      const cnnlTensorDescriptor_t desc_dweight,
+      void* dweight,
+      const cnnlTensorDescriptor_t desc_dbias,
+      void* dbias,
+      const cnnlTensorDescriptor_t desc_sum_dy,
+      void* sum_dy,
+      const cnnlTensorDescriptor_t desc_sum_dy_xmu,
+      void* sum_dy_xmu,
+      const bool needs_input_grad0,
+      const bool needs_input_grad1,
+      const bool needs_input_grad2);
+
+  static void SyncBatchNormBackwardElemt(
+      const ExecutionContext& ctx,
+      const cnnlTensorDescriptor_t diff_y_desc,
+      const void* diff_y,
+      const cnnlTensorDescriptor_t x_desc,
+      const void* x,
+      const cnnlTensorDescriptor_t mean_desc,
+      const void* mean,
+      const cnnlTensorDescriptor_t invstd_desc,
+      const void* invstd,
+      const cnnlTensorDescriptor_t weight_desc,
+      const void* weight,
+      const cnnlTensorDescriptor_t sum_dy_desc,
+      const void* sum_dy,
+      const cnnlTensorDescriptor_t sum_dy_xmu_desc,
+      const void* sum_dy_xmu,
+      const cnnlTensorDescriptor_t count_desc,
+      const void* count,
+      const cnnlTensorDescriptor_t diff_x_desc,
+      void* diff_x);
 };
+
+class MLUOP {
+ public:
+  static void OpYoloBox(const ExecutionContext& ctx,
+                        const mluOpTensorDescriptor_t x_desc,
+                        const void* x,
+                        const mluOpTensorDescriptor_t img_size_desc,
+                        const void* img_size,
+                        const mluOpTensorDescriptor_t anchors_desc,
+                        const void* anchors,
+                        const int class_num,
+                        const float conf_thresh,
+                        const int downsample_ratio,
+                        const bool clip_bbox,
+                        const float scale,
+                        const bool iou_aware,
+                        const float iou_aware_factor,
+                        const mluOpTensorDescriptor_t boxes_desc,
+                        void* boxes,
+                        const mluOpTensorDescriptor_t scores_desc,
+                        void* scores);
+
+  static void OpPriorBox(const ExecutionContext& ctx,
+                         const mluOpTensorDescriptor_t min_sizes_desc,
+                         const void* min_sizes,
+                         const mluOpTensorDescriptor_t aspect_ratios_desc,
+                         const void* aspect_ratios,
+                         const mluOpTensorDescriptor_t variances_desc,
+                         const void* variances,
+                         const mluOpTensorDescriptor_t max_sizes_desc,
+                         const void* max_sizes,
+                         const int height,
+                         const int width,
+                         const int im_height,
+                         const int im_width,
+                         const float step_h,
+                         const float step_w,
+                         const float offset,
+                         const bool clip,
+                         const bool min_max_aspect_ratios_order,
+                         const mluOpTensorDescriptor_t output_desc,
+                         void* output,
+                         const mluOpTensorDescriptor_t var_desc,
+                         void* var);
+};
+const std::map<const std::string, std::pair<std::vector<int>, std::vector<int>>>
+    TransPermMap = {
+        // trans_mode, (forward_perm, backward_perm)
+        {"3D_NCHW2NHWC", {{0, 2, 1}, {0, 2, 1}}},
+        {"4D_NCHW2NHWC", {{0, 2, 3, 1}, {0, 3, 1, 2}}},
+        {"5D_NCHWD2NDHWC", {{0, 4, 2, 3, 1}, {0, 4, 2, 3, 1}}},
+        {"5D_NHWDC2NDHWC", {{0, 3, 1, 2, 4}, {0, 2, 3, 4, 1}}}};
+
+inline void SetMLUTransposePerm(const framework::DDim& dims,
+                                const DataLayout& data_layout,
+                                std::vector<int>* forward_perm,
+                                std::vector<int>* backward_perm,
+                                std::vector<int>* out_shape) {
+  const int dim_size = dims.size();
+  PADDLE_ENFORCE_EQ((dim_size >= 3) && (dim_size <= 5),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "MLUTransposePerm func only support (dim_size >= 3) && "
+                        "(dim_size <= 5), but now dim_size is %d.",
+                        dim_size));
+
+  PADDLE_ENFORCE_EQ(
+      (data_layout == DataLayout::kNCHW) || (data_layout == DataLayout::kNHWC),
+      true,
+      platform::errors::InvalidArgument(
+          "MLUTransposePerm func only support DataLayout: kNCHW or kNHWC, but "
+          "now data_layout is %s.",
+          data_layout));
+
+  // case 1: NCHW of Paddle != NHWC of MLU when dims==3,4
+  // case 2： NHWDC and NCHWD of Paddle != NDHWC of MLU when dims==5
+  std::string map_key = "";
+  if (data_layout == DataLayout::kNCHW) {
+    switch (dim_size) {
+      case 3:
+        map_key = "3D_NCHW2NHWC";
+        break;
+      case 4:
+        map_key = "4D_NCHW2NHWC";
+        break;
+      case 5:
+        map_key = "5D_NCHWD2NDHWC";
+        break;
+    }
+  } else if (data_layout == DataLayout::kNHWC && dim_size == 5) {
+    map_key = "5D_NHWDC2NDHWC";
+  }
+  assert(map_key != "");
+  forward_perm->assign(TransPermMap.at(map_key).first.begin(),
+                       TransPermMap.at(map_key).first.end());
+  backward_perm->assign(TransPermMap.at(map_key).second.begin(),
+                        TransPermMap.at(map_key).second.end());
+
+  auto in_dims = phi::vectorize(dims);
+  for (size_t i = 0; i < in_dims.size(); i++) {
+    out_shape->push_back(in_dims[forward_perm->at(i)]);
+  }
+}
 
 template <typename T>
 inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
                                    const std::vector<int> perm,
-                                   const Tensor* transformed_input,
-                                   Tensor* transformed_output,
+                                   const phi::DenseTensor* transformed_input,
+                                   phi::DenseTensor* transformed_output,
                                    bool need_reshape_or_alloc) {
   const int dim_size = perm.size();
   if (need_reshape_or_alloc) {
@@ -1894,7 +2428,7 @@ inline void TransposeFromMLUTensor(const ExecutionContext& ctx,
 template <typename T>
 inline void FillMLUTensorWithHostValue(const ExecutionContext& ctx,
                                        T value,
-                                       Tensor* out) {
+                                       phi::DenseTensor* out) {
   MLUCnnlTensorDesc out_desc(*out);
   MLUCnnl::Fill(
       ctx, CNNL_POINTER_MODE_HOST, &value, out_desc.get(), GetBasePtr(out));

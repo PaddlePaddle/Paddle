@@ -24,7 +24,6 @@ namespace paddle {
 namespace operators {
 
 using framework::OpKernelType;
-using framework::Tensor;
 
 class HistogramOp : public framework::OperatorWithKernel {
  public:
@@ -63,11 +62,14 @@ class HistogramOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(histogram, HistogramInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(histogram,
+                            HistogramInferShapeFunctor,
                             PD_INFER_META(phi::HistogramInferMeta));
 
 REGISTER_OPERATOR(
-    histogram, ops::HistogramOp, ops::HistogramOpMaker,
+    histogram,
+    ops::HistogramOp,
+    ops::HistogramOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     HistogramInferShapeFunctor);

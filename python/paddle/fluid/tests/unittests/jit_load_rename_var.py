@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.base import switch_to_static_graph
 

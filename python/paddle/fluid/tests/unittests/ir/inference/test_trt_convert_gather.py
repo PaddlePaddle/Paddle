@@ -17,8 +17,7 @@ from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
-import logging
+from typing import List
 import unittest
 
 
@@ -42,6 +41,9 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         def generate_input2(index):
             return np.array(index).astype(np.int32)
 
+        def generate_input4(index):
+            return np.array(index).astype(np.int64)
+
         def generate_input3(axis):
             return np.array([axis]).astype(np.int32)
 
@@ -57,44 +59,48 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                 "Index": ["index_data"],
                                 "Axis": ["axis_data"]
                         }]:
-                            self.shape = shape
-                            self.axis = axis
-                            self.input_num = len(input)
-                            dics = [{"overwrite": overwrite, "axis": axis}]
-                            ops_config = [{
-                                "op_type": "gather",
-                                "op_inputs": input,
-                                "op_outputs": {
-                                    "Out": ["output_data"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
-                            ops = self.generate_op_config(ops_config)
+                            for index_type_int32 in [True, False]:
+                                self.shape = shape
+                                self.axis = axis
+                                self.input_num = len(input)
+                                self.index_type_int32 = index_type_int32
+                                dics = [{"overwrite": overwrite, "axis": axis}]
+                                ops_config = [{
+                                    "op_type": "gather",
+                                    "op_inputs": input,
+                                    "op_outputs": {
+                                        "Out": ["output_data"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
 
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "input_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input1, shape)),
-                                    "index_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input2, index)),
-                                } if len(input) == 2 else {
-                                    "input_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input1, shape)),
-                                    "index_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input2, index)),
-                                    "axis_data":
-                                    TensorConfig(data_gen=partial(
-                                        generate_input3, axis)),
-                                },
-                                outputs=["output_data"])
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={},
+                                    inputs={
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, shape)),
+                                        "index_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input2
+                                            if index_type_int32 ==
+                                            True else generate_input4, index)),
+                                    } if len(input) == 2 else {
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, shape)),
+                                        "index_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input2, index)),
+                                        "axis_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input3, axis)),
+                                    },
+                                    outputs=["output_data"])
 
-                            yield program_config
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -162,7 +168,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             if self.input_num == 3:
                 return 0, 5
             else:
-                if dynamic_shape:
+                if dynamic_shape and self.index_type_int32 == True:
                     return 1, 3
                 else:
                     return 0, 4

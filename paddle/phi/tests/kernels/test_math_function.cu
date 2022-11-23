@@ -37,21 +37,21 @@ void fill_fp16_data(phi::dtype::float16* in_ptr,
 }
 
 template <typename T>
-inline phi::funcs::BlasT<paddle::platform::CUDADeviceContext, T> GetBlas(
-    const paddle::platform::CUDADeviceContext& context) {
-  return phi::funcs::GetBlas<paddle::platform::CUDADeviceContext, T>(context);
+inline phi::funcs::BlasT<phi::GPUContext, T> GetBlas(
+    const phi::GPUContext& context) {
+  return phi::funcs::GetBlas<phi::GPUContext, T>(context);
 }
 
 TEST(math_function, notrans_mul_trans_fp32) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input1;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor out_gpu;
+  phi::DenseTensor out;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -79,15 +79,15 @@ TEST(math_function, notrans_mul_trans_fp32) {
 }
 
 TEST(math_function, notrans_mul_trans_fp16) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input1;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor out_gpu;
+  phi::DenseTensor out;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -126,15 +126,15 @@ TEST(math_function, notrans_mul_trans_fp16) {
 }
 
 TEST(math_function, trans_mul_notrans_fp32) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input1;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor out_gpu;
+  phi::DenseTensor out;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -168,15 +168,15 @@ TEST(math_function, trans_mul_notrans_fp32) {
 }
 
 TEST(math_function, trans_mul_notrans_fp16) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor out_gpu;
-  paddle::framework::Tensor out;
+  phi::DenseTensor input1;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor out_gpu;
+  phi::DenseTensor out;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -220,16 +220,16 @@ TEST(math_function, trans_mul_notrans_fp16) {
 }
 
 TEST(math_function, gemm_notrans_cublas_fp32) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor input3_gpu;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor input3_gpu;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -278,16 +278,16 @@ TEST(math_function, gemm_notrans_cublas_fp32) {
 }
 
 TEST(math_function, gemm_notrans_cublas_fp16) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor input3_gpu;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor input3_gpu;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -355,16 +355,16 @@ TEST(math_function, gemm_notrans_cublas_fp16) {
 }
 
 TEST(math_function, gemm_trans_cublas_fp32) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor input3_gpu;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor input3_gpu;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -407,16 +407,16 @@ TEST(math_function, gemm_trans_cublas_fp32) {
 }
 
 TEST(math_function, gemm_trans_cublas_fp16) {
-  paddle::framework::Tensor input1;
-  paddle::framework::Tensor input2;
-  paddle::framework::Tensor input3;
-  paddle::framework::Tensor input1_gpu;
-  paddle::framework::Tensor input2_gpu;
-  paddle::framework::Tensor input3_gpu;
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor input3;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor input3_gpu;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -479,13 +479,13 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 
 template <typename T>
 void GemvTest(int m, int n, bool trans) {
-  paddle::framework::Tensor mat_a;
-  paddle::framework::Tensor vec_b;
-  paddle::framework::Tensor vec_c;
+  phi::DenseTensor mat_a;
+  phi::DenseTensor vec_b;
+  phi::DenseTensor vec_c;
 
   paddle::platform::CPUPlace cpu_place;
   paddle::platform::CUDAPlace gpu_place(0);
-  paddle::platform::CUDADeviceContext context(gpu_place);
+  phi::GPUContext context(gpu_place);
   context.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(gpu_place, context.stream())
                            .get());
@@ -495,9 +495,9 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = vec_b.mutable_data<T>({trans ? m : n}, cpu_place);
   T* data_c = vec_c.mutable_data<T>({trans ? n : m}, cpu_place);
 
-  paddle::framework::Tensor g_mat_a;
-  paddle::framework::Tensor g_vec_b;
-  paddle::framework::Tensor g_vec_c;
+  phi::DenseTensor g_mat_a;
+  phi::DenseTensor g_vec_b;
+  phi::DenseTensor g_vec_c;
   T* g_data_a = g_mat_a.mutable_data<T>(mat_a.dims(), gpu_place);
   T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), gpu_place);
   T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), gpu_place);

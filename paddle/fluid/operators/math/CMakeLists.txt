@@ -5,6 +5,13 @@ if(WITH_ASCEND_CL)
     DEPS npu_op_runner)
 endif()
 
+if(WITH_XPU)
+  cc_library(
+    beam_search_xpu
+    SRCS beam_search_xpu.cc
+    DEPS xpu_op_list)
+endif()
+
 # please add new math_library in alphabetical order
 if(WITH_ASCEND_CL)
   math_library(concat_and_split DEPS concat_and_split_functor npu_op_runner)
@@ -24,26 +31,14 @@ math_library(sampler DEPS generator)
 # math_library(math_function DEPS blas dense_tensor tensor)
 math_library(maxouting)
 
-if(WITH_MKLDNN)
-  math_library(
-    selected_rows_functor
-    DEPS
-    selected_rows_utils
-    math_function
-    blas
-    mkldnn_axpy_handler
-    mixed_vector)
-else()
-  math_library(selected_rows_functor DEPS selected_rows_utils math_function
-               blas mixed_vector)
-endif()
-
 math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
 if(WITH_ASCEND_CL)
   math_library(beam_search DEPS math_function beam_search_npu)
+elseif(WITH_XPU)
+  math_library(beam_search DEPS math_function beam_search_xpu)
 else()
   math_library(beam_search DEPS math_function)
 endif()
@@ -54,7 +49,6 @@ math_library(vol2col)
 math_library(prelu)
 math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
-math_library(matrix_solve)
 
 cc_test(
   selected_rows_functor_test

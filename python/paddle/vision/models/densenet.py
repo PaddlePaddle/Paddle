@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 
 import paddle
@@ -191,7 +187,7 @@ class DenseNet(nn.Layer):
         layers (int, optional): Layers of DenseNet. Default: 121.
         bn_size (int, optional): Expansion of growth rate in the middle layer. Default: 4.
         dropout (float, optional): Dropout rate. Default: :math:`0.0`.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 

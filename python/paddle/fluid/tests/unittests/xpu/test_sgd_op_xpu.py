@@ -12,19 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
-import os
 
 sys.path.append("..")
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
@@ -79,7 +73,7 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
         out = fluid.layers.l2_normalize(x=emb, axis=-1)
 
         cost = fluid.layers.square_error_cost(input=out, label=label)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 

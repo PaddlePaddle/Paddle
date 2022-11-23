@@ -16,7 +16,6 @@ import unittest
 import os
 import json
 
-import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import AssignValueOpCost
@@ -35,7 +34,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import EmbeddingGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import FillConstantBatchSizeLikeGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GatherOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import GeluGradOpCost
@@ -52,7 +50,6 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import LogOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import LookupTableV2GradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulOpCost
-from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulGradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MatmulV2GradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import MemcpyOpCost
@@ -83,6 +80,9 @@ from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Transpose2GradOpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import Unsqueeze2OpCost
 from paddle.distributed.auto_parallel.cost.comp_op_cost import WriteToArrayOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import DropoutGradOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import FusedSoftmaxMaskUpperTriangleOpCost
+from paddle.distributed.auto_parallel.cost.comp_op_cost import FusedSoftmaxMaskUpperTriangleGradOpCost
 
 from test_cluster import cluster_json
 
@@ -180,11 +180,6 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.memory >= 0)
 
         op_cost = FillConstantBatchSizeLikeOpCost(cluster=cluster)
-        self.assertTrue(op_cost.flops >= 0)
-        self.assertTrue(op_cost.time >= 0)
-        self.assertTrue(op_cost.memory >= 0)
-
-        op_cost = FillConstantBatchSizeLikeGradOpCost(cluster=cluster)
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
@@ -423,6 +418,22 @@ class TestCompOpCost(unittest.TestCase):
         self.assertTrue(op_cost.flops >= 0)
         self.assertTrue(op_cost.time >= 0)
         self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = DropoutGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = FusedSoftmaxMaskUpperTriangleOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
+        op_cost = FusedSoftmaxMaskUpperTriangleGradOpCost(cluster=cluster)
+        self.assertTrue(op_cost.flops >= 0)
+        self.assertTrue(op_cost.time >= 0)
+        self.assertTrue(op_cost.memory >= 0)
+
         # Remove unnecessary files
         if os.path.exists(cluster_json_path):
             os.remove(cluster_json_path)

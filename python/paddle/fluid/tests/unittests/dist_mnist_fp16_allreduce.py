@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet.meta_optimizers import FP16AllReduceOptimizer as FP16AllReduce
@@ -38,7 +36,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # Train program
         predict = cnn_model(images)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')

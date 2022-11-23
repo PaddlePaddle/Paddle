@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -111,13 +111,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            inputs = program_config.inputs
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) == 0:
-                return 1, 2
-            if dynamic_shape == True and len(attrs[0]["decrease_axis"]) != 1:
-                return 0, 3
-            if dynamic_shape == False and len(attrs[0]["decrease_axis"]) != 0:
-                return 0, 3
             if not dynamic_shape:
                 for x in attrs[0]["axes"]:
                     if x == 0:
@@ -151,7 +144,6 @@ class TrtConvertSliceTest(TrtLayerAutoScanTest):
         # trt6 and trt7.1 has bug.
         # trt7.2 deserialize has bug.
         self.run_test()
-        pass
 
 
 if __name__ == "__main__":

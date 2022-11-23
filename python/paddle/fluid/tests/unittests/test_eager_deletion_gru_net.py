@@ -14,6 +14,7 @@
 
 import unittest
 from test_eager_deletion_dynamic_rnn_base import TestBase
+import paddle
 import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
@@ -38,7 +39,7 @@ def gru_net(data,
     fc1 = fluid.layers.fc(input=gru_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
     return avg_cost
 
 

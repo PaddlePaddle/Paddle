@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -41,33 +41,33 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
 
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         def generate_input3(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
-                return np.ones([batch, 3, 24, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
-                return np.ones([batch, 3, 24]).astype(np.float32)
+                return np.random.random([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 24]).astype(np.float32)
+                return np.random.random([batch, 24]).astype(np.float32)
             elif self.dims == 1:
-                return np.ones([24]).astype(np.float32)
+                return np.random.random([24]).astype(np.float32)
 
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:

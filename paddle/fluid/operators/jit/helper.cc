@@ -114,7 +114,8 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
   int block, rest;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {
-    PADDLE_ENFORCE_GT(i, 0,
+    PADDLE_ENFORCE_GT(i,
+                      0,
                       platform::errors::InvalidArgument(
                           "Each element of groups should be larger than "
                           "0. However the element: %d doesn't satify.",
@@ -122,12 +123,14 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
   });
   int sum = std::accumulate(groups.begin(), groups.end(), 0);
   std::memset(dst, 0, k * sum * block * sizeof(float));
-  PADDLE_ENFORCE_GE(sum * block, n,
+  PADDLE_ENFORCE_GE(sum * block,
+                    n,
                     platform::errors::InvalidArgument(
                         "The packed n (sum * block) should be equal to or "
                         "larger than n (matmul row size). "
                         "However, the packed n is %d and n is %d.",
-                        sum * block, n));
+                        sum * block,
+                        n));
 
   const int block_len = sizeof(float) * block;
   int n_offset = 0;

@@ -42,14 +42,14 @@ class SGDOp : public framework::OperatorWithKernel {
       const auto *grad_var = ctx.InputVar("Grad");
 
       // supported cases
-      bool dense_param_sparse_grad =
-          param_var->IsType<framework::LoDTensor>() &&
-          grad_var->IsType<phi::SelectedRows>();
-      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
-                                  grad_var->IsType<framework::LoDTensor>();
+      bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                     grad_var->IsType<phi::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                                  grad_var->IsType<phi::DenseTensor>();
 
       if (dense_param_sparse_grad || dense_param_and_grad)
-        return framework::OpKernelType(data_type, ctx.GetPlace(),
+        return framework::OpKernelType(data_type,
+                                       ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
     }
@@ -58,15 +58,17 @@ class SGDOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
+          framework::TransToProtoVarType(tensor.dtype()),
+          tensor.place(),
           tensor.layout());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -126,10 +128,14 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(sgd, SGDInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(sgd,
+                            SGDInferShapeFunctor,
                             PD_INFER_META(phi::SgdInferMeta));
 REGISTER_OPERATOR(
-    sgd, ops::SGDOp, ops::SGDOpMaker,
+    sgd,
+    ops::SGDOp,
+    ops::SGDOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SGDOpInferVarType, SGDInferShapeFunctor);
+    ops::SGDOpInferVarType,
+    SGDInferShapeFunctor);

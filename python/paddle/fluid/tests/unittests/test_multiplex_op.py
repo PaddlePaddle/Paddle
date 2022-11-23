@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -107,7 +105,7 @@ class TestMultiplexODygrap(unittest.TestCase):
         res = paddle.multiplex(inputs, index)
         paddle.enable_static()
 
-    def test_dygraph_final_state_api(self):
+    def test_dygraph_api(self):
         with fluid.dygraph.guard():
             img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
             img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)

@@ -82,27 +82,30 @@ class RocksDBHandler {
     assert(s.ok());
     _handles.resize(colnum);
     for (int i = 0; i < colnum; i++) {
-      s = _db->CreateColumnFamily(options, "shard_" + std::to_string(i),
-                                  &_handles[i]);
+      s = _db->CreateColumnFamily(
+          options, "shard_" + std::to_string(i), &_handles[i]);
       assert(s.ok());
     }
     LOG(INFO) << "DB initialize success, colnum:" << colnum;
     return 0;
   }
 
-  int put(int id, const char* key, int key_len, const char* value,
-          int value_len) {
+  int put(
+      int id, const char* key, int key_len, const char* value, int value_len) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
-    rocksdb::Status s =
-        _db->Put(options, _handles[id], rocksdb::Slice(key, key_len),
-                 rocksdb::Slice(value, value_len));
+    rocksdb::Status s = _db->Put(options,
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 rocksdb::Slice(value, value_len));
     assert(s.ok());
     return 0;
   }
 
-  int put_batch(int id, std::vector<std::pair<char*, int>>& ssd_keys,
-                std::vector<std::pair<char*, int>>& ssd_values, int n) {
+  int put_batch(int id,
+                std::vector<std::pair<char*, int>>& ssd_keys,
+                std::vector<std::pair<char*, int>>& ssd_values,
+                int n) {
     rocksdb::WriteOptions options;
     options.disableWAL = true;
     rocksdb::WriteBatch batch(n * 128);
@@ -117,8 +120,10 @@ class RocksDBHandler {
   }
 
   int get(int id, const char* key, int key_len, std::string& value) {
-    rocksdb::Status s = _db->Get(rocksdb::ReadOptions(), _handles[id],
-                                 rocksdb::Slice(key, key_len), &value);
+    rocksdb::Status s = _db->Get(rocksdb::ReadOptions(),
+                                 _handles[id],
+                                 rocksdb::Slice(key, key_len),
+                                 &value);
     if (s.IsNotFound()) {
       return 1;
     }

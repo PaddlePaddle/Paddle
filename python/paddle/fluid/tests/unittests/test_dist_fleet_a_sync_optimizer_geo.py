@@ -13,11 +13,9 @@
 # limitations under the License.
 import os
 
-os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 
@@ -55,7 +53,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
@@ -64,8 +62,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
-        with self.assertRaises(ValueError):
-            optimizer.minimize(avg_cost)
+        optimizer.minimize(avg_cost)
 
     def test_a_sync_optimizer_pserver(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
@@ -88,7 +85,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
@@ -31,7 +31,7 @@ void FullValue(const Context& dev_ctx, DenseTensor* tensor, T val) {
 }
 
 template <typename T, typename Context>
-void CooFullLikeKernel(const Context& dev_ctx,
+void FullLikeCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -51,7 +51,7 @@ void CooFullLikeKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void CsrFullLikeKernel(const Context& dev_ctx,
+void FullLikeCsrKernel(const Context& dev_ctx,
                        const SparseCsrTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -78,10 +78,10 @@ void CsrFullLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(coo_full_like,
+PD_REGISTER_KERNEL(full_like_coo,
                    CPU,
                    ALL_LAYOUT,
-                   phi::CooFullLikeKernel,
+                   phi::FullLikeCooKernel,
                    float,
                    double,
                    uint8_t,
@@ -96,10 +96,10 @@ PD_REGISTER_KERNEL(coo_full_like,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
-PD_REGISTER_KERNEL(csr_full_like,
+PD_REGISTER_KERNEL(full_like_csr,
                    CPU,
                    ALL_LAYOUT,
-                   phi::CsrFullLikeKernel,
+                   phi::FullLikeCsrKernel,
                    float,
                    double,
                    uint8_t,

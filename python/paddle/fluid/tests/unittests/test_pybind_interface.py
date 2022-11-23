@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from paddle.fluid import core
 from paddle import compat as cpt

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy
 import paddle.fluid as fluid
@@ -330,10 +328,12 @@ class TestBasicGRUApi(unittest.TestCase):
                         is_bidirect=self.is_bidirect,
                         sequence_length=sequence_length_np)
 
-        self.assertTrue(np.allclose(api_rnn_out, np_out[0], rtol=1e-4, atol=0))
+        np.testing.assert_allclose(api_rnn_out, np_out[0], rtol=0.0001, atol=0)
 
-        self.assertTrue(
-            np.allclose(api_last_hidden, np_out[1], rtol=1e-4, atol=0))
+        np.testing.assert_allclose(api_last_hidden,
+                                   np_out[1],
+                                   rtol=0.0001,
+                                   atol=0)
 
 
 if __name__ == '__main__':

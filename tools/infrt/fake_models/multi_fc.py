@@ -14,9 +14,6 @@
 """
 A fake model with multiple FC layers to test CINN on a more complex model.
 """
-import numpy
-import sys, os
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 

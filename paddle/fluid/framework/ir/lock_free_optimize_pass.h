@@ -63,8 +63,10 @@ class LockFreeOptimizePass : public Pass {
 
  private:
   // Create a new sgd node via current optimizer node
-  ir::Node* CreateNewSGDNode(ir::Graph* graph, ir::Node* forward_node,
-                             ir::Node* backward_node, ir::Node* grad_sum_node,
+  ir::Node* CreateNewSGDNode(ir::Graph* graph,
+                             ir::Node* forward_node,
+                             ir::Node* backward_node,
+                             ir::Node* grad_sum_node,
                              ir::Node* optimize_node) const;
 
   // Replace the input weight's optimizers
@@ -122,8 +124,9 @@ class LockFreeOptimizePass : public Pass {
 
   inline bool IsControlDepFrom(ir::Node* ctrl_dep_node, ir::Node* node) const {
     PADDLE_ENFORCE_NOT_NULL(
-        ctrl_dep_node, platform::errors::InvalidArgument(
-                           "Input argument ctrl_dep_node cannot be nullptr."));
+        ctrl_dep_node,
+        platform::errors::InvalidArgument(
+            "Input argument ctrl_dep_node cannot be nullptr."));
     PADDLE_ENFORCE_NOT_NULL(node,
                             platform::errors::InvalidArgument(
                                 "Input argument node cannot be nullptr."));

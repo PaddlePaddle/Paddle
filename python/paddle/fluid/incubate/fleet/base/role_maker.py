@@ -13,7 +13,6 @@
 # limitations under the License.
 """Defination of Role Makers."""
 
-from __future__ import print_function
 from multiprocessing import Process, Manager
 import paddle.fluid as fluid
 import os

@@ -32,16 +32,17 @@ int32_t MemorySparseGeoTable::Pull(TableContext& context) {
 int32_t MemorySparseGeoTable::Push(TableContext& context) {
   CHECK(context.value_type == Sparse);
   if (!context.push_context.is_param) {
-    return PushSparse(context.push_context.keys, context.push_context.values,
-                      context.num);
+    return PushSparse(
+        context.push_context.keys, context.push_context.values, context.num);
   } else {
-    return PushSparseParam(context.push_context.keys,
-                           context.push_context.values, context.num);
+    return PushSparseParam(
+        context.push_context.keys, context.push_context.values, context.num);
   }
 }
 
 int32_t MemorySparseGeoTable::PushSparseParam(const uint64_t* keys,
-                                              const float* values, size_t num) {
+                                              const float* values,
+                                              size_t num) {
   VLOG(5) << "DEBUG MemorySparseGeoTable::PushSparseParam begin "
              "PushSparseParam "
           << num;
@@ -113,7 +114,8 @@ int32_t MemorySparseGeoTable::PullGeoParam(const uint32_t trainer_id,
 }
 
 int32_t MemorySparseGeoTable::PushSparse(const uint64_t* keys,
-                                         const float* values, size_t num) {
+                                         const float* values,
+                                         size_t num) {
   VLOG(5) << "DEBUG MemorySparseGeoTable::PushSparse keys[0]" << keys[0]
           << " key_num: " << num;
   std::vector<uint64_t> ids;
@@ -191,7 +193,8 @@ int32_t MemorySparseGeoTable::PullSparse(float* pull_values,
 }
 
 int32_t MemorySparseGeoTable::_PushSparse(const uint64_t* keys,
-                                          const float* values, size_t num) {
+                                          const float* values,
+                                          size_t num) {
   auto shard_num = _task_pool_size;
   std::vector<std::future<int>> tasks(shard_num);
   std::vector<std::vector<std::pair<uint64_t, int>>> task_keys(shard_num);

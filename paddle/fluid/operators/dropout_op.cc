@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class DropoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -36,7 +34,8 @@ class DropoutOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Seed") {
       VLOG(10) << "var_name:" << var_name
@@ -44,8 +43,8 @@ class DropoutOp : public framework::OperatorWithKernel {
       return expected_kernel_type;
     }
 
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -66,23 +65,16 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float& drop_p) {
-          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
-        });
+        })
+        .SupportTensor();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
-                  "A flag indicating whether to use a fixed seed to generate "
-                  "random mask. NOTE: DO NOT set this flag to true in "
-                  "training. Setting this flag to true is only useful in "
-                  "unittest or for debug that always the same output units "
-                  "will be dropped.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -102,7 +94,8 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string& type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
@@ -127,8 +120,10 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "DropoutGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "DropoutGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "DropoutGrad");
 
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
 
@@ -192,17 +187,23 @@ class DropoutNdGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(dropout, DropoutInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(dropout,
+                            DropoutInferShapeFunctor,
                             PD_INFER_META(phi::DropoutInferMeta));
-REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
+REGISTER_OPERATOR(dropout,
+                  ops::DropoutOp,
+                  ops::DropoutOpMaker,
                   ops::DropoutGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutGradOpMaker<paddle::imperative::OpBase>,
                   DropoutInferShapeFunctor);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 
-DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd, DropoutNdInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(dropout_nd,
+                            DropoutNdInferShapeFunctor,
                             PD_INFER_META(phi::DropoutNdInferMeta));
-REGISTER_OPERATOR(dropout_nd, ops::DropoutOp, ops::DropoutNdOpMaker,
+REGISTER_OPERATOR(dropout_nd,
+                  ops::DropoutOp,
+                  ops::DropoutNdOpMaker,
                   ops::DropoutNdGradOpMaker<paddle::framework::OpDesc>,
                   ops::DropoutNdGradOpMaker<paddle::imperative::OpBase>,
                   DropoutNdInferShapeFunctor);

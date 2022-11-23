@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import collections
 import copy
 import six
@@ -62,6 +61,9 @@ def convert_to_list(value, n, name, dtype=int):
             raise ValueError("The " + name + "'s length must be " + str(n) +
                              ". Received: " + str(value))
         for single_value in value_list:
+            assert not isinstance(
+                single_value, Variable
+            ), "Required numerical type with '%s', but received Tensor." % dtype
             try:
                 dtype(single_value)
             except (ValueError, TypeError):
@@ -123,6 +125,13 @@ def _yield_flat_nest(nest):
                 yield ni
         else:
             yield n
+
+
+def to_sequence(nest):
+    if is_sequence(nest):
+        return nest
+    else:
+        return [nest]
 
 
 def flatten(nest):
@@ -260,6 +269,26 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
         _recursive_assert_same_structure(n1, n2, check_types)
 
 
+def padding_to_same_structure(nest1, nest2, obj=None):
+
+    def _padding_to_same_structure_single(value, obj):
+
+        def change_none_to_obj(x):
+            if x is None: return obj
+            return x
+
+        if is_sequence(value):
+            value = pack_sequence_as(
+                value, [change_none_to_obj(item) for item in flatten(value)])
+        else:
+            value = change_none_to_obj(value)
+        return value
+
+    nest1 = _padding_to_same_structure_single(nest1, obj)
+    nest2 = _padding_to_same_structure_single(nest2, obj)
+    return nest1, nest2
+
+
 def assert_same_structure(nest1, nest2, check_types=True):
     """
     Confirm two nested structures with the same structure.
@@ -334,9 +363,6 @@ def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
-        assert len(shape) > 0, ("The size of 'shape' in" + op_type +
-                                " can't be zero, "
-                                "but received %s." % len(shape))
         attrs["shape"] = _get_attr_shape(shape)
         if _contain_var(shape):
             inputs['ShapeTensorList'] = _get_shape_tensor(shape)
@@ -396,17 +422,17 @@ def check_shape(shape):
 
 def try_set_static_shape_tensor(tensor, shape):
     """Try to set static shape of tensor from a shape tensor.
-    
+
     For example,
 
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         # static mode, and shape is not all inferred (contains -1)
@@ -421,15 +447,15 @@ def try_get_constant_shape_from_tensor(shape_tensor):
     """Try to get shape from a tensor with constant value.
 
     For example,
-    
+
     import paddle
     paddle.enable_static()
     data = paddle.static.data(name="x", shape=[-1, 2], dtype='float32')
     shape = paddle.shape(data)  # shape should be [-1, 2] instead of [-1, -1]
-    x = paddle.uniform(shape) 
-    print(x.shape) 
+    x = paddle.uniform(shape)
+    print(x.shape)
     # (-1, 2)
-    
+
     """
     if not _non_static_mode():
         try:

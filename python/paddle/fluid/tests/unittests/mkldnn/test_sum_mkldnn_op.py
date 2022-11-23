@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
@@ -80,9 +78,13 @@ class TestMKLDNNSumInplaceOp(unittest.TestCase):
         sum_op.run(scope, place)
         out = scope.find_var("x0").get_tensor()
         out_array = np.array(out)
-        self.assertTrue(
-            np.allclose(expected_out, out_array, atol=1e-5),
-            "Inplace sum_mkldnn_op output has diff with expected output")
+        np.testing.assert_allclose(
+            expected_out,
+            out_array,
+            rtol=1e-05,
+            atol=1e-05,
+            err_msg='Inplace sum_mkldnn_op output has diff with expected output'
+        )
 
     def test_check_grad(self):
         pass

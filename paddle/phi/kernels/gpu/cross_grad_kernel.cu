@@ -22,8 +22,6 @@
 
 namespace phi {
 
-using funcs::IndexCalculator;
-
 template <typename T>
 __global__ void CrossGrad(const T* x,
                           const T* y,
@@ -32,7 +30,7 @@ __global__ void CrossGrad(const T* x,
                           T* out_dy,
                           const int stride,
                           const int N,
-                          IndexCalculator index_calculator) {
+                          phi::funcs::IndexCalculator index_calculator) {
   CUDA_KERNEL_LOOP(i, N) {
     int offset = index_calculator(i);
 
@@ -107,32 +105,52 @@ void CrossGradKernel(const Context& dev_ctx,
   std::vector<int> cal_dims;
   std::vector<int> left_strides;
   std::vector<int> full_strides;
+  std::vector<int> merged_dims;
+
+  for (int i = 0; i < dim; i++) {
+    if (i == 0) {
+      merged_dims.push_back(input_x_dims[i]);
+    } else {
+      merged_dims[0] *= input_x_dims[i];
+    }
+  }
+  int merge_axis = merged_dims.size();
+  merged_dims.push_back(input_x_dims[dim]);
+  for (int i = dim + 1; i < input_x_dims.size(); i++) {
+    if (i == dim + 1) {
+      merged_dims.push_back(input_x_dims[i]);
+    } else {
+      merged_dims[merge_axis + 1] *= input_x_dims[i];
+    }
+  }
 
   int full_dim = 1;
-  int left_dim = 1;
-  for (auto i = 0; i < input_x_dims.size(); i++) {
+  for (int i = 0; i < merged_dims.size(); i++) {
     full_strides.insert(full_strides.begin(), full_dim);
-    full_dim *= input_x_dims[input_x_dims.size() - i - 1];
-    if (i == dim) {
+    full_dim *= merged_dims[merged_dims.size() - i - 1];
+    if (i == merge_axis) {
       continue;
     }
     cal_dims.push_back(i);
+  }
+  int left_dim = 1;
+  for (int i = merged_dims.size() - 1; i >= 0; i--) {
+    if (i == merge_axis) {
+      continue;
+    }
     left_strides.insert(left_strides.begin(), left_dim);
-    left_dim *= input_x_dims[input_x_dims.size() - i - 1];
+    left_dim *= merged_dims[i];
   }
 
   const auto* input_x_data = input_x.data<T>();
   const auto* input_y_data = input_y.data<T>();
   const auto* input_out_grad_data = input_out_grad.data<T>();
-
   auto* output_x_grad_data = dev_ctx.template Alloc<T>(x_grad);
   auto* output_y_grad_data = dev_ctx.template Alloc<T>(y_grad);
-
-  auto index_calculator = IndexCalculator(
-      input_x_dims.size() - 1, cal_dims, left_strides, full_strides);
+  auto index_calculator = phi::funcs::IndexCalculator(
+      merged_dims.size() - 1, cal_dims, left_strides, full_strides);
 
   int64_t numel = x.numel();
-
   backends::gpu::GpuLaunchConfig config =
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel / 3);
 
@@ -144,7 +162,7 @@ void CrossGradKernel(const Context& dev_ctx,
                                   input_out_grad_data,
                                   output_x_grad_data,
                                   output_y_grad_data,
-                                  full_strides[dim],
+                                  full_strides[merge_axis],
                                   numel / 3,
                                   index_calculator);
 }

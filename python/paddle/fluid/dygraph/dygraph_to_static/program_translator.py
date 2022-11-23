@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import collections
 from paddle.utils import gast
 import inspect
@@ -42,7 +40,7 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import func_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import input_specs_compatible
 from paddle.fluid.dygraph.dygraph_to_static.utils import type_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
-from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable
+from paddle.fluid.dygraph.dygraph_to_static.utils import make_hashable, ALREADY_D2S
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import FunctionSpec, _hash_spec_names
 from paddle.fluid.dygraph.dygraph_to_static.function_spec import get_buffers, get_parameters
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
@@ -136,8 +134,11 @@ def convert_to_static(function):
     Args:
         function(callable): The function with dygraph layers that will be converted into static layers.
     """
+    if getattr(function, ALREADY_D2S, None):
+        return function
     with _CACHE_LOCK:
         static_func = _FUNCTION_CACHE.convert_with_cache(function)
+        setattr(static_func, ALREADY_D2S, True)
         return static_func
 
 
@@ -252,9 +253,15 @@ class StaticFunction(object):
             **kwargs(dict): other arguments like `build_strategy` et.al.
         """
         # save the instance `self` while decorating a method of class.
+
         if inspect.ismethod(function):
             self._dygraph_function = getattr(function, '__func__')
             self._class_instance = getattr(function, '__self__')
+
+            if not hasattr(self._class_instance, '_original_funcs'):
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             self._class_instance._original_funcs[
                 function.__name__] = self._dygraph_function
         else:
@@ -271,6 +278,13 @@ class StaticFunction(object):
         self._training = True
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
+
+        self._property = kwargs.get("property", False)
+
+    @property
+    def is_property(self):
+        # whether is class proproty to be exported.
+        return self._property
 
     def train(self):
         if isinstance(self._class_instance,
@@ -295,12 +309,12 @@ class StaticFunction(object):
         Overrides this method to parse the class instance and call bound method correctly.
 
         For example:
-            
+
             '''
             class Net(Layer):
                 def __init__(self):
                     pass
-                
+
                 @paddle.jit.to_static
                 def forward(self, x, y):
                     return x + y
@@ -308,7 +322,7 @@ class StaticFunction(object):
             net = Net()
             out = net(x, y)
             '''
-        
+
         In above case, `net(x, y)` will call `net.forward(x, y)` firstly that is a bound method
         of `Net` instance. After decorated by `@paddle.jit.to_static`, it will firstly to call `__get__`
         to parse the class instance correctly instead of the `StaticFunction` instance.
@@ -325,7 +339,8 @@ class StaticFunction(object):
         return self._descriptor_cache[instance]
 
     def _clone(self):
-        return self.__class__(self._dygraph_function, self._input_spec)
+        return self.__class__(self._dygraph_function, self._input_spec,
+                              **self._kwargs)
 
     def __call__(self, *args, **kwargs):
         """
@@ -333,11 +348,13 @@ class StaticFunction(object):
 
         Args:
             *args(tuple): tuple of all input arguments from original decorated function.
-            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+            **kwargs(dict): dict of all input keyward arguments from original decorated function.
 
         Return:
             Outputs of decorated function.
         """
+        if self._property:
+            return self._call_dygraph_function(*args, **kwargs)
 
         # 1. call dygraph function directly if not enable `declarative`
         if not self._program_trans.enable_to_static:
@@ -364,7 +381,6 @@ class StaticFunction(object):
         try:
             concrete_program, partial_program_layer = self.get_concrete_program(
                 *args, **kwargs, is_train=self._is_train_mode())
-
             # 3. synchronize self.training attribute.
             if isinstance(self._class_instance, layers.Layer):
                 partial_program_layer.training = self._class_instance.training
@@ -394,6 +410,10 @@ class StaticFunction(object):
 
     def _is_train_mode(self):
         if self._class_instance is not None:
+            if not hasattr(self._class_instance, 'training'):
+                raise TypeError(
+                    "When using 'to_static' to convert method of a class, "
+                    "please ensure the class inherits from nn.Layer")
             return self._class_instance.training
         else:
             return self._training
@@ -404,7 +424,7 @@ class StaticFunction(object):
 
         Args:
             *args(tuple): tuple of all input arguments from original decorated function.
-            **kwargs(dict): dict of all input keyward arguments from original decorated function. 
+            **kwargs(dict): dict of all input keyward arguments from original decorated function.
 
         Return:
             Outputs of dygraph function.
@@ -417,6 +437,15 @@ class StaticFunction(object):
 
         return dygraph_function(*args, **kwargs)
 
+    def _raise_when_property(self):
+        """raise RuntimeError when property=True
+
+        Raises:
+            RuntimeError: can not call this func when property=True
+        """
+        if self.is_property:
+            raise RuntimeError("Can not call the func when property=True.")
+
     def get_concrete_program(self, *args, **kwargs):
         """
         Returns traced concrete program and inner executable partial layer.
@@ -428,6 +457,7 @@ class StaticFunction(object):
         Returns:
             Traced ConcreteProgram and executable translated Layer.
         """
+        self._raise_when_property()
 
         with_hook = kwargs.get("with_hook", False)
         is_train = kwargs.get("is_train", True)
@@ -492,7 +522,7 @@ class StaticFunction(object):
                 def foo(x, y):
                     z = x + y
                     return z
-                
+
                 # usage 1:
                 decorated_foo = to_static(foo, input_spec=[InputSpec([10], name='x'), InputSpec([10], name='y')])
                 print(decorated_foo.concrete_program)
@@ -518,6 +548,7 @@ class StaticFunction(object):
             input_spec (list[InputSpec], optional): Describes the input of
                 the translate function.
         """
+        self._raise_when_property()
         # if specific the `input_spec`, the length of program_cache will always 1,
         # else, return the last one.
         cached_program_len = len(self._program_cache)
@@ -569,7 +600,7 @@ class StaticFunction(object):
     def rollback(self):
         """
         Rollback into original dygraph functions for current class instance.
-        
+
         Returns:
             Function or Method
 
@@ -592,7 +623,7 @@ class StaticFunction(object):
                 x = paddle.randn([10, 1], 'float32')
                 net = paddle.jit.to_static(Net())  # convert into static mode
                 out = net(x)
-                
+
                 net.forward.rollback()  # rollback into dygraph mode
                 out = net(x)
         """
@@ -649,7 +680,7 @@ class StaticFunction(object):
                 net = paddle.jit.to_static(Net())  # convert into static mode
 
                 copy_net = copy.deepcopy(net)      # deepcopy a new net without @to_static
-        
+
         Please attention that original 'net' will unwrap @to_static and rollback into simple Layer.
         """
         if self._class_instance is not None:
@@ -670,6 +701,7 @@ class StaticFunction(object):
         """
         Returns input tensors of recent converted static program.
         """
+        self._raise_when_property()
         concrete_program = self.concrete_program
         inputs = [
             var for var in flatten(concrete_program.inputs)
@@ -682,6 +714,7 @@ class StaticFunction(object):
         """
         Returns output tensors of recent converted static program.
         """
+        self._raise_when_property()
         concrete_program = self.concrete_program
         outputs = [
             var for var in flatten(concrete_program.outputs)
@@ -695,6 +728,7 @@ class StaticFunction(object):
         """
         Returns recent converted static main program.
         """
+        self._raise_when_property()
         concrete_program = self.concrete_program
         main_program = concrete_program.main_program
         return main_program
@@ -802,7 +836,7 @@ class ConcreteProgram(object):
 
         Args:
             func_spec(FunctionSpec): A FunctionSpec instance for decorated function.
-            input_spec(list[InputSpec]): 
+            input_spec(list[InputSpec]):
         """
         # verify the instance is initialized in imperative mode.
         _verify_init_in_dynamic_mode(class_instance)
@@ -1217,7 +1251,7 @@ class ProgramTranslator(object):
                 print([i.name for i in inputs])
                 # [u'generated_tensor_0'] the feed input Tensor name representing x
                 print([o.name for o in outputs])
-                # [u'_generated_var_4'] the fetch output Tensor name representing x_v        
+                # [u'_generated_var_4'] the fetch output Tensor name representing x_v
 
         """
         assert callable(

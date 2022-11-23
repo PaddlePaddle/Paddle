@@ -15,7 +15,6 @@
 import queue
 import threading
 import os
-import json
 import time
 import sys
 

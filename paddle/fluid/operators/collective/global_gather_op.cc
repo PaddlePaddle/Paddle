@@ -23,21 +23,23 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "GlobalGather");
-    OP_INOUT_CHECK(ctx->HasInput("local_count"), "Input", "local_count",
-                   "GlobalGather");
-    OP_INOUT_CHECK(ctx->HasInput("global_count"), "Input", "global_count",
-                   "GlobalGather");
+    OP_INOUT_CHECK(
+        ctx->HasInput("local_count"), "Input", "local_count", "GlobalGather");
+    OP_INOUT_CHECK(
+        ctx->HasInput("global_count"), "Input", "global_count", "GlobalGather");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "GlobalGather");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for global gather op must be non-negative.",
             ring_id));
     auto input_dims = ctx->GetInputDim("X");
     auto ndim_input = input_dims.size();
     // dim check
-    PADDLE_ENFORCE_EQ(ndim_input, 2,
+    PADDLE_ENFORCE_EQ(ndim_input,
+                      2,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension must be 2. "
                           "But received input's dimension = %d.",
@@ -103,11 +105,14 @@ class GlobalGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OPERATOR(global_gather, ops::GlobalGatherOp, ops::GlobalGatherOpMaker,
+REGISTER_OPERATOR(global_gather,
+                  ops::GlobalGatherOp,
+                  ops::GlobalGatherOpMaker,
                   ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalGatherOpGradMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(global_gather, ops::GlobalGatherOpCPUKernel<float>,
+REGISTER_OP_CPU_KERNEL(global_gather,
+                       ops::GlobalGatherOpCPUKernel<float>,
                        ops::GlobalGatherOpCPUKernel<double>,
                        ops::GlobalGatherOpCPUKernel<int>,
                        ops::GlobalGatherOpCPUKernel<int64_t>,

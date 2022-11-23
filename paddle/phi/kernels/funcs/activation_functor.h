@@ -1097,6 +1097,44 @@ struct ThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+// relu6(x) = min(max(0, x), 6)
+template <typename T>
+struct Relu6Functor : public BaseActivationFunctor<T> {
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) =
+        x.cwiseMax(static_cast<T>(0)).cwiseMin(static_cast<T>(threshold));
+  }
+};
+
+template <typename T>
+struct Relu6GradFunctor : public BaseActivationFunctor<T> {
+  float threshold;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * ((out > static_cast<T>(0)) * (out < static_cast<T>(threshold)))
+                   .template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+
 // tanhshrink(x) = x - tanh(x)
 // where tanh(x) = (exp(x) - exp(-x)) / (exp(x) + exp(-x))
 template <typename T>
@@ -1326,6 +1364,32 @@ struct SiluGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct SoftsignFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x / (static_cast<T>(1) + x.abs());
+  }
+};
+
+// d(softsign(x))/dx = 1 / (1 + |x|)^2
+// Taken from https://en.wikipedia.org/wiki/Activation_function
+
+template <typename T>
+struct SoftsignGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) =
+        dout * (static_cast<T>(1) / (static_cast<T>(1) + x.abs()).square());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
 // sigmoid(x) = 1 / (1 + exp(-x))
 template <typename T>
 struct SigmoidFunctor : public BaseActivationFunctor<T> {
@@ -1540,7 +1604,11 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
+#ifdef PADDLE_WITH_MLU
+    return ActBwdOpFwdDeps::kDepX;
+#else
     return ActBwdOpFwdDeps::kDepOut;
+#endif
   }
 };
 
@@ -2092,6 +2160,52 @@ struct CudaExpFunctor<double> : public BaseActivationFunctor<double> {
   __device__ __forceinline__ double operator()(const double x) const {
     return exp(x);
   }
+};
+
+template <typename T>
+struct CudaSeluFunctor : public BaseActivationFunctor<T> {
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ T operator()(const T x) const {
+    using MT =
+        typename std::conditional<(sizeof(T) > sizeof(float)), T, float>::type;
+    MT res = static_cast<MT>(x);
+    if (x <= zero) {
+      res = alpha * expf(res) - alpha;
+    }
+    res *= scale;
+    return static_cast<T>(res);
+  }
+
+ private:
+  float scale;
+  float alpha;
+  T zero = static_cast<T>(0.0f);
+};
+
+template <>
+struct CudaSeluFunctor<double> : public BaseActivationFunctor<double> {
+  typename BaseActivationFunctor<double>::AttrPair GetAttrs() {
+    return {{"scale", &scale}, {"alpha", &alpha}};
+  }
+
+  __device__ __forceinline__ double operator()(const double x) const {
+    double res = x;
+    double alpha_cast = static_cast<double>(alpha);
+    double scale_cast = static_cast<double>(scale);
+    if (res <= zero) {
+      res = alpha_cast * exp(res) - alpha_cast;
+    }
+    res *= scale_cast;
+    return res;
+  }
+
+ private:
+  float scale;
+  float alpha;
+  double zero = static_cast<double>(0.0f);
 };
 
 template <typename T>
@@ -2713,6 +2827,41 @@ struct CudaThresholdedReluGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct CudaRelu6Functor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // relu6(x) = min(max(0, x), 6)
+  __device__ __forceinline__ T operator()(const T x) const {
+    T t = static_cast<T>(threshold);
+    return x <= zero ? zero : (x < t ? x : t);
+  }
+};
+
+template <typename T>
+struct CudaRelu6GradFunctor : public BaseActivationFunctor<T> {
+  T zero = static_cast<T>(0.0f);
+  float threshold;
+
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"threshold", &threshold}};
+  }
+
+  // dx = (out > 0 && out < t) ? dout : 0
+  __device__ __forceinline__ T operator()(const T dout, const T out) const {
+    T t = static_cast<T>(threshold);
+    return (out > zero && out < t) ? dout : zero;
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() {
+    return ActBwdOpFwdDeps::kDepOut;
+  }
+};
+template <typename T>
 struct CudaLeakyReluFunctor : public BaseActivationFunctor<T> {
   T zero = static_cast<T>(0.0f);
   float alpha;
@@ -2941,6 +3090,31 @@ struct CudaSiluGradFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType temp = one / (one + exp(-x));
     return static_cast<T>(dout * (temp * (one + x * (one - temp))));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSoftsignFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // softsign(x) = x / (1 + abs(x))
+  __device__ __forceinline__ T operator()(const T x) const {
+    // Using abs directly will cause namespace conflict
+    return x / (one + (x > -x ? x : -x));
+  }
+};
+
+template <typename T>
+struct CudaSoftsignGradFunctor : public BaseActivationFunctor<T> {
+  T one = static_cast<T>(1.0f);
+
+  // dx = dout / (1 + abs(x))^2
+  __device__ __forceinline__ T operator()(const T dout, const T x) const {
+    // Using abs directly will cause namespace conflict
+    T temp = one + (x > -x ? x : -x);
+    return dout / (temp * temp);
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -3191,7 +3365,8 @@ struct CudaSwishGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  const MPType zero = static_cast<MPType>(0.0f);
   float threshold;
   float scale;
   float offset;
@@ -3205,19 +3380,19 @@ struct CudaHardSwishFunctor : public BaseActivationFunctor<T> {
   //                 x * (x + offset) / scale, otherwise
   // threshold = scale = 6, offset = 3 by default
   __device__ __forceinline__ T operator()(const T x) const {
-    T t = static_cast<T>(threshold);
-    T temp = x + static_cast<T>(offset);
-    T temp_max = temp > zero ? temp : zero;
-    T temp_min = temp_max < t ? temp_max : t;
-    return temp_min * x / static_cast<T>(scale);
+    const MPType x_t = static_cast<MPType>(x);
+    const MPType temp_max = std::max(x_t + static_cast<MPType>(offset), zero);
+    const MPType temp_min = std::min(temp_max, static_cast<MPType>(threshold));
+    return static_cast<T>(temp_min * x_t / static_cast<MPType>(scale));
   }
 };
 
 template <typename T>
 struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
-  T zero = static_cast<T>(0.0f);
-  T one = static_cast<T>(1.0f);
-  T two = static_cast<T>(2.0f);
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  const MPType zero = static_cast<MPType>(0.0f);
+  const MPType one = static_cast<MPType>(1.0f);
+  const MPType two = static_cast<MPType>(2.0f);
   float threshold;
   float scale;
   float offset;
@@ -3231,11 +3406,17 @@ struct CudaHardSwishGradFunctor : public BaseActivationFunctor<T> {
   //      dout * (2 * x / scale + offset / scale), otherwise
   // threshold = scale = 6, offset = 3 by default
   __device__ __forceinline__ T operator()(const T dout, const T x) const {
-    T o = static_cast<T>(offset);
-    T s = static_cast<T>(scale);
-    T temp1 = static_cast<T>(x + o > zero);
-    T temp2 = static_cast<T>(x + o < static_cast<T>(threshold));
-    return dout * (temp1 * temp2 * (two * x + o) / s + one - temp2);
+    const MPType dout_t = static_cast<MPType>(dout);
+    const MPType x_t = static_cast<MPType>(x);
+    const MPType offset_t = static_cast<MPType>(offset);
+    const MPType scale_t = static_cast<MPType>(scale);
+    const MPType temp1 = static_cast<MPType>(x_t + offset_t > zero);
+    const MPType temp2 =
+        static_cast<MPType>(x_t + offset_t < static_cast<MPType>(threshold));
+
+    return static_cast<T>(
+        dout_t *
+        (temp1 * temp2 * (two * x_t + offset_t) / scale_t + one - temp2));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

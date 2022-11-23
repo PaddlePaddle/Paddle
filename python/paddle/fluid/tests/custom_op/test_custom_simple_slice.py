@@ -46,9 +46,11 @@ class TestCustomSimpleSliceJit(unittest.TestCase):
         x = paddle.to_tensor(np_x)
         custom_op_out = custom_ops.custom_simple_slice(x, 2, 3)
         np_out = np_x[2:3]
-        self.assertTrue(
-            np.array_equal(custom_op_out, np_out),
-            "custom op: {},\n numpy: {}".format(np_out, custom_op_out.numpy()))
+        np.testing.assert_array_equal(
+            custom_op_out,
+            np_out,
+            err_msg='custom op: {},\n numpy: {}'.format(np_out,
+                                                        custom_op_out.numpy()))
 
     def test_slice_output(self):
         with _test_eager_guard():

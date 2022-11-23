@@ -14,7 +14,6 @@
 import unittest
 import numpy as np
 import math
-import paddle.fluid.core as core
 from op_test import OpTest
 import paddle.fluid as fluid
 import paddle
@@ -170,7 +169,9 @@ class TestAddPositionEncodingOpDygraph(unittest.TestCase):
         paddle.enable_static()
 
         position_tensor_np = add_position_encoding(tensor, 1.0, 1.0)
-        self.assertTrue(np.allclose(position_tensor, position_tensor_np))
+        np.testing.assert_allclose(position_tensor,
+                                   position_tensor_np,
+                                   rtol=1e-05)
 
 
 if __name__ == '__main__':

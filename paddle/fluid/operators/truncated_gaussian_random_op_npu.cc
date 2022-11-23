@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
@@ -33,8 +33,8 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     Tensor shape_tensor(experimental::DataType::INT32);
     shape_tensor.mutable_data<int32_t>({static_cast<int>(shape.size())},
                                        ctx.GetPlace());
-    paddle::framework::TensorFromVector(shape, ctx.device_context(),
-                                        &shape_tensor);
+    paddle::framework::TensorFromVector(
+        shape, ctx.device_context(), &shape_tensor);
     float mean = ctx.Attr<float>("mean");
     Tensor mean_tensor(experimental::DataType::FLOAT32);
     mean_tensor.mutable_data<float>({1}, ctx.GetPlace());
@@ -57,14 +57,15 @@ class TruncatedGaussianRandomNPUKernel : public framework::OpKernel<T> {
     float max_value = mean + std * 2.0;
     FillNpuTensorWithConstant<float>(&max_tensor, max_value);
 
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     const auto& runner = NpuOpRunner(
         "ParameterizedTruncatedNormal",
-        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor}, {*out},
+        {shape_tensor, mean_tensor, std_tensor, min_tensor, max_tensor},
+        {*out},
         {{"seed", seed_var}});
     runner.Run(stream);
   }
@@ -79,7 +80,7 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     float mean = context.Attr<float>("mean");
     float std = context.Attr<float>("std");
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     tensor->mutable_data<T>(context.GetPlace());
 
     Tensor cpu_tensor(tensor->dtype());
@@ -96,8 +97,10 @@ class NPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
       cpu_data[i] = truncated_normal(dist(*engine));
     }
     framework::TensorCopy(
-        cpu_tensor, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), tensor);
+        cpu_tensor,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        tensor);
     context.template device_context<paddle::platform::NPUDeviceContext>()
         .Wait();
   }

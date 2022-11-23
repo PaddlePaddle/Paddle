@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -27,6 +25,7 @@ class TestClipByNormOp(OpTest):
 
     def setUp(self):
         self.max_relative_error = 0.006
+        self.python_api = fluid.layers.clip_by_norm
         self.init_dtype()
         self.initTestCase()
         input = np.random.random(self.shape).astype(self.dtype)
@@ -45,7 +44,7 @@ class TestClipByNormOp(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def initTestCase(self):
         self.shape = (100, )
@@ -85,7 +84,9 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=0.001)
+                self.check_output_with_place(place,
+                                             atol=0.001,
+                                             check_eager=True)
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
@@ -145,11 +146,11 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
             output = self.max_norm * y_np / norm
         else:
             output = y_np
-        self.assertTrue(
-            np.allclose(np.array(out_tensor),
-                        output,
-                        atol=1e-5,
-                        equal_nan=False))
+        np.testing.assert_allclose(np.array(out_tensor),
+                                   output,
+                                   rtol=1e-05,
+                                   atol=1e-05,
+                                   equal_nan=False)
 
     def test_clip_by_norm_with_selected_ros(self):
         places = [core.CPUPlace()]

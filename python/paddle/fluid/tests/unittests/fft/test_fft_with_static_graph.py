@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import contextlib
-import re
-import sys
 import unittest
 
 import numpy as np
@@ -925,5 +923,3 @@ class TestIfftShift(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-# yapf: enable

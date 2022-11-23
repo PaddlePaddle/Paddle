@@ -28,7 +28,8 @@ MKLDFTI_ROUTINE_EACH(DEFINE_WRAP);
 DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
                                            enum DFTI_CONFIG_VALUE prec,
                                            enum DFTI_CONFIG_VALUE domain,
-                                           MKL_LONG dim, MKL_LONG* sizes) {
+                                           MKL_LONG dim,
+                                           MKL_LONG* sizes) {
   if (prec == DFTI_SINGLE) {
     if (dim == 1) {
       return DftiCreateDescriptor_s_1d(desc, domain, sizes[0]);

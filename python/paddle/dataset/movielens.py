@@ -22,14 +22,11 @@ set and test set into paddle reader creators.
 
 """
 
-from __future__ import print_function
-
 import numpy as np
 import zipfile
 import paddle.dataset.common
 import paddle.utils.deprecated as deprecated
 import re
-import random
 import functools
 import six
 import paddle.compat as cpt

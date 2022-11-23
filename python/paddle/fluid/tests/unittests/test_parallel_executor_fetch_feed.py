@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.core as core
@@ -59,7 +58,7 @@ class TestFetchAndFeed(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             out = Lenet(data, class_dim=102)
             loss = fluid.layers.cross_entropy(input=out, label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             opt = fluid.optimizer.Momentum(
                 learning_rate=0.1,
                 momentum=0.9,
@@ -101,7 +100,7 @@ class TestFetchAndFeed(unittest.TestCase):
 
         for k, v in all_vars.items():
             if ('tmp' not in k) and (
-                    k[0] is not '_' or v.persistable
+                    k[0] != '_' or v.persistable
             ) and v.type == core.VarDesc.VarType.LOD_TENSOR:
                 fetch_list.append(k)
 

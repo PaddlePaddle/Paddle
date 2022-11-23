@@ -13,10 +13,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
@@ -161,8 +159,10 @@ class TestGumbelSoftmaxOpGrad(unittest.TestCase):
         out_hard.sum().backward()
         out_soft.sum().backward()
 
-        self.assertEqual(np.allclose(x_hard.grad.numpy(), x_soft.grad.numpy()),
-                         True)
+        np.testing.assert_allclose(x_hard.grad.numpy(),
+                                   x_soft.grad.numpy(),
+                                   rtol=1e-5,
+                                   atol=1e-8)
         paddle.enable_static()
 
 

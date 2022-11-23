@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy
+import numpy as np
 import collections
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -75,13 +73,12 @@ class TestWeightNormalization(unittest.TestCase):
             data_lod_level = desc[2]
             data_lod = []
             for i in range(data_lod_level):
-                lod_level_i = numpy.random.randint(
-                    low=1,
-                    high=5,
-                    size=self.batch_size
-                    if i == 0 else sum(lod_level_i)).tolist()
+                lod_level_i = np.random.randint(low=1,
+                                                high=5,
+                                                size=self.batch_size if i == 0
+                                                else sum(lod_level_i)).tolist()
                 data_lod.append(lod_level_i)
-            data_value = numpy.random.random(
+            data_value = np.random.random(
                 size=[sum(data_lod[-1]) if data_lod else self.batch_size] +
                 data_shape).astype('float32')
             self.data[data_name] = (data_value, data_lod)
@@ -96,14 +93,14 @@ class TestWeightNormalization(unittest.TestCase):
             self.inputs[desc[0]] = tensor
 
     def weight_normalize(self):
-        v = numpy.ones(
+        v = np.ones(
             (self.data[self.data_desc[0][0]][0].shape[-1], self.hidden_size))
-        g = numpy.linalg.norm(v, axis=None, keepdims=True)
-        w = g * v / numpy.linalg.norm(v, axis=None, keepdims=True)
+        g = np.linalg.norm(v, axis=None, keepdims=True)
+        w = g * v / np.linalg.norm(v, axis=None, keepdims=True)
         x = self.data[self.data_desc[0][0]][0]
-        out = numpy.dot(x, w)
-        g_grad = (numpy.dot(x.T, numpy.ones_like(out)) *
-                  (v / numpy.linalg.norm(v, axis=None, keepdims=True))).sum(
+        out = np.dot(x, w)
+        g_grad = (np.dot(x.T, np.ones_like(out)) *
+                  (v / np.linalg.norm(v, axis=None, keepdims=True))).sum(
                       axis=None, keepdims=True)
         return g, v, g_grad
 
@@ -113,8 +110,10 @@ class TestWeightNormalization(unittest.TestCase):
         expect_output = self.weight_normalize()
         for actual_output in self.actual_outputs:
             [
-                self.assertTrue(
-                    numpy.allclose(numpy.array(actual), expect, atol=0.001))
+                np.testing.assert_allclose(np.array(actual),
+                                           expect,
+                                           rtol=1e-05,
+                                           atol=0.001)
                 for expect, actual in zip(expect_output, actual_output)
             ]
 

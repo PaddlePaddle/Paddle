@@ -12,137 +12,162 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
-from typing import Union, Callable
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
-from paddle import _C_ops
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestSparseUnary(unittest.TestCase):
 
-    def assert_raises_on_dense_tensor(self, sparse_func):
-        with _test_eager_guard():
-            dense_x = paddle.ones((2, 3))
-            with self.assertRaises(NotImplementedError):
-                sparse_func(dense_x)
+    def to_sparse(self, x, format):
+        if format == 'coo':
+            return x.detach().to_sparse_coo(sparse_dim=x.ndim)
+        elif format == 'csr':
+            return x.detach().to_sparse_csr()
 
-    def compare_with_dense(
-        self,
-        x,
-        to_sparse: Callable[[paddle.Tensor], paddle.Tensor],
-        dense_func: Callable[[paddle.Tensor], paddle.Tensor],
-        sparse_func: Callable[[paddle.Tensor], paddle.Tensor],
-        test_gradient: bool,
-    ):
+    def check_result(self, dense_func, sparse_func, format, *args):
+        origin_x = paddle.rand([8, 16, 32], dtype='float32')
+        mask = paddle.randint(0, 2, [8, 16, 32]).astype('float32')
 
-        def tensor_allclose(dense_tensor: paddle.Tensor,
-                            sparse_tensor: paddle.Tensor):
-            dense_numpy = dense_tensor.numpy()
-            mask = ~np.isnan(dense_numpy)
-            return np.allclose(dense_numpy[mask],
-                               sparse_tensor.to_dense().numpy()[mask])
+        ### check sparse coo with dense ###
+        dense_x = origin_x * mask
+        sp_x = self.to_sparse(dense_x, format)
 
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        with _test_eager_guard():
-            dense_x = paddle.to_tensor(x,
-                                       dtype="float32",
-                                       stop_gradient=not test_gradient)
+        sp_x.stop_gradient = False
+        if len(args) == 0:
+            sp_out = sparse_func(sp_x)
+        elif len(args) == 1:
+            sp_out = sparse_func(sp_x, args[0])
+        elif len(args) == 2:
+            sp_out = sparse_func(sp_x, args[0], args[1])
+        sp_out.backward()
 
-            sparse_x = to_sparse(dense_x)
-            sparse_out = sparse_func(sparse_x)
-
-            dense_x = paddle.to_tensor(x,
-                                       dtype="float32",
-                                       stop_gradient=not test_gradient)
+        dense_x.stop_gradient = False
+        if len(args) == 0:
             dense_out = dense_func(dense_x)
+        elif len(args) == 1:
+            dense_out = dense_func(dense_x, args[0])
+        elif len(args) == 2:
+            if dense_func == paddle.cast:
+                dense_out = dense_func(dense_x, args[1])
 
-            assert tensor_allclose(dense_out, sparse_out)
+                int_dtype = convert_np_dtype_to_dtype_(args[0])
+                if sp_out.is_sparse_csr():
+                    self.assertEqual(sp_out.crows().dtype, int_dtype)
+                    self.assertEqual(sp_out.cols().dtype, int_dtype)
+                elif sp_out.is_sparse_coo():
+                    self.assertEqual(sp_out.indices().dtype, int_dtype)
+            else:
+                dense_out = dense_func(dense_x, args[0], args[1])
+        dense_out.backward()
 
-            if test_gradient:
-                dense_out.backward(dense_out)
-                sparse_out.backward(sparse_out)
-                assert tensor_allclose(dense_x.grad, sparse_x.grad)
-        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+        # compare forward
+        np.testing.assert_allclose(sp_out.to_dense().numpy(),
+                                   dense_out.numpy(),
+                                   rtol=1e-05)
 
-    def test_sparse_relu(self):
-        x = [[0, -1, 0, 2], [0, 0, -3, 0], [4, 5, 0, 0]]
-        sparse_dim = 2
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_coo(sparse_dim),
-            paddle.nn.ReLU(),
-            paddle.incubate.sparse.nn.ReLU(),
-            True,
-        )
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_csr(),
-            paddle.nn.ReLU(),
-            paddle.incubate.sparse.nn.ReLU(),
-            False,
-        )
-        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.nn.ReLU())
+        # compare backward
+        if dense_func == paddle.sqrt:
+            expect_grad = np.nan_to_num(dense_x.grad.numpy(), 0., 0., 0.)
+        else:
+            expect_grad = (dense_x.grad * mask).numpy()
+        np.testing.assert_allclose(sp_x.grad.to_dense().numpy(),
+                                   expect_grad,
+                                   rtol=1e-05)
 
-    def test_sparse_sqrt(self):
-        x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
-        sparse_dim = 2
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_coo(sparse_dim),
-            paddle.sqrt,
-            paddle.incubate.sparse.sqrt,
-            True,
-        )
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_csr(),
-            paddle.sqrt,
-            paddle.incubate.sparse.sqrt,
-            False,
-        )
-        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.sqrt)
+    def compare_with_dense(self, dense_func, sparse_func):
+        self.check_result(dense_func, sparse_func, 'coo')
+        self.check_result(dense_func, sparse_func, 'csr')
+
+    def compare_with_dense_one_attr(self, dense_func, sparse_func, attr1):
+        self.check_result(dense_func, sparse_func, 'coo', attr1)
+        self.check_result(dense_func, sparse_func, 'csr', attr1)
+
+    def compare_with_dense_two_attr(self, dense_func, sparse_func, attr1,
+                                    attr2):
+        self.check_result(dense_func, sparse_func, 'coo', attr1, attr2)
+        self.check_result(dense_func, sparse_func, 'csr', attr1, attr2)
 
     def test_sparse_sin(self):
-        x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, 4, 2, 0]]
-        sparse_dim = 2
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_coo(sparse_dim),
-            paddle.sin,
-            paddle.incubate.sparse.sin,
-            True,
-        )
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_csr(),
-            paddle.sin,
-            paddle.incubate.sparse.sin,
-            False,
-        )
-        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.sin)
+        self.compare_with_dense(paddle.sin, paddle.incubate.sparse.sin)
+
+    def test_sparse_tan(self):
+        self.compare_with_dense(paddle.tan, paddle.incubate.sparse.tan)
+
+    def test_sparse_asin(self):
+        self.compare_with_dense(paddle.asin, paddle.incubate.sparse.asin)
+
+    def test_sparse_atan(self):
+        self.compare_with_dense(paddle.atan, paddle.incubate.sparse.atan)
+
+    def test_sparse_sinh(self):
+        self.compare_with_dense(paddle.sinh, paddle.incubate.sparse.sinh)
 
     def test_sparse_tanh(self):
-        x = [[0, 16, 0, 0], [0, 0, 0, 0], [0, -4, 2, 0]]
-        sparse_dim = 2
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_coo(sparse_dim),
-            paddle.tanh,
-            paddle.incubate.sparse.tanh,
-            True,
-        )
-        self.compare_with_dense(
-            x,
-            lambda x: x.to_sparse_csr(),
-            paddle.tanh,
-            paddle.incubate.sparse.tanh,
-            False,
-        )
-        self.assert_raises_on_dense_tensor(paddle.incubate.sparse.tanh)
+        self.compare_with_dense(paddle.tanh, paddle.incubate.sparse.tanh)
+
+    def test_sparse_asinh(self):
+        self.compare_with_dense(paddle.asinh, paddle.incubate.sparse.asinh)
+
+    def test_sparse_atanh(self):
+        self.compare_with_dense(paddle.atanh, paddle.incubate.sparse.atanh)
+
+    def test_sparse_sqrt(self):
+        self.compare_with_dense(paddle.sqrt, paddle.incubate.sparse.sqrt)
+
+    def test_sparse_square(self):
+        self.compare_with_dense(paddle.square, paddle.incubate.sparse.square)
+
+    def test_sparse_log1p(self):
+        self.compare_with_dense(paddle.log1p, paddle.incubate.sparse.log1p)
+
+    def test_sparse_relu(self):
+        self.compare_with_dense(paddle.nn.ReLU(),
+                                paddle.incubate.sparse.nn.ReLU())
+
+    def test_sparse_relu6(self):
+        self.compare_with_dense(paddle.nn.ReLU6(),
+                                paddle.incubate.sparse.nn.ReLU6())
+
+    def test_sparse_leaky_relu(self):
+        self.compare_with_dense(paddle.nn.LeakyReLU(0.1),
+                                paddle.incubate.sparse.nn.LeakyReLU(0.1))
+
+    def test_sparse_abs(self):
+        self.compare_with_dense(paddle.abs, paddle.incubate.sparse.abs)
+
+    def test_sparse_expm1(self):
+        self.compare_with_dense(paddle.expm1, paddle.incubate.sparse.expm1)
+
+    def test_sparse_deg2rad(self):
+        self.compare_with_dense(paddle.deg2rad, paddle.incubate.sparse.deg2rad)
+
+    def test_sparse_rad2deg(self):
+        self.compare_with_dense(paddle.rad2deg, paddle.incubate.sparse.rad2deg)
+
+    def test_sparse_neg(self):
+        self.compare_with_dense(paddle.neg, paddle.incubate.sparse.neg)
+
+    def test_sparse_pow(self):
+        self.compare_with_dense_one_attr(paddle.pow, paddle.incubate.sparse.pow,
+                                         3)
+
+    def test_sparse_mul_scalar(self):
+        self.compare_with_dense_one_attr(paddle.Tensor.__mul__,
+                                         paddle.incubate.sparse.multiply, 3)
+
+    def test_sparse_div_scalar(self):
+        self.compare_with_dense_one_attr(paddle.Tensor.__div__,
+                                         paddle.incubate.sparse.divide, 2)
+
+    def test_sparse_cast(self):
+        self.compare_with_dense_two_attr(paddle.cast,
+                                         paddle.incubate.sparse.cast, 'int32',
+                                         'float32')
+        self.compare_with_dense_two_attr(paddle.cast,
+                                         paddle.incubate.sparse.cast, 'int32',
+                                         'float64')
 
 
 if __name__ == "__main__":

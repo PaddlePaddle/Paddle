@@ -23,6 +23,7 @@
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/inference/tensorrt/plugin/gather_nd_op_plugin.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/backends/gpu/gpu_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -32,9 +33,12 @@ namespace plugin {
 #if IS_TRT_VERSION_GE(6000)
 
 template <typename T, typename IndexT = int>
-__global__ void GatherNdCUDAKernel(const T* input, const int32_t* input_dims,
-                                   const IndexT* indices, T* output,
-                                   int32_t remain_size, int32_t slice_size,
+__global__ void GatherNdCUDAKernel(const T* input,
+                                   const int32_t* input_dims,
+                                   const IndexT* indices,
+                                   T* output,
+                                   int32_t remain_size,
+                                   int32_t slice_size,
                                    int32_t end_size) {
   CUDA_KERNEL_LOOP(i, remain_size * slice_size) {
     int indices_i = i / slice_size;
@@ -49,7 +53,8 @@ __global__ void GatherNdCUDAKernel(const T* input, const int32_t* input_dims,
           "please check whether the dimensions of index and "
           "input meet the requirements. It should "
           "be less than [%d] and greater or equal to 0, but received [%d]",
-          input_dims[j], index_value);
+          input_dims[j],
+          index_value);
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
@@ -69,13 +74,17 @@ void GatherNdPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      nb_inputs, 2,
+      nb_inputs,
+      2,
       platform::errors::InvalidArgument(
           "The gather_nd plugin should have 2 input, but got %d.", nb_inputs));
-  PADDLE_ENFORCE_EQ(output_index, 0,
+  PADDLE_ENFORCE_EQ(output_index,
+                    0,
                     platform::errors::InvalidArgument(
                         "When GetOutputDimensions in gather_nd "
                         "plugin, the output_index should be 0."));
@@ -99,17 +108,22 @@ nvinfer1::DimsExprs GatherNdPluginDynamic::getOutputDimensions(
 }
 
 bool GatherNdPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of gather_nd plugin should not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of gather_nd plugin should not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
   (in_out && pos < (nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
@@ -134,15 +148,19 @@ bool GatherNdPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType GatherNdPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return input_types[0];
 }
 
 int GatherNdPluginDynamic::enqueue(
     const nvinfer1::PluginTensorDesc* input_desc,
-    const nvinfer1::PluginTensorDesc* output_desc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc* output_desc,
+    const void* const* inputs,
+    void* const* outputs,
+    void* workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   auto index_dims = input_desc[1].dims;
   auto input_dims_size = input_dims.nbDims;
@@ -166,8 +184,8 @@ int GatherNdPluginDynamic::enqueue(
   int end_size = index_shape[index_dims_size - 1];
   // remain dim
   std::vector<int> remain_ddim(index_shape.begin(), index_shape.end() - 1);
-  int remain_numel = std::accumulate(remain_ddim.begin(), remain_ddim.end(), 1,
-                                     std::multiplies<int>());
+  int remain_numel = std::accumulate(
+      remain_ddim.begin(), remain_ddim.end(), 1, std::multiplies<int>());
   // slice size
   int slice_size = 1;
   for (int i = end_size; i < input_dims_size; ++i) {
@@ -185,17 +203,24 @@ int GatherNdPluginDynamic::enqueue(
     if (input_dims_data_ == nullptr) {
       cudaMalloc(&input_dims_data_, input_shape.size() * sizeof(int));
     }
-    cudaMemcpyAsync(input_dims_data_, input_shape.data(),
-                    sizeof(int) * input_shape.size(), cudaMemcpyHostToDevice,
+    cudaMemcpyAsync(input_dims_data_,
+                    input_shape.data(),
+                    sizeof(int) * input_shape.size(),
+                    cudaMemcpyHostToDevice,
                     stream);
 
     int block = 512;
     int n = slice_size * remain_numel;
     int grid = (n + block - 1) / block;
 
-    GatherNdCUDAKernel<float, int32_t><<<grid, block, 0, stream>>>(
-        p_input, input_dims_data_, p_index, p_output, remain_numel, slice_size,
-        end_size);
+    GatherNdCUDAKernel<float, int32_t>
+        <<<grid, block, 0, stream>>>(p_input,
+                                     input_dims_data_,
+                                     p_index,
+                                     p_output,
+                                     remain_numel,
+                                     slice_size,
+                                     end_size);
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(1) << "TRT Plugin DataType selected. gather_nd-->fp16";
 
@@ -206,17 +231,24 @@ int GatherNdPluginDynamic::enqueue(
     if (input_dims_data_ == nullptr) {
       cudaMalloc(&input_dims_data_, input_shape.size() * sizeof(int));
     }
-    cudaMemcpyAsync(input_dims_data_, input_shape.data(),
-                    sizeof(int) * input_shape.size(), cudaMemcpyHostToDevice,
+    cudaMemcpyAsync(input_dims_data_,
+                    input_shape.data(),
+                    sizeof(int) * input_shape.size(),
+                    cudaMemcpyHostToDevice,
                     stream);
 
     int block = 512;
     int n = slice_size * remain_numel;
     int grid = (n + block - 1) / block;
 
-    GatherNdCUDAKernel<half, int32_t><<<grid, block, 0, stream>>>(
-        p_input, input_dims_data_, p_index, p_output, remain_numel, slice_size,
-        end_size);
+    GatherNdCUDAKernel<half, int32_t>
+        <<<grid, block, 0, stream>>>(p_input,
+                                     input_dims_data_,
+                                     p_index,
+                                     p_output,
+                                     remain_numel,
+                                     slice_size,
+                                     end_size);
   }
 
   return cudaGetLastError() != cudaSuccess;

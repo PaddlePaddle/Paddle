@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
 from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
-import six
 
 
 class RecurrentTest(fluid.Layer):
@@ -117,10 +111,10 @@ class TestRecurrentFeed(unittest.TestCase):
                 static_dout = out[2]
                 original_np1 = static_out_value
 
-        self.assertTrue(np.array_equal(static_sum_out, sum_out_value))
-        self.assertTrue(np.array_equal(static_sum_out, eager_sum_out_value))
-        self.assertTrue(np.array_equal(static_dout, dyout))
-        self.assertTrue(np.array_equal(static_dout, eager_dyout))
+        np.testing.assert_array_equal(static_sum_out, sum_out_value)
+        np.testing.assert_array_equal(static_sum_out, eager_sum_out_value)
+        np.testing.assert_array_equal(static_dout, dyout)
+        np.testing.assert_array_equal(static_dout, eager_dyout)
 
 
 if __name__ == '__main__':

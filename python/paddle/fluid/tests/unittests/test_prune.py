@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
-import paddle.compat as cpt
 import numpy as np
 import os
 import contextlib
@@ -31,7 +29,7 @@ class TestPrune(unittest.TestCase):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         y = fluid.layers.fc(input=[x], size=2, act="softmax")
         loss = fluid.layers.cross_entropy(input=y, label=label)
-        loss = fluid.layers.mean(x=loss)
+        loss = paddle.mean(x=loss)
         return x, y, label, loss
 
     def test_prune_with_input(self):
@@ -41,14 +39,14 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune_with_input(
             feeded_var_names=[y.name, label.name], targets=[loss])
         self.assertEqual(len(pruned_program.global_block().ops), 2)
         self.assertEqual([op.type for op in pruned_program.global_block().ops],
-                         ["cross_entropy2", "mean"])
+                         ["cross_entropy2", "reduce_mean"])
 
     def test_prune(self):
         program = framework.Program()
@@ -57,14 +55,16 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune(targets=[loss])
         self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
 
     def test_prune_target_not_list(self):
         program = framework.Program()
@@ -73,14 +73,16 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         pruned_program = program._prune(targets=loss)
         self.assertEqual(len(pruned_program.global_block().ops), 5)
-        self.assertEqual(
-            [op.type for op in pruned_program.global_block().ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
 
     def test_prune_target_none(self):
         program = framework.Program()
@@ -89,15 +91,15 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
-        self.assertEqual(
-            [op.type for op in block.ops],
-            ["mul", "elementwise_add", "softmax", "cross_entropy2", "mean"])
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
         try:
             pruned_program = program._prune(targets=None)
         except ValueError as e:
             self.assertIn(
                 "All targets of Program._prune_with_input() can only be Variable or Operator",
-                cpt.get_exception_message(e))
+                str(e))
 
 
 def mock(self, program, feed, fetch, optimize_ops):
@@ -128,9 +130,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             act="softmax",
                             param_attr=w_param_attrs)
         loss1 = fluid.layers.cross_entropy(input=y, label=label)
-        loss1 = fluid.layers.mean(x=loss1)
+        loss1 = paddle.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y, label=label)
-        loss2 = fluid.layers.mean(x=loss2)
+        loss2 = paddle.mean(x=loss2)
         loss1.persistable = True
         loss2.persistable = True
         return x, y, label, loss1, loss2, w_param_attrs
@@ -158,9 +160,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                              act="softmax",
                              param_attr=w2_param_attrs)
         loss1 = fluid.layers.cross_entropy(input=y1, label=label)
-        loss1 = fluid.layers.mean(x=loss1)
+        loss1 = paddle.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y2, label=label)
-        loss2 = fluid.layers.mean(x=loss2)
+        loss2 = paddle.mean(x=loss2)
         return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
 
     def test_not_prune(self):
@@ -189,7 +191,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_fetches_without_optimizer(self):
         """
-        Prune operators and variables which are not needed to generate 'fetches'. 
+        Prune operators and variables which are not needed to generate 'fetches'.
         """
         program = framework.Program()
         startup_program = framework.Program()
@@ -214,12 +216,12 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))  #loss2 is pruned
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight not changed
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight not changed
 
     def test_prune_fetches_with_optimizer(self):
         """
-        Prune operators and operators which are not needed to generate 'fetches'. 
+        Prune operators and operators which are not needed to generate 'fetches'.
         In train mode, the operators and operators in backward and optimization should be kept.
         """
         program = framework.Program()
@@ -306,8 +308,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
     def test_prune_feed_with_optimizer(self):
         program = framework.Program()
@@ -340,7 +342,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
-        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run()
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
@@ -374,7 +376,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
     def test_prune_with_cache_program2(self):
         '''
         When use_prune=True, Executor should cache the pruned program.
-        If the only difference in fetch_list is  optimize_ops during multiple runs, 
+        If the only difference in fetch_list is  optimize_ops during multiple runs,
         the cache_keys should be different and get different pruned program.
         '''
         with _mock_guard(mock):
@@ -430,7 +432,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         If in next run, the program, feed, fetch are not changed, Executor use the cached pruned program,
         and needn't to call  _prune_program() to prune the program.
         In this test, we hack the Executor._prune_program with a mock function which do nothing but increase
-        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run() 
+        Executor.prune_called_times, and we check prune_called_times equals 1 even if we called exe.run()
         10 times with the same input arguments.
         '''
         with _mock_guard(mock):
@@ -466,7 +468,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
 
     def test_prune_with_multi_optimizers(self):
         '''
-        If there are multiple optimizers in the program, we can run specific one by 
+        If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
@@ -522,7 +524,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_with_multi_devices(self):
@@ -593,11 +595,11 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=False)
             weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
-        self.assertTrue(np.allclose(weight1, weight2))
+        np.testing.assert_allclose(weight1, weight2, rtol=1e-05)
 
     def test_prune_program_with_tupe_in_fetch_list(self):
         '''
-        If there are multiple optimizers in the program, we can run specific one by 
+        If there are multiple optimizers in the program, we can run specific one by
         pass the return of optimize.minimize() to fetch_list.
         '''
         exe = fluid.Executor(fluid.CPUPlace())
@@ -656,7 +658,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_program_partial_parameter_updated(self):
@@ -703,8 +705,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     scope.find_var(w2_param_attrs.name).get_tensor())
                 self.assertFalse(np.array_equal(weight1_init,
                                                 weight1))  # weight changed
-                self.assertTrue(np.array_equal(weight2_init,
-                                               weight2))  # weight2 unchanged
+                np.testing.assert_array_equal(weight2_init,
+                                              weight2)  # weight2 unchanged
 
     def test_prune_override_use_prune(self):
         '''
@@ -763,7 +765,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor())
 
-        self.assertTrue(np.array_equal(weight_with_prune, weight_expected))
+        np.testing.assert_array_equal(weight_with_prune, weight_expected)
         self.assertFalse(np.array_equal(weight_without_prune, weight_expected))
 
     def test_prune_feed_var_in_fetchlist_1(self):
@@ -792,8 +794,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(x.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
     def test_prune_feed_var_in_fetchlist_2(self):
         # the variable to be fed is leaf
@@ -820,8 +822,8 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor())
-                self.assertTrue(np.array_equal(weight_init,
-                                               weight))  # weight unchanged
+                np.testing.assert_array_equal(weight_init,
+                                              weight)  # weight unchanged
 
 
 if __name__ == '__main__':

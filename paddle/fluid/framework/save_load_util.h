@@ -32,11 +32,13 @@ class Scope;
 
 bool SaveStaticNameListToDisk(
     const std::string& file_name,
-    const std::vector<std::string>& vec_tensor_name_list, const Scope& scope);
+    const std::vector<std::string>& vec_tensor_name_list,
+    const Scope& scope);
 
 bool LoadStaticNameListFromDisk(
     const std::string& file_name,
-    const std::vector<std::string>& vec_tensor_name_list, const Scope& scope);
+    const std::vector<std::string>& vec_tensor_name_list,
+    const Scope& scope);
 
 bool SaveDygraphVarBaseListToDisk(
     const std::string& file_name,
@@ -45,12 +47,13 @@ bool SaveDygraphVarBaseListToDisk(
 const std::vector<std::shared_ptr<imperative::VarBase>>
 LoadDygraphVarBaseListFromDisk(const std::string& file_name);
 
-bool SaveTensorToDisk(const std::string& file_name,
-                      const std::map<std::string, Tensor*>& map_tensor);
+bool SaveTensorToDisk(
+    const std::string& file_name,
+    const std::map<std::string, phi::DenseTensor*>& map_tensor);
 
 bool LoadTensorFromDisk(
     const std::string& file_name,
-    std::map<std::string, std::shared_ptr<Tensor>>* map_tensor);
+    std::map<std::string, std::shared_ptr<phi::DenseTensor>>* map_tensor);
 
 }  // namespace framework
 }  // namespace paddle

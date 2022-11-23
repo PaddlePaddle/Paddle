@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -23,6 +24,6 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const std::vector<int>& axes,
+                       const IntArray& axes,
                        DenseTensor* dx);
 }  // namespace phi

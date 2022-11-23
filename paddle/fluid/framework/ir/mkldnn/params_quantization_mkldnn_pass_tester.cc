@@ -29,9 +29,10 @@ struct Data {
 
   Data(std::vector<int64_t>&& data_shape, std::vector<float>&& raw_data)
       : shape(std::move(data_shape)), data(std::move(raw_data)) {
-    auto size_from_shape = std::accumulate(shape.begin(), shape.end(), 1,
-                                           std::multiplies<int64_t>());
-    PADDLE_ENFORCE_EQ(size_from_shape, data.size(),
+    auto size_from_shape = std::accumulate(
+        shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
+    PADDLE_ENFORCE_EQ(size_from_shape,
+                      data.size(),
                       platform::errors::InvalidArgument(
                           "Shape size doesn't match data size."));
   }
@@ -88,8 +89,14 @@ struct ProgramStrategy {
 
   virtual void CheckOp(const OpDesc& op) const = 0;
 
-  VarDesc* AddInput(OpDesc* op, std::string input_name, const Data& data) {
-    const std::string var_name = input_name + "_var";
+  VarDesc* AddInput(OpDesc* op,
+                    std::string input_name,
+                    const Data& data,
+                    const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
+    if (var_name.empty()) {
+      var_name = input_name + "_var";
+    }
     op->SetInput(input_name, {var_name});
     auto var = program.MutableBlock(0)->Var(var_name);
     var->SetShape(data.getShape());
@@ -97,8 +104,14 @@ struct ProgramStrategy {
     return var;
   }
 
-  void AddOutput(OpDesc* op, std::string output_name, const Data& data) {
-    const std::string var_name = output_name + "_var";
+  void AddOutput(OpDesc* op,
+                 std::string output_name,
+                 const Data& data,
+                 const std::string user_var_name = "") {
+    std::string var_name = user_var_name;
+    if (var_name.empty()) {
+      var_name = output_name + "_var";
+    }
     op->SetOutput(output_name, {var_name});
     program.MutableBlock(0)->Var(var_name);
     test_scope.CreateTensor(var_name, data);
@@ -110,24 +123,29 @@ struct ProgramStrategy {
 };
 
 struct ConvProgramStrategy : public ProgramStrategy {
-  ConvProgramStrategy(Data&& input, Data&& filter, Data&& output,
-                      std::vector<float>&& scale_weights, int groups = 1,
+  ConvProgramStrategy(Data&& input,
+                      Data&& filter,
+                      Data&& output,
+                      std::vector<float>&& scale_weights,
+                      int groups = 1,
                       Data&& bias = Data(),
-                      std::vector<float>&& scale_bias = {})
+                      std::vector<float>&& scale_bias = {},
+                      bool share_weight = false)
       : input(std::move(input)),
         filter(std::move(filter)),
         output(std::move(output)),
         scale_weights(std::move(scale_weights)),
         groups(std::move(groups)),
         bias(std::move(bias)),
-        scale_bias(std::move(scale_bias)) {}
+        scale_bias(std::move(scale_bias)),
+        share_weight(std::move(share_weight)) {}
 
  protected:
-  OpDesc* CreateBasicConvOp() {
+  OpDesc* CreateBasicConvOp(const std::string conv_name = "Conv1") {
     auto op = program.MutableBlock(0)->AppendOp();
     op->SetType("conv2d");
     op->SetAttr("use_mkldnn", true);
-    op->SetAttr("name", std::string{"Conv1"});
+    op->SetAttr("name", conv_name);
     op->SetAttr("mkldnn_data_type", std::string{"int8"});
     op->SetAttr("data_format", std::string{"NCHW"});
     op->SetAttr("dilations", std::vector<int>({1, 1}));
@@ -150,6 +168,20 @@ struct ConvProgramStrategy : public ProgramStrategy {
     if (HasBias()) {
       AddInput(op, "Bias", bias);
       op->SetAttr("Bias_scales", scale_bias);
+    }
+
+    if (share_weight) {
+      OpDesc* op2 = CreateBasicConvOp("Conv2");
+      AddInput(op2, "Input", input);
+      AddInput(op2, "Filter", filter)->SetPersistable(true);
+      AddOutput(op2, "Output", output, "output2");
+      op2->SetAttr("Scale_weights", scale_weights);
+      op2->SetAttr("Scale_in", 1.0f);
+      op2->SetAttr("groups", groups);
+      if (HasBias()) {
+        AddInput(op2, "Bias", bias, "Bias2");
+        op2->SetAttr("Bias_scales", scale_bias);
+      }
     }
   }
 
@@ -194,8 +226,9 @@ struct ConvProgramStrategy : public ProgramStrategy {
     ASSERT_NE(bias_ptr, nullptr);
     auto length = tensor.numel() / scale_bias.size();
     for (int64_t i = 0; i < tensor.numel(); i++) {
-      EXPECT_EQ(bias_ptr[i], static_cast<int32_t>(std::round(
-                                 bias.getData()[i] * scale_bias[i / length])));
+      EXPECT_EQ(bias_ptr[i],
+                static_cast<int32_t>(
+                    std::round(bias.getData()[i] * scale_bias[i / length])));
     }
   }
 
@@ -205,9 +238,9 @@ struct ConvProgramStrategy : public ProgramStrategy {
   const Data output;
   const std::vector<float> scale_weights;
   const int groups;
-
   const Data bias;
   const std::vector<float> scale_bias;
+  const bool share_weight;
 };
 
 struct ParamsQuantizationMkldnnPassTestFixture : public ::testing::Test {
@@ -225,25 +258,45 @@ Data GenericInput() { return Data({1, 4, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}); }
 Data GenericOutput() { return GenericInput(); }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_o1i1h1w1) {
-  auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
-      std::vector<float>{2.f});
+  auto program =
+      std::make_unique<ConvProgramStrategy>(GenericInput(),
+                                            Data({1, 1, 1, 1}, {1.5f}),
+                                            GenericOutput(),
+                                            std::vector<float>{2.f});
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o1i1h1w) {
-  auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
-      std::vector<float>{2.f, 4.f});
+  auto program =
+      std::make_unique<ConvProgramStrategy>(GenericInput(),
+                                            Data({2, 1, 1, 1}, {1.5f, 1.5f}),
+                                            GenericOutput(),
+                                            std::vector<float>{2.f, 4.f});
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2o2i2h2w) {
-  auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(),
-      Data({2, 2, 2, 2}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f,
-                          1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
-      GenericOutput(), std::vector<float>{2.f, 4.f});
+  auto program =
+      std::make_unique<ConvProgramStrategy>(GenericInput(),
+                                            Data({2, 2, 2, 2},
+                                                 {1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f,
+                                                  1.5f}),
+                                            GenericOutput(),
+                                            std::vector<float>{2.f, 4.f});
   RunPassTest(std::move(program));
 }
 
@@ -251,37 +304,53 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
-      GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 2.f, 2.f},
+      2);
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_without_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
-      GenericOutput(), std::vector<float>{2.f, 2.f, 2.f, 2.f}, 2);
+      GenericInput(),
+      Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 2.f, 2.f},
+      2);
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_1o1i1h1w) {
-  auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({1, 1, 1, 1}, {1.5f}), GenericOutput(),
-      std::vector<float>{2.f}, 1, Data({1, 1, 1, 1}, {1.5f}),
-      std::vector<float>{2.f});
+  auto program =
+      std::make_unique<ConvProgramStrategy>(GenericInput(),
+                                            Data({1, 1, 1, 1}, {1.5f}),
+                                            GenericOutput(),
+                                            std::vector<float>{2.f},
+                                            1,
+                                            Data({1, 1, 1, 1}, {1.5f}),
+                                            std::vector<float>{2.f});
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2o1i1h1w) {
-  auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({2, 1, 1, 1}, {1.5f, 1.5f}), GenericOutput(),
-      std::vector<float>{2.f, 4.f}, 1, Data({2, 1, 1, 1}, {1.5f, 1.5f}),
-      std::vector<float>{2.f, 4.f});
+  auto program =
+      std::make_unique<ConvProgramStrategy>(GenericInput(),
+                                            Data({2, 1, 1, 1}, {1.5f, 1.5f}),
+                                            GenericOutput(),
+                                            std::vector<float>{2.f, 4.f},
+                                            1,
+                                            Data({2, 1, 1, 1}, {1.5f, 1.5f}),
+                                            std::vector<float>{2.f, 4.f});
   RunPassTest(std::move(program));
 }
 
 TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o1i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
-      GenericInput(), Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
-      GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
+      GenericInput(),
+      Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      2,
       Data({4, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       std::vector<float>{2.f, 2.f, 4.f, 4.f});
   RunPassTest(std::move(program));
@@ -291,9 +360,24 @@ TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1w) {
   auto program = std::make_unique<ConvProgramStrategy>(
       GenericInput(),
       Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
-      GenericOutput(), std::vector<float>{2.f, 2.f, 4.f, 4.f}, 2,
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      2,
       Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
       std::vector<float>{2.f, 2.f, 4.f, 4.f});
+  RunPassTest(std::move(program));
+}
+
+TEST_F(ParamsQuantizationMkldnnPassTestFixture, conv_with_bias_2g2o2i1h1ws) {
+  auto program = std::make_unique<ConvProgramStrategy>(
+      GenericInput(),
+      Data({2, 2, 2, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f, 1.5f}),
+      GenericOutput(),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      2,
+      Data({2, 2, 1, 1, 1}, {1.5f, 1.5f, 1.5f, 1.5f}),
+      std::vector<float>{2.f, 2.f, 4.f, 4.f},
+      true);
   RunPassTest(std::move(program));
 }
 

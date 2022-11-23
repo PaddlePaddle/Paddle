@@ -15,7 +15,6 @@
 import unittest
 import paddle
 import os
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 
 paddle.enable_static()

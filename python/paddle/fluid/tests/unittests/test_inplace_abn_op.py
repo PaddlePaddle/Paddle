@@ -12,17 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import os
-import six
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import compiler
-import paddle.fluid.unique_name as unique_name
 import paddle
 
 
@@ -146,12 +141,15 @@ class TestInplaceANBOpTraining(unittest.TestCase):
 
         for bn_val, inplace_abn_val, name1, name2 in zip(*(fetch_outs +
                                                            fetch_names)):
-            self.assertTrue(
-                np.allclose(bn_val, inplace_abn_val,
-                            atol=1e-2), "Output (" + name1 + ":" + name2 +
-                ") has diff on {} with {} layout and {} activation. \n".format(
-                    place, layout, activation) + "\nBN     " + str(bn_val) +
-                "\n" + "Inplace ABN " + str(inplace_abn_val))
+            np.testing.assert_allclose(
+                bn_val,
+                inplace_abn_val,
+                rtol=1e-05,
+                atol=0.01,
+                err_msg='Output (' + name1 + ':' + name2 +
+                ') has diff on {} with {} layout and {} activation. \n'.format(
+                    place, layout, activation) + '\nBN     ' + str(bn_val) +
+                '\n' + 'Inplace ABN ' + str(inplace_abn_val))
 
     def test_op(self):
         use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]

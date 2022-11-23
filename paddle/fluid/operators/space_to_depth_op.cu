@@ -17,16 +17,14 @@
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    space_to_depth,
-    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SpaceToDepthKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(space_to_depth,
+                        ops::SpaceToDepthKernel<phi::GPUContext, float>,
+                        ops::SpaceToDepthKernel<phi::GPUContext, double>,
+                        ops::SpaceToDepthKernel<phi::GPUContext, int>,
+                        ops::SpaceToDepthKernel<phi::GPUContext, int64_t>);
 
-REGISTER_OP_CUDA_KERNEL(
-    space_to_depth_grad,
-    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SpaceToDepthGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(space_to_depth_grad,
+                        ops::SpaceToDepthGradKernel<phi::GPUContext, float>,
+                        ops::SpaceToDepthGradKernel<phi::GPUContext, double>,
+                        ops::SpaceToDepthGradKernel<phi::GPUContext, int>,
+                        ops::SpaceToDepthGradKernel<phi::GPUContext, int64_t>);

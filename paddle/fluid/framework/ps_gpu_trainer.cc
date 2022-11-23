@@ -235,8 +235,8 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
     config["mf_create_thresholds"] = sparse_table_accessor.embedx_threshold();
     // optimizer config for embed_w and embedx
     add_sparse_optimizer(config, sparse_table_accessor.embed_sgd_param());
-    add_sparse_optimizer(config, sparse_table_accessor.embedx_sgd_param(),
-                         "mf_");
+    add_sparse_optimizer(
+        config, sparse_table_accessor.embedx_sgd_param(), "mf_");
   }
   auto ps_gpu_wrapper = paddle::framework::PSGPUWrapper::GetInstance();
   ps_gpu_wrapper->InitializeGPUServer(config);
@@ -244,11 +244,13 @@ void PSGPUTrainer::InitializeGPUServer(const TrainerDesc& trainer_desc) {
 
 std::string PSGPUTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
-    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
-                                 user_define_dump_filename_.c_str(), tid);
+    return string::format_string("%s/part-%s-%05d",
+                                 dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(),
+                                 tid);
   }
-  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                               mpi_rank_, tid);
+  return string::format_string(
+      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 }
 
 void PSGPUTrainer::RegisterHeterCallback() {
@@ -289,7 +291,8 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (auto& var : main_program.Block(0).AllVars()) {
     if (var->Persistable()) {
       auto it = std::find(need_merge_var_names_.begin(),
-                          need_merge_var_names_.end(), var->Name());
+                          need_merge_var_names_.end(),
+                          var->Name());
       if (it == need_merge_var_names_.end()) {
         VLOG(2) << "train param: " << var->Name();
         trainable_param_.push_back(var->Name());

@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/is_empty_op.h"
+
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -28,7 +30,7 @@ class IsEmptyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<framework::LoDTensor>("X");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), x->place());
   }
@@ -52,10 +54,13 @@ It will just return product(tensor.ddims()) > 0;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(is_empty, IsEmptyInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(is_empty,
+                            IsEmptyInferShapeFunctor,
                             PD_INFER_META(phi::IsEmptyInferMeta));
 REGISTER_OPERATOR(
-    is_empty, ops::IsEmptyOp, ops::IsEmptyOpMaker,
+    is_empty,
+    ops::IsEmptyOp,
+    ops::IsEmptyOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     IsEmptyInferShapeFunctor);

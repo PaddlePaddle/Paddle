@@ -61,13 +61,15 @@ class CudaTracer : public TracerBase {
 
 #ifdef PADDLE_WITH_CUPTI
   // Used by CUPTI Activity API to request buffer
-  static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer, size_t* size,
+  static void CUPTIAPI BufferRequestedCallback(uint8_t** buffer,
+                                               size_t* size,
                                                size_t* max_num_records);
 
   // Used by CUPTI Activity API to commit a completed buffer
   static void CUPTIAPI BufferCompletedCallback(CUcontext ctx,
                                                uint32_t stream_id,
-                                               uint8_t* buffer, size_t size,
+                                               uint8_t* buffer,
+                                               size_t size,
                                                size_t valid_size);
 #endif
 

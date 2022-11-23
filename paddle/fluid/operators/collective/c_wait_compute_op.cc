@@ -37,7 +37,8 @@ class CWaitComputeOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(place), true,
+        platform::is_gpu_place(place),
+        true,
         platform::errors::PreconditionNotMet(
             "wait_compute op can run on gpu place only for now, but got %s",
             place.DebugString()));
@@ -46,7 +47,7 @@ class CWaitComputeOp : public framework::OperatorBase {
     int ring_id = Attr<int>("ring_id");
 
     auto compute_stream =
-        static_cast<platform::CUDADeviceContext*>(
+        static_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place))
             ->stream();
     auto comm_stream =
@@ -92,5 +93,6 @@ Comm stream wait Compute Stream with async event.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_wait_compute, ops::CWaitComputeOp,
+REGISTER_OPERATOR(c_wait_compute,
+                  ops::CWaitComputeOp,
                   ops::CWaitComputeOpMaker);

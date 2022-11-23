@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import os
-import unittest
-import numpy as np
 import time
 import paddle
-from paddle.distributed.ps.utils.public import ps_log_root_dir, debug_program
 import paddle.distributed.fleet as fleet
 import paddle.fluid as fluid
 

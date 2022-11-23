@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import math
 import unittest
@@ -23,6 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.initializer as initializer
 from paddle.fluid.core import VarDesc
+from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
 
@@ -244,7 +243,7 @@ class TestNormalInitializer(unittest.TestCase):
                                    name="param",
                                    initializer=initializer.NormalInitializer(
                                        2.3, 1.9, 123))
-        num_ops = 2 if (dtype == "float16" or dtype == "uint16") else 1
+        num_ops = 1
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -389,7 +388,6 @@ class TestXavierInitializer(unittest.TestCase):
         """Test the Xavier initializer with float16
         """
         block = self.test_xavier_initializer_supplied_arguments("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
 
     def test_xavier_initializer_bf16(self):
         """Test the Xavier initializer with bfloat16
@@ -399,7 +397,6 @@ class TestXavierInitializer(unittest.TestCase):
         self.assertEqual(len(block_uniform.ops), 1)
         block_gaussian = self.test_xavier_initializer_supplied_arguments(
             "uint16", False)
-        self.assertTrue(check_cast_op(block_gaussian.ops[1]))
 
 
 class TestMSRAInitializer(unittest.TestCase):
@@ -563,6 +560,55 @@ class TestBilinearInitializer(unittest.TestCase):
         self.assertRaises(TypeError, self.test_bilinear_initializer, 'int32')
 
 
+class TestBilinearInitializerDygraphAPI(unittest.TestCase):
+
+    def func_test_case(self):
+        factor = 2
+        C = 2
+        B = 8
+        H = W = 32
+        w_attr = paddle.ParamAttr(learning_rate=0.,
+                                  regularizer=L2Decay(0.),
+                                  initializer=initializer.BilinearInitializer())
+        data = paddle.rand([B, 3, H, W], dtype='float32')
+        conv_up = paddle.nn.Conv2DTranspose(3,
+                                            out_channels=C,
+                                            kernel_size=2 * factor - factor % 2,
+                                            padding=int(
+                                                math.ceil((factor - 1) / 2.)),
+                                            stride=factor,
+                                            weight_attr=w_attr,
+                                            bias_attr=False)
+        x = conv_up(data)
+        return x
+
+    def func_test_case_fp16(self):
+        paddle.set_default_dtype("float16")
+        paddle.seed(1234)
+        w_attr = paddle.ParamAttr(learning_rate=0.,
+                                  regularizer=L2Decay(0.),
+                                  initializer=initializer.BilinearInitializer())
+        conv2d = paddle.nn.Conv2D(1, 2, 3, weight_attr=w_attr)
+        paddle.set_default_dtype("float32")
+        return conv2d.weight
+
+    def test_bilinear_initializer(self):
+        paddle.disable_static()
+        with framework._test_eager_guard():
+            eager_x = self.func_test_case()
+        legacy_x = self.func_test_case()
+        self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
+        paddle.enable_static()
+
+    def test_bilinear_initializer_fp16(self):
+        paddle.disable_static()
+        with framework._test_eager_guard():
+            eager_x = self.func_test_case_fp16()
+        legacy_x = self.func_test_case_fp16()
+        self.assertEqual(eager_x.numpy().all(), legacy_x.numpy().all())
+        paddle.enable_static()
+
+
 class TestNumpyArrayInitializer(unittest.TestCase):
 
     def test_numpy_array_initializer(self, dtype="float32"):
@@ -668,7 +714,9 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         tensor = paddle.zeros([1024, 1024, 16])
         tensor.stop_gradient = False
-        self.assertTrue(np.allclose(np.zeros((1024, 1024, 16)), tensor.numpy()))
+        np.testing.assert_allclose(np.zeros((1024, 1024, 16)),
+                                   tensor.numpy(),
+                                   rtol=1e-05)
 
         uniform_ = paddle.nn.initializer.Uniform()
         uniform_(tensor)
@@ -678,8 +726,7 @@ class TestUniformInitializerDygraph(unittest.TestCase):
 
         hist, prob = output_hist(tensor.numpy())
 
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=1e-3),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
 
         paddle.enable_static()
 
@@ -710,8 +757,7 @@ class TestXavierInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (3 + 5)), [1024, 1024, 16]))
 
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_xavier_initializer(self, dtype="float32"):
@@ -740,8 +786,7 @@ class TestMSRAInitializerDygraph(unittest.TestCase):
         hist2, _ = output_hist(
             np.random.normal(0, np.sqrt(2.0 / (4)), [1024, 1024, 16]))
 
-        self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
-                        "hist: " + str(hist) + " hist2: " + str(hist2))
+        np.testing.assert_allclose(hist, hist2, rtol=0, atol=0.01)
         paddle.enable_static()
 
     def test_msra_initializer(self, dtype="float32"):
@@ -795,8 +840,8 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
         dynamic_res = run_dynamic_graph()
         static_res = run_static_graph()
 
-        self.assertTrue(np.array_equal(dynamic_res[0], static_res[0]))
-        self.assertTrue(np.array_equal(dynamic_res[1], static_res[1]))
+        np.testing.assert_array_equal(dynamic_res[0], static_res[0])
+        np.testing.assert_array_equal(dynamic_res[1], static_res[1])
 
     def test_order(self):
         with framework._test_eager_guard():
@@ -819,8 +864,11 @@ class TestOrthogonalInitializer1(unittest.TestCase):
         self.num_ops = 9
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
-        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(10)))
+        np.testing.assert_array_equal(a, b)
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   9 * np.eye(10),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def func_orthogonal(self):
         self.config()
@@ -878,8 +926,11 @@ class TestOrthogonalInitializer2(TestOrthogonalInitializer1):
         self.num_ops = 8
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
-        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(10)))
+        np.testing.assert_array_equal(a, b)
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   4 * np.eye(10),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
 
 # 2-D Parameter with shape: [10, 10]
@@ -897,9 +948,15 @@ class TestOrthogonalInitializer3(TestOrthogonalInitializer1):
         self.num_ops = 8
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
-        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(10), atol=1.e-6))
-        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(10), atol=1.e-6))
+        np.testing.assert_array_equal(a, b)
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   np.eye(10),
+                                   rtol=1e-05,
+                                   atol=1e-06)
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   np.eye(10),
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
     def test_error(self):
         self.config()
@@ -922,9 +979,12 @@ class TestOrthogonalInitializer4(unittest.TestCase):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(6, -1)
-        self.assertTrue(np.allclose(np.matmul(a, a.T), 9 * np.eye(6)))
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   9 * np.eye(6),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
     def func_orthogonal(self):
         self.config()
@@ -973,9 +1033,12 @@ class TestOrthogonalInitializer5(TestOrthogonalInitializer4):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(50, -1)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), 4 * np.eye(36)))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   4 * np.eye(36),
+                                   rtol=1e-5,
+                                   atol=1e-8)
 
 
 # 4-D Parameter with shape: [36, 4, 3, 3]
@@ -993,10 +1056,16 @@ class TestOrthogonalInitializer6(TestOrthogonalInitializer4):
         self.kernel_size = (3, 3)
 
     def check_result(self, a, b):
-        self.assertTrue(np.array_equal(a, b))
+        np.testing.assert_array_equal(a, b)
         a = a.reshape(36, -1)
-        self.assertTrue(np.allclose(np.matmul(a.T, a), np.eye(36), atol=1.e-6))
-        self.assertTrue(np.allclose(np.matmul(a, a.T), np.eye(36), atol=1.e-6))
+        np.testing.assert_allclose(np.matmul(a.T, a),
+                                   np.eye(36),
+                                   rtol=1e-05,
+                                   atol=1e-06)
+        np.testing.assert_allclose(np.matmul(a, a.T),
+                                   np.eye(36),
+                                   rtol=1e-05,
+                                   atol=1e-06)
 
 
 # initialize Conv1D weight
@@ -1014,8 +1083,8 @@ class TestDiracInitializer1(unittest.TestCase):
         self.num_ops = 8  #fill_constant*2, reshape*2, assign_value*2, scatter, cast
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(np.array_equal(conv_out, conv_in[:, 0:2, 1:9]))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out, conv_in[:, 0:2, 1:9])
 
     def func_dirac(self):
         self.config()
@@ -1079,11 +1148,11 @@ class TestDiracInitializer2(TestDiracInitializer1):
         self.num_ops = 8
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 0:4, :, :], conv_in[:, :, 1:9, 1:9]))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 4:8, :, :], np.zeros([8, 4, 8, 8])))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out[:, 0:4, :, :], conv_in[:, :, 1:9,
+                                                                      1:9])
+        np.testing.assert_array_equal(conv_out[:, 4:8, :, :],
+                                      np.zeros([8, 4, 8, 8]))
 
 
 # initialize Conv3D weight
@@ -1101,13 +1170,11 @@ class TestDiracInitializer3(TestDiracInitializer1):
         self.num_ops = 7
 
     def check_result(self, w_dygraph, w_static, conv_in, conv_out):
-        self.assertTrue(np.array_equal(w_dygraph, w_static))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 0:5, :, :, :], conv_in[:, :, 1:9, 1:9,
-                                                              1:9]))
-        self.assertTrue(
-            np.array_equal(conv_out[:, 5:10, :, :, :], conv_in[:, :, 1:9, 1:9,
-                                                               1:9]))
+        np.testing.assert_array_equal(w_dygraph, w_static)
+        np.testing.assert_array_equal(conv_out[:, 0:5, :, :, :],
+                                      conv_in[:, :, 1:9, 1:9, 1:9])
+        np.testing.assert_array_equal(conv_out[:, 5:10, :, :, :],
+                                      conv_in[:, :, 1:9, 1:9, 1:9])
 
     def test_error(self):
         self.config()

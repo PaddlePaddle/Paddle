@@ -22,15 +22,11 @@
 # This source code is licensed under the BSD license found in the
 # LICENSE file in the root directory of this source tree.
 
-import copy
 import logging
 import numpy as np
-from itertools import chain
-from functools import reduce
 from collections import OrderedDict
 
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
@@ -49,7 +45,7 @@ align = {
 
 class ShardingOptimizerStage2(Optimizer):
     """
-    A wrapper for Sharding Stage2 Optimizer in Dygraph. 
+    A wrapper for Sharding Stage2 Optimizer in Dygraph.
 
     .. warning: ShardingOptimizer encapsulates the optimization strategy and integrates it into the optimizer.
 
@@ -150,7 +146,7 @@ class ShardingOptimizerStage2(Optimizer):
             broadcast(p,
                       src=self._global_root_rank,
                       group=self.group,
-                      use_calc_stream=True)
+                      sync_op=True)
 
         # Multi stream operation will be supported later
         wait(tensor=p, group=self.group, use_calc_stream=True)
@@ -415,7 +411,7 @@ class ShardingOptimizerStage2(Optimizer):
                 broadcast(tensor=internal_storage.buffer,
                           src=self.group.ranks[dst_rank],
                           group=self.group,
-                          use_calc_stream=True)
+                          sync_op=True)
 
             # Multi stream operation will be supported later
             wait(tensor=internal_storage.buffer,

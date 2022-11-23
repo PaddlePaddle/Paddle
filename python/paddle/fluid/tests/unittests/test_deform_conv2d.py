@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn.functional as F
 import paddle.nn.initializer as I
 import numpy as np
 import unittest

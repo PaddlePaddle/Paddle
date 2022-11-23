@@ -18,13 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class ReduceMinNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -32,7 +32,7 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    framework::Tensor cast_out(x->type());
+    phi::DenseTensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
@@ -85,7 +85,11 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
         runner.Run(dev_ctx.stream());
       };
 
-      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {cast_out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -97,7 +101,9 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->type()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(dev_ctx.stream());
     }
@@ -110,7 +116,8 @@ class ReduceMinNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_min, ops::ReduceMinNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_min,
+    ops::ReduceMinNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, plat::float16>,
 #ifdef PADDLE_WITH_ASCEND_INT64
     ops::ReduceMinNPUKernel<plat::NPUDeviceContext, int64_t>,

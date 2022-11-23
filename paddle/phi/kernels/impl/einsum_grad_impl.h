@@ -80,7 +80,7 @@ DenseTensor PerformTileAndReduction(const Context& dev_ctx,
     if (to_reduce.size() != 0) {
       ret = Sum<T, Context>(dev_ctx,
                             after_tile,
-                            to_reduce,
+                            phi::IntArray(to_reduce),
                             after_tile.dtype(),
                             false);  // not keep dim.
     } else {

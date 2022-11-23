@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 from paddle.fluid.dygraph.base import switch_to_static_graph
 import paddle
 import paddle.fluid as fluid
@@ -125,7 +121,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                 y = fluid.layers.data(name='Y', shape=[1], dtype='float32')
                 prediction = fluid.layers.fc(input=x, size=1, act=None)
                 loss = fluid.layers.square_error_cost(input=prediction, label=y)
-                avg_loss = fluid.layers.mean(loss)
+                avg_loss = paddle.mean(loss)
             return avg_loss
 
         place = fluid.CPUPlace()
@@ -167,7 +163,7 @@ class TestLambOpWithCombinedOp(unittest.TestCase):
                           },
                           fetch_list=[loss.name])
 
-            self.assertTrue(np.allclose(out, output))
+            np.testing.assert_allclose(out, output, rtol=1e-05)
 
 
 class TestLambOpV2Group(TestLambOpV2):
@@ -237,8 +233,8 @@ class TestLambOpMultiPrecision(unittest.TestCase):
             if multi_precision:
                 params[0] = np.array(params[0])
                 params[1] = np.array(params[1])
-                self.assertTrue(
-                    np.array_equal(params[0], params[1].astype(np.float16)))
+                np.testing.assert_array_equal(params[0],
+                                              params[1].astype(np.float16))
                 return params[0].astype(np.float32)
             else:
                 self.assertTrue(params[0] is not None)
@@ -259,9 +255,8 @@ class TestLambOpMultiPrecision(unittest.TestCase):
                                              fetch_list=[weight, bias])
                 weight_np = weight_np.astype('float32')
                 bias_np = bias_np.astype('float32')
-                self.assertTrue(np.array_equal(weight_np,
-                                               get_parameter(weight)))
-                self.assertTrue(np.array_equal(bias_np, get_parameter(bias)))
+                np.testing.assert_array_equal(weight_np, get_parameter(weight))
+                np.testing.assert_array_equal(bias_np, get_parameter(bias))
             return weight_np, bias_np
 
     @switch_to_static_graph

@@ -58,7 +58,8 @@ void PrintDebugInfo(const std::string preStr, const std::vector<T>& data) {
   VLOG(2) << preStr << ":" << std::endl << debugstring;
 }
 
-void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
+void PrepareUniqueId(f::Scope* scope,
+                     const p::DeviceContext& ctx,
                      HcclRootInfo* hccl_id) {
   int rank_id = atoi(getenv("RANK_ID"));
   int device_id = atoi(getenv("DEVICE_ID"));
@@ -82,8 +83,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
 
   VLOG(3) << "break";
 
-  auto comm_init_op = f::OpRegistry::CreateOp("c_gen_hccl_id", {},
-                                              {{"Out", {"Out"}}}, gen_hccl_id);
+  auto comm_init_op = f::OpRegistry::CreateOp(
+      "c_gen_hccl_id", {}, {{"Out", {"Out"}}}, gen_hccl_id);
   VLOG(3) << "break";
   auto place = ctx.GetPlace();
   comm_init_op->Run(*scope, place);
@@ -92,7 +93,8 @@ void PrepareUniqueId(f::Scope* scope, const p::DeviceContext& ctx,
   memcpy(hccl_id, id, 1024);
 }
 
-void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
+void Prepare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              HcclRootInfo* hccl_id) {
   auto x = scope->Var("X");
   auto id = x->GetMutable<HcclRootInfo>();
@@ -123,7 +125,7 @@ void Prepare(f::Scope* scope, const p::DeviceContext& ctx,
 void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   // init
   auto x = scope->Var("Data");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   std::vector<float> init;
   int rank_id = atoi(getenv("RANK_ID"));
@@ -142,7 +144,7 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("OutData");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
   tensor_out->Resize({num1, num2});
   tensor_out->mutable_data<float>(place);  // allocate
   ctx.Wait();
@@ -152,8 +154,8 @@ void TestHCCLAllReduceOp(f::Scope* scope, const p::DeviceContext& ctx) {
   attrs["tag"] = std::string("tagx");
   attrs["ring_id"] = 0;
 
-  auto op = f::OpRegistry::CreateOp("c_allreduce_max", {{"X", {"Data"}}},
-                                    {{"Out", {"OutData"}}}, attrs);
+  auto op = f::OpRegistry::CreateOp(
+      "c_allreduce_max", {{"X", {"Data"}}}, {{"Out", {"OutData"}}}, attrs);
 
   for (int i = 0; i < 10; i++) {
     op->Run(*scope, place);

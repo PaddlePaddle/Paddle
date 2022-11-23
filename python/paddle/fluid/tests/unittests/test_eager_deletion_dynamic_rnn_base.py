@@ -23,7 +23,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import compiler
-import numpy as np
 from fake_reader import fake_imdb_reader
 
 

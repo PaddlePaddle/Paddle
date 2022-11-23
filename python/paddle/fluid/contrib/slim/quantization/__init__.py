@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from . import quantization_pass
 from .quantization_pass import *
 from . import quant_int8_mkldnn_pass
@@ -25,7 +23,8 @@ from .post_training_quantization import *
 from . import imperative
 from .imperative import *
 
-__all__ = quantization_pass.__all__
+__all__ = []
+__all__ += quantization_pass.__all__
 __all__ += quant_int8_mkldnn_pass.__all__
 __all__ += quant2_int8_mkldnn_pass.__all__
 __all__ += post_training_quantization.__all__

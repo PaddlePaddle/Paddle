@@ -15,12 +15,11 @@
 # limitations under the License.
 
 import copy
-import io
 import json
 import os
 import unicodedata
 from shutil import copyfile
-from typing import Iterable, Iterator, Optional, List, Any, Callable, Union
+from typing import Optional
 
 from paddle.dataset.common import DATA_HOME
 from paddle.utils.download import get_path_from_url
@@ -343,7 +342,7 @@ class PretrainedTokenizer(object):
 
     @property
     def all_special_tokens(self):
-        """ 
+        """
         list: All the special tokens ('<unk>', '<cls>'...) corresponding to
             special token arguments in `__init__` (arguments end with '_end').
         """
@@ -357,7 +356,7 @@ class PretrainedTokenizer(object):
 
     @property
     def all_special_ids(self):
-        """ 
+        """
         list: All the token ids corresponding to all the special tokens.
         """
         all_toks = self.all_special_tokens
@@ -464,7 +463,7 @@ class PretrainedTokenizer(object):
         tokenizer_config_file = resolved_vocab_files.pop(
             "tokenizer_config_file", None)
         if tokenizer_config_file is not None:
-            with io.open(tokenizer_config_file, encoding="utf-8") as f:
+            with open(tokenizer_config_file, 'r', encoding="utf-8") as f:
                 init_kwargs = json.load(f)
         else:
             init_kwargs = init_configuration
@@ -504,7 +503,7 @@ class PretrainedTokenizer(object):
         `tokenizer_config_file` indicating file (thus `tokenizer_config.json`),
         and resources would be saved into `resource_files_names` indicating files
         by using `self.save_resources(save_directory)`.
-        
+
         The `save_directory` can be used in `from_pretrained` as argument value
         of `pretrained_model_name_or_path` to re-load the tokenizer.
         Args:
@@ -527,7 +526,7 @@ class PretrainedTokenizer(object):
                                              self.tokenizer_config_file)
         # init_config is set in metaclass created `__init__`,
         tokenizer_config = self.init_config
-        with io.open(tokenizer_config_file, "w", encoding="utf-8") as f:
+        with open(tokenizer_config_file, "w", encoding="utf-8") as f:
             f.write(json.dumps(tokenizer_config, ensure_ascii=False))
 
         self.save_resources(save_directory)
@@ -571,7 +570,7 @@ class PretrainedTokenizer(object):
             Vocab: An instance of `Vocab`.
         """
         token_to_idx = {}
-        with io.open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8') as f:
             for index, line in enumerate(f):
                 token = line.rstrip('\n')
                 token_to_idx[token] = int(index)
@@ -756,7 +755,7 @@ class PretrainedTokenizer(object):
             text (str, List[str] or List[int]):
                 The sequence to be processed. One sequence is a string, a list
                 of strings, or a list of integers depending on whether it has
-                been pretokenized and converted to ids. 
+                been pretokenized and converted to ids.
             text_pair (str, List[str] or List[List[str]]):
                 Same as `text` argument, while it represents for the latter
                 sequence of the sequence pair.
@@ -1208,7 +1207,7 @@ class PretrainedTokenizer(object):
                 Input text.
         Returns:
             list: The offset map of input text.
-            
+
         """
         split_tokens = []
         for token in self.basic_tokenizer.tokenize(text):

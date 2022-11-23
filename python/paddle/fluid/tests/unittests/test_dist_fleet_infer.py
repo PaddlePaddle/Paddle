@@ -12,15 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import shutil
 import unittest
 import tempfile
-import tarfile
 from test_dist_fleet_base import TestFleetBase
-from paddle.dataset.common import download, DATA_HOME
 
 
 class TestDistCtrInfer(TestFleetBase):

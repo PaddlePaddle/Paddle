@@ -153,9 +153,9 @@ void UnsqueezeEltwiseFusePass::ApplyImpl(ir::Graph *graph) const {
     size_t eltwise_in_x_rank = (subgraph.at(x)->Var()->GetShape()).size();
     size_t unsqz_in_rank = (subgraph.at(y)->Var()->GetShape()).size();
     std::vector<int> unsqz_op_axes =
-        BOOST_GET_CONST(std::vector<int>, unsqz_op->Op()->GetAttr("axes"));
+        PADDLE_GET_CONST(std::vector<int>, unsqz_op->Op()->GetAttr("axes"));
     int eltwise_op_axis =
-        BOOST_GET_CONST(int, eltwise_op->Op()->GetAttr("axis"));
+        PADDLE_GET_CONST(int, eltwise_op->Op()->GetAttr("axis"));
 
     if (eltwise_in_x_rank == 4 && unsqz_in_rank == 2 &&
         unsqz_op_axes == std::vector<int>{2, 3} && eltwise_op_axis == -1) {

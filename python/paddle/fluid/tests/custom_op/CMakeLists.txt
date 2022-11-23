@@ -7,6 +7,8 @@ if(WITH_GPU OR APPLE)
 
   # Compiling shared library will cost some time, but running process is very fast.
   set_tests_properties(test_custom_relu_op_setup PROPERTIES TIMEOUT 250)
+  set_tests_properties(test_custom_relu_op_setup
+                       PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=1)
   set_tests_properties(test_custom_relu_op_jit PROPERTIES TIMEOUT 180)
   set_tests_properties(test_custom_relu_model PROPERTIES TIMEOUT 180)
   set_tests_properties(test_context_pool PROPERTIES TIMEOUT 180)

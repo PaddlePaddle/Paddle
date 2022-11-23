@@ -20,7 +20,8 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_int32(io_threadpool_size, 100,
+DEFINE_int32(io_threadpool_size,
+             100,
              "number of threads used for doing IO, default 100");
 
 DECLARE_int32(dist_threadpool_size);
@@ -44,7 +45,8 @@ void ThreadPool::Init() {
       VLOG(1) << "set dist_threadpool_size to " << num_threads;
     }
     PADDLE_ENFORCE_GT(
-        num_threads, 0,
+        num_threads,
+        0,
         platform::errors::InvalidArgument("The number of threads is 0."));
     threadpool_.reset(new ThreadPool(num_threads));
   }

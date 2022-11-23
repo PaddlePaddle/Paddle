@@ -13,18 +13,15 @@
 #limitations under the License.
 
 import argparse
-import math
 import numpy as np
 import os
 import random
 import sys
-import time
 import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative, ProgramTranslator, to_variable
 from paddle.fluid.dygraph.nn import Conv2D, BatchNorm, Linear, Pool2D
-from paddle.fluid.layer_helper import LayerHelper
 from tsm_config_utils import *
 
 random.seed(0)
@@ -303,7 +300,7 @@ def train(args, fake_data_reader, to_static):
                 loss = fluid.layers.cross_entropy(input=outputs,
                                                   label=labels,
                                                   ignore_index=-1)
-                avg_loss = fluid.layers.mean(loss)
+                avg_loss = paddle.mean(loss)
                 acc_top1 = fluid.layers.accuracy(input=outputs,
                                                  label=labels,
                                                  k=1)
@@ -347,9 +344,7 @@ class TestTsm(unittest.TestCase):
         fake_data_reader = FakeDataReader("train", parse_config(args.config))
         dygraph_loss = train(args, fake_data_reader, to_static=False)
         static_loss = train(args, fake_data_reader, to_static=True)
-        self.assertTrue(np.allclose(dygraph_loss, static_loss),
-                        msg="dygraph_loss: {} \nstatic_loss: {}".format(
-                            dygraph_loss, static_loss))
+        np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 
 if __name__ == '__main__':

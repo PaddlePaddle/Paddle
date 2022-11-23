@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
-import pickle
 import unittest
 import numpy as np
 import paddle
-from paddle.static import InputSpec
 
-from paddle.fluid.framework import in_dygraph_mode, _test_eager_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class LinearNet(paddle.nn.Layer):

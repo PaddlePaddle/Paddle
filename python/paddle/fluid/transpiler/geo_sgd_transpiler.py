@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
 """
 Steps to transpile trainer:
 1. split variable to multiple blocks, aligned by product(dim[1:]) (width).

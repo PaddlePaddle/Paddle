@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 namespace sparse {
@@ -26,40 +26,25 @@ template <typename T, typename Context>
 void EmptyLikeCooKernel(const Context& dev_ctx,
                         const SparseCooTensor& x,
                         SparseCooTensor* out) {
-  const DenseTensor& x_indices = x.non_zero_indices();
-  const DenseTensor& x_values = x.non_zero_elements();
+  *(out->mutable_indices()) = x.indices();
 
-  DenseTensor* out_indices = out->mutable_non_zero_indices();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
-
-  phi::Copy(dev_ctx, x_indices, dev_ctx.GetPlace(), false, out_indices);
-  phi::Copy(dev_ctx, x_values, dev_ctx.GetPlace(), false, out_values);
-
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
-
-  out->set_dims(x.dims());
 }
 
 template <typename T, typename Context>
 void EmptyLikeCsrKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         SparseCsrTensor* out) {
-  const DenseTensor& x_crows = x.non_zero_crows();
-  const DenseTensor& x_cols = x.non_zero_cols();
-  const DenseTensor& x_values = x.non_zero_elements();
+  *(out->mutable_crows()) = x.crows();
+  *(out->mutable_cols()) = x.cols();
 
-  DenseTensor* out_crows = out->mutable_non_zero_crows();
-  DenseTensor* out_cols = out->mutable_non_zero_cols();
-  DenseTensor* out_values = out->mutable_non_zero_elements();
-
-  phi::Copy(dev_ctx, x_crows, dev_ctx.GetPlace(), false, out_crows);
-  phi::Copy(dev_ctx, x_cols, dev_ctx.GetPlace(), false, out_cols);
-
+  const DenseTensor& x_values = x.values();
+  DenseTensor* out_values = out->mutable_values();
   out_values->Resize(x_values.dims());
   dev_ctx.template Alloc<T>(out_values);
-
-  out->set_dims(x.dims());
 }
 
 }  // namespace sparse
@@ -100,6 +85,7 @@ PD_REGISTER_KERNEL(empty_like_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCooKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,
@@ -115,6 +101,7 @@ PD_REGISTER_KERNEL(empty_like_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::EmptyLikeCsrKernel,
+                   phi::dtype::float16,
                    float,
                    double,
                    int8_t,

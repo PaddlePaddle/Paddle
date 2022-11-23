@@ -38,7 +38,8 @@ namespace tensorrt {
 class ReduceOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     VLOG(4) << "convert a paddle " << op_type << " op to tensorrt reduce layer";
     framework::OpDesc op_desc(op, nullptr);
     nvinfer1::ReduceOperation reduce_type = nvinfer1::ReduceOperation::kSUM;
@@ -52,10 +53,10 @@ class ReduceOpConverter : public OpConverter {
     nvinfer1::Dims input_shape = x->getDimensions();
     int input_dims = input_shape.nbDims;
 
-    bool keep_dim = BOOST_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
+    bool keep_dim = PADDLE_GET_CONST(bool, op_desc.GetAttr("keep_dim"));
     std::vector<int32_t> dim =
-        BOOST_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
-    bool reduce_all = BOOST_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
+        PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
+    bool reduce_all = PADDLE_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
 
     nvinfer1::IReduceLayer* layer = nullptr;
     if (reduce_all) {
@@ -63,8 +64,8 @@ class ReduceOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; ++i) {
         reduce_dim |= 1 << i;
       }
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *x, reduce_type, reduce_dim,
-                                   keep_dim);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, reduce_dim, keep_dim);
     } else {
       auto CvtToBitMask = [&](const std::vector<int32_t>& dims) -> uint32_t {
         uint32_t res = 0;
@@ -78,8 +79,8 @@ class ReduceOpConverter : public OpConverter {
         }
         return res;
       };
-      layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *x, reduce_type,
-                                   CvtToBitMask(dim), keep_dim);
+      layer = TRT_ENGINE_ADD_LAYER(
+          engine_, Reduce, *x, reduce_type, CvtToBitMask(dim), keep_dim);
     }
 
     auto output_name = op_desc.Output("Out")[0];

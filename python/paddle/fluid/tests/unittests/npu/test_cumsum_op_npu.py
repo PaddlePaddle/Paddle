@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
@@ -33,15 +31,15 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data)
         z = np.cumsum(data_np)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=0)
         z = np.cumsum(data_np, axis=0)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=-1)
         z = np.cumsum(data_np, axis=-1)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
@@ -51,7 +49,7 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data, axis=-2)
         z = np.cumsum(data_np, axis=-2)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_npu=False):
         with fluid.program_guard(fluid.Program()):
@@ -74,15 +72,15 @@ class TestCumsumOp(unittest.TestCase):
                           ])
 
             z = np.cumsum(data_np)
-            self.assertTrue(np.allclose(z, out[0]))
+            np.testing.assert_allclose(z, out[0])
             z = np.cumsum(data_np, axis=0)
-            self.assertTrue(np.allclose(z, out[1]))
+            np.testing.assert_allclose(z, out[1])
             z = np.cumsum(data_np, axis=-1)
-            self.assertTrue(np.allclose(z, out[2]))
+            np.testing.assert_allclose(z, out[2])
             self.assertTrue(out[3].dtype == np.float32)
             self.assertTrue(out[4].dtype == np.int32)
             z = np.cumsum(data_np, axis=-2)
-            self.assertTrue(np.allclose(z, out[5]))
+            np.testing.assert_allclose(z, out[5])
 
     def test_npu(self):
         # Now, npu tests need setting paddle.enable_static()

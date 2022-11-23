@@ -34,11 +34,12 @@ USE_OP(increment);
 USE_OP_DEVICE_KERNEL(increment, NPU);
 
 template <typename T>
-void Compare(f::Scope* scope, const p::DeviceContext& ctx,
+void Compare(f::Scope* scope,
+             const p::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<f::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   std::vector<T> init;
   init.push_back(static_cast<T>(1.0));
@@ -50,11 +51,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<f::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   f::AttributeMap attr_input = {{"step", static_cast<float>(2.0)}};
-  auto op = f::OpRegistry::CreateOp("increment", {{"X", {"X"}}},
-                                    {{"Out", {"Out"}}}, attr_input);
+  auto op = f::OpRegistry::CreateOp(
+      "increment", {{"X", {"X"}}}, {{"Out", {"Out"}}}, attr_input);
 
   op->Run(*scope, place);
 

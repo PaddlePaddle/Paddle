@@ -15,10 +15,9 @@
 import os
 import tempfile
 import unittest
-from paddle.dataset.common import download, DATA_HOME
+from paddle.dataset.common import download
 from paddle.distributed.fleet.dataset import TreeIndex
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle
 
 paddle.enable_static()

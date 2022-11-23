@@ -1,8 +1,8 @@
 diff --git a/paddle/fluid/memory/allocation/thread_local_allocator.cc b/paddle/fluid/memory/allocation/thread_local_allocator.cc
-index f125670a59..f858a30301 100644
+index 875e57cfd4..b111ada3ab 100644
 --- a/paddle/fluid/memory/allocation/thread_local_allocator.cc
 +++ b/paddle/fluid/memory/allocation/thread_local_allocator.cc
-@@ -13,18 +13,62 @@
+@@ -13,19 +13,62 @@
  // limitations under the License.
  
  #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
@@ -64,12 +64,13 @@ index f125670a59..f858a30301 100644
 -    buddy_allocator_.reset(new memory::detail::BuddyAllocator(
 -        std::unique_ptr<memory::detail::SystemAllocator>(
 -            new memory::detail::GPUAllocator(place_.device)),
--        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+-        platform::GpuMinChunkSize(),
+-        platform::GpuMaxChunkSize()));
 +    direct_allocator_.reset(new DirectAllocator{place_});
    } else {
      PADDLE_THROW(platform::errors::Unavailable(
          "Thread local allocator only supports CUDAPlace now."));
-@@ -59,7 +103,7 @@ ThreadLocalCUDAAllocatorPool::ThreadLocalCUDAAllocatorPool()
+@@ -61,7 +104,7 @@ ThreadLocalCUDAAllocatorPool::ThreadLocalCUDAAllocatorPool()
  
  ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
    VLOG(10) << "ThreadLocalAllocatorImpl::AllocateImpl " << size;
@@ -78,7 +79,7 @@ index f125670a59..f858a30301 100644
    auto* tl_allocation = new ThreadLocalAllocation(ptr, size, place_);
    tl_allocation->SetThreadLocalAllocatorImpl(shared_from_this());
    return tl_allocation;
-@@ -67,12 +111,12 @@ ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
+@@ -69,12 +112,12 @@ ThreadLocalAllocation* ThreadLocalAllocatorImpl::AllocateImpl(size_t size) {
  
  void ThreadLocalAllocatorImpl::FreeImpl(ThreadLocalAllocation* allocation) {
    VLOG(10) << "ThreadLocalAllocatorImpl::FreeImpl " << allocation;

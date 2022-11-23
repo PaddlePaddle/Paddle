@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -33,9 +33,11 @@ template <typename T>
 __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const int *label_data,
                                            const int *fg_num_data,
-                                           const T gamma, const T alpha,
+                                           const T gamma,
+                                           const T alpha,
                                            const int num_classes,
-                                           const int limit, T *out_data) {
+                                           const int limit,
+                                           T *out_data) {
   CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     int a = i / num_classes;  // current sample
@@ -70,10 +72,15 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
 }
 
 template <typename T>
-__global__ void GPUSigmoidFocalLossBackward(
-    const T *x_data, const int *label_data, const int *fg_num_data,
-    const T gamma, const T alpha, const int num_classes, const T *dout_data,
-    const int limit, T *dx_data) {
+__global__ void GPUSigmoidFocalLossBackward(const T *x_data,
+                                            const int *label_data,
+                                            const int *fg_num_data,
+                                            const T gamma,
+                                            const T alpha,
+                                            const int num_classes,
+                                            const T *dout_data,
+                                            const int limit,
+                                            T *dx_data) {
   CUDA_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
@@ -112,10 +119,10 @@ template <typename DeviceContext, typename T>
 class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    Tensor *Out = context.Output<Tensor>("Out");
+    const Tensor *X = context.Input<phi::DenseTensor>("X");
+    const Tensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const Tensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    Tensor *Out = context.Output<phi::DenseTensor>("Out");
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
     auto x_dims = X->dims();
@@ -127,9 +134,15 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     int limit = Out->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidFocalLossForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, limit, out_data);
+    GPUSigmoidFocalLossForward<T>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(X->data<T>(),
+                                                   Labels->data<int>(),
+                                                   FgNum->data<int>(),
+                                                   gamma,
+                                                   alpha,
+                                                   num_classes,
+                                                   limit,
+                                                   out_data);
   }
 };
 
@@ -137,11 +150,12 @@ template <typename DeviceContext, typename T>
 class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Labels = context.Input<Tensor>("Label");
-    const Tensor *FgNum = context.Input<Tensor>("FgNum");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    const Tensor *X = context.Input<phi::DenseTensor>("X");
+    const Tensor *Labels = context.Input<phi::DenseTensor>("Label");
+    const Tensor *FgNum = context.Input<phi::DenseTensor>("FgNum");
+    const Tensor *dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    Tensor *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
@@ -153,9 +167,16 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     int limit = dX->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidFocalLossBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, dOut->data<T>(), limit, dx_data);
+    GPUSigmoidFocalLossBackward<T>
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(X->data<T>(),
+                                                   Labels->data<int>(),
+                                                   FgNum->data<int>(),
+                                                   gamma,
+                                                   alpha,
+                                                   num_classes,
+                                                   dOut->data<T>(),
+                                                   limit,
+                                                   dx_data);
   }
 };
 
@@ -165,12 +186,9 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_focal_loss,
-    ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUSigmoidFocalLossKernel<paddle::platform::CUDADeviceContext,
-                                   double>);
+    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, float>,
+    ops::GPUSigmoidFocalLossKernel<phi::GPUContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     sigmoid_focal_loss_grad,
-    ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::GPUSigmoidFocalLossGradKernel<paddle::platform::CUDADeviceContext,
-                                       double>);
+    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, float>,
+    ops::GPUSigmoidFocalLossGradKernel<phi::GPUContext, double>);

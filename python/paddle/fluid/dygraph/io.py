@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import six
 import pickle
@@ -30,13 +28,16 @@ from paddle.fluid.layers import nn
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _non_static_mode
-from paddle import _C_ops
+from paddle.fluid.executor import _is_enable_standalone_executor, _is_dy2st_enable_standalone_executor
+from paddle.fluid.dygraph.dygraph_to_static.partial_program import add_build_strategy_for, LazyInitialized
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['TranslatedLayer']
 
 INFER_MODEL_SUFFIX = ".pdmodel"
 INFER_PARAMS_SUFFIX = ".pdiparams"
 INFER_PARAMS_INFO_SUFFIX = ".pdiparams.info"
+INFER_PROPERTY_SUFFIX = '.meta'
 
 LOADED_VAR_SUFFIX = "load"
 PARAMETER_NAME_PREFIX = "param"
@@ -305,8 +306,8 @@ class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
 
-    _ProgramHolder is the execution unit of TranslatedLayer, 
-    if TranslatedLayer contains multiple _ProgramHolder, 
+    _ProgramHolder is the execution unit of TranslatedLayer,
+    if TranslatedLayer contains multiple _ProgramHolder,
     it can execute multiple methods
 
     _ProgramHolder is an internal concept.
@@ -332,6 +333,37 @@ class _ProgramHolder(object):
         self._train_program_desc = self._append_backward_desc(
             self._infer_program_desc)
 
+    # forward:
+    @switch_to_static_graph
+    def _create_forward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        end_op_index = self._infer_program_desc.block(0).op_size()
+        if end_op_index > 0:
+            return add_build_strategy_for(whole_program, 0, end_op_index)
+        else:
+            return whole_program
+
+    @LazyInitialized
+    def _forward_program_desc(self):
+        return self._create_forward_train_program().desc
+
+    # backward
+    @switch_to_static_graph
+    def _create_backward_train_program(self):
+        whole_program = _build_program_by_desc(self._train_program_desc)
+        start_op_index = self._infer_program_desc.block(0).op_size() + 2 * len(
+            self._output_descs)
+        end_op_index = whole_program.desc.block(0).op_size()
+        if (start_op_index < end_op_index):
+            return add_build_strategy_for(whole_program, start_op_index,
+                                          end_op_index)
+        else:
+            return paddle.static.Program()
+
+    @LazyInitialized
+    def _backward_program_desc(self):
+        return self._create_backward_train_program().desc
+
     @property
     def infer_program(self):
         return self._infer_program_desc
@@ -339,6 +371,14 @@ class _ProgramHolder(object):
     @property
     def train_program(self):
         return self._train_program_desc
+
+    @property
+    def forward_program(self):
+        return self._forward_program_desc
+
+    @property
+    def backward_program(self):
+        return self._backward_program_desc
 
     @property
     def input_descs(self):
@@ -459,7 +499,7 @@ class _ProgramHolder(object):
             self._output_descs[i] = var.desc
 
     @switch_to_static_graph
-    def _append_backward_desc(self, infer_program_desc):
+    def _get_train_forward_program(self, infer_program_desc):
         program_desc_copy = core.ProgramDesc(infer_program_desc)
 
         # 1. set all `is_test` attributes to False
@@ -487,6 +527,11 @@ class _ProgramHolder(object):
                             persistable=False,
                             stop_gradient=True)
                         op.desc.set_output("ReserveSpace", [reserve_space.name])
+        return program
+
+    @switch_to_static_graph
+    def _append_backward_desc(self, infer_program_desc):
+        program = self._get_train_forward_program(infer_program_desc)
 
         targets = []
         for out in self._output_descs:
@@ -860,13 +905,29 @@ def _run_dygraph(instance, input, program_holder):
 
     # 2. run program by op
     trace_program = program_holder.infer_program if instance._is_test else program_holder.train_program
+    forward_program = program_holder._infer_program_desc if instance._is_test else program_holder.forward_program
     end_op_index = program_holder.infer_program.block(0).op_size()
-    attrs = ('global_block', trace_program.block(0), 'start_op_index', 0,
-             'end_op_index', end_op_index, 'is_test', instance._is_test,
-             'program_id', _hash_with_id(trace_program, instance))
-    _C_ops.run_program(_valid_vars(input_vars), _valid_vars(persistable_vars),
-                       _valid_vars(output_vars), tmp_scope_vec,
-                       _valid_vars(double_grad_vars), None, *attrs)
+
+    attrs = [
+        'global_block',
+        trace_program.block(0), 'start_op_index', 0, 'end_op_index',
+        end_op_index, 'is_test', instance._is_test, 'program_id',
+        _hash_with_id(trace_program, instance)
+    ]
+
+    use_interpretorcore = _is_enable_standalone_executor(
+    ) and _is_dy2st_enable_standalone_executor()
+    attrs.extend(('use_interpretorcore', use_interpretorcore))
+    if use_interpretorcore:
+        attrs.extend(
+            ('forward_global_block', forward_program.block(0),
+             'backward_global_block', program_holder.backward_program.block(0)))
+
+    _legacy_C_ops.run_program(_valid_vars(input_vars),
+                              _valid_vars(persistable_vars),
+                              _valid_vars(output_vars), tmp_scope_vec,
+                              _valid_vars(double_grad_vars), None, *attrs)
+
     # NOTE: [ why need set param's gradient type here ]
     # if user set sparse gradient mode, the param's gradient
     # will be SelectedRows, not LoDTensor. But tracer will just
@@ -921,7 +982,7 @@ def _run_static_graph(input, program_holder, trace_program):
 def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
-    
+
     Args:
         program(Program): The program containing the current block.
         block_idx(int): index of current block.
@@ -947,13 +1008,13 @@ def _append_block(dest_program,
                   dict_rename_var_old_new=None):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
-    
+
     Args:
         dest_program(Program): Variables and Operators are appended to it.
         src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
         input_variables(list): list of input variables
-        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
+        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc',
         use it to map the name of the variable before it was modified and the new name.
     '''
 
@@ -1136,10 +1197,10 @@ def append_var_from_block_desc_static(block,
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
-    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
-    
+
     .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
@@ -1347,13 +1408,13 @@ class TranslatedLayer(layers.Layer):
         Args:
             - method_name (string): mehtod name corresponding to the program
                 to be obtained. Default: 'forward'.
-        
+
         Returns:
             Program
 
         Examples:
             .. code-block:: python
-            
+
                 import numpy as np
                 import paddle
                 import paddle.nn as nn

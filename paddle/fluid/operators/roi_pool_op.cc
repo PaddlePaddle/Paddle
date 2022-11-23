@@ -23,8 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 class ROIPoolOp : public framework::OperatorWithKernel {
  public:
@@ -44,10 +44,14 @@ class ROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "roi_pool");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "roi_pool");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "roi_pool");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "roi_pool");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
@@ -120,7 +124,7 @@ The operator has three steps:
 
 3. Copying these max values to the output buffer
 
-ROI Pooling for Faster-RCNN. The link below is a further introduction: 
+ROI Pooling for Faster-RCNN. The link below is a further introduction:
 https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
     )DOC");
   }
@@ -148,10 +152,13 @@ class ROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(roi_pool, RoiPoolInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(roi_pool,
+                            RoiPoolInferShapeFunctor,
                             PD_INFER_META(phi::RoiPoolInferMeta));
 
-REGISTER_OPERATOR(roi_pool, ops::ROIPoolOp, ops::ROIPoolOpMaker,
+REGISTER_OPERATOR(roi_pool,
+                  ops::ROIPoolOp,
+                  ops::ROIPoolOpMaker,
                   ops::ROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::ROIPoolGradMaker<paddle::imperative::OpBase>,
                   RoiPoolInferShapeFunctor);

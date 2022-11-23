@@ -218,7 +218,7 @@ class TestPadAPI(unittest.TestCase):
                               fetch_list=[result])
 
             np_out = self._get_numpy_out(input_data, pad, mode, value)
-            self.assertTrue(np.allclose(fetches[0], np_out))
+            np.testing.assert_allclose(fetches[0], np_out, rtol=1e-05)
 
     def check_static_result_2(self, place):
         paddle.enable_static()
@@ -243,8 +243,8 @@ class TestPadAPI(unittest.TestCase):
                                           pad,
                                           mode,
                                           data_format="NDHWC")
-            self.assertTrue(np.allclose(fetches[0], np_out1))
-            self.assertTrue(np.allclose(fetches[1], np_out2))
+            np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
     def check_static_result_3(self, place):
         paddle.enable_static()
@@ -269,8 +269,8 @@ class TestPadAPI(unittest.TestCase):
                                           pad,
                                           mode,
                                           data_format="NDHWC")
-            self.assertTrue(np.allclose(fetches[0], np_out1))
-            self.assertTrue(np.allclose(fetches[1], np_out2))
+            np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
     def check_static_result_4(self, place):
         paddle.enable_static()
@@ -295,8 +295,8 @@ class TestPadAPI(unittest.TestCase):
                                           pad,
                                           mode,
                                           data_format="NDHWC")
-            self.assertTrue(np.allclose(fetches[0], np_out1))
-            self.assertTrue(np.allclose(fetches[1], np_out2))
+            np.testing.assert_allclose(fetches[0], np_out1, rtol=1e-05)
+            np.testing.assert_allclose(fetches[1], np_out2, rtol=1e-05)
 
     def _get_numpy_out(self,
                        input_data,
@@ -408,9 +408,9 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NCDHW")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
+        np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
+        np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
+        np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
 
     def test_dygraph_2(self):
         paddle.disable_static()
@@ -455,9 +455,9 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NCHW")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
+        np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
+        np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
+        np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
 
     def test_dygraph_3(self):
         paddle.disable_static()
@@ -501,9 +501,9 @@ class TestPadAPI(unittest.TestCase):
                    value=value,
                    data_format="NCL")
 
-        self.assertTrue(np.allclose(y1.numpy(), np_out1))
-        self.assertTrue(np.allclose(y2.numpy(), np_out2))
-        self.assertTrue(np.allclose(y3.numpy(), np_out3))
+        np.testing.assert_allclose(y1.numpy(), np_out1, rtol=1e-05)
+        np.testing.assert_allclose(y2.numpy(), np_out2, rtol=1e-05)
+        np.testing.assert_allclose(y3.numpy(), np_out3, rtol=1e-05)
 
 
 class TestPad1dAPI(unittest.TestCase):
@@ -567,14 +567,14 @@ class TestPad1dAPI(unittest.TestCase):
                                          pad,
                                          "reflect",
                                          data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "replicate",
                                          data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
             np_out = self._get_numpy_out(input_data,
@@ -582,14 +582,14 @@ class TestPad1dAPI(unittest.TestCase):
                                          "constant",
                                          value=value,
                                          data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
             np_out = self._get_numpy_out(input_data, [pad_int] * 2,
                                          "constant",
                                          value=value,
                                          data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
             np_out = self._get_numpy_out(input_data,
@@ -597,7 +597,7 @@ class TestPad1dAPI(unittest.TestCase):
                                          "circular",
                                          value=value,
                                          data_format="NCL")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad2dAPI(unittest.TestCase):
@@ -663,14 +663,14 @@ class TestPad2dAPI(unittest.TestCase):
                                          pad,
                                          "reflect",
                                          data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "replicate",
                                          data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
             np_out = self._get_numpy_out(input_data,
@@ -678,21 +678,21 @@ class TestPad2dAPI(unittest.TestCase):
                                          "constant",
                                          value=value,
                                          data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
             np_out = self._get_numpy_out(input_data, [pad_int] * 4,
                                          "constant",
                                          value=value,
                                          data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "circular",
                                          data_format="NCHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad3dAPI(unittest.TestCase):
@@ -760,14 +760,14 @@ class TestPad3dAPI(unittest.TestCase):
                                          pad,
                                          "reflect",
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_replication(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "replicate",
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant(data)
             np_out = self._get_numpy_out(input_data,
@@ -775,21 +775,21 @@ class TestPad3dAPI(unittest.TestCase):
                                          "constant",
                                          value=value,
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_constant_int(data)
             np_out = self._get_numpy_out(input_data, [pad_int] * 6,
                                          "constant",
                                          value=value,
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_circular(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "circular",
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
     def test_pad_tensor(self):
         paddle.disable_static()
@@ -812,14 +812,14 @@ class TestPad3dAPI(unittest.TestCase):
                                          pad,
                                          "reflect",
                                          data_format="NCDHW")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
             output = pad_reflection_ndhwc(data)
             np_out = self._get_numpy_out(input_data,
                                          pad,
                                          "reflect",
                                          data_format="NDHWC")
-            self.assertTrue(np.allclose(output.numpy(), np_out))
+            np.testing.assert_allclose(output.numpy(), np_out, rtol=1e-05)
 
 
 class TestPad3dOpError(unittest.TestCase):

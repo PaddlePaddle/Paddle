@@ -105,7 +105,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *scores = ctx.Input<framework::LoDTensor>("scores");
+    auto *scores = ctx.Input<phi::DenseTensor>("scores");
     size_t level = ctx.Attr<int>("level");
     size_t batch_size = scores->lod()[level].size() - 1;
     // The current CUDA kernel only support cases with batch_size < 4.
@@ -125,9 +125,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_ids",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
-    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_scores",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -137,11 +139,12 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(beam_search, ops::BeamSearchOp, ops::BeamSearchOpMaker,
+REGISTER_OPERATOR(beam_search,
+                  ops::BeamSearchOp,
+                  ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+REGISTER_OP_CPU_KERNEL(beam_search,
+                       ops::BeamSearchOpKernel<phi::CPUContext, float>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, double>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int>,
+                       ops::BeamSearchOpKernel<phi::CPUContext, int64_t>);

@@ -18,29 +18,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SequenceMaskNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
 
     if (ctx.HasInput("MaxLenTensor")) {
-      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+      auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
-      framework::Tensor temp;
-      paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
-                                        &temp);
+      phi::DenseTensor temp;
+      paddle::framework::TensorCopySync(
+          *max_len_tensor, platform::CPUPlace(), &temp);
       maxlen = *temp.data<int32_t>();
       PADDLE_ENFORCE_GT(
-          maxlen, 0,
+          maxlen,
+          0,
           platform::errors::InvalidArgument(
               "Input(MaxLenTensor) value should be greater than 0. But "
               "received Input(MaxLenTensor) value = %d.",
@@ -60,7 +61,9 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     Tensor cast_x;
     cast_x.mutable_data<int32_t>(x->dims(), ctx.GetPlace());
     const auto& cast1_runner = NpuOpRunner(
-        "Cast", {*x}, {cast_x},
+        "Cast",
+        {*x},
+        {cast_x},
         {{"dst_type",
           ConvertToNpuDtype(framework::TransToProtoVarType(cast_x.dtype()))}});
     cast1_runner.Run(dev_ctx.stream());
@@ -87,7 +90,9 @@ class SequenceMaskNPUKernel : public framework::OpKernel<T> {
     Tensor x_tmp;
     x_tmp.mutable_data<int32_t>(phi::make_ddim(y_dim), ctx.GetPlace());
     const auto& tile_runner =
-        NpuOpRunner("TileWithAxis", {cast_x}, {x_tmp},
+        NpuOpRunner("TileWithAxis",
+                    {cast_x},
+                    {x_tmp},
                     {{"axis", x->dims().size()}, {"tiles", maxlen}});
     tile_runner.Run(dev_ctx.stream());
 
@@ -133,7 +138,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    sequence_mask, ops::SequenceMaskNPUKernel<plat::NPUDeviceContext, int32_t>,
+    sequence_mask,
+    ops::SequenceMaskNPUKernel<plat::NPUDeviceContext, int32_t>,
     ops::SequenceMaskNPUKernel<plat::NPUDeviceContext, int64_t>,
     ops::SequenceMaskNPUKernel<plat::NPUDeviceContext, float>,
     ops::SequenceMaskNPUKernel<plat::NPUDeviceContext, double>);

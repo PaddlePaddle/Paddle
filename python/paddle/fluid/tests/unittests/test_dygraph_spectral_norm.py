@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import collections
@@ -95,8 +93,10 @@ class TestDygraphSpectralNorm(unittest.TestCase):
                                                 self.eps)
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            self.assertTrue(
-                np.allclose(np.array(actual), np.array(expect), atol=0.001))
+            np.testing.assert_allclose(np.array(actual),
+                                       np.array(expect),
+                                       rtol=1e-05,
+                                       atol=0.001)
 
 
 class TestDygraphWeightNormCase(TestDygraphSpectralNorm):

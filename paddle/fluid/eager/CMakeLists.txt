@@ -14,7 +14,8 @@ set(eager_deps
     grad_node_info
     grad_tensor_holder
     accumulation_node
-    custom_operator_node)
+    custom_operator_node
+    python)
 
 set(fluid_deps
     tracer
@@ -41,7 +42,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     grad_tensor_holder
     SRCS grad_tensor_holder.cc
     DEPS grad_node_info gradient_accumulator)
-  add_dependencies(grad_tensor_holder eager_final_state_codegen)
+  add_dependencies(grad_tensor_holder eager_codegen)
   cc_library(
     backward
     SRCS backward.cc
@@ -78,5 +79,9 @@ cc_library(
        hook_utils)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+  cc_library(
+    saved_tensors_hooks
+    SRCS saved_tensors_hooks.cc
+    DEPS hook_utils)
   add_subdirectory(tests)
 endif()

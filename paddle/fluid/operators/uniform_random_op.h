@@ -30,17 +30,17 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
-    const Tensor* new_data_tensor) {
+    const phi::DenseTensor* new_data_tensor) {
   if (framework::TransToProtoVarType(new_data_tensor->dtype()) ==
       framework::proto::VarType::INT64) {
     auto* new_data = new_data_tensor->data<int64_t>();
-    framework::Tensor cpu_starts_tensor;
+    phi::DenseTensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                                        &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(
+          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
     }
     std::vector<int64_t> vec_new_data(new_data,
@@ -50,10 +50,10 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
              framework::proto::VarType::INT32) {
     auto* new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
-    framework::Tensor cpu_starts_tensor;
+    phi::DenseTensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      paddle::framework::TensorCopySync(*new_data_tensor, platform::CPUPlace(),
-                                        &cpu_starts_tensor);
+      paddle::framework::TensorCopySync(
+          *new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
     for (int i = 0; i < new_data_tensor->numel(); ++i) {
@@ -69,13 +69,14 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
 }
 
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   std::vector<int64_t> vec_new_shape;
   vec_new_shape.reserve(list_new_shape_tensor.size());
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), phi::make_ddim({1}),
+        tensor->dims(),
+        phi::make_ddim({1}),
         platform::errors::InvalidArgument(
             "Shape of dim tensor in uniform_random_op should be [1]"
             "But received tensor's dim=%s.",
@@ -84,7 +85,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     if (framework::TransToProtoVarType(tensor->dtype()) ==
         framework::proto::VarType::INT32) {
       if (platform::is_gpu_place(tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
       } else {
@@ -93,7 +94,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     } else if (framework::TransToProtoVarType(tensor->dtype()) ==
                framework::proto::VarType::INT64) {
       if (platform::is_gpu_place(tensor->place())) {
-        framework::Tensor temp;
+        phi::DenseTensor temp;
         paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
         vec_new_shape.push_back(*temp.data<int64_t>());
       } else {
@@ -122,8 +123,8 @@ struct UniformGenerator {
   T diag_val_;
   unsigned int diag_num_;
   unsigned int diag_step_;
-  __host__ __device__ UniformGenerator(T min, T max, int seed, int diag_num,
-                                       int diag_step, T diag_val)
+  __host__ __device__ UniformGenerator(
+      T min, T max, int seed, int diag_num, int diag_step, T diag_val)
       : min_(min),
         max_(max),
         seed_(seed),
@@ -147,10 +148,9 @@ struct UniformGenerator {
 
 template <typename T>
 void UniformRandom(const framework::ExecutionContext& context,
-                   framework::Tensor* tensor) {
+                   phi::DenseTensor* tensor) {
   int64_t size = tensor->numel();
-  auto& dev_cxt =
-      context.template device_context<platform::CUDADeviceContext>();
+  auto& dev_cxt = context.template device_context<phi::GPUContext>();
   T* data = tensor->mutable_data<T>(dev_cxt.GetPlace());
   if (size <= 0) return;
   unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));

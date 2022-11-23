@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy
-import paddle.fluid.core as core
+import paddle
 import paddle.fluid as fluid
 
 
@@ -30,7 +28,7 @@ class TestExecutor(unittest.TestCase):
         y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
         cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         opt = fluid.optimizer.Adam(learning_rate=lr)
         opt.minimize(avg_cost)

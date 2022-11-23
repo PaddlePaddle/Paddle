@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class SliceMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
@@ -36,26 +36,30 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     auto infer_flags = ctx.Attr<std::vector<int>>("infer_flags");
 
     // Get the accurate attribute value of starts and ends
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
+      starts =
+          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
+      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -77,8 +81,8 @@ class SliceMLUKernel : public framework::OpKernel<T> {
       }
 
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
       reset_slice_dims = true;
       auto out_dims = phi::funcs::GetDecreasedDims(slice_dims, decrease_axis);
 
@@ -86,8 +90,8 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     }
     if (slice_dims.size() != in_dims.size() && !reset_slice_dims) {
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
     }
 
     int in_dim_size = input->dims().size();
@@ -110,8 +114,13 @@ class SliceMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc out_desc(slice_dims.size(),
                                phi::vectorize(slice_dims).data(),
                                ToCnnlDataType<T>());
-    MLUCnnl::StridedSlice(ctx, starts.data(), ends.data(), strides.data(),
-                          input_desc.get(), GetBasePtr(input), out_desc.get(),
+    MLUCnnl::StridedSlice(ctx,
+                          starts.data(),
+                          ends.data(),
+                          strides.data(),
+                          input_desc.get(),
+                          GetBasePtr(input),
+                          out_desc.get(),
                           GetBasePtr(out));
   }
 };
@@ -120,25 +129,28 @@ template <typename T>
 class SliceGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dinput = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dinput =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
 
     auto axes = ctx.Attr<std::vector<int>>("axes");
     auto starts = ctx.Attr<std::vector<int>>("starts");
     auto ends = ctx.Attr<std::vector<int>>("ends");
 
     // Get the accurate attribute value of starts and ends
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int>(ctx.Input<Tensor>("StartsTensor"));
+      starts =
+          GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int>(ctx.Input<Tensor>("EndsTensor"));
+      ends = GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int>(ends_tensor_list);
     }
@@ -147,8 +159,8 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
     auto slice_dims = dout->dims();
     if (slice_dims.size() != in_dims.size()) {
       phi::funcs::CheckAndUpdateSliceAttrs(in_dims, axes, &starts, &ends);
-      slice_dims = phi::funcs::GetSliceDims<int>(in_dims, axes, starts, ends,
-                                                 nullptr, nullptr);
+      slice_dims = phi::funcs::GetSliceDims<int>(
+          in_dims, axes, starts, ends, nullptr, nullptr);
     }
 
     int in_dim_size = input->dims().size();
@@ -171,9 +183,14 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
                                 phi::vectorize(slice_dims).data(),
                                 ToCnnlDataType<T>());
     MLUCnnlTensorDesc dinput_desc(*dinput);
-    MLUCnnl::StridedSliceGrad(ctx, starts.data(), ends.data(), strides.data(),
-                              dout_desc.get(), GetBasePtr(dout),
-                              dinput_desc.get(), GetBasePtr(dinput));
+    MLUCnnl::StridedSliceGrad(ctx,
+                              starts.data(),
+                              ends.data(),
+                              strides.data(),
+                              dout_desc.get(),
+                              GetBasePtr(dout),
+                              dinput_desc.get(),
+                              GetBasePtr(dinput));
   }
 };
 
@@ -182,13 +199,16 @@ class SliceGradMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_MLU_KERNEL(slice, ops::SliceMLUKernel<float>,
-                       ops::SliceMLUKernel<int>, ops::SliceMLUKernel<bool>,
+REGISTER_OP_MLU_KERNEL(slice,
+                       ops::SliceMLUKernel<float>,
+                       ops::SliceMLUKernel<int>,
+                       ops::SliceMLUKernel<bool>,
                        ops::SliceMLUKernel<int64_t>,
                        ops::SliceMLUKernel<double>,
                        ops::SliceMLUKernel<paddle::platform::float16>);
 
-REGISTER_OP_MLU_KERNEL(slice_grad, ops::SliceGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(slice_grad,
+                       ops::SliceGradMLUKernel<float>,
                        ops::SliceGradMLUKernel<int>,
                        ops::SliceGradMLUKernel<bool>,
                        ops::SliceGradMLUKernel<int64_t>,

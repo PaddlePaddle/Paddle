@@ -12,16 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import time
-import json
 import unittest
-import argparse
 import tempfile
-import traceback
-from warnings import catch_warnings
 
 from paddle.distributed.fleet.elastic.collective import CollectiveLauncher
 from paddle.distributed.fleet.launch import launch_collective

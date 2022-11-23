@@ -13,10 +13,8 @@
 # limitations under the License.
 """Test fleet."""
 
-from __future__ import print_function
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestFleet1(unittest.TestCase):
@@ -34,7 +32,6 @@ class TestFleet1(unittest.TestCase):
         """Test cases for pslib."""
         import paddle.fluid as fluid
         from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
         from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
 
         os.environ["POD_IP"] = "127.0.0.1"

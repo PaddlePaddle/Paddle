@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import numpy
+import numpy as np
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
@@ -36,9 +34,9 @@ class TestExecutor(unittest.TestCase):
             output = fluid.layers.mul(x=a, y=b)
 
         # Compute with numpy
-        a_np = numpy.random.random((100, 784)).astype('float32')
-        b_np = numpy.random.random((784, 100)).astype('float32')
-        out_np = numpy.dot(a_np, b_np)
+        a_np = np.random.random((100, 784)).astype('float32')
+        b_np = np.random.random((784, 100)).astype('float32')
+        out_np = np.dot(a_np, b_np)
 
         place = core.CPUPlace()
         exe = fluid.Executor(place)
@@ -60,7 +58,7 @@ class TestExecutor(unittest.TestCase):
                 run_time += end - begin
                 out = outs[0]
                 self.assertEqual((100, 100), out.shape)
-                self.assertTrue(numpy.allclose(out, out_np))
+                np.testing.assert_allclose(out, out_np, rtol=1e-05)
             return run_time
 
         max_iters = 3
@@ -105,16 +103,15 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
                                                   parallel=True,
                                                   use_program_cache=True)
 
-            x_np = numpy.random.random(
-                (self.config.batch_size, self.config.num_steps,
-                 1)).astype("int64")
-            y_np = numpy.random.random(
+            x_np = np.random.random((self.config.batch_size,
+                                     self.config.num_steps, 1)).astype("int64")
+            y_np = np.random.random(
                 (self.config.batch_size * self.config.num_steps,
                  1)).astype("int64")
-            init_hidden_np = numpy.random.random(
+            init_hidden_np = np.random.random(
                 (self.config.num_layers, self.config.batch_size,
                  self.config.hidden_size)).astype("float32")
-            init_cell_np = numpy.random.random(
+            init_cell_np = np.random.random(
                 (self.config.num_layers, self.config.batch_size,
                  self.config.hidden_size)).astype("float32")
 
@@ -143,9 +140,9 @@ class ExecutorPaddingRNNTest(PaddingRNNTestBase):
             for i in range(len(results_with_cache)):
                 self.assertEqual(results_with_cache[i].shape,
                                  results_without_cache[i].shape)
-                self.assertTrue(
-                    numpy.allclose(results_with_cache[i],
-                                   results_without_cache[i]))
+                np.testing.assert_allclose(results_with_cache[i],
+                                           results_without_cache[i],
+                                           rtol=1e-05)
 
 
 if __name__ == '__main__':

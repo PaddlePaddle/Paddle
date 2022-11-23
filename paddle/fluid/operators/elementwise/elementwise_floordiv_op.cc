@@ -25,9 +25,6 @@ class EmptyGradOpMaker;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -58,7 +55,8 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv, ops::ElementwiseOp,
+REGISTER_OP_WITHOUT_GRADIENT(elementwise_floordiv,
+                             ops::ElementwiseOp,
                              ops::ElementwiseFloorDivOpMaker);
 
 REGISTER_OP_VERSION(elementwise_floordiv)

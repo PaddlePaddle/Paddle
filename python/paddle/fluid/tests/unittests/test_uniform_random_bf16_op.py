@@ -14,12 +14,11 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
+from op_test import OpTest, convert_uint16_to_float
 import paddle
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 from paddle.fluid.tests.unittests.test_uniform_random_op import output_hist, output_hist_diag
 
 
@@ -49,8 +48,7 @@ class TestUniformRandomOpBF16(OpTest):
             result = np.array(outs[0])
 
         hist, prob = self.output_hist(result)
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
     def test_check_output(self):
         outs = self.calc_output(core.CPUPlace())
@@ -130,8 +128,7 @@ class TestUniformRandomOpBF16SelectedRows(unittest.TestCase):
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
@@ -155,8 +152,7 @@ class TestUniformRandomOpBF16SelectedRowsWithDiagInit(
         self.assertEqual(out.get_tensor().shape(), [500, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpBF16AttrTensorAPI(unittest.TestCase):
@@ -227,8 +223,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensor(unittest.TestCase):
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
@@ -254,8 +249,7 @@ class TestUniformRandomOpBF16SelectedRowsShapeTensorList(
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         result = convert_uint16_to_float(np.array(out.get_tensor()))
         hist, prob = output_hist(result)
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestUniformRandomBatchSizeLikeOpBF16API(unittest.TestCase):

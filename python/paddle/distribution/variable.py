@@ -37,7 +37,7 @@ class Variable(object):
         return self._event_rank
 
     def constraint(self, value):
-        """Check whether the 'value' meet the constraint conditions of this 
+        """Check whether the 'value' meet the constraint conditions of this
         random variable."""
         return self._constraint(value)
 
@@ -59,8 +59,8 @@ class Independent(Variable):
 
     Args:
         base (Variable): Base variable.
-        reinterpreted_batch_rank (int): The rightmost batch rank to be 
-            reinterpreted. 
+        reinterpreted_batch_rank (int): The rightmost batch rank to be
+            reinterpreted.
     """
 
     def __init__(self, base, reinterpreted_batch_rank):

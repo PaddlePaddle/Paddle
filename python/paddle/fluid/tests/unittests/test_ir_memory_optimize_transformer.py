@@ -13,13 +13,8 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
-from timeit import default_timer as timer
-import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.dataset.wmt16 as wmt16
 
 os.environ['FLAGS_eager_delete_tensor_gb'] = "0.0"
 

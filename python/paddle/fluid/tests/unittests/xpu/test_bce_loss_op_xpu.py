@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 import paddle
-import paddle.fluid as fluid
 import numpy as np
 import unittest
 from op_test_xpu import XPUOpTest

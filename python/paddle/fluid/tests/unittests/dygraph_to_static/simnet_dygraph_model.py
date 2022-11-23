@@ -16,7 +16,7 @@ import paddle.fluid as fluid
 import paddle.fluid.param_attr as attr
 
 from functools import reduce
-from paddle.fluid.dygraph import declarative, to_variable
+from paddle.fluid.dygraph import declarative
 from paddle.fluid.dygraph import Embedding, Layer, Linear
 from paddle.static import Variable
 
@@ -269,7 +269,7 @@ class FC(Layer):
             out.data = [[[0.182996 -0.474117]]]
             out.shape = (1, 1, 2)
     Parameters:
-        
+
         size(int): The number of output units in this layer.
         num_flatten_dims (int, optional): The fc layer can accept an input tensor with more than
             two dimensions. If this happens, the multi-dimension tensor will first be flattened
@@ -293,7 +293,7 @@ class FC(Layer):
         **bias** (Parameter or None): the learnable bias of this layer.
     Returns:
         None
-    
+
     Examples:
         .. code-block:: python
           from paddle.fluid.dygraph.base import to_variable

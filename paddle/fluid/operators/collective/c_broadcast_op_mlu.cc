@@ -27,8 +27,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CNCL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
     cnclDataType_t dtype =
         platform::ToCNCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -49,19 +49,28 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
     if (root == comm->rank()) {
       PADDLE_ENFORCE_MLU_SUCCESS(
           cnclBcast(reinterpret_cast<void*>(const_cast<T*>(x->data<T>())),
-                    numel, dtype, root, comm->comm(), stream));
+                    numel,
+                    dtype,
+                    root,
+                    comm->comm(),
+                    stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. sent "
               << x->numel();
 
       if (out != x) {
         framework::TensorCopy(
-            *static_cast<const framework::Tensor*>(x), place,
+            *static_cast<const phi::DenseTensor*>(x),
+            place,
             *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
+            static_cast<phi::DenseTensor*>(out));
       }
     } else {
-      PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place), numel,
-                                           dtype, root, comm->comm(), stream));
+      PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place),
+                                           numel,
+                                           dtype,
+                                           root,
+                                           comm->comm(),
+                                           stream));
       VLOG(3) << "rank " << comm->rank() << " invoke Bcast. received "
               << phi::product(out->dims());
     }
@@ -81,7 +90,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(c_broadcast, ops::CBroadcastOPMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(c_broadcast,
+                       ops::CBroadcastOPMLUKernel<float>,
                        ops::CBroadcastOPMLUKernel<plat::float16>,
                        ops::CBroadcastOPMLUKernel<int>,
                        ops::CBroadcastOPMLUKernel<int16_t>,

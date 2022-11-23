@@ -15,6 +15,8 @@
 
 #include <set>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/matmul_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -381,7 +383,8 @@ DenseTensor PerformReduction(const Context& dev_ctx,
   VLOG(5) << "call PerformReduction: with axis: "
           << paddle::string::join_strings(indices, ",");
   if (indices.size() == 0) return tensor;
-  return Sum<T, Context>(dev_ctx, tensor, indices, tensor.dtype(), true);
+  return Sum<T, Context>(
+      dev_ctx, tensor, phi::IntArray(indices), tensor.dtype(), true);
 }
 
 inline bool is_no_need_transpose(const std::vector<int>& axis) {

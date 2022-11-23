@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from __future__ import print_function
-
 import paddle
 import paddle.static as static
 import numpy as np
@@ -64,7 +62,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
                                           self.label_np,
                                           margin=0.5,
                                           reduction='mean')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected1))
+        np.testing.assert_allclose(dy_result.numpy(), expected1, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(input1,
@@ -78,7 +76,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
                                           margin=0.5,
                                           reduction='sum')
 
-        self.assertTrue(np.allclose(dy_result.numpy(), expected2))
+        np.testing.assert_allclose(dy_result.numpy(), expected2, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(input1,
@@ -92,7 +90,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
                                           margin=0.5,
                                           reduction='none')
 
-        self.assertTrue(np.allclose(dy_result.numpy(), expected3))
+        np.testing.assert_allclose(dy_result.numpy(), expected3, rtol=1e-05)
         self.assertTrue(dy_result.shape, [5])
 
     def run_static(self, use_gpu=False):
@@ -130,21 +128,21 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
                                          margin=0.5,
                                          reduction='none')
 
-        self.assertTrue(np.allclose(static_result[0], expected))
+        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
         expected = cosine_embedding_loss(self.input1_np,
                                          self.input2_np,
                                          self.label_np,
                                          margin=0.5,
                                          reduction='sum')
 
-        self.assertTrue(np.allclose(static_result[1], expected))
+        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
         expected = cosine_embedding_loss(self.input1_np,
                                          self.input2_np,
                                          self.label_np,
                                          margin=0.5,
                                          reduction='mean')
 
-        self.assertTrue(np.allclose(static_result[2], expected))
+        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
@@ -262,7 +260,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
                                           self.label_np,
                                           margin=0.5,
                                           reduction='mean')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected1))
+        np.testing.assert_allclose(dy_result.numpy(), expected1, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         input1_1D = paddle.to_tensor(self.input1_np_1D)
@@ -274,7 +272,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
                                           self.label_np_1D,
                                           margin=0.5,
                                           reduction='mean')
-        self.assertTrue(np.allclose(dy_result.numpy(), expected2))
+        np.testing.assert_allclose(dy_result.numpy(), expected2, rtol=1e-05)
 
     def run_static(self):
         input1 = static.data(name='input1', shape=[10, 3], dtype='float32')
@@ -299,7 +297,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
                                          margin=0.5,
                                          reduction='mean')
 
-        self.assertTrue(np.allclose(static_result[0], expected))
+        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())

@@ -66,9 +66,16 @@ class UniqueOp : public framework::OperatorWithKernel {
     }
     bool is_sorted = ctx->Attrs().Get<bool>("is_sorted");
     if (is_sorted) {
-      phi::UniqueInferMeta(x, return_index, return_inverse, return_counts,
-                           axis_vec, data_type, &out, indices.get(),
-                           index.get(), counts.get());
+      phi::UniqueInferMeta(x,
+                           return_index,
+                           return_inverse,
+                           return_counts,
+                           axis_vec,
+                           data_type,
+                           &out,
+                           indices.get(),
+                           index.get(),
+                           counts.get());
     } else {
       OP_INOUT_CHECK(ctx->HasOutput("Index"), "Output", "Index", "unique");
       if (index == nullptr) {
@@ -76,9 +83,17 @@ class UniqueOp : public framework::OperatorWithKernel {
             std::move(std::unique_ptr<CompatMetaTensor>(new CompatMetaTensor(
                 ctx->GetOutputVarPtrs("Index")[0], ctx->IsRuntime())));
       }
-      phi::UniqueRawInferMeta(x, return_index, return_inverse, return_counts,
-                              axis_vec, data_type, is_sorted, &out,
-                              indices.get(), index.get(), counts.get());
+      phi::UniqueRawInferMeta(x,
+                              return_index,
+                              return_inverse,
+                              return_counts,
+                              axis_vec,
+                              data_type,
+                              is_sorted,
+                              &out,
+                              indices.get(),
+                              index.get(),
+                              counts.get());
     }
   }
 
@@ -138,9 +153,9 @@ class UniqueOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
     1. Return a unique subsequence for 1-D input tensor, and an index tensor
-    pointing to this unique subsequence when Attr(is_sorted) is false. This 
+    pointing to this unique subsequence when Attr(is_sorted) is false. This
     means paddle.unique is called.
-    
+
     2. Returns the unique elements of X in ascending order when Attr(is_sorted)
     is true. This means fluid.layers.unique is called.
 )DOC");

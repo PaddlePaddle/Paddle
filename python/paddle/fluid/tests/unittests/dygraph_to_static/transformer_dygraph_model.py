@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 
 import paddle.fluid as fluid
@@ -21,6 +19,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, Layer, LayerNorm, Linear, to_variable
 from paddle.fluid.dygraph.jit import dygraph_to_static_func
 from paddle.fluid.layers.utils import map_structure
+import paddle
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -633,7 +632,7 @@ class Transformer(Layer):
                 value=0),
         } for i in range(self.n_layer)]
 
-        for i in range(max_len):
+        for i in range(paddle.to_tensor(max_len)):
             trg_pos = layers.fill_constant(shape=trg_word.shape,
                                            dtype="int64",
                                            value=i)

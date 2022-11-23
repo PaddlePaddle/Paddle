@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _current_expected_place
 
 
 def ref_softplus(x, beta, threshold):

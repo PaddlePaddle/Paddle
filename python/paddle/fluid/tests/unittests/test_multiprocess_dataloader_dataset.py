@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
 import numpy as np
 
 import paddle
 import paddle.fluid as fluid
 from paddle.io import Dataset, IterableDataset, TensorDataset, \
-        ComposeDataset, ChainDataset, DataLoader, random_split, Subset
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+        ComposeDataset, ChainDataset, DataLoader
+from paddle.fluid.framework import _test_eager_guard
 
 IMAGE_SIZE = 32
 

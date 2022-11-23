@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -84,6 +82,36 @@ class TestCase3(TestBase):
 
     def set_op_attrs(self):
         self.attrs = {"exclusive": True, "reverse": True}
+
+
+class TestCase4(TestBase):
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[1, 128])
+        self.feed_fp32 = {"x": x.astype(np.int32)}
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="int32")
+        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+        self.fetch_list = [out.name]
+
+
+class TestCase5(TestBase):
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[1, 128])
+        self.feed_fp32 = {"x": x.astype(np.int64)}
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="int64")
+        out = paddle.fluid.layers.cumsum(x, **self.attrs)
+        self.fetch_list = [out.name]
 
 
 if __name__ == "__main__":

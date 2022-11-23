@@ -46,21 +46,21 @@ void MinimumRawKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ModuloRawKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const DenseTensor& y,
-                     int axis,
-                     DenseTensor* out) {
+void RemainderRawKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const DenseTensor& y,
+                        int axis,
+                        DenseTensor* out) {
   // allocate memory for out
   dev_ctx.template Alloc<T>(out);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<funcs::ModuloFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::ModuloFunctor<T>(), out);
+    funcs::ElementwiseCompute<funcs::RemainderFunctor<T>, T>(
+        dev_ctx, x, y, axis, funcs::RemainderFunctor<T>(), out);
   } else {
-    funcs::ElementwiseCompute<funcs::InverseModuloFunctor<T>, T>(
-        dev_ctx, x, y, axis, funcs::InverseModuloFunctor<T>(), out);
+    funcs::ElementwiseCompute<funcs::InverseRemainderFunctor<T>, T>(
+        dev_ctx, x, y, axis, funcs::InverseRemainderFunctor<T>(), out);
   }
 }
 
@@ -139,10 +139,10 @@ PD_REGISTER_KERNEL(minimum_raw,
                    int,
                    int64_t,
                    phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(modulo_raw,
+PD_REGISTER_KERNEL(remainder_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ModuloRawKernel,
+                   phi::RemainderRawKernel,
                    float,
                    double,
                    int,

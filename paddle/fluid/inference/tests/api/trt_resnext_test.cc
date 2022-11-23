@@ -23,6 +23,11 @@ namespace inference {
 
 TEST(TensorRT_resnext50, compare) {
   std::string model_dir = FLAGS_infer_model + "/resnext50";
+  AnalysisConfig config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.DisableGlogInfo();
+  auto predictor = CreatePaddlePredictor(config);
   compare(model_dir, /* use_tensorrt */ true);
 }
 

@@ -49,11 +49,10 @@ TEST(DEV_API, sum) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   // 2. test API
-  auto out =
-      phi::Sum<float>(dev_ctx, dense_x, axis, phi::DataType::FLOAT32, false);
+  auto out = phi::Sum<float>(
+      dev_ctx, dense_x, phi::IntArray(axis), phi::DataType::FLOAT32, false);
 
   // 3. check result
   ASSERT_EQ(out.dims().size(), 1);

@@ -96,9 +96,11 @@ class TestSequential(unittest.TestCase):
         out = self.net(x)
         if to_static:
             load_out = self._test_load(self.net, x)
-            self.assertTrue(np.allclose(load_out, out),
-                            msg='load_out is {}\st_out is {}'.format(
-                                load_out, out))
+            np.testing.assert_allclose(
+                load_out,
+                out,
+                rtol=1e-05,
+                err_msg='load_out is {}\\st_out is {}'.format(load_out, out))
 
         return out
 
@@ -106,9 +108,12 @@ class TestSequential(unittest.TestCase):
         paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)
         st_out = self._run(to_static=True)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg='dygraph_res is {}\nstatic_res is {}'.format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                dy_out, st_out))
 
     def _test_load(self, net, x):
         paddle.jit.save(net, self.model_path)

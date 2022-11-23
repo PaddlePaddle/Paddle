@@ -19,7 +19,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"

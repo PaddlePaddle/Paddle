@@ -18,6 +18,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
@@ -74,7 +76,7 @@ void TestDeviceInterface(const paddle::platform::Place& place) {
 
 void TestTensorMutableData(const paddle::platform::Place& place) {
   std::cout << "TestTensorInitialization on " << place << std::endl;
-  paddle::framework::Tensor src_tensor;
+  phi::DenseTensor src_tensor;
   float* p1 = nullptr;
   float* p2 = nullptr;
   // initialization
@@ -99,20 +101,21 @@ void TestTensorMutableData(const paddle::platform::Place& place) {
 
 void TestTensorShareDataWith(const paddle::platform::Place& place) {
   std::cout << "TestTensorShareDataWith on " << place << std::endl;
-  paddle::framework::Tensor src_tensor;
-  paddle::framework::Tensor dst_tensor;
+  phi::DenseTensor src_tensor;
+  phi::DenseTensor dst_tensor;
   src_tensor.mutable_data<int>(phi::make_ddim({2, 3, 4}), place);
   dst_tensor.ShareDataWith(src_tensor);
   ASSERT_EQ(src_tensor.data<int>(), dst_tensor.data<int>());
 }
 
 void TestTensorUtils(const paddle::platform::Place& place) {
+  std::cout << "TestTensorUtils on " << place << std::endl;
   if (paddle::platform::is_custom_place(place) == false) {
     return;
   }
-  paddle::framework::Tensor src_tensor;
-  paddle::framework::Tensor gpu_tensor;
-  paddle::framework::Tensor dst_tensor;
+  phi::DenseTensor src_tensor;
+  phi::DenseTensor gpu_tensor;
+  phi::DenseTensor dst_tensor;
 
   int* src_ptr = src_tensor.mutable_data<int>(phi::make_ddim({3, 3}),
                                               paddle::platform::CPUPlace());
@@ -145,7 +148,7 @@ void TestTensorUtils(const paddle::platform::Place& place) {
     EXPECT_EQ(src_ptr[i], dst_ptr_tmp[i]);
   }
 
-  paddle::framework::Tensor slice_tensor = src_tensor.Slice(1, 2);
+  phi::DenseTensor slice_tensor = src_tensor.Slice(1, 2);
 
   // CPU Slice Tensor to GPU Tensor
   paddle::framework::TensorCopy(slice_tensor, place, gpu_ctx, &gpu_tensor);
@@ -166,6 +169,122 @@ void TestTensorUtils(const paddle::platform::Place& place) {
 #endif
 }
 
+void TestCustomCCL(const paddle::platform::Place& place) {
+  std::cout << "TestCustomCCL on " << place << std::endl;
+  if (paddle::platform::is_custom_place(place) == false) {
+    return;
+  }
+  std::string dev_type = place.GetDeviceType();
+  phi::ccl::CCLComm comm;
+  phi::stream::Stream stream(place, nullptr);
+  phi::ccl::CCLRootId root_id;
+
+  phi::DeviceManager::CCLDestroyComm(dev_type, nullptr);
+  phi::DeviceManager::CCLGetUniqueId(dev_type, &root_id);
+  phi::DeviceManager::CCLCommInitRank(dev_type, 0, &root_id, 0, nullptr);
+  phi::DeviceManager::CCLBroadcast(dev_type,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   0,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLAllReduce(dev_type,
+                                   nullptr,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   phi::ccl::CCLReduceOp::SUM,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLReduce(dev_type,
+                                nullptr,
+                                nullptr,
+                                0,
+                                phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                phi::ccl::CCLReduceOp::SUM,
+                                0,
+                                comm,
+                                stream);
+  phi::DeviceManager::CCLAllGather(dev_type,
+                                   nullptr,
+                                   nullptr,
+                                   0,
+                                   phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                                   comm,
+                                   stream);
+  phi::DeviceManager::CCLReduceScatter(
+      dev_type,
+      nullptr,
+      nullptr,
+      0,
+      phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+      phi::ccl::CCLReduceOp::SUM,
+      comm,
+      stream);
+  phi::DeviceManager::CCLGroupStart(dev_type);
+  phi::DeviceManager::CCLGroupEnd(dev_type);
+  phi::DeviceManager::CCLSend(dev_type,
+                              nullptr,
+                              0,
+                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                              0,
+                              comm,
+                              stream);
+  phi::DeviceManager::CCLRecv(dev_type,
+                              nullptr,
+                              0,
+                              phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
+                              0,
+                              comm,
+                              stream);
+}
+
+void TestBlasAPI(const paddle::platform::Place& place) {
+  std::cout << "TestBlasAPI on " << place << std::endl;
+  if (paddle::platform::is_custom_place(place) == false) {
+    return;
+  }
+  auto device = phi::DeviceManager::GetDeviceWithPlace(place);
+  phi::stream::Stream stream(place, nullptr);
+  device->BlasAXPBY<float>(stream, 0, 1., nullptr, 1., nullptr);
+
+  paddle::framework::Variable var1;
+  paddle::framework::Variable var2;
+  std::vector<float> src_data(10, 1.0);
+  std::vector<float> dst_data(10, 0.0);
+  std::vector<float> result;
+  paddle::platform::CPUPlace src_place;
+  for (unsigned int i = 0; i < 10; i++) {
+    result.emplace_back(src_data[i] + dst_data[i]);
+  }
+
+  std::vector<int64_t> dims = {2, 5};
+  auto* src = var1.GetMutable<phi::DenseTensor>();
+  auto* dst = var2.GetMutable<phi::DenseTensor>();
+  src->Resize(phi::make_ddim(dims));
+  dst->Resize(phi::make_ddim(dims));
+  auto* src_mutable = src->mutable_data<float>(place);
+  auto* dst_mutable = dst->mutable_data<float>(place);
+
+  paddle::memory::Copy(place,
+                       src_mutable,
+                       src_place,
+                       src_data.data(),
+                       sizeof(float) * src_data.size());
+
+  paddle::memory::Copy(place,
+                       dst_mutable,
+                       src_place,
+                       dst_data.data(),
+                       sizeof(float) * dst_data.size());
+
+  paddle::imperative::TensorAdd<paddle::framework::Variable>(var1, &var2);
+  phi::DenseTensor rlt;
+  paddle::platform::CPUPlace rlt_place;
+  paddle::framework::TensorCopySync(*dst, rlt_place, &rlt);
+}
+
 TEST(CustomDevice, Tensor) {
   InitDevice();
   auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
@@ -179,6 +298,8 @@ TEST(CustomDevice, Tensor) {
     TestTensorMutableData(place);
     TestTensorShareDataWith(place);
     TestTensorUtils(place);
+    TestCustomCCL(place);
+    TestBlasAPI(place);
   }
 }
 

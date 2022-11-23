@@ -39,11 +39,14 @@ void create_vars(ProgramDesc* prog,
   for (auto name : names) prog->MutableBlock(0)->Var(name);
 }
 
-void SetMultiGruOp(ProgramDesc* prog, const std::string x,
+void SetMultiGruOp(ProgramDesc* prog,
+                   const std::string x,
                    const std::vector<std::string> wx,
                    const std::vector<std::string> wh,
-                   const std::vector<std::string> b, const std::string h,
-                   int layers, bool origin_mode) {
+                   const std::vector<std::string> b,
+                   const std::string h,
+                   int layers,
+                   bool origin_mode) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType("multi_gru");
   op->SetInput("X", {x});

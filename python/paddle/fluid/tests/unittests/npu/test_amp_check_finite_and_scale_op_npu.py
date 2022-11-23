@@ -95,7 +95,7 @@ class TestCheckFiniteAndUnscale(unittest.TestCase):
         out, found_inf = self.run_prog(a, b, scale)
         print(out, found_inf)
 
-        self.assertTrue(np.allclose(out, (a / b) / scale[0]))
+        np.testing.assert_allclose(out, (a / b) / scale[0])
         self.assertFalse(found_inf[0])
 
 
@@ -159,7 +159,7 @@ class TestCheckFiniteAndUnscaleClearFloatStatus(unittest.TestCase):
         out, found_inf = self.run_prog(a, b, scale)
         print(out, found_inf)
 
-        self.assertTrue(np.allclose(out, (a + b) / scale[0]))
+        np.testing.assert_allclose(out, (a + b) / scale[0])
         self.assertFalse(found_inf[0])
 
 

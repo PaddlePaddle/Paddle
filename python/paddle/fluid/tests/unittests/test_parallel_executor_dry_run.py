@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import unittest
@@ -74,7 +75,7 @@ class TestMNISTDryRun(TestBase):
             hidden = fluid.layers.fc(input=img, size=200, act='tanh')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         fluid.optimizer.Adam().minimize(avg_loss)
         return avg_loss
 

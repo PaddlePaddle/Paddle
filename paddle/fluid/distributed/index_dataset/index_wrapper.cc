@@ -29,7 +29,8 @@ int TreeIndex::Load(const std::string filename) {
   int err_no;
   auto fp = paddle::framework::fs_open_read(filename, &err_no, "");
   PADDLE_ENFORCE_NE(
-      fp, nullptr,
+      fp,
+      nullptr,
       platform::errors::InvalidArgument(
           "Open file %s failed. Please check whether the file exists.",
           filename));
@@ -46,17 +47,21 @@ int TreeIndex::Load(const std::string filename) {
     size_t read_num =
         fread(const_cast<char*>(content.data()), 1, num, fp.get());
     PADDLE_ENFORCE_EQ(
-        read_num, static_cast<size_t>(num),
+        read_num,
+        static_cast<size_t>(num),
         platform::errors::InvalidArgument(
             "Read from file: %s failed. Valid Format is "
             "an integer representing the length of the following string, "
             "and the string itself.We got an iteger[% d], "
             "but the following string's length is [%d].",
-            filename, num, read_num));
+            filename,
+            num,
+            read_num));
 
     KVItem item;
     PADDLE_ENFORCE_EQ(
-        item.ParseFromString(content), true,
+        item.ParseFromString(content),
+        true,
         platform::errors::InvalidArgument("Parse from file: %s failed. It's "
                                           "content can't be parsed by KVItem.",
                                           filename));
@@ -168,7 +173,8 @@ std::vector<uint64_t> TreeIndex::GetChildrenCodes(uint64_t ancestor,
 
 std::vector<uint64_t> TreeIndex::GetTravelCodes(uint64_t id, int start_level) {
   std::vector<uint64_t> res;
-  PADDLE_ENFORCE_NE(id_codes_map_.find(id), id_codes_map_.end(),
+  PADDLE_ENFORCE_NE(id_codes_map_.find(id),
+                    id_codes_map_.end(),
                     paddle::platform::errors::InvalidArgument(
                         "id = %d doesn't exist in Tree.", id));
   auto code = id_codes_map_.at(id);

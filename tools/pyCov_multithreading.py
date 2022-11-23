@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from xml.etree import ElementTree
-import re
 import time
 import queue
 import threading
 import os
-import json
 import sys
 
 taskQueue = queue.Queue()

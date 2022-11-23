@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle import enable_static
-from paddle.fluid.tests.unittests.test_conv2d_transpose_op import conv2dtranspose_forward_naive, TestConv2DTransposeOp
+from paddle.fluid.tests.unittests.test_conv2d_transpose_op import TestConv2DTransposeOp
 
 
 def conv2d_bias_naive(out, bias):

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
@@ -65,6 +64,14 @@ class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestMKLDNNElementwiseAddOpBroadcastXintoY(TestMKLDNNElementwiseAddOp):
+
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 50, 1]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [2, 50, 160]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 

@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 
 from paddle.fluid import unique_name
 from paddle.fluid.dygraph.dygraph_to_static.utils import index_in_list
-from paddle.fluid.dygraph.dygraph_to_static.utils import ForNodeVisitor
 from paddle.fluid.dygraph.dygraph_to_static.utils import BaseNodeVisitor
-from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_fill_constant_node
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_bool_node
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import ForNodeVisitor
 
 __all__ = ['BreakContinueTransformer']
 
@@ -28,7 +27,7 @@ BREAK_NAME_PREFIX = '__break'
 CONTINUE_NAME_PREFIX = '__continue'
 
 
-class ForToWhileTransformer(gast.NodeTransformer):
+class ForToWhileTransformer(BaseTransformer):
     """
     Transform python for loop into while loop and add condition node in the
     loop test
@@ -90,7 +89,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
     """
     Rewrite 'break' and 'continue' key words in a if-else python way to make
     it equivalent to original control flow
-    
+
     The main idea of this class is:
 
         1. Map the 'break/continue' stmt with an unique boolean variable V.
@@ -140,7 +139,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'break' add break into condition of the loop.
-        assign_false_node = create_fill_constant_node(variable_name, False)
+        assign_false_node = create_bool_node(variable_name, False)
         self._add_stmt_before_cur_node(loop_node_index, assign_false_node)
 
         cond_var_node = gast.UnaryOp(op=gast.Not(),
@@ -177,7 +176,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         self._replace_if_stmt(loop_node_index, first_block_index, variable_name)
 
         # 4. For 'continue', set continue to False at the beginning of each loop
-        assign_false_node = create_fill_constant_node(variable_name, False)
+        assign_false_node = create_bool_node(variable_name, False)
         loop_node.body.insert(0, assign_false_node)
 
     def _remove_stmts_after_break_continue(self, break_continue_node,
@@ -221,7 +220,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
         i = index_in_list(stmt_list, break_continue_node)
         if i == -1:
             return False
-        assign_true_node = create_fill_constant_node(break_continue_name, True)
+        assign_true_node = create_bool_node(break_continue_name, True)
         stmt_list[i:] = [assign_true_node]
         return True
 
@@ -277,9 +276,9 @@ def _find_ancestor_loop_index(node, ancestor_nodes):
 
 class BreakTransformOptimizer(BaseNodeVisitor):
     """
-    In specific pattern, the transformed code could be optimized by joining the 
-    If.test with while.test. 
-    
+    In specific pattern, the transformed code could be optimized by joining the
+    If.test with while.test.
+
     Currently supported pattern is:
     ```
         while cond1:            while cond1 and not cond2:
@@ -287,7 +286,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 break
             do_something()
     ```
-    
+
     See following example:
 
     >>> def foo(x):
@@ -308,7 +307,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 i += 1
             return x
     ```
-    It can avoid wrapping all ops after `break` statement into `cond_op` that 
+    It can avoid wrapping all ops after `break` statement into `cond_op` that
     usually brings very heavy overhead.
     """
 

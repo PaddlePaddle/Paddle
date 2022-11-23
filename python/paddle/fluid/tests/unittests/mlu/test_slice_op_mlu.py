@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -549,7 +547,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
                                ends=paddle.to_tensor(ends, dtype='int32'))
             a_2 = paddle.slice(a, axes=axes, starts=starts, ends=ends)
 
-            self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
+            np.testing.assert_allclose(a_1.numpy(), a_2.numpy())
 
     def test_bool_tensor(self):
         with paddle.fluid.dygraph.guard():
@@ -565,7 +563,7 @@ class TestSliceApiWithTensor(unittest.TestCase):
             y_np = tt[0:3, 1:5, 2:4]
 
             self.assertTrue(paddle.bool == y_paddle.dtype)
-            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+            np.testing.assert_array_equal(y_paddle.numpy(), y_np)
 
 
 class TestImperativeVarBaseGetItem(unittest.TestCase):
@@ -601,14 +599,6 @@ class TestImperativeVarBaseGetItem(unittest.TestCase):
 
 class TestInferShape(unittest.TestCase):
 
-    def test(self):
-        x = paddle.ones(shape=[3, 4, 5])
-        x.desc.set_shape([3, -1, 5])
-        self.assertEqual(x.shape, (3, -1, 5))
-
-        out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
-        self.assertEqual(out0.shape, (3, 3, 5))
-
     def test_axis_less_than_zero(self):
 
         # Using paddle.disable_static will make other unittests fail.
@@ -620,11 +610,11 @@ class TestInferShape(unittest.TestCase):
                 100,
             ], [0], [1])
             np_slice = x_arr[:, :, 0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_allclose(pp_slice, np_slice)
 
             pp_slice = paddle.slice(x, (-100, ), [0], [1])
             np_slice = x_arr[0:1]
-            self.assertTrue(np.array_equal(pp_slice, np_slice))
+            np.testing.assert_allclose(pp_slice, np_slice)
 
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(np.reshape(x_arr, (0, 0, 0)))

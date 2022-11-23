@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -86,7 +84,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 
@@ -98,7 +96,7 @@ class TestMKLDNNMulOpS8U8(TestMKLDNNMulOpS8S8):
 
 
 '''
- test case for  s8 * s8 
+ test case for  s8 * s8
 '''
 
 
@@ -154,7 +152,7 @@ class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 

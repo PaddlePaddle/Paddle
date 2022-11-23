@@ -14,13 +14,10 @@
 
 import unittest
 import numpy as np
-import math
 
 from op_test import OpTest
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import random
 import sys
 

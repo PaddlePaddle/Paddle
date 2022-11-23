@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
 import numpy as np
 from scipy.special import logit
@@ -169,11 +167,41 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
             gt_matches.astype('int32'))
 
 
+def yolo_loss_wrapper(x,
+                      gt_box,
+                      gt_label,
+                      gt_score=None,
+                      anchors=[
+                          10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116,
+                          90, 156, 198, 373, 326
+                      ],
+                      anchor_mask=[0, 1, 2],
+                      class_num=5,
+                      ignore_thresh=0.7,
+                      downsample_ratio=32,
+                      use_label_smooth=True,
+                      scale_x_y=1.):
+    loss = paddle.vision.ops.yolo_loss(x,
+                                       gt_box=gt_box,
+                                       gt_label=gt_label,
+                                       anchors=anchors,
+                                       anchor_mask=anchor_mask,
+                                       class_num=class_num,
+                                       ignore_thresh=ignore_thresh,
+                                       downsample_ratio=downsample_ratio,
+                                       gt_score=gt_score,
+                                       use_label_smooth=use_label_smooth,
+                                       scale_x_y=scale_x_y)
+    return loss
+
+
 class TestYolov3LossOp(OpTest):
 
     def setUp(self):
         self.initTestCase()
         self.op_type = 'yolov3_loss'
+        self.python_api = yolo_loss_wrapper
+        self.python_out_sig = ['Loss']
         x = logit(np.random.uniform(0, 1, self.x_shape).astype('float64'))
         gtbox = np.random.random(size=self.gtbox_shape).astype('float64')
         gtlabel = np.random.randint(0, self.class_num, self.gtbox_shape[:2])
@@ -212,11 +240,14 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place, atol=2e-3, check_eager=True)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
+        self.check_grad_with_place(place, ['X'],
+                                   'Loss',
+                                   max_relative_error=0.2,
+                                   check_eager=True)
 
     def initTestCase(self):
         self.anchors = [

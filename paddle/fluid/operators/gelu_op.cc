@@ -26,7 +26,8 @@ namespace operators {
 
 class GeluOp : public framework::OperatorWithKernel {
  public:
-  GeluOp(const std::string &type, const framework::VariableNameMap &inputs,
+  GeluOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
          const framework::VariableNameMap &outputs,
          const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
@@ -34,18 +35,8 @@ class GeluOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    auto it = this->Attrs().find("use_mkldnn");
-    if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
-#endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 
@@ -55,14 +46,17 @@ class GeluGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
+        ctx->HasInput(framework::GradVarName("Out")),
+        true,
         platform::errors::InvalidArgument(
             "Input(%s) of GeluGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(%s) of GeluGradOp should not be null.", "X"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
+        ctx->HasOutput(framework::GradVarName("X")),
+        true,
         platform::errors::InvalidArgument(
             "Output(%s) of GeluGradOp should not be null.", "DX"));
     auto x_grad_name = framework::GradVarName("X");
@@ -73,18 +67,8 @@ class GeluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    auto it = this->Attrs().find("use_mkldnn");
-    if (library == framework::LibraryType::kPlain &&
-        it != this->Attrs().end() && this->CanMKLDNNBeUsed(ctx, data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-    }
-#endif
-    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
 
@@ -96,23 +80,8 @@ class GeluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("approximate",
                   "(bool, default false) use approximation of gelu")
         .SetDefault(false);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default false) Only used in cudnn kernel, need "
-                  "install cudnn")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
-Gelu Activation Operator. 
+Gelu Activation Operator.
 
 For more details, please refer to [Gaussian Error Linear Units](https://arxiv.org/pdf/1606.08415.pdf).
 
@@ -146,9 +115,12 @@ class GeluGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gelu, GeluInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gelu,
+                            GeluInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(gelu, ops::GeluOp, ops::GeluOpMaker,
+REGISTER_OPERATOR(gelu,
+                  ops::GeluOp,
+                  ops::GeluOpMaker,
                   ops::GeluGradOpMaker<paddle::framework::OpDesc>,
                   ops::GeluGradOpMaker<paddle::imperative::OpBase>,
                   GeluInferShapeFunctor);

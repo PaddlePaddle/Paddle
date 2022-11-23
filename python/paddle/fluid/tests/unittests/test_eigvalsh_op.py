@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 from op_test import OpTest
-from gradient_checker import grad_check
 
 
 def compare_result(actual, expected):
@@ -51,6 +48,8 @@ class TestEigvalshOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "eigvalsh"
+        self.python_api = paddle.linalg.eigvalsh
+        self.python_out_sig = ['Eigenvalues']
         self.init_input()
         self.init_config()
         np.random.seed(123)
@@ -69,10 +68,10 @@ class TestEigvalshOp(OpTest):
 
     def test_check_output(self):
         # Vectors in posetive or negative is equivalent
-        self.check_output(no_check_set=['Eigenvectors'])
+        self.check_output(no_check_set=['Eigenvectors'], check_eager=True)
 
     def test_grad(self):
-        self.check_grad(["X"], ["Eigenvalues"])
+        self.check_grad(["X"], ["Eigenvalues"], check_eager=True)
 
 
 class TestEigvalshUPLOCase(TestEigvalshOp):

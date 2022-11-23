@@ -58,31 +58,35 @@ class GraphSendRecvOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input tensor with data type float32, float64, int32, int64.");
     AddInput("Src_index", "The source index tensor.");
     AddInput("Dst_index", "The destination index tensor.");
+    AddInput("Out_size",
+             "(Tensor<int>, optional). The 0th dimension of the output."
+             "It has a higher priority than Attr(out_size).")
+        .AsDispensable();
     AddOutput("Out", "Output tensor of graph_send_recv op.");
     AddOutput("Dst_count",
-              "Count tensor of Dst_index, mainly for MEAN pool_type.")
+              "Count tensor of Dst_index, mainly for MEAN reduce_op.")
         .AsIntermediate();
-    AddAttr<std::string>("pool_type",
+    AddAttr<std::string>("reduce_op",
                          "(string, default 'SUM')"
                          "Define different pool types to receive the result "
                          "tensors of Dst_index.")
         .SetDefault("SUM")
         .InEnum({"SUM", "MEAN", "MIN", "MAX"});
-    AddAttr<int64_t>(
+    AddAttr<std::vector<int64_t>>(
         "out_size",
-        "(int64_t, default 0)"
+        "(vector<int64_t>, default {0})"
         "Define the first dimension of Output tensor."
-        "If set default 0, then the shape of Out is the same with X.")
-        .SetDefault(0);
+        "If set default {0}, then the shape of Out is the same with X.")
+        .SetDefault({0});
     AddComment(R"DOC(
 Graph Learning Send_Recv combine operator.
 
-$Out = Recv(Send(X, Src_index), Dst_index, pool_type)$
+$Out = Recv(Send(X, Src_index), Dst_index, reduce_op)$
 
-This operator is mainly used in Graph Learning domain, and the main purpose is to reduce 
-intermediate memory consumption in the process of message passing. 
-Take `x` as the input tensor, we first use `src_index` to gather corresponding data, 
-and then use `dst_index` to update the corresponding position of output tensor in different 
+This operator is mainly used in Graph Learning domain, and the main purpose is to reduce
+intermediate memory consumption in the process of message passing.
+Take `x` as the input tensor, we first use `src_index` to gather corresponding data,
+and then use `dst_index` to update the corresponding position of output tensor in different
 pooling types, like sum, mean, max, or min.
 
 )DOC");
@@ -101,12 +105,12 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Dst_index", this->Input("Dst_index"));
     op->SetInput("X", this->Input("X"));
 
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MEAN") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MEAN") {
       op->SetInput("Dst_count", this->Output("Dst_count"));
     }
 
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MIN" ||
-        BOOST_GET_CONST(std::string, this->GetAttr("pool_type")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MIN" ||
+        PADDLE_GET_CONST(std::string, this->GetAttr("reduce_op")) == "MAX") {
       op->SetInput("Out", this->Output("Out"));
     }
 
@@ -121,9 +125,11 @@ class GraphSendRecvGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv, GraphSendRecvInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(graph_send_recv,
+                            GraphSendRecvInferShapeFunctor,
                             PD_INFER_META(phi::GraphSendRecvInferMeta));
-REGISTER_OPERATOR(graph_send_recv, ops::GraphSendRecvOP,
+REGISTER_OPERATOR(graph_send_recv,
+                  ops::GraphSendRecvOP,
                   ops::GraphSendRecvOpMaker,
                   ops::GraphSendRecvGradOpMaker<paddle::framework::OpDesc>,
                   ops::GraphSendRecvGradOpMaker<paddle::imperative::OpBase>,

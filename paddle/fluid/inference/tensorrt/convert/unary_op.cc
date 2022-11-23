@@ -41,7 +41,8 @@ class UnaryOpConverter : public OpConverter {
  public:
   UnaryOpConverter() {}
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
+                  const framework::Scope& scope,
+                  bool test_mode) override {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);

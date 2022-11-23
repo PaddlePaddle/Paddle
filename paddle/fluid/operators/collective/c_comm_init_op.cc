@@ -43,7 +43,8 @@ namespace operators {
 
 class CCommInitOp : public framework::OperatorBase {
  public:
-  CCommInitOp(const std::string& type, const framework::VariableNameMap& inputs,
+  CCommInitOp(const std::string& type,
+              const framework::VariableNameMap& inputs,
               const framework::VariableNameMap& outputs,
               const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -88,7 +89,8 @@ class CCommInitOp : public framework::OperatorBase {
 
 #if defined(PADDLE_WITH_XPU_BKCL)
     PADDLE_ENFORCE_EQ(
-        rid, 0,
+        rid,
+        0,
         platform::errors::OutOfRange(
             "Ring id must equal 0 in multi Kunlun cards training, but got %d",
             rid));
@@ -99,8 +101,8 @@ class CCommInitOp : public framework::OperatorBase {
       device_id = Attr<int>("device_id");
     }
     int rank_id = Attr<int>("rank");
-    CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
-                                       rid);
+    CommContext::Instance().CreateComm(
+        comm_id, nranks, rank_id, device_id, rid);
 #endif
   }
 };

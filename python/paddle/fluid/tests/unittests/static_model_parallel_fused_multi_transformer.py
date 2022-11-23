@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 
 import paddle
@@ -21,12 +19,6 @@ import paddle.fluid as fluid
 from test_dist_base import TestDistRunnerBase, runtime_main
 from paddle.incubate.nn import FusedMultiTransformer
 import paddle.distributed.fleet as fleet
-
-from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
-from paddle.fluid.dygraph.layers import Layer
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import core
-from paddle.nn.initializer import Constant
 
 paddle.enable_static()
 

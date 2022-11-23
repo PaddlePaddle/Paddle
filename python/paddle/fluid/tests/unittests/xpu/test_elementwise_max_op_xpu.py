@@ -16,7 +16,7 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import paddle
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper

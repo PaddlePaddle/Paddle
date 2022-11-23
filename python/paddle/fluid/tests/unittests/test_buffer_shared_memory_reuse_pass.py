@@ -14,12 +14,10 @@
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.framework import Parameter
 import numpy as np
 from simple_nets import simple_fc_net
 import random
 import unittest
-import os
 
 batch_size = 32
 
@@ -103,11 +101,11 @@ class InplaceTestBase(unittest.TestCase):
                 compiled_programs.append(compiled_prog)
 
         all_vars_name = self.get_all_vars(prog1)
-        repeated_var_names = all_vars_name * 2
+        repeated_var_names = all_vars_name
         random.shuffle(repeated_var_names)  # add some random
 
-        for fetch_var in repeated_var_names:
-            for _ in range(4):
+        for fetch_var in repeated_var_names[:4]:
+            for _ in range(2):
                 with fluid.scope_guard(scope1):
                     fetch_val1, = exe.run(prog1,
                                           feed=feed_dict,
@@ -118,9 +116,11 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_val2, = exe.run(compiled_prog,
                                               feed=feed_dict,
                                               fetch_list=[fetch_var])
-                        self.assertTrue(
-                            np.array_equal(fetch_val1, fetch_val2),
-                            "error var name: {}, fetch_val1: {}, fetch_val2: {}"
+                        np.testing.assert_array_equal(
+                            fetch_val1,
+                            fetch_val2,
+                            err_msg=
+                            'error var name: {}, fetch_val1: {}, fetch_val2: {}'
                             .format(
                                 fetch_var,
                                 fetch_val1[~np.equal(fetch_val1, fetch_val2)],
@@ -153,11 +153,11 @@ class InplaceTestBase(unittest.TestCase):
                                              places=places)
                 compiled_programs.append(compiled_program)
 
-        repeated_var_names = self.get_all_vars(prog1) * 2
+        repeated_var_names = self.get_all_vars(prog1)
         random.shuffle(repeated_var_names)  # add some random
 
-        for fetch_var in repeated_var_names:
-            for _ in range(4):
+        for fetch_var in repeated_var_names[:4]:
+            for _ in range(2):
                 fetch_vals = []
                 for scope, compiled_prog in zip(scopes, compiled_programs):
                     with fluid.scope_guard(scope):
@@ -167,13 +167,14 @@ class InplaceTestBase(unittest.TestCase):
                         fetch_vals.append(fetch_val)
 
                 for item in fetch_vals:
-                    self.assertTrue(np.array_equal(fetch_vals[0], item))
-                    self.assertTrue(
-                        np.array_equal(fetch_vals[0], item),
-                        "error var name: {}, fetch_vals[0]: {}, item: {}".
-                        format(fetch_var,
-                               fetch_vals[0][~np.equal(fetch_vals[0], item)],
-                               item[~np.equal(fetch_vals[0], item)]))
+                    np.testing.assert_array_equal(fetch_vals[0], item)
+                    np.testing.assert_array_equal(
+                        fetch_vals[0],
+                        item,
+                        err_msg='error var name: {}, fetch_vals[0]: {}, item: {}'
+                        .format(fetch_var,
+                                fetch_vals[0][~np.equal(fetch_vals[0], item)],
+                                item[~np.equal(fetch_vals[0], item)]))
 
 
 class CUDAInplaceTest(InplaceTestBase):

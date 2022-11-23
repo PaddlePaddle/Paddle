@@ -20,7 +20,6 @@ namespace phi {
 
 ::phi::CPUContext CreateCPUContext() {
   ::phi::CPUContext ctx{};
-  ctx.Init();
   auto allocator = new backends::CpuPhiAllocator{};
   ctx.SetAllocator(allocator);
   ctx.SetHostAllocator(allocator);

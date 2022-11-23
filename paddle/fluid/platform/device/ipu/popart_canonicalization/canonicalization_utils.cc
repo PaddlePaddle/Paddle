@@ -68,7 +68,9 @@ void ClearNode(Node *node) {
   }
 }
 
-void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
+void CopyOpAttr(const std::string &attr_name,
+                OpDesc *op,
+                OpDesc *new_op,
                 bool override) {
   if (new_op->HasAttr(attr_name) && !override) {
     return;
@@ -81,13 +83,15 @@ void CopyOpAttr(const std::string &attr_name, OpDesc *op, OpDesc *new_op,
   }
 }
 
-Node *GetInputVarNode(const std::string &input_name, const Node *op_node,
+Node *GetInputVarNode(const std::string &input_name,
+                      const Node *op_node,
                       const int id) {
   auto var_name = op_node->Op()->Input(input_name).at(id);
   return GetInputVarNodeByVarName(var_name, op_node);
 }
 
-Node *GetOutputVarNode(const std::string &output_name, const Node *op_node,
+Node *GetOutputVarNode(const std::string &output_name,
+                       const Node *op_node,
                        const int id) {
   auto var_name = op_node->Op()->Output(output_name).at(id);
   return GetOutputVarNodeByVarName(var_name, op_node);
@@ -128,9 +132,63 @@ const ONNXDataType GetVarDType(const Node *node) {
 const ONNXDataType GetOutputVarDType(const Node *node,
                                      const std::string &output_name) {
   auto out_node = GetOutputVarNode(output_name, node);
-  PADDLE_ENFORCE_NOT_NULL(out_node, platform::errors::Unavailable(
-                                        "Node's out node does not exist."));
+  PADDLE_ENFORCE_NOT_NULL(
+      out_node,
+      platform::errors::Unavailable("Node's out node does not exist."));
   return GetVarDType(out_node);
+}
+
+bool IsLastVarNode(Node *node) {
+  return node->IsVar() && node->outputs.size() == 0;
+}
+
+void MarkNodeForDeletion(Node *node) { node->Op()->SetAttr("delete_node", 1); }
+
+bool IsMarkedForDeletion(Node *node) {
+  return node->Op()->HasAttr("delete_node") &&
+         PADDLE_GET_CONST(int, node->Op()->GetAttr("delete_node")) > 0;
+}
+
+int RemoveTailReduction(Graph *graph,
+                        Node *loss_op,
+                        const std::string &output_var_name) {
+  // Sum: 0. Mean: 1. None: 2
+  int reduction = 2;
+  Node *reduction_op;
+  auto loss_output = GetOutputVarNode(output_var_name, loss_op);
+  for (auto sub_node : loss_output->outputs) {
+    if (!sub_node->IsOp()) continue;
+    if (sub_node->Op()->Type() == "reduce_sum") {
+      reduction = 0;
+      reduction_op = sub_node;
+    } else if (sub_node->Op()->Type() == "reduce_mean") {
+      reduction = 1;
+      reduction_op = sub_node;
+    }
+  }
+  if (reduction == 2) return reduction;
+  auto reduction_out = reduction_op->outputs[0];
+  loss_op->Op()->SetOutput(output_var_name,
+                           std::vector<std::string>({reduction_out->Name()}));
+  MarkNodeForDeletion(reduction_op);
+  DisConnectNodes(loss_output, reduction_op);
+  DisConnectNodes(reduction_op, reduction_out);
+  ConnectNodes(loss_op, reduction_out);
+
+  return reduction;
+}
+
+int ConvertToPopartReduction(const std::string &reduction) {
+  // Sum: 0. Mean: 1. None: 2
+  if (reduction == "sum") {
+    return 0;
+  } else if (reduction == "mean") {
+    return 1;
+  } else if (reduction == "none") {
+    return 2;
+  }
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "reduction %s is not supported on ipu.", reduction));
 }
 
 }  // namespace ipu

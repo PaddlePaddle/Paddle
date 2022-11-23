@@ -96,7 +96,7 @@ if(NOT APPLE AND NOT WIN32)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE
-        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl -lcrypto")
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -388,7 +388,8 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
         endif()
       endif()
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS}
+                            ${PYTHON_LIBRARIES})
       common_link(${TARGET_NAME})
     endif()
 
@@ -443,7 +444,7 @@ function(cc_binary TARGET_NAME)
 endfunction()
 
 function(cc_test_build TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -484,7 +485,7 @@ function(cc_test_build TARGET_NAME)
 endfunction()
 
 function(cc_test_run TARGET_NAME)
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -513,10 +514,7 @@ function(cc_test_run TARGET_NAME)
 endfunction()
 
 function(cc_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_TESTING AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -617,12 +615,7 @@ function(nv_binary TARGET_NAME)
 endfunction()
 
 function(nv_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_GPU
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_GPU AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}"
@@ -736,12 +729,7 @@ function(hip_binary TARGET_NAME)
 endfunction()
 
 function(hip_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_ROCM
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_ROCM AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(hip_test "${options}" "${oneValueArgs}"
@@ -850,12 +838,7 @@ function(xpu_binary TARGET_NAME)
 endfunction()
 
 function(xpu_test TARGET_NAME)
-  # The environment variable `CI_SKIP_CPP_TEST` is used to skip the compilation
-  # and execution of test in CI. `CI_SKIP_CPP_TEST` is set to ON when no files
-  # other than *.py are modified.
-  if(WITH_XPU_KP
-     AND WITH_TESTING
-     AND NOT "$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
+  if(WITH_XPU_KP AND WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(xpu_test "${options}" "${oneValueArgs}"

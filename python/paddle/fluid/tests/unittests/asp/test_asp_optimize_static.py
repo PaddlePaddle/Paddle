@@ -13,10 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import threading, time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -48,7 +45,7 @@ class TestASPStaticOptimize(unittest.TestCase):
 
         with fluid.program_guard(self.main_program, self.startup_program):
             self.img, self.label, predict = build_model()
-            self.loss = fluid.layers.mean(
+            self.loss = paddle.mean(
                 fluid.layers.cross_entropy(input=predict, label=self.label))
             self.optimizer = fluid.optimizer.SGD(learning_rate=0.01)
 
@@ -143,10 +140,18 @@ class TestASPStaticOptimize(unittest.TestCase):
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(fluid.global_scope().find_var(
                     param.name).get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                 n=2,
-                                                                 m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
     def test_asp_training_with_amp(self):
         if core.is_compiled_with_cuda():
@@ -172,10 +177,18 @@ class TestASPStaticOptimize(unittest.TestCase):
                 if ASPHelper._is_supported_layer(self.main_program, param.name):
                     mat = np.array(fluid.global_scope().find_var(
                         param.name).get_tensor())
-                    self.assertTrue(
-                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                     n=2,
-                                                                     m=4))
+                    if (len(param.shape) == 4
+                            and param.shape[1] < 4) or (len(param.shape) == 2
+                                                        and param.shape[0] < 4):
+                        self.assertFalse(
+                            paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                         n=2,
+                                                                         m=4))
+                    else:
+                        self.assertTrue(
+                            paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                         n=2,
+                                                                         m=4))
 
     def __get_param_names(self, params):
         param_names = []

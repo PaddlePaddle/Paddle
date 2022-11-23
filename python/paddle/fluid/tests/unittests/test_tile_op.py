@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, core, program_guard
+import gradient_checker
+from decorator_helper import prog_scope
+import paddle.fluid.layers as layers
 
 
 #Situation 1: repeat_times is a list (without tensor)
@@ -43,6 +44,27 @@ class TestTileOpRank1(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestTileOpRank_ZeroDim1(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = []
+
+
+class TestTileOpRank_ZeroDim2(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2]
+
+
+class TestTileOpRank_ZeroDim3(TestTileOpRank1):
+
+    def init_data(self):
+        self.ori_shape = []
+        self.repeat_times = [2, 3]
 
 
 # with dimension expanding
@@ -261,6 +283,110 @@ class TestTileAPI(unittest.TestCase):
             assert np.array_equal(out_1.numpy(), np.tile(np_x, (2, 3)))
             assert np.array_equal(out_2.numpy(), np.tile(np_x, (2, 3)))
             assert np.array_equal(out_3.numpy(), np.tile(np_x, (2, 3)))
+
+
+class TestTileDoubleGradCheck(unittest.TestCase):
+
+    def tile_wrapper(self, x):
+        return paddle.tile(x[0], [2, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [1, 2], False, dtype)
+        data.persistable = True
+        out = paddle.tile(data, [2, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.double_grad_check_for_dygraph(self.tile_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTileTripleGradCheck(unittest.TestCase):
+
+    def tile_wrapper(self, x):
+        return paddle.tile(x[0], [2, 1])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = layers.data('data', [1, 2], False, dtype)
+        data.persistable = True
+        out = paddle.tile(data, [2, 1])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check([data],
+                                           out,
+                                           x_init=[data_arr],
+                                           place=place,
+                                           eps=eps)
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+        gradient_checker.triple_grad_check_for_dygraph(self.tile_wrapper,
+                                                       [data],
+                                                       out,
+                                                       x_init=[data_arr],
+                                                       place=place)
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestTileAPI_ZeroDim(unittest.TestCase):
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
+
+        x = paddle.rand([])
+        x.stop_gradient = False
+
+        out = paddle.tile(x, [])
+        out.backward()
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [])
+
+        out = paddle.tile(x, [3])
+        out.backward()
+        self.assertEqual(out.shape, [3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [3])
+
+        out = paddle.tile(x, [2, 3])
+        out.backward()
+        self.assertEqual(out.shape, [2, 3])
+        self.assertEqual(x.grad.shape, [])
+        self.assertEqual(out.grad.shape, [2, 3])
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

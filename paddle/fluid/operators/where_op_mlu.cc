@@ -24,19 +24,25 @@ template <typename DeviceContext, typename T>
 class WhereMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* condition = context.Input<framework::Tensor>("Condition");
-    auto* X = context.Input<framework::Tensor>("X");
-    auto* Y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* condition = context.Input<phi::DenseTensor>("Condition");
+    auto* X = context.Input<phi::DenseTensor>("X");
+    auto* Y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     auto place = context.GetPlace();
     out->mutable_data<T>(place);
     MLUCnnlTensorDesc x_desc(*X);
     MLUCnnlTensorDesc y_desc(*Y);
     MLUCnnlTensorDesc condition_desc(*condition);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::Select(context, condition_desc.get(), GetBasePtr(condition),
-                    x_desc.get(), GetBasePtr(X), y_desc.get(), GetBasePtr(Y),
-                    out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Select(context,
+                    condition_desc.get(),
+                    GetBasePtr(condition),
+                    x_desc.get(),
+                    GetBasePtr(X),
+                    y_desc.get(),
+                    GetBasePtr(Y),
+                    out_desc.get(),
+                    GetBasePtr(out));
   }
 };
 
@@ -46,6 +52,7 @@ class WhereMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    where, ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, float>,
+    where,
+    ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::WhereMLUKernel<paddle::platform::MLUDeviceContext, int>);
 #endif

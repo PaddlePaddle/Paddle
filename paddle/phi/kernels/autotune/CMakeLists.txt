@@ -18,10 +18,7 @@ elseif(WITH_ROCM)
     DEPS gtest)
 endif()
 
-cc_library(
-  cache
-  SRCS cache.cc
-  DEPS boost)
+cc_library(cache SRCS cache.cc)
 cc_library(
   switch_autotune
   SRCS switch_autotune.cc

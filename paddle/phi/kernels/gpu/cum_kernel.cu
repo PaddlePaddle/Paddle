@@ -353,7 +353,7 @@ void ScanKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int axis,
+                  const Scalar& axis,
                   bool flatten,
                   bool exclusive,
                   bool reverse,
@@ -361,7 +361,7 @@ void CumsumKernel(const Context& dev_ctx,
   using Op = cub::Sum;
   auto op = Op();
   ScanKernel<T, Context, Op>(
-      dev_ctx, x, axis, flatten, exclusive, reverse, op, out);
+      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, op, out);
 }
 
 template <typename T, typename Context>

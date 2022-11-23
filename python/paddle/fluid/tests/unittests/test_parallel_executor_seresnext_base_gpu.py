@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import seresnext_net
 from seresnext_test_base import TestResnetBase, DeviceType
@@ -31,6 +30,7 @@ class TestResnetGPU(TestResnetBase):
                              use_parallel_executor=False)
         self._compare_result_with_origin_model(check_func,
                                                use_device=DeviceType.CUDA,
+                                               delta2=1e-5,
                                                compare_separately=False)
 
 

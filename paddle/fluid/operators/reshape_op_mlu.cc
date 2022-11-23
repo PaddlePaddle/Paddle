@@ -22,15 +22,16 @@ template <typename DeviceContext, typename T>
 class Reshape2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<int32_t> target_shape_vector;
-    auto shape_tensor_vector = ctx.MultiInput<framework::Tensor>("ShapeTensor");
+    auto shape_tensor_vector = ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
     if (shape_tensor_vector.size() > 0) {
       for (auto* shape_tensor : shape_tensor_vector) {
         PADDLE_ENFORCE_EQ(
-            shape_tensor->dims().size(), 1,
+            shape_tensor->dims().size(),
+            1,
             platform::errors::InvalidArgument(
                 "If the element type of 'shape' in Reshape Op is Tensor, "
                 "the element's shape must be [1]. But received the element's "
@@ -41,14 +42,15 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       }
     } else {
       auto* shape_tensor = ctx.HasInput("Shape")
-                               ? ctx.Input<framework::LoDTensor>("Shape")
+                               ? ctx.Input<phi::DenseTensor>("Shape")
                                : nullptr;
       if (shape_tensor) {
         target_shape_vector = GetDataFromTensor<int>(shape_tensor);
       } else {
         target_shape_vector = ctx.Attr<std::vector<int>>("shape");
         PADDLE_ENFORCE_GT(
-            target_shape_vector.size(), 0,
+            target_shape_vector.size(),
+            0,
             platform::errors::InvalidArgument(
                 "The length of shape attribute should be larger than 0 when "
                 "input ShapeTensor and Shape are empty!"));
@@ -58,7 +60,8 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
     int num_negative =
         std::count(target_shape_vector.begin(), target_shape_vector.end(), -1);
     PADDLE_ENFORCE_LE(
-        num_negative, 1,
+        num_negative,
+        1,
         platform::errors::InvalidArgument(
             "The max number of -1 in shape attribute or shape tensor is 1 "
             "but received %d.",
@@ -70,11 +73,14 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < target_shape_vector.size(); i++) {
         if (target_shape_vector[i] == 0) {
           PADDLE_ENFORCE_LT(
-              i, x_rank,
+              i,
+              x_rank,
               platform::errors::InvalidArgument(
                   "The index of 0 in shape attribute or shape tensor",
                   "should be less than input dim size, ",
-                  "but the index is %d and input dim size is %d", i, x_rank));
+                  "but the index is %d and input dim size is %d",
+                  i,
+                  x_rank));
           target_shape_vector[i] = x->dims().at(i);
         }
       }
@@ -87,7 +93,8 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
       int ddim_out_product = std::accumulate(
           ddim_out_vec.begin(), ddim_out_vec.end(), 1, std::multiplies<int>());
       int reshape_out_product = std::accumulate(target_shape_vector.begin(),
-                                                target_shape_vector.end(), -1,
+                                                target_shape_vector.end(),
+                                                -1,
                                                 std::multiplies<int>());
       int index = std::distance(target_shape_vector.begin(), it);
       target_shape_vector[index] = ddim_out_product / reshape_out_product;
@@ -98,8 +105,10 @@ class Reshape2MLUKernel : public framework::OpKernel<T> {
 
     // output should copy to mlu
     framework::TensorCopy(
-        *x, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), out);
+        *x,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -108,14 +117,16 @@ template <typename DeviceContext, typename T>
 class Reshape2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    auto* d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(in_dims);
   }
 };
@@ -125,7 +136,8 @@ class Reshape2GradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_MLU_KERNEL(
-    reshape2, ops::Reshape2MLUKernel<paddle::platform::MLUDeviceContext, float>,
+    reshape2,
+    ops::Reshape2MLUKernel<paddle::platform::MLUDeviceContext, float>,
     ops::Reshape2MLUKernel<paddle::platform::MLUDeviceContext, int>,
     ops::Reshape2MLUKernel<paddle::platform::MLUDeviceContext, int64_t>,
     ops::Reshape2MLUKernel<paddle::platform::MLUDeviceContext, bool>,

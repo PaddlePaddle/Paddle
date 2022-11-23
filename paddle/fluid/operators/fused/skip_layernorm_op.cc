@@ -26,22 +26,27 @@ class SkipLayerNormOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(context->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of MultiHeadMatMul should not be null."));
-    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
+    PADDLE_ENFORCE_EQ(context->HasInput("Y"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Y) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Scale"), true,
+        context->HasInput("Scale"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Scale) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasInput("Bias"), true,
+        context->HasInput("Bias"),
+        true,
         platform::errors::InvalidArgument(
             "Input(Bias) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
-        context->HasOutput("Out"), true,
+        context->HasOutput("Out"),
+        true,
         platform::errors::InvalidArgument(
             "Output(Out) of MultiHeadMatMul should not be null."));
 
@@ -88,5 +93,6 @@ This op is used for skip_layernorm_fuse_pass, which fuse op pattern as followed.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(skip_layernorm, ops::SkipLayerNormOp,
+REGISTER_OP_WITHOUT_GRADIENT(skip_layernorm,
+                             ops::SkipLayerNormOp,
                              ops::SkipLayerNormOpMaker);

@@ -16,11 +16,12 @@ import unittest
 
 import numpy as np
 import paddle
-import scipy.stats
 
 import config
 import mock_data as mock
 import parameterize
+
+np.random.seed(2022)
 
 
 @parameterize.place(config.DEVICES)

@@ -28,8 +28,8 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 
 template <typename Tx, typename Ty>
 struct SequenceMaskForRangeFunctor {
@@ -50,8 +50,8 @@ struct SequenceMaskForRangeFunctor {
 
 template <typename DeviceContext, typename Tx>
 struct SequenceMaskFunctor {
-  SequenceMaskFunctor(const DeviceContext &ctx, const Tx *x, Tensor *y,
-                      int limits, int maxlen)
+  SequenceMaskFunctor(
+      const DeviceContext &ctx, const Tx *x, Tensor *y, int limits, int maxlen)
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
@@ -71,23 +71,23 @@ struct SequenceMaskFunctor {
 
 template <typename DeviceContext, typename Tx>
 class SequenceMaskKernel : public framework::OpKernel<Tx> {
-  using Tensor = framework::LoDTensor;
+  using Tensor = phi::DenseTensor;
 
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Output<Tensor>("Y");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *y = ctx.Output<phi::DenseTensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
     if (ctx.HasInput("MaxLenTensor")) {
-      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+      auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
       if (platform::is_gpu_place(max_len_tensor->place())) {
-        framework::Tensor temp;
-        paddle::framework::TensorCopySync(*max_len_tensor, platform::CPUPlace(),
-                                          &temp);
+        phi::DenseTensor temp;
+        paddle::framework::TensorCopySync(
+            *max_len_tensor, platform::CPUPlace(), &temp);
         maxlen = *temp.data<int32_t>();
       } else {
         maxlen = *max_len_tensor->data<int32_t>();
@@ -98,7 +98,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       y->Resize(phi::make_ddim(y_dim));
 
       PADDLE_ENFORCE_GT(
-          maxlen, 0,
+          maxlen,
+          0,
           platform::errors::InvalidArgument(
               "Input(MaxLenTensor) value should be greater than 0. But "
               "received Input(MaxLenTensor) value = %d.",
@@ -114,7 +115,8 @@ class SequenceMaskKernel : public framework::OpKernel<Tx> {
       maxlen = static_cast<int>(
           thrust::reduce(thrust::device_pointer_cast(x_data),
                          thrust::device_pointer_cast(x_data) + x_numel,
-                         static_cast<Tx>(0), thrust::maximum<Tx>()));
+                         static_cast<Tx>(0),
+                         thrust::maximum<Tx>()));
 #else
       maxlen = static_cast<int>(*std::max_element(x_data, x_data + x_numel));
 #endif

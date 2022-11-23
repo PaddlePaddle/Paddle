@@ -18,8 +18,8 @@ template <typename T>
 class TrilTriuMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     int diagonal = ctx.Attr<int>("diagonal");
     bool lower = ctx.Attr<bool>("lower");
     bool upper;
@@ -32,8 +32,13 @@ class TrilTriuMLUKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::TrilTriu(ctx, diagonal, upper, x_desc.get(), GetBasePtr(x),
-                      out_desc.get(), GetBasePtr(out));
+    MLUCnnl::TrilTriu(ctx,
+                      diagonal,
+                      upper,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      out_desc.get(),
+                      GetBasePtr(out));
   }
 };
 
@@ -42,6 +47,7 @@ class TrilTriuMLUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_MLU_KERNEL(tril_triu, ops::TrilTriuMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(tril_triu,
+                       ops::TrilTriuMLUKernel<float>,
                        ops::TrilTriuMLUKernel<int32_t>,
                        ops::TrilTriuMLUKernel<plat::float16>);

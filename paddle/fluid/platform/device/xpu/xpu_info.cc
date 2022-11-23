@@ -51,7 +51,9 @@ std::vector<int> GetXPUSelectedDevices() {
 
 /**************************** Memory Management **************************/
 
-void MemcpySyncH2D(void* dst, const void* src, size_t count,
+void MemcpySyncH2D(void* dst,
+                   const void* src,
+                   size_t count,
                    const platform::XPUPlace& dst_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(dst_place);
@@ -59,7 +61,9 @@ void MemcpySyncH2D(void* dst, const void* src, size_t count,
   phi::backends::xpu::MemcpySyncH2D(dst, src, count, dst_place, *dev_ctx);
 }
 
-void MemcpySyncD2H(void* dst, const void* src, size_t count,
+void MemcpySyncD2H(void* dst,
+                   const void* src,
+                   size_t count,
                    const platform::XPUPlace& src_place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
@@ -69,13 +73,15 @@ void MemcpySyncD2H(void* dst, const void* src, size_t count,
 
 // if src.device == dst.device and you need sync , after call this function,
 // need to call xpu_wait()
-void MemcpySyncD2D(void* dst, const platform::XPUPlace& dst_place,
-                   const void* src, const platform::XPUPlace& src_place,
+void MemcpySyncD2D(void* dst,
+                   const platform::XPUPlace& dst_place,
+                   const void* src,
+                   const platform::XPUPlace& src_place,
                    size_t count) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.GetByPlace(src_place);
-  phi::backends::xpu::MemcpySyncD2D(dst, dst_place, src, src_place, count,
-                                    *dev_ctx);
+  phi::backends::xpu::MemcpySyncD2D(
+      dst, dst_place, src, src_place, count, *dev_ctx);
 }
 
 void XPUStreamSync(xpuStream stream) {

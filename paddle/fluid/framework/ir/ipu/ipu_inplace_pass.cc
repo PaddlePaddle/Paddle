@@ -50,12 +50,14 @@ void IpuInplacePass::ApplyImpl(ir::Graph *graph) const {
   for (auto *node : graph->Nodes()) {
     if (node->IsVar()) {
       if (var_name[node->Name()] > 1) {
-        auto is_feed = (std::find(feed_list.begin(), feed_list.end(),
-                                  node->Name()) != feed_list.end()) &&
-                       (node->inputs.size() == 0);
-        auto is_fetch = (std::find(fetch_list.begin(), fetch_list.end(),
-                                   node->Name()) != fetch_list.end()) &&
-                        (node->outputs.size() == 0);
+        auto is_feed =
+            (std::find(feed_list.begin(), feed_list.end(), node->Name()) !=
+             feed_list.end()) &&
+            (node->inputs.size() == 0);
+        auto is_fetch =
+            (std::find(fetch_list.begin(), fetch_list.end(), node->Name()) !=
+             fetch_list.end()) &&
+            (node->outputs.size() == 0);
         if (!is_feed && !is_fetch && !node->Var()->Persistable()) {
           auto old_name = node->Name();
           auto new_name = GenerateVarName(node);

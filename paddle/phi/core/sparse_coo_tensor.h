@@ -20,6 +20,8 @@ limitations under the License. */
 
 namespace phi {
 
+class DenseTensorUtils;
+
 /// \brief The SparseCooTensor uses two DenseTensors to represent
 /// the non zero elements and the indices of non zero elements of
 /// original DenseTensor.
@@ -63,10 +65,16 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the indices of non zero elemetns in original dense tensor.
   /// \return The indices of non zero elemetns in original dense tensor.
+  const DenseTensor& indices() const { return non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use indices()
   const DenseTensor& non_zero_indices() const { return non_zero_indices_; }
 
   /// \brief Returns the non zero elemetns in original dense tensor.
   /// \return The non zero elemetns in original dense tensor.
+  const DenseTensor& values() const { return non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use values()
   const DenseTensor& non_zero_elements() const { return non_zero_elements_; }
 
   /// \brief Returns whether the indices has coalesced
@@ -87,21 +95,19 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Return the number of elements contained in original dense tensor
   /// \return The number of elements contained in original dense tensor
-  int64_t numel() const override { return product(dims_); }
+  int64_t numel() const override { return product(meta_.dims); }
 
   /// \brief Returns the dims of the original dense tensor.
   /// \return The dims of the original dense tensor.
-  const DDim& dims() const noexcept override { return dims_; }
+  const DDim& dims() const noexcept override { return meta_.dims; }
 
   /// \brief Returns the data type of the tensor.
   /// \return The data type of the tensor.
-  DataType dtype() const noexcept override {
-    return non_zero_elements_.dtype();
-  }
+  DataType dtype() const noexcept override { return meta_.dtype; }
 
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
-  DataLayout layout() const noexcept override { return DataLayout::SPARSE_COO; }
+  DataLayout layout() const noexcept override { return meta_.layout; }
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.
@@ -134,12 +140,31 @@ class SparseCooTensor : public TensorBase,
                  const DDim& dims,
                  const bool coalesced = false);
 
+  /// \brief set the member of sparse coo tensor.
+  /// \param non_zero_indices The indices of non zero elements in original dense
+  /// tensor.
+  /// \param non_zero_elements The non zero elements of original dense tensor.
+  /// \param meta The meta of original dense tensor.
+  /// \param coalesced whether the indices has coalesced.
+  void SetMember(const DenseTensor& non_zero_indices,
+                 const DenseTensor& non_zero_elements,
+                 const SparseTensorMeta& meta,
+                 const bool coalesced = false);
+
   /// \brief Get a mutable pointer of non_zero_indices_.
   /// return a mutable pointer of non_zero_indices_.
+  DenseTensor* mutable_indices() { return &non_zero_indices_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_indices()
   DenseTensor* mutable_non_zero_indices() { return &non_zero_indices_; }
 
   /// \brief Get a mutable pointer of non_zero_elements.
   /// return a mutable pointer of non_zero_elements.
+  DenseTensor* mutable_values() { return &non_zero_elements_; }
+
+  /// Note: This function will removed soon. It is recommended to use
+  /// mutable_values()
   DenseTensor* mutable_non_zero_elements() { return &non_zero_elements_; }
 
   /// \brief This function is not recommended
@@ -147,16 +172,69 @@ class SparseCooTensor : public TensorBase,
                      DataType dtype,
                      size_t requested_size = 0) override;
 
-  /// \brief set the dims of original dense tensor
-  void set_dims(const DDim& dims) { this->dims_ = dims; }
-
   /// \brief get the sparse dim
   int32_t sparse_dim() const;
 
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+  /// \brief Returns the meta information of the tensor.
+  /// \return The meta information of the tensor.
+  const SparseTensorMeta& meta() const noexcept { return meta_; }
+
+  void set_meta(SparseTensorMeta&& meta);
+
+  void set_meta(const SparseTensorMeta& meta);
+
+  void set_dims(const DDim& dims) { meta_.dims = dims; }
+
+  /// \brief query table according to key
+  const std::pair<DenseTensor, DenseTensor>* IndicesPairs(
+      const std::string& key) const {
+    if (indices_dict_ == nullptr) {
+      return nullptr;
+    }
+    const auto& iter = indices_dict_->find(key);
+    if (iter == indices_dict_->end()) {
+      return nullptr;
+    }
+    return &iter->second;
+  }
+
+  /// \brief save (key, indices_pairs)
+  void SaveIndicesPairs(
+      const std::string& key,
+      const std::pair<DenseTensor, DenseTensor>& indices_pairs) {
+    if (indices_dict_ == nullptr) {
+      indices_dict_ = std::make_shared<
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>();
+    }
+    auto ret = indices_dict_->insert({key, indices_pairs});
+    if (ret.second == false) {
+      ret.first->second = indices_pairs;
+    }
+  }
+
+  /// \brief get indices_dict_
+  const std::shared_ptr<
+      std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+  GetIndicesDict() const {
+    return indices_dict_;
+  }
+
+  /// \brief set indices_dict_
+  void SetIndicesDict(
+      const std::shared_ptr<
+          std::map<std::string, std::pair<DenseTensor, DenseTensor>>>&
+          indices_dict) {
+    indices_dict_ = indices_dict;
+  }
+
  private:
+  friend class DenseTensorUtils;
+
+  SparseTensorMeta meta_;
+
   // save the indices of non zero elements in original dense tensor
   DenseTensor non_zero_indices_;
   // save the non zero elements of original dense tensor
@@ -165,6 +243,14 @@ class SparseCooTensor : public TensorBase,
   bool coalesced_ = false;
   // save the number of non zero elements in each batch
   DDim dims_;
+
+  // for submanifold conv
+  // SubmConv will generate a rulebook and a counter, which can be
+  // reused by different SubmConv.
+  // refer to sparse/gpu/convolution_kernel.cu.
+  std::shared_ptr<std::map<std::string, std::pair<DenseTensor, DenseTensor>>>
+      indices_dict_ = nullptr;
+
   /* --------------------------- */
   /*   example: non zero element is scalar */
   /* --------------------------- */
@@ -188,7 +274,7 @@ class SparseCooTensor : public TensorBase,
                 [0, 0, 0, 0]]
      dims_ = (4, 4)
      non_zero_elements_ = [[0, 1, 0, 0], [0, 0, 4, 0]]
-     non_zero_indices_ = [0, 2],
+     non_zero_indices_ = [[0, 2], [1, 2]]
    */
 };
 

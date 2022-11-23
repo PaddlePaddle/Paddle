@@ -12,13 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
-from paddle.fluid import core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 import paddle
 import paddle.nn as nn
@@ -38,7 +33,7 @@ class TestModelAverage(unittest.TestCase):
             with fluid.unique_name.guard():
                 data = fluid.data(name='X', shape=[None, 1], dtype='float32')
                 hidden = fluid.layers.fc(input=data, size=10)
-                loss = fluid.layers.mean(hidden)
+                loss = paddle.mean(hidden)
                 test_program = train_program.clone()
                 optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
                                                       momentum=0.1)

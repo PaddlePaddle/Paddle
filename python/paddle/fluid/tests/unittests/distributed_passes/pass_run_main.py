@@ -17,7 +17,6 @@ import paddle
 import pickle
 import importlib
 import os
-import sys
 from paddle.distributed.fleet.launch_utils import run_with_coverage
 from dist_pass_test_base import prepare_python_path_and_return_module, DistPassTestBase
 

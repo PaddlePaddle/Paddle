@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import copy
 import six
 from ..framework import Parameter, _non_static_mode, _global_flags

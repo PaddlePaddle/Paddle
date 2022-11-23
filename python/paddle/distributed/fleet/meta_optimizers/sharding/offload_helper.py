@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import copy
 from ..common import is_optimizer_op, OP_ROLE_KEY, OpRole, is_update_op
 from paddle.fluid import core, unique_name
-from .shard import Shard
 
 __all__ = []
 

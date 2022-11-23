@@ -34,12 +34,6 @@ class PADDLE_API CPUContext : public DeviceContext {
   Eigen::DefaultDevice* eigen_device() const;
   const Place& GetPlace() const override;
 
- public:
-  // NOTE: DeviceContext hold resources. Used in training scenarios.
-  // The interface used by the training scene, DeviceContext will initialize
-  // all resources and delete them when destructing.
-  void Init();
-
  protected:
   // NOTE: External users manage resources. Used in inference scenarios.
   // The Set interface is for inference only, DeviceContext will mark the

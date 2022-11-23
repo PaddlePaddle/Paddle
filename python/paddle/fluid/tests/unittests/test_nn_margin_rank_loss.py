@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -73,7 +71,7 @@ def create_test_case(margin, reduction):
                     "label": self.label_data
                 },
                                         fetch_list=[result])
-                self.assertTrue(np.allclose(result_numpy, expected))
+                np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
 
         def run_static_api(self, place):
             paddle.enable_static()
@@ -102,7 +100,7 @@ def create_test_case(margin, reduction):
                     "label": self.label_data
                 },
                                         fetch_list=[result])
-                self.assertTrue(np.allclose(result_numpy, expected))
+                np.testing.assert_allclose(result_numpy, expected, rtol=1e-05)
                 self.assertTrue('loss' in result.name)
 
         def run_dynamic_functional_api(self, place):
@@ -118,7 +116,7 @@ def create_test_case(margin, reduction):
                                              self.label_data,
                                              margin=margin,
                                              reduction=reduction)
-            self.assertTrue(np.allclose(result.numpy(), expected))
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
         def run_dynamic_api(self, place):
             paddle.disable_static(place)
@@ -133,7 +131,7 @@ def create_test_case(margin, reduction):
                                              self.label_data,
                                              margin=margin,
                                              reduction=reduction)
-            self.assertTrue(np.allclose(result.numpy(), expected))
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
         def run_dynamic_broadcast_api(self, place):
             paddle.disable_static(place)
@@ -149,7 +147,7 @@ def create_test_case(margin, reduction):
                                              label_data,
                                              margin=margin,
                                              reduction=reduction)
-            self.assertTrue(np.allclose(result.numpy(), expected))
+            np.testing.assert_allclose(result.numpy(), expected, rtol=1e-05)
 
         def test_case(self):
             for place in self.places:

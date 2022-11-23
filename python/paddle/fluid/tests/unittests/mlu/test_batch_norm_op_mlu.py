@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import numpy as np
@@ -219,7 +217,10 @@ class TestBatchNormOpInference(unittest.TestCase):
         self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_with_place(self, place, data_layout, dtype, shape):
         epsilon = 0.00001
@@ -672,7 +673,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2)
 
     def test_static(self):
         places = [fluid.CPUPlace()]
@@ -697,7 +698,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2)
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):

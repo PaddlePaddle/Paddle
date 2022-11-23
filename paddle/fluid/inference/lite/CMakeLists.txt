@@ -5,7 +5,7 @@ endif()
 cc_library(
   lite_op_teller
   SRCS op_teller.cc
-  DEPS ${LITE_DEPS} framework_proto device_context boost xxhash)
+  DEPS ${LITE_DEPS} framework_proto device_context xxhash)
 cc_library(
   lite_engine
   SRCS engine.cc
@@ -13,7 +13,7 @@ cc_library(
 cc_library(
   lite_tensor_utils
   SRCS tensor_utils.cc
-  DEPS memcpy ${LITE_DEPS} framework_proto boost device_context ${XPU_DEPS})
+  DEPS memcpy ${LITE_DEPS} framework_proto device_context ${XPU_DEPS})
 cc_test(
   test_lite_engine
   SRCS test_engine_lite.cc

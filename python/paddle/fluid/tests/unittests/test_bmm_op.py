@@ -12,21 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.tensor as tensor
-from paddle.fluid import Program, program_guard
 
 
 class TestBmmOp(OpTest):
 
     def setUp(self):
         self.op_type = "bmm"
+        self.python_api = paddle.tensor.bmm
         X = np.random.random((10, 3, 4)).astype("float64")
         Y = np.random.random((10, 4, 5)).astype("float64")
         self.inputs = {'X': X, 'Y': Y}
@@ -34,10 +31,10 @@ class TestBmmOp(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
     def test_checkout_grad(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
 
 
 class API_TestBmm(unittest.TestCase):
@@ -61,7 +58,7 @@ class API_TestBmm(unittest.TestCase):
             },
                               fetch_list=[result_bmm])
             expected_result = np.matmul(input1, input2)
-        self.assertTrue(np.allclose(expected_result, result))
+        np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
 
 class API_TestDygraphBmm(unittest.TestCase):
@@ -77,7 +74,7 @@ class API_TestDygraphBmm(unittest.TestCase):
             out = paddle.bmm(x, y)
             out_np = out.numpy()
         expected_result = np.matmul(input1, input2)
-        self.assertTrue(np.allclose(expected_result, out_np))
+        np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
 
 
 class TestBmmAPIError(unittest.TestCase):

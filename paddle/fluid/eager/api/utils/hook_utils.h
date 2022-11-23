@@ -23,11 +23,14 @@ namespace egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
     const paddle::experimental::Tensor& tensor,
-    std::shared_ptr<egr::TensorHook>&& hook);
+    const std::function<paddle::experimental::Tensor(
+        const paddle::experimental::Tensor&)>& hook);
 
 void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
-                                 std::shared_ptr<egr::TensorVoidHook>&& hook);
+                                 const std::function<void()>& hook);
 void RetainGradForTensor(const paddle::experimental::Tensor& tensor);
+
+void RegisterBackwardFinalHook(const std::function<void()>& hook);
 
 }  // namespace egr_utils_api
 }  // namespace egr

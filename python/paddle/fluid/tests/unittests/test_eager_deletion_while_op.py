@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 
 os.environ['CPU_NUM'] = '2'
@@ -23,7 +21,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
-from paddle.fluid.backward import append_backward
 import paddle.fluid.compiler as compiler
 import numpy
 import multiprocessing
@@ -133,7 +130,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         tmp = layers.unsqueeze(sum_result, axes=[0])
         tmp = layers.expand(tmp, expand_times=[10, 1])
         fc = layers.fc(tmp, size=256)
-        loss = layers.mean(sum_result)
+        loss = paddle.mean(sum_result)
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)

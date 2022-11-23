@@ -40,6 +40,10 @@ get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(utils_modules stringpiece pretty_log string_helper benchmark)
 
+if(WITH_CUSTOM_DEVICE)
+  set(fluid_modules ${fluid_modules} phi_capi)
+endif()
+
 add_subdirectory(api)
 
 # Create static inference library if needed
@@ -119,6 +123,8 @@ cc_library(
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_inference_shared ${os_dependency_modules})
 if(WIN32)
+  set_property(TARGET paddle_inference_shared
+               PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   target_link_libraries(paddle_inference_shared gflags)
 endif()
 

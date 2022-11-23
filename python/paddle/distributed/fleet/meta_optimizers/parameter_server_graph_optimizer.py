@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from paddle import fluid
 from paddle.fluid import compiler
 from .parameter_server_optimizer import ParameterServerOptimizer
 

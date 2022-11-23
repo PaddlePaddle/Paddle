@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -23,7 +21,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
 import paddle.nn.functional as F
-from paddle.fluid.framework import _test_eager_guard
 
 from decorator_helper import prog_scope
 
@@ -70,11 +67,17 @@ class TestSigmoidDoubleGradCheck(unittest.TestCase):
         y = layers.sigmoid(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.sigmoid_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.sigmoid_wrapper,
+                                                       [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -101,11 +104,16 @@ class TestTanhTripleGradCheck(unittest.TestCase):
         y = layers.tanh(x)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.triple_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.triple_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(
-            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.triple_grad_check_for_dygraph(self.tanh_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -132,11 +140,16 @@ class TestTanhDoubleGradCheck(unittest.TestCase):
         y = paddle.tanh(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.tanh_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.tanh_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -163,11 +176,16 @@ class TestAbsDoubleGradCheck(unittest.TestCase):
         y = paddle.abs(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.abs_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.abs_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -266,11 +284,16 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         y = layers.elu(x, alpha=alpha)
         np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.elu_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.elu_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -301,11 +324,16 @@ class TestCELUDoubleGradCheck(unittest.TestCase):
         y = F.celu(x, alpha=alpha)
         np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.celu_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.celu_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -406,11 +434,16 @@ class TestSquareDoubleGradCheck(unittest.TestCase):
         y = layers.square(x)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.square_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.square_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -472,11 +505,16 @@ class TestLogDoubleGradCheck(unittest.TestCase):
 
         x_arr = np.random.uniform(0.1, 1, shape).astype(dtype)
 
-        gradient_checker.double_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        gradient_checker.double_grad_check([x],
+                                           y,
+                                           x_init=x_arr,
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.double_grad_check_for_dygraph(
-            self.log_wrapper, [x], y, x_init=x_arr, place=place)
+        gradient_checker.double_grad_check_for_dygraph(self.log_wrapper, [x],
+                                                       y,
+                                                       x_init=x_arr,
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):

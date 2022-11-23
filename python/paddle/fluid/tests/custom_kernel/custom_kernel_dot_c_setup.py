@@ -48,10 +48,9 @@ paddle_custom_kernel_include = [
     os.path.join(site_packages_path, 'paddle', 'include'),
 ]
 # include path third_party
-compile_third_party_path = os.path.join(os.environ['PADDLE_ROOT'],
-                                        'build/third_party')
+compile_third_party_path = os.path.join(os.environ['PADDLE_BINARY_DIR'],
+                                        'third_party')
 paddle_custom_kernel_include += [
-    os.path.join(compile_third_party_path, 'boost/src/extern_boost'),  # boost
     os.path.join(compile_third_party_path, 'install/gflags/include'),  # gflags
     os.path.join(compile_third_party_path, 'install/glog/include'),  # glog
 ]
@@ -62,9 +61,7 @@ paddle_custom_kernel_library_dir = [
 ]
 
 # libs
-libs = [':core_avx.so']
-if not core.has_avx_core and core.has_noavx_core:
-    libs = [':core_noavx.so']
+libs = [':libpaddle.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',

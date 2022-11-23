@@ -39,14 +39,14 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   auto in = scope->Var("X");
   auto expand_times = scope->Var("ExpandTimes");
   auto out = scope->Var("Out");
-  auto in_t = in->GetMutable<f::LoDTensor>();
-  auto out_t = out->GetMutable<f::LoDTensor>();
-  auto expand_times_t = expand_times->GetMutable<f::LoDTensor>();
+  auto in_t = in->GetMutable<phi::DenseTensor>();
+  auto out_t = out->GetMutable<phi::DenseTensor>();
+  auto expand_times_t = expand_times->GetMutable<phi::DenseTensor>();
 
   auto place = ctx.GetPlace();
   paddle::framework::TensorFromVector(std::vector<T>(3 * 1 * 7, 1), ctx, in_t);
-  paddle::framework::TensorFromVector(std::vector<int>({1, 10, 1}), ctx,
-                                      expand_times_t);
+  paddle::framework::TensorFromVector(
+      std::vector<int>({1, 10, 1}), ctx, expand_times_t);
 
   in_t->Resize(phi::make_ddim({3, 1, 7}));
   expand_times_t->Resize(phi::make_ddim({3}));
@@ -54,9 +54,11 @@ void Compare(f::Scope* scope, const p::DeviceContext& ctx) {
   out_t->mutable_data<T>(place);
 
   f::AttributeMap attrs = {{}};
-  auto op = f::OpRegistry::CreateOp(
-      "expand", {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
-      {{"Out", {"Out"}}}, attrs);
+  auto op =
+      f::OpRegistry::CreateOp("expand",
+                              {{"X", {"X"}}, {"ExpandTimes", {"ExpandTimes"}}},
+                              {{"Out", {"Out"}}},
+                              attrs);
   op->Run(*scope, place);
   ctx.Wait();
 

@@ -86,9 +86,9 @@ KernelSignature ElementwiseModOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   int axis = paddle::any_cast<int>(ctx.Attr("axis"));
   if (axis == -1) {
-    return KernelSignature("modulo", {"X", "Y"}, {}, {"Out"});
+    return KernelSignature("remainder", {"X", "Y"}, {}, {"Out"});
   }
-  return KernelSignature("modulo_raw", {"X", "Y"}, {"axis"}, {"Out"});
+  return KernelSignature("remainder_raw", {"X", "Y"}, {"axis"}, {"Out"});
 }
 
 KernelSignature ElementwiseFloorDivOpArgumentMapping(
@@ -247,7 +247,7 @@ PD_REGISTER_BASE_KERNEL_NAME(elementwise_mul, multiply);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_div, divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_max, maximum);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_min, minimum);
-PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, modulo);
+PD_REGISTER_BASE_KERNEL_NAME(elementwise_mod, remainder);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_floordiv, floor_divide);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad, add_grad);
 PD_REGISTER_BASE_KERNEL_NAME(elementwise_add_grad_grad, add_double_grad);

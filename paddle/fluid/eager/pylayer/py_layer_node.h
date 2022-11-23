@@ -26,23 +26,26 @@ namespace egr {
 
 class GradNodePyLayer : public GradNodeBase {
  public:
-  GradNodePyLayer(PyObject* ctx, size_t bwd_in_slot_num,
+  GradNodePyLayer(PyObject* ctx,
+                  size_t bwd_in_slot_num,
                   size_t bwd_out_slot_num)
       : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {
     ctx_ = ctx;
+    Py_INCREF(ctx_);
   }
 
-  ~GradNodePyLayer() override { Py_XDECREF(ctx_); };
+  ~GradNodePyLayer() override;
 
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                   kSlotSmallVectorSize>& grads,  // NOLINT
-             bool create_graph = false, bool is_new_grad = false) override;
+             bool create_graph = false,
+             bool is_new_grad = false) override;
 
   void ClearTensorWrappers() override { VLOG(6) << "Do nothing here now"; }
 
-  std::string name() {
+  std::string name() override {
     return "GradNodePyLayer_" + std::string(Py_TYPE(ctx_)->tp_name);
   }
 

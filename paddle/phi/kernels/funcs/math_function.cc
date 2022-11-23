@@ -39,22 +39,6 @@ namespace funcs {
 
 using float16 = phi::dtype::float16;
 
-template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            phi::dtype::float16>;
-template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            phi::dtype::bfloat16>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, float>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, double>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, int>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CPUDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CPUDeviceContext,
-                            phi::dtype::complex<double>>;
-
 template struct SetConstant<phi::CPUContext, phi::dtype::float16>;
 template struct SetConstant<phi::CPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::CPUContext, float>;
@@ -83,48 +67,35 @@ template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<float>>;
 template struct SetConstant<paddle::platform::XPUDeviceContext,
                             phi::dtype::complex<double>>;
+
+template struct SetConstant<phi::XPUContext, phi::dtype::float16>;
+template struct SetConstant<phi::XPUContext, phi::dtype::bfloat16>;
+template struct SetConstant<phi::XPUContext, float>;
+template struct SetConstant<phi::XPUContext, double>;
+template struct SetConstant<phi::XPUContext, uint8_t>;
+template struct SetConstant<phi::XPUContext, int16_t>;
+template struct SetConstant<phi::XPUContext, int>;
+template struct SetConstant<phi::XPUContext, int64_t>;
+template struct SetConstant<phi::XPUContext, bool>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::XPUContext, phi::dtype::complex<double>>;
+
 #endif
 
-#define DEFINE_CPU_TRANS(RANK)                                                 \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            phi::dtype::float16,                               \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            phi::dtype::bfloat16,                              \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext, float, RANK>;  \
-  template struct Transpose<paddle::platform::CPUDeviceContext, double, RANK>; \
-  template struct Transpose<paddle::platform::CPUDeviceContext, int, RANK>;    \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            int64_t,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext, bool, RANK>;   \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            int16_t,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            uint8_t,                                           \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext, int8_t, RANK>; \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            phi::dtype::complex<float>,                        \
-                            RANK>;                                             \
-  template struct Transpose<paddle::platform::CPUDeviceContext,                \
-                            phi::dtype::complex<double>,                       \
-                            RANK>;                                             \
-  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;       \
-  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>;      \
-  template struct Transpose<phi::CPUContext, float, RANK>;                     \
-  template struct Transpose<phi::CPUContext, double, RANK>;                    \
-  template struct Transpose<phi::CPUContext, int, RANK>;                       \
-  template struct Transpose<phi::CPUContext, int64_t, RANK>;                   \
-  template struct Transpose<phi::CPUContext, bool, RANK>;                      \
-  template struct Transpose<phi::CPUContext, int16_t, RANK>;                   \
-  template struct Transpose<phi::CPUContext, uint8_t, RANK>;                   \
-  template struct Transpose<phi::CPUContext, int8_t, RANK>;                    \
-  template struct Transpose<phi::CPUContext,                                   \
-                            phi::dtype::complex<float>,                        \
-                            RANK>;                                             \
+#define DEFINE_CPU_TRANS(RANK)                                            \
+  template struct Transpose<phi::CPUContext, phi::dtype::float16, RANK>;  \
+  template struct Transpose<phi::CPUContext, phi::dtype::bfloat16, RANK>; \
+  template struct Transpose<phi::CPUContext, float, RANK>;                \
+  template struct Transpose<phi::CPUContext, double, RANK>;               \
+  template struct Transpose<phi::CPUContext, int, RANK>;                  \
+  template struct Transpose<phi::CPUContext, int64_t, RANK>;              \
+  template struct Transpose<phi::CPUContext, bool, RANK>;                 \
+  template struct Transpose<phi::CPUContext, int16_t, RANK>;              \
+  template struct Transpose<phi::CPUContext, uint8_t, RANK>;              \
+  template struct Transpose<phi::CPUContext, int8_t, RANK>;               \
+  template struct Transpose<phi::CPUContext,                              \
+                            phi::dtype::complex<float>,                   \
+                            RANK>;                                        \
   template struct Transpose<phi::CPUContext, phi::dtype::complex<double>, RANK>;
 
 DEFINE_CPU_TRANS(1);
@@ -137,8 +108,8 @@ DEFINE_CPU_TRANS(6);
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
     const DeviceContext& context,
-    const paddle::framework::Tensor& in,
-    paddle::framework::Tensor* out,
+    const phi::DenseTensor& in,
+    phi::DenseTensor* out,
     const std::vector<int>& axis) {
   const int rank = axis.size();
   auto in_stride = phi::stride(in.dims());
@@ -163,8 +134,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
 }
 
 // define transpose normal
-#define DEFINE_CPU_TRANS_NORMAL(TYPE)                                        \
-  template struct TransposeNormal<paddle::platform::CPUDeviceContext, TYPE>; \
+#define DEFINE_CPU_TRANS_NORMAL(TYPE) \
   template struct TransposeNormal<phi::CPUContext, TYPE>
 
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::float16);
@@ -181,7 +151,7 @@ DEFINE_CPU_TRANS_NORMAL(phi::dtype::complex<float>);
 DEFINE_CPU_TRANS_NORMAL(phi::dtype::complex<double>);
 
 struct TensorSetConstantCPU {
-  TensorSetConstantCPU(paddle::framework::Tensor* tensor, float value)
+  TensorSetConstantCPU(phi::DenseTensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
   void apply() const {
@@ -189,14 +159,14 @@ struct TensorSetConstantCPU {
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
   }
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   float value_;
 };
 
 template <>
 void set_constant_with_place<paddle::platform::XPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("XPUPlace is not supported"));
 }
@@ -204,7 +174,7 @@ void set_constant_with_place<paddle::platform::XPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::NPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("NPUPlace is not supported"));
 }
@@ -212,7 +182,7 @@ void set_constant_with_place<paddle::platform::NPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::NPUPinnedPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("NPUPinnedPlace is not supported"));
 }
@@ -220,7 +190,7 @@ void set_constant_with_place<paddle::platform::NPUPinnedPlace>(
 template <>
 void set_constant_with_place<paddle::platform::IPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("IPUPlace is not supported"));
 }
@@ -228,7 +198,7 @@ void set_constant_with_place<paddle::platform::IPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::CustomPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
 }
@@ -236,7 +206,7 @@ void set_constant_with_place<paddle::platform::CustomPlace>(
 template <>
 void set_constant_with_place<phi::CPUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
@@ -244,7 +214,7 @@ void set_constant_with_place<phi::CPUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::MLUPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
 }
@@ -252,14 +222,15 @@ void set_constant_with_place<paddle::platform::MLUPlace>(
 template <>
 void set_constant_with_place<paddle::platform::CUDAPinnedPlace>(
     const paddle::platform::DeviceContext& context,
-    paddle::framework::Tensor* tensor,
+    phi::DenseTensor* tensor,
     float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 
-struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
+struct TensorSetConstantWithPlace
+    : public std::unary_function<paddle::platform::Place, void> {
   TensorSetConstantWithPlace(const paddle::platform::DeviceContext& context,
-                             paddle::framework::Tensor* tensor,
+                             phi::DenseTensor* tensor,
                              float value)
       : context_(context), tensor_(tensor), value_(value) {}
 
@@ -269,12 +240,12 @@ struct TensorSetConstantWithPlace : public boost::static_visitor<void> {
   }
 
   const paddle::platform::DeviceContext& context_;
-  paddle::framework::Tensor* tensor_;
+  phi::DenseTensor* tensor_;
   float value_;
 };
 
 void set_constant(const paddle::platform::DeviceContext& context,
-                  paddle::framework::Tensor* tensor,
+                  phi::DenseTensor* tensor,
                   float value) {
   TensorSetConstantWithPlace func(context, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -291,12 +262,20 @@ void set_constant(const paddle::platform::DeviceContext& context,
 #endif
 }
 
+template struct ColwiseSum<phi::CPUContext, float>;
+template struct ColwiseSum<phi::CPUContext, double>;
+template struct ColwiseSum<phi::CPUContext, int>;
+template struct ColwiseSum<phi::CPUContext, int64_t>;
+
+template struct RowwiseMean<phi::CPUContext, float>;
+template struct RowwiseMean<phi::CPUContext, double>;
+
 template <typename T>
-struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
-  void operator()(const paddle::platform::CPUDeviceContext& context,
-                  const paddle::framework::Tensor& input,
-                  const paddle::framework::Tensor& vector,
-                  paddle::framework::Tensor* output) {
+struct RowwiseAdd<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& vector,
+                  phi::DenseTensor* output) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];
@@ -330,44 +309,8 @@ struct RowwiseAdd<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template struct RowwiseAdd<paddle::platform::CPUDeviceContext, float>;
-template struct RowwiseAdd<paddle::platform::CPUDeviceContext, double>;
-
-template struct ColwiseSum<paddle::platform::CPUDeviceContext, float>;
-template struct ColwiseSum<paddle::platform::CPUDeviceContext, double>;
-template struct ColwiseSum<paddle::platform::CPUDeviceContext, int>;
-template struct ColwiseSum<paddle::platform::CPUDeviceContext, int64_t>;
-
-template struct ColwiseSum<phi::CPUContext, float>;
-template struct ColwiseSum<phi::CPUContext, double>;
-template struct ColwiseSum<phi::CPUContext, int>;
-template struct ColwiseSum<phi::CPUContext, int64_t>;
-
-template struct RowwiseSum<paddle::platform::CPUDeviceContext, float>;
-template struct RowwiseSum<paddle::platform::CPUDeviceContext, double>;
-
-template struct RowwiseMean<paddle::platform::CPUDeviceContext, float>;
-template struct RowwiseMean<paddle::platform::CPUDeviceContext, double>;
-
-template struct RowwiseMean<phi::CPUContext, float>;
-template struct RowwiseMean<phi::CPUContext, double>;
-
-template <typename T>
-struct ElementwiseAddTo<paddle::platform::CPUDeviceContext, T> {
-  void operator()(paddle::platform::CPUDeviceContext* ctx,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Tensor* dst) {
-    auto in = paddle::framework::EigenVector<T>::Flatten(src);
-    auto out = paddle::framework::EigenVector<T>::Flatten(*dst);
-    auto& place = *(ctx->eigen_device());
-    out.device(place) = out + in;
-  }
-};
-
-template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
-                                 phi::dtype::float16>;
-template struct ElementwiseAddTo<paddle::platform::CPUDeviceContext,
-                                 phi::dtype::bfloat16>;
+template struct RowwiseAdd<phi::CPUContext, float>;
+template struct RowwiseAdd<phi::CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

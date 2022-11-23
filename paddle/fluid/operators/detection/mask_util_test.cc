@@ -29,8 +29,8 @@ void Compare(const T* a, const T* b, const int n) {
 }
 
 TEST(MaskUtil, Poly2MaskTest) {
-  float polys[] = {1.97f, 1.88f, 5.81f, 1.88f, 1.69f,
-                   6.53f, 5.94f, 6.38f, 1.97f, 1.88f};
+  float polys[] = {
+      1.97f, 1.88f, 5.81f, 1.88f, 1.69f, 6.53f, 5.94f, 6.38f, 1.97f, 1.88f};
   int h = 8, w = 8;
   int k = 5;  // length(polys) / 2
   // clang-format off

@@ -23,8 +23,8 @@ class NumberCountOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("numbers"), "Input", "numbers", "NumberCount");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "number_count",
-                   "NumberCount");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "number_count", "NumberCount");
   }
 
  protected:
@@ -33,7 +33,8 @@ class NumberCountOp : public framework::OperatorWithKernel {
     // the dtype of the numbers should be same as int64
     auto number_dtype = OperatorWithKernel::IndicateVarDataType(ctx, "numbers");
 
-    PADDLE_ENFORCE_EQ(number_dtype, framework::proto::VarType::INT64,
+    PADDLE_ENFORCE_EQ(number_dtype,
+                      framework::proto::VarType::INT64,
                       platform::errors::InvalidArgument(
                           "The dtype of the number_dtype should be int64"));
     return framework::OpKernelType(number_dtype, ctx.GetPlace());
@@ -57,8 +58,10 @@ class NumberCountOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(number_count, ops::NumberCountOpCPUKernel<int>,
+REGISTER_OP_CPU_KERNEL(number_count,
+                       ops::NumberCountOpCPUKernel<int>,
                        ops::NumberCountOpCPUKernel<int64_t>);
 
-REGISTER_OP_WITHOUT_GRADIENT(number_count, ops::NumberCountOp,
+REGISTER_OP_WITHOUT_GRADIENT(number_count,
+                             ops::NumberCountOp,
                              ops::NumberCountOpMaker);

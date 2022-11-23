@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
-import sys
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils.fs import FSFileExistsError, FSFileNotExistsError, HDFSClient, LocalFS
 
 java_home = os.environ["JAVA_HOME"]
 

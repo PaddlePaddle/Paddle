@@ -40,17 +40,20 @@ nvinfer1::Dims MishPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* in_dims,
                                                int nb_inputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(
-      nb_inputs, 1,
+      nb_inputs,
+      1,
       platform::errors::InvalidArgument("We expect [number of inputs] == 1"
                                         "in TRT Mish op plugin, but got "
                                         "[number of inputs] = %d.",
                                         nb_inputs));
-  PADDLE_ENFORCE_LT(index, this->getNbOutputs(),
+  PADDLE_ENFORCE_LT(index,
+                    this->getNbOutputs(),
                     platform::errors::InvalidArgument(
                         "We expect [index] < [number of outputs]"
                         "in TRT Mish op plugin, but got "
                         "[index] = %d, [number of outputs] = %d.",
-                        index, this->getNbOutputs()));
+                        index,
+                        this->getNbOutputs()));
   nvinfer1::Dims const& input_dims = in_dims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
@@ -91,7 +94,9 @@ __global__ void mish_kernel(float threshold, int n, const T* input, T* output) {
 }
 
 template <>
-__global__ void mish_kernel<half>(float threshold, int n, const half* input,
+__global__ void mish_kernel<half>(float threshold,
+                                  int n,
+                                  const half* input,
                                   half* output) {
 #if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -104,13 +109,16 @@ __global__ void mish_kernel<half>(float threshold, int n, const half* input,
 }
 
 #if IS_TRT_VERSION_LT(8000)
-int MishPlugin::enqueue(int batchSize, const void* const* inputs,
+int MishPlugin::enqueue(int batchSize,
+                        const void* const* inputs,
                         void** outputs,
 #else
-int MishPlugin::enqueue(int batchSize, const void* const* inputs,
+int MishPlugin::enqueue(int batchSize,
+                        const void* const* inputs,
                         void* const* outputs,
 #endif
-                        void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+                        void* workspace,
+                        cudaStream_t stream) TRT_NOEXCEPT {
   const auto& input_dims = this->getInputDims(0);
   int num = batchSize;
   for (int i = 0; i < input_dims.nbDims; i++) {
@@ -157,23 +165,30 @@ void MishPluginDynamic::serialize(void* buffer) const TRT_NOEXCEPT {
 }
 
 nvinfer1::DimsExprs MishPluginDynamic::getOutputDimensions(
-    int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
     nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool MishPluginDynamic::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* in_out,
+    int nb_inputs,
     int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
-      in_out, platform::errors::InvalidArgument(
-                  "The input of mish plugin shoule not be nullptr."));
+      in_out,
+      platform::errors::InvalidArgument(
+          "The input of mish plugin shoule not be nullptr."));
 
   PADDLE_ENFORCE_LT(
-      pos, nb_inputs + nb_outputs,
+      pos,
+      nb_inputs + nb_outputs,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
-                                        pos, nb_inputs + nb_outputs));
+                                        pos,
+                                        nb_inputs + nb_outputs));
 
   const nvinfer1::PluginTensorDesc& in = in_out[pos];
   if (pos == 0) {
@@ -192,9 +207,11 @@ bool MishPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType MishPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(index, 0,
+  PADDLE_ENFORCE_EQ(index,
+                    0,
                     platform::errors::InvalidArgument(
                         "The Mish Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
@@ -204,7 +221,8 @@ nvinfer1::DataType MishPluginDynamic::getOutputDataType(
 
 int MishPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                const nvinfer1::PluginTensorDesc* output_desc,
-                               const void* const* inputs, void* const* outputs,
+                               const void* const* inputs,
+                               void* const* outputs,
                                void* workspace,
                                cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;

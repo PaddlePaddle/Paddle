@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class ElementwiseMinMLUKernel : public framework::OpKernel<T> {
@@ -44,7 +44,8 @@ class ElementwiseMinGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(elementwise_min, ops::ElementwiseMinMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(elementwise_min,
+                       ops::ElementwiseMinMLUKernel<int>,
                        ops::ElementwiseMinMLUKernel<float>,
                        ops::ElementwiseMinMLUKernel<plat::float16>);
 

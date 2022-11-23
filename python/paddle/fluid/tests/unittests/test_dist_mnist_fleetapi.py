@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import paddle
@@ -53,7 +52,7 @@ class FleetCollectiveTest(unittest.TestCase):
 
         data = fluid.layers.data(name='X', shape=[1], dtype='float32')
         hidden = fluid.layers.fc(input=data, size=10)
-        loss = fluid.layers.mean(hidden)
+        loss = paddle.mean(hidden)
 
         optimizer = fluid.optimizer.AdamOptimizer()
 

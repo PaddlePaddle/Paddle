@@ -20,17 +20,17 @@ class Independent(distribution.Distribution):
     Reinterprets some of the batch dimensions of a distribution as event dimensions.
 
     This is mainly useful for changing the shape of the result of
-    :meth:`log_prob`. 
+    :meth:`log_prob`.
 
     Args:
         base (Distribution): The base distribution.
-        reinterpreted_batch_rank (int): The number of batch dimensions to 
+        reinterpreted_batch_rank (int): The number of batch dimensions to
             reinterpret as event dimensions.
 
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             from paddle.distribution import independent
 

@@ -18,6 +18,11 @@
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/framework/op_meta_info_helper.h"
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
@@ -32,14 +37,20 @@ namespace tensorrt {
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
   SimpleOpTypeSetTeller() {
-// TODO(baoachun) The group_norm trt plugin will check input's dim
-// not -1 failed when dynamic shape mode.
-// #if IS_TRT_VERSION_GE(7130)
-//     teller_set.insert("group_norm");
-// #endif
+#if IS_TRT_VERSION_GE(7130)
+    // use TensorRT plugin
+    teller_set.insert("group_norm");
+    teller_set.insert("multiclass_nms3");
+    teller_set.insert("multiclass_nms");
+#endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
     teller_set.insert("flatten_contiguous_range");
+    int8_teller_set.insert("flatten_contiguous_range");
+    teller_set.insert("rnn");
+    int8_teller_set.insert("rnn");
+    teller_set.insert("fill_constant_batch_size_like");
+    int8_teller_set.insert("fill_constant_batch_size_like");
 #endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
@@ -55,240 +66,16 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
   }
 
-  bool operator()(const std::string& op_type,
-                  const framework::OpDesc& desc,
-                  bool use_no_calib_int8) override {
-    if (use_no_calib_int8) {
-      return int8_teller_set.count(op_type);
-    } else {
-      return teller_set.count(op_type);
-    }
-  }
-
- private:
-  // use this set for no calib int8.
-  std::unordered_set<std::string> int8_teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "elu",
-      "selu",
-      "softsign",
-      "softplus",
-      "stanh",
-      "thresholded_relu",
-      "exp",
-      "log",
-      "sqrt",
-      "abs",
-      "sin",
-      "cos",
-      "tan",
-      "sinh",
-      "cosh",
-      "asin",
-      "acos",
-      "atan",
-      "asinh",
-      "atanh",
-      "ceil",
-      "floor",
-      "erf",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_sub",
-      "elementwise_mul",
-      "elementwise_div",
-      "elementwise_pow",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "depthwise_conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "top_k",
-      "top_k_v2",
-      "flatten2",
-      "flatten",
-      "gather",
-      "gather_nd",
-      "yolo_box",
-      "yolo_box_head",
-      "arg_max",
-      "roi_align",
-      "affine_channel",
-      "nearest_interp",
-      "anchor_generator",
-      "reduce_sum",
-      "reduce_mean",
-      "conv3d",
-      "conv3d_transpose",
-      "mish",
-      "nearest_interp_v2",
-      "bilinear_interp_v2",
-      "pool3d",
-      "deformable_conv",
-      "relu6",
-      "hard_sigmoid",
-      "clip",
-      "fused_embedding_eltwise_layernorm",
-      "multihead_matmul",
-      "skip_layernorm",
-      "slice",
-      "strided_slice",
-      "fused_preln_embedding_eltwise_layernorm",
-      "preln_residual_bias",
-      "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
-      "roll",
-      "cast",
-      "preln_skip_layernorm",
-      "transformer_input_convert",
-      "recover_padding",
-      "remove_padding",
-      "squeeze2",
-      "unsqueeze2"};
-  std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "elu",
-      "selu",
-      "softsign",
-      "softplus",
-      "stanh",
-      "thresholded_relu",
-      "exp",
-      "log",
-      "sqrt",
-      "abs",
-      "sin",
-      "cos",
-      "tan",
-      "sinh",
-      "cosh",
-      "asin",
-      "acos",
-      "atan",
-      "asinh",
-      "atanh",
-      "ceil",
-      "floor",
-      "erf",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_sub",
-      "elementwise_mul",
-      "elementwise_div",
-      "elementwise_pow",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "depthwise_conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "top_k",
-      "top_k_v2",
-      "flatten2",
-      "flatten",
-      "gather",
-      "gather_nd",
-      "yolo_box",
-      "yolo_box_head",
-      "arg_max",
-      "roi_align",
-      "affine_channel",
-      "nearest_interp",
-      "anchor_generator",
-      "reduce_sum",
-      "reduce_mean",
-      "conv3d",
-      "conv3d_transpose",
-      "mish",
-      "bilinear_interp_v2",
-      "nearest_interp_v2",
-      "pool3d",
-      "deformable_conv",
-      "relu6",
-      "hard_sigmoid",
-      "clip",
-      "fused_embedding_eltwise_layernorm",
-      "multihead_matmul",
-      "skip_layernorm",
-      "slice",
-      "strided_slice",
-      "fused_preln_embedding_eltwise_layernorm",
-      "preln_skip_layernorm",
-      "preln_residual_bias",
-      "c_allreduce_sum",
-      "c_allreduce_min",
-      "c_allreduce_max",
-      "c_allreduce_prod",
-      "roll",
-      "cast",
-      "multiclass_nms3",
-      "transformer_input_convert",
-      "recover_padding",
-      "remove_padding",
-      "squeeze2",
-      "unsqueeze2"};
-};
-
-bool OpTeller::Tell(const framework::ir::Node* node,
-                    bool use_no_calib_int8,
-                    bool with_dynamic_shape) {
-  const std::string op_type = node->Op()->Type();
-  const framework::OpDesc desc = *node->Op();
-  // do not support the op which is labeled the `skip_quant`
-  if ((desc.HasAttr("namescope") &&
-       BOOST_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
-           "/skip_quant_2/") ||
-      desc.HasAttr("skip_quant"))
-    return false;
-
-  for (auto& teller : tellers_) {
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    // do not support the op which is labeled the `skip_quant`
+    if ((desc.HasAttr("namescope") &&
+         PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+             "/skip_quant_2/") ||
+        desc.HasAttr("skip_quant"))
+      return false;
     std::unordered_set<std::string> act_op_list = {
         "relu",     "relu6", "sigmoid",
         "elu",      "selu",  "softsign",
@@ -298,7 +85,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         "tan",      "tanh",  "sinh",
         "cosh",     "asin",  "acos",
         "atan",     "asinh", "atanh",
-        "ceil",     "floor", "erf"};
+        "ceil",     "floor", "erf",
+        "silu"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -323,9 +111,54 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #endif
     }
 
+    // In static shape mode in TRT, we can't allow that op's input is a
+    // 1D-tensor So we filter it here. Some op like elementwise having "Y" too,
+    // but that is dealt with in the specified op, here just the common case
+    if (!with_dynamic_shape) {
+      std::string X_name;
+      auto inputs = desc.Inputs();
+      if (inputs.count("X") && !desc.Input("X").empty()) {
+        X_name = desc.Input("X")[0];
+      } else if (inputs.count("Input") && !desc.Input("Input").empty()) {
+        X_name = desc.Input("Input")[0];
+      }
+      auto* block = desc.Block();
+      if (block) {
+        auto* x_var_desc = block->FindVar(X_name);
+        // Can't get feed op's TensorDesc
+        if (op_type != "feed" && x_var_desc && !x_var_desc->Persistable()) {
+          const auto x_shape = x_var_desc->GetShape();
+          if (x_shape.size() == 1) return false;
+        }
+      }
+    }
+
+    if (op_type == "dropout") {
+      /*
+       * Some OpDescs Attribute support both constant value and dynamic
+       * runtime value (which is a Variable(s) type). But TensorRT maybe
+       * only support constant value Attribute, so we shall distinguish
+       * this case in time and return False in OpTeller.Tell().
+       * If Attribute is Variable(s), HasAttr() will return False
+       */
+      if (!desc.HasAttr("dropout_prob", /*with_attr_var=*/false)) {
+        VLOG(3)
+            << "Skip to convert into TRT while found Attribute('dropout_prob') "
+               "is Variable type in dropout.";
+        return false;
+      }
+    }
+
     if (op_type == "pool2d") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("ksize", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('ksize') is "
+                   "Variable type in pool2d.";
+        return false;
+      }
+
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) {
         return false;
       }
@@ -341,7 +174,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       if (desc.HasAttr("data_format")) {
         std::string data_format =
-            BOOST_GET_CONST(std::string, desc.GetAttr("data_format"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_format"));
         if (data_format == "NHWC" || data_format == "NDHWC") {
           return false;
         }
@@ -350,7 +183,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       } else {
         std::string pool_type =
-            BOOST_GET_CONST(std::string, desc.GetAttr("pooling_type"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("pooling_type"));
         if (pool_type != "max" && pool_type != "avg") {
           VLOG(3) << "Wrong pool op type, the trt do not support the "
                   << pool_type << " pool type.";
@@ -358,11 +191,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
         if (pool_type == "avg") {
           if (desc.HasAttr("global_pooling")) {
-            if (!BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
+            if (!PADDLE_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
               if (desc.HasAttr("exclusive")) {
-                if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+                if (PADDLE_GET_CONST(bool, desc.GetAttr("exclusive"))) {
                   std::vector<int> ksize =
-                      BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+                      PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
                   for (size_t i = 0; i < ksize.size(); i++) {
                     if (ksize[i] <= paddings[i]) {
                       VLOG(3) << "the padding size should be less than the "
@@ -411,7 +244,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         } else {
           const std::vector<int> dilations =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
           if (dilations[0] != 1 || dilations[1] != 1) {
             VLOG(3) << "In conv2d_transpose, Dilations must be (1, 1) for "
                        "tensorRT, but given ("
@@ -433,10 +266,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           op_type == "depthwise_conv2d") {
         if (desc.HasAttr("padding_algorithm") && with_dynamic_shape) {
           auto padding_algorithm =
-              BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+              PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
           if (padding_algorithm == "SAME" && desc.HasAttr("strides")) {
             const std::vector<int> strides =
-                BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+                PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
             // there is no issue if strides.size() less than 2
             if (strides.size() > 1) {
               for (size_t i = 0; i < strides.size(); i++) {
@@ -469,7 +302,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* filter_desc = block->FindVar(filter_name);
       const auto filter_shape = filter_desc->GetShape();
 
-      int groups = BOOST_GET_CONST(int, desc.GetAttr("groups"));
+      int groups = PADDLE_GET_CONST(int, desc.GetAttr("groups"));
       if (input_shape[1] != filter_shape[1] * groups) {
         VLOG(3) << "The number of input channels should be equal to filter "
                 << "channels * groups. But got input channels "
@@ -478,7 +311,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const std::vector<int> strides =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
       if (strides.size() != 2) {
         VLOG(3) << "The size of strides should be 2, but got "
                 << strides.size();
@@ -486,12 +319,32 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() != 2) {
         VLOG(3) << "The size of paddings shoule be 2, but got "
                 << paddings.size();
         return false;
       }
+    }
+
+    if (op_type == "bmm") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+    }
+
+    if (op_type == "matmul_v2") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      return true;
     }
 
     if (op_type == "matmul") {
@@ -548,18 +401,32 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       const auto x_shape = x_var_desc->GetShape();
     }
     if (op_type == "group_norm") {
-      if (!with_dynamic_shape) return false;
       bool has_attrs = (desc.HasAttr("epsilon") && desc.HasAttr("groups"));
       if (has_attrs == false) return false;
-
       auto registry = GetPluginRegistry();
       if (registry == nullptr) return false;
+      std::string layout_str =
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout"));
+      if (layout_str != "NCHW") {
+        VLOG(3) << "Group norm trt plugin only support NCHW layout, but got "
+                << layout_str;
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) return false;
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      if (dtype != 5) {
+        VLOG(3) << "Group norm trt plugin only support float32";
+        return false;
+      }
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {
         return false;
       }
-      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (!with_dynamic_shape) {
         if (axis == 0) return false;
       }
@@ -575,7 +442,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       std::vector<int> axis =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
 
@@ -621,14 +488,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #else
         if (with_dynamic_shape) return false;
 #endif
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
         if (axis != 1) return false;
       }
     }
     if (op_type == "flatten_contiguous_range") {
       if (!with_dynamic_shape) {
-        int start_axis = BOOST_GET_CONST(int, desc.GetAttr("start_axis"));
-        int stop_axis = BOOST_GET_CONST(int, desc.GetAttr("stop_axis"));
+        int start_axis = PADDLE_GET_CONST(int, desc.GetAttr("start_axis"));
+        int stop_axis = PADDLE_GET_CONST(int, desc.GetAttr("stop_axis"));
         auto x_var_name = desc.Input("X")[0];
         auto* block = desc.Block();
         if (block == nullptr) {
@@ -672,6 +539,16 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                      "Developers need to check whether block_desc is passed in "
                      "the pass.";
+          return false;
+        }
+
+        auto index_var_name = desc.Input("Index")[0];
+        auto* index_var_desc = block->FindVar(index_var_name);
+
+        // The index input must be int32 datatype.
+        if (index_var_desc->GetDataType() !=
+            paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+          VLOG(3) << "gather op Index input data type must be int32";
           return false;
         }
 #if !IS_TRT_VERSION_GE(7000)
@@ -742,18 +619,24 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "arg_max") {
+      if (!desc.HasAttr("axis", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axis') is "
+                   "Variable type in arg_max.";
+        return false;
+      }
+
       int axis = desc.HasAttr("axis")
-                     ? BOOST_GET_CONST(int64_t, desc.GetAttr("axis"))
+                     ? PADDLE_GET_CONST(int64_t, desc.GetAttr("axis"))
                      : -1;
-      bool flatten = BOOST_GET_CONST(bool, desc.GetAttr("flatten"));
-      int dtype = BOOST_GET_CONST(int, desc.GetAttr("dtype"));
+      bool flatten = PADDLE_GET_CONST(bool, desc.GetAttr("flatten"));
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
       if (axis == 0 || flatten || dtype != 2) return false;
     }
 
     if (op_type == "affine_channel") {
       if (!desc.HasAttr("data_layout")) return false;
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
@@ -772,7 +655,6 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
-      if (with_dynamic_shape) return false;
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
@@ -808,13 +690,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // TODO(wangxinxin08): tricky solution because the outputs of batchedNMS
       // plugin are not constient with those of multiclass_nms3
       if (desc.HasAttr("nms_eta") == false) return false;
-      auto nms_eta = BOOST_GET_CONST(float, desc.GetAttr("nms_eta"));
+      auto nms_eta = PADDLE_GET_CONST(float, desc.GetAttr("nms_eta"));
       if (nms_eta <= 1.0) return false;
 
-      auto nms_top_k = BOOST_GET_CONST(int, desc.GetAttr("nms_top_k"));
+      auto nms_top_k = PADDLE_GET_CONST(int, desc.GetAttr("nms_top_k"));
       if (nms_top_k < 0) return false;
 
-      auto keep_top_k = BOOST_GET_CONST(int, desc.GetAttr("keep_top_k"));
+      auto keep_top_k = PADDLE_GET_CONST(int, desc.GetAttr("keep_top_k"));
       if (keep_top_k < 0) return false;
 
       auto registry = GetPluginRegistry();
@@ -829,18 +711,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       if (desc.HasAttr("data_layout")) {
         auto data_layout = framework::StringToDataLayout(
-            BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
         if (data_layout != framework::DataLayout::kNCHW &&
             data_layout != framework::DataLayout::kNHWC)
           return false;
       }
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-      auto scale = BOOST_GET_CONST(float, desc.GetAttr("scale"));
-      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
-      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto scale = PADDLE_GET_CONST(float, desc.GetAttr("scale"));
+      auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
+      auto align_corners =
+          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (!(scale > 0.f && (out_h <= 0 && out_w <= 0))) {
         if (out_h <= 0) {
           VLOG(3) << "out_h must be greater than 0 if scale is not set.";
@@ -873,16 +756,16 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         if (!desc.HasAttr(attr)) return false;
       }
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
           data_layout != framework::DataLayout::kNHWC)
         return false;
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "nearest") return false;
-      auto scale = BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
-      auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-      auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+      auto scale = PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+      auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+      auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
       if (!(out_h > 0 && out_w > 0)) {
         if (scale.size() < 2) return false;
         if (scale[0] <= 0.f || scale[1] <= 0.f) {
@@ -927,7 +810,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       auto data_layout = framework::StringToDataLayout(
-          BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW &&
           data_layout != framework::DataLayout::kNHWC) {
         VLOG(3) << "The op_type " << op_type
@@ -935,14 +818,15 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       auto interp_method =
-          BOOST_GET_CONST(std::string, desc.GetAttr("interp_method"));
+          PADDLE_GET_CONST(std::string, desc.GetAttr("interp_method"));
       if (interp_method != "bilinear") {
         VLOG(3) << "The interp_method of op_type " << op_type
                 << " is not bilinear";
         return false;
       }
 
-      auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
+      auto align_corners =
+          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (align_corners != false) {
         VLOG(3)
             << "The bilinear_interp_v2 only supports align_corners with false.";
@@ -954,7 +838,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
       if (has_scale_input_size && desc.Input("Scale").size() != 1) {
         const std::vector<float> scale =
-            BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
+            PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
           if (!desc.HasAttr("out_h") || !desc.HasAttr("out_w")) {
             VLOG(3) << "The op_type " << op_type
@@ -962,8 +846,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                        "out_h / out_w, it will return false";
             return false;
           }
-          auto out_h = BOOST_GET_CONST(int, desc.GetAttr("out_h"));
-          auto out_w = BOOST_GET_CONST(int, desc.GetAttr("out_w"));
+          auto out_h = PADDLE_GET_CONST(int, desc.GetAttr("out_h"));
+          auto out_w = PADDLE_GET_CONST(int, desc.GetAttr("out_w"));
           if (!(out_h <= 0 && out_w <= 0)) {
             if (out_h <= 0) {
               VLOG(3) << "The op_type " << op_type
@@ -1004,9 +888,16 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "squeeze2") {
+      // If Attribute is Variable(s), HasAttr() will return False
+      if (!desc.HasAttr("axes", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('axes') is "
+                   "Variable type in squeeze2.";
+        return false;
+      }
+
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
-        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
@@ -1025,7 +916,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     if (op_type == "unsqueeze2") {
       std::vector<int> axes;
       if (desc.HasAttr("axes")) {
-        axes = BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+        axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
         VLOG(3) << "The necessary attributes of the squeeze2 operator axes is "
@@ -1098,7 +989,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (!desc.HasAttr("axis")) {
         return false;
       }
-      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
 
       if (axis == 0) {
         VLOG(3) << "Invalid split axis. Split on batch is not supported in "
@@ -1119,11 +1010,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       std::vector<int> output_lengths;
       int num = 0;
       if (desc.HasAttr("num")) {
-        num = BOOST_GET_CONST(int, desc.GetAttr("num"));
+        num = PADDLE_GET_CONST(int, desc.GetAttr("num"));
       }
       if (desc.HasAttr("sections")) {
         output_lengths =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
       }
       if (output_lengths.size() == 0 && num == 0) {
         VLOG(3) << "sections and num cannot be equal to 0 at the same time";
@@ -1181,6 +1072,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 or float16 into trt.
+      if (!(dtype == 5 || dtype == 4)) {
+        return false;
+      }
       if (!with_dynamic_shape && x_shape.size() == 1) {
         VLOG(3) << "Scale op does not support 1-dimensional input in tensorrt";
         return false;
@@ -1211,18 +1107,64 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
     }
 
+    if (op_type == "rnn") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (desc.HasAttr("mode")) {
+        std::string mode = PADDLE_GET_CONST(std::string, desc.GetAttr("mode"));
+        if (mode != "LSTM") return false;
+      }
+      if (desc.HasAttr("dropout_prob")) {
+        float dropout_prob =
+            PADDLE_GET_CONST(float, desc.GetAttr("dropout_prob"));
+        if (dropout_prob > 1e-5) return false;
+      }
+      // not support following four inputs for rnn in paddle-trt
+      auto rnn_inputs = desc.Inputs();
+      if (rnn_inputs.find("SequenceLength") != rnn_inputs.end()) {
+        if (desc.Input("SequenceLength").size()) {
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "fill_constant_batch_size_like") {
+      if (!with_dynamic_shape) {
+        return false;
+      }
+      if (!desc.HasAttr("input_dim_idx")) {
+        return false;
+      }
+      if (!desc.HasAttr("output_dim_idx")) {
+        return false;
+      }
+      if (!desc.HasAttr("shape")) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("Input")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      auto dtype = x_var_desc->GetDataType();
+      // At present, only support float32 into trt.
+      if (dtype != 5) {
+        return false;
+      }
+    }
+
     if (op_type == "slice") {
       if (desc.HasAttr("decrease_axis")) {
         std::vector<int> decrease_axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
-        if (with_dynamic_shape) {
-          if (decrease_axis.size() > 1) {
-            return false;
-          }
-        } else {
-          if (decrease_axis.size() > 0) {
-            VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
-                       "is not supported in TensorRT";
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
+        if (!with_dynamic_shape) {
+          if (decrease_axis.end() !=
+              std::find(decrease_axis.begin(), decrease_axis.end(), 0)) {
             return false;
           }
         }
@@ -1235,11 +1177,11 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       } else {
         std::vector<int> axes =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
         std::vector<int> starts =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
         std::vector<int> ends =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
 
         if (axes.size() != starts.size() || axes.size() != ends.size()) {
           VLOG(3) << "The shape of attributes of the slice operator axes "
@@ -1282,7 +1224,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 
     if (op_type == "elementwise_add" || op_type == "elementwise_mul" ||
         op_type == "elementwise_sub" || op_type == "elementwise_div" ||
-        op_type == "elementwise_pow") {
+        op_type == "elementwise_pow" || op_type == "elementwise_min" ||
+        op_type == "elementwise_max") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "The input op's Input(\"X\").size() "
                    "should equal to 1, but received Input(\"X\").size() = "
@@ -1312,14 +1255,19 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
       const auto y_shape = y_var_desc->GetShape();
-      if (x_shape.size() == 1 && y_shape.size() == 1) {
-        VLOG(3) << "Now trt may not support two 1d tensor elementwise op.";
+
+      // The case when x_shape.size() == 1 is dealt with in common case
+      if (!with_dynamic_shape && (!y_var_desc->Persistable()) &&
+          y_shape.size() == 1) {
+        VLOG(3) << "Static shape in trt not support y is  a 1D intermediate "
+                   "tensor in "
+                   "elementwise op.";
         return false;
       }
-      if (x_var_desc->Persistable()) {
-        VLOG(3) << "Input X is a parameter which is not supported for "
-                   "elementwise_add/elementwise_mul in tensorrt, swap x and "
-                   "y will work";
+      if (x_var_desc->Persistable() && !with_dynamic_shape) {
+        VLOG(3)
+            << "Input X is a parameter which is not supported for "
+               "elementwise in tensorrt's static shape, swap x and y will work";
         return false;
       }
     }
@@ -1333,6 +1281,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
                "mode.";
         return false;
       }
+    }
+    // remember that 1D input in static shape mode is filtered at the beginning
+    if (op_type == "sum") {
+      return true;
+    }
+
+    if (op_type == "shape" && !with_dynamic_shape) {
+      return false;
     }
 
     if (op_type == "fused_embedding_eltwise_layernorm") {
@@ -1379,7 +1335,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
 #if IS_TRT_VERSION_LT(7000)
       if (desc.HasAttr("approximate")) {
         VLOG(3) << "approximate gelu op needs TensorRT 7.0 and after";
-        if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
       }
 #endif
 
@@ -1419,6 +1375,27 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (desc.Output("Y").size() != 1) {
         VLOG(3) << "output of layer_norm op converter should be 1, got "
                 << desc.Output("Y").size();
+        return false;
+      }
+    }
+
+    if (op_type == "fill_constant") {
+      auto fill_constant_inputs = desc.Inputs();
+      if (fill_constant_inputs.find("ValueTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ValueTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensor") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensor").size()) return false;
+      }
+      if (fill_constant_inputs.find("ShapeTensorList") !=
+          fill_constant_inputs.end()) {
+        if (desc.Input("ShapeTensorList").size()) return false;
+      }
+      int dtype = PADDLE_GET_CONST(int, desc.GetAttr("dtype"));
+      // only support int32, int64, float32
+      if (!(dtype == 2 || dtype == 3 || dtype == 5)) {
         return false;
       }
     }
@@ -1481,7 +1458,8 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "pad") {
-      const float pad_value = BOOST_GET_CONST(float, desc.GetAttr("pad_value"));
+      const float pad_value =
+          PADDLE_GET_CONST(float, desc.GetAttr("pad_value"));
       if (pad_value != 0.0f) {
         VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
@@ -1502,7 +1480,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
       int nbDims = shape.size();
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       int pad_size = paddings.size();
       if (nbDims < 2) {
         return false;
@@ -1627,15 +1605,15 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 
       const auto pooled_height =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+          PADDLE_GET_CONST(int, desc.GetAttr("pooled_height"));
       if (pooled_height <= 0) return false;
 
       const auto pooled_width =
-          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+          PADDLE_GET_CONST(int, desc.GetAttr("pooled_width"));
       if (pooled_width <= 0) return false;
 
       const auto spatial_scale =
-          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+          PADDLE_GET_CONST(float, desc.GetAttr("spatial_scale"));
       if (spatial_scale <= 0.f) return false;
 
       auto roi_align_inputs = desc.Inputs();
@@ -1696,25 +1674,33 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
-          BOOST_GET_CONST(int, desc.GetAttr("head_number"));
-
-      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
-      const auto biasqk_shape = biasqk_desc->GetShape();
-      // The BiasQK's shape requires to be
-      // [batch, 1, 1, length] or [batch, head, length, length].
-      bool has_same_shape = head_number == biasqk_shape[1] &&
-                            input_shape[1] == biasqk_shape[2] &&
-                            input_shape[1] == biasqk_shape[3];
-      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+          PADDLE_GET_CONST(int, desc.GetAttr("head_number"));
+      auto inputs = desc.Inputs();
+      bool has_bias_qk = (inputs.find("BiasQK") == inputs.end()) ? false : true;
+      if (has_bias_qk) {
+        auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+        const auto biasqk_shape = biasqk_desc->GetShape();
+        // The BiasQK's shape requires to be
+        // [batch, 1, 1, length] or [batch, head, length, length].
+        bool has_same_shape = head_number == biasqk_shape[1] &&
+                              input_shape[1] == biasqk_shape[2] &&
                               input_shape[1] == biasqk_shape[3];
-      if (!(has_same_shape || is_broadcastable)) {
-        VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
-                << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
-                << ", " << head_number << ", " << input_shape[1] << ", "
-                << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
-                << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
-                << biasqk_shape[3] << "].";
+        bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                                input_shape[1] == biasqk_shape[3];
+        if (!(has_same_shape || is_broadcastable)) {
+          VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                  << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                  << ", " << head_number << ", " << input_shape[1] << ", "
+                  << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                  << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                  << biasqk_shape[3] << "].";
+          return false;
+        }
+      } else {
+#if !IS_TRT_VERSION_GE(8000)
+        VLOG(3) << "The version of TRT must be greater than 8000";
         return false;
+#endif
       }
     }
 
@@ -1753,7 +1739,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // y_num_col_dims ==1
       if (desc.HasAttr("y_num_col_dims")) {
         int y_num_col_dims =
-            BOOST_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
+            PADDLE_GET_CONST(int, desc.GetAttr("y_num_col_dims"));
         if (y_num_col_dims != 1) {
           VLOG(3) << " fc_op'y_num_col_dims must be 1, but y_num_col_dims = "
                   << y_num_col_dims;
@@ -1763,9 +1749,9 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       */
       int x_num_col_dims =
           desc.HasAttr("x_num_col_dims")
-              ? BOOST_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
+              ? PADDLE_GET_CONST(int, desc.GetAttr("x_num_col_dims"))
               : (desc.HasAttr("in_num_col_dims")
-                     ? BOOST_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
+                     ? PADDLE_GET_CONST(int, desc.GetAttr("in_num_col_dims"))
                      : 1);
       if (x_num_col_dims < 1) {
         VLOG(3) << "fc_op expects x_num_col_dims >= 1, "
@@ -1779,7 +1765,10 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
+      if (with_dynamic_shape) {
+        return true;
+      }
+      // Static shape does not support the input tensors: Shape and ShapeTensor
       auto reshape_inputs = desc.Inputs();
       if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
         if (desc.Input("Shape").size() >= 1) {
@@ -1792,7 +1781,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
       std::vector<int> shape =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape) {
         if (shape.size() == 1) {
@@ -1848,6 +1837,13 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
+      if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
+        VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
+                   "Variable type in "
+                << desc.Type();
+        return false;
+      }
+
       if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
             desc.HasAttr("reduce_all"))) {
         VLOG(3) << "the " << op_type
@@ -1867,17 +1863,17 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       // The batch size dimension cannot be reduced if it's not dynamic shape.
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       if (!with_dynamic_shape) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all"))) return false;
         std::vector<int32_t> dim =
-            BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
+            PADDLE_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         const auto input_shape = x_var_desc->GetShape();
         for (auto x : dim) {
           if (x == 0 || (x + input_shape.size() == 0)) return false;
         }
 
       } else {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
-            !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
+        if (PADDLE_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
+            !PADDLE_GET_CONST(bool, desc.GetAttr("keep_dim")))
           return false;
       }
 
@@ -1915,10 +1911,27 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
+    // conv3d_transpose
+    if (op_type == "conv3d_transpose") {
+      // trt doen't support output_padding when < 8406
+      // output_padding is usually set when stride > 1
+#if !IS_TRT_VERSION_GE(8400)
+      if (desc.HasAttr("output_padding")) {
+        const std::vector<int> output_padding =
+            PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("output_padding"));
+        if (output_padding.size() > 0) {
+          int max_padding =
+              *std::max_element(output_padding.begin(), output_padding.end());
+          if (max_padding > 0) return false;
+        }
+      }
+#endif
+    }
+
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
       if (desc.HasAttr("padding_algorithm")) {
         std::string padding_algorithm =
-            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+            PADDLE_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
 
         // trt error is arised if conv3d_transpose and SAME
         if (op_type == "conv3d_transpose" && padding_algorithm == "SAME" &&
@@ -1934,7 +1947,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       }
 #endif
       std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       // conv3d and conv3d_transpose need padding check
       if (paddings.size() > 3) return false;
@@ -1956,7 +1969,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
           return false;
         } else {
           const std::vector<int> dilations =
-              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+              PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
           if (dilations[0] != 1 || dilations[1] != 1 || dilations[2] != 1) {
             VLOG(3) << "In conv3d_transpose, Dilations must be (1, 1, 1) for "
                        "tensorRT, but given ("
@@ -1995,18 +2008,30 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 
     if (op_type == "cast") {
-      int in_dtype = BOOST_GET_CONST(int, desc.GetAttr("in_dtype"));
-      int out_dtype = BOOST_GET_CONST(int, desc.GetAttr("out_dtype"));
+// trt 6015 result in Windows ppyolo_mbv3 TRT fp32 diff
+#if !IS_TRT_VERSION_GE(7000)
+      return false;
+#endif
+      if (!(desc.HasAttr("in_dtype") && desc.HasAttr("out_dtype"))) {
+        VLOG(3) << "the " << op_type
+                << " does not have attr (in_dtype or "
+                   "out_dtype)";
+        return false;
+      }
+      int in_dtype = PADDLE_GET_CONST(int, desc.GetAttr("in_dtype"));
+      int out_dtype = PADDLE_GET_CONST(int, desc.GetAttr("out_dtype"));
       if ((in_dtype == 4 || in_dtype == 5) && out_dtype == 4) {
         VLOG(3) << "unsupport data type conversion";
         return false;
       }
-      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2 ||
-             in_dtype == 0) &&
+      if (in_dtype == 0) {
+        VLOG(3) << "do not support input data type as bool now";
+        return false;
+      }
+      if (!((in_dtype == 5 || in_dtype == 4 || in_dtype == 2) &&
             (out_dtype == 5 || out_dtype == 4 || out_dtype == 2))) {
-        VLOG(3)
-            << "only valid conversions are: "
-               "(kFLOAT | kHALF | kINT32 | kBOOL) -> (kFLOAT | kHALF | kINT32)";
+        VLOG(3) << "only valid conversions are: "
+                   "(kFLOAT | kHALF | kINT32) -> (kFLOAT | kHALF | kINT32)";
         return false;
       }
     }
@@ -2022,7 +2047,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         return false;
       }
       if (desc.HasAttr("axis")) {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+        int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
         if (axis == 0) {
           VLOG(3) << "top_k_v2 does not support axis == 0 in "
                      "tensorrt";
@@ -2030,7 +2055,7 @@ bool OpTeller::Tell(const framework::ir::Node* node,
         }
       }
       if (desc.HasAttr("sorted")) {
-        bool sorted = BOOST_GET_CONST(bool, desc.GetAttr("sorted"));
+        bool sorted = PADDLE_GET_CONST(bool, desc.GetAttr("sorted"));
         if (!sorted) {
           VLOG(3) << "top_k_v2 does not support results not sorted in "
                      "tensorrt";
@@ -2049,12 +2074,393 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     }
 #endif
 
-    if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
+    if (op_type == "equal") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "compare is not supported when TensorRT < 8.0";
+      return false;
+#else
+      int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
+      if (axis == 0) {
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+#endif
+    }
+
+    if (op_type == "layernorm_shift_partition") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the layernorm_shift_partition does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (op_type == "lookup_table") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the lookup_table does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+
+    if (use_no_calib_int8) {
+      return int8_teller_set.count(op_type);
+    } else {
+      return teller_set.count(op_type);
+    }
   }
 
+ private:
+  // use this set for no calib int8.
+  std::unordered_set<std::string> int8_teller_set{
+      "mul",
+      "matmul",
+      "matmul_v2",
+      "bmm",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
+      "exp",
+      "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_sub",
+      "elementwise_mul",
+      "elementwise_div",
+      "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
+      "equal",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "silu",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "top_k",
+      "top_k_v2",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "yolo_box_head",
+      "arg_max",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "nearest_interp_v2",
+      "bilinear_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "strided_slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
+      "roll",
+      "cast",
+      "preln_skip_layernorm",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
+      "squeeze2",
+      "unsqueeze2",
+      "layernorm_shift_partition",
+      "lookup_table",
+      "lookup_table_v2"};
+  std::unordered_set<std::string> teller_set{
+      "mul",
+      "matmul",
+      "matmul_v2",
+      "bmm",
+      "conv2d",
+      "conv2d_fusion",
+      "pool2d",
+      "relu",
+      "elu",
+      "selu",
+      "softsign",
+      "softplus",
+      "stanh",
+      "thresholded_relu",
+      "exp",
+      "log",
+      "sqrt",
+      "abs",
+      "sin",
+      "cos",
+      "tan",
+      "sinh",
+      "cosh",
+      "asin",
+      "acos",
+      "atan",
+      "asinh",
+      "atanh",
+      "ceil",
+      "floor",
+      "erf",
+      "softmax",
+      "sigmoid",
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+      "tanh",
+      "pad",
+      "elementwise_add",
+      "elementwise_sub",
+      "elementwise_mul",
+      "elementwise_div",
+      "elementwise_pow",
+      "elementwise_min",
+      "elementwise_max",
+      "equal",
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "depthwise_conv2d_transpose",
+      "leaky_relu",
+      "fc",
+      "shuffle_channel",
+      "swish",
+      "silu",
+      "split",
+      "instance_norm",
+      "gelu",
+      "layer_norm",
+      "scale",
+      "stack",
+      "transpose2",
+      "transpose",
+      "top_k",
+      "top_k_v2",
+      "flatten2",
+      "flatten",
+      "gather",
+      "gather_nd",
+      "yolo_box",
+      "yolo_box_head",
+      "arg_max",
+      "roi_align",
+      "affine_channel",
+      "nearest_interp",
+      "anchor_generator",
+      "reduce_sum",
+      "reduce_mean",
+      "conv3d",
+      "conv3d_transpose",
+      "mish",
+      "bilinear_interp_v2",
+      "nearest_interp_v2",
+      "pool3d",
+      "deformable_conv",
+      "relu6",
+      "hard_sigmoid",
+      "clip",
+      "fused_embedding_eltwise_layernorm",
+      "multihead_matmul",
+      "skip_layernorm",
+      "slice",
+      "strided_slice",
+      "fused_preln_embedding_eltwise_layernorm",
+      "preln_skip_layernorm",
+      "preln_residual_bias",
+      "c_allreduce_sum",
+      "c_allreduce_min",
+      "c_allreduce_max",
+      "c_allreduce_prod",
+      "roll",
+      "cast",
+      "transformer_input_convert",
+      "recover_padding",
+      "remove_padding",
+      "fill_constant",
+      "sum",
+      "shape",
+      "squeeze2",
+      "unsqueeze2",
+      "fused_token_prune",
+      "layernorm_shift_partition",
+      "lookup_table",
+      "lookup_table_v2"};
+};
+
+struct GenericPluginTeller : public Teller {
+ public:
+  GenericPluginTeller() {}
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    // only consider dynamic_shape mode
+    if (!with_dynamic_shape) {
+      return false;
+    }
+    if (op_type == "yolo_box") {
+      if (!desc.HasAttr("iou_aware") && !desc.HasAttr("iou_aware_factor"))
+        return false;
+    }
+    if (op_type == "pad3d") {
+      auto pad3d_inputs = desc.Inputs();
+      if (pad3d_inputs.find("Paddings") != pad3d_inputs.end()) {
+        if (desc.Input("Paddings").size() >= 1) {
+          return false;
+        }
+      }
+    }
+    if (use_no_calib_int8) {
+      return false;
+    } else {
+      framework::InitDefaultKernelSignatureMap();
+      bool res = phi::OpUtilsMap::Instance().HasArgumentMappingFn(op_type) ||
+                 phi::DefaultKernelSignatureMap::Instance().Has(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no KernelSignature";
+        return false;
+      }
+      res = phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no CompatiblePhiKernel in phi.";
+        return false;
+      }
+      auto& dynamic_infermeta_factory =
+          tensorrt::DynamicMetaFnFactory::Instance();
+      res = dynamic_infermeta_factory.Contains(op_type);
+      if (!res) {
+        VLOG(3) << op_type << " has no DynamicMetaFn.";
+        return false;
+      }
+      return true;
+    }
+  }
+};
+
+struct CustomPluginTeller : public Teller {
+ public:
+  CustomPluginTeller() {}
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false) override {
+    const std::string op_type = desc.Type();
+    std::string expect_plugin_name;
+
+    if (with_dynamic_shape) {
+      expect_plugin_name = op_type + "_paddle_trt_dynamic_plugin";
+    } else {
+      expect_plugin_name = op_type + "_paddle_trt_plugin";
+    }
+
+    int num = 0;
+    auto creators = GetPluginRegistry()->getPluginCreatorList(&num);
+
+    for (int i = 0; i < num; i++) {
+      if (std::string(creators[i]->getPluginName()) == expect_plugin_name)
+        return true;
+    }
+    return false;
+  }
+};
+
+bool OpTeller::Tell(const framework::ir::Node* node,
+                    bool use_no_calib_int8,
+                    bool with_dynamic_shape) {
+  const std::string op_type = node->Op()->Type();
+  const framework::OpDesc desc = *node->Op();
+  // do not support the op which is labeled the `skip_quant`
+  if ((desc.HasAttr("namescope") &&
+       PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
+           "/skip_quant_2/") ||
+      desc.HasAttr("skip_quant"))
+    return false;
+  auto& default_teller = GetDefaultTeller();
+  if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::Default);
+    return true;
+  }
+  auto& generic_plugin_teller = GetGenericPluginTeller();
+  if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::GenericPluginCreater);
+    return true;
+  }
+  auto& custom_plugin_teller = GetCustomPluginTeller();
+  if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+    SetOpConverterType(op_type, OpConverterType::CustomPluginCreater);
+    return true;
+  }
   return false;
 }
-OpTeller::OpTeller() { tellers_.emplace_back(new SimpleOpTypeSetTeller); }
+
+OpTeller::OpTeller() {
+  tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
+  tellers_.emplace_back(new tensorrt::GenericPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+}
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

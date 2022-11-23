@@ -134,13 +134,13 @@ class DatasetBase(object):
         """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
-        
+
         Args:
-            record_candidate_size(int): size of instances candidate to shuffle 
+            record_candidate_size(int): size of instances candidate to shuffle
                                         one slot
             fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
-            
+
         Examples:
             .. code-block:: python
 
@@ -155,12 +155,12 @@ class DatasetBase(object):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
@@ -578,7 +578,7 @@ class InMemoryDataset(DatasetBase):
 
     def preprocess_instance(self):
         """
-        Merge pv instance and convey it from input_channel to input_pv_channel. 
+        Merge pv instance and convey it from input_channel to input_pv_channel.
         It will be effective when enable_pv_merge_ is True.
 
         Examples:
@@ -898,7 +898,7 @@ class InMemoryDataset(DatasetBase):
     def release_memory(self):
         """
         :api_attr: Static Graph
-        
+
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
@@ -1036,6 +1036,51 @@ class InMemoryDataset(DatasetBase):
         user no need to call this function.
         """
         self.dataset.set_heter_ps(enable_heter_ps)
+
+    def set_graph_config(self, config):
+        """
+        Set graph config, user can set graph config in gpu graph mode.
+
+        Args:
+            config(dict): config dict.
+
+        Returns:
+            The size of shuffle data.
+
+        Examples:
+            .. code-block:: python
+
+              # required: skiptest
+              import paddle.fluid as fluid
+              from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+              dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+              graph_config = {"walk_len": 24,
+                    "walk_degree": 10,
+                    "once_sample_startid_len": 80000,
+                    "sample_times_one_chunk": 5,
+                    "window": 3,
+                    "debug_mode": 0,
+                    "batch_size": 800,
+                    "meta_path": "cuid2clk-clk2cuid;cuid2conv-conv2cuid;clk2cuid-cuid2clk;clk2cuid-cuid2conv",
+                    "gpu_graph_training": 1}
+              dataset.set_graph_config(graph_config)
+
+        """
+        self.proto_desc.graph_config.walk_degree = config.get("walk_degree", 1)
+        self.proto_desc.graph_config.walk_len = config.get("walk_len", 20)
+        self.proto_desc.graph_config.window = config.get("window", 5)
+        self.proto_desc.graph_config.once_sample_startid_len = config.get(
+            "once_sample_startid_len", 8000)
+        self.proto_desc.graph_config.sample_times_one_chunk = config.get(
+            "sample_times_one_chunk", 10)
+        self.proto_desc.graph_config.batch_size = config.get("batch_size", 1)
+        self.proto_desc.graph_config.debug_mode = config.get("debug_mode", 0)
+        self.proto_desc.graph_config.first_node_type = config.get(
+            "first_node_type", "")
+        self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
+        self.proto_desc.graph_config.gpu_graph_training = config.get(
+            "gpu_graph_training", True)
+        self.dataset.set_gpu_graph_mode(True)
 
 
 class QueueDataset(DatasetBase):
@@ -1193,7 +1238,7 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory
 
         Examples:
             .. code-block:: python
@@ -1207,7 +1252,7 @@ class BoxPSDataset(InMemoryDataset):
     def end_pass(self, need_save_delta):
         """
         End Pass
-        Notify BoxPS that current pass ended 
+        Notify BoxPS that current pass ended
         Examples:
             .. code-block:: python
 
@@ -1273,12 +1318,12 @@ class BoxPSDataset(InMemoryDataset):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 

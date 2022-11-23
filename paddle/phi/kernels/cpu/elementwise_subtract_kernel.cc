@@ -25,15 +25,6 @@ namespace phi {
 // Create the definition of Subtract
 DEFINE_CPU_ELEMENTWISE_OP(Subtract)
 
-template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  int axis = -1;
-  SubtractRawKernel<T>(dev_ctx, x, y, axis, out);
-}
-
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -46,18 +37,6 @@ PD_REGISTER_KERNEL(subtract_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::SubtractRawKernel,
-                   float,
-                   double,
-                   int16_t,
-                   int,
-                   int64_t,
-                   complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
-PD_REGISTER_KERNEL(subtract,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::SubtractKernel,
                    float,
                    double,
                    int16_t,

@@ -45,7 +45,7 @@ def conv_net(img, label):
                                                   act="relu")
     prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 
@@ -118,6 +118,11 @@ class TestMKLDNNTransformBasedFreezePass(unittest.TestCase):
             activation_quantize_type=activation_quant_type,
             weight_quantize_type=weight_quant_type)
         transform_pass.apply(main_graph)
+        transform_pass = QuantizationTransformPass(
+            scope=scope,
+            place=place,
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quant_type)
         transform_pass.apply(test_graph)
 
         build_strategy = fluid.BuildStrategy()

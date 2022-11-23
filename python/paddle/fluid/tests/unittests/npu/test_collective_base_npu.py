@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import numpy as np
 import unittest
 import time
@@ -216,5 +215,5 @@ class TestDistBase(unittest.TestCase):
         if col_type == "identity":
             need_result1 = input1
             need_result2 = input2
-            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
-            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
+            np.testing.assert_allclose(tr0_out, need_result1, rtol=0, atol=0)
+            np.testing.assert_allclose(tr1_out, need_result2, rtol=0, atol=0)

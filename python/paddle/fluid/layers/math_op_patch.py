@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import warnings
 import inspect
 
@@ -21,6 +19,7 @@ from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
 from .control_flow import array_write, array_length
+from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -79,6 +78,10 @@ def monkey_patch_variable():
         tmp_name = unique_tmp_name()
         return block.create_var(name=tmp_name, dtype=dtype)
 
+    def create_new_tmp_sparse_var(block, dtype, type):
+        tmp_name = unique_tmp_name()
+        return block.create_var(name=tmp_name, dtype=dtype, type=type)
+
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
@@ -127,6 +130,36 @@ def monkey_patch_variable():
 
         var.stop_gradient = True
         return var
+
+    @static_only
+    def cpu(self):
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
+        """
+        return self
+
+    @static_only
+    def cuda(self):
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
+        """
+        return self
+
+    @static_only
+    def place(self):
+        """
+        Variable don't have 'place' interface in static mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'place' interface for static mode, try not to use it. None will be returned."
+        )
+        return None
 
     def astype(self, dtype):
         """
@@ -190,18 +223,55 @@ def monkey_patch_variable():
         """
          **Notes**:
             **The type variable must be LoD Tensor Array.
-        
+
         """
         if not isinstance(var, Variable):
-            raise TypeError(
-                "Required input var should be Variable, but received {}".format(
-                    type(var)))
+            if in_declarative_mode():
+                """ in dy2static mode, x may be tensorable values such as int, float, np.array
+                """
+                from paddle.tensor.creation import to_tensor
+                var = to_tensor(var)
+            else:
+                raise TypeError(
+                    "Required input var should be Variable, but received {}".
+                    format(type(var)))
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
                 "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
                 .format(self.type))
-
         array_write(x=var, i=array_length(self), array=self)
+
+    @static_only
+    def _item(self):
+        """
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
+        It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                "Required input var should be 1-D Variable, but received {}".
+                format(self.shape))
+        return self
+
+    @static_only
+    def pop(self, *args):
+        """
+        The type variable must be LoD Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            *args: optional, a int means index.
+        Returns:
+            Variable: self[index]
+        """
+        from paddle.fluid.dygraph.dygraph_to_static.convert_operators import _run_paddle_pop
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
+                .format(self.type))
+        return _run_paddle_pop(self, *args)
 
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
@@ -340,7 +410,8 @@ def monkey_patch_variable():
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
                     % (file_name, line_num, EXPRESSION_MAP[method_name],
-                       op_type, op_type, EXPRESSION_MAP[method_name]))
+                       op_type, op_type, EXPRESSION_MAP[method_name]),
+                    category=DeprecationWarning)
             current_block(self).append_op(type=op_type,
                                           inputs={
                                               'X': [self],
@@ -364,11 +435,43 @@ def monkey_patch_variable():
         __impl__.__name__ = method_name
         return __impl__
 
+    def values(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_values",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
+    def indices(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_indices",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
+    def to_dense(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(type="sparse_to_dense",
+                        inputs={"x": [var]},
+                        outputs={"out": [out]},
+                        attrs={})
+        return out
+
     variable_methods = [
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('cpu', cpu),
+        ('cuda', cuda),
+        ('place', place),
         ('append', append),
+        ('item', _item),
+        ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
@@ -411,7 +514,10 @@ def monkey_patch_variable():
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('values', values),
+        ('indices', indices),
+        ('to_dense', to_dense),
     ]
 
     global _already_patch_variable

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -23,6 +21,8 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
+
+paddle.enable_static()
 
 
 #Situation 1: repeat_times is a list (without tensor)
@@ -277,5 +277,4 @@ class TestTileAPI(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

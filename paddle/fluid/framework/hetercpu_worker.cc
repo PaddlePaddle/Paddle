@@ -29,8 +29,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void HeterTask::PackTask(Scope* thread_scope, int taskid, DataFeed* reader,
-                         int cur_batch, const ProgramDesc& program) {
+void HeterTask::PackTask(Scope* thread_scope,
+                         int taskid,
+                         DataFeed* reader,
+                         int cur_batch,
+                         const ProgramDesc& program) {
   // total_time = 0;
   // read_time = 0;
   // pack_time = 0;
@@ -388,7 +391,8 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
     for (int index = 0; index < len; ++index) {
       if (use_cvm_ || no_cvm_) {
         if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+          memcpy(ptr + table.emb_dim() * index,
+                 init_value.data(),
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
@@ -396,7 +400,8 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
+        memcpy(ptr + table.emb_dim() * index,
+               fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
@@ -406,7 +411,8 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
         fea_idx++;
       } else {
         if (ids[index] == 0u) {
-          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+          memcpy(ptr + table.emb_dim() * index,
+                 init_value.data() + 2,
                  sizeof(float) * table.emb_dim());
           if (is_nid) {
             nid_show_.push_back(-1);
@@ -414,7 +420,8 @@ void HeterCpuWorker::FillSparseValue(std::shared_ptr<HeterTask> task,
           }
           continue;
         }
-        memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
+        memcpy(ptr + table.emb_dim() * index,
+               fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
         if (is_nid &&
             static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
@@ -662,8 +669,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       timeline.Start();
       task = object_pool_.Get();
       task->Reset();
-      task->PackTask(thread_scope_, taskid, device_reader_, cur_batch,
-                     program_);
+      task->PackTask(
+          thread_scope_, taskid, device_reader_, cur_batch, program_);
       timeline.Pause();
       task->read_time = tmp_read_time;
       task->pack_time = timeline.ElapsedSec();
@@ -674,7 +681,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
       if (task->state_ == PULL_SPARSE) {
         timeline.Start();
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size();
+             ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           TableParameter table;
@@ -684,9 +692,12 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
               break;
             }
           }
-          fleet_ptr_->HeterPullSparseVars(
-              thread_id_, task, tid, sparse_key_names_[tid], table.fea_dim(),
-              sparse_value_names_[tid]);
+          fleet_ptr_->HeterPullSparseVars(thread_id_,
+                                          task,
+                                          tid,
+                                          sparse_key_names_[tid],
+                                          table.fea_dim(),
+                                          sparse_value_names_[tid]);
         }
         task->Update();
         // JumpContext(task);
@@ -699,7 +710,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         // pack_time += task->pack_time;
         // pull_sparse_local_time += task->pull_sparse_local_time;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size();
+             ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           timeline.Start();
@@ -798,7 +810,8 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0;
-               i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
+               i < param_.program_config(0).push_sparse_table_id_size();
+               ++i) {
             uint64_t tid = static_cast<uint64_t>(
                 param_.program_config(0).push_sparse_table_id(i));
             TableParameter table;
@@ -809,10 +822,16 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
               }
             }
             timeline.Start();
-            fleet_ptr_->HeterPushSparseVars(
-                task, *(task->scope_), tid, sparse_key_names_[tid],
-                sparse_grad_names_[tid], table.emb_dim(), &push_sparse_status_,
-                use_cvm_, dump_slot_, no_cvm_);
+            fleet_ptr_->HeterPushSparseVars(task,
+                                            *(task->scope_),
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            sparse_grad_names_[tid],
+                                            table.emb_dim(),
+                                            &push_sparse_status_,
+                                            use_cvm_,
+                                            dump_slot_,
+                                            no_cvm_);
             timeline.Pause();
             task->push_sparse_time += timeline.ElapsedSec();
             task->total_time += timeline.ElapsedSec();
@@ -875,39 +894,49 @@ void HeterCpuWorker::TrainFilesWithProfiler() {
             //           i.first.c_str(),
             //           i.second / done_cnt);
             // }
-            fprintf(stderr, "cpu op run total time: %fs\n",
-                    cpu_op_time / done_cnt);
-            fprintf(stderr, "xpu op run total time: %fs\n",
-                    xpu_op_time / done_cnt);
-            fprintf(stderr, "xpu wait total time: %fs\n",
-                    xpu_wait_time / done_cnt);
+            fprintf(
+                stderr, "cpu op run total time: %fs\n", cpu_op_time / done_cnt);
+            fprintf(
+                stderr, "xpu op run total time: %fs\n", xpu_op_time / done_cnt);
+            fprintf(
+                stderr, "xpu wait total time: %fs\n", xpu_wait_time / done_cnt);
             fprintf(stderr, "pack task time: %fs\n", pack_time / done_cnt);
             fprintf(stderr, "train total time: %fs\n", total_time / done_cnt);
-            fprintf(stderr, "pull sparse local time: %fs\n",
+            fprintf(stderr,
+                    "pull sparse local time: %fs\n",
                     pull_sparse_local_time / done_cnt);
-            fprintf(stderr, "fill sparse time: %fs\n",
-                    fill_sparse_time / done_cnt);
-            fprintf(stderr, "push sparse time: %fs\n",
-                    push_sparse_time / done_cnt);
-            fprintf(stderr, "collect label time: %fs\n",
+            fprintf(
+                stderr, "fill sparse time: %fs\n", fill_sparse_time / done_cnt);
+            fprintf(
+                stderr, "push sparse time: %fs\n", push_sparse_time / done_cnt);
+            fprintf(stderr,
+                    "collect label time: %fs\n",
                     collect_label_time / done_cnt);
             fprintf(stderr, "mean read time: %fs\n", read_time / done_cnt);
             fprintf(stderr, "IO percent: %f\n", read_time / total_time * 100);
-            fprintf(stderr, "cpu op run percent: %f\n",
+            fprintf(stderr,
+                    "cpu op run percent: %f\n",
                     cpu_op_time / total_time * 100);
-            fprintf(stderr, "xpu op run percent: %f\n",
+            fprintf(stderr,
+                    "xpu op run percent: %f\n",
                     xpu_op_time / total_time * 100);
-            fprintf(stderr, "xpu wait percent: %f\n",
+            fprintf(stderr,
+                    "xpu wait percent: %f\n",
                     xpu_wait_time / total_time * 100);
-            fprintf(stderr, "pack task percent: %f\n",
+            fprintf(stderr,
+                    "pack task percent: %f\n",
                     pack_time / total_time * 100);
-            fprintf(stderr, "pull sparse local time percent: %f\n",
+            fprintf(stderr,
+                    "pull sparse local time percent: %f\n",
                     pull_sparse_local_time / total_time * 100);
-            fprintf(stderr, "collect label time percent: %f\n",
+            fprintf(stderr,
+                    "collect label time percent: %f\n",
                     collect_label_time / total_time * 100);
-            fprintf(stderr, "fill sparse time percent: %f\n",
+            fprintf(stderr,
+                    "fill sparse time percent: %f\n",
                     fill_sparse_time / total_time * 100);
-            fprintf(stderr, "push sparse time percent: %f\n",
+            fprintf(stderr,
+                    "push sparse time percent: %f\n",
                     push_sparse_time / total_time * 100);
             fprintf(stderr, "%6.2f instances/s\n", total_inst / total_time);
           }
@@ -964,15 +993,16 @@ void HeterCpuWorker::TrainFiles() {
       int taskid = batch_cnt * worker_num_ + thread_id_;
       task = object_pool_.Get();
       task->Reset();
-      task->PackTask(thread_scope_, taskid, device_reader_, cur_batch,
-                     program_);
+      task->PackTask(
+          thread_scope_, taskid, device_reader_, cur_batch, program_);
     }
     for (;;) {
       // pull sparse here
       if (task->state_ == PULL_SPARSE) {
         VLOG(3) << "pull sparse taskid = " << task->taskid_;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size();
+             ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           TableParameter table;
@@ -982,9 +1012,12 @@ void HeterCpuWorker::TrainFiles() {
               break;
             }
           }
-          fleet_ptr_->HeterPullSparseVars(
-              thread_id_, task, tid, sparse_key_names_[tid], table.fea_dim(),
-              sparse_value_names_[tid]);
+          fleet_ptr_->HeterPullSparseVars(thread_id_,
+                                          task,
+                                          tid,
+                                          sparse_key_names_[tid],
+                                          table.fea_dim(),
+                                          sparse_value_names_[tid]);
         }
         task->Update();
         // JumpContext(task);
@@ -992,7 +1025,8 @@ void HeterCpuWorker::TrainFiles() {
       } else if (task->state_ == OP_RUN) {
         VLOG(3) << "oprun taskid = " << task->taskid_;
         for (int i = 0;
-             i < param_.program_config(0).pull_sparse_table_id_size(); ++i) {
+             i < param_.program_config(0).pull_sparse_table_id_size();
+             ++i) {
           uint64_t tid = static_cast<uint64_t>(
               param_.program_config(0).pull_sparse_table_id(i));
           CollectLabelInfo(task, i);
@@ -1062,7 +1096,8 @@ void HeterCpuWorker::TrainFiles() {
         if (need_to_push_sparse_) {
           // push gradients here
           for (int i = 0;
-               i < param_.program_config(0).push_sparse_table_id_size(); ++i) {
+               i < param_.program_config(0).push_sparse_table_id_size();
+               ++i) {
             uint64_t tid = static_cast<uint64_t>(
                 param_.program_config(0).push_sparse_table_id(i));
             TableParameter table;
@@ -1072,10 +1107,16 @@ void HeterCpuWorker::TrainFiles() {
                 break;
               }
             }
-            fleet_ptr_->HeterPushSparseVars(
-                task, *(task->scope_), tid, sparse_key_names_[tid],
-                sparse_grad_names_[tid], table.emb_dim(), &push_sparse_status_,
-                use_cvm_, dump_slot_, no_cvm_);
+            fleet_ptr_->HeterPushSparseVars(task,
+                                            *(task->scope_),
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            sparse_grad_names_[tid],
+                                            table.emb_dim(),
+                                            &push_sparse_status_,
+                                            use_cvm_,
+                                            dump_slot_,
+                                            no_cvm_);
           }
         }
 

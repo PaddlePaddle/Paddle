@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/phi/common/data_type.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -172,6 +173,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \return the map of input names and shapes
   ///
   std::map<std::string, std::vector<int64_t>> GetInputTensorShape() override;
+  ///
+  /// \brief Get all input names and their corresponding type
+  ///
+  /// \return the map of input names and type
+  ///
+  std::map<std::string, paddle_infer::DataType> GetInputTypes() override;
 
   ///
   /// \brief Run the prediction engine
@@ -346,8 +353,7 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[out] output_data output tensor
   ///
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
   ///
   /// \brief PreSet for Mkldnn multi-thread and dynamic shape input.
   ///
@@ -454,9 +460,12 @@ class AnalysisPredictor : public PaddlePredictor {
   /// \param[in] block: the block to insert comm ops
   /// \param[in] ring_id: the ring id to be used to init NCCL env
   ///
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string> &peer_endpoints,
-                    framework::BlockDesc *block, int ring_id);
+                    framework::BlockDesc *block,
+                    int ring_id);
 #endif
 
  private:
@@ -475,6 +484,8 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetches_;
   std::map<size_t, std::string> idx2fetches_;
 
+  phi::DataType model_precision_{phi::DataType::FLOAT32};
+
 #if PADDLE_WITH_MKLDNN
   // Helper class to perform quantization
   class MkldnnQuantizer;
@@ -487,7 +498,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
@@ -503,6 +514,7 @@ class AnalysisPredictor : public PaddlePredictor {
   bool status_is_cloned_{false};
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
+  std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
   static int clone_num_;
 
   bool private_context_{false};

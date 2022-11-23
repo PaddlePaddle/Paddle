@@ -59,11 +59,14 @@ bool InstanceNormPlugin::supportsFormat(
           (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
-int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
+int InstanceNormPlugin::enqueue(int batch_size,
+                                const void *const *inputs,
 #if IS_TRT_VERSION_LT(8000)
-                                void **outputs, void *workspace,
+                                void **outputs,
+                                void *workspace,
 #else
-                                void *const *outputs, void *workspace,
+                                void *const *outputs,
+                                void *workspace,
 #endif
                                 cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
@@ -80,10 +83,16 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   float *bias_d = bias_t.mutable_data<float>(platform::CUDAPlace(device_id));
 
   for (int i = 0; i < batch_size; i++) {
-    cudaMemcpyAsync(scale_d + i * c, scale_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(bias_d + i * c, bias_.data(), sizeof(float) * c,
-                    cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(scale_d + i * c,
+                    scale_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
+    cudaMemcpyAsync(bias_d + i * c,
+                    bias_.data(),
+                    sizeof(float) * c,
+                    cudaMemcpyHostToDevice,
+                    stream);
   }
   platform::dynload::cudnnSetTensor4dDescriptor(
       b_desc_, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, n * c, 1, 1);
@@ -91,10 +100,10 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   cudnnDataType_t cudnn_dtype;
   nvinfer1::DataType data_type = getDataType();
   convert_trt2cudnn_dtype(data_type, &cudnn_dtype);
-  platform::dynload::cudnnSetTensor4dDescriptor(x_desc_, CUDNN_TENSOR_NCHW,
-                                                cudnn_dtype, 1, n * c, h, w);
-  platform::dynload::cudnnSetTensor4dDescriptor(y_desc_, CUDNN_TENSOR_NCHW,
-                                                cudnn_dtype, 1, n * c, h, w);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      x_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
+  platform::dynload::cudnnSetTensor4dDescriptor(
+      y_desc_, CUDNN_TENSOR_NCHW, cudnn_dtype, 1, n * c, h, w);
   float alpha = 1;
   float beta = 0;
   platform::dynload::cudnnSetStream(handle_, stream);
@@ -102,9 +111,23 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
   void const *x_ptr = inputs[0];
   void *y_ptr = outputs[0];
   platform::dynload::cudnnBatchNormalizationForwardTraining(
-      handle_, CUDNN_BATCHNORM_SPATIAL_PERSISTENT, &alpha, &beta, x_desc_,
-      x_ptr, y_desc_, y_ptr, b_desc_, scale_d, bias_d, 1., nullptr, nullptr,
-      eps_, nullptr, nullptr);
+      handle_,
+      CUDNN_BATCHNORM_SPATIAL_PERSISTENT,
+      &alpha,
+      &beta,
+      x_desc_,
+      x_ptr,
+      y_desc_,
+      y_ptr,
+      b_desc_,
+      scale_d,
+      bias_d,
+      1.,
+      nullptr,
+      nullptr,
+      eps_,
+      nullptr,
+      nullptr);
   return cudaGetLastError() != cudaSuccess;
 }
 

@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import time
 import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -68,8 +66,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 for _ in loader():
                     print("test_single_process_with_thread_expection")
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
@@ -131,8 +128,7 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                     for image, _ in loader():
                         fluid.layers.relu(image)
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 

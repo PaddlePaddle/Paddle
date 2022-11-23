@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from dist_test_utils import *
 
 silentremove("test_handle_signal_in_serv_op.flag")
@@ -21,12 +19,9 @@ silentremove("test_list_and_serv_run_empty_optimize_block.flag")
 
 import paddle
 import paddle.fluid as fluid
-import signal
-import subprocess
 import time
 import unittest
 from multiprocessing import Process
-from op_test import OpTest
 
 paddle.enable_static()
 
@@ -39,7 +34,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
 
     # loss function
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     # optimizer
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
@@ -73,7 +68,7 @@ def run_pserver_with_empty_block(use_cuda, sync_mode, ip, port, trainers,
 
     # loss function
     cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     # optimizer
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)

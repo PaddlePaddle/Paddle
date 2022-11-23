@@ -139,4 +139,5 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    ALL_LAYOUT,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16) {}

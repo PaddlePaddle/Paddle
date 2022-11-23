@@ -32,9 +32,16 @@ TEST(split_op_plugin, test_plugin) {
   nvinfer1::Dims in_dims;
   in_dims.nbDims = 4;
   input_dims.push_back(in_dims);
-  sp_plugin.configurePlugin(input_dims.data(), 1, nullptr, 2,
-                            input_types.data(), nullptr, nullptr, nullptr,
-                            nvinfer1::PluginFormat::kLINEAR, 4);
+  sp_plugin.configurePlugin(input_dims.data(),
+                            1,
+                            nullptr,
+                            2,
+                            input_types.data(),
+                            nullptr,
+                            nullptr,
+                            nullptr,
+                            nvinfer1::PluginFormat::kLINEAR,
+                            4);
   sp_plugin.initialize();
   sp_plugin.getPluginType();
   sp_plugin.canBroadcastInputAcrossBatch(0);

@@ -19,13 +19,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+static inline T GetAttrFromTensor(const phi::DenseTensor* tensor) {
   const auto* tensor_data = tensor->data<T>();
-  framework::Tensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   if (platform::is_gpu_place(tensor->place()) ||
       platform::is_npu_place(tensor->place())) {
-    paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(),
-                                      &cpu_tensor);
+    paddle::framework::TensorCopySync(
+        *tensor, platform::CPUPlace(), &cpu_tensor);
     tensor_data = cpu_tensor.data<T>();
   }
   return tensor_data[0];
@@ -35,8 +35,8 @@ template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto scale = ctx.Attr<float>("scale");
     auto bias = ctx.Attr<float>("bias");
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
@@ -47,7 +47,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
     VLOG(4) << "scale:" << scale << ", bias:" << bias
             << " ,bias_after_scale:" << bias_after_scale;
     if (ctx.HasInput("ScaleTensor")) {
-      auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
+      auto* scale_tensor = ctx.Input<phi::DenseTensor>("ScaleTensor");
       scale = static_cast<float>(GetAttrFromTensor<T>(scale_tensor));
     }
     if (isinf(scale)) {
@@ -70,23 +70,31 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
                       const std::vector<Tensor>& outputs,
                       const NPUAttributeMap& attrs,
                       const platform::NPUDeviceContext& dev_ctx) {
-      const auto& muls_runner = NpuOpRunner("Muls", {inputs[0]}, {outputs[0]},
-                                            {{"value", attrs.at("scale")}});
+      const auto& muls_runner = NpuOpRunner(
+          "Muls", {inputs[0]}, {outputs[0]}, {{"value", attrs.at("scale")}});
       muls_runner.Run(dev_ctx.stream());
 
-      const auto& adds_runner = NpuOpRunner("Adds", {outputs[0]}, {outputs[0]},
-                                            {{"value", attrs.at("shift")}});
+      const auto& adds_runner = NpuOpRunner(
+          "Adds", {outputs[0]}, {outputs[0]}, {{"value", attrs.at("shift")}});
       adds_runner.Run(dev_ctx.stream());
     };
 
     if (framework::TransToProtoVarType(x->dtype()) ==
         framework::proto::VarType::INT32) {
-      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {*out},
+                               attrs,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else if (framework::TransToProtoVarType(x->dtype()) ==
                framework::proto::VarType::INT64) {
-      NpuOpRunner::TypeAdapter({*x}, {*out}, attrs, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {*out},
+                               attrs,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -100,7 +108,8 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 REGISTER_OP_NPU_KERNEL(
-    scale, paddle::operators::ScaleNPUKernel<float>,
+    scale,
+    paddle::operators::ScaleNPUKernel<float>,
     paddle::operators::ScaleNPUKernel<paddle::platform::float16>,
     paddle::operators::ScaleNPUKernel<int64_t>,
     paddle::operators::ScaleNPUKernel<int>);

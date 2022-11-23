@@ -47,9 +47,11 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   ExtraInfo extrainfo;
   for (auto indx = 0; indx < node_trees_proto_->extra_info_size(); indx++) {
     ExtraInfoMap extra_info_map = node_trees_proto_->extra_info(indx);
-    extrainfo.AddExtraInfo(extra_info_map.key(), std::string("%s"),
+    extrainfo.AddExtraInfo(extra_info_map.key(),
+                           std::string("%s"),
                            extra_info_map.value().c_str());
   }
+
   // restore NodeTrees
   std::map<uint64_t, HostTraceEventNode*> thread_event_trees_map;
   for (int node_tree_index = 0;
@@ -126,14 +128,63 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   }
   // restore NodeTrees object
   std::unique_ptr<NodeTrees> tree(new NodeTrees(thread_event_trees_map));
-  return std::unique_ptr<ProfilerResult>(
-      new ProfilerResult(std::move(tree), extrainfo));
+// restore gpuDeviceProp
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  std::map<uint32_t, gpuDeviceProp> device_property_map;
+  for (auto indx = 0; indx < node_trees_proto_->device_property_size();
+       indx++) {
+    const DevicePropertyProto& device_property_proto =
+        node_trees_proto_->device_property(indx);
+    device_property_map[device_property_proto.id()] =
+        RestoreDeviceProperty(device_property_proto);
+  }
+  ProfilerResult* profiler_result_ptr =
+      new ProfilerResult(std::move(tree), extrainfo, device_property_map);
+#else
+  ProfilerResult* profiler_result_ptr =
+      new ProfilerResult(std::move(tree), extrainfo);
+#endif
+  // restore version and span indx
+  profiler_result_ptr->SetVersion(node_trees_proto_->version());
+  profiler_result_ptr->SetSpanIndx(node_trees_proto_->span_indx());
+  return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
 DeserializationReader::~DeserializationReader() {
   delete node_trees_proto_;
   input_file_stream_.close();
 }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+gpuDeviceProp DeserializationReader::RestoreDeviceProperty(
+    const DevicePropertyProto& device_property_proto) {
+  gpuDeviceProp device_property;
+  strncpy(device_property.name,
+          device_property_proto.name().c_str(),
+          device_property_proto.name().length() + 1);
+  device_property.totalGlobalMem = device_property_proto.total_global_memory();
+  device_property.major = device_property_proto.compute_major();
+  device_property.minor = device_property_proto.compute_minor();
+  device_property.multiProcessorCount = device_property_proto.sm_count();
+#if defined(PADDLE_WITH_CUDA)
+  device_property.maxThreadsPerBlock =
+      device_property_proto.max_threads_per_block();
+  device_property.maxThreadsPerMultiProcessor =
+      device_property_proto.max_threads_per_multiprocessor();
+  device_property.regsPerBlock = device_property_proto.regs_per_block();
+  device_property.regsPerMultiprocessor =
+      device_property_proto.regs_per_multiprocessor();
+  device_property.warpSize = device_property_proto.warp_size();
+  device_property.sharedMemPerBlock =
+      device_property_proto.shared_memory_per_block();
+  device_property.sharedMemPerMultiprocessor =
+      device_property_proto.shared_memory_per_multiprocessor();
+  device_property.sharedMemPerBlockOptin =
+      device_property_proto.shared_memory_per_block_optin();
+#endif
+  return device_property;
+}
+#endif
 
 DeviceTraceEventNode* DeserializationReader::RestoreDeviceTraceEventNode(
     const DeviceTraceEventNodeProto& device_node_proto) {
@@ -274,6 +325,10 @@ KernelEventInfo DeserializationReader::HandleKernelEventInfoProto(
   kernel_info.queued = kernel_info_proto.queued();
   kernel_info.submitted = kernel_info_proto.submitted();
   kernel_info.completed = kernel_info_proto.completed();
+  // version 1.0.2
+  kernel_info.blocks_per_sm = kernel_info_proto.blocks_per_sm();
+  kernel_info.warps_per_sm = kernel_info_proto.warps_per_sm();
+  kernel_info.occupancy = kernel_info_proto.occupancy();
   return kernel_info;
 }
 
@@ -283,11 +338,14 @@ MemcpyEventInfo DeserializationReader::HandleMemcpyEventInfoProto(
       device_event_proto.memcpy_info();
   MemcpyEventInfo memcpy_info;
   memcpy_info.num_bytes = memcpy_info_proto.num_bytes();
-  std::strncpy(memcpy_info.copy_kind, memcpy_info_proto.copy_kind().c_str(),
+  std::strncpy(memcpy_info.copy_kind,
+               memcpy_info_proto.copy_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.src_kind, memcpy_info_proto.src_kind().c_str(),
+  std::strncpy(memcpy_info.src_kind,
+               memcpy_info_proto.src_kind().c_str(),
                kMemKindMaxLen - 1);
-  std::strncpy(memcpy_info.dst_kind, memcpy_info_proto.dst_kind().c_str(),
+  std::strncpy(memcpy_info.dst_kind,
+               memcpy_info_proto.dst_kind().c_str(),
                kMemKindMaxLen - 1);
   return memcpy_info;
 }
@@ -298,7 +356,8 @@ MemsetEventInfo DeserializationReader::HandleMemsetEventInfoProto(
       device_event_proto.memset_info();
   MemsetEventInfo memset_info;
   memset_info.num_bytes = memset_info_proto.num_bytes();
-  std::strncpy(memset_info.memory_kind, memset_info_proto.memory_kind().c_str(),
+  std::strncpy(memset_info.memory_kind,
+               memset_info_proto.memory_kind().c_str(),
                kMemKindMaxLen - 1);
   memset_info.value = memset_info_proto.value();
   return memset_info;

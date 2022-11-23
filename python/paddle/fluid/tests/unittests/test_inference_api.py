@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, shutil
 import unittest
 import paddle
 
@@ -21,7 +20,7 @@ import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleTensor
 from paddle.fluid.core import PaddleDType
-from paddle.inference import Config, Predictor, create_predictor
+from paddle.inference import Config, create_predictor
 from paddle.inference import get_trt_compile_version, get_trt_runtime_version
 
 

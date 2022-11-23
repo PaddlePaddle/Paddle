@@ -20,19 +20,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
 using DataLayout = framework::DataLayout;
 
 inline std::vector<int> get_new_shape_mlu(
-    const std::vector<const Tensor*>& list_new_shape_tensor) {
+    const std::vector<const phi::DenseTensor*>& list_new_shape_tensor) {
   // get tensor from
   std::vector<int> vec_new_shape;
   for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(
-        tensor->dims(), phi::make_ddim({1}),
+        tensor->dims(),
+        phi::make_ddim({1}),
         platform::errors::InvalidArgument("shape of dim tensor should be [1]"));
-    framework::Tensor temp;
+    phi::DenseTensor temp;
     paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
     vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
   }
@@ -45,16 +45,18 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
     PADDLE_ENFORCE_GE(
-        input_dims.size(), 4,
+        input_dims.size(),
+        4,
         platform::errors::External("MLU Interpolate kernel supports input "
                                    "range greater or equal than 4."));
     PADDLE_ENFORCE_LE(
-        input_dims.size(), 5,
+        input_dims.size(),
+        5,
         platform::errors::External("MLU Interpolate kernel supports input "
                                    "range less or equal than 5. "));
 
@@ -76,7 +78,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
     float scale_h = -1;
     float scale_w = -1;
 
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_size_tensor.size() > 0) {
       // have size tensor
       auto new_size = get_new_shape_mlu(list_new_size_tensor);
@@ -91,7 +93,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
         out_w = new_size[2];
       }
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
@@ -110,7 +112,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
           scale_w = scale_data[0];
         }
         PADDLE_ENFORCE_EQ(
-            scale_w > 0 && scale_h > 0, true,
+            scale_w > 0 && scale_h > 0,
+            true,
             platform::errors::InvalidArgument("scale of Op(interpolate) "
                                               "should be greater than 0."));
       } else {
@@ -119,7 +122,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
           scale_w = scale[1];
 
           PADDLE_ENFORCE_EQ(
-              scale_w > 0 && scale_h > 0, true,
+              scale_w > 0 && scale_h > 0,
+              true,
               platform::errors::InvalidArgument("scale  of Op(interpolate) "
                                                 "should be greater than 0."));
         } else if (scale.size() > 2) {
@@ -127,7 +131,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
           scale_h = scale[1];
           scale_w = scale[2];
           PADDLE_ENFORCE_EQ(
-              scale_d > 0 && scale_w > 0 && scale_h > 0, true,
+              scale_d > 0 && scale_w > 0 && scale_h > 0,
+              true,
               platform::errors::InvalidArgument("scale  of Op(interpolate) "
                                                 "should be greater than 0."));
         }
@@ -140,7 +145,7 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       if (scale_d > 0.) {
         out_d = static_cast<int>(in_d * scale_d);
       }
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
         out_size_data = GetDataFromTensor<int>(out_size);
@@ -155,12 +160,14 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
       }
     }
     PADDLE_ENFORCE_GT(
-        out_h, 0,
+        out_h,
+        0,
         platform::errors::InvalidArgument("out_h in Attr(out_shape) of "
                                           "Op(interpolate) "
                                           "should be greater than 0."));
     PADDLE_ENFORCE_GT(
-        out_w, 0,
+        out_w,
+        0,
         platform::errors::InvalidArgument("out_w in Attr(out_shape) of "
                                           "Op(interpolate) "
                                           "should be greater than 0."));
@@ -190,8 +197,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
           return;
         }
         // do transpose on input tensor, then do interpolation
-        MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_NCHW,
-                                     ToCnnlDataType(input->dtype()));
+        MLUCnnlTensorDesc input_desc(
+            *input, CNNL_LAYOUT_NCHW, ToCnnlDataType(input->dtype()));
 
         transformed_input =
             ctx.AllocateTmpTensor<T, MLUDeviceContext>(dim_in_trans, dev_ctx);
@@ -199,11 +206,16 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
             ctx.AllocateTmpTensor<T, MLUDeviceContext>(dim_out_trans, dev_ctx);
 
         MLUCnnlTensorDesc input_reshaped_desc(
-            transformed_input, CNNL_LAYOUT_NHWC,
+            transformed_input,
+            CNNL_LAYOUT_NHWC,
             ToCnnlDataType(transformed_input.dtype()));
         const std::vector<int> perm = {0, 2, 3, 1};
-        MLUCnnl::Transpose(ctx, perm, input_dims.size(), input_desc.get(),
-                           GetBasePtr(input), input_reshaped_desc.get(),
+        MLUCnnl::Transpose(ctx,
+                           perm,
+                           input_dims.size(),
+                           input_desc.get(),
+                           GetBasePtr(input),
+                           input_reshaped_desc.get(),
                            GetBasePtr(&transformed_input));
       } else {
         // if no need_transpose, do the following
@@ -220,27 +232,38 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
         transformed_output = *output;
       }
 
-      MLUCnnlTensorDesc input_desc(transformed_input, CNNL_LAYOUT_NHWC,
+      MLUCnnlTensorDesc input_desc(transformed_input,
+                                   CNNL_LAYOUT_NHWC,
                                    ToCnnlDataType(transformed_input.dtype()));
-      MLUCnnlTensorDesc output_desc(transformed_output, CNNL_LAYOUT_NHWC,
+      MLUCnnlTensorDesc output_desc(transformed_output,
+                                    CNNL_LAYOUT_NHWC,
                                     ToCnnlDataType(transformed_output.dtype()));
-      MLUCnnl::Interp(ctx, GetMLUCnnlInterpMode(interp_method), align_corners,
-                      align_center, input_desc.get(),
-                      GetBasePtr(&transformed_input), output_desc.get(),
+      MLUCnnl::Interp(ctx,
+                      GetMLUCnnlInterpMode(interp_method),
+                      align_corners,
+                      align_center,
+                      input_desc.get(),
+                      GetBasePtr(&transformed_input),
+                      output_desc.get(),
                       GetBasePtr(&transformed_output));
 
       if (need_transpose) {
         // if need_transpose, reshape output back to NCHW
         const std::vector<int> perm = {0, 3, 1, 2};
-        MLUCnnlTensorDesc output_reshape_desc(*output, CNNL_LAYOUT_NCHW,
-                                              ToCnnlDataType(output->dtype()));
-        MLUCnnl::Transpose(ctx, perm, dim_out_trans.size(), output_desc.get(),
+        MLUCnnlTensorDesc output_reshape_desc(
+            *output, CNNL_LAYOUT_NCHW, ToCnnlDataType(output->dtype()));
+        MLUCnnl::Transpose(ctx,
+                           perm,
+                           dim_out_trans.size(),
+                           output_desc.get(),
                            GetBasePtr(&transformed_output),
-                           output_reshape_desc.get(), GetBasePtr(output));
+                           output_reshape_desc.get(),
+                           GetBasePtr(output));
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          interp_method, "trilinear",
+          interp_method,
+          "trilinear",
           platform::errors::External("MLU Interpolate kernel only supports 5D "
                                      "data in trilinear mode."));
 
@@ -262,8 +285,8 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
           return;
         }
         // do transpose on input tensor (HCDHW -> NDHWC), then do interpolation
-        MLUCnnlTensorDesc input_desc(*input, CNNL_LAYOUT_NCDHW,
-                                     ToCnnlDataType(input->dtype()));
+        MLUCnnlTensorDesc input_desc(
+            *input, CNNL_LAYOUT_NCDHW, ToCnnlDataType(input->dtype()));
 
         transformed_input =
             ctx.AllocateTmpTensor<T, MLUDeviceContext>(dim_in_trans, dev_ctx);
@@ -271,11 +294,16 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
             ctx.AllocateTmpTensor<T, MLUDeviceContext>(dim_out_trans, dev_ctx);
 
         MLUCnnlTensorDesc input_reshaped_desc(
-            transformed_input, CNNL_LAYOUT_NDHWC,
+            transformed_input,
+            CNNL_LAYOUT_NDHWC,
             ToCnnlDataType(transformed_input.dtype()));
         const std::vector<int> perm = {0, 2, 3, 4, 1};
-        MLUCnnl::Transpose(ctx, perm, input_dims.size(), input_desc.get(),
-                           GetBasePtr(input), input_reshaped_desc.get(),
+        MLUCnnl::Transpose(ctx,
+                           perm,
+                           input_dims.size(),
+                           input_desc.get(),
+                           GetBasePtr(input),
+                           input_reshaped_desc.get(),
                            GetBasePtr(&transformed_input));
       } else {
         // if no need_transpose, do the following
@@ -292,24 +320,34 @@ class InterpolateV2MLUKernel : public framework::OpKernel<T> {
         transformed_output = *output;
       }
 
-      MLUCnnlTensorDesc input_desc(transformed_input, CNNL_LAYOUT_NDHWC,
+      MLUCnnlTensorDesc input_desc(transformed_input,
+                                   CNNL_LAYOUT_NDHWC,
                                    ToCnnlDataType(transformed_input.dtype()));
-      MLUCnnlTensorDesc output_desc(transformed_output, CNNL_LAYOUT_NDHWC,
+      MLUCnnlTensorDesc output_desc(transformed_output,
+                                    CNNL_LAYOUT_NDHWC,
                                     ToCnnlDataType(transformed_output.dtype()));
       // use trilinear mode in HCDHW layout
-      MLUCnnl::Interp(ctx, GetMLUCnnlInterpMode(interp_method), align_corners,
-                      align_center, input_desc.get(),
-                      GetBasePtr(&transformed_input), output_desc.get(),
+      MLUCnnl::Interp(ctx,
+                      GetMLUCnnlInterpMode(interp_method),
+                      align_corners,
+                      align_center,
+                      input_desc.get(),
+                      GetBasePtr(&transformed_input),
+                      output_desc.get(),
                       GetBasePtr(&transformed_output));
 
       if (need_transpose) {
         // if need_transpose, reshape output back (NDHWC -> NCDHW)
         const std::vector<int> perm = {0, 4, 1, 2, 3};
-        MLUCnnlTensorDesc output_reshape_desc(*output, CNNL_LAYOUT_NCDHW,
-                                              ToCnnlDataType(output->dtype()));
-        MLUCnnl::Transpose(ctx, perm, dim_out_trans.size(), output_desc.get(),
+        MLUCnnlTensorDesc output_reshape_desc(
+            *output, CNNL_LAYOUT_NCDHW, ToCnnlDataType(output->dtype()));
+        MLUCnnl::Transpose(ctx,
+                           perm,
+                           dim_out_trans.size(),
+                           output_desc.get(),
                            GetBasePtr(&transformed_output),
-                           output_reshape_desc.get(), GetBasePtr(output));
+                           output_reshape_desc.get(),
+                           GetBasePtr(output));
       }
     }
   }
@@ -320,16 +358,19 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto output_grad_dims = output_grad->dims();
 
-    PADDLE_ENFORCE_EQ(output_grad_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(output_grad_dims.size(),
+                      4,
                       platform::errors::External(
                           "XPU Interpolategrad kernel only support 2d"));
 
-    auto* input = ctx.Input<Tensor>("X");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
     auto input_dims = input->dims();
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
@@ -348,14 +389,14 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     float scale_h = -1;
     float scale_w = -1;
 
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_size_tensor.size() > 0) {
       // have size tensor
       auto new_size = get_new_shape_mlu(list_new_size_tensor);
       out_h = new_size[0];
       out_w = new_size[1];
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         std::vector<float> scale_data;
@@ -368,7 +409,8 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
           scale_w = scale_data[0];
         }
         PADDLE_ENFORCE_EQ(
-            scale_w > 0 && scale_h > 0, true,
+            scale_w > 0 && scale_h > 0,
+            true,
             platform::errors::InvalidArgument("scale  of Op(interpolate) "
                                               "should be greater than 0."));
       } else {
@@ -377,7 +419,8 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
           scale_w = scale[1];
 
           PADDLE_ENFORCE_EQ(
-              scale_w > 0 && scale_h > 0, true,
+              scale_w > 0 && scale_h > 0,
+              true,
               platform::errors::InvalidArgument("scale  of Op(interpolate) "
                                                 "should be greater than 0."));
         }
@@ -386,7 +429,7 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
         out_h = static_cast<int>(in_h * scale_h);
         out_w = static_cast<int>(in_w * scale_w);
       }
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       if (out_size != nullptr) {
         std::vector<int32_t> out_size_data;
         out_size_data = GetDataFromTensor<int>(out_size);
@@ -418,8 +461,8 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
         return;
       }
       // do transpose on input tensor, then do interpolation
-      MLUCnnlTensorDesc input_desc(*output_grad, CNNL_LAYOUT_NCHW,
-                                   ToCnnlDataType(output_grad->dtype()));
+      MLUCnnlTensorDesc input_desc(
+          *output_grad, CNNL_LAYOUT_NCHW, ToCnnlDataType(output_grad->dtype()));
 
       transformed_output_grad = ctx.AllocateTmpTensor<T, MLUDeviceContext>(
           dim_out_trans_grad, dev_ctx);
@@ -427,11 +470,16 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
           dim_in_trans_grad, dev_ctx);
 
       MLUCnnlTensorDesc input_reshaped_desc(
-          transformed_output_grad, CNNL_LAYOUT_NHWC,
+          transformed_output_grad,
+          CNNL_LAYOUT_NHWC,
           ToCnnlDataType(transformed_output_grad.dtype()));
       const std::vector<int> perm = {0, 2, 3, 1};
-      MLUCnnl::Transpose(ctx, perm, input_dims.size(), input_desc.get(),
-                         GetBasePtr(output_grad), input_reshaped_desc.get(),
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         input_dims.size(),
+                         input_desc.get(),
+                         GetBasePtr(output_grad),
+                         input_reshaped_desc.get(),
                          GetBasePtr(&transformed_output_grad));
     } else {
       // if no need_transpose, do the following
@@ -448,23 +496,33 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
     }
 
     MLUCnnlTensorDesc input_desc(
-        transformed_output_grad, CNNL_LAYOUT_NHWC,
+        transformed_output_grad,
+        CNNL_LAYOUT_NHWC,
         ToCnnlDataType(transformed_output_grad.dtype()));
     MLUCnnlTensorDesc output_desc(
-        transformed_input_grad, CNNL_LAYOUT_NHWC,
+        transformed_input_grad,
+        CNNL_LAYOUT_NHWC,
         ToCnnlDataType(transformed_input_grad.dtype()));
-    MLUCnnl::InterpBackward(
-        ctx, GetMLUCnnlInterpBackwardMode(interp_method), align_corners,
-        align_center, input_desc.get(), GetBasePtr(&transformed_output_grad),
-        output_desc.get(), GetBasePtr(&transformed_input_grad));
+    MLUCnnl::InterpBackward(ctx,
+                            GetMLUCnnlInterpBackwardMode(interp_method),
+                            align_corners,
+                            align_center,
+                            input_desc.get(),
+                            GetBasePtr(&transformed_output_grad),
+                            output_desc.get(),
+                            GetBasePtr(&transformed_input_grad));
 
     if (need_transpose) {
       const std::vector<int> perm = {0, 3, 1, 2};
       MLUCnnlTensorDesc output_reshape_desc(
           *input_grad, CNNL_LAYOUT_NCHW, ToCnnlDataType(input_grad->dtype()));
-      MLUCnnl::Transpose(ctx, perm, dim_in_trans_grad.size(), output_desc.get(),
+      MLUCnnl::Transpose(ctx,
+                         perm,
+                         dim_in_trans_grad.size(),
+                         output_desc.get(),
                          GetBasePtr(&transformed_input_grad),
-                         output_reshape_desc.get(), GetBasePtr(input_grad));
+                         output_reshape_desc.get(),
+                         GetBasePtr(input_grad));
     }
   }
 };
@@ -475,9 +533,11 @@ class InterpolateV2GradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(bilinear_interp_v2, ops::InterpolateV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(bilinear_interp_v2,
+                       ops::InterpolateV2MLUKernel<float>,
                        ops::InterpolateV2MLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(nearest_interp_v2, ops::InterpolateV2MLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(nearest_interp_v2,
+                       ops::InterpolateV2MLUKernel<float>,
                        ops::InterpolateV2MLUKernel<plat::float16>);
 
 REGISTER_OP_MLU_KERNEL(nearest_interp_v2_grad,

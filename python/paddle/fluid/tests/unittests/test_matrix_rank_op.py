@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
 
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 paddle.enable_static()
 SEED = 2049
@@ -154,7 +150,7 @@ class TestMatrixRankAPI(unittest.TestCase):
         x_pd = paddle.to_tensor(x_np)
         rank_np = np.linalg.matrix_rank(x_np, hermitian=True)
         rank_pd = paddle.linalg.matrix_rank(x_pd, hermitian=True)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
         x_np = np.random.rand(3, 4, 7, 8).astype(np.float64)
         tol_np = np.random.random([3, 4]).astype(np.float32)
@@ -162,14 +158,14 @@ class TestMatrixRankAPI(unittest.TestCase):
         tol_pd = paddle.to_tensor(tol_np)
         rank_np = np.linalg.matrix_rank(x_np, tol_np, hermitian=False)
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol_pd, hermitian=False)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
         x_np = np.random.rand(3, 4, 7, 8).astype(np.float64)
         x_pd = paddle.to_tensor(x_np)
         tol = 0.1
         rank_np = np.linalg.matrix_rank(x_np, tol, hermitian=False)
         rank_pd = paddle.linalg.matrix_rank(x_pd, tol, hermitian=False)
-        self.assertTrue(np.allclose(rank_np, rank_pd))
+        np.testing.assert_allclose(rank_np, rank_pd, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -198,7 +194,7 @@ class TestMatrixRankAPI(unittest.TestCase):
                                       "TolTensor": tol_np
                                   },
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -212,7 +208,7 @@ class TestMatrixRankAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"X": x_np},
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -226,7 +222,7 @@ class TestMatrixRankAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"X": x_np},
                                   fetch_list=[rank_pd])
-                self.assertTrue(np.allclose(fetches[0], rank_np))
+                np.testing.assert_allclose(fetches[0], rank_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

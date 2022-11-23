@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 
 import paddle.fluid.core as core
@@ -63,6 +61,10 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     for attr_name in Operator.get_op_attr_names(op_type):
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
+
+    for extra_attr_name in Operator.get_op_extra_attr_names(op_type):
+        if extra_attr_name in attrs:
+            kwargs[extra_attr_name] = attrs[extra_attr_name]
 
     return Operator(op_type, **kwargs)
 

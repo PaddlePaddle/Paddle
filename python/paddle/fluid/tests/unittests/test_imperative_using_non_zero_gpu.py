@@ -25,7 +25,7 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
     def run_main(self, np_arr, place):
         with guard(place):
             var = to_variable(np_arr)
-            self.assertTrue(np.array_equal(np_arr, var.numpy()))
+            np.testing.assert_array_equal(np_arr, var.numpy())
 
     def func_non_zero_gpu(self):
         if not fluid.is_compiled_with_cuda():

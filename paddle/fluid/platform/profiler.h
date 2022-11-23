@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.pb.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -38,6 +37,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace platform {
+
+namespace proto {
+class Profile;
+}
 
 const int kEnableProfiler = 1;
 const int kDisableProfiler = 2;
@@ -244,6 +247,12 @@ void NvprofDisableRecordEvent();
 
 void EnableHostEventRecorder();
 void DisableHostEventRecorder();
+
+void EnableMemoryRecorder();
+void DisableMemoryRecorder();
+
+void EnableInputShapeRecorder();
+void DisableInputShapeRecorder();
 
 // Defined for UT
 std::string PrintHostEvents();

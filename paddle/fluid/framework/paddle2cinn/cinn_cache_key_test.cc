@@ -60,8 +60,8 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByStructure) {
 
   CinnCacheKeyByStructure cache_key5(
       empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByStructure cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                     "unk");
+  CinnCacheKeyByStructure cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);
@@ -133,8 +133,8 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKeyByAddress) {
 
   CinnCacheKeyByAddress cache_key5(
       empty_graph, std::map<std::string, const LoDTensor *>(), "unk");
-  CinnCacheKeyByAddress cache_key6(empty_graph, std::map<std::string, DDim>(),
-                                   "unk");
+  CinnCacheKeyByAddress cache_key6(
+      empty_graph, std::map<std::string, DDim>(), "unk");
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);

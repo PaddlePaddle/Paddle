@@ -31,7 +31,8 @@ class MultinomialOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "A tensor contains probabilities of categories");
     AddOutput("Out", "The output tensor of multinomial op");
     AddAttr<int>("num_samples", "number of the generated samples")
-        .SetDefault(1);
+        .SetDefault(1)
+        .SupportTensor();
     AddAttr<bool>("replacement", "can a category be sampled more than once")
         .SetDefault(false);
     AddComment(R"DOC(
@@ -46,6 +47,13 @@ This OP returns a Tensor filled with the sampled categoris according to Multinom
 class MultinomialOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
 };
 
 }  // namespace operators
@@ -53,10 +61,13 @@ class MultinomialOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-DECLARE_INFER_SHAPE_FUNCTOR(multinomial, MultinomialInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(multinomial,
+                            MultinomialInferShapeFunctor,
                             PD_INFER_META(phi::MultinomialInferMeta));
 REGISTER_OPERATOR(
-    multinomial, ops::MultinomialOp, ops::MultinomialOpMaker,
+    multinomial,
+    ops::MultinomialOp,
+    ops::MultinomialOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MultinomialInferShapeFunctor);

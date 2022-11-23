@@ -16,15 +16,15 @@
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(sequence_reverse, ops::SequenceReverseOp,
+REGISTER_OPERATOR(sequence_reverse,
+                  ops::SequenceReverseOp,
                   ops::SequenceReverseOpMaker,
                   ops::SequenceReverseGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceReverseGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_reverse,
-    ops::SequenceReverseOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SequenceReverseOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceReverseOpKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SequenceReverseOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceReverseOpKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(sequence_reverse,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, uint8_t>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, int>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, int64_t>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, float>,
+                       ops::SequenceReverseOpKernel<phi::CPUContext, double>);

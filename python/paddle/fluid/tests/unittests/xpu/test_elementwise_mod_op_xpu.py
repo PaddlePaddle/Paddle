@@ -18,7 +18,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 
 import paddle
 from op_test_xpu import XPUOpTest
@@ -111,7 +110,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 y = paddle.to_tensor(np_y)
                 z = x % y
                 z_expected = np.array([-0.9, 1.5, 1.3, -1.1])
-                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+                np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
                 np_x = np.random.rand(22, 128, 3).astype('int32')
                 np_y = np.random.rand(22, 128, 3).astype('int32')
@@ -128,7 +127,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 y = paddle.to_tensor(np_y, dtype="float16")
                 z = x % y
                 z_expected = np.array([0, 1, 1, -1])
-                self.assertEqual(np.allclose(z_expected, z.numpy()), True)
+                np.testing.assert_allclose(z_expected, z.numpy(), rtol=1e-05)
 
 
 support_types = get_xpu_op_support_types('elementwise_mod')

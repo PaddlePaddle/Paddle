@@ -21,8 +21,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -61,7 +59,6 @@ class TestBase(IPUOpTest):
     def run_model(self, exec_mode):
         ipu_strategy = paddle.static.IpuStrategy()
         ipu_strategy.set_graph_config(is_training=self.is_training)
-        ipu_strategy.set_options({'onnx_dump_path': 'onnx_dump_path.onnx'})
         self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
     def test(self):

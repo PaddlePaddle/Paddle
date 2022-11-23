@@ -109,11 +109,15 @@ _act_supported_quantizable_op_type = [
     "square",
     "softplus",
     "shuffle_channel",
+    "reduce_max",
+    "scale",
 ]
 
-_out_scale_op_list = list(
+QUANT_SUPPORTED_OP_TYPE_LIST = list(
     set(_weight_supported_quantizable_op_type +
         _act_supported_quantizable_op_type))
+
+_out_scale_op_list = QUANT_SUPPORTED_OP_TYPE_LIST
 
 _channelwise_quant_axis1_ops = [
     'conv2d_transpose', 'mul', 'matmul', 'matmul_v2'
@@ -191,7 +195,7 @@ _op_real_in_out_name = {
     "fill_any_like": [["X"], ["Out"]],
     "fill_constant": [[], ["Out"]],
     "gelu": [["X"], ["Out"]],
-    "instance_norm": [["X"], ["Out"]],
+    "instance_norm": [["X"], ["Y"]],
     "lookup_table": [["W", "Ids"], ["Out"]],
     "lookup_table_v2": [["W", "Ids"], ["Out"]],
     "norm": [["X"], ["Norm"]],
@@ -213,6 +217,8 @@ _op_real_in_out_name = {
     "square": [["X"], ["Out"]],
     "softplus": [["X"], ["Out"]],
     "shuffle_channel": [["X"], ["Out"]],
+    "reduce_max": [["X"], ["Out"]],
+    "scale": [["X"], ["Out"]],
 }
 
 
@@ -321,39 +327,41 @@ def set_variable_data(scope, place, var_name, np_value):
         tensor.set(np_value, place)
 
 
-def round_c_single_element(val):
-    dtype = type(val)
-    if val >= 0:
-        return dtype(np.floor(val + 0.5))
-    return dtype(np.ceil(val - 0.5))
+def quant_tensor(x, scale, quant_axis=0, weight_bits=8, onnx_format=False):
+    # symmetry quant
+    def _clip(x, scale):
+        x[x > scale] = scale
+        x[x < -scale] = -scale
+        return x
 
-
-# rounding to nearest ties away from zero
-round_c = np.vectorize(round_c_single_element)
-
-
-def quant_tensor(x,
-                 scale,
-                 quant_axis=0,
-                 weight_bits=8,
-                 round_type='TiesToEven'):
     assert quant_axis in [0, 1], 'quant_axis should be 0 or 1 for now.'
-    distribution = np.round if round_type == 'TiesToEven' else round_c
     bnt = (1 << (weight_bits - 1)) - 1
     if isinstance(scale, list):
         for i, s in enumerate(scale):
             if s == 0.0:
                 s = 1e-8
             if quant_axis == 0:
-                x[i] = distribution(x[i] / s * bnt)
-                x[i] = np.clip(x[i], -bnt - 1, bnt)
+                if onnx_format:
+                    x[i] = np.round(x[i] / s * bnt)
+                    x[i] = np.clip(x[i], -bnt - 1, bnt)
+                else:
+                    x[i] = _clip(x[i], s)
+                    x[i] = x[i] / s * bnt
             else:
-                x[:, i] = distribution(x[:, i] / s * bnt)
-                x[:, i] = np.clip(x[:, i], -bnt - 1, bnt)
+                if onnx_format:
+                    x[:, i] = np.round(x[:, i] / s * bnt)
+                    x[:, i] = np.clip(x[:, i], -bnt - 1, bnt)
+                else:
+                    x[:, i] = _clip(x[:, i], s)
+                    x[:, i] = x[:, i] / s * bnt
     else:
         scale = 1e-8 if scale == 0.0 else scale
-        x = distribution(x / scale * bnt)
-        x = np.clip(x, -bnt - 1, bnt)
+        if onnx_format:
+            x = np.round(x / scale * bnt)
+            x = np.clip(x, -bnt - 1, bnt)
+        else:
+            x = _clip(x, scale)
+            x = x / scale * bnt
     return x
 
 
@@ -423,6 +431,10 @@ def calculate_quant_cos_error(orig_tensor, qdq_tensor):
     cos_sim = np.inner(orig_tensor.flatten(), qdq_tensor.flatten()) \
               / (np.linalg.norm(orig_tensor.flatten()) * np.linalg.norm(qdq_tensor.flatten()))
     return cos_sim
+
+
+def l2_loss(gt, pred):
+    return ((gt - pred)**2).mean()
 
 
 class tqdm(object):

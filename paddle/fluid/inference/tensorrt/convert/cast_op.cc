@@ -37,7 +37,7 @@ class CastOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    auto out_dtype = BOOST_GET_CONST(int, op_desc.GetAttr("out_dtype"));
+    auto out_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("out_dtype"));
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 

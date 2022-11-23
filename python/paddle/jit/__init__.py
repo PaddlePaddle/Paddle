@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from ..fluid.dygraph.jit import save  # noqa: F401
 from ..fluid.dygraph.jit import load  # noqa: F401
 from ..fluid.dygraph.jit import TracedLayer  # noqa: F401

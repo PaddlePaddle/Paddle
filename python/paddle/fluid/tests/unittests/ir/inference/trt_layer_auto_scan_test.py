@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from auto_scan_test import TrtLayerAutoScanTest, SkipReasons  # noqa: F401

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -136,7 +134,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
         cost, predict = fluid.layers.softmax_with_cross_entropy(
             logits, label, return_softmax=True)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
         acc = fluid.layers.accuracy(input=predict, label=label)
 
         # Test program
@@ -460,7 +458,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 logits = fluid.layers.fc(input=net, size=10, act="softmax")
                 cost, predict = fluid.layers.softmax_with_cross_entropy(
                     logits, label, return_softmax=True)
-                avg_cost = fluid.layers.mean(cost)
+                avg_cost = paddle.mean(cost)
 
                 optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(

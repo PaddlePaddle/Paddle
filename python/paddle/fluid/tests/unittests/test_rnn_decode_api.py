@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import random
 import unittest
 import numpy as np
@@ -30,7 +28,6 @@ import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 
 from paddle.fluid.executor import Executor
-from paddle.fluid import framework
 from paddle.fluid.framework import _test_eager_guard
 
 paddle.enable_static()
@@ -683,11 +680,13 @@ class ModuleApiTest(unittest.TestCase):
         stgraph_output = self._calc_output(place, mode, dygraph=False)
         expect_output = getattr(self, "outputs", None)
         for actual_t, expect_t in zip(dygraph_output, stgraph_output):
-            self.assertTrue(np.allclose(actual_t, expect_t, rtol=1e-5, atol=0))
+            np.testing.assert_allclose(actual_t, expect_t, rtol=1e-05, atol=0)
         if expect_output:
             for actual_t, expect_t in zip(dygraph_output, expect_output):
-                self.assertTrue(
-                    np.allclose(actual_t, expect_t, rtol=1e-5, atol=0))
+                np.testing.assert_allclose(actual_t,
+                                           expect_t,
+                                           rtol=1e-05,
+                                           atol=0)
 
     def check_output(self):
         devices = ["CPU", "GPU"] if fluid.is_compiled_with_cuda() else ["CPU"]

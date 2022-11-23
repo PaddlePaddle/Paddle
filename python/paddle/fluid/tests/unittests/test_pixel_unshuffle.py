@@ -204,11 +204,13 @@ class TestPixelUnshuffleAPI(unittest.TestCase):
                                                        data_format=data_format)
             result = pixel_unshuffle(paddle.to_tensor(x))
 
-            self.assertTrue(np.allclose(result.numpy(), npresult))
+            np.testing.assert_allclose(result.numpy(), npresult, rtol=1e-05)
 
             result_functional = F.pixel_unshuffle(paddle.to_tensor(x), 3,
                                                   data_format)
-            self.assertTrue(np.allclose(result_functional.numpy(), npresult))
+            np.testing.assert_allclose(result_functional.numpy(),
+                                       npresult,
+                                       rtol=1e-05)
 
             pixel_unshuffle_str = 'downscale_factor={}'.format(down_factor)
             if data_format != 'NCHW':

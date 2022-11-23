@@ -20,7 +20,7 @@ __all__ = ['Fleet']
 
 class Fleet(object):
     """
-    
+
     """
 
     def __init__(self):

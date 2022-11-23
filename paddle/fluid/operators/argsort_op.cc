@@ -58,9 +58,9 @@ class ArgsortOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Argsort operator
 
-Performs sorting on the input tensor along the given axis and outputs two 
-tensors, Output(Out) and Output(Indices). They reserve the same shape 
-with Input(X), and Output(Out) represents the sorted tensor while 
+Performs sorting on the input tensor along the given axis and outputs two
+tensors, Output(Out) and Output(Indices). They reserve the same shape
+with Input(X), and Output(Out) represents the sorted tensor while
 Output(Indices) gives the sorted order along the given axis Attr(axis).
 
  )DOC");
@@ -101,11 +101,15 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ArgsortGradNoNeedBufferVarsInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(argsort, ArgsortInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(argsort,
+                            ArgsortInferShapeFunctor,
                             PD_INFER_META(phi::ArgsortInferMeta));
-REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
+REGISTER_OPERATOR(argsort,
+                  ops::ArgsortOp,
+                  ops::ArgsortOpMaker,
                   ops::ArgsortGradOpMaker<paddle::framework::OpDesc>,
                   ops::ArgsortGradOpMaker<paddle::imperative::OpBase>,
                   ArgsortInferShapeFunctor);
-REGISTER_OPERATOR(argsort_grad, ops::ArgsortGradOp,
+REGISTER_OPERATOR(argsort_grad,
+                  ops::ArgsortGradOp,
                   ops::ArgsortGradNoNeedBufferVarsInferer);

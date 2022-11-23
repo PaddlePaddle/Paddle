@@ -21,7 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
-void ErnieInputData(const int &total_batch_size, const bool enable_fp16,
+void ErnieInputData(const int &total_batch_size,
+                    const bool enable_fp16,
                     std::vector<PaddleTensor> *inputs) {
   const int input_num = total_batch_size * 128 * 1;
   std::vector<int64_t> placeholder_012(input_num, 1);
@@ -47,7 +48,8 @@ void ErnieInputData(const int &total_batch_size, const bool enable_fp16,
   }
 }
 
-void Resnet50InputData(const int &total_batch_size, const bool enable_fp16,
+void Resnet50InputData(const int &total_batch_size,
+                       const bool enable_fp16,
                        std::vector<paddle::PaddleTensor> *inputs) {
   const int input_num = total_batch_size * 3 * 318 * 318;
   std::vector<float> input(input_num, 1);
@@ -89,16 +91,21 @@ TEST(Analyzer_ipu_fp16, performance_profile) {
   }
   // ipu_device_num, ipu_micro_batch_size, ipu_enable_pipelining,
   // ipu_batches_per_step
-  config.EnableIpu(FLAGS_ipu_device_num, FLAGS_ipu_micro_batch_size,
-                   FLAGS_ipu_enable_pipelining, FLAGS_ipu_batches_per_step);
+  config.EnableIpu(FLAGS_ipu_device_num,
+                   FLAGS_ipu_micro_batch_size,
+                   FLAGS_ipu_enable_pipelining,
+                   FLAGS_ipu_batches_per_step);
   // ipu_enable_fp16, ipu_replica_num, ipu_available_memory_proportion,
   // ipu_enable_half_partial
-  config.SetIpuConfig(FLAGS_ipu_enable_fp16, FLAGS_ipu_replica_num,
+  config.SetIpuConfig(FLAGS_ipu_enable_fp16,
+                      FLAGS_ipu_replica_num,
                       FLAGS_ipu_available_memory_proportion,
                       FLAGS_ipu_enable_half_partial);
 
   TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 {inputs}, &outputs, 1);
+                 {inputs},
+                 &outputs,
+                 1);
 }
 
 }  // namespace inference

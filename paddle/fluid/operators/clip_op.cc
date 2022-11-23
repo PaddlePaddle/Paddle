@@ -30,14 +30,6 @@ class ClipOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -63,16 +55,6 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
         "input(x)");
     AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
     AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Clip Operator.
 
@@ -93,8 +75,10 @@ class ClipOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "clip_grad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "clip_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "clip_grad");
     auto x_dims = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -105,14 +89,6 @@ class ClipOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -170,13 +146,19 @@ class ClipDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(clip, ClipInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(clip,
+                            ClipInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
-REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
+REGISTER_OPERATOR(clip,
+                  ops::ClipOp,
+                  ops::ClipOpMaker<float>,
                   ops::ClipGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipGradOpMaker<paddle::imperative::OpBase>,
-                  ops::ClipInplaceInferer, ClipInferShapeFunctor);
-REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer,
+                  ops::ClipInplaceInferer,
+                  ClipInferShapeFunctor);
+REGISTER_OPERATOR(clip_grad,
+                  ops::ClipOpGrad,
+                  ops::ClipGradInplaceInferer,
                   ops::ClipDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ClipDoubleGradOpMaker<paddle::imperative::OpBase>);
 

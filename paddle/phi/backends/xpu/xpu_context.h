@@ -61,6 +61,10 @@ class XPUContext : public DeviceContext {
 
   void SetL3Cache(int l3_size = 14155776);
 
+  void SetXPUStream(XPUStream stream);
+
+  XPUStream stream() const;
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

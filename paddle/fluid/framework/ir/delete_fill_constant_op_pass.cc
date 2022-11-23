@@ -63,9 +63,9 @@ void DeleteFillConstantOpPass::ApplyImpl(ir::Graph* graph) const {
     Node* fill_constant_out_node = subgraph.at(fill_constant_out);
     // Get fill_constant's attr
     auto fill_constant = fill_constant_op_node->Op();
-    auto value = BOOST_GET_CONST(float, fill_constant->GetAttr("value"));
+    auto value = PADDLE_GET_CONST(float, fill_constant->GetAttr("value"));
     auto shape =
-        BOOST_GET_CONST(std::vector<int64_t>, fill_constant->GetAttr("shape"));
+        PADDLE_GET_CONST(std::vector<int64_t>, fill_constant->GetAttr("shape"));
     auto* scope = param_scope();
     auto fill_constant_out_desc = fill_constant_out_node->Var();
     fill_constant_out_desc->SetShape(shape);

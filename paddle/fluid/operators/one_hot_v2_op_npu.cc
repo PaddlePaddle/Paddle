@@ -17,8 +17,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
 class OneHotV2NPUKernel : public framework::OpKernel<T> {
@@ -31,7 +31,7 @@ class OneHotV2NPUKernel : public framework::OpKernel<T> {
     int depth = ctx.Attr<int>("depth");
 
     if (ctx.HasInput("depth_tensor")) {
-      auto* depth_tensor = ctx.Input<Tensor>("depth_tensor");
+      auto* depth_tensor = ctx.Input<phi::DenseTensor>("depth_tensor");
       std::vector<int32_t> depth_data;
       framework::TensorToVector(*depth_tensor, dev_ctx, &depth_data);
       depth = depth_data[0];
@@ -56,8 +56,8 @@ class OneHotV2NPUKernel : public framework::OpKernel<T> {
     } else {
       Tensor transformed_in;
       transformed_in.mutable_data<int32_t>(in->dims(), dev_ctx.GetPlace());
-      const auto& cast_runner = NpuOpRunner("Cast", {*in}, {transformed_in},
-                                            {{"dst_type", ACL_INT32}});
+      const auto& cast_runner = NpuOpRunner(
+          "Cast", {*in}, {transformed_in}, {{"dst_type", ACL_INT32}});
       cast_runner.Run(dev_ctx.stream());
       NpuOpRunner runner;
       runner.SetType("OneHot")
@@ -78,5 +78,6 @@ class OneHotV2NPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(one_hot_v2, ops::OneHotV2NPUKernel<int32_t>,
+REGISTER_OP_NPU_KERNEL(one_hot_v2,
+                       ops::OneHotV2NPUKernel<int32_t>,
                        ops::OneHotV2NPUKernel<int64_t>);

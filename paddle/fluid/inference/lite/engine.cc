@@ -46,8 +46,8 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
     const std::string& name, const EngineConfig& cfg) {
   // config info for predictor.
   paddle::lite_api::CxxConfig lite_cxx_config;
-  lite_cxx_config.set_model_buffer(cfg.model.c_str(), cfg.model.size(),
-                                   cfg.param.c_str(), cfg.param.size());
+  lite_cxx_config.set_model_buffer(
+      cfg.model.c_str(), cfg.model.size(), cfg.param.c_str(), cfg.param.size());
   lite_cxx_config.set_valid_places(cfg.valid_places);
 #ifdef PADDLE_WITH_ARM
   lite_cxx_config.set_threads(cfg.cpu_math_library_num_threads);

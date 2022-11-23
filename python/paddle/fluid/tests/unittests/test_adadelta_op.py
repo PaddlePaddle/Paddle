@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -136,7 +134,7 @@ class TestAdadeltaV2(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Adadelta(learning_rate=0.1)
             rms_optimizer.minimize(avg_cost)

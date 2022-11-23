@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
 import os
-import sys
-import time
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")

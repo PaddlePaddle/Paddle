@@ -14,8 +14,6 @@
 
 # Test set_value op in static mode
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -23,8 +21,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
 from functools import reduce
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
-
+from paddle.fluid.framework import _test_eager_guard
 
 class TestSetValueBase(unittest.TestCase):
 
@@ -576,6 +573,28 @@ create_test_value_int64(TestSetValueItemSlice3)
 create_test_value_int64(TestSetValueItemSlice4)
 
 
+def create_test_value_fp16(parent):
+
+    class TestValueInt(parent):
+
+        def set_value(self):
+            self.value = 3.7
+
+        def set_dtype(self):
+            self.dtype = "float16"
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Valuefp16")
+    TestValueInt.__name__ = cls_name
+    globals()[cls_name] = TestValueInt
+
+
+create_test_value_fp16(TestSetValueItemInt)
+create_test_value_fp16(TestSetValueItemSlice)
+create_test_value_fp16(TestSetValueItemSlice2)
+create_test_value_fp16(TestSetValueItemSlice3)
+create_test_value_fp16(TestSetValueItemSlice4)
+
+
 def create_test_value_fp32(parent):
 
     class TestValueInt(parent):
@@ -1015,7 +1034,6 @@ class TestError(TestSetValueBase):
         paddle.enable_static()
         with paddle.static.program_guard(self.program):
             self._value_type_error()
-            self._dtype_error()
             self._step_error()
             self._bool_list_error()
             self._bool_tensor_error()
@@ -1133,13 +1151,15 @@ class TestGradientTruncated(unittest.TestCase):
                                   [[2916., 4000., 5324., 6912.]]]],
                                 [[[[0., 0., 0., 0.]], [[0., 0., 0., 0.]],
                                   [[0., 0., 0., 0.]]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
             format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
             format(value_grad, value.grad.numpy()))
 
         # case 2
@@ -1159,13 +1179,15 @@ class TestGradientTruncated(unittest.TestCase):
                                  [16384., 19652., 23328.]],
                                 [[27436., 32000., 37044.],
                                  [42592., 48668., 55296.]]])
-        self.assertTrue(
-            np.array_equal(inps2.grad.numpy(), input_grad2),
-            msg="The gradient of value should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            inps2.grad.numpy(),
+            input_grad2,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
             format(input_grad, inps2.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value2.grad.numpy(), value_grad2),
-            msg="The gradient of input should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            value2.grad.numpy(),
+            value_grad2,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
             format(value_grad, value2.grad.numpy()))
 
         # case 3
@@ -1196,13 +1218,15 @@ class TestGradientTruncated(unittest.TestCase):
                                [[[[[27436.], [32000.]]]],
                                 [[[[37044.], [42592.]]]],
                                 [[[[48668.], [55296.]]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
             format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
             format(value_grad, value.grad.numpy()))
 
         #case 4: step >0
@@ -1229,13 +1253,15 @@ class TestGradientTruncated(unittest.TestCase):
                                [[[[8788.], [10976.], [13500.], [16384.]]],
                                 [[[19652.], [23328.], [27436.], [32000.]]],
                                 [[[37044.], [42592.], [48668.], [55296.]]]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
             format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
             format(value_grad, value.grad.numpy()))
 
         # case 5:a[0].shape==value.shape
@@ -1262,13 +1288,15 @@ class TestGradientTruncated(unittest.TestCase):
                                [[8788., 10976., 13500., 16384.],
                                 [19652., 23328., 27436., 32000.],
                                 [37044., 42592., 48668., 55296.]]])
-        self.assertTrue(
-            np.array_equal(inps.grad.numpy(), input_grad),
-            msg="The gradient of value should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            inps.grad.numpy(),
+            input_grad,
+            err_msg='The gradient of value should be \n{},\n but reveived {}'.
             format(input_grad, inps.grad.numpy()))
-        self.assertTrue(
-            np.array_equal(value.grad.numpy(), value_grad),
-            msg="The gradient of input should be \n{},\n but reveived {}".
+        np.testing.assert_array_equal(
+            value.grad.numpy(),
+            value_grad,
+            err_msg='The gradient of input should be \n{},\n but reveived {}'.
             format(value_grad, value.grad.numpy()))
 
         # case 6: pass stop_gradient from value to x
@@ -1413,7 +1441,6 @@ class TestGradientTruncated(unittest.TestCase):
             # When `input.stop_gradient = True` and `value.stop_gradient = False`,
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
-
             y2 = y + 1
             loss = paddle.fluid.layers.reduce_sum(y2)
             sgd = paddle.optimizer.Adam()
@@ -1472,7 +1499,7 @@ class TestSetValueInplace(unittest.TestCase):
             b[paddle.to_tensor(0)] = 1.0
 
             self.assertTrue(id(b) == id(c))
-            self.assertTrue(np.array_equal(b.numpy(), c.numpy()))
+            np.testing.assert_array_equal(b.numpy(), c.numpy())
             self.assertEqual(b.inplace_version, 1)
 
         paddle.enable_static()
@@ -1510,8 +1537,8 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
             a_grad_2 = a.grad.numpy()
             b_grad_2 = b.grad.numpy()
 
-        self.assertTrue(np.array_equal(a_grad_1, a_grad_2))
-        self.assertTrue(np.array_equal(b_grad_1, b_grad_2))
+        np.testing.assert_array_equal(a_grad_1, a_grad_2)
+        np.testing.assert_array_equal(b_grad_1, b_grad_2)
         paddle.enable_static()
 
 

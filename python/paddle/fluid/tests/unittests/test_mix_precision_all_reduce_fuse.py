@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid.core as core
-import math
-import os
-import sys
 import unittest
 
 import numpy as np
@@ -33,7 +28,7 @@ img_shape = [1, 28, 28]
 def loss_net(hidden, label):
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
     return avg_loss
 
 

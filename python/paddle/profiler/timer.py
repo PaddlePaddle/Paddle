@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import timeit
-import logging
 from collections import OrderedDict
 
 
@@ -169,7 +168,7 @@ class Hook(object):
 class TimerHook(Hook):
     """
     A hook for recording real-time performance and the summary
-    performance of total steps. 
+    performance of total steps.
     """
 
     def __init__(self):

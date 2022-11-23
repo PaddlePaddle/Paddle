@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import warnings
 import numpy as np
 
@@ -127,7 +125,7 @@ class Evaluator(object):
 
 class ChunkEvaluator(Evaluator):
     """
-    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
+    Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator
     instead.
 
     Accumulate counter numbers output by chunk_eval from mini-batches and

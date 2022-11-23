@@ -51,7 +51,7 @@ class TestContextPool(unittest.TestCase):
         x = paddle.ones([2, 2], dtype='float32')
         out = custom_ops.context_pool_test(x)
 
-        self.assertTrue(np.array_equal(x.numpy(), out.numpy()))
+        np.testing.assert_array_equal(x.numpy(), out.numpy())
 
     def test_using_context_pool(self):
         with _test_eager_guard():

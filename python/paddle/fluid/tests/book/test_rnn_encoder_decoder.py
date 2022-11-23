@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
 import contextlib
 import math
 import sys
@@ -158,7 +154,7 @@ def seq_to_seq_net():
                               dtype='int64',
                               lod_level=1)
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     return avg_cost, prediction
 

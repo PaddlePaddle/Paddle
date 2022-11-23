@@ -20,7 +20,7 @@ cc_library(
   SRCS ${C_API_SRCS}
   DEPS paddle_inference)
 
-if(NOT ON_INFER)
+if(NOT ON_INFER AND NOT WIN32)
   return()
 endif()
 

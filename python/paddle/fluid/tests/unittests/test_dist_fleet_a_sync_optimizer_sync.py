@@ -17,7 +17,6 @@ import paddle
 import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 
@@ -41,7 +40,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False

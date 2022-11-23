@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -28,8 +29,7 @@ __global__ void FillOutputKernel(const InT* p_in_data,
                                  OutT* p_out_data,
                                  const int64_t numel,
                                  const int depth) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx < numel) {
+  CUDA_KERNEL_LOOP_TYPE(idx, numel, int64_t) {
     PADDLE_ENFORCE(p_in_data[idx] >= 0 && p_in_data[idx] < depth,
                    "Illegal index value, Input(input) value should be "
                    "greater than or equal to 0, and less than depth [%d], "
@@ -62,9 +62,10 @@ struct OneHotV2OpCUDAFunctor {
     auto stream = ctx_.stream();
     funcs::set_constant(ctx_, out_, 0.0);
 
-    FillOutputKernel<<<(numel + PADDLE_CUDA_NUM_THREADS - 1) /
-                           PADDLE_CUDA_NUM_THREADS,
-                       PADDLE_CUDA_NUM_THREADS,
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
+
+    FillOutputKernel<<<config.block_per_grid,
+                       config.thread_per_block,
                        0,
                        stream>>>(p_in_data, p_out_data, numel, depth_);
   }

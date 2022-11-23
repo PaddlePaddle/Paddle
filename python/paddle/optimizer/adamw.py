@@ -25,7 +25,7 @@ from ..fluid.layer_helper import LayerHelper
 from ..fluid.clip import GradientClipBase
 from ..fluid.dygraph import base as imperative_base
 from collections.abc import Callable
-from .. import _C_ops
+from .. import _C_ops, _legacy_C_ops
 import paddle
 
 __all__ = []
@@ -45,7 +45,7 @@ class AdamW(Optimizer):
 
         moemnt\_2\_out & = {\beta}_2 * moment\_2 + (1 - {\beta}_2) * grad * grad
 
-        learning\_rate & = learning\_rate * 
+        learning\_rate & = learning\_rate *
             \frac{\sqrt{1 - {\beta}_2^t}}{1 - {beta}_1^t}
 
         param\_out & = param - learning\_rate * (\frac{moment\_1}{\sqrt{moment\_2} + \epsilon} + \lambda * param)
@@ -54,12 +54,12 @@ class AdamW(Optimizer):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-	    The default value is None in static mode, at this time all parameters will be updated.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``.
+            This parameter is required in dygraph mode. And you can specify different options for
+            different parameter groups such as the learning rate, weight decay, etc,
+            then the parameters are list of dict. Note that the learning_rate in paramter groups
+            represents the scale of base learning_rate.
+            The default value is None in static mode, at this time all parameters will be updated.
         beta1 (float|Tensor, optional): The exponential decay rate for the 1st moment estimates.
             It should be a float number or a Tensor with shape [1] and data type as float32.
             The default value is 0.9.
@@ -69,7 +69,7 @@ class AdamW(Optimizer):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
-        lr_ratio (function|None, optional): If it is not None, 
+        lr_ratio (function|None, optional): If it is not None,
             the learning rate will be updated with layerwise learning rate ratio.
             Otherwise, the learning rate is the original.
             Default: None.
@@ -97,7 +97,7 @@ class AdamW(Optimizer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             linear = paddle.nn.Linear(10, 10)
@@ -136,7 +136,7 @@ class AdamW(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             opt.step()
             opt.clear_grad()
@@ -443,14 +443,14 @@ class AdamW(Optimizer):
 
             if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
-                _, _, _, _, _, _ = _C_ops.final_state_adamw(
+                _, _, _, _, _, _ = _C_ops.adamw_(
                     param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                     beta1_pow_acc, beta2_pow_acc, master_weight, found_inf,
                     _beta1, _beta2, self._epsilon, lr_ratio_,
                     self._weight_decay, with_decay, self._lazy_mode, 1000,
                     find_master, False)
             else:
-                _, _, _, _, _, _ = _C_ops.adamw(
+                _, _, _, _, _, _ = _legacy_C_ops.adamw(
                     param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                     beta1_pow_acc, beta2_pow_acc, master_weight,
                     param_and_grad[0], moment1, moment2, beta1_pow_acc,
@@ -541,7 +541,7 @@ class AdamW(Optimizer):
             .. code-block:: python
 
                 import paddle
-                
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.

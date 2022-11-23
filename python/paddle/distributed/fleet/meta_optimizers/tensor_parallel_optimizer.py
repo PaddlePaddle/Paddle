@@ -11,13 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from __future__ import print_function
-from __future__ import division
-
 import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
+from .common import CollectiveHelper, OP_ROLE_KEY, OP_ROLE_VAR_KEY, OpRole, is_backward_op, is_loss_grad_op, is_optimizer_op
 
 __all__ = []
 

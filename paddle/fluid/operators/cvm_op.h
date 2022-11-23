@@ -19,11 +19,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename T>
-void CvmComputeKernel(const bool use_cvm, const int64_t item_width, const T** X,
+void CvmComputeKernel(const bool use_cvm,
+                      const int64_t item_width,
+                      const T** X,
                       T** Y) {
   const auto cvm_offset = use_cvm ? 0 : 2;
 
@@ -39,8 +41,11 @@ void CvmComputeKernel(const bool use_cvm, const int64_t item_width, const T** X,
 }
 
 template <typename T>
-void CvmGradComputeKernel(const bool use_cvm, const int64_t item_width,
-                          const T& CVM, const T** DY, T** DX) {
+void CvmGradComputeKernel(const bool use_cvm,
+                          const int64_t item_width,
+                          const T& CVM,
+                          const T** DY,
+                          T** DX) {
   const auto cvm_offset = use_cvm ? 0 : 2;
 
   std::memcpy(*DX + cvm_offset, *DY, (item_width - cvm_offset) * sizeof(T));
@@ -100,11 +105,11 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
     auto* dx = context.Output<LoDTensor>(framework::GradVarName("X"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
-    const Tensor* cvm = context.Input<Tensor>("CVM");
+    const phi::DenseTensor* cvm = context.Input<phi::DenseTensor>("CVM");
     const T* cvm_data = cvm->data<T>();
 
     const auto* dOut =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Y"));
+        context.Input<phi::DenseTensor>(framework::GradVarName("Y"));
     const T* dout_data = dOut->data<T>();
 
     auto use_cvm = context.Attr<bool>("use_cvm");
@@ -116,8 +121,8 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
     // for Input X do not have Lod Information.
     if (dx->NumLevels() == 0) {
       for (int x = 0; x < batch_size; ++x) {
-        CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data,
-                             &dx_data);
+        CvmGradComputeKernel(
+            use_cvm, item_size, *cvm_data, &dout_data, &dx_data);
         cvm_data += offset;
       }
     } else {
@@ -125,8 +130,8 @@ class CVMGradOpKernel : public framework::OpKernel<T> {
       int seq_num = static_cast<int>(lod.size()) - 1;
       for (int i = 0; i < seq_num; ++i) {
         for (size_t j = 0; j < lod[i + 1] - lod[i]; ++j) {
-          CvmGradComputeKernel(use_cvm, item_size, *cvm_data, &dout_data,
-                               &dx_data);
+          CvmGradComputeKernel(
+              use_cvm, item_size, *cvm_data, &dout_data, &dx_data);
         }
         cvm_data += offset;
       }

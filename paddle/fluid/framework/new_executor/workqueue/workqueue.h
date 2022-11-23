@@ -55,8 +55,10 @@ class FakeCopyable {
 class EventsWaiter;
 
 struct WorkQueueOptions {
-  WorkQueueOptions(const std::string& name, size_t num_threads,
-                   bool allow_spinning, bool track_task)
+  WorkQueueOptions(const std::string& name,
+                   size_t num_threads,
+                   bool allow_spinning,
+                   bool track_task)
       : name(name),
         num_threads(num_threads),
         allow_spinning(allow_spinning),
@@ -64,9 +66,13 @@ struct WorkQueueOptions {
     Validate();
   }
 
-  WorkQueueOptions(const std::string& name, size_t num_threads,
-                   bool allow_spinning, bool always_spinning, bool track_task,
-                   bool detached, EventsWaiter* waiter)
+  WorkQueueOptions(const std::string& name,
+                   size_t num_threads,
+                   bool allow_spinning,
+                   bool always_spinning,
+                   bool track_task,
+                   bool detached,
+                   EventsWaiter* waiter)
       : name(name),
         num_threads(num_threads),
         allow_spinning(allow_spinning),
@@ -119,10 +125,9 @@ class WorkQueue {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask([t = std::move(task), p = FakeCopyable<std::promise<ReturnType>>(
-                                      std::move(prom))]() mutable {
-      p.Get().set_value(t());
-    });
+    AddTask([t = std::move(task),
+             p = FakeCopyable<std::promise<ReturnType>>(
+                 std::move(prom))]() mutable { p.Get().set_value(t()); });
     return res;
   }
 
@@ -159,9 +164,10 @@ class WorkQueueGroup {
         std::bind(std::forward<F>(f), std::forward<Args>(args)...);
     std::promise<ReturnType> prom;
     std::future<ReturnType> res = prom.get_future();
-    AddTask(queue_idx, [t = std::move(task),
-                        p = FakeCopyable<std::promise<ReturnType>>(std::move(
-                            prom))]() mutable { p.Get().set_value(t()); });
+    AddTask(queue_idx,
+            [t = std::move(task),
+             p = FakeCopyable<std::promise<ReturnType>>(
+                 std::move(prom))]() mutable { p.Get().set_value(t()); });
     return res;
   }
 

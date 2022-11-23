@@ -104,10 +104,13 @@ class EinsumGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(einsum, EinsumInferShapeFunctor,
-                            PD_INFER_META(phi::EinsumInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(einsum,
+                            EinsumInferShapeFunctor,
+                            PD_INFER_META(phi::EinsumRawInferMeta));
 
-REGISTER_OPERATOR(einsum, ops::EinsumOp, ops::EinsumOpMaker,
+REGISTER_OPERATOR(einsum,
+                  ops::EinsumOp,
+                  ops::EinsumOpMaker,
                   EinsumInferShapeFunctor,
                   ops::EinsumGradMaker<paddle::framework::OpDesc>,
                   ops::EinsumGradMaker<paddle::imperative::OpBase>);

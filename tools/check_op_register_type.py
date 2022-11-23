@@ -18,7 +18,6 @@ Usage:
     python check_op_register_type.py > all_kernels.txt
     python check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid
 """
-from __future__ import print_function
 import sys
 import re
 import difflib

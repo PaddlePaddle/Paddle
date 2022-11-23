@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
 import numpy as np
 import sys
@@ -165,9 +164,13 @@ class TestDygraphGNN(unittest.TestCase):
             model2_gc_weight_value = model2.gc.weight.numpy()
 
         self.assertEqual(static_loss, loss_value)
-        self.assertTrue(np.allclose(static_weight, model_gc_weight_value))
+        np.testing.assert_allclose(static_weight,
+                                   model_gc_weight_value,
+                                   rtol=1e-05)
         self.assertEqual(static_loss, loss2_value)
-        self.assertTrue(np.allclose(static_weight, model2_gc_weight_value))
+        np.testing.assert_allclose(static_weight,
+                                   model2_gc_weight_value,
+                                   rtol=1e-05)
         sys.stderr.write('%s %s\n' % (static_loss, loss_value))
 
     def test_gnn_float32(self):

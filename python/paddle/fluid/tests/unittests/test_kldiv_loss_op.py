@@ -11,8 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import paddle
 import unittest
 import numpy as np
@@ -101,7 +99,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(paddle.to_tensor(x),
                                         paddle.to_tensor(target))
-            self.assertTrue(np.allclose(pred_loss.numpy(), gt_loss))
+            np.testing.assert_allclose(pred_loss.numpy(), gt_loss, rtol=1e-05)
 
     def test_kl_loss_batchmean(self):
         self.run_kl_loss('batchmean')

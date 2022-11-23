@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
 from paddle.fluid import compiler
 import paddle.fluid.core as core
 import unittest
 import paddle
-import numpy as np
 import os
 
 word_dict, verb_dict, label_dict = conll05.get_dict()
@@ -160,7 +157,7 @@ class TestCRFModel(unittest.TestCase):
                     input=feature_out,
                     label=target,
                     param_attr=fluid.ParamAttr(name='crfw', learning_rate=1e-1))
-                avg_cost = fluid.layers.mean(crf_cost)
+                avg_cost = paddle.mean(crf_cost)
 
                 sgd_optimizer = fluid.optimizer.SGD(
                     learning_rate=fluid.layers.exponential_decay(

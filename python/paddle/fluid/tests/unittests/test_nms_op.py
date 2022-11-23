@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle
 
 
 def iou(box_a, box_b):
@@ -64,29 +65,32 @@ def nms(boxes, nms_threshold):
             else:
                 continue
 
-    return selected_indices
+    return selected_indices[:cnt]
 
 
 class TestNMSOp(OpTest):
 
     def setUp(self):
         self.op_type = 'nms'
+        self.python_api = paddle.vision.ops.nms
         self.dtype = np.float64
         self.init_dtype_type()
         boxes = np.random.rand(32, 4).astype(self.dtype)
         boxes[:, 2] = boxes[:, 0] + boxes[:, 2]
         boxes[:, 3] = boxes[:, 1] + boxes[:, 3]
 
+        paddle.disable_static()
         self.inputs = {'Boxes': boxes}
         self.attrs = {'iou_threshold': 0.5}
         out_py = nms(boxes, self.attrs['iou_threshold'])
         self.outputs = {'KeepBoxesIdxs': out_py}
+        paddle.enable_static()
 
     def init_dtype_type(self):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_eager=True)
 
 
 if __name__ == "__main__":

@@ -13,19 +13,11 @@
 # limitations under the License.
 """Test cases for Downpour."""
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import os
-import signal
-import subprocess
-import time
 import unittest
 import sys
-from op_test import OpTest
-from paddle.fluid.trainer_desc import DistMultiTrainer
-from paddle.fluid.device_worker import DownpourSGD, DownpourSGDOPT
 from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker, DownpourServer
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
@@ -60,7 +52,7 @@ class TestListenAndServOp(unittest.TestCase):
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
             with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
@@ -120,7 +112,7 @@ class TestListenAndServOp(unittest.TestCase):
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
             with open("{}/fleet_desc.prototxt".format(cache_path)) as f:
@@ -178,7 +170,7 @@ class TestListenAndServOp(unittest.TestCase):
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             ps_param = pslib.PSParameter()
             with open("{}/fleet_desc.prototxt".format(cache_path)) as f:

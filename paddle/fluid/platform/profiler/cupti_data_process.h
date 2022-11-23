@@ -24,7 +24,8 @@ namespace platform {
 namespace details {
 #ifdef PADDLE_WITH_CUPTI
 void ProcessCuptiActivityRecord(
-    const CUpti_Activity* record, uint64_t start_ns,
+    const CUpti_Activity* record,
+    uint64_t start_ns,
     const std::unordered_map<uint32_t, uint64_t> tid_mapping,
     TraceEventCollector* collector);
 #endif

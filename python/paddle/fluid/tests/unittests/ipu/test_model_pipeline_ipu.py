@@ -12,79 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
 import paddle
 import paddle.static
-
-paddle.enable_static()
-SEED = 2021
+from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
-class TestCastNet(unittest.TestCase):
+class TestBase(IPUOpTest):
 
-    def _test(self, run_ipu=True):
-        scope = paddle.static.Scope()
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        np.random.seed(SEED)
+    def setUp(self):
+        self.set_training()
+        self.set_data_feed()
+        self.set_feed_attr()
 
-        np_image = np.random.rand(1, 3, 10, 10).astype(np.float32)
+    def set_data_feed(self):
+        data = np.random.uniform(size=[2, 3, 10, 10])
+        self.feed_fp32 = {"in_0": data.astype(np.float32)}
 
-        with paddle.static.scope_guard(scope):
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(name='image',
-                                           shape=[1, 3, 10, 10],
-                                           dtype='float32')
-                with paddle.static.ipu_shard_guard(index=0):
-                    conv1 = paddle.static.nn.conv2d(image,
-                                                    num_filters=3,
-                                                    filter_size=3,
-                                                    bias_attr=False)
-                with paddle.static.ipu_shard_guard(index=1):
-                    conv2 = paddle.static.nn.conv2d(conv1,
-                                                    num_filters=3,
-                                                    filter_size=3,
-                                                    bias_attr=False)
-                    loss = paddle.mean(conv2)
+    def set_feed_attr(self):
+        self.feed_shape = [(1, 3, 10, 10)]
+        self.feed_list = list(self.feed_fp32.keys())
 
-            if run_ipu:
-                place = paddle.IPUPlace()
-            else:
-                place = paddle.CPUPlace()
-            executor = paddle.static.Executor(place)
-            executor.run(startup_prog)
+    @IPUOpTest.static_graph
+    def build_model(self):
+        image = paddle.static.data(name=self.feed_list[0],
+                                   shape=self.feed_shape[0],
+                                   dtype='float32')
+        with paddle.static.ipu_shard_guard(index=0):
+            conv1 = paddle.static.nn.conv2d(image,
+                                            num_filters=3,
+                                            filter_size=3,
+                                            bias_attr=False)
+        with paddle.static.ipu_shard_guard(index=1):
+            conv2 = paddle.static.nn.conv2d(conv1,
+                                            num_filters=3,
+                                            filter_size=3,
+                                            bias_attr=False)
+            loss = paddle.mean(conv2)
+        self.fetch_list = [loss.name]
 
-            if run_ipu:
-                feed_list = [image.name]
-                fetch_list = [loss.name]
-                ipu_strategy = paddle.static.IpuStrategy()
-                ipu_strategy.set_graph_config(num_ipus=2,
-                                              is_training=False,
-                                              enable_manual_shard=True)
-                ipu_strategy.set_pipelining_config(enable_pipelining=False)
-                program = paddle.static.IpuCompiledProgram(
-                    main_prog,
-                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
-            else:
-                program = main_prog
+    def run_model(self, exec_mode):
+        ipu_strategy = paddle.static.IpuStrategy()
+        ipu_strategy.set_graph_config(num_ipus=2,
+                                      is_training=False,
+                                      enable_manual_shard=True)
+        ipu_strategy.set_pipelining_config(enable_pipelining=True,
+                                           batches_per_step=2)
+        self.run_op_test(exec_mode, ipu_strategy=ipu_strategy)
 
-            loss_res = executor.run(program,
-                                    feed={"image": np_image},
-                                    fetch_list=[loss])
-            return loss_res
-
-    def test_cast(self):
-        cpu_outputs = self._test(False)
-        ipu_outputs = self._test(True)
-
-        self.assertTrue(np.allclose(cpu_outputs, ipu_outputs, atol=1e-4))
+    def test(self):
+        self.build_model()
+        self.run_model(IPUOpTest.ExecutionMode.IPU_FP32)
 
 
 if __name__ == "__main__":

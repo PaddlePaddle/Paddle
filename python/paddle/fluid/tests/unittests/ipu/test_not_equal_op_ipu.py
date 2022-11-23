@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -90,8 +88,6 @@ class TestCase2(TestBase):
         self.feed_fp16 = {"x": x.astype(np.float16), "y": y.astype(np.float16)}
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestScalar(IPUOpTest):
 
     def setUp(self):

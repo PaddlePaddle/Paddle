@@ -39,10 +39,9 @@ enum class AllocationType : int8_t {
 
 const char* AllocationTypeStr(AllocationType type);
 
-PADDLE_API size_t
-GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
+size_t GetOrRegisterGlobalDeviceTypeId(const std::string& device_type);
 
-PADDLE_API std::string GetGlobalDeviceType(size_t device_type_id_);
+std::string GetGlobalDeviceType(size_t device_type_id_);
 
 /// \brief The place is used to specify where the data is stored.
 class PADDLE_API Place {
@@ -208,6 +207,8 @@ class CustomPlace : public Place {
 
 std::ostream& operator<<(std::ostream&, const Place&);
 
+Place GetPinnedPlace(const Place& place);
+
 }  // namespace phi
 
 namespace paddle {
@@ -225,7 +226,7 @@ using GPUPlace = phi::GPUPlace;
 
 /* NOTE [ Why need to temporarily adapt to PlaceType? ]
 
-`PlaceType` emum class is the place type used by custom operators since the
+`PlaceType` enum class is the place type used by custom operators since the
 release of 2.0. Since 2.3, we have refactored the operator library and designed
 a new external Place type. The original PlaceType is no longer suitable for use
 as an internal type of the framework, but immediately delete the PlaceType,

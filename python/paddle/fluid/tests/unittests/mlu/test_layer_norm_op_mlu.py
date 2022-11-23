@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -45,7 +44,11 @@ class TestLayerNormOp(unittest.TestCase):
         self.__class__.use_mlu = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-5,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def check_forward_backward(self,
                                shape,
@@ -152,11 +155,11 @@ class TestLayerNormOp(unittest.TestCase):
                                     1e-3)
                 self.__assert_close(x_grad, out[3], "x_grad")
                 if has_scale:
-                    self.__assert_close(scale_grad,
+                    self.__assert_close(scale_grad.reshape(-1),
                                         out[fetch_list.index('scale@GRAD')],
                                         "scale_grad", 1e-3)
                 if has_bias:
-                    self.__assert_close(bias_grad,
+                    self.__assert_close(bias_grad.reshape(-1),
                                         out[fetch_list.index('bias@GRAD')],
                                         "bias_grad")
 
@@ -287,7 +290,7 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
             x_np, weight_np, bias_np, 'float32')
 
         def assert_equal(x, y):
-            self.assertTrue(np.array_equal(x, y))
+            np.testing.assert_allclose(x, y)
 
         assert_equal(y_np_1, y_np_2)
         assert_equal(x_g_np_1, x_g_np_2)

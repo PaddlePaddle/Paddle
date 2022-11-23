@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from functools import partial
 import numpy as np
 
-import os
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 

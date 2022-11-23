@@ -25,14 +25,21 @@ namespace operators {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-extern __global__ void GenAnchors(T* out, const T* aspect_ratios,
-                                  const int ar_num, const T* anchor_sizes,
-                                  const int as_num, const T* stride,
-                                  const int sd_num, const int height,
-                                  const int width, const T offset);
+extern __global__ void GenAnchors(T* out,
+                                  const T* aspect_ratios,
+                                  const int ar_num,
+                                  const T* anchor_sizes,
+                                  const int as_num,
+                                  const T* stride,
+                                  const int sd_num,
+                                  const int height,
+                                  const int width,
+                                  const T offset);
 
 template <typename T>
-extern __global__ void SetVariance(T* out, const T* var, const int vnum,
+extern __global__ void SetVariance(T* out,
+                                   const T* var,
+                                   const int vnum,
                                    const int num);
 #endif
 
@@ -40,9 +47,9 @@ template <typename T>
 class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* anchors = ctx.Output<paddle::framework::Tensor>("Anchors");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* anchors = ctx.Output<phi::DenseTensor>("Anchors");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto anchor_sizes = ctx.Attr<std::vector<float>>("anchor_sizes");
     auto aspect_ratios = ctx.Attr<std::vector<float>>("aspect_ratios");
@@ -99,7 +106,7 @@ class AnchorGeneratorOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<T>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());

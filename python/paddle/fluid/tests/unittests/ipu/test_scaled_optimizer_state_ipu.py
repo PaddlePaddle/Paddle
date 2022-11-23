@@ -19,8 +19,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -29,6 +27,10 @@ class TestBase(IPUOpTest):
         self.set_data_feed()
         self.set_feed_attr()
         self.set_attrs()
+
+    @property
+    def fp16_enabled(self):
+        return False
 
     def set_training(self):
         self.is_training = True

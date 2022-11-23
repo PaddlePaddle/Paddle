@@ -31,11 +31,12 @@ namespace operators = paddle::operators;
 namespace memory = paddle::memory;
 namespace distributed = paddle::distributed;
 
-void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
+void CreateVarsOnScope(framework::Scope* scope,
+                       platform::Place* place,
                        const platform::DeviceContext& ctx) {
   // var 1
   framework::Variable* var1 = scope->Var("x1");
-  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   tensor1->Resize(phi::make_ddim({512, 8, 4, 2}));
   framework::LoD lod1;
   lod1.push_back(framework::Vector<size_t>({1, 3, 8}));
@@ -45,7 +46,7 @@ void CreateVarsOnScope(framework::Scope* scope, platform::Place* place,
 
   // var 2
   framework::Variable* var2 = scope->Var("x2");
-  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   tensor2->Resize(phi::make_ddim({1000, 64}));
   framework::LoD lod2;
   lod2.push_back(framework::Vector<size_t>({1, 1}));
@@ -78,20 +79,24 @@ void RunMultiVarMsg(platform::Place place) {
   LOG(INFO) << "begin SerializeToMultiVarMsg";
 
   butil::IOBuf io_buf;
-  distributed::SerializeToMultiVarMsgAndIOBuf(message_name, send_var_name,
-                                              recv_var_name, ctx, &scope,
-                                              &multi_msg, &io_buf);
+  distributed::SerializeToMultiVarMsgAndIOBuf(message_name,
+                                              send_var_name,
+                                              recv_var_name,
+                                              ctx,
+                                              &scope,
+                                              &multi_msg,
+                                              &io_buf);
   EXPECT_GT(multi_msg.ByteSizeLong(), static_cast<size_t>(0));
 
   // deserialize
   framework::Scope scope_recv;
   LOG(INFO) << "begin DeserializeFromMultiVarMsg";
-  distributed::DeserializeFromMultiVarMsgAndIOBuf(multi_msg, &io_buf, ctx,
-                                                  &scope_recv);
+  distributed::DeserializeFromMultiVarMsgAndIOBuf(
+      multi_msg, &io_buf, ctx, &scope_recv);
 
   // check var1
   framework::Variable* var1 = scope_recv.FindVar("x1");
-  auto* tensor1 = var1->GetMutable<framework::LoDTensor>();
+  auto* tensor1 = var1->GetMutable<phi::DenseTensor>();
   EXPECT_EQ(tensor1->dims(), phi::make_ddim({512, 8, 4, 2}));
   // EXPECT_EQ(tensor1->lod(), framework::Vector<size_t>({1, 3, 8}));
   auto* tensor_data1 = const_cast<float*>(tensor1->data<float>());
@@ -101,7 +106,7 @@ void RunMultiVarMsg(platform::Place place) {
 
   // check var2
   framework::Variable* var2 = scope_recv.FindVar("x2");
-  auto* tensor2 = var2->GetMutable<framework::LoDTensor>();
+  auto* tensor2 = var2->GetMutable<phi::DenseTensor>();
   EXPECT_EQ(tensor2->dims(), phi::make_ddim({1000, 64}));
   // EXPECT_EQ(tensor2->lod(), framework::Vector<size_t>({1, 1}));
   auto* tensor_data2 = const_cast<int*>(tensor2->data<int>());

@@ -27,7 +27,8 @@ namespace gen {
 
 class SgdJitCode : public JitCode {
  public:
-  explicit SgdJitCode(const sgd_attr_t& attr, size_t code_size = 256 * 1024,
+  explicit SgdJitCode(const sgd_attr_t& attr,
+                      size_t code_size = 256 * 1024,
                       void* code_ptr = nullptr)
       : JitCode(code_size, code_ptr), w_(attr.grad_width) {
     this->genCode();

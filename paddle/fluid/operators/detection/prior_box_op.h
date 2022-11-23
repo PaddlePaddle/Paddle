@@ -54,10 +54,10 @@ template <typename T, typename K>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto min_sizes = ctx.Attr<std::vector<float>>("min_sizes");
     auto max_sizes = ctx.Attr<std::vector<float>>("max_sizes");
@@ -171,7 +171,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
       });
     }
 
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<K>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());

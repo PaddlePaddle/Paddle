@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import numpy as np
 
 import paddle.fluid.op as op
 import paddle.fluid.proto.framework_pb2 as framework_pb2
@@ -152,6 +152,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
         __add_attr__("int_attr", framework_pb2.INT)
         __add_attr__("float_attr", framework_pb2.FLOAT)
+        __add_attr__("float64_attr", framework_pb2.FLOAT64)
         __add_attr__("string_attr", framework_pb2.STRING)
         __add_attr__("ints_attr", framework_pb2.INTS)
         __add_attr__("floats_attr", framework_pb2.FLOATS)
@@ -165,6 +166,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
         generated = method(X="a",
                            int_attr=10,
                            float_attr=3.2,
+                           float64_attr=np.finfo("float64").max,
                            string_attr="test_str",
                            ints_attr=[0, 1, 2, 3, 4],
                            floats_attr=[0.2, 3.2, 4.5],
@@ -186,6 +188,11 @@ class TestOpDescCreationMethod(unittest.TestCase):
         attr.name = "float_attr"
         attr.type = framework_pb2.FLOAT
         attr.f = 3.2
+
+        attr = expected.attrs.add()
+        attr.name = "float64_attr"
+        attr.type = framework_pb2.FLOAT64
+        attr.float64 = np.finfo("float64").max
 
         attr = expected.attrs.add()
         attr.name = "string_attr"

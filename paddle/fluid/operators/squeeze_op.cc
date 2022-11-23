@@ -45,17 +45,25 @@ framework::DDim GetOutputShape(const std::vector<int> squeeze_dims,
                                         : squeeze_dims[i];
 
       PADDLE_ENFORCE_GE(
-          current, 0,
+          current,
+          0,
           platform::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
-              -in_dims.size(), in_dims.size() - 1, current, in_dims));
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
       PADDLE_ENFORCE_LT(
-          current, in_dims.size(),
+          current,
+          in_dims.size(),
           platform::errors::InvalidArgument(
               "Each axis in Attr(axes) should be in the range of [%d, %d]"
               "But current axis is:%d, input tensor's shape = [%s].",
-              -in_dims.size(), in_dims.size() - 1, current, in_dims));
+              -in_dims.size(),
+              in_dims.size() - 1,
+              current,
+              in_dims));
 
       if (!should_squeeze[current]) {
         if (is_runtime) {
@@ -92,12 +100,14 @@ class SqueezeOp : public framework::OperatorWithKernel {
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
-    PADDLE_ENFORCE_LE(x_dims.size(), 6,
+    PADDLE_ENFORCE_LE(x_dims.size(),
+                      6,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(X) "
                           "should be in the range of [1, 6] (Eigen limit)."
                           "But received X's dimensions = %d, X's shape=[%s].",
-                          x_dims.size(), x_dims));
+                          x_dims.size(),
+                          x_dims));
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto out_dims = GetOutputShape(axes, x_dims, false);
@@ -161,7 +171,8 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to squeeze.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false)
@@ -238,10 +249,12 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("XShape"), "Input", "XShape",
+    OP_INOUT_CHECK(
+        context->HasInput("XShape"), "Input", "XShape", "Squeeze2Grad");
+    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
                    "Squeeze2Grad");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "Squeeze2Grad");
     auto xshape_dims = context->GetInputDim("XShape");
     auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
     context->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -283,15 +296,46 @@ class SqueezeDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 // squeeze_grad, in this way, the framework can reuse the memory of X
 // immediately the squeeze2_op is finished.
 // Considering compatibility issues, we could not fix squeeze2_op
-class Squeeze2OpMaker : public SqueezeOpMaker {
+class Squeeze2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    SqueezeOpMaker::Make();
+    AddInput("X", "(Tensor). The input tensor of squeeze operator.");
+    AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in SqueezeGradOp.")
         .AsIntermediate()
         .AsExtra();
+    AddAttr<std::vector<int>>("axes",
+                              "(std::vector<int>). List of integers,"
+                              " indicating the dimensions to squeeze.")
+        .SetDefault({})
+        .SupportTensor();
+    AddComment(R"DOC(
+        Squeeze2 Operator.
+
+        Remove single-dimensional entries from the shape of a tensor.
+        Takes a parameter axes with a list of axes to squeeze.
+        If axes is not provided, all the single dimensions will be removed from the shape.
+        If an axis is selected with shape entry not equal to one, an error is raised.
+
+        Examples:
+        Case 1:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = [0]
+          we get:
+            Out.shape = (3, 1, 5)
+
+        Case 2:
+          Given
+            X.shape = (1, 3, 1, 5)
+          and
+            axes = []
+          we get:
+            Out.shape = (3, 5)
+    )DOC");
   }
 };
 
@@ -333,52 +377,55 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SqueezeGradNoNeedBufferVarsInferer, "X");
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(squeeze2, SqueezeInferShapeFunctor,
-                            PD_INFER_META(phi::SqueezeInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(squeeze2,
+                            SqueezeInferShapeFunctor,
+                            PD_INFER_META(phi::SqueezeWithXShapeInferMeta));
 
-REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
+REGISTER_OPERATOR(squeeze,
+                  ops::SqueezeOp,
+                  ops::SqueezeOpMaker,
                   ops::SqueezeGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp,
+REGISTER_OPERATOR(squeeze_grad,
+                  ops::SqueezeGradOp,
                   ops::SqueezeDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::SqueezeDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::SqueezeGradNoNeedBufferVarsInferer);
 
-REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
+REGISTER_OPERATOR(squeeze2,
+                  ops::Squeeze2Op,
+                  ops::Squeeze2OpMaker,
                   ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
                   ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
-                  ops::SqueezeInplaceInferer, SqueezeInferShapeFunctor);
-REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
+                  ops::SqueezeInplaceInferer,
+                  SqueezeInferShapeFunctor);
+REGISTER_OPERATOR(squeeze2_grad,
+                  ops::Squeeze2GradOp,
                   ops::Squeeze2DoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::Squeeze2DoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::SqueezeGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
-    squeeze, ops::SqueezeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<float>>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex<double>>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::bfloat16>);
+    squeeze,
+    ops::SqueezeKernel<phi::CPUContext, float>,
+    ops::SqueezeKernel<phi::CPUContext, double>,
+    ops::SqueezeKernel<phi::CPUContext, bool>,
+    ops::SqueezeKernel<phi::CPUContext, int>,
+    ops::SqueezeKernel<phi::CPUContext, uint8_t>,
+    ops::SqueezeKernel<phi::CPUContext, int8_t>,
+    ops::SqueezeKernel<phi::CPUContext, int64_t>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SqueezeKernel<phi::CPUContext, paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(
     squeeze_grad,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::complex<float>>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::complex<double>>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::bfloat16>);
+    ops::SqueezeGradKernel<phi::CPUContext, float>,
+    ops::SqueezeGradKernel<phi::CPUContext, double>,
+    ops::SqueezeGradKernel<phi::CPUContext, bool>,
+    ops::SqueezeGradKernel<phi::CPUContext, int>,
+    ops::SqueezeGradKernel<phi::CPUContext, uint8_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, int8_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, int64_t>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::complex<float>>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::complex<double>>,
+    ops::SqueezeGradKernel<phi::CPUContext, paddle::platform::bfloat16>);

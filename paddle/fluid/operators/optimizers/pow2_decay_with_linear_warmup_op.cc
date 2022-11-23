@@ -62,11 +62,11 @@ class Pow2DecayWithLinearWarmupOpMaker
     AddComment(R"DOC(
 The Pow2DecayWithLinearWarmup learning rate scheduler.
 
-When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps 
+When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps
 
-When warmup_steps <= step_num <= total_steps, 
-   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps) 
-   lr = (base_lr - end_lr) * factor * factor + end_lr 
+When warmup_steps <= step_num <= total_steps,
+   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps)
+   lr = (base_lr - end_lr) * factor * factor + end_lr
 
 When step_num > total_steps, lr = end_lr
 
@@ -85,5 +85,5 @@ REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
                              ops::Pow2DecayWithLinearWarmupOpMaker);
 REGISTER_OP_CPU_KERNEL(
     pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>);
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, double>,
+    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, float>);

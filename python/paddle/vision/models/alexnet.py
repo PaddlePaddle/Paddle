@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 import paddle
 import paddle.nn as nn
@@ -77,7 +73,7 @@ class AlexNet(nn.Layer):
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
 
     Returns:
@@ -196,7 +192,7 @@ def alexnet(pretrained=False, **kwargs):
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
-    
+
     Examples:
         .. code-block:: python
 

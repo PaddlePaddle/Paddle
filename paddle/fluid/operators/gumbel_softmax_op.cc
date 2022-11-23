@@ -90,16 +90,19 @@ class GumbelSoftmaxGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(gumbel_softmax, GumbelSoftmaxInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(gumbel_softmax,
+                            GumbelSoftmaxInferShapeFunctor,
                             PD_INFER_META(phi::GumbelSoftmaxInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(gumbel_softmax_grad,
                             GumbelSoftmaxGradInferShapeFunctor,
                             PD_INFER_META(phi::GumbelSoftmaxGradInferMeta));
 
-REGISTER_OPERATOR(gumbel_softmax, ops::GumbelSoftmaxOp,
+REGISTER_OPERATOR(gumbel_softmax,
+                  ops::GumbelSoftmaxOp,
                   ops::GumbelSoftmaxOpMaker,
                   ops::GumbelSoftmaxGradOpMaker<paddle::framework::OpDesc>,
                   ops::GumbelSoftmaxGradOpMaker<paddle::imperative::OpBase>,
                   GumbelSoftmaxInferShapeFunctor);
-REGISTER_OPERATOR(gumbel_softmax_grad, ops::GumbelSoftmaxGradOp,
+REGISTER_OPERATOR(gumbel_softmax_grad,
+                  ops::GumbelSoftmaxGradOp,
                   GumbelSoftmaxGradInferShapeFunctor);

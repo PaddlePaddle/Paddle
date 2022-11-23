@@ -29,7 +29,6 @@ namespace dynload {
   extern DynLoad__##__name __name
 
 #if defined(PADDLE_WITH_CUDA)
-// APIs available after CUDA 11.0
 #if CUDA_VERSION >= 11000
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
@@ -43,16 +42,21 @@ namespace dynload {
   __macro(cusparseCreateCsr);          \
   __macro(cusparseCreateCoo);          \
   __macro(cusparseCreateDnMat);        \
+  __macro(cusparseCreateDnVec);        \
   __macro(cusparseSpMM_bufferSize);    \
   __macro(cusparseSpMM);               \
   __macro(cusparseDestroySpMat);       \
-  __macro(cusparseDestroyDnMat);
+  __macro(cusparseDestroyDnMat);       \
+  __macro(cusparseDestroyDnVec);       \
+  __macro(cusparseSpMV_bufferSize);    \
+  __macro(cusparseSpMV);
 
 CUSPARSE_ROUTINE_EACH(PLATFORM_DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
 #endif
 
 #if CUDA_VERSION >= 11030
 #define CUSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(cusparseSpMM_preprocess);       \
   __macro(cusparseSDDMM_bufferSize);      \
   __macro(cusparseSDDMM_preprocess);      \
   __macro(cusparseSDDMM);

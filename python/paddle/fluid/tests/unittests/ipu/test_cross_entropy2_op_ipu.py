@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -113,6 +111,36 @@ class TestCase3(TestBase):
     def set_op_attrs(self):
         self.attrs = {
             'soft_label': True,
+        }
+
+
+class TestCase4(TestBase):
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3, 5, 7])
+        label = np.random.randint(0, 7, [3, 5, 1], dtype='int64')
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
+        }
+
+
+class TestCase5(TestBase):
+
+    def set_data_feed(self):
+        x = np.random.uniform(size=[3, 5, 6, 7])
+        label = np.random.randint(0, 7, [3, 5, 6], dtype='int64')
+        self.feed_fp32 = {
+            "x": x.astype(np.float32),
+            "label": label.astype(np.int64)
+        }
+        self.feed_fp16 = {
+            "x": x.astype(np.float16),
+            "label": label.astype(np.int32)
         }
 
 

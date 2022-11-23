@@ -21,7 +21,7 @@ if(WITH_ASCEND_CL)
   cc_library(
     npu_stream
     SRCS npu_stream.cc
-    DEPS enforce boost stream_callback_manager)
+    DEPS enforce stream_callback_manager)
   cc_library(
     npu_collective_helper
     SRCS npu_collective_helper.cc
@@ -30,4 +30,10 @@ if(WITH_ASCEND_CL)
     npu_op_runner
     SRCS npu_op_runner.cc
     DEPS operator npu_info)
+endif()
+
+# every source file that includes "dnnl.h" must depends on mkldnn
+# or, the first one should depends on mkldnn
+if(WITH_MKLDNN)
+  add_dependencies(npu_collective_helper mkldnn)
 endif()

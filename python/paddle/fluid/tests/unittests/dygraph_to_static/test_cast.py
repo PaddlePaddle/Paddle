@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -91,9 +89,11 @@ class TestCastBase(unittest.TestCase):
             msg='The target dtype is {}, but the casted dtype is {}.'.format(
                 self.cast_dtype, res.dtype))
         ref_val = self.input.astype(self.cast_dtype)
-        self.assertTrue(
-            np.allclose(res, ref_val),
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
+        np.testing.assert_allclose(
+            res,
+            ref_val,
+            rtol=1e-05,
+            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
                 res, ref_val))
 
 
@@ -149,9 +149,11 @@ class TestMixCast(TestCastBase):
                 self.cast_dtype, res.dtype))
         ref_val = self.input.astype(self.cast_int).astype(
             self.cast_float).astype(self.cast_bool).astype(self.cast_dtype)
-        self.assertTrue(
-            np.allclose(res, ref_val),
-            msg='The casted value is {}.\nThe correct value is {}.'.format(
+        np.testing.assert_allclose(
+            res,
+            ref_val,
+            rtol=1e-05,
+            err_msg='The casted value is {}.\nThe correct value is {}.'.format(
                 res, ref_val))
 
 

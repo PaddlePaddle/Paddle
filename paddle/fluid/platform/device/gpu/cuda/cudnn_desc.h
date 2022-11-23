@@ -33,7 +33,6 @@ class DenseTensor;
 
 namespace paddle {
 namespace platform {
-using framework::Tensor;
 
 template <typename T>
 inline cudnnDataType_t ToCudnnDataType(const T& t) {
@@ -141,7 +140,7 @@ class TensorDescriptor {
   }
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
-  void set(const Tensor& tensor, const int groups = 1) {
+  void set(const phi::DenseTensor& tensor, const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     std::vector<int> strides(dims.size());
     strides[dims.size() - 1] = 1;
@@ -155,10 +154,13 @@ class TensorDescriptor {
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
         desc_.get(),
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
-        dims_with_group.size(), dims_with_group.data(), strides.data()));
+        dims_with_group.size(),
+        dims_with_group.data(),
+        strides.data()));
   }
 
-  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
+  void set(const std::vector<int>& dims,
+           const cudnnTensorFormat_t format,
            const cudnnDataType_t dtype) {
     std::vector<int> transformed_dims;
     if (format == CUDNN_TENSOR_NHWC) {
@@ -166,12 +168,15 @@ class TensorDescriptor {
     } else {
       transformed_dims = dims;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
-        desc_.get(), format, dtype, transformed_dims.size(),
-        transformed_dims.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetTensorNdDescriptorEx(desc_.get(),
+                                              format,
+                                              dtype,
+                                              transformed_dims.size(),
+                                              transformed_dims.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+  void set(const phi::DenseTensor& tensor, const cudnnTensorFormat_t format) {
     auto dims = phi::vectorize<int>(tensor.dims());
     auto dtype =
         ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype()));
@@ -201,8 +206,10 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
-           const cudnnDataType_t dtype, const int groups = 1) {
+  void set(const std::vector<int>& dims,
+           const cudnnTensorFormat_t format,
+           const cudnnDataType_t dtype,
+           const int groups = 1) {
     std::vector<int> transformed_dims;
     if (format == CUDNN_TENSOR_NHWC) {
       transformed_dims = TransformDimOrder(dims);
@@ -212,12 +219,16 @@ class FilterDescriptor {
     if (groups > 1) {
       transformed_dims[1] = transformed_dims[1] / groups;
     }
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
-        desc_.get(), dtype, format, transformed_dims.size(),
-        transformed_dims.data()));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetFilterNdDescriptor(desc_.get(),
+                                            dtype,
+                                            format,
+                                            transformed_dims.size(),
+                                            transformed_dims.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format,
+  void set(const phi::DenseTensor& tensor,
+           const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());
     auto dtype =
@@ -250,16 +261,24 @@ class ConvolutionDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(cudnnDataType_t dtype, const std::vector<int>& pads,
-           const std::vector<int>& strides, const std::vector<int>& dilations,
-           bool allow_tf32, const int groups = 1) {
+  void set(cudnnDataType_t dtype,
+           const std::vector<int>& pads,
+           const std::vector<int>& strides,
+           const std::vector<int>& dilations,
+           bool allow_tf32,
+           const int groups = 1) {
     allow_tf32_ = allow_tf32;
     cudnnDataType_t compute_type =
         (dtype == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
     T* desc = desc_.get();
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetConvolutionNdDescriptor(
-        desc, pads.size(), pads.data(), strides.data(), dilations.data(),
-        CUDNN_CROSS_CORRELATION, compute_type));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cudnnSetConvolutionNdDescriptor(desc,
+                                                 pads.size(),
+                                                 pads.data(),
+                                                 strides.data(),
+                                                 dilations.data(),
+                                                 CUDNN_CROSS_CORRELATION,
+                                                 compute_type));
 #if CUDNN_VERSION_MIN(7, 0, 1)
     PADDLE_ENFORCE_GPU_SUCCESS(
         platform::dynload::cudnnSetConvolutionGroupCount(desc, groups));

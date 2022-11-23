@@ -22,11 +22,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
-inline std::vector<int64_t> CorrelationOutputSize(int batch, int input_height,
-                                                  int input_width, int stride1,
-                                                  int stride2, int kernel_size,
+inline std::vector<int64_t> CorrelationOutputSize(int batch,
+                                                  int input_height,
+                                                  int input_width,
+                                                  int stride1,
+                                                  int stride2,
+                                                  int kernel_size,
                                                   int pad_size,
                                                   int max_displacement) {
   std::vector<int64_t> output_shape({batch});
@@ -83,20 +86,27 @@ class CorrelationOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input1");
     auto in2_dims = ctx->GetInputDim("Input2");
 
-    PADDLE_ENFORCE_EQ(in_dims.size() == 4, true,
+    PADDLE_ENFORCE_EQ(in_dims.size() == 4,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of CorrelationOp must be 4 dims."
                           "But received dims is %d.",
                           in_dims.size()));
 
-    PADDLE_ENFORCE_EQ(in2_dims.size() == 4, true,
+    PADDLE_ENFORCE_EQ(in2_dims.size() == 4,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Y) of CorrelationOp must be 4 dims."
                           "But received dims is %d.",
                           in2_dims.size()));
-    std::vector<int64_t> output_shape =
-        CorrelationOutputSize(in_dims[0], in_dims[2], in_dims[3], stride1,
-                              stride2, kernel_size, pad_size, max_displacement);
+    std::vector<int64_t> output_shape = CorrelationOutputSize(in_dims[0],
+                                                              in_dims[2],
+                                                              in_dims[3],
+                                                              stride1,
+                                                              stride2,
+                                                              kernel_size,
+                                                              pad_size,
+                                                              max_displacement);
     ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
   }
 
@@ -105,19 +115,20 @@ class CorrelationOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Input1");
-    PADDLE_ENFORCE_EQ(
-        input_data_type,
-        framework::TransToProtoVarType(ctx.Input<Tensor>("Input2")->dtype()),
-        platform::errors::InvalidArgument(
-            "X and Y shoule have the same datatype"));
+    PADDLE_ENFORCE_EQ(input_data_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Input2")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "X and Y shoule have the same datatype"));
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -145,8 +156,10 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input1"), "Input", "X", "CorrelationOp");
     OP_INOUT_CHECK(ctx->HasInput("Input2"), "Input", "Y", "CorrelationOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")), "Input",
-                   "Output@GRAD", "CorrelationGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Output")),
+                   "Input",
+                   "Output@GRAD",
+                   "CorrelationGradOp");
 
     auto in1_dims = ctx->GetInputDim("Input1");
     auto in2_dims = ctx->GetInputDim("Input2");
@@ -167,7 +180,8 @@ class CorrelationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::Unimplemented("Correlation only supports GPU now."));
   }
 };
@@ -176,9 +190,12 @@ class CorrelationKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(correlation, ops::CorrelationOp, ops::CorrelationOpMaker,
+REGISTER_OPERATOR(correlation,
+                  ops::CorrelationOp,
+                  ops::CorrelationOpMaker,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
-REGISTER_OP_CPU_KERNEL(correlation, ops::CorrelationKernel<float>,
+REGISTER_OP_CPU_KERNEL(correlation,
+                       ops::CorrelationKernel<float>,
                        ops::CorrelationKernel<double>);

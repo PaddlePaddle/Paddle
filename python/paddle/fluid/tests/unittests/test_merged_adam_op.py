@@ -15,7 +15,8 @@
 import unittest
 import paddle
 import numpy as np
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.fluid.framework import in_dygraph_mode
 
 
 def run_adam_op(params,
@@ -55,7 +56,7 @@ def run_adam_op(params,
 
     if not use_merged:
         for i in range(len(param_vars)):
-            _, _, _, _, _, _ = _C_ops.adam(
+            _, _, _, _, _, _ = _legacy_C_ops.adam(
                 param_vars[i], grad_vars[i], lr_vars[i], moment1_vars[i],
                 moment2_vars[i], beta1_pow_vars[i], beta2_pow_vars[i],
                 master_param_vars[i], param_vars[i], moment1_vars[i],
@@ -63,12 +64,18 @@ def run_adam_op(params,
                 master_param_vars[i], 'epsilon', epsilon, 'beta1', beta1,
                 'beta2', beta2, 'multi_precision', multi_precision)
     else:
-        _, _, _, _, _, _ = _C_ops.merged_adam(
-            param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
-            beta1_pow_vars, beta2_pow_vars, master_param_vars, param_vars,
-            moment1_vars, moment2_vars, beta1_pow_vars, beta2_pow_vars,
-            master_param_vars, 'epsilon', epsilon, 'beta1', beta1, 'beta2',
-            beta2, 'multi_precision', multi_precision)
+        if in_dygraph_mode():
+            _, _, _, _, _, _ = _C_ops.merged_adam_(
+                param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
+                beta1_pow_vars, beta2_pow_vars, master_param_vars, beta1, beta2,
+                epsilon, multi_precision, False)
+        else:
+            _, _, _, _, _, _ = _legacy_C_ops.merged_adam(
+                param_vars, grad_vars, lr_vars, moment1_vars, moment2_vars,
+                beta1_pow_vars, beta2_pow_vars, master_param_vars, param_vars,
+                moment1_vars, moment2_vars, beta1_pow_vars, beta2_pow_vars,
+                master_param_vars, 'epsilon', epsilon, 'beta1', beta1, 'beta2',
+                beta2, 'multi_precision', multi_precision)
 
     outputs = {
         'ParamOut': param_vars,
@@ -135,10 +142,12 @@ class TestMergedAdam(unittest.TestCase):
             value2 = outs2[key]
             for i in range(len(value1)):
                 if place == 'gpu':
-                    self.assertTrue(np.array_equal(value1[i], value2[i]))
+                    np.testing.assert_array_equal(value1[i], value2[i])
                 else:
-                    self.assertTrue(np.allclose(value1[i], value2[i],
-                                                atol=1e-7))
+                    np.testing.assert_allclose(value1[i],
+                                               value2[i],
+                                               rtol=1e-05,
+                                               atol=1e-07)
 
     def get_places(self):
         places = ['cpu']

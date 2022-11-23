@@ -66,7 +66,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                                                     act='softmax')
                 cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                          label=input_y)
-                avg_cost = paddle.fluid.layers.mean(x=cost)
+                avg_cost = paddle.mean(x=cost)
 
                 strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy
@@ -101,7 +101,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                                                         act='softmax')
                     cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                              label=input_y)
-                    avg_cost = paddle.fluid.layers.mean(x=cost)
+                    avg_cost = paddle.mean(x=cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         return avg_cost, strategy

@@ -38,6 +38,7 @@ from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.executor import Executor, global_scope
 from paddle.fluid.framework import _non_static_mode, convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.framework import _current_expected_place as _get_device
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
@@ -98,6 +99,26 @@ class Layer(object):
 
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            class MyLayer(paddle.nn.Layer):
+                def __init__(self):
+                    super(MyLayer, self).__init__()
+                    self._linear = paddle.nn.Linear(1, 1)
+                    self._dropout = paddle.nn.Dropout(p=0.5)
+                def forward(self, input):
+                    temp = self._linear(input)
+                    temp = self._dropout(temp)
+                    return temp
+            x = paddle.randn([10, 1], 'float32')
+            mylayer = MyLayer()
+            mylayer.eval()  # set mylayer._dropout to eval mode
+            out = mylayer(x)
+            mylayer.train()  # set mylayer._dropout to train mode
+            out = mylayer(x)
     """
 
     def __init__(self, name_scope=None, dtype="float32"):
@@ -907,7 +928,7 @@ class Layer(object):
             self._built = True
 
         if in_profiler_mode():
-            with profiler.RecordEvent(self.full_name(),
+            with profiler.RecordEvent(self.__class__.__name__,
                                       profiler.TracerEventType.Forward):
                 outputs = self.forward(*inputs, **kwargs)
         else:
@@ -1300,7 +1321,7 @@ class Layer(object):
                                    include_sublayers=True,
                                    structured_name_prefix=""):
         """
-        The difference from state_dict() is that state_dict_hook will not be called, 
+        The difference from state_dict() is that state_dict_hook will not be called,
         but the original types of parameters and buffers will be maintained.
         """
         if destination is None:
@@ -1517,13 +1538,18 @@ class Layer(object):
                     place = core.CUDAPlace(p.gpu_device_id())
                 t.set(ndarray, place)
 
-            executor = Executor(_get_device())._default_executor
-            # restore parameter states
-            core._create_loaded_parameter(
-                [param for param, state in matched_param_state], global_scope(),
-                executor)
-            for param, state in matched_param_state:
-                _set_var(param, state)
+            try:
+                executor = Executor(_get_device())._default_executor
+                # restore parameter states
+                core._create_loaded_parameter(
+                    [param for param, state in matched_param_state],
+                    global_scope(), executor)
+                for param, state in matched_param_state:
+                    _set_var(param, state)
+            except ValueError as e:
+                raise ValueError(
+                    "This error might happens in dy2static, while calling 'set_state_dict' dynamicly in 'forward', which is not supported. If you only need call 'set_state_dict' once, move it to '__init__'."
+                )
 
     def to(self, device=None, dtype=None, blocking=None):
         '''
@@ -1538,7 +1564,7 @@ class Layer(object):
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-            
+
         Returns:
             self
 
@@ -1668,7 +1694,7 @@ class Layer(object):
 
             blocking(bool|None, optional): If False and the source is in pinned memory, the copy will be
               asynchronous with respect to the host. Otherwise, the argument has no effect. If None, the blocking is set True. Default: None.
-            
+
             include_sublayers(bool|True, optional): If True, deal with self and all sublayers parameters and buffers, if not only deal with self parameters and buffers. Default: True.
 
             floating_only(bool|False, optional): If True, only cast all floating point parameters and buffers of Layer by the give device, dtype and blocking.
@@ -1710,6 +1736,18 @@ class Layer(object):
 
         self._dtype = dtype
         return self
+
+    def _startup_program(self):
+        """
+        Return starup program containing initialization operations of all parameters.
+
+        NOTE(dev): This is a very low level API and only for inner developer.
+        """
+        startup_program = Program()
+        for param in self.parameters():
+            param._create_init_op(startup_program.global_block())
+
+        return startup_program
 
     # [aliases] Compatible with old method names
     set_dict = set_state_dict

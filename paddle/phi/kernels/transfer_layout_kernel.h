@@ -23,7 +23,8 @@ namespace phi {
 template <typename Context>
 void TransferLayoutKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          DataLayout dst_layout,
+                          int src_layout,
+                          int dst_layout,
                           DenseTensor* out);
 
 template <typename Context>
@@ -32,7 +33,11 @@ DenseTensor TransferLayout(const Context& dev_ctx,
                            DataLayout dst_layout) {
   phi::DenseTensor dense_out =
       phi::Empty(dev_ctx, {x.dtype(), x.dims(), dst_layout});
-  TransferLayoutKernel<Context>(dev_ctx, x, dst_layout, &dense_out);
+  TransferLayoutKernel<Context>(dev_ctx,
+                                x,
+                                static_cast<int>(x.layout()),
+                                static_cast<int>(dst_layout),
+                                &dense_out);
   return dense_out;
 }
 

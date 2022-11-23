@@ -16,11 +16,13 @@ import unittest
 
 import numpy as np
 import paddle
-from paddle.distribution import transform, variable, constraint
+from paddle.distribution import transform, variable
 
 import config
 import parameterize as param
 
+np.random.seed(2022)
+paddle.seed(2022)
 paddle.enable_static()
 
 

@@ -20,25 +20,33 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "FusedBiasDropoutResidualLnOp");
+    OP_INOUT_CHECK(ctx->HasOutput("LnMean"),
+                   "Output",
+                   "LnMean",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"),
+                   "Output",
+                   "LnVariance",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
+    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"),
+                   "Output",
+                   "BiasDropoutResidualOut",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
-                   "BiasDropoutResidualOut", "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"), "Output", "DropoutMaskOut",
+    OP_INOUT_CHECK(ctx->HasOutput("DropoutMaskOut"),
+                   "Output",
+                   "DropoutMaskOut",
                    "FusedBiasDropoutResidualLnOp");
-    OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y",
-                   "FusedBiasDropoutResidualLnOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Y"), "Output", "Y", "FusedBiasDropoutResidualLnOp");
     auto x_dim = ctx->GetInputDim("X");
     int left = 1;
     for (int i = 0; i < x_dim.size() - 1; i++) {
@@ -56,7 +64,7 @@ class FusedBiasDropoutResidualLnOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -88,7 +96,8 @@ class FusedBiasDropoutResidualLnOpMaker
     AddAttr<float>("dropout_rate", "Probability of setting units to zero.")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
-          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f, true,
+          PADDLE_ENFORCE_EQ(drop_p >= 0.0f && drop_p <= 1.0f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'dropout_rate' must be between 0.0 and 1.0."));
         });
@@ -111,7 +120,8 @@ class FusedBiasDropoutResidualLnOpMaker
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
-              type == "downgrade_in_infer" || type == "upscale_in_train", true,
+              type == "downgrade_in_infer" || type == "upscale_in_train",
+              true,
               platform::errors::InvalidArgument(
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
@@ -120,7 +130,8 @@ class FusedBiasDropoutResidualLnOpMaker
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &ln_epsilon) {
-          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' of the LayerNorm should be between "
                                 "0.0 and 0.001, But received [%s].",
@@ -129,8 +140,8 @@ class FusedBiasDropoutResidualLnOpMaker
 
     AddComment(R"DOC(
     Add fused bias_dropout_residual_layer_norm op whose logic is as follows:
-    // @input: [batch_size, seq_len, embed_dim] 
-    // @final_out: [batch_size, seq_len, embed_dim] 
+    // @input: [batch_size, seq_len, embed_dim]
+    // @final_out: [batch_size, seq_len, embed_dim]
     y = layer_norm(residual + dropout(bias + x));
     )DOC");
   }
@@ -141,15 +152,22 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
+    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"),
+                      false,
                       platform::errors::InvalidArgument(
                           "GradOp is only callable when is_test is false"));
-    OP_INOUT_CHECK(ctx->HasInput("LnMean"), "Input", "LnMean",
+    OP_INOUT_CHECK(ctx->HasInput("LnMean"),
+                   "Input",
+                   "LnMean",
                    "FusedBiasDropoutResidualLnGrad");
-    OP_INOUT_CHECK(ctx->HasInput("LnVariance"), "Input", "LnVariance",
+    OP_INOUT_CHECK(ctx->HasInput("LnVariance"),
+                   "Input",
+                   "LnVariance",
                    "FusedBiasDropoutResidualLnGrad");
-    OP_INOUT_CHECK(ctx->HasInput("BiasDropoutResidualOut"), "Input",
-                   "BiasDropoutResidualOut", "FusedBiasDropoutResidualLnGrad");
+    OP_INOUT_CHECK(ctx->HasInput("BiasDropoutResidualOut"),
+                   "Input",
+                   "BiasDropoutResidualOut",
+                   "FusedBiasDropoutResidualLnGrad");
     if (ctx->HasOutput(framework::GradVarName("LnScale"))) {
       ctx->SetOutputDim(framework::GradVarName("LnScale"),
                         ctx->GetInputDim("LnScale"));
@@ -176,7 +194,7 @@ class FusedBiasDropoutResidualLnGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -232,7 +250,8 @@ class FusedBiasDropoutResidualLnGradOpMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_bias_dropout_residual_layer_norm, ops::FusedBiasDropoutResidualLnOp,
+    fused_bias_dropout_residual_layer_norm,
+    ops::FusedBiasDropoutResidualLnOp,
     ops::FusedBiasDropoutResidualLnOpMaker,
     ops::FusedBiasDropoutResidualLnGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedBiasDropoutResidualLnGradOpMaker<paddle::imperative::OpBase>);

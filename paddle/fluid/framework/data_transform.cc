@@ -31,18 +31,19 @@ class Variable;
 namespace paddle {
 namespace framework {
 
-static void PassTensorData(Tensor *from, Tensor *to) {
+static void PassTensorData(phi::DenseTensor *from, phi::DenseTensor *to) {
   to->ShareDataWith(*from);
-  *from = Tensor();
+  *from = phi::DenseTensor();
 }
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
-                   const Tensor &input_tensor, Tensor *output_tensor) {
+                   const phi::DenseTensor &input_tensor,
+                   phi::DenseTensor *output_tensor) {
   bool transformed = false;
-  Tensor in;
+  phi::DenseTensor in;
   in.ShareDataWith(input_tensor);
-  Tensor out;
+  phi::DenseTensor out;
   const DataLayout lin = kernel_type_for_var.data_layout_;
   const DataLayout lout = expected_kernel_type.data_layout_;
   // do layout transform
@@ -50,7 +51,8 @@ void TransformData(const OpKernelType &expected_kernel_type,
 #ifdef PADDLE_WITH_MKLDNN
     if (lin == DataLayout::kMKLDNN || lout == DataLayout::kMKLDNN) {
       PADDLE_ENFORCE_EQ(
-          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN), true,
+          !(lin == DataLayout::kMKLDNN && lout == DataLayout::kMKLDNN),
+          true,
           platform::errors::PreconditionNotMet(
               "No layout transform needed between two MKLDNN OPKernels."));
 
@@ -72,13 +74,14 @@ void TransformData(const OpKernelType &expected_kernel_type,
         }
         dnnl::memory::desc out_mem_desc(
             vectorize(out.dims()),
-            ToMKLDNNDataType(TransToProtoVarType(in.type())), out_format);
+            ToMKLDNNDataType(TransToProtoVarType(in.type())),
+            out_format);
         out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
-        TransDataLayoutFromMKLDNN(kernel_type_for_var, expected_kernel_type, in,
-                                  &out);
+        TransDataLayoutFromMKLDNN(
+            kernel_type_for_var, expected_kernel_type, in, &out);
       }
     } else {
       // Case3 - transfrom between Non-MKLDNN OPKernels
@@ -108,14 +111,16 @@ void TransformData(const OpKernelType &expected_kernel_type,
   }
 
   PADDLE_ENFORCE_EQ(
-      transformed, true,
+      transformed,
+      true,
       platform::errors::PreconditionNotMet(
           "No transform is applied for the data needs to be transformed."));
   // get output data
   output_tensor->ShareDataWith(in);
 }
 
-void SetTensorToVariable(const Variable &in_var, const Tensor &tensor,
+void SetTensorToVariable(const Variable &in_var,
+                         const phi::DenseTensor &tensor,
                          Variable *out_var) {
   if (in_var.IsType<LoDTensor>()) {
     auto &in_lod_tensor = in_var.Get<LoDTensor>();

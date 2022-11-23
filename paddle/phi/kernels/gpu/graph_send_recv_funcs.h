@@ -81,7 +81,7 @@ __global__ void InputResetMaxCUDAKernel(T* output,
                                         size_t input_size,
                                         size_t slice_size) {
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
-    if (*(output + i) == std::numeric_limits<T>::min()) {
+    if (*(output + i) == std::numeric_limits<T>::lowest()) {
       *(output + i) = 0;
     }
   }
@@ -119,7 +119,7 @@ __global__ void ManipulateMeanCUDAKernel(T* output,
   CUDA_KERNEL_LOOP_TYPE(i, input_size * slice_size, int64_t) {
     int64_t c_index = i / slice_size;
     if (*(count + c_index) > 1) {
-      *(output + i) = *(output + i) / *(count + c_index);
+      *(output + i) = *(output + i) / static_cast<T>(*(count + c_index));
     }
   }
 }
@@ -140,8 +140,8 @@ __global__ void ManipulateMeanGradCUDAKernel(const T* params,
     IndexT dst_i = dst_indices[indices_i];
     int64_t in_i = src_i * slice_size + slice_i;
     int64_t out_i = dst_i * slice_size + slice_i;
-    paddle::platform::CudaAtomicAdd(output + out_i,
-                                    *(params + in_i) / dst_count[src_i]);
+    paddle::platform::CudaAtomicAdd(
+        output + out_i, *(params + in_i) / static_cast<T>(dst_count[src_i]));
   }
 }
 
@@ -164,7 +164,8 @@ __global__ void ManipulateMinMaxGradCUDAKernel(const T* params,
     int64_t out_i = dst_i * slice_size + slice_i;
     paddle::platform::CudaAtomicAdd(
         output + out_i,
-        *(params + in_i) * (*(ptr_input + out_i) == *(ptr_output + in_i)));
+        *(params + in_i) *
+            static_cast<T>(*(ptr_input + out_i) == *(ptr_output + in_i)));
   }
 }
 

@@ -25,7 +25,9 @@ TEST(BlockingQueue, CapacityTest) {
   EXPECT_EQ(q.Cap(), cap);
 }
 
-void FirstInFirstOut(size_t queue_cap, size_t elem_num, size_t send_time_gap,
+void FirstInFirstOut(size_t queue_cap,
+                     size_t elem_num,
+                     size_t send_time_gap,
                      size_t receive_time_gap) {
   BlockingQueue<size_t> q(queue_cap);
   std::thread sender([&]() {
@@ -137,7 +139,8 @@ void CheckIsUnorderedSame(const std::vector<std::vector<size_t>>& v1,
 
 void MultiSenderMultiReceiver(const size_t queue_cap,
                               const std::vector<std::vector<size_t>>& to_send,
-                              size_t receiver_num, size_t send_time_gap,
+                              size_t receiver_num,
+                              size_t send_time_gap,
                               size_t receive_time_gap) {
   BlockingQueue<size_t> q(queue_cap);
   size_t sender_num = to_send.size();

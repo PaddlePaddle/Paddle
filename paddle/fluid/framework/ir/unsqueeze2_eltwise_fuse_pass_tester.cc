@@ -42,12 +42,14 @@ TEST(UnsqueezeEltwiseFusePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "elementwise_mul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 2,
+  PADDLE_ENFORCE_EQ(num_nodes_before,
+                    num_nodes_after + 2,
                     platform::errors::PreconditionNotMet(
                         "The number of nodes before and after the fuse does "
                         "not meet expectations"));
   PADDLE_ENFORCE_EQ(
-      num_fused_nodes_after, 1,
+      num_fused_nodes_after,
+      1,
       platform::errors::PreconditionNotMet(
           "The number of fusion nodes does not meet expectations after fuse"));
 }

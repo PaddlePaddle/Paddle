@@ -22,15 +22,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -38,7 +39,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+                      true,
                       platform::errors::InvalidArgument(
                           "The Grad(%s)'s type should be LoDTensor, "
                           "but the received is %s",
@@ -49,8 +51,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* mom2 = ctx.Input<LoDTensor>("Moment2");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
-    auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
-    auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
+    auto* beta1_pow = ctx.Input<phi::DenseTensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<phi::DenseTensor>("Beta2Pow");
 
     auto* param_out = ctx.Output<LoDTensor>("ParamOut");
     auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
@@ -60,14 +62,15 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
-      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
-      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      paddle::framework::TensorToVector(*skip_update_tensor,
-                                        ctx.device_context(), &skip_update_vec);
+      paddle::framework::TensorToVector(
+          *skip_update_tensor, ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -75,20 +78,28 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     if (skip_update) {
       VLOG(4) << "Adam skip update";
       framework::TensorCopy(
-          *param, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), param_out);
+          *param,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          param_out);
       framework::TensorCopy(
-          *mom1, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+          *mom1,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          mom1_out);
       framework::TensorCopy(
-          *mom2, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+          *mom2,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          mom2_out);
       framework::TensorCopy(
-          *beta1_pow, beta1_pow->place(),
+          *beta1_pow,
+          beta1_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta1_pow_out);
       framework::TensorCopy(
-          *beta2_pow, beta2_pow->place(),
+          *beta2_pow,
+          beta2_pow->place(),
           ctx.template device_context<platform::DeviceContext>(),
           beta2_pow_out);
       return;
@@ -118,17 +129,18 @@ class AdamNPUKernel : public framework::OpKernel<T> {
       beta2_pow = &beta2_pow_tmp;
     }
 
-    const Tensor* beta1_tensor = nullptr;
-    const Tensor* beta2_tensor = nullptr;
-    const Tensor* epsilon_tensor = nullptr;
+    const phi::DenseTensor* beta1_tensor = nullptr;
+    const phi::DenseTensor* beta2_tensor = nullptr;
+    const phi::DenseTensor* epsilon_tensor = nullptr;
 
     Tensor beta1_tmp(experimental::DataType::FLOAT32);
     Tensor beta2_tmp(experimental::DataType::FLOAT32);
     Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
-      beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
-      PADDLE_ENFORCE_EQ(beta1_tensor->numel(), 1,
+      beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
+      PADDLE_ENFORCE_EQ(beta1_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(Beta1Tensor) size must be 1, but get %d",
                             beta1_tensor->numel()));
@@ -140,8 +152,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Beta2Tensor")) {
-      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-      PADDLE_ENFORCE_EQ(beta2_tensor->numel(), 1,
+      beta2_tensor = ctx.Input<phi::DenseTensor>("Beta2Tensor");
+      PADDLE_ENFORCE_EQ(beta2_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(Beta2Tensor) size must be 1, but get %d",
                             beta2_tensor->numel()));
@@ -153,8 +166,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("EpsilonTensor")) {
-      epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
-      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(), 1,
+      epsilon_tensor = ctx.Input<phi::DenseTensor>("EpsilonTensor");
+      PADDLE_ENFORCE_EQ(epsilon_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(EpsilonTensor) size must be 1, but get %d",
                             epsilon_tensor->numel()));
@@ -169,13 +183,15 @@ class AdamNPUKernel : public framework::OpKernel<T> {
             << "beta2_pow.numel() : " << beta2_pow->numel();
     VLOG(3) << "param.numel(): " << param->numel();
 
-    PADDLE_ENFORCE_EQ(beta1_pow_out->numel(), 1,
+    PADDLE_ENFORCE_EQ(beta1_pow_out->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "beta1 pow output size should be 1, but received "
                           "value is:%d.",
                           beta1_pow_out->numel()));
 
-    PADDLE_ENFORCE_EQ(beta2_pow_out->numel(), 1,
+    PADDLE_ENFORCE_EQ(beta2_pow_out->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "beta2 pow output size should be 1, but received "
                           "value is:%d.",
@@ -208,18 +224,24 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     // if param and param_out is not same, we need to do copy.
     if (param_out->data<T>() != param->data<T>()) {
       framework::TensorCopy(
-          *param, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), param_out);
+          *param,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          param_out);
     }
     if (mom1_out->data<T>() != mom1->data<T>()) {
       framework::TensorCopy(
-          *mom1, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+          *mom1,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          mom1_out);
     }
     if (mom2_out->data<T>() != mom2->data<T>()) {
       framework::TensorCopy(
-          *mom2, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+          *mom2,
+          ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          mom2_out);
     }
     if (!use_global_beta_pow) {
       beta1_pow_out->mutable_data<T>(ctx.GetPlace());
@@ -242,14 +264,15 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
-      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
-      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Input(SkipUpdate) size must be 1, but get %d",
                             skip_update_tensor->numel()));
       std::vector<bool> skip_update_vec;
-      paddle::framework::TensorToVector(*skip_update_tensor,
-                                        ctx.device_context(), &skip_update_vec);
+      paddle::framework::TensorToVector(
+          *skip_update_tensor, ctx.device_context(), &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
     VLOG(3) << "Skip update" << skip_update;
@@ -289,7 +312,8 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         param_out->mutable_data<T>(ctx.GetPlace());
 
         const auto* param_var = ctx.InputVar("Param");
-        PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(), true,
+        PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+                          true,
                           platform::errors::InvalidArgument(
                               "The Var(%s)'s type should be LoDTensor, "
                               "but the received is %s",
@@ -298,8 +322,10 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         auto* param = ctx.Input<LoDTensor>("Param");
 
         const auto& runner =
-            NpuOpRunner("Mul", {*param, decay},
-                        {*const_cast<framework::LoDTensor*>(param)}, {});
+            NpuOpRunner("Mul",
+                        {*param, decay},
+                        {*const_cast<phi::DenseTensor*>(param)},
+                        {});
         runner.Run(stream);
       }
     }
@@ -313,9 +339,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    adam, ops::AdamNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    adam,
+    ops::AdamNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AdamNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
 
-REGISTER_OP_NPU_KERNEL(adamw, ops::AdamWNPUKernel<float>,
+REGISTER_OP_NPU_KERNEL(adamw,
+                       ops::AdamWNPUKernel<float>,
                        ops::AdamWNPUKernel<paddle::platform::float16>);

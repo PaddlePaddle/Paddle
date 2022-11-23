@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DataLayout = framework::DataLayout;
 using DDim = framework::DDim;
 using fp16 = paddle::platform::float16;
@@ -38,48 +38,60 @@ struct InterpolateFunction {
     FillNpuTensorWithConstant<float>(&t0, static_cast<float>(0));
     FillNpuTensorWithConstant<float>(&t1, static_cast<float>(1));
   }
-  void Arange(int n, Tensor* x) {
+  void Arange(int n, phi::DenseTensor* x) {
     FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
     const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {*x}, {});
     runner.Run(stream);
   }
-  void ReduceSum(const Tensor* x, Tensor* y, const std::vector<int>& dim,
+  void ReduceSum(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& dim,
                  bool keep_dims = true) {
-    const auto& runner = NpuOpRunner("ReduceSumD", {*x}, {*y},
-                                     {{"axes", dim}, {"keep_dims", keep_dims}});
+    const auto& runner = NpuOpRunner(
+        "ReduceSumD", {*x}, {*y}, {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     const auto& runner = NpuOpRunner("AddV2", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Adds(const Tensor* x, float scalar, Tensor* y) {
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     const auto& runner = NpuOpRunner("Sub", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Cast(const Tensor* x, Tensor* y) {
+  void Cast(const phi::DenseTensor* x, phi::DenseTensor* y) {
     auto dst_dtype =
         ConvertToNpuDtype(framework::TransToProtoVarType(y->dtype()));
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
   }
-  void Gather(const Tensor* x, const Tensor* indices, const int axis,
-              Tensor* y) {
+  void Gather(const phi::DenseTensor* x,
+              const phi::DenseTensor* indices,
+              const int axis,
+              phi::DenseTensor* y) {
     const auto& runner =
         NpuOpRunner("GatherV2D", {*x, *indices}, {*y}, {{"axis", axis}});
     runner.Run(stream);
   }
-  void GatherGrad(const Tensor* gy, const Tensor* indices, const int axis,
-                  Tensor* gx) {
+  void GatherGrad(const phi::DenseTensor* gy,
+                  const phi::DenseTensor* indices,
+                  const int axis,
+                  phi::DenseTensor* gx) {
     //  1  gy swapaxis: axis & 0
     int len = (gy->dims()).size();
     std::vector<int> axis_swap(len);
@@ -109,30 +121,38 @@ struct InterpolateFunction {
     //  3  gx swapaxis: axis, 0
     Transpose(&gx_t, gx, axis_swap);
   }
-  void Scatter(const Tensor* x, const Tensor* index, const Tensor* updates,
-               Tensor* y) {
+  void Scatter(const phi::DenseTensor* x,
+               const phi::DenseTensor* index,
+               const phi::DenseTensor* updates,
+               phi::DenseTensor* y) {
     const auto& runner =
         NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*y}, {});
     runner.Run(stream);
   }
-  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
     const auto& runner =
         NpuOpRunner("TransposeD", {*x}, {*y}, {{"perm", axis}});
     runner.Run(stream);
   }
-  void Muls(const Tensor* x, float scalar, Tensor* y) {
+  void Muls(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Maximum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     const auto& runner = NpuOpRunner("Maximum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Minimum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     const auto& runner = NpuOpRunner("Minimum", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
-  void Floor(const Tensor* x, Tensor* y) {
+  void Floor(const phi::DenseTensor* x, phi::DenseTensor* y) {
     const auto& runner = NpuOpRunner("Floor", {*x}, {*y}, {});
     runner.Run(stream);
   }
@@ -147,7 +167,7 @@ struct InterpolateFunction {
 };
 
 template <>
-void InterpolateFunction<fp16>::Arange(int n, Tensor* x) {
+void InterpolateFunction<fp16>::Arange(int n, phi::DenseTensor* x) {
   Tensor x_fp32(experimental::DataType::FLOAT32);
   x_fp32.mutable_data<float>(x->dims(), place);
   FillNpuTensorWithConstant<float>(&tn, static_cast<float>(n));
@@ -156,12 +176,21 @@ void InterpolateFunction<fp16>::Arange(int n, Tensor* x) {
   Cast(&x_fp32, x);
 }
 
-void InterpolateParamCompute(const float scale_h, const float scale_w,
-                             const bool align_corners, const int align_mode,
-                             const DataLayout& data_layout, const DDim& indim,
-                             const DDim& outdim, int* axis_h, int* axis_w,
-                             int* in_h, int* in_w, int* out_h, int* out_w,
-                             float* ratio_h, float* ratio_w) {
+void InterpolateParamCompute(const float scale_h,
+                             const float scale_w,
+                             const bool align_corners,
+                             const int align_mode,
+                             const DataLayout& data_layout,
+                             const DDim& indim,
+                             const DDim& outdim,
+                             int* axis_h,
+                             int* axis_w,
+                             int* in_h,
+                             int* in_w,
+                             int* out_h,
+                             int* out_w,
+                             float* ratio_h,
+                             float* ratio_w) {
   if (data_layout == DataLayout::kNCHW) {
     *axis_h = 2;
     *axis_w = 3;
@@ -191,12 +220,22 @@ void InterpolateParamCompute(const float scale_h, const float scale_w,
 
 template <typename T>
 void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
-                                const DataLayout& data_layout, int in_h,
-                                int in_w, int out_h, int out_w, bool align_cond,
-                                float ratio_h, float ratio_w, Tensor* h0,
-                                Tensor* h1, Tensor* w0, Tensor* w1,
-                                Tensor* coef_h0, Tensor* coef_h1,
-                                Tensor* coef_w0, Tensor* coef_w1) {
+                                const DataLayout& data_layout,
+                                int in_h,
+                                int in_w,
+                                int out_h,
+                                int out_w,
+                                bool align_cond,
+                                float ratio_h,
+                                float ratio_w,
+                                phi::DenseTensor* h0,
+                                phi::DenseTensor* h1,
+                                phi::DenseTensor* w0,
+                                phi::DenseTensor* w1,
+                                phi::DenseTensor* coef_h0,
+                                phi::DenseTensor* coef_h1,
+                                phi::DenseTensor* coef_w0,
+                                phi::DenseTensor* coef_w1) {
   InterpolateFunction<T> F(ctx);
   auto place = ctx.GetPlace();
   Tensor _h0, _w0;
@@ -263,9 +302,13 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
 }
 
 template <typename T>
-void BilinearFwdNpu(const framework::ExecutionContext& ctx, const Tensor* input,
-                    Tensor* output, const float scale_h, const float scale_w,
-                    const bool align_corners, const int align_mode,
+void BilinearFwdNpu(const framework::ExecutionContext& ctx,
+                    const phi::DenseTensor* input,
+                    phi::DenseTensor* output,
+                    const float scale_h,
+                    const float scale_w,
+                    const bool align_corners,
+                    const int align_mode,
                     const DataLayout& data_layout) {
   InterpolateFunction<T> F(ctx);
   auto place = ctx.GetPlace();
@@ -275,9 +318,21 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx, const Tensor* input,
   int axis_h, axis_w;
   int out_h, out_w, in_h, in_w;
   float ratio_h, ratio_w;
-  InterpolateParamCompute(scale_h, scale_w, align_corners, align_mode,
-                          data_layout, indim, outdim, &axis_h, &axis_w, &in_h,
-                          &in_w, &out_h, &out_w, &ratio_h, &ratio_w);
+  InterpolateParamCompute(scale_h,
+                          scale_w,
+                          align_corners,
+                          align_mode,
+                          data_layout,
+                          indim,
+                          outdim,
+                          &axis_h,
+                          &axis_w,
+                          &in_h,
+                          &in_w,
+                          &out_h,
+                          &out_w,
+                          &ratio_h,
+                          &ratio_w);
 
   Tensor h0, h1, w0, w1;
   h0.mutable_data<int>({out_h}, place);
@@ -290,9 +345,23 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx, const Tensor* input,
   coef_w0.mutable_data<T>({out_w}, place);
   coef_w1.mutable_data<T>({out_w}, place);
   bool align_cond = align_mode == 0 && !align_corners;
-  BilinearParamTensorCompute<T>(ctx, data_layout, in_h, in_w, out_h, out_w,
-                                align_cond, ratio_h, ratio_w, &h0, &h1, &w0,
-                                &w1, &coef_h0, &coef_h1, &coef_w0, &coef_w1);
+  BilinearParamTensorCompute<T>(ctx,
+                                data_layout,
+                                in_h,
+                                in_w,
+                                out_h,
+                                out_w,
+                                align_cond,
+                                ratio_h,
+                                ratio_w,
+                                &h0,
+                                &h1,
+                                &w0,
+                                &w1,
+                                &coef_h0,
+                                &coef_h1,
+                                &coef_w0,
+                                &coef_w1);
 
   Tensor input_gather_h0, input_gather_h1;
   auto dim_gather_h = indim;
@@ -324,9 +393,13 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx, const Tensor* input,
 }
 
 template <typename T>
-void BilinearBwdNpu(const framework::ExecutionContext& ctx, const Tensor* gout,
-                    Tensor* gin, const float scale_h, const float scale_w,
-                    const bool align_corners, const int align_mode,
+void BilinearBwdNpu(const framework::ExecutionContext& ctx,
+                    const phi::DenseTensor* gout,
+                    phi::DenseTensor* gin,
+                    const float scale_h,
+                    const float scale_w,
+                    const bool align_corners,
+                    const int align_mode,
                     const DataLayout& data_layout) {
   InterpolateFunction<T> F(ctx);
   auto place = ctx.GetPlace();
@@ -336,9 +409,21 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx, const Tensor* gout,
   int axis_h, axis_w;
   int out_h, out_w, in_h, in_w;
   float ratio_h, ratio_w;
-  InterpolateParamCompute(scale_h, scale_w, align_corners, align_mode,
-                          data_layout, indim, outdim, &axis_h, &axis_w, &in_h,
-                          &in_w, &out_h, &out_w, &ratio_h, &ratio_w);
+  InterpolateParamCompute(scale_h,
+                          scale_w,
+                          align_corners,
+                          align_mode,
+                          data_layout,
+                          indim,
+                          outdim,
+                          &axis_h,
+                          &axis_w,
+                          &in_h,
+                          &in_w,
+                          &out_h,
+                          &out_w,
+                          &ratio_h,
+                          &ratio_w);
 
   Tensor h0, h1, w0, w1;
   h0.mutable_data<int>({out_h}, place);
@@ -351,9 +436,23 @@ void BilinearBwdNpu(const framework::ExecutionContext& ctx, const Tensor* gout,
   coef_w0.mutable_data<T>({out_w}, place);
   coef_w1.mutable_data<T>({out_w}, place);
   bool align_cond = align_mode == 0 && !align_corners;
-  BilinearParamTensorCompute<T>(ctx, data_layout, in_h, in_w, out_h, out_w,
-                                align_cond, ratio_h, ratio_w, &h0, &h1, &w0,
-                                &w1, &coef_h0, &coef_h1, &coef_w0, &coef_w1);
+  BilinearParamTensorCompute<T>(ctx,
+                                data_layout,
+                                in_h,
+                                in_w,
+                                out_h,
+                                out_w,
+                                align_cond,
+                                ratio_h,
+                                ratio_w,
+                                &h0,
+                                &h1,
+                                &w0,
+                                &w1,
+                                &coef_h0,
+                                &coef_h1,
+                                &coef_w0,
+                                &coef_w1);
 
   Tensor gy_w0, gy_w1;
   gy_w0.mutable_data<T>(outdim, place);
@@ -390,11 +489,12 @@ template <typename DeviceContext, typename T>
 class InterpolateV2NPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     auto input_dims = input->dims();
-    PADDLE_ENFORCE_EQ(input_dims.size(), 4UL,
+    PADDLE_ENFORCE_EQ(input_dims.size(),
+                      4UL,
                       platform::errors::External(
                           "NPU Interpolate Kernel only support 4-D Tensor."));
 
@@ -402,15 +502,16 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    phi::funcs::ExtractNCDWH(input_dims, data_layout, &n, &c, &in_d, &in_h,
-                             &in_w);
+    phi::funcs::ExtractNCDWH(
+        input_dims, data_layout, &n, &c, &in_d, &in_h, &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
 
     // To-do(qili93): need to support align_corners = true case, try ReSizeD
     PADDLE_ENFORCE_EQ(
-        align_corners, false,
+        align_corners,
+        false,
         platform::errors::InvalidArgument(
             "NPU Interpolate Kernel has diff when align_corners is true."));
 
@@ -420,8 +521,7 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
     float scale_w = -1;
 
     // Priority: SizeTensor > OutSize > Scale > scale > out_h & out_w
-    auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_shape_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_shape_tensor.size() > 0) {
       std::vector<int32_t> output_h(1);
       std::vector<int32_t> output_w(1);
@@ -432,12 +532,12 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
       out_h = output_h[0];
       out_w = output_w[0];
     } else if (ctx.HasInput("OutSize")) {
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       auto out_size_data = phi::funcs::get_new_data_from_tensor<int>(out_size);
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         auto scale_data =
@@ -450,13 +550,15 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
           scale_w = scale_data[0];
         }
         PADDLE_ENFORCE_EQ(
-            scale_w > 0, true,
+            scale_w > 0,
+            true,
             platform::errors::InvalidArgument(
                 "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
         PADDLE_ENFORCE_EQ(
-            scale_h > 0, true,
+            scale_h > 0,
+            true,
             platform::errors::InvalidArgument(
                 "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
@@ -467,13 +569,15 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
           scale_w = scale[1];
 
           PADDLE_ENFORCE_EQ(
-              scale_w > 0, true,
+              scale_w > 0,
+              true,
               platform::errors::InvalidArgument(
                   "The scale_w in Attr(scale) of Operator(interpolate) "
                   "should be greater than 0, but received value is %d.",
                   scale_w));
           PADDLE_ENFORCE_EQ(
-              scale_h > 0, true,
+              scale_h > 0,
+              true,
               platform::errors::InvalidArgument(
                   "The scale_h in Attr(scale) of Operator(interpolate) "
                   "should be greater than 0, but received value is %d.",
@@ -485,11 +589,13 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
         out_w = static_cast<int>(in_w * scale_w);
       }
     }
-    PADDLE_ENFORCE_GT(out_h, 0,
+    PADDLE_ENFORCE_GT(out_h,
+                      0,
                       platform::errors::InvalidArgument(
                           "out_h in Attr(out_shape) of Op(interpolate) "
                           "should be greater than 0."));
-    PADDLE_ENFORCE_GT(out_w, 0,
+    PADDLE_ENFORCE_GT(out_w,
+                      0,
                       platform::errors::InvalidArgument(
                           "out_w in Attr(out_shape) of Op(interpolate) "
                           "should be greater than 0."));
@@ -523,8 +629,14 @@ class InterpolateV2NPUKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     } else if ("bilinear" == interp_method) {
       int align_mode = ctx.Attr<int>("align_mode");
-      BilinearFwdNpu<T>(ctx, input, output, scale_h, scale_w, align_corners,
-                        align_mode, data_layout);
+      BilinearFwdNpu<T>(ctx,
+                        input,
+                        output,
+                        scale_h,
+                        scale_w,
+                        align_corners,
+                        align_mode,
+                        data_layout);
     }
   }
 };
@@ -533,23 +645,26 @@ template <typename DeviceContext, typename T>
 class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output_grad =
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* input_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     int n, c, in_d, in_h, in_w;
-    phi::funcs::ExtractNCDWH(input->dims(), data_layout, &n, &c, &in_d, &in_h,
-                             &in_w);
+    phi::funcs::ExtractNCDWH(
+        input->dims(), data_layout, &n, &c, &in_d, &in_h, &in_w);
 
     auto interp_method = ctx.Attr<std::string>("interp_method");
     bool align_corners = ctx.Attr<bool>("align_corners");
 
     // To-do(qili93): need to support align_corners = true case, try ReSizeD
     PADDLE_ENFORCE_EQ(
-        align_corners, false,
+        align_corners,
+        false,
         platform::errors::InvalidArgument(
             "NPU Interpolate Kernel has diff when align_corners is true."));
 
@@ -559,7 +674,7 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
     float scale_w = -1;
 
     // Priority: SizeTensor > OutSize > Scale > scale > out_h & out_w
-    auto list_new_size_tensor = ctx.MultiInput<framework::Tensor>("SizeTensor");
+    auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     if (list_new_size_tensor.size() > 0) {
       std::vector<int32_t> output_h(1);
       std::vector<int32_t> output_w(1);
@@ -570,12 +685,12 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
       out_h = output_h[0];
       out_w = output_w[0];
     } else if (ctx.HasInput("OutSize")) {
-      auto out_size = ctx.Input<Tensor>("OutSize");
+      auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
       auto out_size_data = phi::funcs::get_new_data_from_tensor<int>(out_size);
       out_h = out_size_data[0];
       out_w = out_size_data[1];
     } else {
-      auto scale_tensor = ctx.Input<Tensor>("Scale");
+      auto scale_tensor = ctx.Input<phi::DenseTensor>("Scale");
       auto scale = ctx.Attr<std::vector<float>>("scale");
       if (scale_tensor != nullptr) {
         auto scale_data =
@@ -588,13 +703,15 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
           scale_h = scale_data[0];
         }
         PADDLE_ENFORCE_EQ(
-            scale_w > 0, true,
+            scale_w > 0,
+            true,
             platform::errors::InvalidArgument(
                 "The scale_w in input 'Scale' Tensor of Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
                 scale_w));
         PADDLE_ENFORCE_EQ(
-            scale_h > 0, true,
+            scale_h > 0,
+            true,
             platform::errors::InvalidArgument(
                 "The scale_h in input 'Scale' Tensor of Operator(interpolate) "
                 "should be greater than 0, but received value is %d.",
@@ -604,13 +721,15 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
           scale_h = scale[0];
           scale_w = scale[1];
           PADDLE_ENFORCE_EQ(
-              scale_w > 0, true,
+              scale_w > 0,
+              true,
               platform::errors::InvalidArgument(
                   "The scale_w in Attr(scale) of Operator(interpolate) "
                   "should be greater than 0, but received value is %d.",
                   scale_w));
           PADDLE_ENFORCE_EQ(
-              scale_h > 0, true,
+              scale_h > 0,
+              true,
               platform::errors::InvalidArgument(
                   "The scale_h in Attr(scale) of Operator(interpolate) "
                   "should be greater than 0, but received value is %d.",
@@ -653,8 +772,14 @@ class InterpolateV2NPUGradKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     } else if ("bilinear" == interp_method) {
       int align_mode = ctx.Attr<int>("align_mode");
-      BilinearBwdNpu<T>(ctx, output_grad, input_grad, scale_h, scale_w,
-                        align_corners, align_mode, data_layout);
+      BilinearBwdNpu<T>(ctx,
+                        output_grad,
+                        input_grad,
+                        scale_h,
+                        scale_w,
+                        align_corners,
+                        align_mode,
+                        data_layout);
     }
   }
 };

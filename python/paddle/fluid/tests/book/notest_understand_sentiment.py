@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from paddle.fluid.layers.device import get_places
 import unittest
 import paddle.fluid as fluid
 import paddle
@@ -48,7 +45,7 @@ def convolution_net(data,
                                  size=class_dim,
                                  act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
@@ -93,7 +90,7 @@ def dyn_rnn_lstm(data,
     last = fluid.layers.sequence_last_step(rnn())
     prediction = fluid.layers.fc(input=last, size=class_dim, act="softmax")
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 
@@ -132,7 +129,7 @@ def stacked_lstm_net(data,
                                  size=class_dim,
                                  act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
     accuracy = fluid.layers.accuracy(input=prediction, label=label)
     return avg_cost, accuracy, prediction
 

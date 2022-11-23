@@ -93,8 +93,8 @@ class TestClass(unittest.TestCase):
                             L1 = np.array(L1)
                             L2 = np.array(L2)
 
-                            self.assertTrue(np.array_equal(I1, I2))
-                            self.assertTrue(np.array_equal(L1, L2))
+                            np.testing.assert_array_equal(I1, I2)
+                            np.testing.assert_array_equal(L1, L2)
 
                             batch_id += 1
                             if break_beforehand and batch_id >= int(

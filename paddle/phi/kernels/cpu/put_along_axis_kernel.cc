@@ -19,7 +19,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 
 namespace phi {
 
@@ -67,7 +67,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
     PADDLE_THROW(errors::InvalidArgument(
         "can not support reduce: '%s' for scatter kernel, only "
         "support reduce op: 'add', 'assign', 'mul' and 'multiply', the "
-        "defalut reduce "
+        "default reduce "
         "op is 'assign' ",
         reduce));
     return;

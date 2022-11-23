@@ -14,11 +14,9 @@
 # limitations under the License.
 
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import os
 from paddle.static import sparsity
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
@@ -85,10 +83,18 @@ class TestFleetWithASPStatic(unittest.TestCase):
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(fluid.global_scope().find_var(
                     param.name).get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                 n=2,
-                                                                 m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
 
 class TestFleetWithASPAMPStatic(unittest.TestCase):
@@ -146,10 +152,18 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(fluid.global_scope().find_var(
                     param.name).get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                 n=2,
-                                                                 m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
     def test_with_asp_and_pure_fp16(self):
         fleet.init(is_collective=True)
@@ -187,10 +201,18 @@ class TestFleetWithASPAMPStatic(unittest.TestCase):
             if ASPHelper._is_supported_layer(train_prog, param.name):
                 mat = np.array(fluid.global_scope().find_var(
                     param.name).get_tensor())
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
-                                                                 n=2,
-                                                                 m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
 
 
 if __name__ == "__main__":

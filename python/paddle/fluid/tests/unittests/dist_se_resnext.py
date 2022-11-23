@@ -12,22 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
 import math
 
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
-import os
-import sys
-import signal
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 paddle.enable_static()
@@ -229,7 +217,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         out = model.net(input=image, class_dim=102)
         cost = fluid.layers.cross_entropy(input=out, label=label)
 
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc_top1 = fluid.layers.accuracy(input=out, label=label, k=1)
         acc_top5 = fluid.layers.accuracy(input=out, label=label, k=5)
 

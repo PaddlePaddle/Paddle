@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/requantize_op.h"
@@ -24,7 +24,7 @@ namespace operators {
 using dnnl::memory;
 using dnnl::reorder;
 using platform::to_void_cast;
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 namespace {
 
@@ -38,19 +38,21 @@ template <typename T>
 class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto scale_in = ctx.Attr<float>("Scale_in");
     auto shift_in = ctx.Attr<float>("Shift_in");
     auto scale_out = ctx.Attr<float>("Scale_out");
     auto shift_out = ctx.Attr<float>("Shift_out");
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
-    auto* output = ctx.Output<Tensor>("Output");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
 
     PADDLE_ENFORCE_NE(
-        scale_in, 0.0f,
+        scale_in,
+        0.0f,
         platform::errors::InvalidArgument("Scale of input cannot be 0.0"));
     PADDLE_ENFORCE_NE(
-        scale_out, 0.0f,
+        scale_out,
+        0.0f,
         platform::errors::InvalidArgument("Scale of output cannot be 0.0"));
     if (shift_in != 0.0f) {
       PADDLE_ENFORCE_EQ(
@@ -68,8 +70,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     float reorder_scale = scale_out / scale_in;
 
-    std::string key = platform::CreateKey(dev_ctx, src_tz, scale_in, scale_out,
-                                          ctx.OutputName("Output"));
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, scale_in, scale_out, ctx.OutputName("Output"));
     key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
     const std::string key_prim = key + "@r";
     const std::string key_src_mem = key + "@s";
@@ -89,8 +91,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
-      src_memory = std::make_shared<dnnl::memory>(src_md, engine,
-                                                  to_void_cast<T>(input_data));
+      src_memory = std::make_shared<dnnl::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
       auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
 
       dnnl::primitive_attr attri;
@@ -144,8 +146,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     reorder_p->execute(astream, *src_memory, *dst_memory);
     astream.wait();
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -154,6 +155,9 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::ReQuantOpKernel<int8_t>, ops::ReQuantOpKernel<uint8_t>,
+REGISTER_OP_KERNEL(requantize,
+                   MKLDNN,
+                   ::paddle::platform::CPUPlace,
+                   ops::ReQuantOpKernel<int8_t>,
+                   ops::ReQuantOpKernel<uint8_t>,
                    ops::ReQuantOpKernel<paddle::platform::bfloat16>);

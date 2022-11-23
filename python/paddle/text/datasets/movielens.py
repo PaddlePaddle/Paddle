@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import zipfile
 import re
-import random
-import functools
-import six
 
-import paddle
 from paddle.io import Dataset
 import paddle.compat as cpt
 from paddle.dataset.common import _check_exists_and_download

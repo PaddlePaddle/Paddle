@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -151,6 +149,11 @@ class TestKeepDim8DReduce(TestMLUReduceSumOp):
         self.shape = (2, 5, 3, 2, 2, 3, 4, 2)
         self.axis = (3, 4, 5)
         self.keep_dim = True
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.03)
 
 
 class TestReduceAll(TestMLUReduceSumOp):

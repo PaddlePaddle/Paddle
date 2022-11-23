@@ -22,9 +22,9 @@ template <typename T>
 class ArgsortMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::LoDTensor>("X");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
-    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
     const auto& place = ctx.GetPlace();
 
     const auto& sorted = true;
@@ -44,23 +44,33 @@ class ArgsortMLUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(place);
 
     // cnnl only support int32/int16 type of indices
-    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+    phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc values_output_desc(*output);
     MLUCnnlTensorDesc indices_int32_desc(indices_int32);
-    MLUCnnl::TopK(ctx, k, axis, descending, sorted, input_desc.get(),
-                  GetBasePtr(input), values_output_desc.get(),
-                  GetBasePtr(output), indices_int32_desc.get(),
+    MLUCnnl::TopK(ctx,
+                  k,
+                  axis,
+                  descending,
+                  sorted,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  values_output_desc.get(),
+                  GetBasePtr(output),
+                  indices_int32_desc.get(),
                   GetBasePtr(&indices_int32));
 
     // cast indices type to int64
     MLUCnnlTensorDesc cast_output_desc(*indices);
     cnnlCastDataType_t cast_type = GetCastDataType(VT::INT32, VT::INT64);
-    MLUCnnl::Cast(ctx, cast_type, indices_int32_desc.get(),
-                  GetBasePtr(&indices_int32), cast_output_desc.get(),
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  indices_int32_desc.get(),
+                  GetBasePtr(&indices_int32),
+                  cast_output_desc.get(),
                   GetBasePtr(indices));
   }
 };
@@ -69,9 +79,9 @@ template <typename T>
 class ArgsortGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* indices = ctx.Input<Tensor>("Indices");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     int axis = ctx.Attr<int>("axis");
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -82,9 +92,14 @@ class ArgsortGradMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc indices_desc(*indices);
     MLUCnnlTensorDesc dx_desc(*dx);
-    MLUCnnl::ScatterFunctor(ctx, dx_desc.get(), GetBasePtr(dx), dout_desc.get(),
-                            GetBasePtr(dout), indices_desc.get(),
-                            GetBasePtr(indices), axis);
+    MLUCnnl::ScatterFunctor(ctx,
+                            dx_desc.get(),
+                            GetBasePtr(dx),
+                            dout_desc.get(),
+                            GetBasePtr(dout),
+                            indices_desc.get(),
+                            GetBasePtr(indices),
+                            axis);
   }
 };
 

@@ -8,6 +8,7 @@ list(
   gelu_op_plugin.cu
   pool_op_plugin.cu
   swish_op_plugin.cu
+  group_norm_op_plugin.cu
   layer_norm_op_plugin.cu
   instance_norm_op_plugin.cu
   emb_eltwise_layernorm_plugin.cu
@@ -29,7 +30,16 @@ list(
   remove_padding_plugin.cu
   recover_padding_plugin.cu
   c_allreduce_op_plugin.cu
-  preln_residual_bias_plugin.cu)
+  preln_residual_bias_plugin.cu
+  fused_token_prune_op_plugin.cu
+  layernorm_shift_partition_op.cu
+  generic_plugin.cu
+  lookup_table.cu)
+if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7 AND NOT WIN32)
+  list(APPEND TRT_FILES many_emb_layernorm_varseqlen_plugin.cu
+       many_emb_Layernorm_varseqlen_kernelMTron.cu
+       many_emb_Layernorm_varseqlen_kernelHFace.cu)
+endif()
 
 if(CUSPARSELT_FOUND AND ${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 8)
   list(APPEND TRT_FILES spmm_plugin.cu)
@@ -38,9 +48,22 @@ endif()
 nv_library(
   tensorrt_plugin
   SRCS ${TRT_FILES}
-  DEPS enforce tensorrt_engine prelu tensor bert_encoder_functor)
+  DEPS enforce
+       tensorrt_engine
+       prelu
+       tensor
+       bert_encoder_functor
+       tensorrt_dynamic_shape_infermeta_factory
+       tensorrt_plugin_arg_mapping_context)
 
 nv_test(
   test_split_plugin
   SRCS test_split_plugin.cc
   DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)
+
+if(NOT WIN32)
+  nv_test(
+    test_fused_token_prune_plugin
+    SRCS test_fused_token_prune_plugin.cc
+    DEPS paddle_framework ${GLOB_OPERATOR_DEPS} tensorrt_plugin)
+endif()

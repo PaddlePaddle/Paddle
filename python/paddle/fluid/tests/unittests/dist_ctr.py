@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import os
@@ -92,7 +90,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
         auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                               label=label)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         inference_program = paddle.fluid.default_main_program().clone()
 

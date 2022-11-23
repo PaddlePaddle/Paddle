@@ -46,7 +46,7 @@ class IscloseOpMaker : public framework::OpProtoAndCheckerMaker {
                   "compared as equal. Default: :math:`False` .")
         .SetDefault(false);
 
-    AddComment(R"DOC( 
+    AddComment(R"DOC(
 This operator checks if all :math:`x` and :math:`y` satisfy the condition:
 
 .. math::
@@ -84,10 +84,14 @@ class IscloseOpVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(isclose, IscloseInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(isclose,
+                            IscloseInferShapeFunctor,
                             PD_INFER_META(phi::ValueCompareInferMeta));
 REGISTER_OPERATOR(
-    isclose, ops::IscloseOp, ops::IscloseOpMaker,
+    isclose,
+    ops::IscloseOp,
+    ops::IscloseOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::IscloseOpVarTypeInference, IscloseInferShapeFunctor);
+    ops::IscloseOpVarTypeInference,
+    IscloseInferShapeFunctor);

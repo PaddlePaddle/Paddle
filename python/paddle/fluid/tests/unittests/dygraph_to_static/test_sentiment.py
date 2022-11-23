@@ -97,7 +97,7 @@ class CNN(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_1)
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
@@ -141,7 +141,7 @@ class BOW(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_2)
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
@@ -189,7 +189,7 @@ class GRU(fluid.dygraph.Layer):
         prediction = self._fc_prediction(fc_2)
 
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
 
@@ -247,7 +247,7 @@ class BiGRU(fluid.dygraph.Layer):
         # TODO(Aurelius84): Uncomment the following codes when we support return variable-length vars.
         # if label is not None:
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         return avg_cost, prediction, acc
         # else:
@@ -353,9 +353,11 @@ class TestSentiment(unittest.TestCase):
         self.args.model_type = model_type
         st_out = train(self.args, True)
         dy_out = train(self.args, False)
-        self.assertTrue(np.allclose(dy_out, st_out),
-                        msg="dy_out:\n {}\n st_out:\n {}".format(
-                            dy_out, st_out))
+        np.testing.assert_allclose(dy_out,
+                                   st_out,
+                                   rtol=1e-05,
+                                   err_msg='dy_out:\n {}\n st_out:\n {}'.format(
+                                       dy_out, st_out))
 
     def test_train(self):
         model_types = ['cnn_net', 'bow_net', 'gru_net', 'bigru_net']

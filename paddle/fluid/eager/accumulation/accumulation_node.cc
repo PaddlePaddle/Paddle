@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/gradient_accumulator.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,12 +31,16 @@ static void CopyOrAddTensor(paddle::experimental::Tensor* tensor,
                             const paddle::experimental::Tensor& t,
                             bool is_fake_empty) {
   if (is_fake_empty) {
+    VLOG(3) << "Move Tensor ptr: " << t.impl();
     *tensor = t;
   } else {
     if (!tensor->defined() || !tensor->initialized()) {
       // Simply copy tensor->impl
+      VLOG(3) << "Move Tensor ptr: " << t.impl();
       *tensor = t;
     } else {
+      VLOG(3) << "Add Tensor ptr: " << t.impl()
+              << " with Tensor ptr: " << tensor->impl();
       // Accumulation
       if (LIKELY(t.is_dense_tensor())) {
         if (LIKELY(tensor->is_dense_tensor())) {
@@ -87,8 +92,9 @@ paddle::small_vector<std::vector<paddle::experimental::Tensor>,
 GradNodeAccumulation::operator()(
     paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                          kSlotSmallVectorSize>& grads,  // NOLINT
-    bool create_graph, bool is_new_grad) {
-  VLOG(3) << "Running Eager Backward Node: GradNodeAccumulation";
+    bool create_graph,
+    bool is_new_grad) {
+  VLOG(3) << "Running AD API Grad: GradNodeAccumulation";
   PADDLE_ENFORCE(grads.size() == 1,
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
@@ -98,7 +104,8 @@ GradNodeAccumulation::operator()(
                  paddle::platform::errors::Fatal(
                      "GradNodeAccumulation should take exactly 1 grad tensor"
                      "However received: %d in slot %d .",
-                     grads[0].size(), 0));
+                     grads[0].size(),
+                     0));
   // Apply Gradient Hooks
   paddle::experimental::Tensor grad_out;
   if (GradientHooksRegistered()) {
@@ -120,12 +127,27 @@ GradNodeAccumulation::operator()(
   if (ReduceHooksRegistered()) {
     ApplyReduceHooks();
   }
+  VLOG(3) << "Finish AD API Grad: GradNodeAccumulation";
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s], Output: [%s] } ";
 
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = "(grads[0][0], [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grads[0][0]));
+    const char* TENSOR_X_GRAD_TEMPLATE = "(grad_out, [%s]), ";
+    std::string output_x_grad_str = paddle::string::Sprintf(
+        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    output_str += output_x_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
   return {{grad_out}};
 }
 
 void GradNodeAccumulation::RegisterReduceHook(
-    std::shared_ptr<TensorVoidHook>&& hook) {
+    std::shared_ptr<VoidHook>&& hook) {
   reduce_hooks_.emplace_back(std::move(hook));
 }
 

@@ -212,13 +212,15 @@ void PrintEvents(const std::vector<std::vector<Event>>* time_events,
 
 std::string ToLowerCopy(const std::string& in) {
   std::string out(in);
-  std::transform(out.begin(), out.end(), out.begin(),
-                 [](unsigned char c) { return std::tolower(c); });
+  std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) {
+    return std::tolower(c);
+  });
   return out;
 }
 
 CostData CostModel::ProfileMeasure(
-    const ProgramDesc& main_program, const ProgramDesc& startup_program,
+    const ProgramDesc& main_program,
+    const ProgramDesc& startup_program,
     const std::string& device,
     const std::vector<std::string>& fetch_cost_list) const {
   // Currently fetch_cost_list is useless
@@ -253,8 +255,8 @@ CostData CostModel::ProfileMeasure(
   std::unique_ptr<std::vector<std::vector<MemEvent>>> mem_events(
       new std::vector<std::vector<MemEvent>>());
 
-  CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events.get(),
-                         mem_events.get());
+  CompleteProfilerEvents(
+      /*tracer_profile= */ nullptr, time_events.get(), mem_events.get());
 
   // TODO(zhhsplendid): remove debug vlog after this series of work
   PrintEvents(time_events.get(), mem_events.get());

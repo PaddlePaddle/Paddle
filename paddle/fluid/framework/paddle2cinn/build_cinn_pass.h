@@ -14,12 +14,19 @@ limitations under the License. */
 
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 class MemOptVarInfo;
+class Node;
 }  // namespace ir
 
 namespace paddle2cinn {
@@ -31,9 +38,44 @@ constexpr char kInternalVars[] = "InternalVars";
 constexpr char kOutputVars[] = "OutputVars";
 constexpr char kMemOptVarInfoFromMainGraph[] =
     "mem_opt_var_info_from_main_graph";
+
 using Name2VarInfoMap =
     std::unordered_map<std::string,
                        std::shared_ptr<framework::ir::MemOptVarInfo>>;
+using GraphNodeSet = std::unordered_set<ir::Node*>;
+
+// OpTransInfo contains informations used to detect subgraphs
+// supported by the CINN compiler.
+class OpTransInfo {
+  using DyOpCondT =
+      std::unordered_map<std::string, std::function<bool(const ir::Node&)>>;
+  using DeParamCondT =
+      std::unordered_map<std::string, std::unordered_set<std::string>>;
+
+ public:
+  OpTransInfo();
+
+  const DyOpCondT& dynamic_op_cond() const { return dynamic_op_cond_; }
+
+  const DeParamCondT& deny_param_cond() const { return deny_param_cond_; }
+
+  const std::unordered_set<std::string>& default_deny_ops() const {
+    return default_deny_ops_;
+  }
+
+  std::unordered_set<std::string> GetDenyVarNames(
+      const GraphNodeSet& cluster) const;
+
+  static bool IsInplaceOp(const OpDesc& op_desc);
+
+ private:
+  DyOpCondT dynamic_op_cond_;
+
+  DeParamCondT deny_param_cond_{{"batch_norm", {"ReserveSpace"}},
+                                {"batch_norm_grad", {"ReserveSpace"}}};
+
+  std::unordered_set<std::string> default_deny_ops_{"feed", "fetch"};
+};
 
 // A pass named BuildCinnPass, the function of this pass is:
 //

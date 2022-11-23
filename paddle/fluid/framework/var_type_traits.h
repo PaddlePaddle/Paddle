@@ -54,6 +54,7 @@
 namespace phi {
 class DenseTensor;
 class SelectedRows;
+class SparseCooTensor;
 }  // namespace phi
 
 // Users should add forward declarations here
@@ -78,7 +79,7 @@ class BKCLCommunicator;
 
 namespace framework {
 class LoDRankTable;
-class ScopeBase;
+class Scope;
 class ReaderHolder;
 class Scope;
 }  // namespace framework
@@ -106,14 +107,20 @@ int TypeIndexToVarTraitId(const std::type_index &type);
 
 namespace detail {
 
-template <bool kStop, int kStart, int kEnd, typename T1, typename T2,
+template <bool kStop,
+          int kStart,
+          int kEnd,
+          typename T1,
+          typename T2,
           typename... Args>
 struct TypePosFinderImpl {
-  static constexpr int kPos =
-      std::is_same<T1, T2>::value
-          ? kStart
-          : TypePosFinderImpl<kStart + 2 == kEnd, kStart + 1, kEnd, T1,
-                              Args...>::kPos;
+  static constexpr int kPos = std::is_same<T1, T2>::value
+                                  ? kStart
+                                  : TypePosFinderImpl<kStart + 2 == kEnd,
+                                                      kStart + 1,
+                                                      kEnd,
+                                                      T1,
+                                                      Args...>::kPos;
 };
 
 template <int kStart, int kEnd, typename T1, typename T2>
@@ -126,8 +133,8 @@ struct TypePosFinderImpl<true, kStart, kEnd, T1, T2> {
 template <typename T, typename... Args>
 struct TypePosFinder {
   static constexpr int kPos =
-      TypePosFinderImpl<sizeof...(Args) == 1, 0, sizeof...(Args), T,
-                        Args...>::kPos;
+      TypePosFinderImpl<sizeof...(Args) == 1, 0, sizeof...(Args), T, Args...>::
+          kPos;
 };
 
 template <typename... Args>
@@ -172,13 +179,26 @@ struct VarTypeRegistryImpl {
 // Users should add other variable types below.
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
-    Tensor, phi::SelectedRows, std::vector<Scope *>, LoDRankTable, Strings,
-    LoDTensorArray, platform::PlaceList, ReaderHolder, String, Scope *,
-    operators::reader::LoDTensorBlockingQueueHolder, FetchList, FeedList,
+    phi::DenseTensor,
+    phi::SelectedRows,
+    phi::SparseCooTensor,
+    std::vector<Scope *>,
+    LoDRankTable,
+    Strings,
+    LoDTensorArray,
+    platform::PlaceList,
+    ReaderHolder,
+    String,
+    Scope *,
+    operators::reader::LoDTensorBlockingQueueHolder,
+    FetchList,
+    FeedList,
     operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    ncclUniqueId, platform::Communicator, platform::NCCLCommunicator,
+    ncclUniqueId,
+    platform::Communicator,
+    platform::NCCLCommunicator,
 #endif
     operators::CudnnRNNCache,
 #endif
@@ -186,13 +206,18 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     HcclRootInfo,
 #endif
 #if defined(PADDLE_WITH_XPU_BKCL)
-    BKCLUniqueId, platform::BKCLCommunicator,
+    BKCLUniqueId,
+    platform::BKCLCommunicator,
 #endif
 #if defined(PADDLE_WITH_CNCL)
     cnclCliqueId,
 #endif
-    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>, int, float,
-    Vocab>;
+    std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
+    int,
+    float,
+    Vocab,
+    std::vector<int>,
+    std::vector<float>>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -229,6 +254,7 @@ REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
 REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
 REG_PROTO_VAR_TYPE_TRAIT(String, proto::VarType::STRING);
 REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(phi::SparseCooTensor, proto::VarType::SPARSE_COO);
 
 /** End of variable type registration */
 

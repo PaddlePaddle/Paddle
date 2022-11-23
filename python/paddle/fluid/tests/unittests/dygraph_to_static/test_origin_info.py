@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 
@@ -29,6 +27,7 @@ def simple_func(x):
 
 
 def nested_func(x):
+
     def f1(a):
         return a
 
@@ -48,6 +47,7 @@ def decorated_func2(x):
 
 
 class TestOriginInfo(unittest.TestCase):
+
     def setUp(self):
         self.set_test_func()
         self.dygraph_func = unwrap(self.func)
@@ -65,7 +65,7 @@ class TestOriginInfo(unittest.TestCase):
         self.func = simple_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [7, 8, 9]
+        self.static_abs_lineno_list = [9, 11, 12]
 
     def set_dygraph_info(self):
         self.line_num = 3
@@ -93,7 +93,6 @@ class TestOriginInfo(unittest.TestCase):
         self.static_func, _ = ast_to_func(transformed_ast, self.dygraph_func)
         info_map = create_and_update_origin_info_map(dygraph_ast,
                                                      self.static_func)
-
         return info_map
 
     def test_origin_info_map(self):
@@ -117,8 +116,8 @@ class TestOriginInfo(unittest.TestCase):
             origin_info = OriginInfo(
                 Location(self.dygraph_filepath, dy_lineno, dy_col_offset),
                 self.dy_func_name[i], code)
-            self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info))
+            self.assertEqual(str(origin_info_map[staic_loc.line_location]),
+                             str(origin_info))
 
     def test_attach_origin_info(self):
         dygraph_ast = gast.parse(self.source_code)
@@ -145,16 +144,17 @@ class TestOriginInfo(unittest.TestCase):
 
 
 class TestOriginInfoWithNestedFunc(TestOriginInfo):
+
     def set_test_func(self):
         self.func = nested_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [7, 9, 10, 11, 12]
+        self.static_abs_lineno_list = [9, 12, 14, 16, 17]
 
     def set_dygraph_info(self):
         self.line_num = 5
         self.line_index_list = [0, 1, 2, 3, 4]
-        self.dy_rel_lineno_list = [0, 1, 2, 4, 5]
+        self.dy_rel_lineno_list = [0, 2, 3, 5, 6]
         self.dy_abs_col_offset = [0, 4, 8, 4, 4]
         self.dy_func_name = [self.dygraph_func.__name__] + \
                             ["f1"] * 2 + \
@@ -170,11 +170,12 @@ class TestOriginInfoWithNestedFunc(TestOriginInfo):
 
 
 class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
+
     def set_test_func(self):
         self.func = decorated_func
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [7, 8]
+        self.static_abs_lineno_list = [9, 11]
 
     def set_dygraph_info(self):
         self.line_num = 2
@@ -204,11 +205,12 @@ class TestOriginInfoWithDecoratedFunc(TestOriginInfo):
 
 
 class TestOriginInfoWithDecoratedFunc2(TestOriginInfo):
+
     def set_test_func(self):
         self.func = decorated_func2
 
     def set_static_lineno(self):
-        self.static_abs_lineno_list = [7, 8]
+        self.static_abs_lineno_list = [9, 11]
 
     def set_dygraph_info(self):
         self.line_num = 2

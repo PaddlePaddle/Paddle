@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import os
 
@@ -102,12 +101,13 @@ class TestSpawn(unittest.TestCase):
         self.assertEqual(nprocs, core.get_mlu_device_count())
 
     def test_spawn(self):
-        context = dist.spawn(train, backend='cncl', nprocs=4)
+        num_devs = core.get_mlu_device_count()
+        context = dist.spawn(train, backend='cncl', nprocs=num_devs)
         rank_list = []
-        for i in range(4):
+        for i in range(num_devs):
             rank_list.append(context.return_queues[i].get())
         rank_list.sort()
-        self.assertEqual(rank_list, list(range(4)))
+        self.assertEqual(rank_list, list(range(num_devs)))
 
 
 if __name__ == '__main__':

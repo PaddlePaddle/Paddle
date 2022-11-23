@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import subprocess
 import unittest
@@ -71,8 +69,7 @@ class TestMLUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
@@ -100,8 +97,7 @@ class TestMLUUniformRandomOpSelectedRows(unittest.TestCase):
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
-        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
-                        "hist: " + str(hist))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 if __name__ == "__main__":

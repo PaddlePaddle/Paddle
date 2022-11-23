@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -85,9 +83,17 @@ class TestASPDynamicPruningBase(unittest.TestCase):
             if ASPHelper._is_supported_layer(
                     paddle.static.default_main_program(), param.name):
                 mat = param.numpy()
-                self.assertTrue(
-                    paddle.fluid.contrib.sparsity.check_sparsity(
-                        mat.T, func_name=self.mask_check_func, n=2, m=4))
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(
+                            mat.T, func_name=self.mask_check_func, n=2, m=4))
 
 
 class TestASPDynamicPruning1D(TestASPDynamicPruningBase):

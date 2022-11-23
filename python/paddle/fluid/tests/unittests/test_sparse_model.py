@@ -62,3 +62,7 @@ class TestGradientAdd(unittest.TestCase):
             sparse_loss.backward()
 
             assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
+
+
+if __name__ == "__main__":
+    unittest.main()

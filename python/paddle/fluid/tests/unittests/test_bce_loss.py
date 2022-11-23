@@ -43,16 +43,16 @@ def test_static_layer(place,
             bce_loss = paddle.nn.loss.BCELoss(reduction=reduction)
         res = bce_loss(input, label)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                } if weight_np is None else {
-                                    "input": input_np,
-                                    "label": label_np,
-                                    "weight": weight_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 } if weight_np is None else {
+                                     "input": input_np,
+                                     "label": label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
@@ -83,16 +83,16 @@ def test_static_functional(place,
                                                             label,
                                                             reduction=reduction)
         exe = paddle.static.Executor(place)
-        static_result = exe.run(prog,
-                                feed={
-                                    "input": input_np,
-                                    "label": label_np
-                                } if weight_np is None else {
-                                    "input": input_np,
-                                    "label": label_np,
-                                    "weight": weight_np
-                                },
-                                fetch_list=[res])
+        static_result, = exe.run(prog,
+                                 feed={
+                                     "input": input_np,
+                                     "label": label_np
+                                 } if weight_np is None else {
+                                     "input": input_np,
+                                     "label": label_np,
+                                     "weight": weight_np
+                                 },
+                                 fetch_list=[res])
     return static_result
 
 
@@ -171,16 +171,20 @@ class TestBCELoss(unittest.TestCase):
                 dy_result = test_dygraph_layer(place, input_np, label_np,
                                                reduction)
                 expected = calc_bceloss(input_np, label_np, reduction)
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+                np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
                 static_functional = test_static_functional(
                     place, input_np, label_np, reduction)
                 dy_functional = test_dygraph_functional(place, input_np,
                                                         label_np, reduction)
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional,
+                                           expected,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(static_functional,
+                                           dy_functional,
+                                           rtol=1e-05)
+                np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
     def test_BCELoss_weight(self):
         input_np = np.random.uniform(0.1, 0.8,
@@ -205,9 +209,9 @@ class TestBCELoss(unittest.TestCase):
                                     label_np,
                                     reduction,
                                     weight_np=weight_np)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             static_functional = test_static_functional(place,
                                                        input_np,
                                                        label_np,
@@ -218,9 +222,11 @@ class TestBCELoss(unittest.TestCase):
                                                     label_np,
                                                     reduction,
                                                     weight_np=weight_np)
-            self.assertTrue(np.allclose(static_functional, expected))
-            self.assertTrue(np.allclose(static_functional, dy_functional))
-            self.assertTrue(np.allclose(dy_functional, expected))
+            np.testing.assert_allclose(static_functional, expected, rtol=1e-05)
+            np.testing.assert_allclose(static_functional,
+                                       dy_functional,
+                                       rtol=1e-05)
+            np.testing.assert_allclose(dy_functional, expected, rtol=1e-05)
 
     def test_BCELoss_error(self):
         paddle.disable_static()

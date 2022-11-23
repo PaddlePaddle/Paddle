@@ -21,7 +21,7 @@ import numpy as np
 from PIL import Image
 
 import paddle
-from paddle.vision import get_image_backend, set_image_backend, image_load
+from paddle.vision import image_load, set_image_backend
 from paddle.vision.datasets import DatasetFolder
 from paddle.vision.transforms import transforms
 import paddle.vision.transforms.functional as F

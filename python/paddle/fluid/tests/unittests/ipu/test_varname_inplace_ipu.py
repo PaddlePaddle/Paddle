@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -97,8 +95,10 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1.flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
 
         self.assertTrue(res0.shape == res1.shape)
 

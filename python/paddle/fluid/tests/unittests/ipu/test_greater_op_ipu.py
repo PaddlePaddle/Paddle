@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestGreaterThan(IPUOpTest):
 
     def setUp(self):
@@ -125,6 +123,18 @@ class TestEqual(TestGreaterThan):
 
     def set_test_op(self):
         self.op = paddle.fluid.layers.equal
+
+
+class TestGreaterEqual(TestGreaterThan):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.greater_equal
+
+
+class TestLessEqual(TestGreaterThan):
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.less_equal
 
 
 if __name__ == "__main__":

@@ -44,7 +44,8 @@ std::vector<std::string> ExtractParameters(
     std::string op_type = node->Op()->Type();
     if (op_type == "feed" || op_type == "fetch") {
       std::vector<std::string> output_names = node->Op()->OutputArgumentNames();
-      std::copy(output_names.begin(), output_names.end(),
+      std::copy(output_names.begin(),
+                output_names.end(),
                 std::back_inserter(feed_outputs));
     }
   }
@@ -131,7 +132,8 @@ void RenameAndGetOutputs(
   auto add_block_var = [&](const std::string &graph_arg,
                            const std::string &block_arg) {
     auto arg_var_node = graph_var_map.find(graph_arg);
-    PADDLE_ENFORCE_NE(arg_var_node, graph_var_map.end(),
+    PADDLE_ENFORCE_NE(arg_var_node,
+                      graph_var_map.end(),
                       platform::errors::InvalidArgument(
                           "Can not find %s in graph_var_map", graph_arg));
     auto *var_t = block_desc->Var(block_arg);
@@ -143,10 +145,12 @@ void RenameAndGetOutputs(
     framework::proto::OpDesc *op = block_desc->Op(index)->Proto();
     framework::OpDesc op_desc(*op, nullptr);
     auto correspond_node = subgraph_nodes[index];
-    PADDLE_ENFORCE_EQ(correspond_node->Name(), op->type(),
-                      platform::errors::PreconditionNotMet(
-                          "We should get %s, but get %s", op->type(),
-                          correspond_node->Name()));
+    PADDLE_ENFORCE_EQ(
+        correspond_node->Name(),
+        op->type(),
+        platform::errors::PreconditionNotMet("We should get %s, but get %s",
+                                             op->type(),
+                                             correspond_node->Name()));
 
     std::unordered_map<std::string, size_t> var2id;
     std::unordered_map<std::string, framework::ir::Node *> in_vars;
@@ -190,9 +194,9 @@ void RenameAndGetOutputs(
       auto out_var_name = op_desc.Output("Output").front();
       auto filter_shape = in_vars[filter_var_name]->Var()->GetShape();
       const std::vector<int> strides =
-          BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
       const std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+          PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
       if (same_hierarchy_conv2d_num_map[input_var_name] > 0) {
         (*output_names_with_id)
             .insert(out_var_name + std::to_string(var2id[out_var_name]));

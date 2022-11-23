@@ -11,12 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import numbers
 import unittest
 
 import numpy as np
 import paddle
-import scipy.stats
 
 import config
 import parameterize as param
@@ -58,6 +56,13 @@ class TestIndependent(unittest.TestCase):
         shape = [5, 10, 8]
         expected_shape = (5, 10, 8)
         data = self._t.sample(shape)
+        self.assertEqual(tuple(data.shape), expected_shape)
+        self.assertEqual(data.dtype, self.base.loc.dtype)
+
+    def test_rsample(self):
+        shape = [5, 10, 8]
+        expected_shape = (5, 10, 8, 1)
+        data = self._t.rsample(shape)
         self.assertEqual(tuple(data.shape), expected_shape)
         self.assertEqual(data.dtype, self.base.loc.dtype)
 

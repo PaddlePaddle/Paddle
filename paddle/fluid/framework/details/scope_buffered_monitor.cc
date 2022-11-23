@@ -31,7 +31,7 @@ namespace details {
 static constexpr double kMB = 1 / (1024 * 1024);
 
 static void GetTensors(Variable *var,
-                       std::unordered_set<Tensor *> *tensor_set) {
+                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
   if (var->IsType<LoDTensor>() && var->Get<LoDTensor>().IsInitialized()) {
     tensor_set->insert(var->GetMutable<LoDTensor>());
   } else if (var->IsType<phi::SelectedRows>() &&
@@ -47,7 +47,8 @@ static void GetTensors(Variable *var,
   }
 }
 
-static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
+static void GetTensors(Scope *scope,
+                       std::unordered_set<phi::DenseTensor *> *tensor_set) {
   for (auto &var_name : scope->LocalVarNames()) {
     GetTensors(scope->FindVar(var_name), tensor_set);
   }
@@ -58,7 +59,7 @@ static void GetTensors(Scope *scope, std::unordered_set<Tensor *> *tensor_set) {
 }
 
 static size_t GetTensorMemorySize(Scope *scope, bool clear_cpu_tensor) {
-  std::unordered_set<Tensor *> tensor_set;
+  std::unordered_set<phi::DenseTensor *> tensor_set;
   GetTensors(scope, &tensor_set);
   size_t memory_size = 0;
   std::unordered_set<memory::Allocation *> allocation_set;
@@ -93,7 +94,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> pre_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::pre_local_exec_scopes_process",
-          platform::TracerEventType::UserDefined, 2));
+          platform::TracerEventType::UserDefined,
+          2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     pre_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();
@@ -108,7 +110,8 @@ void ScopeBufferedMonitor::Apply(const std::function<void()> &callback,
   std::unique_ptr<platform::RecordEvent> post_local_exec_scopes_event(
       new platform::RecordEvent(
           "ScopeBufferedMonitor::post_local_exec_scopes_process",
-          platform::TracerEventType::UserDefined, 2));
+          platform::TracerEventType::UserDefined,
+          2));
   for (size_t scope_id = 0; scope_id < local_exec_scopes_.size(); ++scope_id) {
     post_local_exec_scopes_.at(scope_id).clear();
     auto scopes = local_exec_scopes_.at(scope_id)->kids();

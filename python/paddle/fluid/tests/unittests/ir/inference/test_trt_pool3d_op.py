@@ -79,7 +79,14 @@ class TensorRTPool3dTest(InferencePassTest):
             shutil.rmtree(self.path + "_opt_cache")
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu)
+            if self.precision == AnalysisConfig.Precision.Float32:
+                atol, rtol = (1e-5, 1e-5)
+            elif self.precision == AnalysisConfig.Precision.Half:
+                atol, rtol = (1e-3, 1e-3)
+            else:
+                raise ValueError("Unsupported precision {}".format(
+                    self.precision))
+            self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
 

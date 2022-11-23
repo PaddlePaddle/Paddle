@@ -15,8 +15,6 @@
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 import paddle.incubate.nn.functional as incubate_f
 from paddle.nn.layer.norm import LayerNorm
@@ -26,9 +24,7 @@ from paddle import tensor
 from paddle.fluid import layers
 import unittest
 from op_test import OpTest
-from paddle.fluid.framework import default_main_program, _enable_legacy_dygraph
-
-_enable_legacy_dygraph()
+from paddle.fluid.framework import default_main_program
 
 default_main_program().random_seed = 42
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
@@ -79,7 +80,7 @@ class AutoPruneLayer2(fluid.Layer):
         label = fluid.layers.cast(label, dtype='int64')
         # Note that the label is not persistable in fluid.layers.cross_entropy.
         loss = fluid.layers.cross_entropy(input=feature, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
         return loss
 
 
@@ -96,7 +97,7 @@ class AutoPruneLayer3(fluid.Layer):
                                           dim=1)
         # Note that: part2 is not used.
         loss = fluid.layers.cross_entropy(input=part1, label=label)
-        loss = fluid.layers.mean(loss)
+        loss = paddle.mean(loss)
         if test_num == 1:
             return loss, part2
         else:
@@ -313,8 +314,8 @@ class TestImperativeAutoPrune(unittest.TestCase):
                 learning_rate=0.003,
                 parameter_list=(linear.parameters() + linear2.parameters()))
             optimizer.minimize(out2)
-            self.assertTrue(
-                np.array_equal(linear2_origin, linear2.weight.numpy()))
+            np.testing.assert_array_equal(linear2_origin,
+                                          linear2.weight.numpy())
             self.assertFalse(
                 np.array_equal(linear_origin, linear.weight.numpy()))
 
@@ -343,10 +344,9 @@ class TestImperativeAutoPrune(unittest.TestCase):
                 learning_rate=0.003,
                 parameter_list=(linear.parameters() + linear2.parameters()))
             optimizer.minimize(out2)
-            self.assertTrue(
-                np.array_equal(linear2_origin, linear2.weight.numpy()))
-            self.assertTrue(np.array_equal(linear_origin,
-                                           linear.weight.numpy()))
+            np.testing.assert_array_equal(linear2_origin,
+                                          linear2.weight.numpy())
+            np.testing.assert_array_equal(linear_origin, linear.weight.numpy())
             try:
                 linear2.weight.gradient()
             except ValueError as e:
@@ -460,7 +460,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             label = fluid.layers.cast(label, dtype="float32")
             label = fluid.layers.cast(label, dtype='int64')
             out = fluid.layers.one_hot(input=label, depth=100)
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             self.assertTrue(linear.weight._grad_ivar() is None)
 
@@ -472,7 +472,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
     def func_case4_with_no_grad_op_maker(self):
         with fluid.dygraph.guard():
             out = fluid.layers.gaussian_random(shape=[20, 30])
-            loss = fluid.layers.mean(out)
+            loss = paddle.mean(out)
             loss.backward()
             self.assertTrue(out._grad_ivar() is None)
 

@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from op_test import OpTest
-from scipy.special import expit, erf
 import paddle
 import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import compiler, Program, program_guard
-from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 paddle.enable_static()
@@ -203,7 +196,7 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                                             self.bias_np, self.mean_np,
                                             self.variance_np, self.momentum,
                                             self.epsilon, self.data_layout)
-            self.assertEqual(np.allclose(y_np_ref, y_np), True)
+            np.testing.assert_allclose(y_np_ref, y_np, rtol=1e-05)
 
         def test_train(self):
             y_grad_np = np.random.random_sample(self.shape).astype(self.dtype)
@@ -280,8 +273,10 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                 exe = paddle.static.Executor(self.place)
                 outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
                 for id, name in enumerate(fetch_list):
-                    self.assertEqual(
-                        np.allclose(outputs[name], outs[id], atol=1e-4), True)
+                    np.testing.assert_allclose(outputs[name],
+                                               outs[id],
+                                               rtol=1e-05,
+                                               atol=1e-4)
 
     class TestBatchNormOpUseGlobalStats(unittest.TestCase):
 
@@ -313,7 +308,9 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
                         net2.training = False
                     y1 = net1(x)
                     y2 = net2(x)
-                    self.assertEqual(np.allclose(y1.numpy(), y2.numpy()), True)
+                    np.testing.assert_allclose(y1.numpy(),
+                                               y2.numpy(),
+                                               rtol=1e-05)
 
     class TestBatchNormOpUseGlobalStats1(TestBatchNormOpUseGlobalStats):
         ### test mode

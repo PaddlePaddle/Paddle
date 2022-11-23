@@ -17,7 +17,6 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 
@@ -58,7 +57,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
-        avg_cost = paddle.fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.auto = True

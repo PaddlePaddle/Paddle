@@ -25,7 +25,8 @@ namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
-      from, to,
+      from,
+      to,
       platform::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
@@ -43,8 +44,8 @@ void CastDataLayout::apply() {
   auto place = ctx_->GetPlace();
 
   if (platform::is_cpu_place(place)) {
-    phi::funcs::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-    auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
+    auto* context = static_cast<const phi::CPUContext*>(ctx_);
     trans4(*context, in_, out_, axis_);
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -53,8 +54,9 @@ void CastDataLayout::apply() {
 }
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type, const Tensor& in,
-                     Tensor* out) {
+                     const OpKernelType& expected_kernel_type,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
                                       expected_kernel_type.place_),
@@ -62,7 +64,8 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
           "TransDataLayout only support DataLayout transform on same place."));
 
   PADDLE_ENFORCE_EQ(
-      arity(in.dims()), 4,
+      arity(in.dims()),
+      4,
       platform::errors::InvalidArgument(
           "Input dimension arity only can be 4, the input dimension is %s.",
           in.dims()));
@@ -94,7 +97,8 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::reorder;
 
-void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
+void* GetDataFromTensor(const phi::DenseTensor& tensor,
+                        dnnl::memory::data_type type) {
   switch (type) {
     case dnnl::memory::data_type::f32:
       return platform::to_void_cast(tensor.data<float>());
@@ -114,7 +118,8 @@ void* GetDataFromTensor(const Tensor& tensor, dnnl::memory::data_type type) {
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
-                               const Tensor& in, Tensor* out) {
+                               const phi::DenseTensor& in,
+                               phi::DenseTensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
   auto place = expected_kernel_type.place_;
@@ -128,12 +133,17 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
   innerTransDataLayoutFromMKLDNN(
       in_layout,
       paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout(),
-      in, out, place);
+      in,
+      out,
+      place);
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
-                                    const Tensor& in, Tensor* out,
-                                    platform::Place place, bool always_copy) {
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
+                                    DataLayout out_layout,
+                                    const phi::DenseTensor& in,
+                                    phi::DenseTensor* out,
+                                    platform::Place place,
+                                    bool always_copy) {
   // Set default as NCHW in case not specified
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
@@ -148,7 +158,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   memory::data_type in_type =
       ToMKLDNNDataType(framework::TransToProtoVarType(in.dtype()));
   PADDLE_ENFORCE_NE(
-      in_type, memory::data_type::undef,
+      in_type,
+      memory::data_type::undef,
       platform::errors::InvalidArgument(
           "Input tensor type (%s) is not supported.",
           DataTypeToString(framework::TransToProtoVarType(in.dtype()))));
@@ -161,7 +172,9 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  if ((in.mem_desc() != out->mem_desc()) || always_copy) {
+  // Note(0x45f): Using initialized() to support slice Tensors
+  // with shapes like [0, 0, 0].
+  if (in.initialized() && ((in.mem_desc() != out->mem_desc()) || always_copy)) {
     void* in_data = GetDataFromTensor(in, in_type);
 
     platform::ReorderMKLDNNHandler handler(
@@ -177,7 +190,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     platform::RecordEvent record_reorder("ext_reorder",
                                          platform::TracerEventType::UserDefined,
-                                         2, platform::EventRole::kUniqueOp);
+                                         2,
+                                         platform::EventRole::kUniqueOp);
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
   } else {
@@ -188,8 +202,6 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   platform::MatchShapeToLayout(out, in_layout, out_layout);
 
   out->set_layout(DataLayout::kNCHW);
-  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(MKLDNNMemoryFormat::undef);
 }
 #endif
 

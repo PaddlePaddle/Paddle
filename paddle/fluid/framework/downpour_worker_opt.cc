@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/operators/isfinite_op.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
@@ -353,20 +354,31 @@ void DownpourWorkerOpt::TrainFiles() {
         }
       }
       if (table.is_local()) {
-        fleet_ptr_->PullSparseVarsFromLocal(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim());
+        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_,
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            &features_[tid],
+                                            &feature_values_[tid],
+                                            table.fea_dim());
         CollectLabelInfo(i);
         continue;
       } else if (table.is_async()) {
-        pull_async_status = fleet_ptr_->PullSparseVarsAsync(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim());
+        pull_async_status =
+            fleet_ptr_->PullSparseVarsAsync(*thread_scope_,
+                                            tid,
+                                            sparse_key_names_[tid],
+                                            &features_[tid],
+                                            &feature_values_[tid],
+                                            table.fea_dim());
         continue;
       } else {
-        fleet_ptr_->PullSparseVarsSync(
-            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+        fleet_ptr_->PullSparseVarsSync(*thread_scope_,
+                                       tid,
+                                       sparse_key_names_[tid],
+                                       &features_[tid],
+                                       &feature_values_[tid],
+                                       table.fea_dim(),
+                                       sparse_value_names_[tid]);
       }
       CollectLabelInfo(i);
       FillSparseValue(i);
@@ -426,12 +438,14 @@ void DownpourWorkerOpt::TrainFiles() {
         continue;
       }
       PADDLE_ENFORCE_EQ(
-          framework::TensorContainsInf(*tensor), false,
+          framework::TensorContainsInf(*tensor),
+          false,
           platform::errors::InvalidArgument("The target tensor %s contains Inf "
                                             "should check some layers output.",
                                             var_name));
       PADDLE_ENFORCE_EQ(
-          framework::TensorContainsNAN(*tensor), false,
+          framework::TensorContainsNAN(*tensor),
+          false,
           platform::errors::InvalidArgument("The target tensor %s contains Nan "
                                             "should check some layers output.",
                                             var_name));
@@ -452,10 +466,20 @@ void DownpourWorkerOpt::TrainFiles() {
         }
         bool scale_sparse_gradient_with_batch_size_ = true;
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid], no_cvm_,
+            *thread_scope_,
+            tid,
+            features_[tid],
+            feature_labels_[tid],
+            sparse_key_names_[tid],
+            sparse_grad_names_[tid],
+            table.emb_dim(),
+            &feature_grads_[tid],
+            &push_sparse_status_,
+            cur_batch,
+            use_cvm_,
+            dump_slot_,
+            &sparse_push_keys_[tid],
+            no_cvm_,
             scale_sparse_gradient_with_batch_size_);
       }
     }
@@ -465,9 +489,12 @@ void DownpourWorkerOpt::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
-            *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
-            scale_datanorm_, cur_batch);
+        fleet_ptr_->PushDenseVarsAsync(*thread_scope_,
+                                       tid,
+                                       dense_grad_names_[tid],
+                                       &push_sparse_status_,
+                                       scale_datanorm_,
+                                       cur_batch);
       }
       VLOG(3) << "push dense gradient done.";
 

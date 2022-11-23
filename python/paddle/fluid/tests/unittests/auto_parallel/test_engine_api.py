@@ -16,9 +16,7 @@ import tempfile
 import unittest
 import os
 import sys
-import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestEngineAPI(unittest.TestCase):
@@ -34,8 +32,8 @@ class TestEngineAPI(unittest.TestCase):
 
         tmp_dir = tempfile.TemporaryDirectory()
         cmd = [sys.executable, "-u"] + coverage_args + [
-            "-m", "launch", "--gpus", "0,1", "--log_dir", tmp_dir.name,
-            launch_model_path
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
         ]
 
         process = subprocess.Popen(cmd)

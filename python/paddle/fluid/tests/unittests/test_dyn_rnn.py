@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle.fluid as fluid
 import paddle
 import unittest
@@ -131,7 +129,7 @@ class TestDynamicRNN(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
                                                                   label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-4)
             sgd.minimize(loss=loss)
 
@@ -174,7 +172,7 @@ class TestDynamicRNN(unittest.TestCase):
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
                                                                   label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.Adam(1e-3)
             sgd.minimize(loss=loss)
 
@@ -242,7 +240,7 @@ class TestDynamicRNN(unittest.TestCase):
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
                                                                   label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)
             sgd.minimize(loss=loss)
 
@@ -303,7 +301,7 @@ class TestDynamicRNN(unittest.TestCase):
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(x=logits,
                                                                   label=label)
-            loss = fluid.layers.mean(loss)
+            loss = paddle.mean(loss)
             sgd = fluid.optimizer.SGD(1e-3)
             sgd.minimize(loss=loss)
 

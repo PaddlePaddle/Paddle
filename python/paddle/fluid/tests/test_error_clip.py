@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 
@@ -35,7 +32,7 @@ with fluid.program_guard(main_program=prog):
     label = fluid.layers.data(name='y', shape=[1], dtype='int64')
 
     cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
 prog_clip = prog.clone()
 prog_clip.block(0).var(hidden1.name)._set_error_clip(

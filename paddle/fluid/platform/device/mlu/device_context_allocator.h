@@ -130,7 +130,8 @@ class MLUDeviceContextAllocatorPool {
   AllocationPtr Alloc(const platform::MLUDeviceContext &dev_ctx, size_t size) {
     auto iter = allocators_.find(dev_ctx.GetPlace());
     PADDLE_ENFORCE_NE(
-        iter, allocators_.end(),
+        iter,
+        allocators_.end(),
         platform::errors::NotFound("No allocator found for MLUPlace."));
     auto &allocator = iter->second;
     AllocationPtr allocation = allocator->Allocate(size);

@@ -106,13 +106,13 @@ def set_cuda_rng_state(state_list):
 def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
-  
+
     NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
-    
+
     Returns:
         None
     """

@@ -590,7 +590,7 @@ def val_bmn(model, args):
 
         loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
             pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, args)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         loss_data += [
             avg_loss.numpy()[0],
@@ -665,7 +665,7 @@ class TestTrain(unittest.TestCase):
                     loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
                         pred_bm, pred_start, pred_end, gt_iou_map, gt_start,
                         gt_end, args)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
 
                     avg_loss.backward()
                     adam.minimize(avg_loss)
@@ -705,11 +705,14 @@ class TestTrain(unittest.TestCase):
 
         static_res = self.train_bmn(self.args, self.place, to_static=True)
         dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
-        self.assertTrue(
-            np.allclose(dygraph_res, static_res),
-            "dygraph_res: {},\n static_res: {}".format(
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph_res: {},\n static_res: {}'.format(
                 dygraph_res[~np.isclose(dygraph_res, static_res)],
-                static_res[~np.isclose(dygraph_res, static_res)]))
+                static_res[~np.isclose(dygraph_res, static_res)]),
+            atol=1e-8)
 
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         self.verify_predict()
@@ -728,21 +731,30 @@ class TestTrain(unittest.TestCase):
             for dy_res, st_res, dy_jit_res, predictor_res in zip(
                     dygraph_pred_res, static_pred_res, dygraph_jit_pred_res,
                     predictor_pred_res):
-                self.assertTrue(
-                    np.allclose(st_res, dy_res),
-                    "dygraph_res: {},\n static_res: {}".format(
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_res: {},\n static_res: {}'.format(
                         dy_res[~np.isclose(st_res, dy_res)],
-                        st_res[~np.isclose(st_res, dy_res)]))
-                self.assertTrue(
-                    np.allclose(st_res, dy_jit_res),
-                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        st_res[~np.isclose(st_res, dy_res)]),
+                    atol=1e-8)
+                np.testing.assert_allclose(
+                    st_res,
+                    dy_jit_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
                         dy_jit_res[~np.isclose(st_res, dy_jit_res)],
-                        st_res[~np.isclose(st_res, dy_jit_res)]))
-                self.assertTrue(
-                    np.allclose(st_res, predictor_res),
-                    "dygraph_jit_res: {},\n static_res: {}".format(
+                        st_res[~np.isclose(st_res, dy_jit_res)]),
+                    atol=1e-8)
+                np.testing.assert_allclose(
+                    st_res,
+                    predictor_res,
+                    rtol=1e-05,
+                    err_msg='dygraph_jit_res: {},\n static_res: {}'.format(
                         predictor_res[~np.isclose(st_res, predictor_res)],
-                        st_res[~np.isclose(st_res, predictor_res)]))
+                        st_res[~np.isclose(st_res, predictor_res)]),
+                    atol=1e-8)
             break
 
     def predict_dygraph(self, data):

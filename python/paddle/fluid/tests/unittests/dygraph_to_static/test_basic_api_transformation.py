@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import inspect
@@ -104,9 +102,7 @@ class TestDygraphBasicApi_ToVariable(unittest.TestCase):
             self.dygraph_func = func
             dygraph_res = self.get_dygraph_output()
             static_res = self.get_static_output()
-            self.assertTrue(np.allclose(dygraph_res, static_res),
-                            msg='dygraph is {}\n static_res is {}'.format(
-                                dygraph_res, static_res))
+            np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 # 1. test Apis that inherit from layers.Layer
@@ -252,9 +248,7 @@ class TestDygraphBasicApi(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestDygraphBasicApi_BilinearTensorProduct(TestDygraphBasicApi):
@@ -419,9 +413,7 @@ class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
-        self.assertTrue(np.allclose(dygraph_res, static_res),
-                        msg='dygraph is {}\n static_res is \n{}'.format(
-                            dygraph_res, static_res))
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
 class TestDygraphBasicApi_ExponentialDecay(TestDygraphBasicApi_CosineDecay):

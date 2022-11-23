@@ -15,19 +15,15 @@
 A simple machine translation demo using beam search decoder.
 """
 
-from __future__ import print_function
-
 import contextlib
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
 from paddle.fluid.contrib.decoder.beam_search_decoder import *
 import unittest
-import os
 
 paddle.enable_static()
 
@@ -145,7 +141,7 @@ def train_main(use_cuda):
                         dtype='int64',
                         lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
-    avg_cost = layers.mean(x=cost)
+    avg_cost = paddle.mean(x=cost)
 
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-3)
     optimizer.minimize(avg_cost)

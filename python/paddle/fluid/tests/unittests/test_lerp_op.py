@@ -80,6 +80,34 @@ class TestLerpWithDim6(TestLerp):
         self.shape = [2, 1, 2, 5, 1, 5]
 
 
+class TestLerpBroadXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.arange(1., 201.).astype(self.dtype).reshape([2, 1, 2, 50])
+        y = np.full(200, 10.).astype(self.dtype).reshape([2, 2, 1, 50])
+        w = np.asarray([0.5]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
+class TestLerpBroadWToXY(TestLerp):
+
+    def setUp(self):
+        self.op_type = "lerp"
+        self.python_api = paddle.lerp
+        self.init_dtype()
+        self.init_shape()
+        x = np.full(600, 2.5).astype(self.dtype).reshape([50, 2, 2, 3])
+        y = np.full(600, 1.).astype(self.dtype).reshape([50, 2, 2, 3])
+        w = np.random.random([3]).astype(self.dtype)
+        self.inputs = {'X': x, 'Y': y, 'Weight': w}
+        self.outputs = {'Out': x + w * (y - x)}
+
+
 class TestLerpAPI(unittest.TestCase):
 
     def init_dtype(self):
@@ -109,7 +137,7 @@ class TestLerpAPI(unittest.TestCase):
                     'y': self.y.reshape([1, 4]),
                 })
             for r in res:
-                self.assertEqual(np.allclose(self.res_ref, r), True)
+                np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -122,7 +150,7 @@ class TestLerpAPI(unittest.TestCase):
             y = paddle.to_tensor(self.y)
             w = paddle.to_tensor(np.full(4, 0.75).astype(self.dtype))
             out = paddle.lerp(x, y, w)
-            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -135,7 +163,7 @@ class TestLerpAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             y = paddle.to_tensor(self.y)
             x.lerp_(y, 0.75)
-            self.assertEqual(np.allclose(self.res_ref, x.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -161,7 +189,7 @@ class TestLerpAPI(unittest.TestCase):
         y = np.full(30, 10.).astype(self.dtype).reshape([3, 2, 1, 5])
         out = paddle.lerp(paddle.to_tensor(x), paddle.to_tensor(y), 0.5)
         res_ref = x + 0.5 * (y - x)
-        self.assertEqual(np.allclose(res_ref, out.numpy()), True)
+        np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
     def test_x_y_broadcast_w(self):
@@ -172,7 +200,7 @@ class TestLerpAPI(unittest.TestCase):
         out = paddle.lerp(paddle.to_tensor(x), paddle.to_tensor(y),
                           paddle.to_tensor(w))
         res_ref = x + w * (y - x)
-        self.assertEqual(np.allclose(res_ref, out.numpy()), True)
+        np.testing.assert_allclose(res_ref, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
 

@@ -45,10 +45,8 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  # TODO(gongwb): change to de newst repo when they changed
-  GIT_REPOSITORY "https://github.com/wangjiawei04/brpc"
-  #GIT_REPOSITORY  "https://github.com/ziyoujiyi/brpc" # ssl error in the previous repo（can be mannual fixed）
-  GIT_TAG "e203afb794caf027da0f1e0776443e7d20c0c28e"
+  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
+  GIT_TAG 1.2.0
   PREFIX ${BRPC_PREFIX_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -61,8 +59,8 @@ ExternalProject_Add(
              -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
              -DCMAKE_PREFIX_PATH=${prefix_path}
              -DWITH_GLOG=ON
-             -DIOBUF_WITH_HUGE_BLOCK=ON
-             -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
+             -DBUILD_BRPC_TOOLS=ON
+             -DBUILD_SHARED_LIBS=ON
              ${EXTERNAL_OPTIONAL_ARGS}
   LIST_SEPARATOR |
   CMAKE_CACHE_ARGS

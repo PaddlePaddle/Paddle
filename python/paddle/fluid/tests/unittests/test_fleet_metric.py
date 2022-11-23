@@ -13,11 +13,9 @@
 # limitations under the License.
 """Test fleet metric."""
 
-from __future__ import print_function
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import os
 import unittest
 import numpy as np
 import paddle.distributed.fleet.metrics.metric as metric

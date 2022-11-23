@@ -17,7 +17,7 @@ def check_import_scipy(OsName):
     print_info = ""
     if OsName == 'nt':
         try:
-            import scipy.io as scio
+            import scipy.io as scio  # noqa: F401
         except ImportError as e:
             print_info = str(e)
         if (len(print_info) > 0):

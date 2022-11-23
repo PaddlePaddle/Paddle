@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import logging
 import numpy as np
 from types import MethodType
@@ -20,7 +19,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle import nn
-from paddle.autograd import EagerPyLayer
+from paddle.autograd import PyLayer
 import paddle.fluid.core as core
 import paddle.fluid.framework as framework
 from paddle.fluid.framework import EagerParamBase
@@ -33,7 +32,7 @@ from .group_sharded_utils import Type, GroupShardedClipGrad, device_guard
 
 def _all_gather(tensor, buffer_size, group):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
 
@@ -58,8 +57,8 @@ CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
 
 
 class GroupShardedStage3(nn.Layer):
-    """ 
-    A wrapper for Sharding Stage3 Layer in Dygraph. 
+    """
+    A wrapper for Sharding Stage3 Layer in Dygraph.
 
     .. warning: GroupShardedStage3 encapsulates the layer strategy and integrates it into the nn.Layer.
 
@@ -181,7 +180,7 @@ class GroupShardedStage3(nn.Layer):
             collective.broadcast(p,
                                  src=self._global_root_rank,
                                  group=self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def _clear_gradients(self):
         assert len(self._trainable_params.keys()) > 0
@@ -398,7 +397,7 @@ class GroupShardedStage3(nn.Layer):
 
     def _register_forward_hooks(self, layer):
         """
-        Register EagerPyLayer to manage memory slices.
+        Register PyLayer to manage memory slices.
         There are four stages:
         FW
         1. Before the forward layers, synchronize the full parameters.
@@ -446,7 +445,7 @@ class GroupShardedStage3(nn.Layer):
             collective.broadcast(buffer,
                                  self._global_root_rank,
                                  self._group,
-                                 use_calc_stream=True)
+                                 sync_op=True)
 
     def __getattr__(self, name):
         """Forward missing attributes to wrapped layer."""
@@ -653,7 +652,7 @@ def ForwardPreHooks(layer, order_tracer, trainable_params, param2buffer_size,
     return
 
 
-class ForwardPostHooks(EagerPyLayer):
+class ForwardPostHooks(PyLayer):
 
     @staticmethod
     def forward(ctx, inputs, layer, order_tracer, trainable_params,

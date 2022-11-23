@@ -22,10 +22,12 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("expert_count"), "Input", "expert_count",
+    OP_INOUT_CHECK(ctx->HasInput("expert_count"),
+                   "Input",
+                   "expert_count",
                    "LimitByCapacity");
-    OP_INOUT_CHECK(ctx->HasInput("capacity"), "Input", "capacity",
-                   "LimitByCapacity");
+    OP_INOUT_CHECK(
+        ctx->HasInput("capacity"), "Input", "capacity", "LimitByCapacity");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "LimitByCapacity");
 
     ctx->ShareDim("expert_count", "Out");
@@ -42,12 +44,14 @@ class LimitByCapacityOp : public framework::OperatorWithKernel {
         OperatorWithKernel::IndicateVarDataType(ctx, "capacity");
 
     PADDLE_ENFORCE_EQ(
-        expert_count_dtype, capacity_dtype,
+        expert_count_dtype,
+        capacity_dtype,
         platform::errors::InvalidArgument(
             "The dtype of the expert_count and capacity should be same"));
 
     PADDLE_ENFORCE_EQ(
-        expert_count_dtype, framework::proto::VarType::INT64,
+        expert_count_dtype,
+        framework::proto::VarType::INT64,
         platform::errors::InvalidArgument("The dtype of the expert_count and "
                                           "capacity should be same as int64"));
     return framework::OpKernelType(expert_count_dtype, ctx.GetPlace());
@@ -73,8 +77,10 @@ class LimitByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CPU_KERNEL(limit_by_capacity, ops::LimitByCapacityOpCPUKernel<int>,
+REGISTER_OP_CPU_KERNEL(limit_by_capacity,
+                       ops::LimitByCapacityOpCPUKernel<int>,
                        ops::LimitByCapacityOpCPUKernel<int64_t>);
 
-REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity, ops::LimitByCapacityOp,
+REGISTER_OP_WITHOUT_GRADIENT(limit_by_capacity,
+                             ops::LimitByCapacityOp,
                              ops::LimitByCapacityOpMaker);

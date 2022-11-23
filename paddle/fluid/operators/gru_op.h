@@ -25,14 +25,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src,
+                             const phi::DenseTensor& src,
                              framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst, bool indexed_src) {
+                             phi::DenseTensor* dst,
+                             bool indexed_src) {
   phi::funcs::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
   dst->mutable_data<T>(src.dims(), ctx.GetPlace());
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
@@ -43,8 +44,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
  public:
   void BatchCompute(const framework::ExecutionContext& context) const {
     bool origin_mode = context.Attr<bool>("origin_mode");
-    auto* h0 = context.Input<Tensor>("H0");
-    auto* weight = context.Input<Tensor>("Weight");
+    auto* h0 = context.Input<phi::DenseTensor>("H0");
+    auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
     auto* batch_gate = context.Input<LoDTensor>("BatchGate");
     auto* batch_reset_hidden_prev =
@@ -55,10 +56,12 @@ class GRUGradKernel : public framework::OpKernel<T> {
         context.Input<LoDTensor>(framework::GradVarName("Hidden"));
     auto* input_grad =
         context.Output<LoDTensor>(framework::GradVarName("Input"));
-    auto* h0_grad = context.Output<Tensor>(framework::GradVarName("H0"));
+    auto* h0_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("H0"));
     auto* weight_grad =
-        context.Output<Tensor>(framework::GradVarName("Weight"));
-    auto* bias_grad = context.Output<Tensor>(framework::GradVarName("Bias"));
+        context.Output<phi::DenseTensor>(framework::GradVarName("Weight"));
+    auto* bias_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto gate_dims = batch_gate->dims();
     auto hidden_dims = hidden->dims();
@@ -81,12 +84,13 @@ class GRUGradKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> order(batch_gate->lod()[2]);
 
     if (h0) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, *h0, order, &ordered_h0,
-                                         true);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, *h0, order, &ordered_h0, true);
     }
     if (h0_grad) {
       ordered_h0_grad.mutable_data<T>(h0_grad->dims(), context.GetPlace());
-      zero(context.template device_context<DeviceContext>(), &ordered_h0_grad,
+      zero(context.template device_context<DeviceContext>(),
+           &ordered_h0_grad,
            static_cast<T>(0.0));
     }
 
@@ -146,9 +150,14 @@ class GRUGradKernel : public framework::OpKernel<T> {
         gru_grad.prev_out_grad = hidden_prev_grad_t.data<T>();
       }
       gru_value.output_value = nullptr;
-      phi::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, gru_grad, frame_size, cur_batch_size, active_node,
-          active_gate, origin_mode);
+      phi::funcs::GRUUnitGradFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                                gru_value,
+                                                                gru_grad,
+                                                                frame_size,
+                                                                cur_batch_size,
+                                                                active_node,
+                                                                active_gate,
+                                                                origin_mode);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(context.GetPlace());
@@ -162,8 +171,8 @@ class GRUGradKernel : public framework::OpKernel<T> {
       col_sum(dev_ctx, batch_gate_grad, bias_grad);
     }
     if (h0 && h0_grad) {
-      ReorderInitState<DeviceContext, T>(dev_ctx, ordered_h0_grad, order,
-                                         h0_grad, false);
+      ReorderInitState<DeviceContext, T>(
+          dev_ctx, ordered_h0_grad, order, h0_grad, false);
     }
   }
 

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -123,7 +121,7 @@ class TestLog2(TestActivation):
                            feed={"data_x": input_x},
                            fetch_list=[out1])
         expected_res = np.log2(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -134,7 +132,7 @@ class TestLog2(TestActivation):
             z_expected = np.array(np.log2(np_x))
             np.savetxt("np_z.txt", np_z.flatten(), fmt="%.4f")
             np.savetxt("z_expected.txt", z_expected.flatten(), fmt="%.4f")
-        self.assertTrue(np.allclose(np_z, z_expected, atol=1e-6))
+        np.testing.assert_allclose(np_z, z_expected, atol=1e-6)
 
 
 class TestLog10(TestActivation):
@@ -173,7 +171,7 @@ class TestLog10(TestActivation):
                            feed={"data_x": input_x},
                            fetch_list=[out1])
         expected_res = np.log10(input_x)
-        self.assertTrue(np.allclose(res1, expected_res))
+        np.testing.assert_allclose(res1[0], expected_res, rtol=1e-6)
 
         # dygraph
         with fluid.dygraph.guard():
@@ -182,7 +180,7 @@ class TestLog10(TestActivation):
             z = paddle.log10(data_x)
             np_z = z.numpy()
             z_expected = np.array(np.log10(np_x))
-        self.assertTrue(np.allclose(np_z, z_expected))
+        np.testing.assert_allclose(np_z, z_expected, rtol=1e-4)
 
 
 class TestLogHalf(TestLog):

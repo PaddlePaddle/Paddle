@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -117,7 +115,7 @@ class TestMomentumV2(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             rms_optimizer = paddle.optimizer.Momentum(learning_rate=0.1,
                                                       momentum=0.9)
@@ -243,7 +241,7 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             y = fluid.layers.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             momentum_optimizer = paddle.fluid.contrib.optimizer.Momentum(
                 learning_rate=0.1, momentum=0.9)

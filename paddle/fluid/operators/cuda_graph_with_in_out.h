@@ -26,9 +26,11 @@ namespace operators {
 class CUDAGraphWithInOuts {
  public:
   template <typename Callable>
-  CUDAGraphWithInOuts(Callable &&callable, platform::CUDAPlace place,
-                      const std::vector<const framework::Tensor *> &in_ptrs,
-                      cudaStreamCaptureMode mode, int64_t pool_id) {
+  CUDAGraphWithInOuts(Callable &&callable,
+                      platform::CUDAPlace place,
+                      const std::vector<const phi::DenseTensor *> &in_ptrs,
+                      cudaStreamCaptureMode mode,
+                      int64_t pool_id) {
     in_indices_.resize(in_ptrs.size());
     ins_.reserve(in_ptrs.size());
     int64_t valid_in_idx = 0;
@@ -59,9 +61,10 @@ class CUDAGraphWithInOuts {
     }
   }
 
-  void Run(const std::vector<const framework::Tensor *> &ins) {
+  void Run(const std::vector<const phi::DenseTensor *> &ins) {
     PADDLE_ENFORCE_EQ(
-        ins.size(), in_indices_.size(),
+        ins.size(),
+        in_indices_.size(),
         phi::errors::InvalidArgument("The input number does not match."));
     for (size_t i = 0; i < in_indices_.size(); ++i) {
       if (in_indices_[i] >= 0) {
@@ -72,8 +75,8 @@ class CUDAGraphWithInOuts {
     graph_->Replay();
   }
 
-  std::vector<framework::Tensor *> GetOutputs() {
-    std::vector<framework::Tensor *> outs(out_indices_.size());
+  std::vector<phi::DenseTensor *> GetOutputs() {
+    std::vector<phi::DenseTensor *> outs(out_indices_.size());
     for (size_t i = 0; i < out_indices_.size(); ++i) {
       if (out_indices_[i] >= 0) {
         outs[i] = &outs_[out_indices_[i]];
@@ -86,46 +89,48 @@ class CUDAGraphWithInOuts {
 
  private:
   std::unique_ptr<platform::CUDAGraph> graph_;
-  std::vector<framework::Tensor> ins_;
-  std::vector<framework::Tensor> outs_;
+  std::vector<phi::DenseTensor> ins_;
+  std::vector<phi::DenseTensor> outs_;
   std::vector<int64_t> in_indices_;
   std::vector<int64_t> out_indices_;
 };
 
 template <typename Callable>
 static std::unique_ptr<CUDAGraphWithInOuts> CaptureCUDAGraph(
-    Callable &&callable, const framework::ExecutionContext &ctx,
+    Callable &&callable,
+    const framework::ExecutionContext &ctx,
     const std::vector<std::string> &input_names,
-    const std::vector<std::string> &output_names, cudaStreamCaptureMode mode,
+    const std::vector<std::string> &output_names,
+    cudaStreamCaptureMode mode,
     int64_t pool_id) {
-  std::vector<const framework::Tensor *> inputs;
+  std::vector<const phi::DenseTensor *> inputs;
   for (const auto &name : input_names) {
-    auto input_tensors = ctx.MultiInput<framework::Tensor>(name);
+    auto input_tensors = ctx.MultiInput<phi::DenseTensor>(name);
     inputs.insert(inputs.end(), input_tensors.begin(), input_tensors.end());
   }
 
-  auto func = [&](const std::vector<const framework::Tensor *> &inputs) {
+  auto func = [&](const std::vector<const phi::DenseTensor *> &inputs) {
     callable(ctx);
-    std::vector<framework::Tensor *> outputs;
+    std::vector<phi::DenseTensor *> outputs;
     for (const auto &name : output_names) {
-      auto output_tensors = ctx.MultiOutput<framework::Tensor>(name);
-      outputs.insert(outputs.end(), output_tensors.begin(),
-                     output_tensors.end());
+      auto output_tensors = ctx.MultiOutput<phi::DenseTensor>(name);
+      outputs.insert(
+          outputs.end(), output_tensors.begin(), output_tensors.end());
     }
     return outputs;
   };
 
-  return std::make_unique<CUDAGraphWithInOuts>(func, ctx.GetPlace(), inputs,
-                                               mode, pool_id);
+  return std::make_unique<CUDAGraphWithInOuts>(
+      func, ctx.GetPlace(), inputs, mode, pool_id);
 }
 
 static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,
                              const std::vector<std::string> &input_names,
                              const std::vector<std::string> &output_names,
                              CUDAGraphWithInOuts *graph) {
-  std::vector<const framework::Tensor *> inputs;
+  std::vector<const phi::DenseTensor *> inputs;
   for (const auto &name : input_names) {
-    auto input_tensors = ctx.MultiInput<framework::Tensor>(name);
+    auto input_tensors = ctx.MultiInput<phi::DenseTensor>(name);
     inputs.insert(inputs.end(), input_tensors.begin(), input_tensors.end());
   }
 
@@ -134,13 +139,14 @@ static void ExecuteCUDAGraph(const framework::ExecutionContext &ctx,
 
   size_t idx = 0;
   for (const auto &name : output_names) {
-    auto output_tensors = ctx.MultiOutput<framework::Tensor>(name);
+    auto output_tensors = ctx.MultiOutput<phi::DenseTensor>(name);
     for (auto *out_t : output_tensors) {
       if (outputs[idx] != nullptr) {
         *out_t = *outputs[idx];
       } else {
         PADDLE_ENFORCE_EQ(
-            out_t, nullptr,
+            out_t,
+            nullptr,
             phi::errors::InvalidArgument(
                 "The %d-th output variable should be nullptr.", idx));
       }

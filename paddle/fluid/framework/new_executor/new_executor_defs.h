@@ -24,24 +24,13 @@
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
 
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
-using OpKernelMap =
-    std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
 
 constexpr int kEmptyVarIndex = 0;
 
@@ -71,18 +60,23 @@ class InterpretercoreInferShapeContext : public InferShapeContext {
 
   std::string GetOutputNameByIdx(size_t idx) const override;
 
-  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareDim(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) override;
 
   void ShareAllLoD(const std::string& in,
                    const std::string& out) const override;
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+  void ShareLoD(const std::string& in,
+                const std::string& out,
+                size_t i = 0,
                 size_t j = 0) const override;
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override;
 
-  void SetLoDLevel(const std::string& out, int32_t lod_level,
+  void SetLoDLevel(const std::string& out,
+                   int32_t lod_level,
                    size_t j = 0) const override;
 
   bool IsRuntime() const override;
@@ -163,29 +157,7 @@ struct VariableMetaInfo {
       : var_ref_count_(var_ref_count), var_desc_(var_desc) {}
 };
 
-class VariableScope;
-class VariableScopeListener : public ScopeListener {
- public:
-  explicit VariableScopeListener(VariableScope* var_scope_);
-  void onCreateVariable(const std::string& name, Variable* v) override;
-  void onDeleteVariable(const std::string& name) override;
-  void onRenameVariable(const std::string& old_name,
-                        const std::string& new_name) override;
-  void onCreateScope(Scope* Scope) override;
-  void onDeleteScope(Scope* Scope) override;
-  void onClear() override;
-
- private:
-  VariableScope* var_scope_;  // not owned
-};
-
-// TODO(zhiqiu): Maybe we need to add rwlock for VariableScope?
-
-// NOTE(xiongkun03): Use scope as a member of VariableScope, we don't need
-// ScopeBase. Scope manager the variables and VariableScope is just a quick
-// access machanism. ScopeListener is the callback to sync changes in Original
-// Scope. We can make it a membership of VariableScope. Here we use inherent.
-class VariableScope : public ScopeBase {
+class VariableScope {
  public:
   explicit VariableScope(Scope* scope);
 
@@ -193,9 +165,9 @@ class VariableScope : public ScopeBase {
 
   Scope* GetMutableLocalScope() const;
 
-  void SetLocalScope(Scope* local_scope);
+  void SetScope(Scope* scope);
 
-  Variable* FindVar(const std::string& name) const;
+  void SetLocalScope(Scope* local_scope);
 
   ~VariableScope();
 
@@ -209,16 +181,11 @@ class VariableScope : public ScopeBase {
 
   int VarId(const std::string& name) const;
 
-  Variable* Var(int id) const;
-
-  Variable* Var(const std::string& name) const;
-
   size_t VarSize() const;
 
-  void AddVar(const std::string& name, VarDesc* var_desc,
-              bool local_scope = false);
+  void AddVar(const std::string& name, VarDesc* var_desc);
 
-  void AddVar(const std::string& name, const Variable& var);
+  Variable* VarRef(int id) const;
 
   void SetVarDesc(const std::string& name, framework::VarDesc* var_desc);
 
@@ -236,32 +203,39 @@ class VariableScope : public ScopeBase {
     return vec_meta_info_;
   }
 
-  const std::shared_ptr<VariableScopeListener>& Listener() const {
-    return listener_;
+  const std::vector<std::pair<std::string, int>>& DataTransferAddedVars()
+      const {
+    return data_transfer_added_vars_;
   }
+
+  std::vector<std::pair<std::string, int>>& MutableDataTransferAddedVars() {
+    return data_transfer_added_vars_;
+  }
+
+  std::vector<Variable*>& MutableVarList() { return var_list_; }
 
   void SetVarSikpInplace(const std::string& name, bool skip);
 
   bool GetVarSikpInplace(int id) const;
 
-  void ClearListener();
-
-  void ResetListener();
-
-  friend class VariableScopeListener;
-
  private:
+  // not owned, better remove it since all vars should be
+  // accessed by Scope instead of VariableScope
   std::vector<Variable*> var_list_;
+
   std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
+
   Scope* scope_{nullptr};
   // TODO(zhiqiu): find a better way to support local scope.
   Scope* local_scope_{nullptr};
   // mutable RWLock vars_lock_;
-  std::shared_ptr<VariableScopeListener> listener_{nullptr};
+
+  // var_name -> var_type
+  std::vector<std::pair<std::string, int>> data_transfer_added_vars_;
 };
 
-class NextInstruction {
+class NextInstructionList {
  public:
   void AddDirectRun(size_t id) { direct_run_.push_back(id); }
 
@@ -291,10 +265,6 @@ struct EventInter {
   platform::DeviceType waiter_type_;
 };
 
-struct InstructionInfo {
-  std::vector<size_t> dependecy_count_;
-};
-
 enum class OpFuncType {
   kQueueSync = 0,   // CPU kernel, block host
   kQueueAsync = 1,  // GPU、XPU Kernel or d2h, h2d, send, recv, broadcast
@@ -314,14 +284,15 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
 
   // fit for phi kernel
-  phi::Kernel* pt_kernel_{nullptr};  // not owned
+  phi::Kernel* phi_kernel_{nullptr};  // not owned
 
   OpFuncType type_;
 };
 
 class Instruction {
  public:
-  Instruction(size_t id, OpFuncNode&& op_func_node,
+  Instruction(size_t id,
+              OpFuncNode&& op_func_node,
               const platform::DeviceContext& dev_ctx);
 
   size_t Id() const;
@@ -342,9 +313,9 @@ class Instruction {
 
   OperatorBase* OpBase() const;
 
-  NextInstruction& NextInstructions();
+  NextInstructionList& NextInstructions();
 
-  const NextInstruction& NextInstructions() const;
+  const NextInstructionList& NextInstructions() const;
 
   void AddGCCheckVar(size_t id);
 
@@ -370,6 +341,8 @@ class Instruction {
 
   void AddInplace(Variable* in, Variable* out);
 
+  void ClearInplace();
+
   const std::vector<EventInter>& InputEvents() const;
 
   const std::vector<EventInter>& OutputEvents() const;
@@ -391,8 +364,9 @@ class Instruction {
   std::shared_ptr<InterpretercoreInferShapeContext> infershape_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
-  std::vector<size_t> gc_check_var_list_;
-  NextInstruction next_instruction_;
+  std::vector<size_t> gc_check_vars_;
+
+  NextInstructionList next_instruction_;
 
   std::vector<EventInter> intput_events_;
   std::vector<EventInter> output_events_;
@@ -418,9 +392,91 @@ static bool IsCpuOp(const Instruction& instr) {
 }
 
 // is supported heterogeneous place
-static bool IsSupportedHetePlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_xpu_place(place);
+static bool IsSupportedHeterPlace(const phi::Place& place) {
+  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
+         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
+         platform::is_custom_place(place);
 }
+
+// static_ref_ is the numer of last live ops calculated to statically after
+// `build` the Instructions. dynamic_ref_  is the runtime version ref which will
+// be decreased by one dynamiclly after the execution of an op (in last ops
+// list). var_ is the related variable
+
+// The dynamic_ref_ is initialized to static_ref_ first, and is decreased to 1
+// during interpretercore's execution, after the interpretercore run, it `reset`
+// all dynamic_ref_, i.e., dynamic_ref_ = static_ref_ see ResetAtomicGuard for
+// details
+class VarRefInfo {
+ public:
+  explicit VarRefInfo(size_t ref, Variable* var)
+      : static_ref_(ref), dynamic_ref_(ref), var_(var) {}
+  size_t DynamicRef() { return dynamic_ref_; }
+  Variable* Var() { return var_; }
+  void ResetDynamicRef() {
+    if (static_ref_ != 1) {
+      dynamic_ref_ = static_ref_;
+    }
+  }
+  bool CheckAndDecrease() {
+    return static_ref_ == 1 || (dynamic_ref_.fetch_sub(1) == 1);
+  }
+
+ private:
+  const size_t static_ref_;
+  std::atomic<size_t> dynamic_ref_;
+  Variable* var_;
+};
+
+// static_dep_ is the numer of dependencies (ops that must run before it) of
+// each op which is calculated to statically. static_dep_  is the runtime
+// version dep which will be decreased by one dynamiclly after the execution of
+// one dependency op.
+
+// The dynamic_dep_ is initialized to static_dep_ first, and is decreased to 1
+// during interpretercore's execution, after the interpretercore run, it `reset`
+// all dynamic_dep_, i.e., dynamic_dep_ = static_dep_ see ResetAtomicGuard for
+// details
+
+class OpDepInfo {
+ public:
+  explicit OpDepInfo(size_t dep) : static_dep_(dep), dynamic_dep_(dep) {}
+  size_t DynamicDep() { return dynamic_dep_; }
+  void ResetDynamicDep() {
+    if (static_dep_ != 1) {
+      dynamic_dep_ = static_dep_;
+    }
+  }
+  bool CheckAndDecrease() {
+    return static_dep_ == 1 || (dynamic_dep_.fetch_sub(1) == 1);
+  }
+
+ private:
+  const size_t static_dep_;
+  std::atomic<size_t> dynamic_dep_;
+};
+
+class ResetAtomicGuard {
+ public:
+  ResetAtomicGuard(std::vector<std::shared_ptr<OpDepInfo>>* deps,
+                   std::vector<std::shared_ptr<VarRefInfo>>* refs)
+      : deps_(deps), refs_(refs) {}
+
+  ~ResetAtomicGuard() {
+    VLOG(10) << "Reset DynamicDep";
+    for (auto&& dep : *deps_) {
+      dep->ResetDynamicDep();
+    }
+    VLOG(10) << "Reset DynamicRef";
+    for (auto&& ref : *refs_) {
+      ref->ResetDynamicRef();
+    }
+  }
+
+ private:
+  std::vector<std::shared_ptr<OpDepInfo>>* deps_;
+  std::vector<std::shared_ptr<VarRefInfo>>* refs_;
+};
 
 }  // namespace interpreter
 

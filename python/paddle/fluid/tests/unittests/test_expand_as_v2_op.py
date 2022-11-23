@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -81,6 +79,24 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
+
+
+class TestExpandAsOpRank5(TestExpandAsBasic):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.python_api = paddle.expand_as
+        x = np.random.rand(1, 1, 7, 16).astype("int64")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def test_check_grad(self):
+        pass
 
 
 class TestExpandAsV2Error(unittest.TestCase):

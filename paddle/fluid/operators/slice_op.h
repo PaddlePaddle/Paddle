@@ -24,7 +24,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using Variable = framework::Variable;
 using LoDTensorArray = framework::LoDTensorArray;
 using DDim = framework::DDim;
@@ -47,11 +47,13 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
     end = start + 1;
   }
 
-  PADDLE_ENFORCE_GT(end, start,
+  PADDLE_ENFORCE_GT(end,
+                    start,
                     platform::errors::InvalidArgument(
                         "Attr(ends) should be greater than attr(starts) in "
                         "slice op. But received end = %d, start = %d.",
-                        ends[0], starts[0]));
+                        ends[0],
+                        starts[0]));
   int64_t out_size = end - start;
 
   if (out_is_array) {
@@ -71,7 +73,7 @@ inline void DealTensorArray(const framework::ExecutionContext& ctx,
       }
     }
   } else {
-    auto out = ctx.Output<Tensor>("Out");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     auto in_tensor = in_array->at(start);
     paddle::framework::TensorCopy(in_tensor, ctx.GetPlace(), out);
   }
@@ -97,26 +99,31 @@ class SliceKernel : public framework::OpKernel<T> {
     auto infer_flags = ctx.Attr<std::vector<int>>("infer_flags");
 
     // Step 1: Get the accurate attribute value of starts and ends
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+      starts = GetDataFromTensor<int64_t>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+      ends =
+          GetDataFromTensor<int64_t>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
     }
 
     PADDLE_ENFORCE_EQ(
-        starts.size(), axes.size(),
+        starts.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of starts must be equal to the size of axes."));
     PADDLE_ENFORCE_EQ(
-        ends.size(), axes.size(),
+        ends.size(),
+        axes.size(),
         platform::errors::InvalidArgument(
             "The size of ends must be equal to the size of axes."));
 
@@ -139,16 +146,19 @@ class SliceGradKernel : public framework::OpKernel<T> {
     std::vector<int64_t> ends(ends_int.begin(), ends_int.end());
 
     // Get the accurate attribute value of starts and ends
-    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    auto starts_tensor_list =
+        ctx.MultiInput<phi::DenseTensor>("StartsTensorList");
     if (ctx.HasInput("StartsTensor")) {
-      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+      starts = GetDataFromTensor<int64_t>(
+          ctx.Input<phi::DenseTensor>("StartsTensor"));
     } else if (starts_tensor_list.size() > 0) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
 
-    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    auto ends_tensor_list = ctx.MultiInput<phi::DenseTensor>("EndsTensorList");
     if (ctx.HasInput("EndsTensor")) {
-      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+      ends =
+          GetDataFromTensor<int64_t>(ctx.Input<phi::DenseTensor>("EndsTensor"));
     } else if (ends_tensor_list.size() > 0) {
       ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
     }
@@ -179,7 +189,8 @@ class SliceGradKernel : public framework::OpKernel<T> {
         d_in_arr->at(i).Resize(dim);
         d_in_arr->at(i).mutable_data<T>(ctx.GetPlace());
         functor(reinterpret_cast<const DeviceContext&>(dev_ctx),
-                &d_in_arr->at(i), static_cast<T>(0));
+                &d_in_arr->at(i),
+                static_cast<T>(0));
       }
 
       if (d_out_is_array) {
@@ -187,13 +198,14 @@ class SliceGradKernel : public framework::OpKernel<T> {
             ctx.Input<LoDTensorArray>(framework::GradVarName("Out"));
         int d_out_size = d_out_arr->size();
         for (int i = 0; i < d_out_size; ++i) {
-          paddle::framework::TensorCopy(d_out_arr->at(i), ctx.GetPlace(),
-                                        &(d_in_arr->at(start + i)));
+          paddle::framework::TensorCopy(
+              d_out_arr->at(i), ctx.GetPlace(), &(d_in_arr->at(start + i)));
         }
       } else {
-        auto* d_out = ctx.Input<Tensor>(framework::GradVarName("Out"));
-        paddle::framework::TensorCopy(*d_out, ctx.GetPlace(),
-                                      &(d_in_arr->at(start)));
+        auto* d_out =
+            ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+        paddle::framework::TensorCopy(
+            *d_out, ctx.GetPlace(), &(d_in_arr->at(start)));
       }
       return;
     }

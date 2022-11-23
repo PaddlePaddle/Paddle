@@ -52,14 +52,16 @@ class SumOpWithKernel : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext &ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.Input<Tensor>("X")->place());
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.Input<phi::DenseTensor>("X")->place());
   }
 };
 
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_OP_WITHOUT_GRADIENT(sum, paddle::framework::SumOpWithKernel,
+REGISTER_OP_WITHOUT_GRADIENT(sum,
+                             paddle::framework::SumOpWithKernel,
                              paddle::framework::SumOpMaker);
 
 namespace paddle {
@@ -93,11 +95,17 @@ void BuildStrategyApply(BuildStrategy *build_strategy, ir::Graph *graph) {
   platform::BKCLCommunicator ctxs;
 #endif
 
-  build_strategy->Apply(graph, places, loss_name, scopes, 1,
+  build_strategy->Apply(graph,
+                        places,
+                        loss_name,
+                        scopes,
+                        1,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_BKCL)
-                        device, &ctxs);
+                        device,
+                        &ctxs);
 #else
                         device);
 #endif

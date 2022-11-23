@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -91,9 +89,8 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
 
         expected_data = np.array(
             [0, 2, 3, 1, 0, 2, 1, 0, 4, 5, 3, 5, 0, 4, 5, 3, 1], "int64")
-        self.assertTrue(np.array_equal(np.array(sentence_ids), expected_data))
-        self.assertTrue(np.array_equal(np.array(sentence_scores),
-                                       expected_data))
+        np.testing.assert_array_equal(np.array(sentence_ids), expected_data)
+        np.testing.assert_array_equal(np.array(sentence_scores), expected_data)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

@@ -32,7 +32,7 @@ namespace operators {
 bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
   if (ctx.Attr<bool>("adaptive") == false) return true;
   // (jczaja): oneDNN is supporting only unchangable in size pool window
-  auto src_tz = phi::vectorize(ctx.Input<Tensor>("X")->dims());
+  auto src_tz = phi::vectorize(ctx.Input<phi::DenseTensor>("X")->dims());
   std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
   // Fast but not exhustive check
   return ((src_tz[src_tz.size() - 1] % ksize[1] == 0) &&
@@ -42,8 +42,7 @@ bool CanMKLDNNSupportPool(const framework::ExecutionContext& ctx) {
 framework::OpKernelType PoolOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -63,7 +62,8 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 }
 
 framework::OpKernelType PoolOp::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -75,20 +75,19 @@ framework::OpKernelType PoolOp::GetKernelTypeForVar(
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
     if (dl != framework::DataLayout::kAnyLayout) {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), dl);
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), dl);
     }
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = "AnyLayout";
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -105,12 +104,13 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_,
-                                 library_);
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout_, library_);
 }
 
 framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
     const framework::OpKernelType& expected_kernel_type) const {
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
@@ -123,8 +123,8 @@ framework::OpKernelType PoolOpGrad::GetKernelTypeForVar(
                                    framework::StringToDataLayout(data_format));
   }
 #endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
+  return framework::OpKernelType(
+      expected_kernel_type.data_type_, tensor.place(), tensor.layout());
 }
 
 void Pool2dOpMaker::Make() {
@@ -149,9 +149,8 @@ void Pool2dOpMaker::Make() {
                             "(vector<int>) The pooling window "
                             "size(height, width) of the pooling operator. "
                             "If global_pooling = true, ksize and paddings will "
-                            "be ignored.");  // TODO(Chengduo): Add checker.
-                                             // (Currently,
-  // TypedAttrChecker don't support vector type.)
+                            "be ignored.")
+      .SupportTensor();
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
@@ -185,34 +184,12 @@ void Pool2dOpMaker::Make() {
       "pooling in each grid area to get output pooling value. "
       "Default False.")
       .SetDefault(false);
-
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_mkldnn",
-                "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<bool>(
-      "use_quantizer",
-      "(bool, default false) "
-      "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false)
-      .AsExtra();
-  AddAttr<std::string>(
-      "mkldnn_data_type",
-      "(string, default \"float32\"). Data type of mkldnn kernel")
-      .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"})
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -220,12 +197,6 @@ void Pool2dOpMaker::Make() {
       "Defaults to \"NHWC\". Specify the data format of the output data, "
       "the input will be transformed automatically. ")
       .SetDefault("NCHW");
-  AddAttr<bool>("is_test",
-                "(bool, default false) Set to true for inference only, false "
-                "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
-
   AddAttr<std::string>(
       "padding_algorithm",
       "(string, default \"EXPLICIT\") An optional string from: \"EXPLICIT\","
@@ -233,7 +204,11 @@ void Pool2dOpMaker::Make() {
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
   // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the pooling output based on
 the input, pooling_type and pool_size, pool_stride, pool_padding parameters.
@@ -369,9 +344,7 @@ void Pool3dOpMaker::Make() {
       "(vector<int>) The pooling window size(depth, height, "
       "width) of pooling operator. "
       "If global_pooling = true, ksize and paddings will "
-      "be ignored.");  // TODO(Chengduo): Add checker.
-                       // (Currently,
-  // TypedAttrChecker don't support vector type.)
+      "be ignored.");
   AddAttr<bool>(
       "global_pooling",
       "(bool) Whether to use the global pooling. "
@@ -408,22 +381,12 @@ void Pool3dOpMaker::Make() {
       "pooling in each grid area to get output pooling value. "
       "Default False")
       .SetDefault(false);
-
-  AddAttr<bool>(
-      "use_cudnn",
-      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
       "output height and width. False is the default. If it is set to False, "
       "the floor function will be used. Default False")
       .SetDefault(false);
-  AddAttr<bool>("use_mkldnn",
-                "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false)
-      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -437,8 +400,11 @@ void Pool3dOpMaker::Make() {
       "\"SAME\",\"VALID\". Set to \"EXPLICIT\" for explicit padding. "
       "Set to \"SAME\" or \"VALID\" for algorithm of padding. ")
       .SetDefault("EXPLICIT");
-  // TODO(dzhwinter): need to registered layout transform function
-
+  AddAttr<bool>(
+      "use_cudnn",
+      "(bool) Only used in cudnn kernel, need install cudnn. Default False")
+      .SetDefault(false)
+      .AsExtra();
   AddComment(R"DOC(
 This operation calculates the output based on
 the input, pooling_type, pool_size, pool_stride, and pool_padding parameters.
@@ -550,33 +516,45 @@ Example:
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(pool2d, Pool2dInferShapeFunctor,
-                            PD_INFER_META(phi::PoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad, Pool2dGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d,
+                            Pool2dInferShapeFunctor,
+                            PD_INFER_META(phi::Pool2DInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool2d_grad,
+                            Pool2dGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(pool2d_double_grad,
                             Pool2dDoubleGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolInferMeta));
+                            PD_INFER_META(phi::Pool2DInferMeta));
 
 REGISTER_OPERATOR(
-    pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
+    pool2d,
+    ops::PoolOp,
+    ops::Pool2dOpMaker,
+    ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     Pool2dInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
+REGISTER_OPERATOR(pool2d_grad,
+                  ops::PoolOpGrad,
                   ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
                   ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>,
                   Pool2dGradInferShapeFunctor);
-REGISTER_OPERATOR(pool2d_double_grad, ops::PoolOp,
+REGISTER_OPERATOR(pool2d_double_grad,
+                  ops::PoolOp,
                   Pool2dDoubleGradInferShapeFunctor);
 
-DECLARE_INFER_SHAPE_FUNCTOR(pool3d, Pool3dInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d,
+                            Pool3dInferShapeFunctor,
                             PD_INFER_META(phi::PoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad, Pool3dGradInferShapeFunctor,
-                            PD_INFER_META(phi::PoolGradInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(pool3d_grad,
+                            Pool3dGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
 REGISTER_OPERATOR(
-    pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
+    pool3d,
+    ops::PoolOp,
+    ops::Pool3dOpMaker,
+    ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     Pool3dInferShapeFunctor);

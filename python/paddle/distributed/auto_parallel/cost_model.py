@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import queue
 import copy
 from enum import Enum
@@ -433,9 +432,9 @@ class CostModel(object):
 
     def merge_linear(self):
         r'''
-        This method does the following: 
+        This method does the following:
         If X depends on Y only, they must be run sequentially.
-            [ e.g. A ->- C ->- D   D and E depends on C only.] 
+            [ e.g. A ->- C ->- D   D and E depends on C only.]
             [      B ->-/ \->- E   C depends on A and B.     ]
         We merge X and Y into a new node and sum up their cost time.
         '''
@@ -453,7 +452,7 @@ class CostModel(object):
         r'''
         This method does the following:
         If a node has more than one successor, there is *branch*.
-            [ e.g. A ->- B ->- D                                       ] 
+            [ e.g. A ->- B ->- D                                       ]
             [       \->- C ->- / , B and C can be run at the same time ]
             case 1: if B or C is null (or D is directly dependent on A),
                     it's equivalent to A->C->D or A->B->D, fall back to self.merge_linear
@@ -789,12 +788,12 @@ def estimate_cost(distributed_program, cluster, pipeline_config,
                   standalone_cost_data, batch_size):
     """
     Estimated cost from distributed program, cluster model and distributed settings.
-    
+
     Args:
         distributed_program(list): list of paddle programs
-        cluster(Cluster): cluster model 
+        cluster(Cluster): cluster model
         standalone_cost_data(CostData): cost data given by paddle.core
-        batch_size(int): batch size of the training workload 
+        batch_size(int): batch size of the training workload
         pipeline_config(list): configuration of pipeline stage allocation
     """
     # the following line is left for now, cluster model will be involved in the future

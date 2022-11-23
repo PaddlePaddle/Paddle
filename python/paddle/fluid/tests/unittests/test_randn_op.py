@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -77,9 +75,6 @@ class TestRandnOpError(unittest.TestCase):
 
     def test_error(self):
         with program_guard(Program(), Program()):
-            # The argument shape's size of randn_op should not be 0.
-            self.assertRaises(AssertionError, paddle.randn, [])
-
             # The argument shape's type of randn_op should be list or tuple.
             self.assertRaises(TypeError, paddle.randn, 1)
 

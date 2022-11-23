@@ -45,8 +45,6 @@ class SimpleNet(paddle.nn.Layer):
         return x
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestSetIpuShard(unittest.TestCase):
 
     def _test(self):
@@ -76,12 +74,12 @@ class TestSetIpuShard(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 1, 2, 3, 3, 3, 4, 4]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestSetIpuPipeline(unittest.TestCase):
 
     def _test(self):
@@ -111,12 +109,12 @@ class TestSetIpuPipeline(unittest.TestCase):
         ipu_index_list = self._test()
         expected_ipu_index_list = [1, 1, 2, 3, 3, 3, 4, 4]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestSetIpuShardAndPipeline(unittest.TestCase):
 
     def _test(self):
@@ -153,12 +151,12 @@ class TestSetIpuShardAndPipeline(unittest.TestCase):
             1, 1, 2, 3, 3, 3, 4, 4, 2, 2, 3, 4, 4, 4, 1, 1
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestSetIpuForModel(unittest.TestCase):
 
     def _test(self):
@@ -190,12 +188,12 @@ class TestSetIpuForModel(unittest.TestCase):
             1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestSetIpuMixedModel(unittest.TestCase):
 
     def setUp(self):
@@ -244,8 +242,10 @@ class TestSetIpuMixedModel(unittest.TestCase):
             1, 1, 2, 2, 2, 3, 4, 4, 2, 2, 3, 3, 3, 4, 1, 1
         ]
 
-        self.assertTrue(
-            np.allclose(ipu_index_list, expected_ipu_index_list, atol=0))
+        np.testing.assert_allclose(ipu_index_list,
+                                   expected_ipu_index_list,
+                                   rtol=1e-05,
+                                   atol=0)
 
 
 if __name__ == "__main__":

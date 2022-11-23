@@ -16,6 +16,7 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -28,5 +29,22 @@ void SliceRawKernel(const Context& ctx,
                     const std::vector<int64_t>& infer_flags,
                     const std::vector<int64_t>& decrease_axis,
                     DenseTensor* out);
+
+template <typename T, typename Context>
+DenseTensor SliceKernel(const Context& ctx,
+                        const DenseTensor& input,
+                        const std::vector<int64_t>& axes,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const std::vector<int64_t>& infer_flags,
+                        const std::vector<int64_t>& decrease_axis) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  SliceRawInferMeta(
+      input, axes, starts, ends, infer_flags, decrease_axis, &meta_out);
+  SliceRawKernel<T, Context>(
+      ctx, input, axes, starts, ends, infer_flags, decrease_axis, &dense_out);
+  return dense_out;
+}
 
 }  // namespace phi

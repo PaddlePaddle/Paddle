@@ -55,3 +55,6 @@ py_test_modules(
 py_test_modules(
   test_standalone_executor_serial_run MODULES test_standalone_executor ENVS
   FLAGS_new_executor_serial_run=true)
+
+py_test_modules(test_convert_graph_to_program MODULES test_standalone_executor
+                ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)

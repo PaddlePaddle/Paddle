@@ -97,19 +97,19 @@ class TestFusedMatmulBias(unittest.TestCase):
 
         z = fused_matmul_bias(x, y, bias, trans_x, trans_y)
         z_np = matmul(x_np, y_np, bias_np, trans_x, trans_y)
-        self.assertTrue(np.array_equal(z.numpy(), z_np))
+        np.testing.assert_array_equal(z.numpy(), z_np)
 
         z_grad_np = self.rand_data(z_np.shape, dtype)
         paddle.autograd.backward(z, grad_tensors=[paddle.to_tensor(z_grad_np)])
 
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
             x_np, y_np, bias_np, z_grad_np, trans_x, trans_y)
-        self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_np))
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_np)
         self.assertEqual(y_grad_np.shape, y_np.shape)
-        self.assertTrue(np.array_equal(y.grad.numpy(), y_grad_np))
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_np)
 
         if need_bias:
-            self.assertTrue(np.array_equal(bias.grad.numpy(), bias_grad_np))
+            np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
         else:
             self.assertTrue(bias_grad_np is None)
 
@@ -138,7 +138,7 @@ class TestFusedLinear(unittest.TestCase):
         linear = FusedLinear(40, 50, transpose_weight=transpose)
         y1 = linear(x)
         y2 = fused_linear(x, linear.weight, linear.bias, transpose)
-        self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+        np.testing.assert_array_equal(y1.numpy(), y2.numpy())
 
     def test_non_transpose(self):
         self.check_fused_linear(False)

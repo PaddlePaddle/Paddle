@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 from py_precise_roi_pool import PyPrRoIPool
 from op_test import OpTest
+import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 
 
 class TestPRROIPoolOp(OpTest):
@@ -103,7 +101,7 @@ class TestPRROIPoolOp(OpTest):
                                      dtype="float32",
                                      lod_level=1)
             output = fluid.layers.prroi_pool(x, rois, 0.25, 2, 2)
-            loss = fluid.layers.mean(output)
+            loss = paddle.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
             input_x = fluid.create_lod_tensor(self.x, [], place)
@@ -234,7 +232,7 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
                                              2,
                                              2,
                                              batch_roi_nums=rois_index)
-            loss = fluid.layers.mean(output)
+            loss = paddle.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
             exe = fluid.Executor(place)

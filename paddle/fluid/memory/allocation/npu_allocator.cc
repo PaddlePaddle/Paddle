@@ -26,11 +26,12 @@ namespace allocation {
 bool NPUAllocator::IsAllocThreadSafe() const { return true; }
 void NPUAllocator::FreeImpl(phi::Allocation* allocation) {
   PADDLE_ENFORCE_EQ(
-      allocation->place(), place_,
+      allocation->place(),
+      place_,
       platform::errors::PermissionDenied(
           "NPU memory is freed in incorrect device. This may be a bug"));
-  platform::RecordedNPUFree(allocation->ptr(), allocation->size(),
-                            place_.device);
+  platform::RecordedNPUFree(
+      allocation->ptr(), allocation->size(), place_.device);
   delete allocation;
 }
 
@@ -56,7 +57,8 @@ phi::Allocation* NPUAllocator::AllocateImpl(size_t size) {
         "value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the maximum "
         "GPU memory usage is limited to %d MB.\n"
         "   The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-        limit_size, limit_size);
+        limit_size,
+        limit_size);
   }
 
   PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
@@ -66,8 +68,12 @@ phi::Allocation* NPUAllocator::AllocateImpl(size_t size) {
       "Please check whether there is any other process using NPU %d.\n"
       "1. If yes, please stop them, or start PaddlePaddle on another NPU.\n"
       "2. If no, please decrease the batch size of your model. %s\n\n",
-      place_.device, string::HumanReadableSize(size), place_.device,
-      string::HumanReadableSize(avail), place_.device, err_msg));
+      place_.device,
+      string::HumanReadableSize(size),
+      place_.device,
+      string::HumanReadableSize(avail),
+      place_.device,
+      err_msg));
 }
 
 }  // namespace allocation

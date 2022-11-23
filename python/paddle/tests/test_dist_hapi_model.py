@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import time
@@ -21,7 +19,7 @@ import copy
 import subprocess
 import paddle.fluid as fluid
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
 
 
 def get_cluster_from_args(selected_gpus):

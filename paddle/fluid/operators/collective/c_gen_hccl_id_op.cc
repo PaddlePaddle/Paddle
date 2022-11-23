@@ -59,8 +59,9 @@ static void CopyHCCLIDToVar(const std::vector<HcclRootInfo>& hccl_ids,
     std::string var_name = func(i);
     auto var = scope.FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(
-        var, platform::errors::NotFound("Variable with name %s is not found",
-                                        var_name.c_str()));
+        var,
+        platform::errors::NotFound("Variable with name %s is not found",
+                                   var_name.c_str()));
     auto hccl_id = var->GetMutable<HcclRootInfo>();
     memcpy(hccl_id, &hccl_ids[i], sizeof(HcclRootInfo));
   }

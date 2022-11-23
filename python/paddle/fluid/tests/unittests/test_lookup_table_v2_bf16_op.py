@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
-from paddle.fluid.tests.unittests.op_test import (skip_check_grad_ci,
-                                                  convert_uint16_to_float)
+from paddle.fluid.tests.unittests.op_test import convert_uint16_to_float
 from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
     _lookup, TestLookupTableBF16Op, TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,
@@ -119,12 +116,12 @@ class TestEmbeddingLayerBF16ConstantInitializer(unittest.TestCase):
 
     def test_embedding_weights(self):
         result = convert_uint16_to_float(self.result[0])
-        self.assertTrue(np.array_equal(self.w_fp32, result))
+        np.testing.assert_array_equal(self.w_fp32, result)
 
     def test_lookup_results(self):
         lookup_result = convert_uint16_to_float(self.result[1])
         lookup_ref = _lookup(self.w_fp32, self.ids, self.flat_ids, self.op_type)
-        self.assertTrue(np.array_equal(lookup_result, lookup_ref))
+        np.testing.assert_array_equal(lookup_result, lookup_ref)
 
 
 if __name__ == "__main__":

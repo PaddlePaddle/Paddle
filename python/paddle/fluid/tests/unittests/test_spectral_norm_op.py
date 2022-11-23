@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
 import numpy as np
 import paddle.fluid as fluid
 from op_test import OpTest, skip_check_grad_ci
 
-from paddle.fluid import core
 from paddle.fluid.framework import program_guard, Program
 
 

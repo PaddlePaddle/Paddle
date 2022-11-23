@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -466,10 +464,10 @@ class TestNearestAPI(unittest.TestCase):
                                                 out_h=12,
                                                 out_w=12,
                                                 align_corners=False)
-        self.assertTrue(
-            np.allclose(results[0], np.transpose(expect_res, (0, 2, 3, 1))))
+        np.testing.assert_allclose(results[0],
+                                   np.transpose(expect_res, (0, 2, 3, 1)))
         for i in range(len(results) - 1):
-            self.assertTrue(np.allclose(results[i + 1], expect_res))
+            np.testing.assert_allclose(results[i + 1], expect_res)
 
 
 class TestNearestInterpException(unittest.TestCase):

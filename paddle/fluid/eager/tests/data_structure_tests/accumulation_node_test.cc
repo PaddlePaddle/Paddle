@@ -328,8 +328,7 @@ TEST(AccumulationNode, Tensor) {
     VLOG(6) << "Running Reduce Hook";
   };
 
-  node->RegisterReduceHook(
-      std::make_shared<egr::CppTensorVoidHook>(reduce_hook_1));
+  node->RegisterReduceHook(std::make_shared<egr::CppVoidHook>(reduce_hook_1));
 
   // operator()
   paddle::experimental::Tensor _ret = node->operator()(et0_vec)[0][0];
@@ -354,8 +353,7 @@ TEST(AccumulationNode, Tensor) {
     ret_et0_ptr[0] = 100.0;  // set to 100.0
     VLOG(6) << "Running Reduce Hook";
   };
-  node->RegisterReduceHook(
-      std::make_shared<egr::CppTensorVoidHook>(reduce_hook_2));
+  node->RegisterReduceHook(std::make_shared<egr::CppVoidHook>(reduce_hook_2));
   node->ApplyReduceHooks();
 
   // Check ApplyReduceHooks result

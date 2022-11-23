@@ -48,7 +48,6 @@ TEST(DEV_API, conj) {
   dev_ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                            .GetAllocator(paddle::platform::CPUPlace())
                            .get());
-  dev_ctx.Init();
 
   // 2. test API
   auto out = phi::Conj<paddle::complex64>(dev_ctx, dense_x);

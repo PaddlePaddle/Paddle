@@ -106,6 +106,33 @@ class PADDLE_API DeviceContext {
 
   const Allocator& GetPinnedAllocator() const;
 
+#ifdef PADDLE_WITH_CUDA
+  /**
+   * @brief Set the CUDA graph Allocator object.
+   *
+   * @param allocator
+   */
+  void SetCUDAGraphAllocator(const Allocator*);
+
+  /**
+   * @brief Get the const CUDA graph Allocator object.
+   *
+   * @return Allocator
+   */
+  const Allocator& GetCUDAGraphAllocator() const;
+
+  /**
+   * @brief Test whether the CUDA graph allocator is valid
+   *
+   * This method should be called before calling GetCUDAGraphAllocator().
+   * Other unit can calls GetCUDAGraphAllocator() method,
+   * only when this method returns True!
+   *
+   * @return true if cuda_graph_allocator_ is valid, false otherwise
+   */
+  bool IsCUDAGraphAllocatorValid() const;
+#endif
+
   /**
    * @brief Allocate device memory for tensor.
    */
@@ -130,6 +157,7 @@ class PADDLE_API DeviceContext {
   T* HostAlloc(TensorBase* tensor, size_t requested_size = 0) const;
 
   virtual const Place& GetPlace() const = 0;
+
   // TODO(wilber): The fluid framework uses wait() in many places, how to delete
   // this API interface.
   virtual void Wait() const {}

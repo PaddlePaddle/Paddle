@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import paddle.fluid as fluid
 import transformer_model
 import numpy as np
 from parallel_executor_test_base import TestParallelExecutorBase, DeviceType

@@ -22,7 +22,8 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void test_pool2d(bool global_pooling, bool ceil_mode,
+void test_pool2d(bool global_pooling,
+                 bool ceil_mode,
                  std::string pool_type = "max") {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;

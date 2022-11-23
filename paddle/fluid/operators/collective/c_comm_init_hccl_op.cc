@@ -41,7 +41,8 @@ class CCommInitOpAscend : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE_EQ(platform::is_npu_place(place), true,
+    PADDLE_ENFORCE_EQ(platform::is_npu_place(place),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "CCommInitOpAscend can run on npu place only."));
 
@@ -70,8 +71,10 @@ class CCommInitOpAscend : public framework::OperatorBase {
     }
     PADDLE_ENFORCE_NPU_SUCCESS(platform::RecordedNPUMalloc(
         reinterpret_cast<void**>(&buff), size * sizeof(float), device_id));
-    platform::NPUMemcpySync(reinterpret_cast<void*>(buff), input.data(),
-                            size * sizeof(float), ACL_MEMCPY_HOST_TO_DEVICE,
+    platform::NPUMemcpySync(reinterpret_cast<void*>(buff),
+                            input.data(),
+                            size * sizeof(float),
+                            ACL_MEMCPY_HOST_TO_DEVICE,
                             size * sizeof(float));
     VLOG(3) << "Build buff data successful.";
 
@@ -123,5 +126,6 @@ Initialize collective communicatoin context within this trainer
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(c_comm_init_hccl, ops::CCommInitOpAscend,
+REGISTER_OPERATOR(c_comm_init_hccl,
+                  ops::CCommInitOpAscend,
                   ops::CCommInitOpAscendMaker);

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import math
 import unittest
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
+from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):

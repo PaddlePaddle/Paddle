@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from paddle.fluid import program_guard, layers, default_main_program
 from paddle.fluid import default_startup_program
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, CollectiveHelper, is_update_op
+from .common import CollectiveHelper, OP_ROLE_KEY, OpRole
 
 __all__ = []
 

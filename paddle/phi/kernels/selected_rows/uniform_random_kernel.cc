@@ -26,8 +26,8 @@ template <typename T, typename Context>
 void UniformRandomRawKernel(const Context& dev_ctx,
                             const IntArray& shape,
                             DataType dtype,
-                            float min,
-                            float max,
+                            const Scalar& min,
+                            const Scalar& max,
                             int seed,
                             int diag_num,
                             int diag_step,
@@ -49,8 +49,8 @@ template <typename T, typename Context>
 void UniformRandomKernel(const Context& dev_ctx,
                          const IntArray& shape,
                          DataType dtype,
-                         float min,
-                         float max,
+                         const Scalar& min,
+                         const Scalar& max,
                          int seed,
                          SelectedRows* out) {
   phi::UniformRandomKernel<T>(
@@ -91,4 +91,16 @@ PD_REGISTER_KERNEL(uniform_random_sr,
                    phi::sr::UniformRandomKernel,
                    float,
                    double) {}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+
+PD_REGISTER_KERNEL(uniform_random_raw_sr,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::sr::UniformRandomRawKernel,
+                   float) {}
+
+PD_REGISTER_KERNEL(
+    uniform_random_sr, XPU, ALL_LAYOUT, phi::sr::UniformRandomKernel, float) {}
 #endif

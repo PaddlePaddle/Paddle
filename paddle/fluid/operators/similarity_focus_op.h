@@ -24,14 +24,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class SimilarityFocusKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    Tensor* out = context.Output<Tensor>("Out");
-    const Tensor* x = context.Input<Tensor>("X");
+    phi::DenseTensor* out = context.Output<phi::DenseTensor>("Out");
+    const phi::DenseTensor* x = context.Input<phi::DenseTensor>("X");
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const T* x_data = x->data<T>();
 
@@ -45,18 +45,21 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
     }
 
     PADDLE_ENFORCE_GT(
-        indexes.size(), 0,
+        indexes.size(),
+        0,
         platform::errors::InvalidArgument("The size of Attr(indexes) must be "
                                           "greater than 0, but received %d.",
                                           indexes.size()));
 
     for (size_t i = 0; i < indexes.size(); i++) {
       PADDLE_ENFORCE_GT(
-          dim[axis], indexes[i],
+          dim[axis],
+          indexes[i],
           platform::errors::InvalidArgument(
               "Each value of Attr(indexes) must be less than X.dim[axis], "
               "but indexes[%d] received %d.",
-              i, indexes[i]));
+              i,
+              indexes[i]));
     }
 
     int64_t array_size = 1;
@@ -80,12 +83,14 @@ class SimilarityFocusKernel : public framework::OpKernel<T> {
         };
 
     PADDLE_ENFORCE_GT(
-        axis, 0,
+        axis,
+        0,
         platform::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));
     PADDLE_ENFORCE_LT(
-        axis, 4,
+        axis,
+        4,
         platform::errors::InvalidArgument(
             "The value of Attr(axis) must be 1 or 2 or 3, but received %d.",
             axis));

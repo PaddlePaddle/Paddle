@@ -105,7 +105,8 @@ class DeviceTraceEventNode {
   uint32_t CorrelationId() const { return device_event_.correlation_id; }
   KernelEventInfo KernelInfo() const {
     PADDLE_ENFORCE_EQ(
-        device_event_.type, TracerEventType::Kernel,
+        device_event_.type,
+        TracerEventType::Kernel,
         platform::errors::Unavailable(
             "Can not kernel_info, "
             "TracerEventType in node must be TracerEventType::Kernel."));
@@ -113,7 +114,8 @@ class DeviceTraceEventNode {
   }
   MemcpyEventInfo MemcpyInfo() const {
     PADDLE_ENFORCE_EQ(
-        device_event_.type, TracerEventType::Memcpy,
+        device_event_.type,
+        TracerEventType::Memcpy,
         platform::errors::Unavailable(
             "Can not get memcpy_info, "
             "TracerEventType in node must be TracerEventType::Memcpy."));
@@ -121,7 +123,8 @@ class DeviceTraceEventNode {
   }
   MemsetEventInfo MemsetInfo() const {
     PADDLE_ENFORCE_EQ(
-        device_event_.type, TracerEventType::Memset,
+        device_event_.type,
+        TracerEventType::Memset,
         platform::errors::Unavailable(
             "Can not get memset_info, "
             "TracerEventType in node must be TracerEventType::Memset."));
@@ -256,12 +259,16 @@ class NodeTrees {
       mem_event_nodes.push_back(new MemTraceEventNode(*it));
     }
     for (auto it = op_supplement_events.begin();
-         it != op_supplement_events.end(); ++it) {
+         it != op_supplement_events.end();
+         ++it) {
       op_supplement_event_nodes.push_back(new OperatorSupplementEventNode(*it));
     }
     // build tree
-    BuildTrees(host_event_nodes, runtime_event_nodes, device_event_nodes,
-               mem_event_nodes, op_supplement_event_nodes);
+    BuildTrees(host_event_nodes,
+               runtime_event_nodes,
+               device_event_nodes,
+               mem_event_nodes,
+               op_supplement_event_nodes);
   }
 
   explicit NodeTrees(

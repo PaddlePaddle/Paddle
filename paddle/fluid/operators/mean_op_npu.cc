@@ -16,14 +16,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class MeanNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     std::vector<int> axes;
 
@@ -49,15 +49,16 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
         context.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    auto grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto grad = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    PADDLE_ENFORCE_EQ(grad->numel(), 1,
+    PADDLE_ENFORCE_EQ(grad->numel(),
+                      1,
                       platform::errors::InvalidArgument(
                           "Mean Gradient Input Tensor len should be 1. But "
                           "received Out@Grad's elements num is %d.",
                           grad->numel()));
 
-    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    auto IG = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
     // ones
@@ -93,7 +94,8 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    mean,
+    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
 REGISTER_OP_NPU_KERNEL(

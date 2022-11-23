@@ -75,35 +75,20 @@ if(WITH_COVERAGE)
         "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
   endif()
-  set(EXCLUDE_DIRS "demo/" "build/" "tests/" ".test_env/")
 
   if(WITH_GPU)
     file(
-      GLOB_RECURSE PADDLE_SOURCES
-      RELATIVE "${PROJECT_SOURCE_DIR}"
-      "*.cpp" "*.cc" ".c" "*.cu")
+      GLOB_RECURSE
+      PADDLE_SOURCES
+      "${PROJECT_SOURCE_DIR}/paddle/*.cpp"
+      "${PROJECT_SOURCE_DIR}/paddle/*.cc"
+      "${PROJECT_SOURCE_DIR}/paddle/*.cu"
+      "${PROJECT_SOURCE_DIR}/paddle/*.cu.cc"
+      "${PROJECT_SOURCE_DIR}/paddle/*.c")
   else()
-    file(
-      GLOB_RECURSE PADDLE_SOURCES
-      RELATIVE "${PROJECT_SOURCE_DIR}"
-      "*.cpp" "*.cc" "*.c")
+    file(GLOB_RECURSE PADDLE_SOURCES "${PROJECT_SOURCE_DIR}/paddle/*.cpp"
+         "${PROJECT_SOURCE_DIR}/paddle/*.cc" "${PROJECT_SOURCE_DIR}/paddle/*.c")
   endif()
-
-  # exclude trivial files in PADDLE_SOURCES
-  foreach(EXCLUDE_DIR ${EXCLUDE_DIRS})
-    foreach(TMP_PATH ${PADDLE_SOURCES})
-      string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
-      if(NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
-        list(REMOVE_ITEM PADDLE_SOURCES ${TMP_PATH})
-      endif()
-    endforeach()
-  endforeach()
-
-  # convert to absolute path
-  set(PADDLE_SRCS "")
-  foreach(PADDLE_SRC ${PADDLE_SOURCES})
-    set(PADDLE_SRCS "${PADDLE_SRCS};${PROJECT_SOURCE_DIR}/${PADDLE_SRC}")
-  endforeach()
 
   code_coverage("${PADDLE_SRCS}" ${COVERALLS_UPLOAD}
                 "${PROJECT_SOURCE_DIR}/cmake")

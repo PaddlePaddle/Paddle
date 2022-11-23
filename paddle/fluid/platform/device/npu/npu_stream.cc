@@ -21,7 +21,8 @@ namespace platform {
 namespace stream {
 
 bool NPUStream::Init(const Place& place) {
-  PADDLE_ENFORCE_EQ(is_npu_place(place), true,
+  PADDLE_ENFORCE_EQ(is_npu_place(place),
+                    true,
                     platform::errors::InvalidArgument(
                         "NPU stream must be created using npu place."));
   place_ = place;

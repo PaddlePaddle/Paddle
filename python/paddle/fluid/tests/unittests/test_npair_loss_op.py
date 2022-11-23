@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -53,7 +51,11 @@ class TestNpairLossOp(unittest.TestCase):
         self.dtype = np.float32
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def test_npair_loss(self):
         reg_lambda = 0.002

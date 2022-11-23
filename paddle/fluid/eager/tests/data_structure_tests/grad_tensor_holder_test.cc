@@ -19,6 +19,7 @@
 #include "gtest/gtest.h"
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -76,7 +77,7 @@ TEST(GradTensorHolder, Interfaces) {
   std::vector<GradSlotMeta> slot_meta(1);
   GradTensorHolder grad_tensor_holder =
       GradTensorHolder({slot_meta, slot_meta});
-
+  egr::EagerUtils::autograd_meta(&et0);
   // add():
   // fill one
   grad_tensor_holder.CopyValueFromTensor(0, 0, et0, true);

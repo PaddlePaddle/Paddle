@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import os
 
@@ -616,7 +611,7 @@ class PaddingRNNTestBase(unittest.TestCase):
                                     parallel=True,
                                     use_program_cache=True):
         '''
-        Test that train ppl of padding mode is same to that of static mode 
+        Test that train ppl of padding mode is same to that of static mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
@@ -624,8 +619,7 @@ class PaddingRNNTestBase(unittest.TestCase):
         config = RNNConfig('test', 'static')
         with fluid.scope_guard(fluid.Scope()):
             static_rnn_ppl = self.train(config, parallel, use_program_cache)
-        self.assertTrue(
-            np.isclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001).all())
+        np.testing.assert_allclose(padding_rnn_ppl, static_rnn_ppl, rtol=0.001)
 
 
 class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):

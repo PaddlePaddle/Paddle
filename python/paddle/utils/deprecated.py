@@ -43,12 +43,12 @@ def deprecated(update_to="", since="", reason="", level=0):
             since(str, optional): The version at which the decorated method is considered deprecated.
             update_to(str, optional): The new API users should use.
             reason(str, optional): The reason why the API is deprecated.
-            level(int, optional): The deprecated warning log level. It must be 
-                an Integer and must be one of 0, 1, 2. 
-                If `level == 0`, the warning message will not be showed. 
+            level(int, optional): The deprecated warning log level. It must be
+                an Integer and must be one of 0, 1, 2.
+                If `level == 0`, the warning message will not be showed.
                 If `level == 1`, the warning message will be showed normally.
                 If `level == 2`, it will raise `RuntimeError`.
-           
+
        Returns:
            decorator: decorated function or class.
     """

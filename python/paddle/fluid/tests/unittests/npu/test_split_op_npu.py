@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -113,8 +111,8 @@ class API_TestSplit(unittest.TestCase):
             input1 = np.random.random([1, 10]).astype('float32')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, (3, ), axis=1)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
+            np.testing.assert_allclose(ex_x0, r0)
+            np.testing.assert_allclose(ex_x1, r1)
 
 
 class API_TestSplit2(unittest.TestCase):
@@ -128,8 +126,8 @@ class API_TestSplit2(unittest.TestCase):
             input1 = np.random.random([1, 10]).astype('float32')
             r0, r1 = exe.run(feed={"data": input1}, fetch_list=[x0, x1])
             ex_x0, ex_x1 = np.split(input1, 2, axis=1)
-            self.assertTrue(np.allclose(ex_x0, r0))
-            self.assertTrue(np.allclose(ex_x1, r1))
+            np.testing.assert_allclose(ex_x0, r0)
+            np.testing.assert_allclose(ex_x1, r1)
 
 
 class API_TestDygraphSplit(unittest.TestCase):
@@ -144,9 +142,9 @@ class API_TestDygraphSplit(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, 3, axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out)
+        np.testing.assert_allclose(ex_x1, x1_out)
+        np.testing.assert_allclose(ex_x2, x2_out)
 
     def test_out2(self):
         with fluid.dygraph.guard(paddle.NPUPlace(0)):
@@ -158,9 +156,9 @@ class API_TestDygraphSplit(unittest.TestCase):
             x1_out = x1.numpy()
             x2_out = x2.numpy()
             ex_x0, ex_x1, ex_x2 = np.split(input_1, (1, 3), axis=1)
-        self.assertTrue(np.allclose(ex_x0, x0_out))
-        self.assertTrue(np.allclose(ex_x1, x1_out))
-        self.assertTrue(np.allclose(ex_x2, x2_out))
+        np.testing.assert_allclose(ex_x0, x0_out)
+        np.testing.assert_allclose(ex_x1, x1_out)
+        np.testing.assert_allclose(ex_x2, x2_out)
 
 
 if __name__ == '__main__':

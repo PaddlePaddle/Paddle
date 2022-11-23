@@ -218,7 +218,7 @@ class TestDygraphLoadStatic(unittest.TestCase):
             my_test = MyTest()
             my_test.set_dict(new_dict, use_structured_name=False)
             for k, v in my_test.state_dict().items():
-                self.assertTrue(np.array_equal(v.numpy(), new_dict[v.name]))
+                np.testing.assert_array_equal(v.numpy(), new_dict[v.name])
         temp_dir.cleanup()
 
 

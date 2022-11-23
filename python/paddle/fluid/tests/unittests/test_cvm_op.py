@@ -14,7 +14,6 @@
 
 import numpy as np
 from math import log
-from math import exp
 from op_test import OpTest
 import unittest
 

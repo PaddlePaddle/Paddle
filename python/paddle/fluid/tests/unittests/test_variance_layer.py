@@ -63,7 +63,7 @@ class TestVarAPI(unittest.TestCase):
         out_dygraph = self.dygraph()
         out_static = self.static()
         for out in [out_dygraph, out_static]:
-            self.assertTrue(np.allclose(out_ref, out))
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
             self.assertTrue(np.equal(out_ref.shape, out.shape).all())
 
 
@@ -111,8 +111,8 @@ class TestVarAPI_alias(unittest.TestCase):
         out1 = paddle.var(x).numpy()
         out2 = paddle.tensor.var(x).numpy()
         out3 = paddle.tensor.stat.var(x).numpy()
-        self.assertTrue(np.allclose(out1, out2))
-        self.assertTrue(np.allclose(out1, out3))
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
+        np.testing.assert_allclose(out1, out3, rtol=1e-05)
         paddle.enable_static()
 
 

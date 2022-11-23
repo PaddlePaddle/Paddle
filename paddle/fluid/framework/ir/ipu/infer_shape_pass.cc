@@ -39,8 +39,9 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
     if (!node->IsVar()) {
       continue;
     }
-    bool is_feed = std::find(feed_list.begin(), feed_list.end(),
-                             node->Name()) != feed_list.end();
+    bool is_feed =
+        std::find(feed_list.begin(), feed_list.end(), node->Name()) !=
+        feed_list.end();
     if (is_feed) {
       auto input_shape = node->Var()->GetShape();
       if (input_shape[0] <= -1) {
@@ -51,6 +52,10 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       // int64->int32
       if (node->Var()->GetDataType() == proto::VarType::INT64) {
         node->Var()->SetDataType(proto::VarType::INT32);
+      }
+      // float64->float32
+      if (node->Var()->GetDataType() == proto::VarType::FP64) {
+        node->Var()->SetDataType(proto::VarType::FP32);
       }
     }
   }
@@ -67,7 +72,7 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
       auto* ptr = scope->Var(var_desc->Name());
       paddle::framework::InitializeVariable(ptr, var_desc->GetType());
 
-      auto tensor = ptr->GetMutable<paddle::framework::LoDTensor>();
+      auto tensor = ptr->GetMutable<phi::DenseTensor>();
       tensor->Resize(phi::make_ddim(var_desc->GetShape()));
     }
 
@@ -80,15 +85,14 @@ void InferShapePass::ApplyImpl(ir::Graph* graph) const {
         continue;
       }
       auto op = paddle::framework::OpRegistry::CreateOp(*op_desc);
-      paddle::framework::RuntimeContext ctx(op->Inputs(), op->Outputs(),
-                                            *scope);
+      paddle::framework::RuntimeContext ctx(
+          op->Inputs(), op->Outputs(), *scope);
       op->RuntimeInferShape(*scope, paddle::platform::CPUPlace(), ctx);
 
       for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); it++) {
         for (int i = 0; i < it->second.size(); i++) {
           auto output_name = op_desc->Output(it->first)[i];
-          auto dim =
-              it->second[i]->GetMutable<paddle::framework::LoDTensor>()->dims();
+          auto dim = it->second[i]->GetMutable<phi::DenseTensor>()->dims();
           auto new_shape = phi::vectorize(dim);
           for (auto output_node : node->outputs) {
             if (output_node->Name() == output_name) {

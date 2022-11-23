@@ -15,12 +15,8 @@
 Distribute CTR model for test fleet api
 """
 
-from __future__ import print_function
-
 import os
-import time
 
-import random
 import numpy as np
 
 import paddle
@@ -133,7 +129,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         acc = fluid.layers.accuracy(input=predict, label=label)
         auc_var, _, _ = fluid.layers.auc(input=predict, label=label)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         self.feeds = datas
         self.train_file_path = ["fake1", "fake2"]

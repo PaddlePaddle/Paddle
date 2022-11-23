@@ -14,10 +14,8 @@
 
 import os
 import unittest
-import random
 import numpy as np
 import paddle.fluid as fluid
-import six
 import paddle
 
 os.environ["CPU_NUM"] = "2"
@@ -44,7 +42,7 @@ class TestFetchUnmerged(unittest.TestCase):
         hidden = fluid.layers.fc(input=conv_pool_2, size=32, act='relu')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         return avg_loss, prediction
 
     def build_program(self, main, startup, is_test):

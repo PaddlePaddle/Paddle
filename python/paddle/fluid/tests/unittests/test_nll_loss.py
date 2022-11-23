@@ -96,12 +96,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -117,10 +117,10 @@ class TestNLLLoss(unittest.TestCase):
                 eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np)[0]
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_sum(self):
         np.random.seed(200)
@@ -139,12 +139,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
@@ -163,10 +163,10 @@ class TestNLLLoss(unittest.TestCase):
                 loss.backward()
 
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_mean(self):
         np.random.seed(200)
@@ -187,13 +187,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -213,10 +213,10 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_sum(self):
         np.random.seed(200)
@@ -237,13 +237,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -256,9 +256,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='sum')[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_mean_cpu(self):
         np.random.seed(200)
@@ -277,13 +277,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -293,9 +293,9 @@ class TestNLLLoss(unittest.TestCase):
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
@@ -314,13 +314,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -333,9 +333,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='none')
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_mean(self):
         np.random.seed(200)
@@ -356,12 +356,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -371,9 +371,9 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_2d(input_np, label_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_sum(self):
         np.random.seed(200)
@@ -394,12 +394,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
@@ -409,9 +409,9 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_2d(input_np, label_np, reduction='sum')[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_mean(self):
         np.random.seed(200)
@@ -435,13 +435,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -452,9 +452,9 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_mean_cpu(self):
         np.random.seed(200)
@@ -476,13 +476,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -493,9 +493,9 @@ class TestNLLLoss(unittest.TestCase):
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_sum(self):
         np.random.seed(200)
@@ -518,13 +518,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -538,9 +538,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='sum')[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_mean(self):
         np.random.seed(200)
@@ -561,12 +561,12 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss()
@@ -581,9 +581,9 @@ class TestNLLLoss(unittest.TestCase):
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
         expected = nll_loss_2d(input_np_reshape, label_np_reshape)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_mean(self):
         np.random.seed(200)
@@ -606,13 +606,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -630,9 +630,9 @@ class TestNLLLoss(unittest.TestCase):
                                label_np_reshape,
                                weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_sum(self):
         np.random.seed(200)
@@ -655,13 +655,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -680,9 +680,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='sum')[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce(self):
         np.random.seed(200)
@@ -705,13 +705,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -731,9 +731,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='none')
         expected = np.reshape(expected, out_shape)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
@@ -754,13 +754,13 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            static_result, = exe.run(prog,
+                                     feed={
+                                         "input": input_np,
+                                         "label": label_np,
+                                         "weight": weight_np
+                                     },
+                                     fetch_list=[res])
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
@@ -780,9 +780,9 @@ class TestNLLLoss(unittest.TestCase):
                                weight=weight_np,
                                reduction='none')
         expected = np.reshape(expected, out_shape)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
 
 class TestNLLLossOp1DWithReduce(OpTest):

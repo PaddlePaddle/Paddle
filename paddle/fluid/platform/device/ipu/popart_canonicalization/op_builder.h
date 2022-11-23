@@ -28,39 +28,69 @@ const std::string GenerateVarName();
 const std::string CreateOpIdentifyId(Node *node);
 
 Node *MakeVarNode(Graph *graph, Node *node);
-Node *MakeOpNode(Graph *graph, Node *node, const std::string &type,
+Node *MakeOpNode(Graph *graph,
+                 Node *node,
+                 const std::string &type,
                  const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs);
 
-Node *CreateBaseOp(Graph *graph, Node *node, const std::string &type,
+Node *CreateBaseOp(Graph *graph,
+                   Node *node,
+                   const std::string &type,
                    const std::vector<Node *> &inputs,
                    const std::vector<Node *> &outputs,
                    const AttributeMap &attrs = {});
 
-Node *CreateConst(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConst(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
                   const std::vector<Node *> &outputs,
                   const AttributeMap &attrs);
 
 template <typename T>
-Node *CreateConst(Graph *graph, Node *node, const std::vector<T> &value,
-                  const std::vector<int64_t> &dims, ONNXDataType dtype) {
+Node *CreateConst(Graph *graph,
+                  Node *node,
+                  const std::vector<T> &value,
+                  const std::vector<int64_t> &dims,
+                  ONNXDataType dtype) {
   return CreateConst(
-      graph, node, {}, {},
+      graph,
+      node,
+      {},
+      {},
       AttributeMap{{"value", value}, {"dims", dims}, {"dtype", dtype}});
 }
 
-Node *CreateCast(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, const VarType::Type otype);
+Node *CreateCast(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 const VarType::Type otype);
 
-Node *CreateGemm(Graph *graph, Node *node, const std::vector<Node *> &inputs,
-                 const std::vector<Node *> &outputs, int64_t transA = 0,
-                 int64_t transB = 0, float alpha = 1.0f, float beta = 1.0f);
+Node *CreateIdentityLossOp(Graph *graph,
+                           Node *node,
+                           const std::vector<Node *> &inputs,
+                           const std::vector<Node *> &outputs,
+                           int reduction);
 
-Node *CreateReshape(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateGemm(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
+                 const std::vector<Node *> &outputs,
+                 int64_t transA = 0,
+                 int64_t transB = 0,
+                 float alpha = 1.0f,
+                 float beta = 1.0f);
+
+Node *CreateReshape(Graph *graph,
+                    Node *node,
+                    const std::vector<Node *> &inputs,
                     const std::vector<Node *> &outputs,
                     const std::vector<int64_t> &oshape);
 
-Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
+Node *CreateConv(Graph *graph,
+                 Node *node,
+                 const std::vector<Node *> &inputs,
                  const std::vector<Node *> &outputs,
                  const std::vector<int64_t> &dilations = {1, 1},
                  int64_t group = 1,
@@ -68,9 +98,27 @@ Node *CreateConv(Graph *graph, Node *node, const std::vector<Node *> &inputs,
                  const std::vector<int64_t> &pads = {0, 0, 0, 0},
                  const std::vector<int64_t> &strides = {1, 1});
 
-Node *CreateSoftmaxOpset11(Graph *graph, Node *node,
+Node *CreateSoftmaxOpset11(Graph *graph,
+                           Node *node,
                            const std::vector<Node *> &inputs,
-                           const std::vector<Node *> &outputs, int64_t axis);
+                           const std::vector<Node *> &outputs,
+                           int64_t axis);
+
+Node *CreateSlice(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int> &starts,
+                  const std::vector<int> &ends,
+                  const std::vector<int> &axes,
+                  const std::vector<int> &strides);
+
+Node *CreateSplit(Graph *graph,
+                  Node *node,
+                  const std::vector<Node *> &inputs,
+                  const std::vector<Node *> &outputs,
+                  const std::vector<int64_t> &split,
+                  const int64_t axis);
 
 }  // namespace ipu
 }  // namespace platform

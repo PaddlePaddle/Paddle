@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -123,8 +121,8 @@ class TestMeshgridOp3(unittest.TestCase):
                                },
                                fetch_list=[grid_x, grid_y])
 
-        self.assertTrue(np.allclose(res_1, out_1))
-        self.assertTrue(np.allclose(res_2, out_2))
+        np.testing.assert_allclose(res_1, out_1)
+        np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
@@ -154,8 +152,8 @@ class TestMeshgridOp4(unittest.TestCase):
                                },
                                fetch_list=[grid_x, grid_y])
 
-        self.assertTrue(np.allclose(res_1, out_1))
-        self.assertTrue(np.allclose(res_2, out_2))
+        np.testing.assert_allclose(res_1, out_1)
+        np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
@@ -185,8 +183,8 @@ class TestMeshgridOp5(unittest.TestCase):
                                },
                                fetch_list=[grid_x, grid_y])
 
-        self.assertTrue(np.allclose(res_1, out_1))
-        self.assertTrue(np.allclose(res_2, out_2))
+        np.testing.assert_allclose(res_1, out_1)
+        np.testing.assert_allclose(res_2, out_2)
 
 
 class TestMeshgridOp6(unittest.TestCase):
@@ -209,8 +207,8 @@ class TestMeshgridOp6(unittest.TestCase):
         tensor_4 = paddle.to_tensor(input_4)
         res_3, res_4 = paddle.tensor.meshgrid(tensor_3, tensor_4)
 
-        self.assertTrue(np.allclose(res_3.numpy(), out_3))
-        self.assertTrue(np.allclose(res_4.numpy(), out_4))
+        np.testing.assert_allclose(res_3.numpy(), out_3)
+        np.testing.assert_allclose(res_4.numpy(), out_4)
         paddle.enable_static()
 
 
@@ -234,8 +232,8 @@ class TestMeshgridOp7(unittest.TestCase):
         tensor_4 = paddle.to_tensor(input_4)
         res_3, res_4 = paddle.meshgrid([tensor_3, tensor_4])
 
-        self.assertTrue(np.allclose(res_3.numpy(), out_3))
-        self.assertTrue(np.allclose(res_4.numpy(), out_4))
+        np.testing.assert_allclose(res_3.numpy(), out_3)
+        np.testing.assert_allclose(res_4.numpy(), out_4)
         paddle.enable_static()
 
 
@@ -259,8 +257,8 @@ class TestMeshgridOp8(unittest.TestCase):
         tensor_4 = paddle.to_tensor(input_4)
         res_3, res_4 = paddle.tensor.meshgrid((tensor_3, tensor_4))
 
-        self.assertTrue(np.allclose(res_3.numpy(), out_3))
-        self.assertTrue(np.allclose(res_4.numpy(), out_4))
+        np.testing.assert_allclose(res_3.numpy(), out_3)
+        np.testing.assert_allclose(res_4.numpy(), out_4)
         paddle.enable_static()
 
 

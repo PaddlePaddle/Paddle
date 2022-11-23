@@ -31,8 +31,6 @@ class LR_New(LRScheduler):
         return self.base_lr
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestConvNet(IPUOpTest):
 
     @IPUOpTest.static_graph
@@ -86,7 +84,7 @@ class TestConvNet(IPUOpTest):
         ipu_loss = self.run_model(True).flatten()
         cpu_loss = self.run_model(False).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-10))
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-10)
 
 
 if __name__ == "__main__":

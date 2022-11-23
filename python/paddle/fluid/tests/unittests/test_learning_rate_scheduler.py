@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import copy
 import math
 import numpy as np
 import unittest
 
-import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
@@ -253,8 +250,9 @@ class TestLearningRateDecayDygraph(unittest.TestCase):
 
                 t = lr()
 
-                self.assertTrue(
-                    np.allclose((t.numpy())[0].item(), right_result[i]))
+                np.testing.assert_allclose(t.numpy()[0].item(),
+                                           right_result[i],
+                                           rtol=1e-05)
 
             with self.assertRaises(TypeError):
                 lr = fluid.layers.linear_lr_warmup(learning_rate="fake_lr",

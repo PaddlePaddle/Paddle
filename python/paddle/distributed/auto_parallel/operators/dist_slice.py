@@ -18,7 +18,6 @@ from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
 from ..utils import is_dim_shard
 from ..utils import compute_compatible_dim_mapping
-from ..utils import compute_compatible_and_update_dim_mapping
 from .dist_default import DistributedDefaultImpl0
 
 

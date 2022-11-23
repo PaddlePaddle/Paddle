@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
-#include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 
 namespace paddle {
@@ -52,7 +51,7 @@ template <typename T>
 class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* tensor = context.Output<framework::Tensor>("Out");
+    auto* tensor = context.Output<phi::DenseTensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     T mean = static_cast<T>(context.Attr<float>("mean"));
@@ -61,8 +60,7 @@ class GPUGaussianRandomBatchSizeLikeKernel : public framework::OpKernel<T> {
 
     int device_id = context.GetPlace().GetDeviceId();
     auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
-    auto& dev_cxt =
-        context.template device_context<platform::CUDADeviceContext>();
+    auto& dev_cxt = context.template device_context<phi::GPUContext>();
 
     if (seed == 0) {
       // use global Generator seed

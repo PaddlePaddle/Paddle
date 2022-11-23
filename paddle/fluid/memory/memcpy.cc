@@ -1195,7 +1195,7 @@ void Copy<platform::MLUPlace, platform::CPUPlace>(platform::MLUPlace dst_place,
         dst, src, num, reinterpret_cast<mluStream>(stream));
   } else {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    static_cast<platform::MLUDeviceContext*>(pool.Get(src_place))->Wait();
+    static_cast<platform::MLUDeviceContext*>(pool.Get(dst_place))->Wait();
 
     VLOG(4) << "Sync memory::Copy " << num << " Bytes from " << src_place
             << " to " << dst_place;
@@ -1440,6 +1440,28 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
     platform::IPUPlace place_src(src_place.GetDeviceId());
     platform::IPUPlace place_dst(dst_place.GetDeviceId());
     return Copy(place_dst, dst, place_src, src, num);
+  }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
+           dst_place.GetType() == phi::AllocationType::CUSTOM) {
+    platform::CustomPlace place_dst(dst_place.GetDeviceType(),
+                                    dst_place.GetDeviceId());
+    platform::CPUPlace place_src;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
+             dst_place.GetType() == phi::AllocationType::CPU) {
+    platform::CustomPlace place_src(src_place.GetDeviceType(),
+                                    src_place.GetDeviceId());
+    platform::CPUPlace place_dst;
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
+  } else if (src_place.GetType() == phi::AllocationType::CUSTOM &&
+             dst_place.GetType() == phi::AllocationType::CUSTOM) {
+    platform::CustomPlace place_src(src_place.GetDeviceType(),
+                                    src_place.GetDeviceId());
+    platform::CustomPlace place_dst(dst_place.GetDeviceType(),
+                                    dst_place.GetDeviceId());
+    return Copy(place_dst, dst, place_src, src, num, nullptr);
   }
 #endif
 }

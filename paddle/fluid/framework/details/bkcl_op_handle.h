@@ -32,7 +32,8 @@ namespace details {
 
 class BKCLOpHandleBase : public OpHandleBase {
  public:
-  BKCLOpHandleBase(ir::Node* node, const std::vector<platform::Place>& places,
+  BKCLOpHandleBase(ir::Node* node,
+                   const std::vector<platform::Place>& places,
                    const platform::BKCLCommunicator* bkcl_ctxs)
       : OpHandleBase(node), places_(places), bkcl_ctxs_(bkcl_ctxs) {
     if (bkcl_ctxs == nullptr) {
@@ -49,10 +50,12 @@ class BKCLOpHandleBase : public OpHandleBase {
 
   void SetRunEnv(int run_order, bool use_hierarchical_allreduce) {
     PADDLE_ENFORCE_GE(
-        run_order, 0,
+        run_order,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order must be >= 0, but got %d.", run_order));
-    PADDLE_ENFORCE_NE(use_hierarchical_allreduce, true,
+    PADDLE_ENFORCE_NE(use_hierarchical_allreduce,
+                      true,
                       platform::errors::Unimplemented(
                           "xpu doesn't support hierarchical_allreduce"));
 
@@ -76,16 +79,22 @@ class BKCLOpHandleBase : public OpHandleBase {
     }
   }
 
-  void FlatBKCLAllReduce(platform::Place place, const void* sendbuff,
-                         void* recvbuff, size_t count, BKCLDataType datatype,
+  void FlatBKCLAllReduce(platform::Place place,
+                         const void* sendbuff,
+                         void* recvbuff,
+                         size_t count,
+                         BKCLDataType datatype,
                          BKCLOp op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
     auto flat_bkcl_ctxs = bkcl_ctxs_->GetFlatCtx(run_order_);
     int dev_id = place.device;
+    platform::SetXPUDeviceId(dev_id);
     auto& bkcl_ctx = flat_bkcl_ctxs->at(dev_id);
+    auto stream = bkcl_ctx.stream();
     auto comm = bkcl_ctx.comm_;
 
     VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
@@ -93,19 +102,24 @@ class BKCLOpHandleBase : public OpHandleBase {
              << ", place:" << place;
 
     PADDLE_ENFORCE_EQ(
-        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, NULL),
+        bkcl_all_reduce(comm, sendbuff, recvbuff, count, datatype, op, stream),
         BKCL_SUCCESS,
         platform::errors::PreconditionNotMet("bckl all reduce failed"));
   }
 
-  void BKCLAllReduce(platform::Place place, const void* sendbuff,
-                     void* recvbuff, size_t count, BKCLDataType datatype,
+  void BKCLAllReduce(platform::Place place,
+                     const void* sendbuff,
+                     void* recvbuff,
+                     size_t count,
+                     BKCLDataType datatype,
                      BKCLOp op) {
     PADDLE_ENFORCE_GE(
-        run_order_, 0,
+        run_order_,
+        0,
         platform::errors::InvalidArgument(
             "The argument run_order_ must be >= 0, but got %d.", run_order_));
-    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+    PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                      false,
                       platform::errors::Unimplemented(
                           "xpu doesn't support hierarchical all reduce"));
     if (!use_hierarchical_allreduce_) {

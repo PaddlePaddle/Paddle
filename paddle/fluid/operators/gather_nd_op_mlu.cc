@@ -20,15 +20,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class GatherNdMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *x = ctx.Input<Tensor>("X");
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *out = ctx.Output<Tensor>("Out");
+    auto *x = ctx.Input<phi::DenseTensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
     out->template mutable_data<T>(place);
@@ -43,7 +43,8 @@ class GatherNdMLUKernel : public framework::OpKernel<T> {
     const auto &index_type = framework::TransToProtoVarType(index->dtype());
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
                             index_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(index_type_match, true,
+    PADDLE_ENFORCE_EQ(index_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Index holds the wrong type, it holds [%s],"
                           "but desires to be [%s] or [%s]",
@@ -56,8 +57,13 @@ class GatherNdMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc index_desc(*index);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::GatherNd(ctx, x_desc.get(), GetBasePtr(x), index_desc.get(),
-                      GetBasePtr(index), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::GatherNd(ctx,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      index_desc.get(),
+                      GetBasePtr(index),
+                      out_desc.get(),
+                      GetBasePtr(out));
   }
 };
 
@@ -65,10 +71,10 @@ template <typename T>
 class GatherNdGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *index = ctx.Input<Tensor>("Index");
-    auto *dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *x = ctx.Input<Tensor>("X");
+    auto *index = ctx.Input<phi::DenseTensor>("Index");
+    auto *dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *x = ctx.Input<phi::DenseTensor>("X");
 
     if (dx->numel() == 0) return;
     if (index->numel() == 0) {
@@ -77,8 +83,8 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    framework::Tensor tmp_tensor(index->type());
-    framework::Tensor tmp_tensor2(dout->type());
+    phi::DenseTensor tmp_tensor(index->type());
+    phi::DenseTensor tmp_tensor2(dout->type());
     const auto index_dims = index->dims();
     if (index_dims.size() == 1) {
       tmp_tensor.ShareDataWith(*index);
@@ -98,16 +104,23 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
     dx->mutable_data<T>(ctx.GetPlace());
     MLUCnnlTensorDesc dx_desc(*dx);
     auto value = static_cast<T>(0);
-    MLUCnnl::Fill(ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(),
-                  GetBasePtr(dx));
+    MLUCnnl::Fill(
+        ctx, CNNL_POINTER_MODE_HOST, &value, dx_desc.get(), GetBasePtr(dx));
 
     MLUCnnlTensorDesc index_desc(*index);
     MLUCnnlTensorDesc dout_desc(*dout);
 
     const cnnlScatterNdMode_t mode = CNNL_SCATTERND_ADD;
-    MLUCnnl::ScatterNd(ctx, mode, index_desc.get(), GetBasePtr(index),
-                       dout_desc.get(), GetBasePtr(dout), dx_desc.get(),
-                       GetBasePtr(dx), dx_desc.get(), GetBasePtr(dx));
+    MLUCnnl::ScatterNd(ctx,
+                       mode,
+                       index_desc.get(),
+                       GetBasePtr(index),
+                       dout_desc.get(),
+                       GetBasePtr(dout),
+                       dx_desc.get(),
+                       GetBasePtr(dx),
+                       dx_desc.get(),
+                       GetBasePtr(dx));
   }
 };
 
@@ -115,7 +128,8 @@ class GatherNdGradMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(gather_nd, ops::GatherNdMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(gather_nd,
+                       ops::GatherNdMLUKernel<float>,
                        ops::GatherNdMLUKernel<paddle::platform::float16>);
 
 REGISTER_OP_MLU_KERNEL(gather_nd_grad,

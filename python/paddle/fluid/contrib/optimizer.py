@@ -21,7 +21,7 @@ from paddle.fluid import unique_name
 from paddle.fluid import layers
 from paddle.fluid.layer_helper import LayerHelper
 import warnings
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = ['Momentum']
 
@@ -60,9 +60,9 @@ class Momentum(Optimizer):
             regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of 
-            some derived class of ``GradientClipBase`` . There are three cliping strategies 
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` , 
+        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
+            some derived class of ``GradientClipBase`` . There are three cliping strategies
+            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
             :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
@@ -207,7 +207,7 @@ class Momentum(Optimizer):
                          if find_master else None)
 
         if framework._non_static_mode():
-            _, _, _ = _C_ops.momentum(
+            _, _, _ = _legacy_C_ops.momentum(
                 param_and_grad[0], param_and_grad[1], velocity_acc, lr,
                 master_weight, param_and_grad[0], velocity_acc, master_weight,
                 'mu', self._momentum, 'use_nesterov', self._use_nesterov,

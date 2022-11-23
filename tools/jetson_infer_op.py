@@ -152,7 +152,7 @@ def set_diff_value(file, atol="1e-5", inplace_atol="1e-7"):
     """
     :param file: refer to op_test.py
     :param atol: refer to op_test.py
-    :param inplace_atol: 
+    :param inplace_atol:
     :return:
     """
     os.system("sed -i 's/self.check_output(/self\.check_output\(atol=" + atol +

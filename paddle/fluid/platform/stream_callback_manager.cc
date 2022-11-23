@@ -20,7 +20,8 @@ namespace paddle {
 namespace platform {
 
 #ifdef PADDLE_WITH_HIP
-static void StreamCallbackFunc(gpuStream_t stream, gpuError_t status,
+static void StreamCallbackFunc(gpuStream_t stream,
+                               gpuError_t status,
                                void *user_data)
 #endif
 #ifdef PADDLE_WITH_CUDA

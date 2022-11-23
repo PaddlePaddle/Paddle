@@ -20,25 +20,15 @@ limitations under the License. */
 DECLARE_bool(benchmark);
 
 PADDLE_DEFINE_EXPORTED_bool(
-    eager_delete_scope, true,
+    eager_delete_scope,
+    true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_KIDS_READER_LOCK
-#define SCOPE_KIDS_WRITER_LOCK
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_KIDS_READER_LOCK phi::AutoRDLock auto_lock(&kids_lock_);
 #define SCOPE_KIDS_WRITER_LOCK phi::AutoWRLock auto_lock(&kids_lock_);
 #define SCOPE_VARS_READER_LOCK phi::AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK phi::AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -66,9 +56,6 @@ Variable* Scope::Var(const std::string& name) {
     SCOPE_VARS_WRITER_LOCK
     ret = VarInternal(name);
   }
-  for (auto l : listeners_) {
-    l->onCreateVariable(name, ret);
-  }
   return ret;
 }
 
@@ -83,9 +70,6 @@ Variable* Scope::Var(std::string* name) {
       *name = new_name;
     }
     ret = VarInternal(new_name);
-  }
-  for (auto l : listeners_) {
-    l->onCreateVariable(new_name, ret);
   }
   return ret;
 }
@@ -120,11 +104,11 @@ const Scope* Scope::FindScope(const std::string& name) const {
 void Scope::DropKids() {
   {
     SCOPE_KIDS_WRITER_LOCK
-    for (Scope* s : kids_) delete s;
+    for (Scope* s : kids_) {
+      delete s;
+      s = nullptr;
+    }
     kids_.clear();
-  }
-  for (auto l : listeners_) {
-    l->onClear();
   }
 }
 
@@ -162,7 +146,8 @@ void Scope::DeleteScope(Scope* scope) const {
   {
     SCOPE_KIDS_WRITER_LOCK
     auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
-    PADDLE_ENFORCE_NE(it, this->kids_.end(),
+    PADDLE_ENFORCE_NE(it,
+                      this->kids_.end(),
                       platform::errors::NotFound(
                           "%p is not found in %p as kid scope", scope, this));
     this->kids_.erase(it);
@@ -172,9 +157,6 @@ void Scope::DeleteScope(Scope* scope) const {
     } else {
       Async([scope] { delete scope; });
     }
-  }
-  for (auto l : listeners_) {
-    l->onDeleteScope(scope);
   }
 }
 
@@ -190,11 +172,6 @@ void Scope::EraseVars(const std::vector<std::string>& var_names) {
       }
     }
   }
-  for (auto l : listeners_) {
-    for (auto& var_name : var_names) {
-      l->onDeleteVariable(var_name);
-    }
-  }
 }
 
 void Scope::Rename(const std::string& origin_name,
@@ -203,9 +180,6 @@ void Scope::Rename(const std::string& origin_name,
     SCOPE_VARS_WRITER_LOCK
     RenameInternal(origin_name, new_name);
   }
-  for (auto l : listeners_) {
-    l->onRenameVariable(origin_name, new_name);
-  }
 }
 
 std::string Scope::Rename(const std::string& origin_name) const {
@@ -213,9 +187,6 @@ std::string Scope::Rename(const std::string& origin_name) const {
   {
     SCOPE_VARS_WRITER_LOCK
     RenameInternal(origin_name, new_name);
-  }
-  for (auto l : listeners_) {
-    l->onRenameVariable(origin_name, new_name);
   }
   return new_name;
 }
@@ -249,13 +220,15 @@ void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
   PADDLE_ENFORCE_NE(
-      origin_it, vars_.end(),
+      origin_it,
+      vars_.end(),
       platform::errors::NotFound(
           "Original variable with name %s is not found in the scope.",
           origin_name));
   auto new_it = vars_.find(new_name);
   PADDLE_ENFORCE_EQ(
-      new_it, vars_.end(),
+      new_it,
+      vars_.end(),
       platform::errors::AlreadyExists(
           "The variable with name %s already exists in the scope.", new_name));
   vars_[new_name].reset(origin_it->second.release());
@@ -276,22 +249,6 @@ Variable* Scope::FindVarLocally(const std::string& name) const {
     return it->second.get();
   }
   return nullptr;
-}
-
-void Scope::AddListener(const std::shared_ptr<ScopeListener>& listener) {
-  auto it = std::find(listeners_.begin(), listeners_.end(), listener);
-  if (it == listeners_.end()) {
-    listeners_.push_back(listener);
-  }
-}
-
-void Scope::DelListener(const std::shared_ptr<ScopeListener>& listener) {
-  listeners_.remove(listener);
-}
-
-bool Scope::HasListener(const std::shared_ptr<ScopeListener>& listener) {
-  auto it = std::find(listeners_.begin(), listeners_.end(), listener);
-  return it != listeners_.end();
 }
 
 void Scope::EraseVarsExcept(const std::unordered_set<Variable*>& vars) {

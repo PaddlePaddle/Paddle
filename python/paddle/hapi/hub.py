@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import re
 import sys
 import shutil
 import zipfile
@@ -176,9 +175,9 @@ def list(repo_dir, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-            
+
             local path (str): local repo path
-        
+
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
@@ -222,9 +221,9 @@ def help(repo_dir, model, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-            
+
             local path (str): local repo path.
-        
+
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.
@@ -268,7 +267,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
             tag/branch. The default branch is `main` if not specified.
 
             local path (str): local repo path.
-        
+
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.

@@ -45,7 +45,7 @@ const std::shared_ptr<VariableWrapper> &GetVariableWrapper<VariableWrapper>(
 void InitializeVariable(paddle::framework::Variable *var,
                         paddle::framework::proto::VarType::Type var_type) {
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
-    var->GetMutable<paddle::framework::LoDTensor>();
+    var->GetMutable<phi::DenseTensor>();
   } else if (var_type == paddle::framework::proto::VarType::SELECTED_ROWS) {
     var->GetMutable<phi::SelectedRows>();
   } else if (var_type == paddle::framework::proto::VarType::FEED_MINIBATCH) {
@@ -81,8 +81,8 @@ void InitializeVariable(paddle::framework::Variable *var,
 template <typename VarType>
 const paddle::platform::Place &GetPlace(const std::shared_ptr<VarType> &var) {
   paddle::framework::Variable variable = var->Var();
-  if (variable.IsType<paddle::framework::LoDTensor>()) {
-    return variable.Get<paddle::framework::LoDTensor>().place();
+  if (variable.IsType<phi::DenseTensor>()) {
+    return variable.Get<phi::DenseTensor>().place();
   } else if (variable.IsType<phi::SelectedRows>()) {
     return variable.Get<phi::SelectedRows>().place();
   } else {
@@ -124,7 +124,7 @@ void SetType<egr::EagerVariable>(std::shared_ptr<egr::EagerVariable> var,
                                  framework::proto::VarType::Type type) {
   switch (type) {
     case paddle::framework::proto::VarType::LOD_TENSOR: {
-      var->MutableVar()->GetMutable<paddle::framework::LoDTensor>();
+      var->MutableVar()->GetMutable<phi::DenseTensor>();
       break;
     }
     case paddle::framework::proto::VarType::SELECTED_ROWS: {
@@ -173,12 +173,12 @@ framework::proto::VarType::Type GetDataType<egr::EagerVariable>(
   if (var->Var().IsType<phi::SelectedRows>()) {
     return framework::TransToProtoVarType(
         var->Var().Get<phi::SelectedRows>().value().type());
-  } else if (var->Var().IsType<framework::LoDTensor>()) {
+  } else if (var->Var().IsType<phi::DenseTensor>()) {
     return framework::TransToProtoVarType(
-        var->Var().Get<framework::LoDTensor>().type());
+        var->Var().Get<phi::DenseTensor>().type());
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "We only support phi::SelectedRows and framework::LoDTensor in "
+        "We only support phi::SelectedRows and phi::DenseTensor in "
         "eager mode, but we got %s here, please checkout your var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
@@ -198,11 +198,11 @@ paddle::experimental::DataLayout GetDataLayout(std::shared_ptr<VarType> var) {
 template <>
 paddle::experimental::DataLayout GetDataLayout<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var) {
-  if (var->Var().IsType<framework::LoDTensor>()) {
-    return var->Var().Get<framework::LoDTensor>().layout();
+  if (var->Var().IsType<phi::DenseTensor>()) {
+    return var->Var().Get<phi::DenseTensor>().layout();
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "Only support framework::LoDTensor, but got %s here, please checkout "
+        "Only support phi::DenseTensor, but got %s here, please checkout "
         "var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),
@@ -224,12 +224,11 @@ template <>
 void SetDataLayout<egr::EagerVariable>(
     std::shared_ptr<egr::EagerVariable> var,
     const paddle::experimental::DataLayout layout) {
-  if (var->Var().IsType<framework::LoDTensor>()) {
-    var->MutableVar()->GetMutable<paddle::framework::LoDTensor>()->set_layout(
-        layout);
+  if (var->Var().IsType<phi::DenseTensor>()) {
+    var->MutableVar()->GetMutable<phi::DenseTensor>()->set_layout(layout);
   } else {
     PADDLE_THROW(paddle::platform::errors::PermissionDenied(
-        "Only support framework::LoDTensor, but got %s here, please checkout "
+        "Only support phi::DenseTensor, but got %s here, please checkout "
         "var type of "
         "tensor: %s",
         paddle::framework::ToTypeName(framework::ToVarType(var->Var().Type())),

@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
@@ -38,7 +35,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -52,7 +49,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[z.name],
                            return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
         data = np.array([[True, False], [False, True]])
@@ -64,7 +61,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[y.name],
                            return_numpy=False)
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
@@ -75,7 +72,7 @@ class TestNonZeroAPI(unittest.TestCase):
                            fetch_list=[y.name],
                            return_numpy=False)
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         data_x = np.array([[True, False], [False, True]])

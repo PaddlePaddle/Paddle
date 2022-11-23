@@ -32,17 +32,17 @@ void GraphSendRecvCpuLoop(const int& input_size,
                           const IndexT* d_index,
                           const DenseTensor& src,
                           DenseTensor* dst,
-                          const std::string& pool_type,
+                          const std::string& reduce_op,
                           int* dst_count = nullptr) {
   Functor functor;
-  if (pool_type == "SUM") {
+  if (reduce_op == "SUM") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
       ElementwiseInnerOperation<T, IndexT, Functor>(
           src, dst, src_idx, dst_idx, false, functor);
     }
-  } else if (pool_type == "MEAN") {
+  } else if (reduce_op == "MEAN") {
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
       const IndexT& dst_idx = d_index[i];
@@ -59,7 +59,7 @@ void GraphSendRecvCpuLoop(const int& input_size,
       auto eigen_dst = phi::EigenVector<T>::Flatten(dst_slice);
       eigen_dst = eigen_dst / static_cast<T>(*(dst_count + i));
     }
-  } else if (pool_type == "MIN" || pool_type == "MAX") {
+  } else if (reduce_op == "MIN" || reduce_op == "MAX") {
     std::set<IndexT> existed_dst;
     for (int i = 0; i < index_size; ++i) {
       const IndexT& src_idx = s_index[i];
@@ -82,53 +82,63 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
                                        const DenseTensor& x,
                                        const DenseTensor& src_index,
                                        const DenseTensor& dst_index,
-                                       const std::string& pool_type,
+                                       const std::string& reduce_op,
                                        int64_t out_size,
                                        DenseTensor* out,
                                        DenseTensor* dst_count = nullptr) {
   const int& index_size = src_index.dims()[0];
 
-  ctx.template Alloc<T>(out);
-  T* p_output = out->data<T>();
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
   if (out_size <= 0) {
+    out->Resize(src_dims);
     for (int i = 0; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   } else {
+    // Set out dim following out_size.
+    std::vector<int64_t> dims_ = phi::vectorize(src_dims);
+    if (dims_.size() > 0) {
+      dims_[0] = out_size;
+    }
+    out->Resize(phi::make_ddim(dims_));
     memset_size = out_size;
     for (int i = 1; i < src_dims.size(); ++i) {
       memset_size *= src_dims[i];
     }
   }
+
+  ctx.template Alloc<T>(out);
+  T* p_output = out->data<T>();
   const size_t& memset_bytes = memset_size * sizeof(T);
   memset(p_output, 0, memset_bytes);
 
   if (index_size == 0) return;
-
   const IndexT* s_index = src_index.data<IndexT>();
   const IndexT* d_index = dst_index.data<IndexT>();
-  if (pool_type == "SUM") {
+
+  if (reduce_op == "SUM") {
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(
-        src_dims[0], index_size, s_index, d_index, x, out, pool_type);
-  } else if (pool_type == "MIN") {
+        src_dims[0], index_size, s_index, d_index, x, out, reduce_op);
+  } else if (reduce_op == "MIN") {
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMinFunctor<T>>(
-        src_dims[0], index_size, s_index, d_index, x, out, pool_type);
-  } else if (pool_type == "MAX") {
+        src_dims[0], index_size, s_index, d_index, x, out, reduce_op);
+  } else if (reduce_op == "MAX") {
     GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvMaxFunctor<T>>(
-        src_dims[0], index_size, s_index, d_index, x, out, pool_type);
-  } else if (pool_type == "MEAN") {
+        src_dims[0], index_size, s_index, d_index, x, out, reduce_op);
+  } else if (reduce_op == "MEAN") {
+    int64_t input_size = out_size <= 0 ? src_dims[0] : out_size;
+    dst_count->Resize({input_size});
     ctx.template Alloc<int>(dst_count);
     int* p_dst_count = dst_count->data<int>();
-    memset(p_dst_count, 0, src_dims[0] * sizeof(int));
-    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(src_dims[0],
+    memset(p_dst_count, 0, input_size * sizeof(int));
+    GraphSendRecvCpuLoop<T, IndexT, GraphSendRecvSumFunctor<T>>(input_size,
                                                                 index_size,
                                                                 s_index,
                                                                 d_index,
                                                                 x,
                                                                 out,
-                                                                pool_type,
+                                                                reduce_op,
                                                                 p_dst_count);
   }
 }
@@ -138,17 +148,30 @@ void GraphSendRecvKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& src_index,
                          const DenseTensor& dst_index,
-                         const std::string& pool_type,
-                         int64_t out_size,
+                         const std::string& reduce_op,
+                         const IntArray& out_size,
                          DenseTensor* out,
                          DenseTensor* dst_count) {
   auto index_type = src_index.dtype();
+  auto& out_size_data = out_size.GetData();
   if (index_type == phi::DataType::INT32) {
-    GraphSendRecvOpKernelLaunchHelper<Context, T, int32_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpKernelLaunchHelper<Context, T, int32_t>(ctx,
+                                                           x,
+                                                           src_index,
+                                                           dst_index,
+                                                           reduce_op,
+                                                           out_size_data[0],
+                                                           out,
+                                                           dst_count);
   } else if (index_type == phi::DataType::INT64) {
-    GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(
-        ctx, x, src_index, dst_index, pool_type, out_size, out, dst_count);
+    GraphSendRecvOpKernelLaunchHelper<Context, T, int64_t>(ctx,
+                                                           x,
+                                                           src_index,
+                                                           dst_index,
+                                                           reduce_op,
+                                                           out_size_data[0],
+                                                           out,
+                                                           dst_count);
   }
 }
 

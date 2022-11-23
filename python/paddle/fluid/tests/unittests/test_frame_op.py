@@ -47,6 +47,7 @@ class TestFrameOp(OpTest):
 
     def setUp(self):
         self.op_type = "frame"
+        self.python_api = paddle.signal.frame
         self.shape, self.type, self.attrs = self.initTestCase()
         self.inputs = {
             'X': np.random.random(size=self.shape).astype(self.type),
@@ -67,12 +68,12 @@ class TestFrameOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_eager=True)
         paddle.disable_static()
 
     def test_check_grad_normal(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_eager=True)
         paddle.disable_static()
 
 

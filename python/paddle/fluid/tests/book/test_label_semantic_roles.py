@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import contextlib
-import math
 import numpy as np
 import os
 import time
@@ -160,7 +157,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
                                              param_attr=fluid.ParamAttr(
                                                  name='crfw',
                                                  learning_rate=mix_hidden_lr))
-    avg_cost = fluid.layers.mean(crf_cost)
+    avg_cost = paddle.mean(crf_cost)
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN

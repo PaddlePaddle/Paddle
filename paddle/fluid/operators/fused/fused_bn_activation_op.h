@@ -26,7 +26,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedBatchNormActOp : public framework::OperatorWithKernel {
  public:
@@ -38,7 +38,8 @@ class FusedBatchNormActOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

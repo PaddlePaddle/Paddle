@@ -37,11 +37,12 @@ inline T relu_grad_dx(T x, T out, T dout) {
 }
 
 template <typename T>
-void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
+void Compare(fw::Scope* scope,
+             const plat::DeviceContext& ctx,
              std::string op_type) {
   // init
   auto x = scope->Var("X");
-  auto tensor_x = x->GetMutable<fw::LoDTensor>();
+  auto tensor_x = x->GetMutable<phi::DenseTensor>();
 
   const int num = 10;
   std::vector<T> init_x;
@@ -53,11 +54,11 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
 
   auto place = ctx.GetPlace();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<fw::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   fw::AttributeMap attrs;
-  auto op = fw::OpRegistry::CreateOp(op_type, {{"X", {"X"}}},
-                                     {{"Out", {"Out"}}}, attrs);
+  auto op = fw::OpRegistry::CreateOp(
+      op_type, {{"X", {"X"}}}, {{"Out", {"Out"}}}, attrs);
   op->Run(*scope, place);
 
   ctx.Wait();
@@ -89,12 +90,13 @@ void Compare(fw::Scope* scope, const plat::DeviceContext& ctx,
 }
 
 template <typename T>
-void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
+void CompareGrad(fw::Scope* scope,
+                 const plat::DeviceContext& ctx,
                  std::string op_type) {
   auto dout = scope->Var("DOut");
-  auto tensor_dout = dout->GetMutable<fw::LoDTensor>();
+  auto tensor_dout = dout->GetMutable<phi::DenseTensor>();
   auto out = scope->Var("Out");
-  auto tensor_out = out->GetMutable<fw::LoDTensor>();
+  auto tensor_out = out->GetMutable<phi::DenseTensor>();
 
   const int num = 10;
   std::vector<T> init_dout;
@@ -113,14 +115,15 @@ void CompareGrad(fw::Scope* scope, const plat::DeviceContext& ctx,
   tensor_out->Resize({num, num});
 
   auto dx = scope->Var("DX");
-  auto tensor_dx = dx->GetMutable<fw::LoDTensor>();
+  auto tensor_dx = dx->GetMutable<phi::DenseTensor>();
 
   // run
   auto place = ctx.GetPlace();
   fw::AttributeMap attrs;
   auto op = fw::OpRegistry::CreateOp(op_type,
                                      {{"Out@GRAD", {"DOut"}}, {"Out", {"Out"}}},
-                                     {{"X@GRAD", {"DX"}}}, attrs);
+                                     {{"X@GRAD", {"DX"}}},
+                                     attrs);
   op->Run(*scope, place);
 
   ctx.Wait();

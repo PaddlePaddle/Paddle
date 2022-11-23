@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import unicode_literals
-from __future__ import print_function
-
 import os
-import sys
-import time
 import numpy as np
 
 os.environ[str("FLAGS_check_nan_inf")] = str("1")
@@ -26,7 +21,6 @@ os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 import paddle.fluid.core as core
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 
 paddle.enable_static()
 
@@ -70,7 +64,7 @@ def net():
     cost, y_predict = fluid.layers.softmax_with_cross_entropy(
         hidden, y, return_softmax=True)
     acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
-    avg_cost = fluid.layers.mean(cost)
+    avg_cost = paddle.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)

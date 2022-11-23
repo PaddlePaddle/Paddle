@@ -17,7 +17,7 @@ import unittest
 import paddle
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.utils import flatten
-from paddle.incubate.autograd.primrules import _orig2prim, _prim2orig, _jvp, _transpose
+from paddle.incubate.autograd.primrules import _prim2orig
 
 paddle.enable_static()
 
@@ -164,6 +164,126 @@ class TestTanhPPrim2Orig(TestAddPPrim2Orig):
         self.out_map = {self.output['Y']: 0}
 
 
+class TestSinPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'sin_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['sin_p', 'sin']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestCosPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'cos_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['cos_p', 'cos']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestExpPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'exp_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['exp_p', 'exp']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestErfPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'erf_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['erf_p', 'erf']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestAbsPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'abs_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['abs_p', 'abs']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestLogPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'log_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['log_p', 'log']
+        self.out_map = {self.output['Y']: 0}
+
+
 class TestReshapePPrim2Orig(TestAddPPrim2Orig):
 
     def init_data(self):
@@ -275,7 +395,7 @@ class TestConcatPPrim2Orig(TestAddPPrim2Orig):
 class TestReducePPrim2Orig(TestAddPPrim2Orig):
 
     def init_data(self):
-        self.op_type = 'reduce_p'
+        self.op_type = 'reduce_sum_p'
         X = paddle.static.data(name='X', shape=[3, 9, 5], dtype='float64')
 
         self.input = {'X': X}
@@ -286,7 +406,7 @@ class TestReducePPrim2Orig(TestAddPPrim2Orig):
         self.attrs = {'axis': [1], 'keepdim': True}
 
         self.prim2orig_args = (X, )
-        self.all_ops = ['reduce_p', 'reduce_sum']
+        self.all_ops = ['reduce_sum_p', 'reduce_sum']
         self.out_map = {self.output['Y']: 0}
 
 
@@ -414,6 +534,197 @@ class TestFillConstantPPrim2Orig(TestAddPPrim2Orig):
 
         self.prim2orig_args = ()
         self.all_ops = ['fill_constant_p', 'fill_constant']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestSelectPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'select_p'
+        Cond = paddle.static.data(name='Condition', shape=[5, 6], dtype='bool')
+        X = paddle.static.data(name='X', shape=[5, 6], dtype='float32')
+        Y = paddle.static.data(name='Y', shape=[5, 6], dtype='float32')
+
+        self.input = {'Condition': Cond, 'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+        self.prim2orig_args = (Cond, X, Y)
+        self.all_ops = ['select_p', 'where']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestEqPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'eq_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['eq_p', 'equal']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestNePPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'ne_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['ne_p', 'not_equal']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestGtPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'gt_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['gt_p', 'greater_than']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestGePPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'ge_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype='bool')
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['ge_p', 'greater_equal']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestPowPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'pow_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['pow_p', 'elementwise_pow']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestMaxPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'max_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+        Y = paddle.static.data(name='Y', shape=[7, 8], dtype='float64')
+
+        self.input = {'X': X, 'Y': Y}
+        self.output = {
+            'Z':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, Y)
+        self.all_ops = ['max_p', 'elementwise_max']
+        self.out_map = {self.output['Z']: 0}
+
+
+class TestBernoulliPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'bernoulli_p'
+
+        self.input = {}
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(
+                dtype=paddle.float64)
+        }
+        self.attrs = {'shape': [7, 8], 'dtype': paddle.float64, 'p': 0.5}
+
+        self.prim2orig_args = ()
+        self.all_ops = ['bernoulli_p', 'fill_constant', 'bernoulli']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestCastPPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'cast_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {'dtype': paddle.int64}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['cast_p', 'cast']
+        self.out_map = {self.output['Y']: 0}
+
+
+class TestRsqrtPrim2Orig(TestAddPPrim2Orig):
+
+    def init_data(self):
+        self.op_type = 'rsqrt_p'
+        X = paddle.static.data(name='X', shape=[7, 8], dtype='float64')
+
+        self.input = {
+            'X': X,
+        }
+        self.output = {
+            'Y':
+            self.layer_help.create_variable_for_type_inference(dtype=X.dtype)
+        }
+        self.attrs = {}
+
+        self.prim2orig_args = (X, )
+        self.all_ops = ['rsqrt_p', 'rsqrt']
         self.out_map = {self.output['Y']: 0}
 
 

@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import textwrap
 from paddle.utils import gast
 import inspect
 import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_func
 
@@ -59,7 +58,7 @@ class TestAST2Func(unittest.TestCase):
 
         def func(x):
             y = fluid.layers.relu(x)
-            loss = fluid.layers.mean(y)
+            loss = paddle.mean(y)
             return loss
 
         x_data = np.random.random([10, 16]).astype('float32')

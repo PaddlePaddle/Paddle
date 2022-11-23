@@ -15,10 +15,7 @@
 import argparse
 import json
 import six
-import sys
-import unittest
 
-import google.protobuf.text_format as text_format
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 parser = argparse.ArgumentParser(description=__doc__)

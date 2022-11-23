@@ -25,8 +25,8 @@ template <typename DeviceContext, typename T>
 class XPULogsumexpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
+    auto* input = context.Input<phi::DenseTensor>("X");
+    auto* output = context.Output<phi::DenseTensor>("Out");
 
     auto axis = context.Attr<std::vector<int>>("axis");
     auto reduce_all = context.Attr<bool>("reduce_all");
@@ -55,11 +55,13 @@ class XPULogsumexpKernel : public framework::OpKernel<T> {
     }
 
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    int r = xpu::logsumexp<T>(dev_ctx.x_context(), input_data, output_data,
-                              xdims, axis_shape);
-    PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
+    int r = xpu::logsumexp<T>(
+        dev_ctx.x_context(), input_data, output_data, xdims, axis_shape);
+    PADDLE_ENFORCE_EQ(r,
+                      xpu::Error_t::SUCCESS,
                       platform::errors::External(
-                          "XPU logsumexp kernel error! error value[%d %]", r,
+                          "XPU logsumexp kernel error! error value[%d %]",
+                          r,
                           XPUAPIErrorMsg[r]));
   }
 };

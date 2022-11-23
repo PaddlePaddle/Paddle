@@ -19,9 +19,10 @@
 namespace paddle {
 namespace framework {
 
-void ReaderBase::ReadNext(std::vector<LoDTensor> *out) {
+void ReaderBase::ReadNext(paddle::framework::LoDTensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
-  PADDLE_ENFORCE_EQ(status_, ReaderStatus::kRunning,
+  PADDLE_ENFORCE_EQ(status_,
+                    ReaderStatus::kRunning,
                     platform::errors::Unavailable(
                         "The current reader has stopped running and cannot "
                         "continue to read the next batch of data."));

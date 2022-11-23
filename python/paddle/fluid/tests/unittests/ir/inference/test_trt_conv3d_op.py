@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import shutil
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest

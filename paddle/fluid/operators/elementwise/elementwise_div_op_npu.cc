@@ -21,16 +21,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class ElementwiseDivNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
 
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto place = ctx.GetPlace();
 
@@ -49,13 +49,13 @@ template <typename DeviceContext, typename T>
 class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<Tensor>("Out");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     auto place = ctx.GetPlace();
 
@@ -100,7 +100,9 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
       Tensor x_nozero_f(x->type());
       x_nozero_f.mutable_data<T>(x->dims(), place);
       const auto& runner_x_nonzero_f =
-          NpuOpRunner("Cast", {x_nozero}, {x_nozero_f},
+          NpuOpRunner("Cast",
+                      {x_nozero},
+                      {x_nozero_f},
                       {{"dst_type", static_cast<int32_t>(0)}});
       runner_x_nonzero_f.Run(stream);
 
@@ -145,7 +147,9 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
           }
         }
         const auto& runner_reduce =
-            NpuOpRunner("ReduceSumD", {tmp_mul}, {reduced_tmp_mul},
+            NpuOpRunner("ReduceSumD",
+                        {tmp_mul},
+                        {reduced_tmp_mul},
                         {{"axes", axes}, {"keep_dims", false}});
         runner_reduce.Run(stream);
 

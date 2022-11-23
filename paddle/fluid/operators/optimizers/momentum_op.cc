@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class MomentumOpInferVarType : public framework::VarTypeInference {
  public:
@@ -105,7 +105,9 @@ $$
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    momentum, ops::MomentumOp, ops::MomentumOpMaker,
+    momentum,
+    ops::MomentumOp,
+    ops::MomentumOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::MomentumOpInferVarType);

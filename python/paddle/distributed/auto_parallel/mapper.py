@@ -15,11 +15,8 @@
 import os
 import operator
 import functools
-import json
 import paddle
 from collections import deque
-from .graph import Node
-from .graph import Edge
 from .graph import Graph
 from .cluster import DeviceType
 from .process_group import get_process_group

@@ -19,7 +19,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/meta_tensor.h"
 
-PD_DataType PD_TensorGetDataType(const PD_Tensor* tensor, PD_Status* status) {
+PD_DataType PD_TensorGetPDDataType(const PD_Tensor* tensor, PD_Status* status) {
   if (status) {
     if (!tensor) {
       *status = C_FAILED;
@@ -297,6 +297,21 @@ void PD_TensorShareLoDWith(PD_Tensor* dst,
   phi::MetaTensor meta_dst(cc_dst_tensor);
   const phi::MetaTensor meta_src(cc_src_tensor);
   meta_dst.share_lod(meta_src);
+}
+
+PD_Tensor* PD_OptionalTensorGetPointer(PD_Tensor* tensor) {
+  auto cc_tensor =
+      reinterpret_cast<paddle::optional<phi::DenseTensor>*>(tensor);
+  return reinterpret_cast<PD_Tensor*>(cc_tensor->get_ptr());
+}
+
+PD_List PD_TensorVectorToList(PD_Tensor* tensor) {
+  auto cc_tensor =
+      reinterpret_cast<std::vector<const phi::DenseTensor*>*>(tensor);
+  PD_List list;
+  list.size = cc_tensor->size();
+  list.data = cc_tensor->data();
+  return list;
 }
 
 PD_REGISTER_CAPI(tensor);

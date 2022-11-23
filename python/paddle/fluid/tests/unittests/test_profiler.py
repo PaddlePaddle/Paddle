@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import tempfile
@@ -24,7 +22,6 @@ import paddle.fluid as fluid
 import paddle.fluid.profiler as profiler
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 import paddle.fluid.proto.profiler.profiler_pb2 as profiler_pb2
 
 
@@ -59,7 +56,7 @@ class TestProfiler(unittest.TestCase):
             predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
             label = fluid.layers.data(name='y', shape=[1], dtype='int64')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             batch_size = fluid.layers.create_tensor(dtype='int64')
             batch_acc = fluid.layers.accuracy(input=predict,
                                               label=label,

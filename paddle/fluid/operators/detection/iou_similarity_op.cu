@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/detection/iou_similarity_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    iou_similarity,
-    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::IOUSimilarityKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(iou_similarity,
+                        ops::IOUSimilarityKernel<phi::GPUContext, float>,
+                        ops::IOUSimilarityKernel<phi::GPUContext, double>);

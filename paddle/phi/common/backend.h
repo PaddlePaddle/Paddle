@@ -32,7 +32,7 @@ namespace experimental {
  * more specific, we need to distinguish the calculation method.
  *
  * Such as the kernel for CPU device, it can be a native CPU kernel,
- * or a kernel implemented by MKLDNN library.
+ * or a kernel implemented by oneDNN library.
  *
  * Note(chenweihang): HIP is not needed now, we can added it if needed
  * in the future
@@ -42,27 +42,28 @@ enum class Backend : uint8_t {
 
   // basic kernel backend
   CPU,
+  // the third library backend
+  ONEDNN,
+
+  // acceleration device's backend
+  GPU,
+  // the third library backend
+  GPUDNN,  // cuDNN and hipDNN
 
   // various acceleration devices' backends
-  GPU,
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
   MLU,  // MLU currently does not exist at the same time as CUDA
-
-  // the third library backend
-  MKLDNN,
-  GPUDNN,  // cuDNN and hipDNN
+  IPU,
 
   // paddle kernel primitives backend
   KPS,
-
-  IPU,
 
   // end of backend types
   NUM_BACKENDS,
 
   /**
-   * [ Why we need ALL in baisc kernel key member? ]
+   * [ Why we need ALL in basic kernel key member? ]
    *
    * For Tensor, ALL represents an illegal Backend, but for Kernel, some
    * kernels may be device-independent by nature, such as reshape; and when
@@ -118,8 +119,8 @@ inline std::ostream& operator<<(std::ostream& os, Backend backend) {
     case Backend::MLU:
       os << "MLU";
       break;
-    case Backend::MKLDNN:
-      os << "MKLDNN";
+    case Backend::ONEDNN:
+      os << "ONEDNN";
       break;
     case Backend::GPUDNN:
       os << "GPUDNN";
@@ -160,8 +161,8 @@ inline Backend StringToBackend(const char* backend_cstr) {
     return Backend::NPU;
   } else if (s == std::string("MLU")) {
     return Backend::MLU;
-  } else if (s == std::string("MKLDNN")) {
-    return Backend::MKLDNN;
+  } else if (s == std::string("OneDNN")) {
+    return Backend::ONEDNN;
   } else if (s == std::string("GPUDNN")) {
     return Backend::GPUDNN;
   } else if (s == std::string("KPS")) {

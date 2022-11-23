@@ -138,15 +138,15 @@ TEST(EagerUtils, ComputeRequireGrad) {
   VLOG(6) << "Multi Test ComputeRequireGrad";
   auto_grad0->SetStopGradient(false);
   auto_grad1->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == true);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
   auto_grad0->SetStopGradient(true);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(true, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
-  CHECK(egr::EagerUtils::ComputeRequireGrad(false, auto_grad0.get(),
-                                            auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            true, auto_grad0.get(), auto_grad1.get()) == false);
+  CHECK(egr::EagerUtils::ComputeRequireGrad(
+            false, auto_grad0.get(), auto_grad1.get()) == false);
 }
 
 TEST(EagerUtils, PassStopGradient) {
@@ -158,9 +158,12 @@ TEST(EagerUtils, PassStopGradient) {
   VLOG(6) << "Test PassStopGradient";
   egr::EagerUtils::PassStopGradient(false, auto_grad0.get());
   CHECK(auto_grad0->StopGradient() == false);
-  egr::EagerUtils::PassStopGradient(true, auto_grad0.get(), auto_grad1.get(),
-                                    auto_grad2.get(), auto_grad3.get());
-  CHECK(auto_grad0->StopGradient() == false);
+  egr::EagerUtils::PassStopGradient(true,
+                                    auto_grad0.get(),
+                                    auto_grad1.get(),
+                                    auto_grad2.get(),
+                                    auto_grad3.get());
+  CHECK(auto_grad0->StopGradient() == true);
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
@@ -173,7 +176,7 @@ TEST(EagerUtils, TrySyncToVar) {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+  const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
@@ -194,7 +197,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     CHECK_EQ(framework_tensor.numel(), tensors[0].numel());
@@ -206,7 +209,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     VLOG(6) << "Check Value for SyncToVarsMultiple";

@@ -18,15 +18,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T, cnnlLogicOp_t log_method>
 class LogicalMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
@@ -38,8 +38,14 @@ class LogicalMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc out_desc(*out);
 
-    MLUCnnl::Logic(ctx, log_method, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                   GetBasePtr(y), out_desc.get(), GetBasePtr(out));
+    MLUCnnl::Logic(ctx,
+                   log_method,
+                   x_desc.get(),
+                   GetBasePtr(x),
+                   y_desc.get(),
+                   GetBasePtr(y),
+                   out_desc.get(),
+                   GetBasePtr(out));
   }
 };
 

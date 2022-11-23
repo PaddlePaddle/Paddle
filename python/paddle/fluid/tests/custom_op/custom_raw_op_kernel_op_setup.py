@@ -38,6 +38,7 @@ if core.is_compiled_with_mkldnn():
     macros.append(("PADDLE_WITH_MKLDNN", None))
 if core.is_compiled_with_nccl():
     macros.append(("PADDLE_WITH_NCCL", None))
+macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))
 
 include_dirs = list(paddle_includes) + [cwd]
 setup(name=os.getenv("MODULE_NAME", "custom_raw_op_kernel_op_setup"),

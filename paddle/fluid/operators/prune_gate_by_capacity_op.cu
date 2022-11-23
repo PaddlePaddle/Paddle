@@ -30,7 +30,7 @@ DECLARE_bool(avoid_op_randomness);
 
 namespace paddle {
 namespace operators {
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -60,8 +60,8 @@ template <typename DeviceContext, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const framework::ExecutionContext& context,
-                             const framework::LoDTensor* gate_idx,
-                             framework::LoDTensor* expert_count_out,
+                             const phi::DenseTensor* gate_idx,
+                             phi::DenseTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : context_(context),
         gate_idx_(gate_idx),
@@ -80,15 +80,16 @@ class PruneGateByCapacityFunctor {
     int threads = kNumCUDAThreads;
 
     prune_gate_by_capacity_kernel<T1, T2>
-        <<<blocks, threads, 0, dev_ctx.stream()>>>(
-            gate_idx_data, new_gate_idx_data_, expert_count_out_data,
-            batch_size);
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(gate_idx_data,
+                                                   new_gate_idx_data_,
+                                                   expert_count_out_data,
+                                                   batch_size);
   }
 
  private:
   const framework::ExecutionContext context_;
-  const framework::LoDTensor* gate_idx_;
-  framework::LoDTensor* expert_count_out_;
+  const phi::DenseTensor* gate_idx_;
+  phi::DenseTensor* expert_count_out_;
   T1* new_gate_idx_data_;
 };
 
@@ -116,7 +117,7 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
     auto* new_gate_idx = context.Output<LoDTensor>("NewGateIdx");
     auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
 
-    framework::LoDTensor expert_count_out;
+    phi::DenseTensor expert_count_out;
     framework::TensorCopy(*expert_count, context.GetPlace(), &expert_count_out);
     PruneGateByCapacityFunctor<DeviceContext, T> functor(
         context, gate_idx, &expert_count_out, new_gate_idx_data);
@@ -129,4 +130,4 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_CUDA_KERNEL(
     prune_gate_by_capacity,
-    ops::PruneGateByCapacityCUDAKernel<plat::CUDADeviceContext, int64_t>);
+    ops::PruneGateByCapacityCUDAKernel<phi::GPUContext, int64_t>);

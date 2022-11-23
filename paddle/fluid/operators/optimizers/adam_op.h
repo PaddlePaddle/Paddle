@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class AdamOp : public framework::OperatorWithKernel {
  public:
@@ -33,14 +33,15 @@ class AdamOp : public framework::OperatorWithKernel {
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
     if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
         var_name == "SkipUpdate") {
       return expected_kernel_type;
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(), tensor.layout());
     }
   }
 };

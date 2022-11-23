@@ -25,11 +25,15 @@ class ReduceMinOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_min"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_min, ReduceMinInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_min,
+    ReduceMinInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
 
 REGISTER_OPERATOR(
-    reduce_min, ops::ReduceOp, ReduceMinOpMaker,
+    reduce_min,
+    ops::ReduceOp,
+    ReduceMinOpMaker,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ReduceMinInferShapeFunctor);

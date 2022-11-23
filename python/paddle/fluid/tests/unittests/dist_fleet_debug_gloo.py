@@ -12,17 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import os
-import time
-import numpy as np
 import logging
-import paddle
-import paddle.fluid as fluid
 #import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
 
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("fluid")

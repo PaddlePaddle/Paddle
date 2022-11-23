@@ -47,7 +47,6 @@ void SparseAccessor::InitAccessorInfo() {
   auto embedx_dim = _config.embedx_dim();
   _accessor_info.select_dim = 1 + embedx_dim;
   _accessor_info.select_size = _accessor_info.select_dim * sizeof(float);
-  ;
   _accessor_info.update_dim = 4 + embedx_dim;
   _accessor_info.update_size = _accessor_info.update_dim * sizeof(float);
   _accessor_info.mf_size =
@@ -151,8 +150,10 @@ int32_t SparseAccessor::Create(float** values, size_t num) {
     value[sparse_feature_value.ShowIndex()] = 0;
     value[sparse_feature_value.ClickIndex()] = 0;
     value[sparse_feature_value.SlotIndex()] = -1;
+    bool zero_init = _config.ctr_accessor_param().zero_init();
     _embed_sgd_rule->InitValue(value + sparse_feature_value.EmbedWIndex(),
-                               value + sparse_feature_value.EmbedG2SumIndex());
+                               value + sparse_feature_value.EmbedG2SumIndex(),
+                               zero_init);
     _embedx_sgd_rule->InitValue(value + sparse_feature_value.EmbedxWIndex(),
                                 value + sparse_feature_value.EmbedxG2SumIndex(),
                                 false);
@@ -173,7 +174,8 @@ bool SparseAccessor::HasMF(int size) {
 }
 
 // from SparseFeatureValue to SparsePullValue
-int32_t SparseAccessor::Select(float** select_values, const float** values,
+int32_t SparseAccessor::Select(float** select_values,
+                               const float** values,
                                size_t num) {
   auto embedx_dim = _config.embedx_dim();
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -192,7 +194,8 @@ int32_t SparseAccessor::Select(float** select_values, const float** values,
 // first dim: item
 // second dim: field num
 int32_t SparseAccessor::Merge(float** update_values,
-                              const float** other_update_values, size_t num) {
+                              const float** other_update_values,
+                              size_t num) {
   auto embedx_dim = _config.embedx_dim();
   size_t total_dim = SparsePushValue::Dim(embedx_dim);
   for (size_t value_item = 0; value_item < num; ++value_item) {
@@ -210,7 +213,8 @@ int32_t SparseAccessor::Merge(float** update_values,
 // from SparsePushValue to SparseFeatureValue
 // first dim: item
 // second dim: field num
-int32_t SparseAccessor::Update(float** update_values, const float** push_values,
+int32_t SparseAccessor::Update(float** update_values,
+                               const float** push_values,
                                size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* update_value = update_values[value_item];
@@ -228,11 +232,13 @@ int32_t SparseAccessor::Update(float** update_values, const float** push_values,
     _embed_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedWIndex(),
         update_value + sparse_feature_value.EmbedG2SumIndex(),
-        push_value + SparsePushValue::EmbedGIndex());
+        push_value + SparsePushValue::EmbedGIndex(),
+        push_show);
     _embedx_sgd_rule->UpdateValue(
         update_value + sparse_feature_value.EmbedxWIndex(),
         update_value + sparse_feature_value.EmbedxG2SumIndex(),
-        push_value + SparsePushValue::EmbedxGIndex());
+        push_value + SparsePushValue::EmbedxGIndex(),
+        push_show);
   }
   return 0;
 }
@@ -273,7 +279,8 @@ std::string SparseAccessor::ParseToString(const float* v, int param) {
   os << v[0] << " " << v[1] << " " << v[2] << " " << v[3] << " " << v[4] << " "
      << v[5];
   for (int i = sparse_feature_value.EmbedG2SumIndex();
-       i < sparse_feature_value.EmbedxWIndex(); i++) {
+       i < sparse_feature_value.EmbedxWIndex();
+       i++) {
     os << " " << v[i];
   }
   auto show = sparse_feature_value.Show(const_cast<float*>(v));
@@ -282,7 +289,8 @@ std::string SparseAccessor::ParseToString(const float* v, int param) {
   if (score >= _config.embedx_threshold() &&
       param > sparse_feature_value.EmbedxWIndex()) {
     for (auto i = sparse_feature_value.EmbedxWIndex();
-         i < sparse_feature_value.Dim(); ++i) {
+         i < sparse_feature_value.Dim();
+         ++i) {
       os << " " << v[i];
     }
   }

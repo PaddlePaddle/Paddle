@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import tempfile
@@ -20,7 +19,7 @@ import warnings
 import json
 import paddle
 import paddle.nn as nn
-from paddle.io import Dataset, DataLoader, BatchSampler, SequenceSampler
+from paddle.io import DataLoader, Dataset
 import sys
 import os
 

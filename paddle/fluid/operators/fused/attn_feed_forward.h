@@ -24,8 +24,11 @@ namespace operators {
 template <typename T>
 class FeedForward {
  public:
-  FeedForward(const platform::CUDADeviceContext& dev_ctx, int bsz_seq,
-              int output_size, int input_size, bool compute_bias)
+  FeedForward(const phi::GPUContext& dev_ctx,
+              int bsz_seq,
+              int output_size,
+              int input_size,
+              bool compute_bias)
       : dev_ctx_(dev_ctx),
         bsz_seq_(bsz_seq),
         output_size_(output_size),
@@ -34,8 +37,11 @@ class FeedForward {
 
   ~FeedForward() {}
 
-  void ComputeForward(const T* weight_data, const T* input_data,
-                      const T* bias_data, T* output_data, T* bias_out_data) {
+  void ComputeForward(const T* weight_data,
+                      const T* input_data,
+                      const T* bias_data,
+                      T* output_data,
+                      T* bias_out_data) {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
     // To convert to col-major expression, transa<->transb, A<->B，m<->n.
 
@@ -47,42 +53,70 @@ class FeedForward {
 
     // column-major: (m,n,k) = output_size,bsz_seq,input_size (weight*input=out)
     // here: (m,n,k) = bsz_seq,output_size,input_size (input*weight=out)
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
-    blas.GEMM(transA, transB, bsz_seq_, output_size_, input_size_, alpha,
-              input_data, weight_data, beta, output_data);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
+    blas.GEMM(transA,
+              transB,
+              bsz_seq_,
+              output_size_,
+              input_size_,
+              alpha,
+              input_data,
+              weight_data,
+              beta,
+              output_data);
     if (compute_bias_) {
-      LaunchBiasAddFwKernel(dev_ctx_, bsz_seq_, output_size_, output_data,
-                            bias_data, bias_out_data);
+      LaunchBiasAddFwKernel(dev_ctx_,
+                            bsz_seq_,
+                            output_size_,
+                            output_data,
+                            bias_data,
+                            bias_out_data);
     }
   }
 
-  void ComputeBackward(T* input, T* weight, T* d_output, T* d_input,
-                       T* d_weight, T* d_bias) {
+  void ComputeBackward(
+      T* input, T* weight, T* d_output, T* d_input, T* d_weight, T* d_bias) {
     T alpha = static_cast<T>(1.0);
     T beta = static_cast<T>(0.0);
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
 
     // column-major: gemm-nt, get d_weight.
     CBLAS_TRANSPOSE transA = CblasTrans;
     CBLAS_TRANSPOSE transB = CblasNoTrans;
     // column-major: (m,n,k): input_size,output_size,bsz (input*dout=dweight)
     // here: (m,n,k): output_size,input_size,bsz (dout*input=dweight)
-    blas.GEMM(transA, transB, output_size_, input_size_, bsz_seq_, alpha,
-              d_output, input, beta, d_weight);
+    blas.GEMM(transA,
+              transB,
+              output_size_,
+              input_size_,
+              bsz_seq_,
+              alpha,
+              d_output,
+              input,
+              beta,
+              d_weight);
 
     // column-major: gemm-nn: get d_input.
     transA = CblasNoTrans;
     // column-major: (m,n,k): input_size,bsz,output_size (weight*dout=dinput)
     // here: (m, n, k): bsz, input_size, output_size, (dout*weight=dinput)
-    blas.GEMM(transA, transB, bsz_seq_, input_size_, output_size_, alpha,
-              d_output, weight, beta, d_input);
+    blas.GEMM(transA,
+              transB,
+              bsz_seq_,
+              input_size_,
+              output_size_,
+              alpha,
+              d_output,
+              weight,
+              beta,
+              d_input);
     if (compute_bias_) {
       LaunchBiasAddBwKernel(dev_ctx_, bsz_seq_, output_size_, d_output, d_bias);
     }
   }
 
  private:
-  const platform::CUDADeviceContext& dev_ctx_;
+  const phi::GPUContext& dev_ctx_;
   int bsz_seq_, output_size_, input_size_;
   bool compute_bias_;
 };

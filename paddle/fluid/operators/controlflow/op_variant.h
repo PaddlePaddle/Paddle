@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
@@ -51,16 +50,17 @@ class OpVariant {
     auto &attrs = Attrs();
     auto it = attrs.find(name);
     PADDLE_ENFORCE_NE(
-        it, attrs.end(),
+        it,
+        attrs.end(),
         platform::errors::NotFound("Cannot find attribute %s.", name));
-    return BOOST_GET_CONST(AttrType, it->second);
+    return PADDLE_GET_CONST(AttrType, it->second);
   }
 
   bool operator==(const OpVariant &other) const {
     return RawPointer() == other.RawPointer();
   }
 
-  int which() const { return static_cast<int>(op_.which()); }
+  int index() const { return static_cast<int>(op_.index()); }
 
   struct Hasher {
     size_t operator()(const OpVariant &op) const {
@@ -69,8 +69,8 @@ class OpVariant {
   };
 
  private:
-  const boost::variant<const framework::OperatorBase *,
-                       const framework::OpDesc *>
+  const paddle::variant<const framework::OperatorBase *,
+                        const framework::OpDesc *>
       op_;
 };
 

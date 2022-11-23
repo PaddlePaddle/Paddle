@@ -85,12 +85,16 @@ DECLARE_INPLACE_OP_INFERER(LerpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
-DECLARE_INFER_SHAPE_FUNCTOR(lerp, LerpInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(lerp,
+                            LerpInferShapeFunctor,
                             PD_INFER_META(phi::LerpInferMeta));
 REGISTER_OPERATOR(
-    lerp, paddle::operators::LerpOp, paddle::operators::LerpOpMaker,
+    lerp,
+    paddle::operators::LerpOp,
+    paddle::operators::LerpOpMaker,
     paddle::operators::LerpOpGradMaker<paddle::framework::OpDesc>,
     paddle::operators::LerpOpGradMaker<paddle::imperative::OpBase>,
-    paddle::operators::LerpInplaceInferer, LerpInferShapeFunctor);
+    paddle::operators::LerpInplaceInferer,
+    LerpInferShapeFunctor);
 
 REGISTER_OPERATOR(lerp_grad, paddle::operators::LerpGradOp);

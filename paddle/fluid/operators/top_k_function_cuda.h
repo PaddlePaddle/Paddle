@@ -27,9 +27,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/top_k_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
+#define FINAL_MASK 0xffffffff
 #ifdef __HIPCC__
 namespace rocprim {
 namespace detail {
@@ -44,7 +46,10 @@ namespace cub = hipcub;
 namespace cub {
 template <>
 struct NumericTraits<paddle::platform::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t,
+    : BaseTraits<FLOATING_POINT,
+                 true,
+                 false,
+                 uint16_t,
                  paddle::platform::float16> {};
 }  // namespace cub
 #endif
@@ -52,10 +57,10 @@ struct NumericTraits<paddle::platform::float16>
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
-inline void GetDims(const phi::DDim& dim, int axis, int* pre, int* n,
-                    int* post) {
+inline void GetDims(
+    const phi::DDim& dim, int axis, int* pre, int* n, int* post) {
   *pre = 1;
   *post = 1;
   *n = dim[axis];
@@ -99,6 +104,14 @@ inline static int GetDesiredBlockDim(int dim) {
     return 64;
   } else {
     return 32;
+  }
+}
+
+inline static int getMaxLength(int k) {
+  if (k / 5 < 1) {
+    return 1;
+  } else if (k / 5 >= 1) {
+    return min(k / 5, 5);
   }
 }
 
@@ -149,8 +162,10 @@ struct Pair {
 };
 
 template <typename T>
-__device__ __forceinline__ void AddTo(Pair<T> topk[], const Pair<T>& p,
-                                      int beam_size, const bool& largest) {
+__device__ __forceinline__ void AddTo(Pair<T> topk[],
+                                      const Pair<T>& p,
+                                      int beam_size,
+                                      const bool& largest) {
   for (int k = beam_size - 2; k >= 0; k--) {
     if (largest) {
       if (topk[k] < p) {
@@ -172,8 +187,11 @@ __device__ __forceinline__ void AddTo(Pair<T> topk[], const Pair<T>& p,
 }
 
 template <typename T, int BlockSize>
-__device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
-                                        int dim, int beam_size,
+__device__ __forceinline__ void GetTopK(Pair<T> topk[],
+                                        const T* src,
+                                        int idx,
+                                        int dim,
+                                        int beam_size,
                                         const bool& largest) {
   while (idx < dim) {
     if (largest) {
@@ -192,9 +210,13 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
 }
 
 template <typename T, int BlockSize>
-__device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
-                                        int dim, const Pair<T>& max,
-                                        int beam_size, const bool& largest) {
+__device__ __forceinline__ void GetTopK(Pair<T> topk[],
+                                        const T* src,
+                                        int idx,
+                                        int dim,
+                                        const Pair<T>& max,
+                                        int beam_size,
+                                        const bool& largest) {
   while (idx < dim) {
     if (largest) {
       if (topk[beam_size - 1] < src[idx]) {
@@ -216,11 +238,16 @@ __device__ __forceinline__ void GetTopK(Pair<T> topk[], const T* src, int idx,
 }
 
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
-                                              int beam_size, const T* src,
-                                              bool* firstStep, bool* is_empty,
-                                              Pair<T>* max, int dim,
-                                              const int tid, bool largest) {
+__device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[],
+                                              int* beam,
+                                              int beam_size,
+                                              const T* src,
+                                              bool* firstStep,
+                                              bool* is_empty,
+                                              Pair<T>* max,
+                                              int dim,
+                                              const int tid,
+                                              bool largest) {
   if (*beam > 0) {
     int length = (*beam) < beam_size ? *beam : beam_size;
     if (*firstStep) {
@@ -231,83 +258,106 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-static_cast<T>(INFINITY), -1);
+          if (largest) {
+            topk[k].set(-static_cast<T>(INFINITY), -1);
+          } else {
+            topk[k].set(static_cast<T>(INFINITY), -1);
+          }
         }
       }
       if (!(*is_empty)) {
-        GetTopK<T, BlockSize>(topk + MaxLength - *beam, src, tid, dim, *max,
-                              length, largest);
+        GetTopK<T, BlockSize>(
+            topk + MaxLength - *beam, src, tid, dim, *max, length, largest);
       }
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -static_cast<T>(1)) *is_empty = true;
+    if ((*max).id == -1) *is_empty = true;
     *beam = 0;
   }
 }
 
+template <typename T>
+__forceinline__ __device__ Pair<T> WarpReduce(Pair<T> input,
+                                              const bool& largest) {
+  if (largest) {
+#pragma unroll
+    for (int offset = 16; offset > 0; offset >>= 1) {
+      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      if (input.v < tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
+        input.v = tmp_val;
+        input.id = tmp_id;
+      }
+    }
+  } else {
+#pragma unroll
+    for (int offset = 16; offset > 0; offset >>= 1) {
+      T tmp_val = platform::CudaShuffleDownSync(FINAL_MASK, input.v, offset);
+      int tmp_id = platform::CudaShuffleDownSync(FINAL_MASK, input.id, offset);
+      if (input.v > tmp_val || (input.v == tmp_val && input.id > tmp_id)) {
+        input.v = tmp_val;
+        input.id = tmp_id;
+      }
+    }
+  }
+  return input;
+}
+
 template <typename T, int MaxLength, int BlockSize>
-__device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
-                                            Pair<T> topk[], T** topVal,
-                                            int64_t** topIds, int* beam, int* k,
-                                            const int tid, const int warp,
+__device__ __forceinline__ void BlockReduce(Pair<T> shared_max[],
+                                            Pair<T> topk[],
+                                            T** topVal,
+                                            int64_t** topIds,
+                                            int* beam,
+                                            int* k,
+                                            const int tid,
+                                            const int wid,
+                                            const int lane,
                                             const bool& largest) {
   while (true) {
     __syncthreads();
-    if (tid < BlockSize / 2) {
-      if (largest) {
-        if (sh_topk[tid] < sh_topk[tid + BlockSize / 2]) {
-          maxid[tid] = tid + BlockSize / 2;
-        } else {
-          maxid[tid] = tid;
-        }
-      } else {
-        if (sh_topk[tid] > sh_topk[tid + BlockSize / 2]) {
-          maxid[tid] = tid + BlockSize / 2;
-        } else {
-          maxid[tid] = tid;
-        }
-      }
+    Pair<T> input_now = topk[0];
+    input_now = WarpReduce(input_now, largest);
+
+    if (lane == 0) {
+      shared_max[wid] = input_now;
     }
     __syncthreads();
-    for (int stride = BlockSize / 4; stride > 0; stride = stride / 2) {
-      if (tid < stride) {
-        if (largest) {
-          if (sh_topk[maxid[tid]] < sh_topk[maxid[tid + stride]]) {
-            maxid[tid] = maxid[tid + stride];
-          }
-        } else {
-          if (sh_topk[maxid[tid]] > sh_topk[maxid[tid + stride]]) {
-            maxid[tid] = maxid[tid + stride];
-          }
-        }
-      }
-      __syncthreads();
+    if (largest) {
+      input_now = (tid < BlockSize / 32)
+                      ? shared_max[lane]
+                      : Pair<T>(-static_cast<T>(INFINITY), -1);
+    } else {
+      input_now = (tid < BlockSize / 32)
+                      ? shared_max[lane]
+                      : Pair<T>(static_cast<T>(INFINITY), -1);
+    }
+    if (wid == 0) {
+      input_now = WarpReduce(input_now, largest);
+      if (lane == 0) shared_max[0] = input_now;
     }
     __syncthreads();
 
     if (tid == 0) {
-      **topVal = sh_topk[maxid[0]].v;
-      **topIds = sh_topk[maxid[0]].id;
+      **topVal = input_now.v;
+      **topIds = input_now.id;
       (*topVal)++;
       (*topIds)++;
     }
-    if (tid == maxid[0]) (*beam)++;
-    if (--(*k) == 0) break;
-    __syncthreads();
-
-    if (tid == maxid[0]) {
+    int tid_max = shared_max[0].id % BlockSize;
+    if (tid == tid_max) {
+      (*beam)++;
       if (*beam < MaxLength) {
-        sh_topk[tid] = topk[*beam];
+        topk[0] = topk[*beam];
       }
     }
-    // NOTE(zcd): temporary solution
+    if (--(*k) == 0) break;
+
     unsigned mask = 0u;
     CREATE_SHFL_MASK(mask, true);
-
-    if (maxid[0] / 32 == warp) {
-      if (platform::CudaShuffleSync(mask, *beam, (maxid[0]) % 32, 32) ==
-          MaxLength)
+    if (tid_max / 32 == wid) {
+      if (platform::CudaShuffleSync(mask, *beam, tid_max % 32, 32) == MaxLength)
         break;
     }
   }
@@ -323,17 +373,23 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
  */
 
 template <typename T, int MaxLength, int BlockSize>
-__global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
-                             const T* src, int lds, int dim, int k,
-                             int grid_dim, int num, bool largest = true) {
-  __shared__ Pair<T> sh_topk[BlockSize];
+__global__ void KeMatrixTopK(T* output,
+                             int output_stride,
+                             int64_t* indices,
+                             const T* src,
+                             int lds,
+                             int dim,
+                             int k,
+                             int grid_dim,
+                             int num,
+                             bool largest = true) {
   const int tid = threadIdx.x;
-  const int warp = threadIdx.x / 32;
-
+  const int wid = tid / 32;
+  const int lane = tid % 32;
   const int bid = blockIdx.x;
   for (int i = bid; i < num; i += grid_dim) {
     int top_num = k;
-    __shared__ int maxid[BlockSize / 2];
+    __shared__ Pair<T> shared_max[BlockSize / 32];
     T* out = output + i * output_stride;
     int64_t* inds = indices + i * k;
     Pair<T> topk[MaxLength];
@@ -350,13 +406,26 @@ __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
       }
     }
     while (top_num) {
-      ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k, src + i * lds,
-                                             &firststep, &is_empty, &max, dim,
-                                             tid, largest);
-
-      sh_topk[tid] = topk[0];
-      BlockReduce<T, MaxLength, BlockSize>(sh_topk, maxid, topk, &out, &inds,
-                                           &beam, &top_num, tid, warp, largest);
+      ThreadGetTopK<T, MaxLength, BlockSize>(topk,
+                                             &beam,
+                                             k,
+                                             src + i * lds,
+                                             &firststep,
+                                             &is_empty,
+                                             &max,
+                                             dim,
+                                             tid,
+                                             largest);
+      BlockReduce<T, MaxLength, BlockSize>(shared_max,
+                                           topk,
+                                           &out,
+                                           &inds,
+                                           &beam,
+                                           &top_num,
+                                           tid,
+                                           wid,
+                                           lane,
+                                           largest);
     }
   }
 }
@@ -374,7 +443,8 @@ struct Bitfield {};
 template <>
 struct Bitfield<unsigned int> {
   static __device__ __forceinline__ unsigned int GetBitfield(unsigned int val,
-                                                             int pos, int len) {
+                                                             int pos,
+                                                             int len) {
     unsigned int ret;
     asm("bfe.u32 %0, %1, %2, %3;" : "=r"(ret) : "r"(val), "r"(pos), "r"(len));
     return ret;
@@ -392,7 +462,8 @@ struct Bitfield<unsigned int> {
 
 template <>
 struct Bitfield<uint64_t> {
-  static __device__ __forceinline__ uint64_t GetBitfield(uint64_t val, int pos,
+  static __device__ __forceinline__ uint64_t GetBitfield(uint64_t val,
+                                                         int pos,
                                                          int len) {
     uint64_t ret;
     asm("bfe.u64 %0, %1, %2, %3;" : "=l"(ret) : "l"(val), "r"(pos), "r"(len));
@@ -401,7 +472,8 @@ struct Bitfield<uint64_t> {
 
   static __device__ __forceinline__ uint64_t SetBitfield(uint64_t val,
                                                          uint64_t to_insert,
-                                                         int pos, int len) {
+                                                         int pos,
+                                                         int len) {
     uint64_t ret;
     asm("bfi.b64 %0, %1, %2, %3, %4;"
         : "=l"(ret)
@@ -516,7 +588,9 @@ __device__ __forceinline__ unsigned GetLaneMaskLe() {
 }
 
 template <typename T, bool KillDependency, class Function>
-__device__ void InclusiveBinaryPrefixScan(T* shared_mem, bool in, T* out,
+__device__ void InclusiveBinaryPrefixScan(T* shared_mem,
+                                          bool in,
+                                          T* out,
                                           Function func) {
   T vote = __ballot_sync(__activemask(), in);
   T index = __popc(GetLaneMaskLe() & vote);
@@ -553,8 +627,8 @@ __device__ void InclusiveBinaryPrefixScan(T* shared_mem, bool in, T* out,
 }
 
 template <typename T, bool KillDependency, class Function>
-__device__ void ExclusiveBinaryPrefixScan(T* shared_mem, bool in, T* out,
-                                          T* carry, Function func) {
+__device__ void ExclusiveBinaryPrefixScan(
+    T* shared_mem, bool in, T* out, T* carry, Function func) {
   InclusiveBinaryPrefixScan<T, false, Function>(shared_mem, in, out, func);
 
   *out -= (T)in;
@@ -567,8 +641,11 @@ __device__ void ExclusiveBinaryPrefixScan(T* shared_mem, bool in, T* out,
 }
 
 template <typename T, typename RadixType>
-__device__ T FindPattern(const T* input, T* shared_mem, int slice_size,
-                         RadixType desired, RadixType desired_mask) {
+__device__ T FindPattern(const T* input,
+                         T* shared_mem,
+                         int slice_size,
+                         RadixType desired,
+                         RadixType desired_mask) {
   if (threadIdx.x < 2) {
     shared_mem[threadIdx.x] = static_cast<T>(0);
   }
@@ -602,9 +679,12 @@ __device__ T FindPattern(const T* input, T* shared_mem, int slice_size,
 }
 
 template <typename T, typename RadixType, int RadixSize, int RadixBits>
-__device__ void RadixCountUsingMask(const T* input, int counts[RadixSize],
-                                    int* shared_mem, RadixType desired,
-                                    RadixType desired_mask, int radix_digit_pos,
+__device__ void RadixCountUsingMask(const T* input,
+                                    int counts[RadixSize],
+                                    int* shared_mem,
+                                    RadixType desired,
+                                    RadixType desired_mask,
+                                    int radix_digit_pos,
                                     int slice_size) {
 #pragma unroll
   for (int i = 0; i < RadixSize; ++i) {
@@ -648,8 +728,8 @@ __device__ void RadixCountUsingMask(const T* input, int counts[RadixSize],
 }
 
 template <typename T, typename RadixType, bool Largest>
-__device__ void RadixSearch(const T* input, int k, int slice_size,
-                            int* shared_mem, T* kth_value) {
+__device__ void RadixSearch(
+    const T* input, int k, int slice_size, int* shared_mem, T* kth_value) {
   int counts[RADIX_SIZE];
 
   RadixType desired = 0;
@@ -660,9 +740,13 @@ __device__ void RadixSearch(const T* input, int k, int slice_size,
 #pragma unroll
   for (int digit_pos = sizeof(T) * 8 - RADIX_BITS; digit_pos >= 0;
        digit_pos -= RADIX_BITS) {
-    RadixCountUsingMask<T, RadixType, RADIX_SIZE, RADIX_BITS>(
-        input, counts, shared_mem, desired, desired_mask, digit_pos,
-        slice_size);
+    RadixCountUsingMask<T, RadixType, RADIX_SIZE, RADIX_BITS>(input,
+                                                              counts,
+                                                              shared_mem,
+                                                              desired,
+                                                              desired_mask,
+                                                              digit_pos,
+                                                              slice_size);
 
     auto found_unique = [&](int i, int count) -> bool {
       if (count == 1 && k_left == 1) {
@@ -671,9 +755,11 @@ __device__ void RadixSearch(const T* input, int k, int slice_size,
         desired_mask = Bitfield<RadixType>::SetBitfield(
             desired_mask, RADIX_MASK, digit_pos, RADIX_BITS);
 
-        *kth_value =
-            FindPattern<T, RadixType>(input, reinterpret_cast<T*>(shared_mem),
-                                      slice_size, desired, desired_mask);
+        *kth_value = FindPattern<T, RadixType>(input,
+                                               reinterpret_cast<T*>(shared_mem),
+                                               slice_size,
+                                               desired,
+                                               desired_mask);
         return true;
       }
       return false;
@@ -722,8 +808,12 @@ __device__ void RadixSearch(const T* input, int k, int slice_size,
 }
 
 template <typename T, bool Largest>
-__global__ void RadixTopK(const T* input, int k, int slice_num, int slice_size,
-                          T* output, int64_t* indices) {
+__global__ void RadixTopK(const T* input,
+                          int k,
+                          int slice_num,
+                          int slice_size,
+                          T* output,
+                          int64_t* indices) {
   namespace kps = paddle::operators::kernel_primitives;
   __shared__ int shared_mem[32];
 
@@ -793,8 +883,12 @@ __global__ void RadixTopK(const T* input, int k, int slice_num, int slice_size,
 /*---------------------------Radix TopK End------------------*/
 
 template <typename T, int MaxLength, int BlockSize>
-__global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
-                           size_t rows, size_t cols, size_t k) {
+__global__ void AssignGrad(T* x_grad,
+                           const int64_t* indices,
+                           const T* out_grad,
+                           size_t rows,
+                           size_t cols,
+                           size_t k) {
   for (size_t i = 0; i < rows; ++i) {
     for (size_t j = 0; j < cols; ++j) {
       x_grad[i * cols + j] = 0;
@@ -809,9 +903,13 @@ __global__ void AssignGrad(T* x_grad, const int64_t* indices, const T* out_grad,
 
 // the grad assign with the axis
 template <typename T>
-__global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
-                                   T* grad_in, int pre, int post,
-                                   int raw_height, int k) {
+__global__ void AssignGradWithAxis(const T* grad_out,
+                                   const int64_t* indices,
+                                   T* grad_in,
+                                   int pre,
+                                   int post,
+                                   int raw_height,
+                                   int k) {
   // raw_height is the length of topk axis
   for (int i = blockIdx.x; i < pre; i += gridDim.x) {
     int base_index = i * post * k;
@@ -829,10 +927,13 @@ __global__ void AssignGradWithAxis(const T* grad_out, const int64_t* indices,
 }
 // use the radix sort for the topk
 template <typename T>
-bool SortTopk(const platform::CUDADeviceContext& ctx,
-              const framework::Tensor* input_tensor, const int64_t num_cols,
-              const int64_t num_rows, const int k,
-              framework::Tensor* out_tensor, framework::Tensor* indices_tensor,
+bool SortTopk(const phi::GPUContext& ctx,
+              const phi::DenseTensor* input_tensor,
+              const int64_t num_cols,
+              const int64_t num_rows,
+              const int k,
+              phi::DenseTensor* out_tensor,
+              phi::DenseTensor* indices_tensor,
               bool largest = true) {
   auto cu_stream = ctx.stream();
 
@@ -870,7 +971,8 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   // create iter for counting input
   cub::CountingInputIterator<int64_t> counting_iter(0);
   // segment_offset is used for move to next row
-  cub::TransformInputIterator<int64_t, SegmentOffsetIter,
+  cub::TransformInputIterator<int64_t,
+                              SegmentOffsetIter,
                               cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
@@ -899,9 +1001,18 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   // time.
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
-        nullptr, temp_storage_bytes, input, sorted_values_ptr,
-        input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
-        num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
+        nullptr,
+        temp_storage_bytes,
+        input,
+        sorted_values_ptr,
+        input_indices.data<int64_t>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
         cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
@@ -923,11 +1034,20 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     }
 #endif
   } else {
-    auto err = cub::DeviceSegmentedRadixSort::SortPairs(
-        nullptr, temp_storage_bytes, input, sorted_values_ptr,
-        input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
-        num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
-        cu_stream);
+    auto err =
+        cub::DeviceSegmentedRadixSort::SortPairs(nullptr,
+                                                 temp_storage_bytes,
+                                                 input,
+                                                 sorted_values_ptr,
+                                                 input_indices.data<int64_t>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -951,10 +1071,19 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
 
   if (largest) {
     auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
-        temp_storage.data<uint8_t>(), temp_storage_bytes, input,
-        sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
-        num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
-        0, sizeof(T) * 8, cu_stream);
+        temp_storage.data<uint8_t>(),
+        temp_storage_bytes,
+        input,
+        sorted_values_ptr,
+        input_indices.data<int64_t>(),
+        sorted_indices_ptr,
+        num_cols * num_rows,
+        num_rows,
+        segment_offsets_t,
+        segment_offsets_t + 1,
+        0,
+        sizeof(T) * 8,
+        cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "
@@ -977,11 +1106,20 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     }
 #endif
   } else {
-    auto err = cub::DeviceSegmentedRadixSort::SortPairs(
-        temp_storage.data<uint8_t>(), temp_storage_bytes, input,
-        sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
-        num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
-        0, sizeof(T) * 8, cu_stream);
+    auto err =
+        cub::DeviceSegmentedRadixSort::SortPairs(temp_storage.data<uint8_t>(),
+                                                 temp_storage_bytes,
+                                                 input,
+                                                 sorted_values_ptr,
+                                                 input_indices.data<int64_t>(),
+                                                 sorted_indices_ptr,
+                                                 num_cols * num_rows,
+                                                 num_rows,
+                                                 segment_offsets_t,
+                                                 segment_offsets_t + 1,
+                                                 0,
+                                                 sizeof(T) * 8,
+                                                 cu_stream);
 #ifdef __HIPCC__
     if (err != hipSuccess) {
       LOG(ERROR) << "TopKOP failed as could not launch "

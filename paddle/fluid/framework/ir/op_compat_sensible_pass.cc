@@ -23,12 +23,21 @@ limitations under the License. */
 
 namespace {
 std::unordered_set<std::string> global_extra_attrs = {
-    "op_role",       "op_role_var",      "op_namescope",
-    "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
-    "is_test",       "use_mkldnn",       "mkldnn_data_type",
-    "use_quantizer", "mkldnn_data_type", "use_cudnn",
-    "name",          "with_quant_attr"};
-}
+    "op_role",
+    "op_role_var",
+    "op_namescope",
+    "op_callstack",
+    "op_device",
+    "@ENABLE_CACHE_RUNTIME_CONTEXT@",
+    "is_test",
+    "use_mkldnn",
+    "mkldnn_data_type",
+    "use_quantizer",
+    "mkldnn_data_type",
+    "use_cudnn",
+    "name",
+    "with_quant_attr"};
+}  // namespace
 
 namespace paddle {
 namespace framework {
@@ -36,14 +45,14 @@ namespace ir {
 
 AttrCompat& AttrCompat::IsStringEQ(const std::string& value) {
   conditions_.emplace_back([value](const Attribute& attr) -> bool {
-    return value == BOOST_GET_CONST(std::string, attr);
+    return value == PADDLE_GET_CONST(std::string, attr);
   });
   return *this;
 }
 
 AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
-    std::string value = BOOST_GET_CONST(std::string, attr);
+    std::string value = PADDLE_GET_CONST(std::string, attr);
     for (auto& str : candidates) {
       if (str == value) {
         return true;
@@ -57,7 +66,7 @@ AttrCompat& AttrCompat::IsStringIn(const std::set<std::string>& candidates) {
 AttrCompat& AttrCompat::IsStringMatch(
     const std::function<bool(const std::string&)>& func) {
   conditions_.emplace_back([func](const Attribute& attr) -> bool {
-    std::string value = BOOST_GET_CONST(std::string, attr);
+    std::string value = PADDLE_GET_CONST(std::string, attr);
     return func(value);
   });
   return *this;
@@ -65,7 +74,7 @@ AttrCompat& AttrCompat::IsStringMatch(
 
 AttrCompat& AttrCompat::IsIntIn(const std::set<int>& candidates) {
   conditions_.emplace_back([candidates](const Attribute& attr) -> bool {
-    int value = BOOST_GET_CONST(int, attr);
+    int value = PADDLE_GET_CONST(int, attr);
     return candidates.find(value) != candidates.end();
   });
   return *this;
@@ -125,7 +134,7 @@ AttrCompat& AttrCompat::IsOptional() {
 
 AttrCompat& AttrCompat::IsBoolEQ(bool v) {
   conditions_.emplace_back([v](const Attribute& attr) -> bool {
-    bool value = BOOST_GET_CONST(bool, attr);
+    bool value = PADDLE_GET_CONST(bool, attr);
     return value == v;
   });
   return *this;
@@ -156,7 +165,8 @@ bool InputOrOutputCompat::operator()(
 
 AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
   PADDLE_ENFORCE_EQ(
-      attr_compats_.find(attr_name), attr_compats_.end(),
+      attr_compats_.find(attr_name),
+      attr_compats_.end(),
       platform::errors::InvalidArgument(
           "The attrubute compat with the same name has been added"));
   attr_compats_.emplace(attr_name, AttrCompat(attr_name, this));
@@ -164,7 +174,8 @@ AttrCompat& OpCompat::AddAttr(const std::string& attr_name) {
 }
 
 InputOrOutputCompat& OpCompat::AddInput(const std::string& name) {
-  PADDLE_ENFORCE_EQ(input_compats_.find(name), input_compats_.end(),
+  PADDLE_ENFORCE_EQ(input_compats_.find(name),
+                    input_compats_.end(),
                     platform::errors::InvalidArgument(
                         "The input with the same name has been added"));
   input_compats_.emplace(name, InputOrOutputCompat(name, this));
@@ -172,7 +183,8 @@ InputOrOutputCompat& OpCompat::AddInput(const std::string& name) {
 }
 
 InputOrOutputCompat& OpCompat::AddOutput(const std::string& name) {
-  PADDLE_ENFORCE_EQ(output_compats_.find(name), output_compats_.end(),
+  PADDLE_ENFORCE_EQ(output_compats_.find(name),
+                    output_compats_.end(),
                     platform::errors::InvalidArgument(
                         "The output with the same name has been added"));
   output_compats_.emplace(name, InputOrOutputCompat(name, this));
@@ -290,7 +302,8 @@ OpCompat& OpCompatSensiblePass::AddOpCompat(OpCompat&& op_compat) {
 //! Tell the Op compability of a subgraph.
 bool OpCompatSensiblePass::IsCompat(
     const GraphPatternDetector::subgraph_t& subgraph, Graph*) const {
-  PADDLE_ENFORCE_EQ(op_compat_judgers_.empty(), false,
+  PADDLE_ENFORCE_EQ(op_compat_judgers_.empty(),
+                    false,
                     platform::errors::InvalidArgument(
                         "At least one OpCompat instance should be added"));
   // Check the all the ops in the subgraph are contained in the

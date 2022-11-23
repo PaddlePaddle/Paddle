@@ -19,8 +19,8 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/common/layout.h"
-
 namespace paddle {
 namespace imperative {
 
@@ -35,12 +35,6 @@ class LayoutAutoTune {
     return layout_autoTune;
   }
 
-  bool UseLayoutAutoTune() const;
-
-  void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
-
-  void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
-
   bool IsHeavilyLayoutSensitive(const std::string& op_type) const {
     return heavily_layout_sensitive_ops_.count(op_type) != 0;
   }
@@ -53,14 +47,16 @@ class LayoutAutoTune {
     return layout_agnostic_ops_.count(op_type) != 0;
   }
 
-  DataLayout GetDesiredLayout() const { return layout_; }
+  DataLayout GetDesiredLayout() const { return desired_layout_; }
 
-  void SetDesiredLayout(const DataLayout& layout) { layout_ = layout; }
+  DataLayout GetDefaultLayout() const { return default_layout_; }
+
+  void SetDesiredLayout(const DataLayout& layout) { desired_layout_ = layout; }
+
+  void SetDefaultLayout(const DataLayout& layout) { default_layout_ = layout; }
 
  private:
   LayoutAutoTune();
-
-  bool use_layout_autotune_{false};
 
   std::unordered_set<std::string> layout_agnostic_ops_{};
 
@@ -69,7 +65,27 @@ class LayoutAutoTune {
   std::unordered_set<std::string> lightly_layout_sensitive_ops_{
       "instance_norm", "softmax", "transpose", "transpose2", "reshape2"};
 
-  DataLayout layout_{DataLayout::UNDEFINED};
+  // Best Layout in this platform
+  DataLayout desired_layout_{DataLayout::UNDEFINED};
+
+  // Default Layout in this model
+  DataLayout default_layout_{DataLayout::UNDEFINED};
+};
+
+// LayoutAutotuneGuard is used for RAII.
+class LayoutAutotuneGuard {
+ public:
+  LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer, bool use_autotune);
+
+  ~LayoutAutotuneGuard();
+
+  // forbid copy and operator=
+  LayoutAutotuneGuard(const LayoutAutotuneGuard& guard) = delete;
+  LayoutAutotuneGuard& operator=(const LayoutAutotuneGuard& guard) = delete;
+
+ private:
+  std::shared_ptr<Tracer> tracer_;
+  bool pre_layout_autotune_;
 };
 
 template <typename VarType>

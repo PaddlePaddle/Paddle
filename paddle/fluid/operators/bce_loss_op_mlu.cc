@@ -18,24 +18,31 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class BCELossMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     out->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*labels);
     MLUCnnlTensorDesc out_desc(*out);
-    MLUCnnl::BceLoss(ctx, CNNL_BCE_LOSS_NONE, x_desc.get(), GetBasePtr(x),
-                     label_desc.get(), GetBasePtr(labels), nullptr, nullptr,
-                     out_desc.get(), GetBasePtr(out));
+    MLUCnnl::BceLoss(ctx,
+                     CNNL_BCE_LOSS_NONE,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     label_desc.get(),
+                     GetBasePtr(labels),
+                     nullptr,
+                     nullptr,
+                     out_desc.get(),
+                     GetBasePtr(out));
   }
 };
 
@@ -43,20 +50,28 @@ template <typename T>
 class BCELossGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* labels = ctx.Input<Tensor>("Label");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* labels = ctx.Input<phi::DenseTensor>("Label");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     dx->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc label_desc(*labels);
     MLUCnnlTensorDesc dout_desc(*dout);
-    MLUCnnl::BceLossBackward(ctx, CNNL_BCE_LOSS_NONE, dout_desc.get(),
-                             GetBasePtr(dout), x_desc.get(), GetBasePtr(x),
-                             label_desc.get(), GetBasePtr(labels), nullptr,
-                             nullptr, x_desc.get(), GetBasePtr(dx));
+    MLUCnnl::BceLossBackward(ctx,
+                             CNNL_BCE_LOSS_NONE,
+                             dout_desc.get(),
+                             GetBasePtr(dout),
+                             x_desc.get(),
+                             GetBasePtr(x),
+                             label_desc.get(),
+                             GetBasePtr(labels),
+                             nullptr,
+                             nullptr,
+                             x_desc.get(),
+                             GetBasePtr(dx));
   }
 };
 
@@ -66,8 +81,10 @@ class BCELossGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(bce_loss, ops::BCELossMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(bce_loss,
+                       ops::BCELossMLUKernel<float>,
                        ops::BCELossMLUKernel<plat::float16>);
 
-REGISTER_OP_MLU_KERNEL(bce_loss_grad, ops::BCELossGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(bce_loss_grad,
+                       ops::BCELossGradMLUKernel<float>,
                        ops::BCELossGradMLUKernel<plat::float16>);

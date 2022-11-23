@@ -18,21 +18,24 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class AbsMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
 
     output->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*input);
     MLUCnnlTensorDesc output_desc(*output);
 
-    MLUCnnl::Abs(ctx, input_desc.get(), GetBasePtr(input), output_desc.get(),
+    MLUCnnl::Abs(ctx,
+                 input_desc.get(),
+                 GetBasePtr(input),
+                 output_desc.get(),
                  GetBasePtr(output));
   }
 };
@@ -41,24 +44,33 @@ template <typename T>
 class AbsGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     dx->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*x);
-    MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnlOpTensorDesc mul_op_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 
     Tensor sign_x;
     sign_x.mutable_data<T>(x->dims(), ctx.GetPlace());
 
-    MLUCnnl::Sign(ctx, input_desc.get(), GetBasePtr(x), input_desc.get(),
+    MLUCnnl::Sign(ctx,
+                  input_desc.get(),
+                  GetBasePtr(x),
+                  input_desc.get(),
                   GetBasePtr(&sign_x));
-    MLUCnnl::OpTensor(ctx, mul_op_desc.get(), input_desc.get(),
-                      GetBasePtr(&sign_x), input_desc.get(), GetBasePtr(dout),
-                      input_desc.get(), GetBasePtr(dx), ToCnnlDataType<T>());
+    MLUCnnl::OpTensor(ctx,
+                      mul_op_desc.get(),
+                      input_desc.get(),
+                      GetBasePtr(&sign_x),
+                      input_desc.get(),
+                      GetBasePtr(dout),
+                      input_desc.get(),
+                      GetBasePtr(dx),
+                      ToCnnlDataType<T>());
   }
 };
 
@@ -68,8 +80,10 @@ class AbsGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(abs, ops::AbsMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(abs,
+                       ops::AbsMLUKernel<float>,
                        ops::AbsMLUKernel<plat::float16>);
 
-REGISTER_OP_MLU_KERNEL(abs_grad, ops::AbsGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(abs_grad,
+                       ops::AbsGradMLUKernel<float>,
                        ops::AbsGradMLUKernel<plat::float16>);

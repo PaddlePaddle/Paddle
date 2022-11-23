@@ -35,6 +35,7 @@ ExternalProject_Add(
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
              -DWITH_BZ2=OFF
+             -DPORTABLE=1
              -DWITH_GFLAGS=OFF
              -DCMAKE_CXX_FLAGS=${ROCKSDB_CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -44,7 +45,8 @@ ExternalProject_Add(
     ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/librocksdb.a ${ROCKSDB_LIBRARIES}
     && cp -r ${ROCKSDB_PREFIX_DIR}/src/extern_rocksdb/include
     ${ROCKSDB_INSTALL_DIR}/
-  BUILD_IN_SOURCE 1)
+  BUILD_IN_SOURCE 1
+  BYPRODUCTS ${ROCKSDB_LIBRARIES})
 
 add_dependencies(extern_rocksdb snappy)
 

@@ -61,9 +61,9 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   TrilIndices Operator.
 
-  The tril_indices operator returns the indices of the lower triangular part of the matrix 
-  whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates 
-  of all indices and the second row contains column coordinates. Indices are ordered based on 
+  The tril_indices operator returns the indices of the lower triangular part of the matrix
+  whose rows and cols is knowed. It is a 2-by-x tensor,where the first row contains row coordinates
+  of all indices and the second row contains column coordinates. Indices are ordered based on
   rows and then columns. The lower triangular part of the matrix is defined as the elements on
   and below the diagonal.
 
@@ -78,11 +78,14 @@ class TrilIndicesOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(tril_indices, TrilIndicesInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(tril_indices,
+                            TrilIndicesInferShapeFunctor,
                             PD_INFER_META(phi::TrilIndicesInferMeta));
 
 REGISTER_OPERATOR(
-    tril_indices, ops::TrilIndicesOp, ops::TrilIndicesOpMaker,
+    tril_indices,
+    ops::TrilIndicesOp,
+    ops::TrilIndicesOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     TrilIndicesInferShapeFunctor);

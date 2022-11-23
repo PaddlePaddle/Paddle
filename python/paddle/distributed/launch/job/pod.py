@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
 from .container import Container
 
 from .status import Status
@@ -116,14 +115,26 @@ class Pod(PodSepc):
 
         self._restart += 1
 
-    def stop(self, sigint=0):
+    def stop(self, sigint=15, timeout=None):
         for c in self._containers:
-            force = True if sigint == 9 else False
-            c.terminate(force)
+            if isinstance(sigint, int) and timeout is None:
+                c.send_signal(sigint)
+            else:
+                c.terminate()
 
-    def join(self):
+        if isinstance(timeout, int):
+            if not self.join(timeout):
+                for c in self._containers:
+                    c.terminate(force=True)
+                return False
+            else:
+                return True
+
+    def join(self, timeout=None):
         for c in self._containers:
-            c.wait(None)
+            if not c.wait(timeout):
+                return False
+        return True
 
     @property
     def status(self):

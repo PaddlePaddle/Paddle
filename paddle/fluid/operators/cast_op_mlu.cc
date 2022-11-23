@@ -19,14 +19,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 class CastMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
     auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
     auto place = ctx.GetPlace();
@@ -38,7 +38,8 @@ class CastMLUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(MLUSupportsCast(src_type, dst_type), true,
+    PADDLE_ENFORCE_EQ(MLUSupportsCast(src_type, dst_type),
+                      true,
                       platform::errors::InvalidArgument(
                           "MLU not support cast [%d] to [%d]",
                           framework::DataTypeToString(src_type),
@@ -50,15 +51,23 @@ class CastMLUKernel : public framework::OpKernel<T> {
     MLUCnnlTensorDesc output_desc(*output);
     cnnlCastDataType_t cast_type = GetCastDataType(src_type, dst_type);
 
-    MLUCnnl::Cast(ctx, cast_type, input_desc.get(), GetBasePtr(input),
-                  output_desc.get(), GetBasePtr(output));
+    MLUCnnl::Cast(ctx,
+                  cast_type,
+                  input_desc.get(),
+                  GetBasePtr(input),
+                  output_desc.get(),
+                  GetBasePtr(output));
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(cast, ops::CastMLUKernel<float>, ops::CastMLUKernel<int>,
-                       ops::CastMLUKernel<int16_t>, ops::CastMLUKernel<uint8_t>,
-                       ops::CastMLUKernel<bool>, ops::CastMLUKernel<int64_t>,
+REGISTER_OP_MLU_KERNEL(cast,
+                       ops::CastMLUKernel<float>,
+                       ops::CastMLUKernel<int>,
+                       ops::CastMLUKernel<int16_t>,
+                       ops::CastMLUKernel<uint8_t>,
+                       ops::CastMLUKernel<bool>,
+                       ops::CastMLUKernel<int64_t>,
                        ops::CastMLUKernel<paddle::platform::float16>);

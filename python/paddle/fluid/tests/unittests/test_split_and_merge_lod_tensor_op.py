@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from paddle.fluid import Program, program_guard
+import paddle
 import paddle.fluid.core as core
 import numpy as np
 import paddle.fluid.layers as layers
@@ -167,7 +166,9 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         self.check_tensor_same(var_out, expect_out)
 
     def check_tensor_same(self, actual, expect):
-        self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
+        np.testing.assert_allclose(np.array(actual),
+                                   np.array(expect),
+                                   rtol=1e-05)
         self.assertEqual(actual.recursive_sequence_lengths(),
                          expect.recursive_sequence_lengths())
 
@@ -195,7 +196,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
                                    mask=y,
                                    x=x,
                                    level=level)
-            mean = layers.mean(out)
+            mean = paddle.mean(out)
 
             append_backward(mean)
 

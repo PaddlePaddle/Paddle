@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle.fluid as fluid
 import paddle.static as static
@@ -180,7 +178,7 @@ class SimpleNet(BackwardNet):
             u'softmax',  # fc
             u'elementwise_sub',
             u'square',
-            u'mean'
+            u'reduce_mean'
         ]  # loss
         self.shape = [16, 50]
 
@@ -235,7 +233,7 @@ class SimpleNet(BackwardNet):
                                     name='fc_no_use')
         # loss
         cost = fluid.layers.square_error_cost(input=predict, label=label)
-        loss = fluid.layers.mean(cost, name='mean_loss')
+        loss = paddle.mean(cost, name='mean_loss')
 
         return loss
 
@@ -308,7 +306,7 @@ class TestAppendBackwardWithError(unittest.TestCase):
         x_emb = fluid.embedding(x, size=[100, 256])
         y_predict = fluid.layers.fc(input=x_emb, size=1, name='my_fc')
         loss = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         param_names = [
             param.name
             for param in fluid.default_main_program().block(0).all_parameters()

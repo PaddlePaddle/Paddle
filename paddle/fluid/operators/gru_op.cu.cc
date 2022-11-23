@@ -15,13 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_op.h"
 
 namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
@@ -33,10 +26,10 @@ class GRUKernel : public framework::OpKernel<T> {
     bool is_test = context.Attr<bool>("is_test");
     bool origin_mode = context.Attr<bool>("origin_mode");
     auto* input = context.Input<LoDTensor>("Input");
-    auto* h0 = context.Input<Tensor>("H0");
-    auto* weight = context.Input<Tensor>("Weight");
+    auto* h0 = context.Input<phi::DenseTensor>("H0");
+    auto* weight = context.Input<phi::DenseTensor>("Weight");
     const T* weight_data = weight->data<T>();
-    auto* bias = context.Input<Tensor>("Bias");
+    auto* bias = context.Input<phi::DenseTensor>("Bias");
     auto* hidden = context.Output<LoDTensor>("Hidden");
     hidden->mutable_data<T>(context.GetPlace());
 
@@ -88,8 +81,11 @@ class GRUKernel : public framework::OpKernel<T> {
       // according to their length. The initialized cell state also needs
       // to reorder.
       ReorderInitState<DeviceContext, T>(
-          context.template device_context<DeviceContext>(), *h0, order,
-          &ordered_h0, true);
+          context.template device_context<DeviceContext>(),
+          *h0,
+          order,
+          &ordered_h0,
+          true);
       gru_value.prev_out_value = ordered_h0.data<T>();
     } else {
       gru_value.prev_out_value = nullptr;
@@ -111,9 +107,13 @@ class GRUKernel : public framework::OpKernel<T> {
       gru_value.output_value = hidden_t.data<T>();
       gru_value.gate_value = gate_t.data<T>();
       gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
-      phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
-          active_gate, origin_mode);
+      phi::funcs::GRUUnitFunctor<DeviceContext, T>::compute(dev_ctx,
+                                                            gru_value,
+                                                            frame_size,
+                                                            cur_batch_size,
+                                                            active_node,
+                                                            active_gate,
+                                                            origin_mode);
       gru_value.prev_out_value = gru_value.output_value;
     }
 
@@ -131,9 +131,9 @@ class GRUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    gru, ops::GRUKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    gru_grad, ops::GRUGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUGradKernel<paddle::platform::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(gru,
+                        ops::GRUKernel<phi::GPUContext, float>,
+                        ops::GRUKernel<phi::GPUContext, double>);
+REGISTER_OP_CUDA_KERNEL(gru_grad,
+                        ops::GRUGradKernel<phi::GPUContext, float>,
+                        ops::GRUGradKernel<phi::GPUContext, double>);

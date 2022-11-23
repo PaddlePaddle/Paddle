@@ -14,7 +14,6 @@
 
 dependencies = ['paddle']
 
-import paddle
 from test_hapi_hub_model import MM as _MM
 
 

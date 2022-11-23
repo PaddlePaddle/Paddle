@@ -39,7 +39,8 @@ class CReduceSumOpMaker : public CReduceOpMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_sum, ops::CReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_sum,
+                             ops::CReduceOp,
                              ops::CReduceSumOpMaker);
 
 REGISTER_OP_CPU_KERNEL(c_reduce_sum,

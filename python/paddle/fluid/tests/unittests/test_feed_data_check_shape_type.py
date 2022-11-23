@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import multiprocessing
 import numpy as np
 import os
@@ -21,7 +19,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
-import six
 import unittest
 
 os.environ['CPU_NUM'] = str(4)
@@ -61,7 +58,7 @@ class TestFeedData(unittest.TestCase):
             hidden = fluid.layers.fc(hidden, size=hidden_size)
 
         predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
-        loss = fluid.layers.mean(
+        loss = paddle.mean(
             fluid.layers.cross_entropy(input=predict_label, label=label))
 
         optimizer = fluid.optimizer.Adam()

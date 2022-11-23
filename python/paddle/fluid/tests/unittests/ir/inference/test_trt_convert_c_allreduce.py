@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import subprocess
-import sys
-import pickle
 import os
 import unittest
 import paddle

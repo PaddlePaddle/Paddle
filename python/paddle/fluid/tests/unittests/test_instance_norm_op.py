@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.op import Operator
-from op_test import OpTest
 from paddle.fluid import Program, program_guard
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
@@ -93,7 +90,11 @@ class TestInstanceNormOpTraining(unittest.TestCase):
         ]
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(np.array(tensor),
+                                   np_array,
+                                   rtol=1e-05,
+                                   atol=atol,
+                                   err_msg=msg)
 
     def set_global_mean_var(self, mean_shape, x):
         mean, variance = _cal_mean_variance(x, self.epsilon, mean_shape)
@@ -267,7 +268,10 @@ class TestElasticNormOp(unittest.TestCase):
                                                            param_attr=False,
                                                            bias_attr=False)
                 outputs = instance_norm(to_variable(inputs))
-                self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
+                np.testing.assert_allclose(outputs.numpy(),
+                                           out_np,
+                                           rtol=1e-05,
+                                           atol=1e-06)
 
     def test_eager_api(self):
         with _test_eager_guard():
@@ -303,7 +307,10 @@ class TestElasticNormOpCase2(unittest.TestCase):
                                                            param_attr=True,
                                                            bias_attr=True)
                 outputs = instance_norm(to_variable(inputs))
-                self.assertTrue(np.allclose(outputs.numpy(), out_np, atol=1e-6))
+                np.testing.assert_allclose(outputs.numpy(),
+                                           out_np,
+                                           rtol=1e-05,
+                                           atol=1e-06)
 
     def test_eager_api(self):
         with _test_eager_guard():

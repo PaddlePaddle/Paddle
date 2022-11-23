@@ -24,13 +24,9 @@ limitations under the License. */
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include <paddle/fluid/platform/mkldnn_helper.h>
-#endif
-
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class ConcatOp : public framework::OperatorWithKernel {
  public:
@@ -39,7 +35,7 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
@@ -53,24 +49,18 @@ class ConcatOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "All Inputs of Concat OP are Empty!"));
     }
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -79,35 +69,19 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of concat operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of concat operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated."
                  "The axis could also be negative numbers. Negative axis is "
                  "interpreted as counting from the end of the rank."
                  "i.e., axis + rank(X) th dimension.")
-        .SetDefault(0);
+        .SetDefault(0)
+        .SupportTensor();
     AddInput("AxisTensor",
              "(Tensor) The axis along which the input tensors will be "
              "concatenated.  "
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1].")
         .AsDispensable();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Concat Operator.
 
@@ -141,29 +115,18 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    // extra checking if attr "use_mkldnn" exist is needed because
-    // test_reverse_op is calling concat_grad kernel without setting
-    // "use_mkldnn" to any value
-    if (ctx.HasAttr("use_mkldnn") &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return framework::OpKernelType(
+        expected_kernel_type.data_type_, tensor.place(), tensor.layout());
   }
 };
 
@@ -206,14 +169,18 @@ class ConcatDoubleGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-DECLARE_INFER_SHAPE_FUNCTOR(concat, ConcatInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(concat,
+                            ConcatInferShapeFunctor,
                             PD_INFER_META(phi::ConcatInferMeta));
 
-REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
+REGISTER_OPERATOR(concat,
+                  ops::ConcatOp,
+                  ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
                   ConcatInferShapeFunctor);
-REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
+REGISTER_OPERATOR(concat_grad,
+                  ops::ConcatOpGrad,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);

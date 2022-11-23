@@ -12,26 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
 import os
-import signal
 import six
 import tarfile
 import string
 import re
-from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
@@ -137,7 +124,7 @@ class TestDistTextClassification2x2(TestDistRunnerBase):
         # Train program
         predict = conv_net(data, dict_dim)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
         acc = fluid.layers.accuracy(input=predict, label=label)
         inference_program = fluid.default_main_program().clone()
 

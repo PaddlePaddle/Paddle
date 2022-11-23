@@ -83,7 +83,7 @@ class TestCustomRawReluOp(unittest.TestCase):
         y1_value, y2_value = exe.run(paddle.static.default_main_program(),
                                      feed={x.name: x_np},
                                      fetch_list=[y1, y2])
-        self.assertTrue(np.array_equal(y1_value, y2_value))
+        np.testing.assert_array_equal(y1_value, y2_value)
 
         paddle.disable_static()
 

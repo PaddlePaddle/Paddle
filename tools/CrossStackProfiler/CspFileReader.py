@@ -17,8 +17,7 @@ import time
 import json
 import glob
 import logging
-import pandas as pd
-from multiprocessing import Process, Lock
+from multiprocessing import Lock
 """ Some terms to clarify the code
     in most case, one or more paremeters may be set as input args for a class or a function
     in form of single variable or k-v dict
@@ -100,7 +99,7 @@ class FileReader(object):
         self._logger.info(self._minTimeStamp)
 
     def _checkArgsKey(self, key, type):
-        if not self._args.has_key(key):
+        if key not in self._args:
             raise KeyError("args should has key [%s]!" % key)
 
         if not isinstance(self._args[key], type):
@@ -178,6 +177,7 @@ class FileReader(object):
             if (self._getId(self._fileList[-1]) -
                     self._getId(self._fileList[0])) != len(self._fileList) - 1:
                 raise Exception("The file id should be countious!")
+
         # sort
         def _sortBySuffix(elem):
             return int(elem.split(".")[-1])
@@ -206,12 +206,12 @@ class FileReader(object):
             prefix_str = fileName.split(sed)[-1]
             try:
                 return int(prefix_str)
-            except ValueError, Argument:
-                print(Argument)
+            except ValueError as e:
+                print(e)
                 raise TypeError("invalid fileName [%s]" % fileName)
 
-        except IndexError, Argument:
-            print(Argument)
+        except IndexError as e:
+            print(e)
             raise TypeError(
                 "invalid fileName [%s], the prefix should be a number!" %
                 fileName)
@@ -363,8 +363,8 @@ def getLogger():
 def test_FileReader(args):
     try:
         testReader = FileReader(None, args)
-    except Exception, Argument:
-        print(Argument)
+    except Exception as e:
+        print(e)
     else:
         testReader.printArgs()
 

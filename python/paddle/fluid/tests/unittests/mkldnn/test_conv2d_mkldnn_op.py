@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import os
 import unittest
 import numpy as np
 
-import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2DOp, TestConv2DOp_v2
 
@@ -244,16 +240,6 @@ class TestMKLDNNDilations(TestConv2DMKLDNNOp):
 
     def init_group(self):
         self.groups = 3
-
-
-# TODO(chenweihang): To solve the coverage problem, add this unittest,
-# remove this unittest after new executor set to default executor
-class TestConv2dMKLDNNByNewExecutor(TestConv2DMKLDNNOp):
-
-    def test_check_output_by_new_executor(self):
-        os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
-        self.test_check_output()
-        del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
 
 
 if __name__ == '__main__':

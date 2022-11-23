@@ -19,8 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class KLDivLossOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -72,19 +70,19 @@ class KLDivLossOpMaker : public framework::OpProtoAndCheckerMaker {
          While :math:`x` is Input(X) and :math:`y` is Input(Target).
 
          While :attr:`reduction` is :attr:`none`, output loss is in
-         the same shape as Input(X), loss in each point is calculated 
+         the same shape as Input(X), loss in each point is calculated
          seperately and no reduction is applied.
-         
+
          While :attr:`reduction` is :attr:`mean`, output loss is in
          shape of [1] and loss value is the mean value of all losses.
-         
+
          While :attr:`reduction` is :attr:`sum`, output loss is in
          shape of [1] and loss value is the sum value of all losses.
-         
-         While :attr:`reduction` is :attr:`batchmean`, output loss is 
+
+         While :attr:`reduction` is :attr:`batchmean`, output loss is
          in shape of [1] and loss value is the sum value of all losses
          divided by batch size.
-         
+
          )DOC");
   }
 };
@@ -95,8 +93,10 @@ class KLDivLossOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "KLDivLossGrad");
     OP_INOUT_CHECK(ctx->HasInput("Target"), "Input", "Target", "KLDivLossGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")), "Input",
-                   "Loss@GRAD", "KLDivLossGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Loss")),
+                   "Input",
+                   "Loss@GRAD",
+                   "KLDivLossGrad");
     auto dim_x = ctx->GetInputDim("X");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), dim_x);
@@ -136,12 +136,16 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(KLDivLossGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(kldiv_loss, KLDivInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(kldiv_loss,
+                            KLDivInferShapeFunctor,
                             PD_INFER_META(phi::KLDivInferMeta));
 
-REGISTER_OPERATOR(kldiv_loss, ops::KLDivLossOp, ops::KLDivLossOpMaker,
+REGISTER_OPERATOR(kldiv_loss,
+                  ops::KLDivLossOp,
+                  ops::KLDivLossOpMaker,
                   ops::KLDivLossOpGradMaker<paddle::framework::OpDesc>,
                   ops::KLDivLossOpGradMaker<paddle::imperative::OpBase>,
                   KLDivInferShapeFunctor);
-REGISTER_OPERATOR(kldiv_loss_grad, ops::KLDivLossOpGrad,
+REGISTER_OPERATOR(kldiv_loss_grad,
+                  ops::KLDivLossOpGrad,
                   ops::KLDivLossGradNoNeedBufferVarInferer);

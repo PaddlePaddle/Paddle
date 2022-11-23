@@ -49,13 +49,15 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "%s exists! Cannot save_combine to it when overwrite is set to "
           "false.",
-          filename, overwrite));
+          filename,
+          overwrite));
     }
 
     std::ostringstream ss;
     auto inp_var_names = ctx.InputNames("X");
     auto &inp_vars = ctx.MultiInputVar("X");
-    PADDLE_ENFORCE_GT(inp_var_names.size(), 0UL,
+    PADDLE_ENFORCE_GT(inp_var_names.size(),
+                      0UL,
                       platform::errors::InvalidArgument(
                           "The number of variables to be saved is %d, expect "
                           "it to be greater than 0.",
@@ -70,7 +72,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>() ||
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<phi::DenseTensor>() ||
                             inp_vars[i]->IsType<framework::Vocab>(),
                         true,
                         platform::errors::InvalidArgument(
@@ -78,10 +80,11 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                             "LoDTensor or Vocab variable, %s has wrong type.",
                             inp_var_names[i]));
 
-      if (inp_vars[i]->IsType<framework::LoDTensor>()) {
-        auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+      if (inp_vars[i]->IsType<phi::DenseTensor>()) {
+        auto &tensor = inp_vars[i]->Get<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(
-            tensor.IsInitialized(), true,
+            tensor.IsInitialized(),
+            true,
             platform::errors::InvalidArgument(
                 "The Tensor of Variable(%s) to be saved is not initialized.",
                 inp_var_names[i]));
@@ -94,11 +97,11 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         if (in_dtype != out_dtype) {
           auto in_kernel_type = framework::OpKernelType(in_dtype, place);
           auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-          framework::LoDTensor out;
+          phi::DenseTensor out;
           // copy LoD info to the new tensor
           out.set_lod(tensor.lod());
-          framework::TransDataType(in_kernel_type, out_kernel_type, tensor,
-                                   &out);
+          framework::TransDataType(
+              in_kernel_type, out_kernel_type, tensor, &out);
           framework::SerializeToStream(ss, out, dev_ctx);
         } else {
           framework::SerializeToStream(ss, tensor, dev_ctx);
@@ -115,14 +118,16 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
       }
     }
     if (save_to_memory) {
-      PADDLE_ENFORCE_NE(output, nullptr,
+      PADDLE_ENFORCE_NE(output,
+                        nullptr,
                         platform::errors::InvalidArgument(
                             "Cannot find variable Y for save_combine_op"));
       *output = ss.str();
     } else {
       MkDirRecursively(DirName(filename).c_str());
       std::ofstream fout(filename, std::ios::binary);
-      PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true,
+      PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
+                        true,
                         platform::errors::Unavailable(
                             "Cannot open %s to save variables.", filename));
       fout << ss.str();

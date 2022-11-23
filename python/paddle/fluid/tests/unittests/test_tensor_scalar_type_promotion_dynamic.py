@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import unittest
 import numpy as np
 
@@ -50,7 +48,7 @@ class TestTensorScalarTypePromotionDynamic(unittest.TestCase):
             raise ValueError("Unsupported operation.")
 
         self.assertEqual(c_rlt.dtype, c.dtype)
-        self.assertTrue(np.array_equal(c_rlt.numpy(), c.numpy()))
+        np.testing.assert_array_equal(c_rlt.numpy(), c.numpy())
 
     def func_tensor_add_scalar(self):
         # tensor(int64) + scalar(int)

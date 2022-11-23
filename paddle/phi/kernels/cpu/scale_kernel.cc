@@ -58,8 +58,11 @@ PD_REGISTER_KERNEL(scale,
                    float,
                    double,
                    phi::dtype::bfloat16,
+                   phi::dtype::float16,
                    uint8_t,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -26,19 +26,45 @@ namespace more {
 namespace mkl {
 
 template <>
-void MatMul<float>(const float* a, const float* b, float* c,
+void MatMul<float>(const float* a,
+                   const float* b,
+                   float* c,
                    const matmul_attr_t* attr) {
-  platform::dynload::cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                                 attr->m, attr->n, attr->k, 1.f, a, attr->k, b,
-                                 attr->n, 0.f, c, attr->n);
+  platform::dynload::cblas_sgemm(CblasRowMajor,
+                                 CblasNoTrans,
+                                 CblasNoTrans,
+                                 attr->m,
+                                 attr->n,
+                                 attr->k,
+                                 1.f,
+                                 a,
+                                 attr->k,
+                                 b,
+                                 attr->n,
+                                 0.f,
+                                 c,
+                                 attr->n);
 }
 
 template <>
-void MatMul<double>(const double* a, const double* b, double* c,
+void MatMul<double>(const double* a,
+                    const double* b,
+                    double* c,
                     const matmul_attr_t* attr) {
-  platform::dynload::cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                                 attr->m, attr->n, attr->k, 1.0, a, attr->k, b,
-                                 attr->n, 0.0, c, attr->n);
+  platform::dynload::cblas_dgemm(CblasRowMajor,
+                                 CblasNoTrans,
+                                 CblasNoTrans,
+                                 attr->m,
+                                 attr->n,
+                                 attr->k,
+                                 1.0,
+                                 a,
+                                 attr->k,
+                                 b,
+                                 attr->n,
+                                 0.0,
+                                 c,
+                                 attr->n);
 }
 
 template <>
@@ -80,8 +106,8 @@ void VScal<double>(const double* a, const double* x, double* y, int n) {
 }
 
 template <>
-void StrideScal<float>(const float* a, const float* x, float* y, int n,
-                       int stride) {
+void StrideScal<float>(
+    const float* a, const float* x, float* y, int n, int stride) {
   if (x == y) {
     platform::dynload::cblas_sscal(n / stride, *a, y, stride);
   } else {
@@ -90,8 +116,8 @@ void StrideScal<float>(const float* a, const float* x, float* y, int n,
 }
 
 template <>
-void StrideScal<double>(const double* a, const double* x, double* y, int n,
-                        int stride) {
+void StrideScal<double>(
+    const double* a, const double* x, double* y, int n, int stride) {
   if (x == y) {
     platform::dynload::cblas_dscal(n / stride, *a, y, stride);
   } else {
@@ -288,9 +314,9 @@ AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 namespace mkl = paddle::operators::jit::more::mkl;
 
-#define REGISTER_MKL_KERNEL(func)                                 \
-  REGISTER_JITKERNEL_MORE(k##func, mkl, mkl::func##Kernel<float>, \
-                          mkl::func##Kernel<double>)
+#define REGISTER_MKL_KERNEL(func) \
+  REGISTER_JITKERNEL_MORE(        \
+      k##func, mkl, mkl::func##Kernel<float>, mkl::func##Kernel<double>)
 
 REGISTER_MKL_KERNEL(MatMul);
 REGISTER_MKL_KERNEL(VMul);

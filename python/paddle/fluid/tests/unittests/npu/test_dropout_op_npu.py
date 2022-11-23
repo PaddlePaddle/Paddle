@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -269,11 +267,11 @@ class TestDropoutAPI(unittest.TestCase):
                 fetches = exe.run(fluid.default_main_program(),
                                   feed={"input": in_np},
                                   fetch_list=[res])
-                self.assertTrue(np.allclose(fetches[0], res_np))
+                np.testing.assert_allclose(fetches[0], res_np)
             fetches2 = exe.run(fluid.default_main_program(),
                                feed={"input": in_np},
                                fetch_list=[res6])
-            self.assertTrue(np.allclose(fetches2[0], res_np2))
+            np.testing.assert_allclose(fetches2[0], res_np2)
 
     def test_static(self):
         for place in self.places:

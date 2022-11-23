@@ -76,8 +76,8 @@ TEST(CudnnHelper, ScopedFilterDescriptor) {
   int nd;
   cudnnTensorFormat_t format;
   std::vector<int> kernel(3);
-  paddle::platform::dynload::cudnnGetFilterNdDescriptor(desc, 3, &type, &format,
-                                                        &nd, kernel.data());
+  paddle::platform::dynload::cudnnGetFilterNdDescriptor(
+      desc, 3, &type, &format, &nd, kernel.data());
 
   EXPECT_EQ(GetCudnnTensorFormat(DataLayout::kNCHW), format);
   EXPECT_EQ(nd, 3);
@@ -115,9 +115,14 @@ TEST(CudnnHelper, ScopedConvolutionDescriptor) {
   std::vector<int> pads(3);
   std::vector<int> strides(3);
   std::vector<int> dilations(3);
-  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(
-      desc, 3, &nd, pads.data(), strides.data(), dilations.data(), &mode,
-      &type);
+  paddle::platform::dynload::cudnnGetConvolutionNdDescriptor(desc,
+                                                             3,
+                                                             &nd,
+                                                             pads.data(),
+                                                             strides.data(),
+                                                             dilations.data(),
+                                                             &mode,
+                                                             &type);
 
   EXPECT_EQ(nd, 3);
   for (size_t i = 0; i < src_pads.size(); ++i) {
@@ -136,8 +141,8 @@ TEST(CudnnHelper, ScopedPoolingDescriptor) {
   std::vector<int> src_kernel = {2, 2, 5};
   std::vector<int> src_pads = {1, 1, 2};
   std::vector<int> src_strides = {2, 2, 3};
-  auto desc = pool_desc.descriptor(PoolingMode::kMaximum, src_kernel, src_pads,
-                                   src_strides);
+  auto desc = pool_desc.descriptor(
+      PoolingMode::kMaximum, src_kernel, src_pads, src_strides);
 
   cudnnPoolingMode_t mode;
   cudnnNanPropagation_t nan_t = CUDNN_PROPAGATE_NAN;

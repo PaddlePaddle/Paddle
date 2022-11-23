@@ -14,13 +14,13 @@
 
 import unittest
 
-import numpy as np
 import paddle
 from paddle.distribution import variable
 from paddle.distribution import constraint
 
-import config
 import parameterize as param
+
+paddle.seed(2022)
 
 
 @param.param_cls(

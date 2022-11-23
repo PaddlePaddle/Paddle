@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
-
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/sparse/flatten_indices.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
 namespace phi {
@@ -57,11 +59,12 @@ void Merge(const IntT el_len,
            const IntT len_b_max,
            IntT* c_index,
            T* c_values,
-           IntT& nnz,
+           IntT* out_nnz,
            const Functor& functor_org,
            const bool is_divide) {
   IntT a = 0;
   IntT b = 0;
+  IntT& nnz = (*out_nnz);
   nnz = 0;
   const IntT* b_index = nullptr;
   std::vector<IntT> b_full_index;
@@ -94,9 +97,7 @@ void Merge(const IntT el_len,
       }
       ++a;
       ++b;
-    }
-    // coordinate x[a] < coordinate y[b]
-    else if (a_index[a] < b_index[b]) {
+    } else if (a_index[a] < b_index[b]) {  // coordinate x[a] < coordinate y[b]
       if (!functor(a_values + a * el_len,
                    zero.data(),
                    c_values + nnz * el_len,
@@ -105,9 +106,7 @@ void Merge(const IntT el_len,
         ++nnz;
       }
       ++a;
-    }
-    // coordinate x[a] > coordinate y[b]
-    else if (a_index[a] > b_index[b]) {
+    } else if (a_index[a] > b_index[b]) {  // coordinate x[a] > coordinate y[b]
       if (!functor(zero.data(),
                    b_values[b_index[b]],
                    c_values + nnz * el_len,
@@ -158,14 +157,29 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                         "shape = [%s], Y's shape = [%s].",
                         x.dims(),
                         y.dims()));
+
+  // temporary policy: for broadcast add
+  // TODO(zhangkaihuo): implement a correct function
+  const bool is_add = std::is_same<Functor, funcs::AddFunctor<T>>::value;
+  if (is_add && x.indices().numel() == y.indices().numel()) {
+    int compare_indices = memcmp(x.indices().data<IntT>(),
+                                 y.indices().data<IntT>(),
+                                 sizeof(IntT) * x.indices().numel());
+    if (compare_indices == 0) {
+      EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
+      phi::AddKernel<T, Context>(
+          dev_ctx, x.values(), y.values(), out->mutable_values());
+      return;
+    }
+  }
   int64_t element_size = 1;
-  for (auto j = 1; j < x.non_zero_elements().dims().size(); ++j) {
-    element_size *= x.non_zero_elements().dims()[j];
+  for (auto j = 1; j < x.values().dims().size(); ++j) {
+    element_size *= x.values().dims()[j];
   }
   IntT nnz = 0;
-  const auto x_values = x.non_zero_elements().data<T>();
-  const auto y_values = y.non_zero_elements().data<T>();
-  const auto sparse_dim = x.non_zero_indices().dims()[0];
+  const auto x_values = x.values().data<T>();
+  const auto y_values = y.values().data<T>();
+  const auto sparse_dim = x.indices().dims()[0];
   const bool is_divide = std::is_same<Functor, funcs::DivideFunctor<T>>::value;
 
   int64_t max_len = 1;
@@ -179,7 +193,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   phi::funcs::sparse::CalcOffsetsPerDim<IntT>(
       x.dims(), sparse_dim, sparse_offsets.data());
 
-  phi::funcs::sparse::FlattenIndices(x.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(x.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      x.nnz(),
                                      sparse_dim,
@@ -187,7 +201,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                      1,
                                      x_indexs.data());
 
-  phi::funcs::sparse::FlattenIndices(y.non_zero_indices().data<IntT>(),
+  phi::funcs::sparse::FlattenIndices(y.indices().data<IntT>(),
                                      sparse_offsets.data(),
                                      y.nnz(),
                                      sparse_dim,
@@ -215,7 +229,7 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                           max_len,
                           out_indexs.data(),
                           out_values_vec.data(),
-                          nnz,
+                          &nnz,
                           functor,
                           is_divide);
 
@@ -236,10 +250,8 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                          out_indices_vec.data());
 
   if (nnz == 0) {
-    phi::DenseTensor out_indices =
-        phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
-    phi::DenseTensor out_values =
-        phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+    phi::DenseTensor out_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
+    phi::DenseTensor out_values = phi::EmptyLike<T>(dev_ctx, x.values());
     out->SetMember(out_indices, out_values, x.dims());
   } else {
     DenseTensorMeta indices_meta(
@@ -247,13 +259,11 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
         phi::make_ddim(
             {static_cast<int64_t>(sparse_dim), static_cast<int64_t>(nnz)}),
         DataLayout::NCHW);
-    auto indeces_dim = vectorize(slice_ddim(
-        x.non_zero_elements().dims(), 1, x.non_zero_elements().dims().size()));
+    auto indeces_dim =
+        vectorize(slice_ddim(x.values().dims(), 1, x.values().dims().size()));
     indeces_dim.insert(indeces_dim.begin(), nnz);
     DenseTensorMeta values_meta(
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        phi::make_ddim(indeces_dim),
-        DataLayout::NCHW);
+        x.dtype(), phi::make_ddim(indeces_dim), DataLayout::NCHW);
     phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));
     phi::DenseTensor out_values = phi::Empty(dev_ctx, std::move(values_meta));
 
@@ -268,34 +278,28 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
   }
 }
 
-#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                          \
-  template <typename T, typename IntT, typename Context>                 \
-  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,           \
-                                       const SparseCsrTensor& x,         \
-                                       const SparseCsrTensor& y,         \
-                                       SparseCsrTensor* out) {           \
-    funcs::name##Functor<T> functor;                                     \
-    auto coo_x = SparseCsrToCoo<T>(dev_ctx, x);                          \
-    auto coo_y = SparseCsrToCoo<T>(dev_ctx, y);                          \
-    DenseTensor indeces;                                                 \
-    DenseTensor values;                                                  \
-    SparseCooTensor coo_out;                                             \
-    coo_out.SetMember(indeces, values, x.dims());                        \
-    ElementWiseCooKernelImpl<T, IntT, Context, funcs::name##Functor<T>>( \
-        dev_ctx, coo_x, coo_y, &coo_out, functor);                       \
-    *out = SparseCooToCsr<T>(dev_ctx, coo_out);                          \
+#define DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(name)                               \
+  template <typename T, typename IntT, typename Context>                      \
+  void ElementWise##name##CsrCPUKernel(const Context& dev_ctx,                \
+                                       const SparseCsrTensor& x,              \
+                                       const SparseCsrTensor& y,              \
+                                       SparseCsrTensor* out) {                \
+    auto coo_x = CsrToCoo<T>(dev_ctx, x);                                     \
+    auto coo_y = CsrToCoo<T>(dev_ctx, y);                                     \
+    auto coo_out = ElementWise##name##Coo<T, Context>(dev_ctx, coo_x, coo_y); \
+    CooToCsrKernel<T>(dev_ctx, coo_out, out);                                 \
   }
 
-#define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                                   \
-  template <typename T, typename Context>                                     \
-  void ElementWise##name##CsrKernel(const Context& dev_ctx,                   \
-                                    const SparseCsrTensor& x,                 \
-                                    const SparseCsrTensor& y,                 \
-                                    SparseCsrTensor* out) {                   \
-    PD_VISIT_INTEGRAL_TYPES(                                                  \
-        x.non_zero_crows().dtype(), "ElementWise##name##CsrCPUKernel", ([&] { \
-          ElementWise##name##CsrCPUKernel<T, data_t>(dev_ctx, x, y, out);     \
-        }));                                                                  \
+#define DEFINE_CSR_ELEMENTWISE_KERNEL(name)                               \
+  template <typename T, typename Context>                                 \
+  void ElementWise##name##CsrKernel(const Context& dev_ctx,               \
+                                    const SparseCsrTensor& x,             \
+                                    const SparseCsrTensor& y,             \
+                                    SparseCsrTensor* out) {               \
+    PD_VISIT_BASE_INTEGRAL_TYPES(                                         \
+        x.crows().dtype(), "ElementWise##name##CsrCPUKernel", ([&] {      \
+          ElementWise##name##CsrCPUKernel<T, data_t>(dev_ctx, x, y, out); \
+        }));                                                              \
   }
 
 #define DEFINE_COO_ELEMENTWISE_CPU_KERNEL(name)                          \
@@ -315,12 +319,10 @@ void ElementWiseCooKernelImpl(const Context& dev_ctx,
                                     const SparseCooTensor& x,             \
                                     const SparseCooTensor& y,             \
                                     SparseCooTensor* out) {               \
-    PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                 \
-                            "ElementWise##name##CooCPUKernel",            \
-                            ([&] {                                        \
-                              ElementWise##name##CooCPUKernel<T, data_t>( \
-                                  dev_ctx, x, y, out);                    \
-                            }));                                          \
+    PD_VISIT_BASE_INTEGRAL_TYPES(                                         \
+        x.indices().dtype(), "ElementWise##name##CooCPUKernel", ([&] {    \
+          ElementWise##name##CooCPUKernel<T, data_t>(dev_ctx, x, y, out); \
+        }));                                                              \
   }
 
 DEFINE_CSR_ELEMENTWISE_CPU_KERNEL(Add)
@@ -448,4 +450,15 @@ PD_REGISTER_KERNEL(divide_coo_coo,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(1).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(add_coo_dense,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::ElementWiseAddDenseKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }

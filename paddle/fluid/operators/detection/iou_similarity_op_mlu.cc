@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename T>
 struct IouFunction {
@@ -26,48 +26,76 @@ struct IouFunction {
   explicit IouFunction(const framework::ExecutionContext& ctx) : ctx(ctx) {
     place = ctx.GetPlace();
   }
-  void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
+  void Transpose(const phi::DenseTensor* x,
+                 phi::DenseTensor* y,
+                 const std::vector<int>& axis) {
     //  y should be init first
     TransposeFromMLUTensor<T>(ctx, axis, x, y, false /*need_reshape_or_alloc*/);
   }
-  void Add(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Add(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc add_op_desc(CNNL_OP_TENSOR_ADD, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, add_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc add_op_desc(
+        CNNL_OP_TENSOR_ADD, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      add_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
 
-  void Sub(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Sub(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc sub_op_desc(CNNL_OP_TENSOR_SUB, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, sub_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc sub_op_desc(
+        CNNL_OP_TENSOR_SUB, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      sub_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
-  void Mul(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Mul(const phi::DenseTensor* x,
+           const phi::DenseTensor* y,
+           phi::DenseTensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnlOpTensorDesc mul_op_desc(CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(),
-                                    CNNL_NOT_PROPAGATE_NAN);
-    MLUCnnl::OpTensor(ctx, mul_op_desc.get(), x_desc.get(), GetBasePtr(x),
-                      y_desc.get(), GetBasePtr(y), z_desc.get(), GetBasePtr(z),
+    MLUCnnlOpTensorDesc mul_op_desc(
+        CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
+    MLUCnnl::OpTensor(ctx,
+                      mul_op_desc.get(),
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z),
                       ToCnnlDataType<T>());
   }
-  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+  void DivNoNan(const phi::DenseTensor* x,
+                const phi::DenseTensor* y,
+                phi::DenseTensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
@@ -75,35 +103,60 @@ struct IouFunction {
 
     cnnlComputationPreference_t prefer = CNNL_COMPUTATION_FAST;
 
-    MLUCnnl::DivNoNan(ctx, prefer, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                      GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::DivNoNan(ctx,
+                      prefer,
+                      x_desc.get(),
+                      GetBasePtr(x),
+                      y_desc.get(),
+                      GetBasePtr(y),
+                      z_desc.get(),
+                      GetBasePtr(z));
   }
-  void Adds(const Tensor* x, float scalar, Tensor* y) {
+  void Adds(const phi::DenseTensor* x, float scalar, phi::DenseTensor* y) {
     //  y should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     float alpha = 1.0;
     float beta = scalar;
-    MLUCnnl::Transform(ctx, &alpha, &beta, x_desc.get(), GetBasePtr(x),
-                       y_desc.get(), GetBasePtr(y));
+    MLUCnnl::Transform(ctx,
+                       &alpha,
+                       &beta,
+                       x_desc.get(),
+                       GetBasePtr(x),
+                       y_desc.get(),
+                       GetBasePtr(y));
   }
-  void Maximum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Maximum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnl::Maximum(ctx, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                     GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::Maximum(ctx,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     y_desc.get(),
+                     GetBasePtr(y),
+                     z_desc.get(),
+                     GetBasePtr(z));
   }
-  void Minimum(const Tensor* x, const Tensor* y, Tensor* z) {
+  void Minimum(const phi::DenseTensor* x,
+               const phi::DenseTensor* y,
+               phi::DenseTensor* z) {
     //  z should be init first
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
     MLUCnnlTensorDesc z_desc(*z);
 
-    MLUCnnl::Minimum(ctx, x_desc.get(), GetBasePtr(x), y_desc.get(),
-                     GetBasePtr(y), z_desc.get(), GetBasePtr(z));
+    MLUCnnl::Minimum(ctx,
+                     x_desc.get(),
+                     GetBasePtr(x),
+                     y_desc.get(),
+                     GetBasePtr(y),
+                     z_desc.get(),
+                     GetBasePtr(z));
   }
 
  private:
@@ -115,10 +168,10 @@ template <typename T>
 class IouSimilarityMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::LoDTensor>("X");
-    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Input<phi::DenseTensor>("Y");
     bool normalized = ctx.Attr<bool>("box_normalized");
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto _type = x->dtype();
     auto place = ctx.GetPlace();
@@ -223,5 +276,6 @@ class IouSimilarityMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(iou_similarity, ops::IouSimilarityMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(iou_similarity,
+                       ops::IouSimilarityMLUKernel<float>,
                        ops::IouSimilarityMLUKernel<plat::float16>);

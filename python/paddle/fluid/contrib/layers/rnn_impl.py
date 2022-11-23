@@ -47,7 +47,7 @@ class BasicGRUUnit(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            If it is set to None or one attribute of ParamAttr, gru_unit will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -186,8 +186,8 @@ def basic_gru(input,
             h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
 
     Args:
-        input (Variable): GRU input tensor, 
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
+        input (Variable): GRU input tensor,
+                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )
                        if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the GRU
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
@@ -199,7 +199,7 @@ def basic_gru(input,
         sequence_length (Variabe|None): A Tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY works after rnn output of each layers,
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -214,7 +214,7 @@ def basic_gru(input,
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of GRU unit.
-            If it is set to None or one attribute of ParamAttr, gru_unit will 
+            If it is set to None or one attribute of ParamAttr, gru_unit will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -235,7 +235,7 @@ def basic_gru(input,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_gru
 
@@ -438,8 +438,8 @@ def basic_lstm(input,
            h_t &= o_t \odot tanh(c_t)
 
     Args:
-        input (Variable): lstm input tensor, 
-                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )  
+        input (Variable): lstm input tensor,
+                       if batch_first = False, shape should be ( seq_len x batch_size x input_size )
                        if batch_first = True, shape should be ( batch_size x seq_len x hidden_size )
         init_hidden(Variable|None): The initial hidden state of the LSTM
                        This is a tensor with shape ( num_layers x batch_size x hidden_size)
@@ -456,7 +456,7 @@ def basic_lstm(input,
         sequence_length (Variabe|None): A tensor (shape [batch_size]) stores each real length of each instance,
                         This tensor will be convert to a mask to mask the padding ids
                         If it's None means NO padding ids
-        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers, 
+        dropout_prob(float|0.0): Dropout prob, dropout ONLY work after rnn output of each layers,
                              NOT between time steps
         bidirectional (bool|False): If it is bidirectional
         batch_first (bool|True): The shape format of the input and output tensors. If true,
@@ -471,7 +471,7 @@ def basic_lstm(input,
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of LSTM unit.
-            If it is set to None or one attribute of ParamAttr, lstm_unit will 
+            If it is set to None or one attribute of ParamAttr, lstm_unit will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).
@@ -497,7 +497,7 @@ def basic_lstm(input,
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid.layers as layers
             from paddle.fluid.contrib.layers import basic_lstm
 
@@ -740,7 +740,7 @@ class BasicLSTMUnit(Layer):
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|None): The parameter attribute for the bias
             of LSTM unit.
-            If it is set to None or one attribute of ParamAttr, lstm_unit will 
+            If it is set to None or one attribute of ParamAttr, lstm_unit will
             create ParamAttr as bias_attr. If the Initializer of the bias_attr
             is not set, the bias is initialized as zero. Default: None.
         gate_activation (function|None): The activation function for gates (actGate).

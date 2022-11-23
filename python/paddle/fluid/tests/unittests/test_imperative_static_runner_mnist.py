@@ -12,20 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import contextlib
 import numpy as np
 import six
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
-from jit_load_rename_var import rename_var_with_generator
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -52,7 +47,7 @@ def static_train_net(img, label):
     prediction = convolutional_neural_network(img)
 
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    avg_loss = fluid.layers.mean(loss)
+    avg_loss = paddle.mean(loss)
 
     optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     optimizer.minimize(avg_loss)
@@ -159,7 +154,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
                     cost = mnist(img)
 
                     loss = fluid.layers.cross_entropy(cost, label)
-                    avg_loss = fluid.layers.mean(loss)
+                    avg_loss = paddle.mean(loss)
 
                     avg_loss.backward()
                     sgd.minimize(avg_loss)
@@ -313,18 +308,21 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_train_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
 
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
         for key, value in six.iteritems(static_param_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
     def test_mnist_train_with_params_filename(self):
         self.save_dirname = "mnist.inference.model"
@@ -341,17 +339,20 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_train_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
         for key, value in six.iteritems(static_param_init_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
         # np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
         for key, value in six.iteritems(static_param_value):
             key = dict_old_new_init[key]
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-4))
+            np.testing.assert_allclose(value,
+                                       dy_param_value[key],
+                                       rtol=1e-05,
+                                       atol=1e-4)
 
     def test_mnist_infer_no_params_filename(self):
         self.save_dirname = "mnist.inference.model.noname"
@@ -368,10 +369,10 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
             self.load_and_infer_static()
 
         # Phase 3. compare
-        self.assertTrue(np.array_equal(static_x_data, dy_x_data))
+        np.testing.assert_array_equal(static_x_data, dy_x_data)
 
         np.testing.assert_array_almost_equal(static_out, dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out, atol=1e-04))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05, atol=1e-4)
 
 
 if __name__ == '__main__':

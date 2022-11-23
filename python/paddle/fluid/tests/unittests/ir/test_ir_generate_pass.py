@@ -291,7 +291,7 @@ class TestGeneratePass(unittest.TestCase):
         after_out = executor.run(after_program,
                                  feed=feed,
                                  fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_multi_add_to_sum(self):
         paddle.enable_static()
@@ -327,8 +327,8 @@ class TestGeneratePass(unittest.TestCase):
         after_out1, after_out2 = executor.run(after_program,
                                               feed=feed,
                                               fetch_list=[out1.name, out2.name])
-        self.assertTrue(np.allclose(before_out1, after_out1))
-        self.assertTrue(np.allclose(before_out2, after_out2))
+        np.testing.assert_allclose(before_out1, after_out1, rtol=1e-05)
+        np.testing.assert_allclose(before_out2, after_out2, rtol=1e-05)
 
     def test_generate_combine_mul_v2(self):
         helper = ir.RegisterPassHelper([generate_combine_mul_v2()])
@@ -369,7 +369,7 @@ class TestGeneratePass(unittest.TestCase):
         after_out = executor.run(after_program,
                                  feed=feed,
                                  fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_generate_simplify_inference(self):
         self.check_generate_simplify_inference("generate_simplify_inference_v1")
@@ -405,4 +405,4 @@ class TestGeneratePass(unittest.TestCase):
         after_out = executor.run(after_program,
                                  feed=feed,
                                  fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)

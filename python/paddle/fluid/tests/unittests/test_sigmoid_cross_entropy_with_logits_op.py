@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 from op_test import OpTest
 from scipy.special import logit
 from scipy.special import expit
-import paddle.fluid.core as core
 import unittest
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 import paddle.fluid as fluid
 import paddle
 

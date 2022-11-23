@@ -13,15 +13,11 @@
 # limitations under the License.
 """This is unit test of Test shuffle_batch Op."""
 
-from __future__ import print_function, division
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 from op_test import OpTest
 import os
-import random
 
 
 class TestShuffleBatchOpBase(OpTest):
@@ -68,7 +64,7 @@ class TestShuffleBatchOpBase(OpTest):
         assert y is not None
         sort_x = self.sort_array(x)
         sort_y = self.sort_array(y)
-        self.assertTrue(np.array_equal(sort_x, sort_y))
+        np.testing.assert_array_equal(sort_x, sort_y)
 
     def sort_array(self, array):
         shape = array.shape

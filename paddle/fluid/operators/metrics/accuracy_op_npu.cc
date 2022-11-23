@@ -23,13 +23,13 @@ template <typename DeviceContext, typename T>
 class AccuracyNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Out");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* inference = ctx.Input<phi::DenseTensor>("Out");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* indices = ctx.Input<phi::DenseTensor>("Indices");
 
-    auto* accuracy = ctx.Output<Tensor>("Accuracy");
-    auto* correct = ctx.Output<Tensor>("Correct");
-    auto* total = ctx.Output<Tensor>("Total");
+    auto* accuracy = ctx.Output<phi::DenseTensor>("Accuracy");
+    auto* correct = ctx.Output<phi::DenseTensor>("Correct");
+    auto* total = ctx.Output<phi::DenseTensor>("Total");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -49,7 +49,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
         cast_indices.Resize(indices->dims());
         cast_indices.mutable_data<int>(ctx.GetPlace());
         const auto& runner_cast_indices =
-            NpuOpRunner("Cast", {*indices}, {cast_indices},
+            NpuOpRunner("Cast",
+                        {*indices},
+                        {cast_indices},
                         {{"dst_type", static_cast<int>(dst_dtype)}});
         runner_cast_indices.Run(stream);
       } else {
@@ -60,7 +62,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
         cast_label.Resize(label->dims());
         cast_label.mutable_data<int>(ctx.GetPlace());
         const auto& runner_cast_label =
-            NpuOpRunner("Cast", {*label}, {cast_label},
+            NpuOpRunner("Cast",
+                        {*label},
+                        {cast_label},
                         {{"dst_type", static_cast<int>(dst_dtype)}});
         runner_cast_label.Run(stream);
       } else {
@@ -84,7 +88,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     tmp_equal_cast.Resize(inference->dims());
     tmp_equal_cast.mutable_data<float>(ctx.GetPlace());
     const auto& runner_cast_equal = NpuOpRunner(
-        "Cast", {tmp_equal}, {tmp_equal_cast},
+        "Cast",
+        {tmp_equal},
+        {tmp_equal_cast},
         {{"dst_type",
           static_cast<int>(ConvertToNpuDtype(
               framework::TransToProtoVarType(tmp_equal_cast.dtype())))}});
@@ -96,7 +102,9 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     tmp_correct_max.Resize(phi::make_ddim({num_samples}));
     tmp_correct_max.mutable_data<float>(ctx.GetPlace());
     const auto& runner_reduce_max =
-        NpuOpRunner("ReduceMaxD", {tmp_equal_cast}, {tmp_correct_max},
+        NpuOpRunner("ReduceMaxD",
+                    {tmp_equal_cast},
+                    {tmp_correct_max},
                     {{"axes", std::vector<int>{1}}, {"keep_dims", false}});
     runner_reduce_max.Run(stream);
 
@@ -105,15 +113,20 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     tmp_correct.Resize(correct->dims());
     tmp_correct.mutable_data<float>(ctx.GetPlace());
     const auto& runner_reduce_sum =
-        NpuOpRunner("ReduceSumD", {tmp_correct_max}, {tmp_correct},
+        NpuOpRunner("ReduceSumD",
+                    {tmp_correct_max},
+                    {tmp_correct},
                     {{"axes", std::vector<int>{0}}, {"keep_dims", false}});
     runner_reduce_sum.Run(stream);
 
     // cast to int
     correct->mutable_data<int>(ctx.GetPlace());
-    const auto& runner_cast_correct = NpuOpRunner(
-        "Cast", {tmp_correct}, {*correct},
-        {{"dst_type", static_cast<int>(ConvertToNpuDtype(
+    const auto& runner_cast_correct =
+        NpuOpRunner("Cast",
+                    {tmp_correct},
+                    {*correct},
+                    {{"dst_type",
+                      static_cast<int>(ConvertToNpuDtype(
                           framework::TransToProtoVarType(correct->dtype())))}});
     runner_cast_correct.Run(stream);
 
@@ -142,7 +155,8 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(
-    accuracy, ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    accuracy,
+    ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext,
                            paddle::platform::float16>,
     ops::AccuracyNPUKernel<paddle::platform::NPUDeviceContext, int>,

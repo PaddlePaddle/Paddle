@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 template <typename T>
@@ -28,12 +28,12 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
     const auto epsilon = ctx.Attr<float>("epsilon");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* bias = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<Tensor>("Y");
-    auto* mean = ctx.Output<Tensor>("Mean");
-    auto* variance = ctx.Output<Tensor>("Variance");
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* mean = ctx.Output<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Output<phi::DenseTensor>("Variance");
 
     auto place = ctx.GetPlace();
 
@@ -54,15 +54,23 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc y_desc(*y);
-    MLUCnnlTensorDesc mean_var_desc(mean_var_axes.size(), mean_var_axes.data(),
-                                    ToCnnlDataType<T>());
+    MLUCnnlTensorDesc mean_var_desc(
+        mean_var_axes.size(), mean_var_axes.data(), ToCnnlDataType<T>());
     // cnnl only support both of scale and bias is NULL or not.
     if (!scale && !bias) {
-      MLUCnnl::LayerNormForward(
-          ctx, begin_norm_axis, x_desc.get(), GetBasePtr(x),
-          nullptr /*scale_bias_desc*/, nullptr /*scale*/, nullptr /*bias*/,
-          epsilon, y_desc.get(), GetBasePtr(y), mean_var_desc.get(),
-          GetBasePtr(mean), GetBasePtr(variance));
+      MLUCnnl::LayerNormForward(ctx,
+                                begin_norm_axis,
+                                x_desc.get(),
+                                GetBasePtr(x),
+                                nullptr /*scale_bias_desc*/,
+                                nullptr /*scale*/,
+                                nullptr /*bias*/,
+                                epsilon,
+                                y_desc.get(),
+                                GetBasePtr(y),
+                                mean_var_desc.get(),
+                                GetBasePtr(mean),
+                                GetBasePtr(variance));
     } else {
       Tensor tmp_scale(x->dtype());
       if (!scale) {
@@ -81,10 +89,10 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
       }
 
       // scale and bias should have same type with x/y
-      MLUCnnlTensorDesc float32_desc(scale_bias_axes.size(),
-                                     scale_bias_axes.data(), CNNL_DTYPE_FLOAT);
-      MLUCnnlTensorDesc float16_desc(scale_bias_axes.size(),
-                                     scale_bias_axes.data(), CNNL_DTYPE_HALF);
+      MLUCnnlTensorDesc float32_desc(
+          scale_bias_axes.size(), scale_bias_axes.data(), CNNL_DTYPE_FLOAT);
+      MLUCnnlTensorDesc float16_desc(
+          scale_bias_axes.size(), scale_bias_axes.data(), CNNL_DTYPE_HALF);
       cnnlCastDataType_t cast_type = GetCastDataType(VT::FP32, VT::FP16);
 
       Tensor final_scale(x->dtype());
@@ -92,8 +100,11 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
           tmp_scale.dtype() == DataType::FLOAT32) {
         final_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
         // cast scale to fp16
-        MLUCnnl::Cast(ctx, cast_type, float32_desc.get(),
-                      GetBasePtr(&tmp_scale), float16_desc.get(),
+        MLUCnnl::Cast(ctx,
+                      cast_type,
+                      float32_desc.get(),
+                      GetBasePtr(&tmp_scale),
+                      float16_desc.get(),
                       GetBasePtr(&final_scale));
       } else {
         final_scale = tmp_scale;
@@ -104,19 +115,31 @@ class LayerNormMLUKernel : public framework::OpKernel<T> {
           tmp_bias.dtype() == DataType::FLOAT32) {
         final_bias.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
         // cast bias to fp16
-        MLUCnnl::Cast(ctx, cast_type, float32_desc.get(), GetBasePtr(&tmp_bias),
-                      float16_desc.get(), GetBasePtr(&final_bias));
+        MLUCnnl::Cast(ctx,
+                      cast_type,
+                      float32_desc.get(),
+                      GetBasePtr(&tmp_bias),
+                      float16_desc.get(),
+                      GetBasePtr(&final_bias));
       } else {
         final_bias = tmp_bias;
       }
 
       MLUCnnlTensorDesc scale_bias_desc(
           scale_bias_axes.size(), scale_bias_axes.data(), ToCnnlDataType<T>());
-      MLUCnnl::LayerNormForward(
-          ctx, begin_norm_axis, x_desc.get(), GetBasePtr(x),
-          scale_bias_desc.get(), GetBasePtr(&final_scale),
-          GetBasePtr(&final_bias), epsilon, y_desc.get(), GetBasePtr(y),
-          mean_var_desc.get(), GetBasePtr(mean), GetBasePtr(variance));
+      MLUCnnl::LayerNormForward(ctx,
+                                begin_norm_axis,
+                                x_desc.get(),
+                                GetBasePtr(x),
+                                scale_bias_desc.get(),
+                                GetBasePtr(&final_scale),
+                                GetBasePtr(&final_bias),
+                                epsilon,
+                                y_desc.get(),
+                                GetBasePtr(y),
+                                mean_var_desc.get(),
+                                GetBasePtr(mean),
+                                GetBasePtr(variance));
     }
   }
 };
@@ -128,14 +151,15 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
-    const auto* x = ctx.Input<Tensor>("X");
-    const auto* mean = ctx.Input<Tensor>("Mean");
-    const auto* variance = ctx.Input<Tensor>("Variance");
-    const auto* scale = ctx.Input<Tensor>("Scale");
-    const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dscale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    const auto* x = ctx.Input<phi::DenseTensor>("X");
+    const auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    const auto* variance = ctx.Input<phi::DenseTensor>("Variance");
+    const auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    const auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* dscale =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
@@ -153,8 +177,8 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
 
     MLUCnnlTensorDesc x_desc(*x);
     MLUCnnlTensorDesc dy_desc(*dy);
-    MLUCnnlTensorDesc mean_var_desc(mean_var_axes.size(), mean_var_axes.data(),
-                                    ToCnnlDataType<T>());
+    MLUCnnlTensorDesc mean_var_desc(
+        mean_var_axes.size(), mean_var_axes.data(), ToCnnlDataType<T>());
     MLUCnnlTensorDesc dx_desc(*dx);
 
     Tensor tmp_scale(x->dtype());
@@ -165,10 +189,10 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
       tmp_scale = *scale;
     }
 
-    MLUCnnlTensorDesc float32_desc(scale_bias_axes.size(),
-                                   scale_bias_axes.data(), CNNL_DTYPE_FLOAT);
-    MLUCnnlTensorDesc float16_desc(scale_bias_axes.size(),
-                                   scale_bias_axes.data(), CNNL_DTYPE_HALF);
+    MLUCnnlTensorDesc float32_desc(
+        scale_bias_axes.size(), scale_bias_axes.data(), CNNL_DTYPE_FLOAT);
+    MLUCnnlTensorDesc float16_desc(
+        scale_bias_axes.size(), scale_bias_axes.data(), CNNL_DTYPE_HALF);
     cnnlCastDataType_t cast_fp32_to_fp16 = GetCastDataType(VT::FP32, VT::FP16);
     cnnlCastDataType_t cast_fp16_to_fp32 = GetCastDataType(VT::FP16, VT::FP32);
 
@@ -177,8 +201,11 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
         tmp_scale.dtype() == DataType::FLOAT32) {
       final_scale.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
       // cast scale to fp16
-      MLUCnnl::Cast(ctx, cast_fp32_to_fp16, float32_desc.get(),
-                    GetBasePtr(&tmp_scale), float16_desc.get(),
+      MLUCnnl::Cast(ctx,
+                    cast_fp32_to_fp16,
+                    float32_desc.get(),
+                    GetBasePtr(&tmp_scale),
+                    float16_desc.get(),
                     GetBasePtr(&final_scale));
     } else {
       final_scale = tmp_scale;
@@ -199,27 +226,42 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
       tmp_dbias.mutable_data<T>(phi::make_ddim(scale_bias_axes), place);
     }
 
-    MLUCnnlTensorDesc scale_desc(scale_bias_axes.size(), scale_bias_axes.data(),
-                                 ToCnnlDataType<T>());
-    MLUCnnl::LayerNormBackward(
-        ctx, begin_norm_axis, x_desc.get(), GetBasePtr(x), dy_desc.get(),
-        GetBasePtr(dy), scale_desc.get(), GetBasePtr(&final_scale),
-        mean_var_desc.get(), GetBasePtr(mean), GetBasePtr(variance),
-        dx_desc.get(), GetBasePtr(dx), GetBasePtr(&tmp_dscale),
-        GetBasePtr(&tmp_dbias));
+    MLUCnnlTensorDesc scale_desc(
+        scale_bias_axes.size(), scale_bias_axes.data(), ToCnnlDataType<T>());
+    MLUCnnl::LayerNormBackward(ctx,
+                               begin_norm_axis,
+                               x_desc.get(),
+                               GetBasePtr(x),
+                               dy_desc.get(),
+                               GetBasePtr(dy),
+                               scale_desc.get(),
+                               GetBasePtr(&final_scale),
+                               mean_var_desc.get(),
+                               GetBasePtr(mean),
+                               GetBasePtr(variance),
+                               dx_desc.get(),
+                               GetBasePtr(dx),
+                               GetBasePtr(&tmp_dscale),
+                               GetBasePtr(&tmp_dbias));
 
     if (dscale && (tmp_dscale.dtype() == DataType::FLOAT16 &&
                    dscale->dtype() == DataType::FLOAT32)) {
       dscale->mutable_data<MPDType>(place);
-      MLUCnnl::Cast(ctx, cast_fp16_to_fp32, float16_desc.get(),
-                    GetBasePtr(&tmp_dscale), float32_desc.get(),
+      MLUCnnl::Cast(ctx,
+                    cast_fp16_to_fp32,
+                    float16_desc.get(),
+                    GetBasePtr(&tmp_dscale),
+                    float32_desc.get(),
                     GetBasePtr(dscale));
     }
     if (dbias && (tmp_dbias.dtype() == DataType::FLOAT16 &&
                   dbias->dtype() == DataType::FLOAT32)) {
       dbias->mutable_data<MPDType>(place);
-      MLUCnnl::Cast(ctx, cast_fp16_to_fp32, float16_desc.get(),
-                    GetBasePtr(&tmp_dbias), float32_desc.get(),
+      MLUCnnl::Cast(ctx,
+                    cast_fp16_to_fp32,
+                    float16_desc.get(),
+                    GetBasePtr(&tmp_dbias),
+                    float32_desc.get(),
                     GetBasePtr(dbias));
     }
   }
@@ -231,7 +273,9 @@ class LayerNormGradMLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_MLU_KERNEL(layer_norm, ops::LayerNormMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(layer_norm,
+                       ops::LayerNormMLUKernel<float>,
                        ops::LayerNormMLUKernel<plat::float16>);
-REGISTER_OP_MLU_KERNEL(layer_norm_grad, ops::LayerNormGradMLUKernel<float>,
+REGISTER_OP_MLU_KERNEL(layer_norm_grad,
+                       ops::LayerNormGradMLUKernel<float>,
                        ops::LayerNormGradMLUKernel<plat::float16>);

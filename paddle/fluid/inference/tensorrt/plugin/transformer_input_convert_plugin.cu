@@ -35,20 +35,23 @@ __global__ void TransformerInputConvertKernel(const int64_t* input,
 }
 
 nvinfer1::DataType TransformerInputConvertPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types,
+    int index,
+    const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
   return nvinfer1::DataType::kINT32;
 }
 
 nvinfer1::DimsExprs TransformerInputConvertPlugin::getOutputDimensions(
-    int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
+    int outputIndex,
+    const nvinfer1::DimsExprs* inputs,
+    int nbInputs,
     nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT {
   nvinfer1::DimsExprs output_dims{};
   output_dims.nbDims = 1;
   if (outputIndex == 0) {  // PosId
     const auto* one = exprBuilder.constant(1);
-    output_dims.d[0] = exprBuilder.operation(nvinfer1::DimensionOperation::kSUM,
-                                             *inputs[0].d[0], *one);
+    output_dims.d[0] = exprBuilder.operation(
+        nvinfer1::DimensionOperation::kSUM, *inputs[0].d[0], *one);
   } else {  // MaxSeqlen
     output_dims.d[0] = inputs[0].d[1];
   }
@@ -56,13 +59,17 @@ nvinfer1::DimsExprs TransformerInputConvertPlugin::getOutputDimensions(
 }
 
 bool TransformerInputConvertPlugin::supportsFormatCombination(
-    int pos, const nvinfer1::PluginTensorDesc* inOut, int nbInputs,
+    int pos,
+    const nvinfer1::PluginTensorDesc* inOut,
+    int nbInputs,
     int nbOutputs) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nbInputs, 1,
+  PADDLE_ENFORCE_EQ(nbInputs,
+                    1,
                     platform::errors::InvalidArgument("Must have 1 inputs, "
                                                       "but got %d input(s). ",
                                                       nbInputs));
-  PADDLE_ENFORCE_EQ(nbOutputs, getNbOutputs(),
+  PADDLE_ENFORCE_EQ(nbOutputs,
+                    getNbOutputs(),
                     platform::errors::InvalidArgument("Must have 2 output, "
                                                       "but got %d output(s). ",
                                                       nbOutputs));
@@ -75,12 +82,14 @@ bool TransformerInputConvertPlugin::supportsFormatCombination(
 }
 
 void TransformerInputConvertPlugin::configurePlugin(
-    const nvinfer1::DynamicPluginTensorDesc* inputs, int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc* inputs,
+    int nbInputs,
     const nvinfer1::DynamicPluginTensorDesc* outputs,
     int nbOutputs) TRT_NOEXCEPT {}
 
 void TransformerInputConvertPlugin::attachToContext(
-    cudnnContext* cudnnContext, cublasContext* cublasContext,
+    cudnnContext* cudnnContext,
+    cublasContext* cublasContext,
     nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {}
 
 void TransformerInputConvertPlugin::detachFromContext() TRT_NOEXCEPT {}
@@ -89,8 +98,11 @@ void TransformerInputConvertPlugin::terminate() TRT_NOEXCEPT {}
 
 int TransformerInputConvertPlugin::enqueue(
     const nvinfer1::PluginTensorDesc* inputDesc,
-    const nvinfer1::PluginTensorDesc* outputDesc, const void* const* inputs,
-    void* const* outputs, void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
+    const nvinfer1::PluginTensorDesc* outputDesc,
+    const void* const* inputs,
+    void* const* outputs,
+    void* workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
   const auto input_desc = inputDesc[0];
   const int64_t* input = static_cast<const int64_t*>(inputs[0]);
   int32_t* output0 = static_cast<int32_t*>(outputs[0]);  // PosId

@@ -103,9 +103,9 @@ class VariableWrapper {
   bool IsEmpty() const {
     bool is_empty = true;
     if (var_.IsInitialized()) {
-      const framework::Tensor* tensor = nullptr;
-      if (var_.IsType<framework::LoDTensor>()) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+      const phi::DenseTensor* tensor = nullptr;
+      if (var_.IsType<phi::DenseTensor>()) {
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (var_.IsType<phi::SelectedRows>()) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -150,10 +150,10 @@ class VariableWrapper {
   }
 
   framework::proto::VarType::Type DataType() const {
-    const framework::Tensor* tensor = nullptr;
+    const phi::DenseTensor* tensor = nullptr;
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
@@ -194,12 +194,12 @@ class VariableWrapper {
   }
 
   const platform::Place Place() const {
-    const framework::Tensor* tensor = nullptr;
+    const phi::DenseTensor* tensor = nullptr;
     auto place =
         platform::CPUPlace();  // Default place for var not initialized.
     if (var_.IsInitialized()) {
       if (type_ == framework::proto::VarType::LOD_TENSOR) {
-        tensor = &(var_.Get<framework::LoDTensor>());
+        tensor = &(var_.Get<phi::DenseTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<phi::SelectedRows>().value());
       } else {
@@ -288,7 +288,8 @@ class VariableWrapper {
     auto shared_var = grad_var_.lock();
     if (shared_var != var) {
       PADDLE_ENFORCE_EQ(
-          shared_var, nullptr,
+          shared_var,
+          nullptr,
           platform::errors::PermissionDenied(
               "Cannot set gradient variable wrapper twice for %s", name_));
       grad_var_ = var;
@@ -306,7 +307,8 @@ class VariableWrapper {
       if (grad_node->InplaceGradNameMap().empty()) {
         // grad_node doesn't have Inplace message
         PADDLE_ENFORCE_EQ(
-            shared_node, nullptr,
+            shared_node,
+            nullptr,
             platform::errors::PermissionDenied(
                 "Cannot set gradient op twice unless using Inplace Strategy."));
       } else if (shared_node) {

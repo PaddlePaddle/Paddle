@@ -23,13 +23,13 @@ template <typename DeviceContext, typename T>
 class SoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::LoDTensor>("X");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
     auto axis = ctx.Attr<int>("axis");
     std::vector<int> axes;
     axes.push_back(axis);
     framework::NPUAttributeMap attr_input = {{"axes", axes}};
 
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto& runner = NpuOpRunner("SoftmaxV2", {*in}, {*out}, attr_input);
@@ -45,10 +45,10 @@ template <typename DeviceContext, typename T>
 class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out = ctx.Input<framework::LoDTensor>("Out");
-    auto* dOut = ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* dOut = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dX = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto dims = dX->dims();
     const int rank = dims.size();
@@ -72,8 +72,8 @@ class SoftmaxGradNPUKernel : public framework::OpKernel<T> {
     dX->mutable_data<T>(ctx.GetPlace());
 
     framework::NPUAttributeMap attr_input = {};
-    const auto& runner = NpuOpRunner(std::string("SoftmaxGrad"),
-                                     {tmp_out, tmp_dOut}, {*dX}, attr_input);
+    const auto& runner = NpuOpRunner(
+        std::string("SoftmaxGrad"), {tmp_out, tmp_dOut}, {*dX}, attr_input);
 
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
@@ -91,12 +91,14 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
-    softmax, ops::SoftmaxNPUKernel<plat::NPUDeviceContext, float>,
+    softmax,
+    ops::SoftmaxNPUKernel<plat::NPUDeviceContext, float>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, double>,
     ops::SoftmaxNPUKernel<plat::NPUDeviceContext, plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    softmax_grad, ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, float>,
+    softmax_grad,
+    ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext, double>,
     ops::SoftmaxGradNPUKernel<plat::NPUDeviceContext,
                               paddle::platform::float16>);

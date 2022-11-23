@@ -45,17 +45,21 @@ void BasicEngine::Init(
   retain_graph_ = retain_graph;
 
   PADDLE_ENFORCE_EQ(
-      tensors.size(), grad_tensors.size(),
+      tensors.size(),
+      grad_tensors.size(),
       platform::errors::Unavailable(
           "The size of tensors do not equal the size of grad_tensors,"
           "the size of tensors is %s, but the size of grad_tensors is %s.",
-          tensors.size(), grad_tensors.size()));
+          tensors.size(),
+          grad_tensors.size()));
 
-  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+  PADDLE_ENFORCE_EQ(accumulators_.empty(),
+                    true,
                     platform::errors::AlreadyExists(
                         "Accumulators are not empty before preparing it for "
                         "backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
+  PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(),
+                    true,
                     platform::errors::AlreadyExists(
                         "Accumulators with grad_node as the key are not empty "
                         "before preparing it for backward network execution."));
@@ -67,7 +71,8 @@ void BasicEngine::Init(
     auto init_node = var->GradVarBase()->GradNode();
 
     PADDLE_ENFORCE_EQ(
-        var->GradVarBase()->GraphIsFreed(), false,
+        var->GradVarBase()->GraphIsFreed(),
+        false,
         platform::errors::Unavailable(
             "%s trying to backward through the same graph a second "
             "time, but this graph have already been freed. Please "
@@ -91,12 +96,13 @@ void BasicEngine::Init(
     VLOG(3) << "Init node of backward";
 
     PADDLE_ENFORCE_EQ(
-        var->HasGradVar(), true,
+        var->HasGradVar(),
+        true,
         platform::errors::NotFound("Tensor %s has no gradient", var->Name()));
 
-    auto& fwd_var = var->Var().Get<framework::LoDTensor>();
+    auto& fwd_var = var->Var().Get<phi::DenseTensor>();
     auto* grad_var =
-        var->GradVarBase()->MutableVar()->GetMutable<framework::LoDTensor>();
+        var->GradVarBase()->MutableVar()->GetMutable<phi::DenseTensor>();
     VLOG(6) << "init loss grad:" << var->GradVarBase()->Name()
             << " as stop_gradient false";
     var->GradVarBase()->InnerSetOverridedStopGradient(false);
@@ -107,9 +113,10 @@ void BasicEngine::Init(
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
       phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
-      paddle::framework::TensorCopy(
-          grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
-          *dev_ctx, grad_var);
+      paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
+                                    fwd_var.place(),
+                                    *dev_ctx,
+                                    grad_var);
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
@@ -142,10 +149,10 @@ void BasicEngine::CheckBackwardInputs(const OpBase& op) {
       }
 
       auto* inner_var = var->MutableVar();
-      framework::Tensor* tensor = nullptr;
+      phi::DenseTensor* tensor = nullptr;
       if (!inner_var->IsInitialized() ||
-          inner_var->IsType<framework::LoDTensor>()) {
-        tensor = inner_var->GetMutable<framework::LoDTensor>();
+          inner_var->IsType<phi::DenseTensor>()) {
+        tensor = inner_var->GetMutable<phi::DenseTensor>();
       }
 
       if (tensor && !tensor->IsInitialized()) {
@@ -266,7 +273,8 @@ void BasicEngine::PrepareGradAccumulators(
 
 void BasicEngine::PrepareDeps() {
   PADDLE_ENFORCE_EQ(
-      node_deps_.empty(), true,
+      node_deps_.empty(),
+      true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
 
@@ -329,8 +337,8 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
 
 static bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
   auto* inner_var = var->MutableVar();
-  if (inner_var->IsInitialized() && inner_var->IsType<framework::LoDTensor>()) {
-    auto tensor = inner_var->GetMutable<framework::LoDTensor>();
+  if (inner_var->IsInitialized() && inner_var->IsType<phi::DenseTensor>()) {
+    auto tensor = inner_var->GetMutable<phi::DenseTensor>();
     if (tensor->IsInitialized()) {
       return true;
     }
@@ -347,7 +355,7 @@ static void PerformBackwardInplace(const std::string& op_type,
   if (infer_inplace) {
     auto in_to_outs = infer_inplace(true);
     for (auto& pair : in_to_outs) {
-      framework::LoDTensor *in_tensor = nullptr, *out_tensor = nullptr;
+      phi::DenseTensor *in_tensor = nullptr, *out_tensor = nullptr;
       for (auto& p : ins) {
         if (p.first == pair.first) {
           // has at least one var
@@ -358,7 +366,7 @@ static void PerformBackwardInplace(const std::string& op_type,
             if (in_var.use_count() == 1) {
               if (IsInputCanInplace(in_var)) {
                 in_tensor =
-                    in_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                    in_var->MutableVar()->GetMutable<phi::DenseTensor>();
               }
             }
           }
@@ -373,7 +381,7 @@ static void PerformBackwardInplace(const std::string& op_type,
             auto& out_var = p.second[0];
             if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
               out_tensor =
-                  out_var->MutableVar()->GetMutable<framework::LoDTensor>();
+                  out_var->MutableVar()->GetMutable<phi::DenseTensor>();
             }
           }
         }
@@ -391,7 +399,7 @@ static void PerformBackwardInplace(const std::string& op_type,
 
 void BasicEngine::Execute() {
   platform::RecordEvent backward_record_event(
-      "backward", platform::TracerEventType::Operator, 1);
+      "backward", platform::TracerEventType::UserDefined, 1);
 
   if (init_nodes_.empty()) {
     return;
@@ -475,7 +483,8 @@ void BasicEngine::Execute() {
                      << ") with no grad_node.";
             iter = accumulators_.find(var.get());
             PADDLE_ENFORCE_EQ(
-                iter != accumulators_.end(), true,
+                iter != accumulators_.end(),
+                true,
                 platform::errors::NotFound(
                     "Cannot find gradient of variable %s", var->Name()));
           }
@@ -483,7 +492,8 @@ void BasicEngine::Execute() {
           // leaf_accumulators_ : hooks and accumulate-grad for leaf tensor,
           // it should be orderly and not reapeated.
           if (var->IsLeafGrad()) {
-            if (std::find(leaf_accumulators_.begin(), leaf_accumulators_.end(),
+            if (std::find(leaf_accumulators_.begin(),
+                          leaf_accumulators_.end(),
                           iter->second.get()) == leaf_accumulators_.end()) {
               leaf_accumulators_.push_back(iter->second.get());
             }
@@ -533,7 +543,8 @@ void BasicEngine::Execute() {
           auto tensor_version =
               var_wrapper->MutableVar()->CurrentInplaceVersion();
           PADDLE_ENFORCE_EQ(
-              tensor_version, wrapper_version_snapshot,
+              tensor_version,
+              wrapper_version_snapshot,
               platform::errors::PermissionDenied(
                   "Tensor '%s' used in gradient computation in grad op '%s' "
                   "has been "
@@ -542,7 +553,9 @@ void BasicEngine::Execute() {
                   "Please fix your code to void calling an inplace operator "
                   "after using the Tensor which will used in gradient "
                   "computation.",
-                  var_wrapper->Name(), cur_op.Type(), tensor_version,
+                  var_wrapper->Name(),
+                  cur_op.Type(),
+                  tensor_version,
                   wrapper_version_snapshot));
 
           VLOG(6) << " The version of Tensor '" << var_wrapper->Name()
@@ -571,11 +584,18 @@ void BasicEngine::Execute() {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();
         try {
           if (tmp_ins_ptr == nullptr) {
-            OpBase::Run(cur_op.InnerOp(), bwd_ins, tmp_outs, cur_op.Attrs(),
-                        cur_op.DefaultAttrsMap(), cur_op.place());
+            OpBase::Run(cur_op.InnerOp(),
+                        bwd_ins,
+                        tmp_outs,
+                        cur_op.Attrs(),
+                        cur_op.DefaultAttrsMap(),
+                        cur_op.place());
           } else {
-            OpBase::Run(cur_op.InnerOp(), *tmp_ins_ptr, tmp_outs,
-                        cur_op.Attrs(), cur_op.DefaultAttrsMap(),
+            OpBase::Run(cur_op.InnerOp(),
+                        *tmp_ins_ptr,
+                        tmp_outs,
+                        cur_op.Attrs(),
+                        cur_op.DefaultAttrsMap(),
                         cur_op.place());
           }
         } catch (platform::EnforceNotMet& exception) {

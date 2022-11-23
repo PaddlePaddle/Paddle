@@ -39,7 +39,9 @@ class TestComplexReshape(unittest.TestCase):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    self.assertTrue(np.allclose(np.reshape(x_np, shape), y_np))
+                    np.testing.assert_allclose(np.reshape(x_np, shape),
+                                               y_np,
+                                               rtol=1e-05)
 
     def test_shape_omit_dims(self):
         for dtype in self._dtypes:
@@ -53,7 +55,9 @@ class TestComplexReshape(unittest.TestCase):
                     x_var = dg.to_variable(x_np)
                     y_var = paddle.reshape(x_var, shape)
                     y_np = y_var.numpy()
-                    self.assertTrue(np.allclose(np.reshape(x_np, shape_), y_np))
+                    np.testing.assert_allclose(np.reshape(x_np, shape_),
+                                               y_np,
+                                               rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

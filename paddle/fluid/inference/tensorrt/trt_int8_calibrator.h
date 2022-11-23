@@ -38,7 +38,8 @@ class TensorRTEngine;
 struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
  public:
   TRTInt8Calibrator(const std::unordered_map<std::string, size_t>& buffers,
-                    int batch_size, std::string engine_name,
+                    int batch_size,
+                    std::string engine_name,
                     const platform::Place place);
 
   explicit TRTInt8Calibrator(const std::string& calibration_data);
@@ -46,7 +47,8 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
 
   int getBatchSize() const TRT_NOEXCEPT override;
 
-  bool getBatch(void* bindings[], const char* names[],
+  bool getBatch(void* bindings[],
+                const char* names[],
                 int num_bindings) TRT_NOEXCEPT override;
 
   bool setBatch(const std::unordered_map<std::string, void*>& data);
@@ -71,7 +73,7 @@ struct TRTInt8Calibrator : public nvinfer1::IInt8EntropyCalibrator2 {
   std::condition_variable cond_;
 
   std::unordered_map<std::string, std::pair<void*, size_t>> data_buffers_;
-  std::vector<framework::Tensor> data_tensors_;
+  std::vector<phi::DenseTensor> data_tensors_;
 
   std::string engine_name_;
   std::string calibration_table_;

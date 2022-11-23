@@ -12,14 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase
-from dist_mnist import cnn_model
-# from paddle.fluid.incubate.fleet.collective import fleet
-import paddle.distributed.fleet as fleet
+from dist_mnist import cnn_model  # noqa: F401
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
 
@@ -56,7 +51,7 @@ def runtime_main():
                                                 act='softmax')
             cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                      label=input_y)
-            avg_cost = paddle.fluid.layers.mean(x=cost)
+            avg_cost = paddle.mean(x=cost)
 
             strategy = paddle.distributed.fleet.DistributedStrategy()
             strategy.sharding = True

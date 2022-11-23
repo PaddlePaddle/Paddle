@@ -54,7 +54,8 @@ struct BlockAllocation : public Allocation {
 class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
  public:
   VirtualMemoryAutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
+      const std::shared_ptr<Allocator> &underlying_allocator,
+      size_t alignment,
       const platform::CUDAPlace &place);
 
   bool IsAllocThreadSafe() const override { return true; }

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from six.moves import reduce
 from .. import core
@@ -33,7 +31,7 @@ import numbers
 import logging
 import os
 import paddle.utils.deprecated as deprecated
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -140,7 +138,7 @@ class Conv2D(layers.Layer):
 
     Returns:
         None
-    
+
     Raises:
         ValueError: if ``use_cudnn`` is not a bool value.
 
@@ -240,10 +238,10 @@ class Conv2D(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode() and self._l_type == "conv2d":
-            pre_bias = _C_ops.final_state_conv2d(
-                input, self.weight, self._stride, self._padding, "EXPLICIT",
-                self._groups if self._groups else 1, self._dilation, "NCHW",
-                False, -1, False)
+            pre_bias = _C_ops.conv2d(input, self.weight, self._stride,
+                                     self._padding, "EXPLICIT",
+                                     self._groups if self._groups else 1,
+                                     self._dilation, "NCHW", False, -1, False)
             if self.bias is not None:
                 pre_act = F.elementwise_add(pre_bias, self.bias, axis=1)
             else:
@@ -257,7 +255,7 @@ class Conv2D(layers.Layer):
                      'dilations', self._dilation, 'groups',
                      self._groups if self._groups else 1, 'use_cudnn',
                      self._use_cudnn, 'use_mkldnn', self._use_mkldnn)
-            out = _C_ops.conv2d(input, self.weight, *attrs)
+            out = _legacy_C_ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -316,7 +314,7 @@ class Conv3D(layers.Layer):
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are multidimensional tensors with a shape of 
+    Output(Output) are multidimensional tensors with a shape of
     :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
     and W is the width of the feature. Convlution3D is similar with Convlution2D
@@ -567,15 +565,15 @@ class Conv3DTranspose(layers.Layer):
 
     **Note**:
 
-          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, 
-          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d,
+          when stride > 1, conv3d maps multiple input shape to the same output shape,
           so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
           If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
-          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
-          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
-          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
-          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
-          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`,
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}`
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`,
           conv3d_transpose can compute the kernel size automatically.
 
 
@@ -596,9 +594,9 @@ class Conv3DTranspose(layers.Layer):
             when `data_format` is `'NDHWC'`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             The default value is 0.
-        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution. 
-            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
-            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution.
+            If stride is a tuple, it must contain three integers, (stride_depth, stride_height,
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride.
             The default value is 1.
         dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
@@ -622,7 +620,7 @@ class Conv3DTranspose(layers.Layer):
             library is installed. The default value is True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             The default value is None.
-        name(str, optional): The default value is None. Normally there is no need for user 
+        name(str, optional): The default value is None. Normally there is no need for user
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Attribute:
@@ -791,12 +789,12 @@ class Pool2D(layers.Layer):
         pool_size (int or list or tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int. Default: -1.
-        pool_type(str, optional) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling. 
+        pool_type(str, optional) : The pooling type, can be "max" for max-pooling and "avg" for average-pooling.
             Default: max.
         pool_stride (int or list or tuple, optional): The pool stride size. If pool stride size is a tuple or list,
             it must contain two integers, (pool_stride_Height, pool_stride_Width). Otherwise,
             the pool stride size will be a square of an int. Default: 1.
-        pool_padding (int or list or tuple, optional): The padding size for pooling operation. 
+        pool_padding (int or list or tuple, optional): The padding size for pooling operation.
             If ``pool_padding`` is a tuple,
             it must contain two integers, (pool_padding_on_Height, pool_padding_on_Width).
             Otherwise, the padding size for pooling operation will be a square of an int. Default: 0.
@@ -808,7 +806,7 @@ class Pool2D(layers.Layer):
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
         data_format (string): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is 
+            ``[batch_size, input_channels, input_height, input_width]``. When it is `"NHWC"`, the data is
             stored in the order of: ``[batch_size, input_height, input_width, input_channels]``
 
     Returns:
@@ -886,13 +884,20 @@ class Pool2D(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
+            if not self._use_mkldnn and in_dygraph_mode():
+                return _C_ops.pool2d(input, self._pool_size, self._pool_stride,
+                                     self._pool_padding, self._ceil_mode,
+                                     self._exclusive, self._data_format,
+                                     self._pool_type, self._global_pooling,
+                                     False, "EXPLICIT", self._use_cudnn)
+
             attrs = ('pooling_type', self._pool_type, 'ksize', self._pool_size,
                      'global_pooling', self._global_pooling, 'strides',
                      self._pool_stride, 'paddings', self._pool_padding,
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
                      'use_mkldnn', self._use_mkldnn, 'exclusive',
                      self._exclusive, 'data_format', self._data_format)
-            return _C_ops.pool2d(input, *attrs)
+            return _legacy_C_ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
             input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
@@ -923,7 +928,7 @@ class Pool2D(layers.Layer):
 
 class Linear(layers.Layer):
     """
-    
+
     Fully-connected linear transformation layer:
 
     .. math::
@@ -997,9 +1002,9 @@ class Linear(layers.Layer):
     def forward(self, input):
         if _non_static_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
-            _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                          'transpose_Y', False, "alpha", 1, "use_mkldnn",
-                          self._use_mkldnn)
+            _legacy_C_ops.matmul(input, self.weight, pre_bias, 'transpose_X',
+                                 False, 'transpose_Y', False, "alpha", 1,
+                                 "use_mkldnn", self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias,
                 self.bias,
@@ -1059,7 +1064,7 @@ class InstanceNorm(layers.Layer):
     :math:`input` is the input features over a mini-batch.
 
     ..  math::
-        
+
         \\mu_{\\beta} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW} x_i \\qquad &//\\
         \\ mean\ of\ one\  feature\ map\ in\ mini-batch \\\\
         \\sigma_{\\beta}^{2} &\\gets \\frac{1}{HW} \\sum_{i=1}^{HW}(x_i - \\
@@ -1078,12 +1083,12 @@ class InstanceNorm(layers.Layer):
         param_attr(ParamAttr|bool, optional): The parameter attribute for Parameter `scale`
              of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
 	     will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-	     If the Initializer of the param_attr is not set, the parameter is initialized 
+	     If the Initializer of the param_attr is not set, the parameter is initialized
 	     one. If it is set to False, will not create param_attr. Default: None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of instance_norm.
              If it is set to None or one attribute of ParamAttr, instance_norm
-	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
-	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
+	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+	     If the Initializer of the bias_attr is not set, the bias is initialized zero.
              If it is set to False, will not create bias_attr. Default: None.
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
              which can be float32 or float64. Default: float32.
@@ -1100,13 +1105,13 @@ class InstanceNorm(layers.Layer):
           import numpy as np
           import paddle
 
-          # x's shape is [1, 3, 1, 2] 
+          # x's shape is [1, 3, 1, 2]
           x = np.array([[[[1.0, 8.0]], [[10.0, 5.0]], [[4.0, 6.0]]]]).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
               instanceNorm = paddle.nn.InstanceNorm(3)
               ret = instanceNorm(x)
-              # ret's shape is [1, 3, 1, 2]; value is [-1 1 0.999999 -0.999999 -0.999995 0.999995] 
+              # ret's shape is [1, 3, 1, 2]; value is [-1 1 0.999999 -0.999999 -0.999995 0.999995]
               print(ret)
 
     """
@@ -1144,12 +1149,13 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out = _C_ops.final_state_instance_norm(input, self.scale, self.bias,
-                                                   self._epsilon)
+            out = _C_ops.instance_norm(input, self.scale, self.bias,
+                                       self._epsilon)
             return out
         if _in_legacy_dygraph():
-            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
-                                             'epsilon', self._epsilon)
+            out, _, _ = _legacy_C_ops.instance_norm(input, self.scale,
+                                                    self.bias, 'epsilon',
+                                                    self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1187,14 +1193,14 @@ class BatchNorm(layers.Layer):
 
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
-    It implements the function of the Batch Normalization Layer and can be used 
+    It implements the function of the Batch Normalization Layer and can be used
     as a normalizer function for conv2d and fully connected operations.
     The data is normalized by the mean and variance of the channel based on the current batch data.
     Refer to `Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When use_global_stats = False, the :math:`\mu_{\beta}` 
+    When use_global_stats = False, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
@@ -1218,7 +1224,7 @@ class BatchNorm(layers.Layer):
         moving\_variance = moving\_variance * momentum + \sigma_{\beta}^{2} * (1. - momentum) \quad &// global variance \\
 
     The normalization function formula is as follows:
- 
+
     ..  math::
 
         \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
@@ -1360,7 +1366,7 @@ class BatchNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.final_state_batch_norm(
+                batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     self._momentum, self._epsilon, self._data_layout,
                     not self.training, self._use_global_stats,
@@ -1375,7 +1381,7 @@ class BatchNorm(layers.Layer):
                          "fuse_with_relu", self._fuse_with_relu,
                          "use_global_stats", self._use_global_stats,
                          'trainable_statistics', self._trainable_statistics)
-                batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
+                batch_norm_out, _, _, _, _, _ = _legacy_C_ops.batch_norm(
                     input, self.weight, self.bias, self._mean, self._variance,
                     None, mean_out, variance_out, *attrs)
 
@@ -1529,7 +1535,7 @@ class Dropout(layers.Layer):
 
         if _non_static_mode():
             attrs = sum(attrs.items(), ())
-            out, mask = _C_ops.dropout(input, *attrs)
+            out, mask = _legacy_C_ops.dropout(input, *attrs)
             return out
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1581,7 +1587,7 @@ class Embedding(layers.Layer):
 
                         [[0.345249859, 0.124939536, ..., 0.194353745],
                         [0.945345345, 0.435394634, ..., 0.435345365]],
-                        
+
                         [[0.945345345, 0.435394634, ..., 0.435345365],
                         [0.0,         0.0,         ..., 0.0        ]]]  # padding data
         The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
@@ -1591,22 +1597,22 @@ class Embedding(layers.Layer):
         size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
-            affects the performance of the backwards gradient update. It is recommended to set 
+            affects the performance of the backwards gradient update. It is recommended to set
             True because sparse update is faster. But some optimizer does not support sparse update,
-            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` , 
+            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` ,
             :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
             :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
             In these case, is_sparse must be False. Default: False.
         is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
             in multi-machine distributed CPU training. Default: False.
-        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size). 
+        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size).
             If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
             to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
             encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
         param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
-            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
+            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter.
             The local word vector needs to be transformed into numpy format, and the shape of local word
             vector should be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
             is used to load custom or pre-trained word vectors. See code example 2 for details.
@@ -1651,7 +1657,7 @@ class Embedding(layers.Layer):
                   size=[128, 100],
                   param_attr= w_param_attrs,
                   is_sparse=False)
-              static_rlt3 = emb(base.to_variable(inp_word))          
+              static_rlt3 = emb(base.to_variable(inp_word))
     """
 
     def __init__(self,
@@ -1681,12 +1687,10 @@ class Embedding(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
-            return _C_ops.lookup_table_v2(self.weight, input, 'is_sparse',
-                                          self._is_sparse, 'is_distributed',
-                                          self._is_distributed,
-                                          'remote_prefetch',
-                                          self._remote_prefetch, 'padding_idx',
-                                          self._padding_idx)
+            return _legacy_C_ops.lookup_table_v2(
+                self.weight, input, 'is_sparse', self._is_sparse,
+                'is_distributed', self._is_distributed, 'remote_prefetch',
+                self._remote_prefetch, 'padding_idx', self._padding_idx)
 
         check_variable_and_dtype(input, 'input',
                                  ['uint8', 'int8', 'int16', 'int32', 'int64'],
@@ -1841,16 +1845,15 @@ class LayerNorm(layers.Layer):
 
         if _non_static_mode():
             if in_dygraph_mode():
-                pre_act, _, _, = _C_ops.final_state_layer_norm(
-                    input, self.weight, self.bias, self._epsilon,
-                    self._begin_norm_axis, False)
+                pre_act, _, _, = _C_ops.layer_norm(input, self.weight,
+                                                   self.bias, self._epsilon,
+                                                   self._begin_norm_axis, False)
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act)
             else:
-                pre_act, _, _ = _C_ops.layer_norm(input, self.weight, self.bias,
-                                                  'epsilon', self._epsilon,
-                                                  'begin_norm_axis',
-                                                  self._begin_norm_axis)
+                pre_act, _, _ = _legacy_C_ops.layer_norm(
+                    input, self.weight, self.bias, 'epsilon', self._epsilon,
+                    'begin_norm_axis', self._begin_norm_axis)
                 return dygraph_utils._append_activation_in_dygraph(
                     pre_act, act=self._act)
 
@@ -1894,10 +1897,10 @@ class LayerNorm(layers.Layer):
 class GRUUnit(layers.Layer):
     """
     **GRU unit layer**
-    
+
     It creates a callable object from GRUUnit class.
     If origin_mode is True, then the equation of a gru step is from paper
-    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical 
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
     Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
@@ -1938,19 +1941,19 @@ class GRUUnit(layers.Layer):
     Parameters:
         size (int): The input dimension value.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
-            hidden-hidden weight matrix. 
-            
+            hidden-hidden weight matrix.
+
             **Note**:
-    
+
                 1. The shape of the weight matrix is :math:`[T, 3*D]`, where D is the hidden size.
-                2. All elements in the weight matrix can be divided into two parts. The first 
-                   part are weights of the update gate and reset gate with shape :math:`[D, 2*D]`, 
+                2. All elements in the weight matrix can be divided into two parts. The first
+                   part are weights of the update gate and reset gate with shape :math:`[D, 2*D]`,
                    and the second part are weights for candidate hidden state with shape :math:`[D, D]`.
 
 
             If it is set to None or one attribute of ParamAttr, gru_unit will
             create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. The default 
+            is not set, the parameter is initialized with Xavier. The default
             value is None.
         bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias
             of GRU.Note that the bias with :math:`[1, 3*D]` concatenates
@@ -1975,7 +1978,7 @@ class GRUUnit(layers.Layer):
     Returns:
         tuple: The hidden value, reset-hidden value and gate values. The hidden value
         is a 2-D tensor with shape  :math:`[T, D]` . The reset-hidden value is a
-        2-D tensor with shape  :math:`[T, D]` . The gate value is a 2-D tensor with 
+        2-D tensor with shape  :math:`[T, D]` . The gate value is a 2-D tensor with
         shape  :math:`[T, 3*D]`.
 
     Examples:
@@ -2036,7 +2039,7 @@ class GRUUnit(layers.Layer):
 
     def forward(self, input, hidden):
         if _non_static_mode():
-            gate, reset_hidden_pre, updated_hidden = _C_ops.gru_unit(
+            gate, reset_hidden_pre, updated_hidden = _legacy_C_ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
@@ -2109,7 +2112,7 @@ class NCE(layers.Layer):
         **weight** (Parameter): the learnable weights of this layer.
 
         **bias** (Parameter or None): the learnable bias of this layer.
-    
+
     Returns:
         None
 
@@ -2286,12 +2289,12 @@ class NCE(layers.Layer):
                      self._attrs['seed'], 'sampler', self._attrs['sampler'],
                      'is_sparse', self._attrs['is_sparse'], 'remote_prefetch',
                      self._attrs['remote_prefetch'])
-            cost, _, _ = _C_ops.nce(input, label, self.weight, self.bias,
-                                    self._inputs['SampleWeight'],
-                                    self._inputs['CustomDistProbs'],
-                                    self._inputs['CustomDistAlias'],
-                                    self._inputs['CustomDistAliasProbs'],
-                                    *attrs)
+            cost, _, _ = _legacy_C_ops.nce(input, label, self.weight, self.bias,
+                                           self._inputs['SampleWeight'],
+                                           self._inputs['CustomDistProbs'],
+                                           self._inputs['CustomDistAlias'],
+                                           self._inputs['CustomDistAliasProbs'],
+                                           *attrs)
             return cost / (self._num_neg_samples + 1)
 
         check_variable_and_dtype(input, "input", ['float32', 'float64'], "NCE")
@@ -2351,7 +2354,7 @@ class PRelu(layers.Layer):
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
-    
+
     Returns:
         None
 
@@ -2420,6 +2423,9 @@ class PRelu(layers.Layer):
                                             default_initializer=Constant(1.0))
 
     def forward(self, input):
+        if in_dygraph_mode():
+            return _C_ops.prelu(input, self.weight, "NCHW", self._mode)
+
         check_variable_and_dtype(input, 'input', ['float32'], 'PRelu')
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(type="prelu",
@@ -2457,7 +2463,7 @@ class BilinearTensorProduct(layers.Layer):
        name (str, optional): The default value is None. Normally there is no need for user
            to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
        act (str, optional): Activation to be applied to the output of this layer. The default value is None.
-       param_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
+       param_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of
            this layer. The default value is None.
        bias_attr (ParamAttr, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
@@ -2709,12 +2715,29 @@ class Conv2DTranspose(layers.Layer):
 
         if self._output_size is None:
             self._output_size = []
-        elif isinstance(self._output_size, list) or isinstance(
-                self._output_size, int):
+        elif isinstance(self._output_size, list):
+            if utils._contain_var(self._output_size):
+                self._output_size = utils._convert_to_tensor_list(
+                    self._output_size)
+            else:
+                self._output_size = utils.convert_to_list(
+                    self._output_size, 2, 'output_size')
+        elif isinstance(self._output_size, int):
             self._output_size = utils.convert_to_list(self._output_size, 2,
                                                       'output_size')
+        elif isinstance(self._output_size, Variable):
+            check_dtype(self._output_size.dtype, 'output_size',
+                        ['int32', 'int64'], 'Conv2DTranspose')
+            if len(self._output_size.shape) == 1 and (
+                    self._output_size.shape[0] == 1
+                    or self._output_size.shape[0] == 2):
+                if self._output_size.shape[0] == 1:
+                    self._output_size = [self._output_size, self._output_size]
+            else:
+                raise ValueError(
+                    "output_size must contain one or two integers.")
         else:
-            raise ValueError("output_size should be list or int")
+            raise ValueError("output_size should be list or int or Tensor")
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._groups = 1 if self._groups is None else self._groups
         filter_shape = [self._num_channels, self._num_filters // self._groups
@@ -2731,7 +2754,7 @@ class Conv2DTranspose(layers.Layer):
 
     def forward(self, input):
         if _non_static_mode():
-            op = getattr(_C_ops, self._op_type)
+            op = getattr(_legacy_C_ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
                      'strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups,
@@ -3032,16 +3055,15 @@ class GroupNorm(layers.Layer):
         variance_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
         if in_dygraph_mode():
-            out = _C_ops.final_state_group_norm(input, self.weight, self.bias,
-                                                self._epsilon, self._groups,
-                                                "NCHW")
+            out = _C_ops.group_norm(input, self.weight, self.bias,
+                                    self._epsilon, self._groups, "NCHW")
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
 
         elif _in_legacy_dygraph():
             attrs = ('epsilon', self._epsilon, 'groups', self._groups)
-            out, _, _ = _C_ops.group_norm(input, self.weight, self.bias,
-                                          mean_out, variance_out, *attrs)
+            out, _, _ = _legacy_C_ops.group_norm(input, self.weight, self.bias,
+                                                 mean_out, variance_out, *attrs)
 
             return dygraph_utils._append_activation_in_dygraph(out, self._act)
         else:
@@ -3166,6 +3188,10 @@ class SpectralNorm(layers.Layer):
         self.weight_v.stop_gradient = True
 
     def forward(self, weight):
+        if in_dygraph_mode():
+            return _C_ops.spectral_norm(weight, self.weight_u, self.weight_v,
+                                        self._dim, self._power_iters, self._eps)
+
         check_variable_and_dtype(weight, "weight", ['float32', 'float64'],
                                  'SpectralNorm')
         inputs = {'Weight': weight, 'U': self.weight_u, 'V': self.weight_v}
@@ -3194,7 +3220,7 @@ class TreeConv(layers.Layer):
     Tree-Based Convolution proposed a kind of data structure called continuous binary tree,
     which regards multiway tree as binary tree.
     The paper of Tree-Based Convolution Operator is here: `tree-based convolution <https://arxiv.org/abs/1409.5718v1/>`_ .
-    
+
     Parameters:
         feature_size(int): last dimension of nodes_vector.
         output_size(int): output feature width.
@@ -3304,7 +3330,7 @@ class Flatten(layers.Layer):
     Parameters:
         start_axis(int): first dim to flatten (default = 1)
         stop_axis(int): last dim to flatten (default = -1).
-    
+
     Returns:
         None
 

@@ -50,7 +50,7 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
 
         for _ in range(self.iteration):
             exe.run(compiled_prog, feed=feed_dict, fetch_list=[loss.name])
-            self.assertTrue(np.array_equal(np.array(image_tensor), np_image))
+            np.testing.assert_array_equal(np.array(image_tensor), np_image)
 
     def test_main(self):
         places = [fluid.CPUPlace()]

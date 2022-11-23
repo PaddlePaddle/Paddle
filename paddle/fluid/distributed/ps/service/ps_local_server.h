@@ -30,7 +30,9 @@ class PsLocalServer : public PSServer {
   virtual uint64_t Start(const std::string &ip, uint32_t port) { return 0; }
   virtual int32_t Stop() { return 0; }
   virtual int32_t Configure(
-      const PSParameter &config, PSEnvironment &env, size_t server_rank,
+      const PSParameter &config,
+      PSEnvironment &env,
+      size_t server_rank,
       const std::vector<framework::ProgramDesc> &server_sub_program = {}) {
     return 0;
   }

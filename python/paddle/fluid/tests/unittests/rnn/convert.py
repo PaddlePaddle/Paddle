@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-import numpy as np
 
 
 def convert_params_for_cell(np_cell, paddle_cell):

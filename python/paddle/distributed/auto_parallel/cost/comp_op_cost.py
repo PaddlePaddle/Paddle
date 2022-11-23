@@ -12,7 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import Cost, register_op_cost, CompOpCost, _g_op_cost_factory
+from .base_cost import CompOpCost, register_op_cost
+
+
+@register_op_cost
+class AdamOpCost(CompOpCost):
+    OP_TYPE = "adam"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(AdamOpCost, self).__init__(op=op,
+                                         op_desc=op_desc,
+                                         cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
 
 
 @register_op_cost
@@ -118,6 +137,44 @@ class ConcatOpCost(CompOpCost):
         super(ConcatOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class DropoutOpCost(CompOpCost):
+    OP_TYPE = "dropout"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(DropoutOpCost, self).__init__(op=op,
+                                            op_desc=op_desc,
+                                            cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class DropoutGradOpCost(CompOpCost):
+    OP_TYPE = "dropout_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(DropoutGradOpCost, self).__init__(op=op,
+                                                op_desc=op_desc,
+                                                cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -358,11 +415,29 @@ class FillConstantBatchSizeLikeOpCost(CompOpCost):
 
 
 @register_op_cost
-class FillConstantBatchSizeLikeGradOpCost(CompOpCost):
-    OP_TYPE = "fill_constant_batch_size_like_grad"
+class FusedSoftmaxMaskUpperTriangleOpCost(CompOpCost):
+    OP_TYPE = "fused_softmax_mask_upper_triangle"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(FillConstantBatchSizeLikeGradOpCost,
+        super(FusedSoftmaxMaskUpperTriangleOpCost,
+              self).__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class FusedSoftmaxMaskUpperTriangleGradOpCost(CompOpCost):
+    OP_TYPE = "fused_softmax_mask_upper_triangle_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super(FusedSoftmaxMaskUpperTriangleGradOpCost,
               self).__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided

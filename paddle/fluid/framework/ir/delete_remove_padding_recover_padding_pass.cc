@@ -56,12 +56,12 @@ void DeleteRemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph *graph) const {
                      Graph *graph) {
     VLOG(3) << "delete_remove_padding_recover_padding_pass";
 
-    GET_IR_NODE_FROM_SUBGRAPH(recover_padding_input, recover_padding_input,
-                              recover_padding);
-    GET_IR_NODE_FROM_SUBGRAPH(recover_padding_op, recover_padding_op,
-                              recover_padding);
-    GET_IR_NODE_FROM_SUBGRAPH(recover_padding_out, recover_padding_out,
-                              recover_padding);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        recover_padding_input, recover_padding_input, recover_padding);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        recover_padding_op, recover_padding_op, recover_padding);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        recover_padding_out, recover_padding_out, recover_padding);
 
     std::unordered_set<const Node *> del_node_set;
 

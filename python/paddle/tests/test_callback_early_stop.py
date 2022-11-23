@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import unittest
-import time
-import random
 import tempfile
 import shutil
 import numpy as np
@@ -23,7 +21,6 @@ import paddle
 from paddle import Model
 from paddle.static import InputSpec
 from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
 from paddle.vision.datasets import MNIST
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss

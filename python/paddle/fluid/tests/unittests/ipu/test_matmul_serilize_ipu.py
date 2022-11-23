@@ -26,8 +26,6 @@ def set_serialize_factor(serialize_factor):
     op._set_attr('serialize_factor', serialize_factor)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -87,8 +85,10 @@ class TestBase(IPUOpTest):
     def test_base(self):
         res0 = self.run_model(False)
         res1 = self.run_model(True)
-        self.assertTrue(
-            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+        np.testing.assert_allclose(res0.flatten(),
+                                   res1.flatten(),
+                                   rtol=1e-05,
+                                   atol=self.atol)
         self.assertTrue(res0.shape == res1.shape)
 
 

@@ -41,7 +41,7 @@ class DataGenerator(object):
         '''
         Set batch size of current DataGenerator
         This is necessary only if a user wants to define generator_batch
-        
+
         Example:
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
@@ -57,7 +57,7 @@ class DataGenerator(object):
                                 yield ("words", s[1].extend([s[1][0]]))
                 mydata = MyData()
                 mydata.set_batch(128)
-                    
+
         '''
         self.batch_size_ = batch_size
 
@@ -95,12 +95,12 @@ class DataGenerator(object):
     def run_from_stdin(self):
         '''
         This function reads the data row from stdin, parses it with the
-        process function, and further parses the return value of the 
+        process function, and further parses the return value of the
         process function with the _gen_str function. The parsed data will
         be wrote to stdout and the corresponding protofile will be
         generated.
         Example:
-        
+
             .. code-block:: python
                 import paddle.fluid.incubate.data_generator as dg
                 class MyData(dg.DataGenerator):
@@ -144,16 +144,16 @@ class DataGenerator(object):
 
     def generate_sample(self, line):
         '''
-        This function needs to be overridden by the user to process the 
+        This function needs to be overridden by the user to process the
         original data row into a list or tuple.
         Args:
             line(str): the original data row
         Returns:
             Returns the data processed by the user.
-              The data format is list or tuple: 
-            [(name, [feasign, ...]), ...] 
+              The data format is list or tuple:
+            [(name, [feasign, ...]), ...]
               or ((name, [feasign, ...]), ...)
-             
+
             For example:
             [("words", [1926, 08, 17]), ("label", [1])]
               or (("words", [1926, 08, 17]), ("label", [1]))
@@ -259,13 +259,13 @@ class MultiSlotDataGenerator(DataGenerator):
         user, outputting data that can be directly read by the MultiSlotDataFeed,
         and updating proto_info information.
         The input line will be in this format:
-            >>> [(name, [feasign, ...]), ...] 
+            >>> [(name, [feasign, ...]), ...]
             >>> or ((name, [feasign, ...]), ...)
         The output will be in this format:
             >>> [ids_num id1 id2 ...] ...
         The proto_info will be in this format:
             >>> [(name, type), ...]
-        
+
         For example, if the input is like this:
             >>> [("words", [1926, 08, 17]), ("label", [1])]
             >>> or (("words", [1926, 08, 17]), ("label", [1]))

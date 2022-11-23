@@ -32,6 +32,7 @@ void MaximumKernel(const Context& dev_ctx,
   int axis = -1;
   MaximumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
+
 // Create the definition of Minimum
 DEFINE_CUDA_ELEMENTWISE_OP(Minimum)
 template <typename T, typename Context>
@@ -42,8 +43,8 @@ void MinimumKernel(const Context& dev_ctx,
   int axis = -1;
   MinimumRawKernel<T>(dev_ctx, x, y, axis, out);
 }
-// Create the definition of Modulo
-DEFINE_CUDA_ELEMENTWISE_OP(Modulo)
+// Create the definition of Remainder
+DEFINE_CUDA_ELEMENTWISE_OP(Remainder)
 // Create the definition of FloorDivide
 DEFINE_CUDA_ELEMENTWISE_OP(FloorDivide)
 template <typename T, typename Context>
@@ -92,11 +93,25 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(
-    fmax, KPS, ALL_LAYOUT, phi::FMaxKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(fmax,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMaxKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   int64_t) {}
 
-PD_REGISTER_KERNEL(
-    fmin, KPS, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(fmin,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::FMinKernel,
+                   float,
+                   double,
+                   int,
+                   float16,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_raw,
                    KPS,
@@ -118,13 +133,14 @@ PD_REGISTER_KERNEL(minimum_raw,
                    int64_t,
                    float16,
                    bfloat16) {}
-PD_REGISTER_KERNEL(modulo_raw,
+PD_REGISTER_KERNEL(remainder_raw,
                    KPS,
                    ALL_LAYOUT,
-                   phi::ModuloRawKernel,
+                   phi::RemainderRawKernel,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 PD_REGISTER_KERNEL(floor_divide_raw,
                    KPS,
@@ -139,6 +155,7 @@ PD_REGISTER_KERNEL(elementwise_heaviside_raw,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    KPS,
@@ -147,5 +164,6 @@ PD_REGISTER_KERNEL(elementwise_pow_raw,
                    float,
                    double,
                    int,
+                   float16,
                    int64_t) {}
 #endif

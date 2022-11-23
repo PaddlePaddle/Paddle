@@ -43,9 +43,11 @@ class RecoverPaddingPlugin : public DynamicPluginTensorRT {
 
   int initialize() TRT_NOEXCEPT { return 0; }
   void terminate() TRT_NOEXCEPT;
-  nvinfer1::DimsExprs getOutputDimensions(
-      int outputIndex, const nvinfer1::DimsExprs* inputs, int nbInputs,
-      nvinfer1::IExprBuilder& exprBuilder) TRT_NOEXCEPT override;
+  nvinfer1::DimsExprs getOutputDimensions(int outputIndex,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nbInputs,
+                                          nvinfer1::IExprBuilder& exprBuilder)
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* inOut,
@@ -64,7 +66,8 @@ class RecoverPaddingPlugin : public DynamicPluginTensorRT {
     return 0;
   }
 
-  void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext,
+  void attachToContext(cudnnContext* cudnnContext,
+                       cublasContext* cublasContext,
                        nvinfer1::IGpuAllocator* gpuAllocator)
       TRT_NOEXCEPT override;
 
@@ -72,11 +75,14 @@ class RecoverPaddingPlugin : public DynamicPluginTensorRT {
 
   int enqueue(const nvinfer1::PluginTensorDesc* inputDesc,
               const nvinfer1::PluginTensorDesc* outputDesc,
-              const void* const* inputs, void* const* outputs, void* workspace,
+              const void* const* inputs,
+              void* const* outputs,
+              void* workspace,
               cudaStream_t stream) TRT_NOEXCEPT override;
-  nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* inputTypes,
-      int nbInputs) const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(int index,
+                                       const nvinfer1::DataType* inputTypes,
+                                       int nbInputs) const
+      TRT_NOEXCEPT override;
 
   void destroy() TRT_NOEXCEPT override { delete this; }
 
@@ -104,9 +110,10 @@ class RecoverPaddingPluginCreator : public nvinfer1::IPluginCreator {
     return nullptr;
   }
 
-  nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, void const* serial_data,
-      size_t serial_length) TRT_NOEXCEPT override {
+  nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                         void const* serial_data,
+                                         size_t serial_length)
+      TRT_NOEXCEPT override {
     RecoverPaddingPlugin* obj =
         new RecoverPaddingPlugin(serial_data, serial_length);
     obj->setPluginNamespace(name);

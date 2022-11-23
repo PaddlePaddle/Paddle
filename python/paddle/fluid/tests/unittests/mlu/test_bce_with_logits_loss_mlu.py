@@ -61,7 +61,7 @@ def test_static(place,
             res = call_bce_layer(logit, label, weight, reduction, pos_weight)
         exe = paddle.static.Executor(place)
         static_result = exe.run(prog, feed=feed_dict, fetch_list=[res])
-    return static_result
+    return static_result[0]
 
 
 paddle.enable_static()
@@ -86,9 +86,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                          reduction=reduction)
                 expected = calc_bce_with_logits_loss(logit_np, label_np,
                                                      reduction)
-                self.assertTrue(np.allclose(static_result, expected))
-                self.assertTrue(np.allclose(static_result, dy_result))
-                self.assertTrue(np.allclose(dy_result, expected))
+                np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+                np.testing.assert_allclose(static_result, dy_result)
+                np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
                 static_functional = test_static(place,
                                                 logit_np,
                                                 label_np,
@@ -100,9 +100,11 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                              reduction=reduction,
                                              functional=True)
 
-                self.assertTrue(np.allclose(static_functional, expected))
-                self.assertTrue(np.allclose(static_functional, dy_functional))
-                self.assertTrue(np.allclose(dy_functional, expected))
+                np.testing.assert_allclose(static_functional,
+                                           expected,
+                                           rtol=1e-6)
+                np.testing.assert_allclose(static_functional, dy_functional)
+                np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
 
     def test_BCEWithLogitsLoss_weight(self):
         logit_np = np.random.uniform(0.1, 0.8,
@@ -126,9 +128,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                                  label_np,
                                                  reduction,
                                                  weight_np=weight_np)
-            self.assertTrue(np.allclose(static_result, expected))
-            self.assertTrue(np.allclose(static_result, dy_result))
-            self.assertTrue(np.allclose(dy_result, expected))
+            np.testing.assert_allclose(static_result, expected, rtol=1e-6)
+            np.testing.assert_allclose(static_result, dy_result)
+            np.testing.assert_allclose(dy_result, expected, rtol=1e-6)
             static_functional = test_static(place,
                                             logit_np,
                                             label_np,
@@ -141,9 +143,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                          weight_np=weight_np,
                                          reduction=reduction,
                                          functional=True)
-            self.assertTrue(np.allclose(static_functional, expected))
-            self.assertTrue(np.allclose(static_functional, dy_functional))
-            self.assertTrue(np.allclose(dy_functional, expected))
+            np.testing.assert_allclose(static_functional, expected, rtol=1e-6)
+            np.testing.assert_allclose(static_functional, dy_functional)
+            np.testing.assert_allclose(dy_functional, expected, rtol=1e-6)
 
     def test_BCEWithLogitsLoss_pos_weight(self):
         logit_np = np.random.uniform(0.1, 0.8,
@@ -160,9 +162,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                  reduction, pos_weight_np)
         expected = calc_bce_with_logits_loss(logit_np, label_np, reduction,
                                              weight_np, pos_weight_np)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected)
+        np.testing.assert_allclose(static_result, dy_result)
+        np.testing.assert_allclose(dy_result, expected)
         static_functional = test_static(place,
                                         logit_np,
                                         label_np,
@@ -177,9 +179,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
                                      reduction,
                                      pos_weight_np,
                                      functional=True)
-        self.assertTrue(np.allclose(static_functional, expected))
-        self.assertTrue(np.allclose(static_functional, dy_functional))
-        self.assertTrue(np.allclose(dy_functional, expected))
+        np.testing.assert_allclose(static_functional, expected)
+        np.testing.assert_allclose(static_functional, dy_functional)
+        np.testing.assert_allclose(dy_functional, expected)
 
     def test_BCEWithLogitsLoss_error(self):
         paddle.disable_static()

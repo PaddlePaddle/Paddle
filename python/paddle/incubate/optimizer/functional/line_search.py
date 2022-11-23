@@ -20,7 +20,7 @@ def cubic_interpolation_(x1, f1, g1, x2, f2, g2):
     r"""Cubic interpolation between (x1, f1, g1) and (x2, f2, g2).
         Use two points and their gradient to determine a cubic function and get the minimun point
         between them in the cubic curve.
-        
+
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp59: formula 3.59
@@ -68,11 +68,11 @@ def strong_wolfe(f,
                  alpha_max=10,
                  dtype='float32'):
     r"""Implements of line search algorithm that satisfies the strong Wolfe conditions using double zoom.
-    
+
     Reference:
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006.
         pp60: Algorithm 3.5 (Line Search Algorithm).
-    
+
     Args:
         f: the objective function to minimize. ``f`` accepts a multivariate input and returns a scalar.
         xk (Tensor): the starting point of the iterates.
@@ -80,14 +80,14 @@ def strong_wolfe(f,
         max_iters (Scalar): the maximum number of iterations.
         tolerance_grad (Scalar): terminates if the gradient norm is smaller than
             this. Currently gradient norm uses inf norm.
-        tolerance_change (Scalar): terminates if the change of function value/position/parameter between 
+        tolerance_change (Scalar): terminates if the change of function value/position/parameter between
             two iterations is smaller than this value.
         initial_step_length (Scalar): step length used in first iteration.
         c1 (Scalar): parameter for sufficient decrease condition.
         c2 (Scalar): parameter for curvature condition.
         alpha_max (float): max step length.
         dtype ('float32' | 'float64'): the datatype to be used.
-    
+
     Returns:
         num_func_calls (float): number of objective function called in line search process.
         a_star(Tensor): optimal step length, or 0. if the line search algorithm did not converge.
@@ -96,26 +96,26 @@ def strong_wolfe(f,
 
     Following summarizes the essentials of the strong Wolfe line search algorithm.
     Some notations used in the description:
-    
+
         - `f` denotes the objective function.
         - `phi` is a function of step size alpha, restricting `f` on a line.
-        
+
             phi = f(xk + a * pk),
-            where xk is the position of k'th iterate, pk is the line search direction(decent direction), 
+            where xk is the position of k'th iterate, pk is the line search direction(decent direction),
             and a is the step size.
         - a : substitute of alpha
         - a1 is a of last iteration, which is alpha_(i-1).
         - a2 is a of current iteration, which is alpha_i.
         - a_lo is a in left position when calls zoom, which is alpha_low.
         - a_hi is a in right position when calls zoom, which is alpha_high.
-    
+
     Line Search Algorithm:
         repeat
             Compute phi(a2) and derphi(a2).
-            1. If phi(a2) > phi(0) + c_1 * a2 * phi'(0) or [phi(a2) >= phi(a1) and i > 1], 
+            1. If phi(a2) > phi(0) + c_1 * a2 * phi'(0) or [phi(a2) >= phi(a1) and i > 1],
                 a_star= zoom(a1, a2) and stop;
 
-            2. If |phi'(a2)| <= -c_2 * phi'(0), 
+            2. If |phi'(a2)| <= -c_2 * phi'(0),
                 a_star= a2 and stop;
 
             3. If phi'(a2) >= 0,
@@ -125,8 +125,8 @@ def strong_wolfe(f,
             a2 = min(2 * a2, a2)
             i = i + 1
         end(repeat)
-    
-    zoom(a_lo, a_hi) Algorithm: 
+
+    zoom(a_lo, a_hi) Algorithm:
         repeat
             aj = cubic_interpolation(a_lo, a_hi)
             Compute phi(aj) and derphi(aj).

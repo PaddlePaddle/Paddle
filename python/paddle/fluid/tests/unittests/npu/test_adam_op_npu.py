@@ -304,8 +304,8 @@ class TestNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-3)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-3)
 
 
 class TestNetWithEpsilonTensor(unittest.TestCase):
@@ -447,9 +447,9 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         preds.append(pred)
                         losses.append(loss)
         for pred in preds:
-            self.assertTrue(np.allclose(pred, preds[0]))
+            np.testing.assert_allclose(pred, preds[0])
         for loss in losses:
-            self.assertTrue(np.allclose(loss, losses[0]))
+            np.testing.assert_allclose(loss, losses[0])
 
     def test_adam_api(self):
         # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.

@@ -80,6 +80,7 @@ DEFINE_CPU_ACTIVATION_KERNEL(Reciprocal, ReciprocalFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Square, SquareFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sqrt, SqrtFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Rsqrt, RsqrtFunctor)
+DEFINE_CPU_ACTIVATION_KERNEL(Softsign, SoftsignFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Sigmoid, SigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(LogSigmoid, LogSigmoidFunctor)
 DEFINE_CPU_ACTIVATION_KERNEL(Log, LogFunctor)
@@ -95,6 +96,7 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6Functor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
@@ -147,6 +149,7 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(brelu, BReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(soft_shrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)
@@ -171,6 +174,7 @@ PD_REGISTER_KERNEL(expm1,
 PD_REGISTER_KERNEL(logit, CPU, ALL_LAYOUT, phi::LogitKernel, float, double) {}
 PD_REGISTER_KERNEL(
     square, CPU, ALL_LAYOUT, phi::SquareKernel, float, double, int, int64_t) {}
+PD_REGISTER_ACTIVATION_KERNEL(softsign, SoftsignKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)

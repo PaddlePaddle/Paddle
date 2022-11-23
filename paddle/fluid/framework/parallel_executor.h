@@ -54,14 +54,16 @@ class ParallelExecutor {
  public:
   explicit ParallelExecutor(const std::vector<platform::Place> &places,
                             const std::vector<std::string> &bcast_vars,
-                            const std::string &loss_var_name, Scope *scope,
+                            const std::string &loss_var_name,
+                            Scope *scope,
                             const std::vector<Scope *> &local_scopes,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
 
   // NOTE(Aurelius84): Construct a PE running on single device for @to_static
-  explicit ParallelExecutor(const platform::Place &place, Scope *scope,
+  explicit ParallelExecutor(const platform::Place &place,
+                            Scope *scope,
                             const ExecutionStrategy &exec_strategy,
                             const BuildStrategy &build_strategy,
                             ir::Graph *graph);
@@ -87,8 +89,8 @@ class ParallelExecutor {
   void FeedAndSplitTensorIntoLocalScopes(
       const std::unordered_map<std::string, LoDTensor> &tensors);
 
-  FetchResultType Run(const std::vector<std::string> &fetch_tensors,
-                      bool return_merged = true);
+  FetchUnmergedList Run(const std::vector<std::string> &fetch_tensors);
+  FetchList RunAndMerge(const std::vector<std::string> &fetch_tensors);
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
@@ -124,10 +126,13 @@ class ParallelExecutor {
 
   std::vector<ir::Graph *> CloneGraphToMultiDevices(ir::Graph *graph);
 
+  void PreludeToRun(const std::vector<std::string> &fetch_tensors);
+
   void PrepareNCCLCommunicator(Scope *global_scope);
 
   std::vector<ir::Graph *> CompileGraphWithBuildStrategy(
-      ir::Graph *graph, std::vector<ir::Graph *> *graphs,
+      ir::Graph *graph,
+      std::vector<ir::Graph *> *graphs,
       const std::string &loss_var_name);
 
   void CreateVariableInfos(std::vector<VariableInfo> *var_infos,
@@ -135,7 +140,8 @@ class ParallelExecutor {
 
   std::vector<ir::Graph *> CreateSSAGraphExecutor(
       const ExecutionStrategy &exec_strategy,
-      std::vector<ir::Graph *> *async_graphs, ir::Graph *graph);
+      std::vector<ir::Graph *> *async_graphs,
+      ir::Graph *graph);
 
   void ResetOpHandleScopeMapOfGraphs(
       const std::vector<ir::Graph *> &final_graphs,

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
@@ -20,10 +19,8 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
 import paddle
-from paddle.fluid import Program, program_guard
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
 
 
@@ -498,10 +495,41 @@ class XPUTestConv2DOp_v2(XPUOpTestWrapper):
             self.padding_algorithm = "EXPLICIT"
 
 
+class XPUTestConv2DOp_NHWC(XPUOpTestWrapper):
+
+    def __init__(self):
+        self.op_name = 'conv2d'
+        self.use_dynamic_create_class = False
+
+    class TestConv2DOp_AsyPadding_NHWC(
+            XPUTestConv2DOp_v2.TestConv2DOp_AsyPadding):
+
+        def init_data_format(self):
+            self.data_format = "NHWC"
+
+        def init_test_case_2(self):
+            N, C, H, W = self.input_size
+            self.input_size = [N, H, W, C]
+
+    class TestWithPad_AsyPadding_NHWC(XPUTestConv2DOp_v2.TestWithPad_AsyPadding
+                                      ):
+
+        def init_data_format(self):
+            self.data_format = "NHWC"
+
+        def init_test_case_2(self):
+            N, C, H, W = self.input_size
+            self.input_size = [N, H, W, C]
+
+
 support_types = get_xpu_op_support_types('conv2d')
-for stype in support_types:
+for stype in ['float32']:
     create_test_class(globals(), XPUTestConv2DOp, stype)
     create_test_class(globals(), XPUTestConv2DOp_v2, stype)
+    create_test_class(globals(),
+                      XPUTestConv2DOp_NHWC,
+                      stype,
+                      ignore_device_version=[core.XPUVersion.XPU1])
 
 #---------- test SAME VALID -----------
 #create_test_padding_SAME_class(TestConv2DOp_AsyPadding)
@@ -511,10 +539,6 @@ for stype in support_types:
 #create_test_padding_VALID_class(TestConv2DOp_AsyPadding)
 #create_test_padding_VALID_class(TestWithPad_AsyPadding)
 #create_test_padding_VALID_class(TestWithStride_AsyPadding)
-
-# ------------ test channel last ---------
-#create_test_channel_last_class(TestConv2DOp_AsyPadding)
-#create_test_channel_last_class(TestWithPad_AsyPadding)
 
 if __name__ == '__main__':
     unittest.main()

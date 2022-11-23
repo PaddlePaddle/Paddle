@@ -12,18 +12,12 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import os
 import sys
 
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
-from paddle.fluid.dygraph.base import to_variable
-from paddle.fluid.dygraph.nn import Conv2D, BatchNorm
-from paddle.fluid.initializer import Constant
-from paddle.fluid.initializer import Normal
+from paddle.fluid.dygraph.nn import Conv2D
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.regularizer import L2Decay
 

@@ -18,13 +18,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename DeviceContext, typename T>
 class ReduceMaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* out = ctx.Output<Tensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     auto dims = ctx.Attr<std::vector<int>>("dim");
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
@@ -32,7 +32,7 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
 
     auto place = ctx.GetPlace();
 
-    framework::Tensor cast_out(x->type());
+    phi::DenseTensor cast_out(x->type());
     cast_out.Resize(out->dims());
     cast_out.mutable_data<T>(place);
 
@@ -86,7 +86,11 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
         runner.Run(dev_ctx.stream());
       };
 
-      NpuOpRunner::TypeAdapter({*x}, {cast_out}, attr_input, dev_ctx, op_func,
+      NpuOpRunner::TypeAdapter({*x},
+                               {cast_out},
+                               attr_input,
+                               dev_ctx,
+                               op_func,
                                {framework::proto::VarType::INT32},
                                {framework::proto::VarType::INT32});
     } else {
@@ -98,7 +102,9 @@ class ReduceMaxNPUKernel : public framework::OpKernel<T> {
     if (framework::TransToProtoVarType(x->dtype()) != cast_out_dtype) {
       auto dst_dtype = ConvertToNpuDtype(cast_out_dtype);
       const auto& runner_cast =
-          NpuOpRunner("Cast", {cast_out}, {*out},
+          NpuOpRunner("Cast",
+                      {cast_out},
+                      {*out},
                       {{"dst_type", static_cast<int>(dst_dtype)}});
       runner_cast.Run(dev_ctx.stream());
     }
@@ -109,19 +115,22 @@ template <typename DeviceContext, typename T>
 class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Input<Tensor>("Out");
-    auto* out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Input<phi::DenseTensor>("Out");
+    auto* out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto reduce_dims = context.Attr<std::vector<int>>("dim");
     bool reduce_all = context.Attr<bool>("reduce_all");
     int in_dtype = context.Attr<int>("in_dtype");
 
     PADDLE_ENFORCE_EQ(
-        in_dtype == -1, true,
+        in_dtype == -1,
+        true,
         platform::errors::InvalidArgument(
             "NPU only support in_dtype == -1 in reduce_max_grad op."));
 
-    auto* x_grad = context.Output<Tensor>(framework::GradVarName("X"));
+    auto* x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     x_grad->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx =
@@ -196,12 +205,14 @@ class ReduceMaxGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    reduce_max, ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_max,
+    ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int64_t>,
     ops::ReduceMaxNPUKernel<plat::NPUDeviceContext, int>);
 REGISTER_OP_NPU_KERNEL(
-    reduce_max_grad, ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, float>,
+    reduce_max_grad,
+    ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, float>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, plat::float16>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, int64_t>,
     ops::ReduceMaxGradNPUKernel<plat::NPUDeviceContext, int>);

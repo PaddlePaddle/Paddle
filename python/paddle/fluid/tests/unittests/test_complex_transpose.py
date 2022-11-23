@@ -39,7 +39,7 @@ class TestComplexTransposeLayer(unittest.TestCase):
                 with dg.guard(place):
                     var = dg.to_variable(data)
                     trans = paddle.transpose(var, perm=perm)
-                self.assertTrue(np.allclose(trans.numpy(), np_trans))
+                np.testing.assert_allclose(trans.numpy(), np_trans, rtol=1e-05)
 
     def test_eager(self):
         with _test_eager_guard():

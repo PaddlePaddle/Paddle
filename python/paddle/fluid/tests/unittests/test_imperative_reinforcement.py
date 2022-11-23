@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
 import six
@@ -23,9 +20,7 @@ import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
 import paddle.fluid.dygraph.nn as nn
-from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _test_eager_guard
 
@@ -178,7 +173,7 @@ class TestImperativeMnist(unittest.TestCase):
             for i in range(1, len(out)):
                 static_param_value[static_param_name_list[i - 1]] = out[i]
 
-        #self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+        # np.testing.assert_allclose(dy_x_data.all(), static_x_data.all(), rtol=1e-5)
 
         for key, value in six.iteritems(static_param_init_value):
             self.assertTrue(np.equal(value, dy_param_init_value[key]).all())

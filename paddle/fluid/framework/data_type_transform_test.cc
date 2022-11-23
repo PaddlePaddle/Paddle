@@ -19,45 +19,52 @@ limitations under the License. */
 TEST(DataTypeTransform, CPUTransform) {
   auto place = paddle::platform::CPUPlace();
 
-  auto kernel_fp16 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::FP16, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp16 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP16,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_bf16 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::BF16, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_bf16 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BF16,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp32 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::FP32, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp32 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_fp64 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::FP64, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_fp64 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP64,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_int32 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::INT32, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_int32 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT32,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_int64 = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::INT64, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_int64 =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::INT64,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
-  auto kernel_bool = paddle::framework::OpKernelType(
-      paddle::framework::proto::VarType::BOOL, place,
-      paddle::framework::DataLayout::kAnyLayout,
-      paddle::framework::LibraryType::kPlain);
+  auto kernel_bool =
+      paddle::framework::OpKernelType(paddle::framework::proto::VarType::BOOL,
+                                      place,
+                                      paddle::framework::DataLayout::kAnyLayout,
+                                      paddle::framework::LibraryType::kPlain);
 
   // data type transform from float32
   {
-    paddle::framework::Tensor in;
-    paddle::framework::Tensor out;
+    phi::DenseTensor in;
+    phi::DenseTensor out;
 
     float* ptr = in.mutable_data<float>(phi::make_ddim({2, 3}), place);
     int data_number = 2 * 3;
@@ -81,8 +88,8 @@ TEST(DataTypeTransform, CPUTransform) {
 
   // data type transform from/to float16
   {
-    paddle::framework::Tensor in;
-    paddle::framework::Tensor out;
+    phi::DenseTensor in;
+    phi::DenseTensor out;
 
     paddle::platform::float16* ptr = in.mutable_data<paddle::platform::float16>(
         phi::make_ddim({2, 3}), place);
@@ -194,8 +201,8 @@ TEST(DataTypeTransform, CPUTransform) {
 
   // data type transform from/to bfloat16
   {
-    paddle::framework::Tensor in;
-    paddle::framework::Tensor out;
+    phi::DenseTensor in;
+    phi::DenseTensor out;
 
     paddle::platform::bfloat16* ptr =
         in.mutable_data<paddle::platform::bfloat16>(phi::make_ddim({2, 3}),
@@ -308,8 +315,8 @@ TEST(DataTypeTransform, CPUTransform) {
 
   // data type transform from/to int32
   {
-    paddle::framework::Tensor in;
-    paddle::framework::Tensor out;
+    phi::DenseTensor in;
+    phi::DenseTensor out;
 
     int32_t* ptr = in.mutable_data<int32_t>(phi::make_ddim({2, 3}), place);
     int data_number = 2 * 3;

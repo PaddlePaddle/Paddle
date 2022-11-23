@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
-import paddle.nn as nn
 import numpy as np
 from paddle.fluid.framework import _test_eager_guard
 

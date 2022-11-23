@@ -20,8 +20,6 @@ import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
-@unittest.skipIf(not paddle.is_compiled_with_ipu(),
-                 "core is not compiled with IPU")
 class TestBase(IPUOpTest):
 
     def setUp(self):
@@ -78,6 +76,16 @@ class TestCase2(TestBase):
 
     def set_op_attrs(self):
         self.attrs = {"perm": [4, 0, 2, 3, 1]}
+
+
+class TestCase_ZeroDim(TestBase):
+
+    def set_data_feed(self):
+        data = np.random.uniform(size=[])
+        self.feed_fp32 = {"x": data.astype(np.float32)}
+
+    def set_op_attrs(self):
+        self.attrs = {"perm": []}
 
 
 if __name__ == "__main__":

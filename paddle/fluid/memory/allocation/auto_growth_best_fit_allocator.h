@@ -30,8 +30,10 @@ namespace allocation {
 class AutoGrowthBestFitAllocator : public Allocator {
  public:
   AutoGrowthBestFitAllocator(
-      const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-      size_t chunk_size = 0, bool allow_free_idle_chunk = true);
+      const std::shared_ptr<Allocator> &underlying_allocator,
+      size_t alignment,
+      size_t chunk_size = 0,
+      bool allow_free_idle_chunk = true);
 
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -73,7 +75,9 @@ class AutoGrowthBestFitAllocator : public Allocator {
 
   struct BlockAllocation : public Allocation {
     explicit BlockAllocation(const List<Block>::iterator &it)
-        : Allocation(it->ptr_, it->chunk_->allocation_->base_ptr(), it->size_,
+        : Allocation(it->ptr_,
+                     it->chunk_->allocation_->base_ptr(),
+                     it->size_,
                      it->chunk_->allocation_->place()),
           block_it_(it) {}
 

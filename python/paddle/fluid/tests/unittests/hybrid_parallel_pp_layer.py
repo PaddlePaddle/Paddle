@@ -14,8 +14,6 @@
 
 import unittest
 import numpy as np
-import os
-import paddle
 from paddle.distributed import fleet
 from paddle.fluid.dygraph.container import Sequential
 import paddle.nn as nn

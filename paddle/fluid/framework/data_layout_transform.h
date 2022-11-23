@@ -37,12 +37,13 @@ namespace framework {
 
 struct CastDataLayout {
   CastDataLayout(const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis, const framework::Tensor& in,
-                 framework::Tensor* out)
+                 const std::vector<int>& axis,
+                 const phi::DenseTensor& in,
+                 phi::DenseTensor* out)
       : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
 
-  const framework::Tensor in_;
-  framework::Tensor* out_;
+  const phi::DenseTensor in_;
+  phi::DenseTensor* out_;
   const platform::DeviceContext* ctx_;
   const std::vector<int> axis_;
 
@@ -98,24 +99,28 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   return MKLDNNDataType::undef;
 }
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
-                                    const Tensor& in, Tensor* out,
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
+                                    DataLayout out_layout,
+                                    const phi::DenseTensor& in,
+                                    phi::DenseTensor* out,
                                     platform::Place place,
                                     bool always_copy = false);
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
-                               const Tensor& in, Tensor* out);
+                               const phi::DenseTensor& in,
+                               phi::DenseTensor* out);
 
-void* GetDataFromTensor(const Tensor& tensor, MKLDNNDataType type);
+void* GetDataFromTensor(const phi::DenseTensor& tensor, MKLDNNDataType type);
 
 #endif
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type, const Tensor& in,
-                     Tensor* out);
+                     const OpKernelType& expected_kernel_type,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

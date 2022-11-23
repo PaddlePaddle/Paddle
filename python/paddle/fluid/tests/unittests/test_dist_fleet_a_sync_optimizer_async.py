@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import os
-import time
 import unittest
 
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid.transpiler.details.program_utils as pu
 
 paddle.enable_static()
 
@@ -50,7 +48,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = False
@@ -88,7 +86,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         x = paddle.fluid.layers.data(name='x', shape=[1], dtype='float32')
         y = paddle.fluid.layers.data(name='y', shape=[1], dtype='float32')
         cost = paddle.fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = paddle.fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

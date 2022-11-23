@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 
@@ -54,7 +52,7 @@ def convolutional_neural_network(use_py_reader):
 
         prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
         acc = fluid.layers.accuracy(input=prediction, label=label)
         i = fluid.layers.zeros(shape=[1], dtype='int64')
         array = fluid.layers.array_write(x=prediction, i=i)

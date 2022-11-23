@@ -15,8 +15,6 @@
 import docstring_checker
 import pylint.testutils
 import astroid
-import pytest
-import sys
 
 
 class TestDocstring(pylint.testutils.CheckerTestCase):
@@ -24,8 +22,8 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_one_line(self):
         func_node = astroid.extract_node('''
-        def test(): 
-            """get 
+        def test():
+            """get
             news.
             """
             if True:
@@ -40,7 +38,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_one_line_1(self):
         func_node = astroid.extract_node('''
-        def test(): 
+        def test():
             """get news"""
             if True:
                 return 5
@@ -54,7 +52,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_args(self):
         func_node = astroid.extract_node('''
-        def test(scale, mean): 
+        def test(scale, mean):
             """get news.
             Args:
                 scale (int): scale is the number.
@@ -75,7 +73,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_missing(self):
         func_node = astroid.extract_node('''
-        def test(): 
+        def test():
             mean=scale
             mean=scale
             mean=scale
@@ -96,11 +94,11 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_indent(self):
         func_node = astroid.extract_node('''
-        def test(): 
+        def test():
             """ get get get get get get get get
               get get get get get get get get.
             """
-            pass 
+            pass
         ''')
 
         self.checker.visit_functiondef(func_node)
@@ -110,7 +108,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_with_resturns(self):
         func_node = astroid.extract_node('''
-        def test(): 
+        def test():
             """get news.
             Args:
                 scale (int): scale is the number.
@@ -136,7 +134,7 @@ class TestDocstring(pylint.testutils.CheckerTestCase):
 
     def test_with_raises(self):
         func_node = astroid.extract_node('''
-        def test(): 
+        def test():
             """get news.
             Args:
                 scale (int): scale is the number.

@@ -33,12 +33,12 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
                                              bool relu,
                                              bool padding_weights) {
   auto blas = GetBlas<DeviceContext, T>(context);
-  paddle::framework::Tensor Y1;
+  phi::DenseTensor Y1;
   T* Y1_data = nullptr;
   if (padding_weights) {
     const int NN = N + 4;
     const int KK = K + 4;
-    paddle::framework::Tensor X1;
+    phi::DenseTensor X1;
     T* X1_data = X1.mutable_data<T>({M * KK}, paddle::platform::CPUPlace());
     Y1_data = Y1.mutable_data<T>({M * (N + 4)}, paddle::platform::CPUPlace());
 #ifdef PADDLE_WITH_MKLML
@@ -96,8 +96,6 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
   }
 }
 
-template class FCFunctor<paddle::platform::CPUDeviceContext, float>;
-template class FCFunctor<paddle::platform::CPUDeviceContext, double>;
 template class FCFunctor<CPUContext, float>;
 template class FCFunctor<CPUContext, double>;
 

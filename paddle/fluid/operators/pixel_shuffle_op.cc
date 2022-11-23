@@ -40,7 +40,8 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the factor to increase spatial resolution by.")
         .SetDefault(1)
         .AddCustomChecker([](const int& upscale_factor) {
-          PADDLE_ENFORCE_GE(upscale_factor, 1,
+          PADDLE_ENFORCE_GE(upscale_factor,
+                            1,
                             platform::errors::InvalidArgument(
                                 "upscale_factor should be larger than 0."));
         });
@@ -51,19 +52,18 @@ class PixelShuffleOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("NCHW");
 
     AddComment(R"DOC(
-		Pixel Shuffle operator
-		This operator rearranges elements in a tensor of shape :math:`(*, C \times r^2, H, W)`
-    		to a tensor of shape :math:`(C, H \times r, W \times r)`.
+    Pixel Shuffle operator
+    This operator rearranges elements in a tensor of shape :math:`(*, C \times r^2, H, W)`
+    to a tensor of shape :math:`(C, H \times r, W \times r)`.
 
-		This is useful for implementing efficient sub-pixel convolution
-    		with a stride of :math:`1/r`.
+    This is useful for implementing efficient sub-pixel convolution
+    with a stride of :math:`1/r`.
 
-		Please refer to the paper:
-		 `Real-Time Single Image and Video Super-Resolution Using an Efficient 
-		 Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
-    		by Shi et. al (2016) for more details. 
-
-        )DOC");
+    Please refer to the paper:
+    `Real-Time Single Image and Video Super-Resolution Using an Efficient
+    Sub-Pixel Convolutional Neural Network <https://arxiv.org/abs/1609.05158v2>`_
+    by Shi et. al (2016) for more details.
+    )DOC");
   }
 };
 
@@ -89,10 +89,13 @@ class PixelShuffleGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle, PixelShuffleInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle,
+                            PixelShuffleInferShapeFunctor,
                             PD_INFER_META(phi::PixelShuffleInferMeta));
 
-REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
+REGISTER_OPERATOR(pixel_shuffle,
+                  ops::PixelShuffleOp,
+                  ops::PixelShuffleOpMaker,
                   ops::PixelShuffleGradMaker<paddle::framework::OpDesc>,
                   ops::PixelShuffleGradMaker<paddle::imperative::OpBase>,
                   PixelShuffleInferShapeFunctor);
@@ -100,7 +103,8 @@ REGISTER_OPERATOR(pixel_shuffle, ops::PixelShuffleOp, ops::PixelShuffleOpMaker,
 DECLARE_INFER_SHAPE_FUNCTOR(pixel_shuffle_grad,
                             PixelShuffleGradInferShapeFunctor,
                             PD_INFER_META(phi::PixelShuffleGradInferMeta));
-REGISTER_OPERATOR(pixel_shuffle_grad, ops::PixelShuffleGradOp,
+REGISTER_OPERATOR(pixel_shuffle_grad,
+                  ops::PixelShuffleGradOp,
                   PixelShuffleGradInferShapeFunctor);
 
 REGISTER_OP_VERSION(pixel_shuffle)

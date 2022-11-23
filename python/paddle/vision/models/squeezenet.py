@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -80,7 +76,7 @@ class SqueezeNet(nn.Layer):
 
     Args:
         version (str): Version of SqueezeNet, which can be "1.0" or "1.1".
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 

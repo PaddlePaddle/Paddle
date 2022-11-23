@@ -139,12 +139,12 @@ void SkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm, layer_norm, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_bias, layer_norm_bias, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_scale, layer_norm_scale,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_scale, layer_norm_scale, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_out, layer_norm_out, fused_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(layer_norm_mean, layer_norm_mean, fused_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(layer_norm_variance, layer_norm_variance,
-                              fused_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(
+        layer_norm_variance, layer_norm_variance, fused_pattern);
 
     std::unordered_set<const Node *> del_node_set;
 

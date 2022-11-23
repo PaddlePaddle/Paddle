@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -51,6 +49,7 @@ class TestCropTensorOp(OpTest):
         self.offset_by_input = False
         self.unk_dim_idx = -1
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.shape_by_input:
@@ -146,6 +145,7 @@ class TestCropTensorOpTensorAttr(OpTest):
         self.OffsetsTensor = False
         self.ShapeTensor = True
         self.attrs = {}
+        self.python_api = paddle.crop
         self.initTestCase()
 
         if self.ShapeTensor:

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -119,7 +117,7 @@ def simple_fc_net(in_size,
                 value=1.0)))
 
     predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
-    loss = fluid.layers.mean(
+    loss = paddle.mean(
         fluid.layers.cross_entropy(input=predict_label, label=label))
 
     optimizer = fluid.optimizer.Adam()

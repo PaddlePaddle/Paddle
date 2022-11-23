@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy
 import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
 
 
@@ -30,8 +27,7 @@ class TestException(unittest.TestCase):
         try:
             core.__unittest_throw_exception__()
         except RuntimeError as ex:
-            self.assertIn("This is a test of exception",
-                          cpt.get_exception_message(ex))
+            self.assertIn("This is a test of exception", str(ex))
             exception = ex
 
         self.assertIsNotNone(exception)
@@ -49,7 +45,7 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = fluid.layers.data(name='Y', shape=[-1, 1], dtype='float32')
         predict = fluid.layers.fc(input=x, size=1, act=None)
         loss = fluid.layers.square_error_cost(input=predict, label=y)
-        avg_loss = fluid.layers.mean(loss)
+        avg_loss = paddle.mean(loss)
 
         fluid.optimizer.SGD(learning_rate=0.01).minimize(avg_loss)
 

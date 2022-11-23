@@ -44,7 +44,7 @@ def simple_fc_net():
                 value=1.0)))
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+    loss = paddle.mean(loss)
     optimizer = fluid.optimizer.Adam(learning_rate=1e-3)
     optimizer.minimize(loss)
     return image, label, loss

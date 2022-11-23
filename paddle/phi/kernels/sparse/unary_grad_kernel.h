@@ -17,25 +17,77 @@
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
-#define DECLARE_SPARSE_UNARY_GRAD_KERNEL(name)                      \
-  template <typename T, typename Context>                           \
-  void SparseCoo##name##GradKernel(const Context& dev_ctx,          \
-                                   const SparseCooTensor& x,        \
-                                   const SparseCooTensor& out_grad, \
-                                   SparseCooTensor* x_grad);        \
-                                                                    \
-  template <typename T, typename Context>                           \
-  void SparseCsr##name##GradKernel(const Context& dev_ctx,          \
-                                   const SparseCsrTensor& x,        \
-                                   const SparseCsrTensor& out_grad, \
-                                   SparseCsrTensor* x_grad);
-
 namespace phi {
 namespace sparse {
 
-DECLARE_SPARSE_UNARY_GRAD_KERNEL(Relu)
-DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sqrt)
+#define DECLARE_SPARSE_UNARY_GRAD_KERNEL(prefix)              \
+  template <typename T, typename Context>                     \
+  void prefix##CooGradKernel(const Context& dev_ctx,          \
+                             const SparseCooTensor& x_or_out, \
+                             const SparseCooTensor& dout,     \
+                             SparseCooTensor* dx);            \
+                                                              \
+  template <typename T, typename Context>                     \
+  void prefix##CsrGradKernel(const Context& dev_ctx,          \
+                             const SparseCsrTensor& x_or_out, \
+                             const SparseCsrTensor& dout,     \
+                             SparseCsrTensor* dx);
+
+#define DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(prefix, attr) \
+  template <typename T, typename Context>                            \
+  void prefix##CooGradKernel(const Context& dev_ctx,                 \
+                             const SparseCooTensor& x_or_out,        \
+                             const SparseCooTensor& dout,            \
+                             float attr,                             \
+                             SparseCooTensor* dx);                   \
+                                                                     \
+  template <typename T, typename Context>                            \
+  void prefix##CsrGradKernel(const Context& dev_ctx,                 \
+                             const SparseCsrTensor& x_or_out,        \
+                             const SparseCsrTensor& dout,            \
+                             float attr,                             \
+                             SparseCsrTensor* dx);
+
 DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sin)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Tan)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Asin)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Atan)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sinh)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Asinh)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Atanh)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Relu)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Tanh)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Square)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Sqrt)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Log1p)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL(Abs)
+DECLARE_SPARSE_UNARY_GRAD_KERNEL_WITH_ONE_ATTR(Pow, factor)
+
+template <typename T, typename Context>
+void CastCooGradKernel(const Context& dev_ctx,
+                       const SparseCooTensor& x,
+                       const SparseCooTensor& dout,
+                       DataType value_dtype,
+                       SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void CastCsrGradKernel(const Context& dev_ctx,
+                       const SparseCsrTensor& x,
+                       const SparseCsrTensor& dout,
+                       DataType value_dtype,
+                       SparseCsrTensor* dx);
+
+template <typename T, typename Context>
+void TransposeCooGradKernel(const Context& dev_ctx,
+                            const SparseCooTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCooTensor* dx);
+
+template <typename T, typename Context>
+void TransposeCsrGradKernel(const Context& dev_ctx,
+                            const SparseCsrTensor& dout,
+                            const std::vector<int>& perm,
+                            SparseCsrTensor* dx);
 
 }  // namespace sparse
 }  // namespace phi

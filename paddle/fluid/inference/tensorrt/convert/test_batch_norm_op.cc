@@ -22,9 +22,10 @@ namespace inference {
 namespace tensorrt {
 
 TEST(batch_norm_op, test) {
-  std::unordered_set<std::string> parameters(
-      {"batch_norm_scale", "batch_norm_bias", "batch_norm_mean",
-       "batch_norm_variance"});
+  std::unordered_set<std::string> parameters({"batch_norm_scale",
+                                              "batch_norm_bias",
+                                              "batch_norm_mean",
+                                              "batch_norm_variance"});
   framework::Scope scope;
   TRTConvertValidation validator(5, parameters, scope, 1 << 15);
   std::vector<int> param_shape{2};
@@ -61,7 +62,9 @@ TEST(batch_norm_op, test) {
   validator.SetOp(*desc.Proto());
 
   std::unordered_set<std::string> neglected_output = {
-      "batch_norm_save_mean", "batch_norm_save_variance", "batch_norm_mean",
+      "batch_norm_save_mean",
+      "batch_norm_save_variance",
+      "batch_norm_mean",
       "batch_norm_variance"};
   validator.Execute(3, neglected_output);
 }

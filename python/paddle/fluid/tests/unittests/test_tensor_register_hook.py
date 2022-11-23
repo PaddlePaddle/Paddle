@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -97,16 +95,16 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad is not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
                 # w.grad is not changed by hook
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
                 # x.grad and y.grad are changed if run hook
-                self.assertTrue(
-                    np.array_equal(x.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
-                self.assertTrue(
-                    np.array_equal(y.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
+                np.testing.assert_array_equal(
+                    x.grad.numpy(),
+                    z.numpy() * 2 if not removed else z.numpy())
+                np.testing.assert_array_equal(
+                    y.grad.numpy(),
+                    z.numpy() * 2 if not removed else z.numpy())
 
         def run_print_hook_for_interior_var(print_hook, removed=False):
             for device in self.devices:
@@ -133,10 +131,10 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # all grads are not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(y.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(x.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(y.grad.numpy(), z.numpy())
 
         def double_hook(grad):
             grad = grad * 2
@@ -195,13 +193,13 @@ class TestTensorRegisterHook(unittest.TestCase):
                 o.backward()
 
                 # z.grad, w.grad, x.grad is not affected
-                self.assertTrue(np.array_equal(z.grad.numpy(), w.numpy()))
-                self.assertTrue(np.array_equal(w.grad.numpy(), z.numpy()))
-                self.assertTrue(np.array_equal(x.grad.numpy(), z.numpy()))
+                np.testing.assert_array_equal(z.grad.numpy(), w.numpy())
+                np.testing.assert_array_equal(w.grad.numpy(), z.numpy())
+                np.testing.assert_array_equal(x.grad.numpy(), z.numpy())
                 # y.grad are changed if run hook
-                self.assertTrue(
-                    np.array_equal(y.grad.numpy(),
-                                   z.numpy() * 2 if not removed else z.numpy()))
+                np.testing.assert_array_equal(
+                    y.grad.numpy(),
+                    z.numpy() * 2 if not removed else z.numpy())
 
         # register hook
         run_double_hook_for_leaf_var(lambda grad: grad * 2)
@@ -255,15 +253,13 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 base_grad = np.array([5., 9., 13., 19.])
                 # x.grad is not changed
-                self.assertTrue(np.array_equal(x.grad.numpy(), base_grad))
+                np.testing.assert_array_equal(x.grad.numpy(), base_grad)
                 # b.grad is changed by x.hook
-                self.assertTrue(
-                    np.array_equal(b.grad.numpy(),
-                                   base_grad * 2 if not removed else base_grad))
+                np.testing.assert_array_equal(
+                    b.grad.numpy(), base_grad * 2 if not removed else base_grad)
                 # a.grad is changed by x.hook and a.hook
-                self.assertTrue(
-                    np.array_equal(a.grad.numpy(),
-                                   base_grad * 4 if not removed else base_grad))
+                np.testing.assert_array_equal(
+                    a.grad.numpy(), base_grad * 4 if not removed else base_grad)
 
         # register hook
         run_double_hook_for_accumulated_grad_interior_var(lambda grad: grad * 2)
@@ -310,9 +306,8 @@ class TestTensorRegisterHook(unittest.TestCase):
 
                 base_grad = np.array([5., 9., 13., 19.])
                 # x.grad is changed by x.hook
-                self.assertTrue(
-                    np.array_equal(x.grad.numpy(),
-                                   base_grad * 2 if not removed else base_grad))
+                np.testing.assert_array_equal(
+                    x.grad.numpy(), base_grad * 2 if not removed else base_grad)
 
         # register hook
         run_double_hook_for_accumulated_grad_leaf_var(lambda grad: grad * 2)
@@ -364,14 +359,14 @@ class TestTensorRegisterHook(unittest.TestCase):
             data, label, lambda grad: grad * 2, True, True)
 
         # compare original value and with hook
-        self.assertTrue(np.array_equal(ret1_grad, ret1_grad_hook))
-        self.assertTrue(np.array_equal(linear1_w_grad * 2, linear1_w_grad_hook))
-        self.assertTrue(np.array_equal(linear1_b_grad * 2, linear1_b_grad_hook))
+        np.testing.assert_array_equal(ret1_grad, ret1_grad_hook)
+        np.testing.assert_array_equal(linear1_w_grad * 2, linear1_w_grad_hook)
+        np.testing.assert_array_equal(linear1_b_grad * 2, linear1_b_grad_hook)
 
         # compare original value and remove hook
-        self.assertTrue(np.array_equal(ret1_grad, ret1_grad_rm))
-        self.assertTrue(np.array_equal(linear1_w_grad, linear1_w_grad_rm))
-        self.assertTrue(np.array_equal(linear1_b_grad, linear1_b_grad_rm))
+        np.testing.assert_array_equal(ret1_grad, ret1_grad_rm)
+        np.testing.assert_array_equal(linear1_w_grad, linear1_w_grad_rm)
+        np.testing.assert_array_equal(linear1_b_grad, linear1_b_grad_rm)
 
     def test_func_hook_in_model(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -427,37 +422,37 @@ class TestTensorRegisterHook(unittest.TestCase):
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
                 device, hooks)
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 8))
-            self.assertTrue(np.array_equal(y_grad, z * 8))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 8)
+            np.testing.assert_array_equal(y_grad, z * 8)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
                 device, hooks, remove1=True)
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
                 device, hooks, remove2=True)
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
                 device, hooks, remove3=True)
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z * 4))
-            self.assertTrue(np.array_equal(y_grad, z * 4))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z * 4)
+            np.testing.assert_array_equal(y_grad, z * 4)
 
             z, w_grad, x_grad, y_grad = run_multiple_hooks_for_interior_var(
                 device, hooks, remove1=True, remove2=True, remove3=True)
 
-            self.assertTrue(np.array_equal(w_grad, z))
-            self.assertTrue(np.array_equal(x_grad, z))
-            self.assertTrue(np.array_equal(y_grad, z))
+            np.testing.assert_array_equal(w_grad, z)
+            np.testing.assert_array_equal(x_grad, z)
+            np.testing.assert_array_equal(y_grad, z)
 
     def test_multiple_hooks_for_interior_var(self):
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
@@ -502,7 +497,7 @@ class TestTensorRegisterHook(unittest.TestCase):
             pass
         else:
             z.backward()
-            self.assertTrue(np.array_equal(x.grad.numpy(), np.array([8.])))
+            np.testing.assert_array_equal(x.grad.numpy(), np.array([8.0]))
 
     def test_hook_in_double_grad(self):
         with _test_eager_guard():
@@ -637,6 +632,36 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         with _test_eager_guard():
             self.func_register_backward_hook_for_var_without_gradient()
         self.func_register_backward_hook_for_var_without_gradient()
+
+
+class TestRegsiterBackwardFinalHook(unittest.TestCase):
+
+    def setUp(self):
+        self.devices = ["cpu"]
+        if paddle.is_compiled_with_cuda():
+            self.devices.append("gpu")
+
+    def test_register_backward_hook(self):
+        global HOOK_INIT_VALUE
+        global HOOK_IS_CALLED
+        for device in self.devices:
+            np_x = np.random.rand(4, 16).astype("float32")
+            np_y = np.random.rand(16, 20).astype("float32")
+            x = paddle.to_tensor(np_x, stop_gradient=False)
+            y = paddle.to_tensor(np_y, stop_gradient=False)
+
+            core.eager._add_backward_final_hook(global_void_hook)
+
+            out = paddle.matmul(x, y)
+            out = paddle.sum(out)
+            out.backward()
+
+            self.assertEqual(HOOK_INIT_VALUE, 20)
+            self.assertTrue(HOOK_IS_CALLED)
+
+            # reset initial value
+            HOOK_INIT_VALUE = 10
+            HOOK_IS_CALLED = False
 
 
 if __name__ == '__main__':

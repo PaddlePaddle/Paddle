@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -387,14 +385,17 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
-        gradient_checker.triple_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+        gradient_checker.triple_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
-        gradient_checker.triple_grad_check_for_dygraph(
-            self.multiply_wrapper, [x, y],
-            out,
-            x_init=[x_arr, y_arr],
-            place=place)
+        gradient_checker.triple_grad_check_for_dygraph(self.multiply_wrapper,
+                                                       [x, y],
+                                                       out,
+                                                       x_init=[x_arr, y_arr],
+                                                       place=place)
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):

@@ -39,11 +39,13 @@ class ElementwiseMaxGradMLUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_MLU_KERNEL(elementwise_max, ops::ElementwiseMaxMLUKernel<int>,
+REGISTER_OP_MLU_KERNEL(elementwise_max,
+                       ops::ElementwiseMaxMLUKernel<int>,
                        ops::ElementwiseMaxMLUKernel<float>,
                        ops::ElementwiseMaxMLUKernel<paddle::platform::float16>);
 REGISTER_OP_MLU_KERNEL(
-    elementwise_max_grad, ops::ElementwiseMaxGradMLUKernel<int>,
+    elementwise_max_grad,
+    ops::ElementwiseMaxGradMLUKernel<int>,
     ops::ElementwiseMaxGradMLUKernel<float>,
     ops::ElementwiseMaxGradMLUKernel<paddle::platform::float16>);
 #endif

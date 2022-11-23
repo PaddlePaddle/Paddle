@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/fluid/platform/place.h"
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 namespace paddle {
@@ -28,6 +27,9 @@ std::vector<Place> GetPlaceList(const std::vector<phi::DenseTensor>& tensors);
 std::string GetKeyFromPlaces(const std::vector<Place>& places);
 
 bool CheckTensorsInCudaPlace(const std::vector<phi::DenseTensor>& tensors);
+
+bool CheckTensorsInCustomPlace(const std::vector<phi::DenseTensor>& tensors,
+                               const std::string& dev_type);
 
 }  //  namespace distributed
 }  //  namespace paddle

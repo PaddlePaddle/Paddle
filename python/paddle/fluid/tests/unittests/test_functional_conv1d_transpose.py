@@ -14,9 +14,7 @@
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
 import numpy as np
 import unittest
 from unittest import TestCase

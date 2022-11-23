@@ -19,8 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class BoxClipKernel : public framework::OpKernel<T> {
@@ -29,11 +29,11 @@ class BoxClipKernel : public framework::OpKernel<T> {
     auto* input_box = context.Input<LoDTensor>("Input");
     auto* im_info = context.Input<LoDTensor>("ImInfo");
     auto* output_box = context.Output<LoDTensor>("Output");
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
     output_box->mutable_data<T>(context.GetPlace());
     if (input_box->lod().size()) {
-      PADDLE_ENFORCE_EQ(input_box->lod().size(), 1UL,
+      PADDLE_ENFORCE_EQ(input_box->lod().size(),
+                        1UL,
                         platform::errors::InvalidArgument(
                             "Input(Input) of BoxClip only supports 1 level "
                             "of LoD. But received the "

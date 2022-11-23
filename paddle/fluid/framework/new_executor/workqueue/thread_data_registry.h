@@ -46,8 +46,9 @@ class ThreadDataRegistry {
 
   // Returns current snapshot of all threads. Make sure there is no thread
   // create/destory when using it.
-  template <typename Alias = T, typename = std::enable_if_t<
-                                    std::is_copy_constructible<Alias>::value>>
+  template <
+      typename Alias = T,
+      typename = std::enable_if_t<std::is_copy_constructible<Alias>::value>>
   std::unordered_map<uint64_t, T> GetAllThreadDataByValue() {
     return impl_->GetAllThreadDataByValue();
   }
@@ -108,8 +109,9 @@ class ThreadDataRegistry {
       tid_map_.erase(tid);
     }
 
-    template <typename Alias = T, typename = std::enable_if_t<
-                                      std::is_copy_constructible<Alias>::value>>
+    template <
+        typename Alias = T,
+        typename = std::enable_if_t<std::is_copy_constructible<Alias>::value>>
     std::unordered_map<uint64_t, T> GetAllThreadDataByValue() {
       std::unordered_map<uint64_t, T> data_copy;
       SharedLockGuardType guard(lock_);

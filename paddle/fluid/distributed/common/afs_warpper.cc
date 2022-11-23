@@ -21,20 +21,27 @@ namespace distributed {
 // AfsClient impl
 int AfsClient::initialize(const FsClientParameter& fs_client_param) {
   // temporarily implemented with hdfs-client
-  return initialize(fs_client_param.hadoop_bin(), fs_client_param.uri(),
-                    fs_client_param.user(), fs_client_param.passwd(),
+  return initialize(fs_client_param.hadoop_bin(),
+                    fs_client_param.uri(),
+                    fs_client_param.user(),
+                    fs_client_param.passwd(),
                     fs_client_param.buffer_size());
 }
-int AfsClient::initialize(const std::string& hadoop_bin, const std::string& uri,
-                          const std::string& user, const std::string& passwd,
+int AfsClient::initialize(const std::string& hadoop_bin,
+                          const std::string& uri,
+                          const std::string& user,
+                          const std::string& passwd,
                           int buffer_size_param) {
   return initialize(
-      hadoop_bin, uri,
+      hadoop_bin,
+      uri,
       paddle::string::format_string("%s,%s", user.c_str(), passwd.c_str()),
       buffer_size_param);
 }
-int AfsClient::initialize(const std::string& hadoop_bin, const std::string& uri,
-                          const std::string& ugi, int buffer_size_param) {
+int AfsClient::initialize(const std::string& hadoop_bin,
+                          const std::string& uri,
+                          const std::string& ugi,
+                          int buffer_size_param) {
   // temporarily implemented with hdfs-client
   size_t buffer_size = 1L << 25;  // 32MB
   if (buffer_size_param > static_cast<int>(buffer_size)) {
@@ -44,7 +51,9 @@ int AfsClient::initialize(const std::string& hadoop_bin, const std::string& uri,
   paddle::framework::hdfs_set_command(paddle::string::format_string(
       "2>>./hdfs_err.log %s fs -Dfs.default.name=%s -Dhadoop.job.ugi=%s "
       "-Ddfs.client.block.write.retries=15 -Ddfs.rpc.timeout=300000",
-      hadoop_bin.c_str(), uri.c_str(), ugi.c_str()));
+      hadoop_bin.c_str(),
+      uri.c_str(),
+      ugi.c_str()));
   return 0;
 }
 

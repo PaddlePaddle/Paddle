@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -24,6 +22,8 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 import paddle
 from paddle.fluid.framework import _test_eager_guard
+
+paddle.enable_static()
 
 
 # Situation 1: shape is a list(without tensor)
@@ -300,9 +300,8 @@ class TestExpandV2DygraphAPI(unittest.TestCase):
             expand_1 = paddle.expand(a, shape=[2, 5])
             np_array = np.array([2, 5])
             expand_2 = paddle.expand(a, shape=np_array)
-            self.assertTrue(np.array_equal(expand_1.numpy(), expand_2.numpy()))
+            np.testing.assert_allclose(expand_1.numpy(), expand_2.numpy())
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

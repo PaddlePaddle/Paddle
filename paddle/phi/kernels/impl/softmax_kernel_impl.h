@@ -40,7 +40,7 @@ void SoftmaxKernel(const Context& dev_ctx,
   DenseTensor X_2d, Out_2d;
   X_2d.ShareDataWith(x).Resize({n, d});
   Out_2d.ShareDataWith(*out).Resize({n, d});
-  paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
+  paddle::operators::math::SoftmaxFunctor<Context, T>()(
       dev_ctx, axis_dim, &X_2d, &Out_2d);
 }
 

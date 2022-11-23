@@ -26,7 +26,8 @@ namespace paddle {
 namespace operators {
 class SplitPrimOp : public framework::OperatorBase {
  public:
-  SplitPrimOp(const std::string &type, const framework::VariableNameMap &inputs,
+  SplitPrimOp(const std::string &type,
+              const framework::VariableNameMap &inputs,
               const framework::VariableNameMap &outputs,
               const framework::AttributeMap &attrs)
       : framework::OperatorBase(type, inputs, outputs, attrs) {}
@@ -50,7 +51,7 @@ class SplitPrimOpMaker : public framework::OpProtoAndCheckerMaker {
         "num_or_sections indicates the number of equal sized sub-Tensors that "
         "the input will be divided into. If num_or_sections has more then one "
         "element, the length of it indicates the number of sub-Tensors and the "
-        "elements in it indicate the sizes of sub-Tensors’ dimension orderly. "
+        "elements in it indicate the sizes of sub-Tensors' dimension orderly. "
         "The length of the vector must not be larger than the input's size of "
         "specified axis.");
     AddComment(R"DOC(
@@ -64,35 +65,41 @@ class SplitPrimOpShapeInference : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *ctx) const override {
     framework::InferShapeVarPtr x_var_ptr = ctx->GetInputVarPtrs("X")[0];
     auto y_var_ptrs = ctx->GetOutputVarPtrs("YS");
-    framework::VarDesc *x_var = BOOST_GET(framework::VarDesc *, x_var_ptr);
+    framework::VarDesc *x_var = PADDLE_GET(framework::VarDesc *, x_var_ptr);
     auto x_shape = x_var->GetShape();
     auto axis = ctx->Attrs().Get<int64_t>("axis");
     auto num_or_sections =
         ctx->Attrs().Get<std::vector<int64_t>>("num_or_sections");
     std::vector<int64_t> y_shape(x_shape);
     if (num_or_sections.size() == 1) {
-      PADDLE_ENFORCE_EQ(x_shape[axis] % num_or_sections[0], 0,
+      PADDLE_ENFORCE_EQ(x_shape[axis] % num_or_sections[0],
+                        0,
                         platform::errors::InvalidArgument(
                             "The input tensor can't be devided equally into %d "
                             "parts equally along axis %d",
-                            num_or_sections[0], axis));
+                            num_or_sections[0],
+                            axis));
       y_shape[axis] = x_shape[axis] / num_or_sections[0];
       for (size_t i = 0; i < size_t(num_or_sections[0]); ++i) {
-        BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
+        PADDLE_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
       }
     } else {
       int64_t cnt_along_axis = 0;
       for (size_t i = 0; i < num_or_sections.size(); ++i) {
         y_shape[axis] = num_or_sections[i];
         cnt_along_axis += num_or_sections[i];
-        BOOST_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
+        PADDLE_GET(framework::VarDesc *, y_var_ptrs[i])->SetShape(y_shape);
       }
       PADDLE_ENFORCE_EQ(
-          x_shape[axis], cnt_along_axis,
+          x_shape[axis],
+          cnt_along_axis,
           platform::errors::InvalidArgument(
               "The input tensor has %d elements along axis %d, thus can't be "
               "devided into %d tensor with %d elements totally.",
-              x_shape[axis], axis, num_or_sections.size(), cnt_along_axis));
+              x_shape[axis],
+              axis,
+              num_or_sections.size(),
+              cnt_along_axis));
     }
   }
 };
@@ -113,7 +120,8 @@ class SplitPrimOpVarTypeInference
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(split_p, paddle::operators::SplitPrimOp,
+REGISTER_OPERATOR(split_p,
+                  paddle::operators::SplitPrimOp,
                   paddle::operators::SplitPrimOpMaker,
                   paddle::operators::SplitPrimOpShapeInference,
                   paddle::operators::SplitPrimOpVarTypeInference);

@@ -16,7 +16,6 @@
 import os
 import json
 import re
-import sys
 import time
 import subprocess
 import requests
@@ -38,8 +37,8 @@ class PRChecker(object):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         self.py_prog_oneline = re.compile('\d+\|\s*#.*')
-        self.py_prog_multiline_a = re.compile('\d+\|\s*r?""".*?"""', re.DOTALL)
-        self.py_prog_multiline_b = re.compile("\d+\|\s*r?'''.*?'''", re.DOTALL)
+        self.py_prog_multiline_a = re.compile('"""(.*?)"""', re.DOTALL)
+        self.py_prog_multiline_b = re.compile("'''(.*?)'''", re.DOTALL)
         self.cc_prog_online = re.compile('\d+\|\s*//.*')
         self.cc_prog_multiline = re.compile('\d+\|\s*/\*.*?\*/', re.DOTALL)
         self.lineno_prog = re.compile('@@ \-\d+,\d+ \+(\d+),(\d+) @@')
@@ -60,12 +59,15 @@ class PRChecker(object):
         last_commit = None
         ix = 0
         while True:
-            commits = self.pr.get_commits().get_page(ix)
-            for c in commits:
-                last_commit = c.commit
-            else:
+            try:
+                commits = self.pr.get_commits().get_page(ix)
+                if len(commits) == 0:
+                    raise ValueError("no commit found in {} page".format(ix))
+                last_commit = commits[-1].commit
+            except Exception as e:
                 break
-            ix = ix + 1
+            else:
+                ix = ix + 1
         if last_commit.message.find('test=allcase') != -1:
             print('PREC test=allcase is set')
             self.full_case = True
@@ -125,12 +127,16 @@ class PRChecker(object):
         """ Get files in pull request. """
         page = 0
         file_dict = {}
+        file_count = 0
         while True:
             files = self.pr.get_files().get_page(page)
             if not files:
                 break
             for f in files:
                 file_dict[PADDLE_ROOT + f.filename] = f.status
+                file_count += 1
+            if file_count == 30:  #if pr file count = 31, nend to run all case
+                break
             page += 1
         print("pr modify files: %s" % file_dict)
         return file_dict
@@ -257,6 +263,21 @@ class PRChecker(object):
                 all_counts = line.split()[-1]
         return int(all_counts)
 
+    def file_is_unnit_test(self, filename):
+        #get all testcases by ctest-N
+        all_ut_file = '%s/build/all_ut_file' % PADDLE_ROOT
+        os.system(
+            "cd %s/build && ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > %s"
+            % (PADDLE_ROOT, all_ut_file))
+        #determine whether filename is in all_ut_case
+        with open(all_ut_file, 'r') as f:
+            (filepath, tempfilename) = os.path.split(filename)
+            for f_file in f:
+                if f_file.strip('\n') == tempfilename.split(".")[0]:
+                    return True
+            else:
+                return False
+
     def get_pr_ut(self):
         """ Get unit tests in pull request. """
         if self.full_case:
@@ -282,6 +303,8 @@ class PRChecker(object):
         filterFiles = []
         file_list = []
         file_dict = self.get_pr_files()
+        if len(file_dict) == 30:  #if pr file count = 31, nend to run all case
+            return ''
         for filename in file_dict:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
@@ -342,18 +365,34 @@ class PRChecker(object):
                     elif 'tests/unittests/xpu' in f_judge or 'tests/unittests/npu' in f_judge or 'op_npu.cc' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif f_judge.endswith(('.h', '.cu', '.cc', 'py')):
-                        if f_judge.find('test_') != -1 or f_judge.find(
-                                '_test') != -1:
-                            check_added_ut = True
-                        if file_dict[f] not in ['removed']:
+                    elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
+                        #determine whether the new added file is a member of added_ut
+                        if file_dict[f] in ['added']:
+                            f_judge_in_added_ut = False
+                            with open('{}/added_ut'.format(
+                                    PADDLE_ROOT)) as utfile:
+                                (filepath,
+                                 tempfilename) = os.path.split(f_judge)
+                                for f_file in utfile:
+                                    if f_file.strip('\n') == tempfilename.split(
+                                            ".")[0]:
+                                        f_judge_in_added_ut = True
+                            if f_judge_in_added_ut == True:
+                                print(
+                                    "Adding new unit tests not hit mapFiles: %s"
+                                    % f_judge)
+                            else:
+                                notHitMapFiles.append(f_judge)
+                        elif file_dict[f] in ['removed']:
+                            print("remove file not hit mapFiles: %s" % f_judge)
+                        else:
                             if self.is_only_comment(f):
                                 ut_list.append('comment_placeholder')
                                 onlyCommentsFilesOrXpu.append(f_judge)
+                            if self.file_is_unnit_test(f_judge):
+                                ut_list.append(f_judge.split(".")[0])
                             else:
                                 notHitMapFiles.append(f_judge)
-                        else:
-                            print("remove file not hit mapFiles: %s" % f_judge)
                     else:
                         notHitMapFiles.append(
                             f_judge) if file_dict[f] != 'removed' else print(
@@ -378,10 +417,6 @@ class PRChecker(object):
                     print("filterFiles: %s" % filterFiles)
                 return ''
             else:
-                if check_added_ut:
-                    with open('{}/added_ut'.format(PADDLE_ROOT)) as utfile:
-                        for ut in utfile:
-                            ut_list.append(ut.rstrip('\r\n'))
                 if ut_list:
                     ret = self.__urlretrieve(
                         'https://paddle-docker-tar.bj.bcebos.com/pre_test/prec_delta',

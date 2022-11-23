@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import os
@@ -31,7 +29,6 @@ import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
-from paddle.fluid.transpiler import memory_optimize
 
 paddle.enable_static()
 
@@ -61,7 +58,7 @@ class TestBook(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -142,7 +139,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -166,7 +163,7 @@ class TestSaveInferenceModel(unittest.TestCase):
             auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
                                                                   label=y)
             cost = fluid.layers.cross_entropy(input=predict, label=y)
-            avg_cost = fluid.layers.mean(x=cost)
+            avg_cost = paddle.mean(x=cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -197,7 +194,7 @@ class TestInstance(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
         place = core.CPUPlace()
         exe = executor.Executor(place)
@@ -230,7 +227,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -350,7 +347,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)
@@ -393,7 +390,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
             y_predict = layers.fc(input=x, size=1, act=None)
 
             cost = layers.square_error_cost(input=y_predict, label=y)
-            avg_cost = layers.mean(cost)
+            avg_cost = paddle.mean(cost)
 
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost, init_program)

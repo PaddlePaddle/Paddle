@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from scipy.special import erf
@@ -44,7 +42,7 @@ class TestGeluOp(unittest.TestCase):
             x_var = dg.to_variable(x)
             y_var = fluid.layers.gelu(x_var, approximate)
             y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
 
     def _test_case1_gpu(self, approximate):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
@@ -55,7 +53,7 @@ class TestGeluOp(unittest.TestCase):
             x_var = dg.to_variable(x)
             y_var = fluid.layers.gelu(x_var, approximate)
             y_test = y_var.numpy()
-        self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
+        np.testing.assert_allclose(y_ref, y_test, rtol=1e-05, atol=1e-08)
 
     def test_cases(self):
         for approximate in [True, False]:
@@ -87,10 +85,12 @@ class TestGeluOp(unittest.TestCase):
         use_fast_math(False)
 
         y_ref, x_g_ref = run_gelu_op(True)
-        self.assertTrue(np.allclose(y_ref, y_fast_math, rtol=1e-5, atol=5e-4))
+        np.testing.assert_allclose(y_ref, y_fast_math, rtol=1e-05, atol=0.0005)
 
-        self.assertTrue(
-            np.allclose(x_g_ref, x_g_fast_math, rtol=1e-5, atol=5e-4))
+        np.testing.assert_allclose(x_g_ref,
+                                   x_g_fast_math,
+                                   rtol=1e-05,
+                                   atol=0.0005)
 
     def test_fast_math_eager(self):
         with _test_eager_guard():

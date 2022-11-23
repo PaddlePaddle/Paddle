@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import time
-import threading
-import numpy
 import tempfile
 
 import paddle
@@ -59,7 +55,7 @@ class TestCommunicator(unittest.TestCase):
         slots_vars = [x, y]
 
         cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        avg_cost = paddle.mean(cost)
 
         optimizer = fluid.optimizer.Adam(0.01)
 

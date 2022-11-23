@@ -34,8 +34,11 @@ class TestElementwiseAddGradGradWithoutDDX
  public:
   TestElementwiseAddGradGradWithoutDDX(const platform::Place &place,
                                        const framework::DDim &dims)
-      : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad", place, dims,
-                                     {"Y", "DOut", "DDY"}, {"DDOut"}) {}
+      : TestElementwiseOpGradGrad<T>("elementwise_add_grad_grad",
+                                     place,
+                                     dims,
+                                     {"Y", "DOut", "DDY"},
+                                     {"DDOut"}) {}
 
   using TestElementwiseOpGradGrad<T>::feed_datas_;
   using TestElementwiseOpGradGrad<T>::expected_outs_;
@@ -53,8 +56,10 @@ class TestElementwiseAddGradGradWithoutDDX
 
   std::unique_ptr<framework::OperatorBase> CreateTestOp() override {
     auto op = framework::OpRegistry::CreateOp(
-        this->op_type_, {{"Y", {"Y"}}, {"DOut", {"DOut"}}, {"DDY", {"DDY"}}},
-        {{"DDOut", {"DDOut"}}}, {{"use_mkldnn", false}, {"axis", 0}});
+        this->op_type_,
+        {{"Y", {"Y"}}, {"DOut", {"DOut"}}, {"DDY", {"DDY"}}},
+        {{"DDOut", {"DDOut"}}},
+        {{"use_mkldnn", false}, {"axis", 0}});
     return op;
   }
 };

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import List
 
 
 class TrtConvertCastTest(TrtLayerAutoScanTest):
@@ -27,10 +27,12 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
+        if attrs[0]['in_dtype'] == 0:
+            return False
         if attrs[0]['in_dtype'] in [4, 5] and attrs[0]['out_dtype'] == 4:
             return False
         if attrs[0]['in_dtype'] not in [
-                0, 2, 4, 5
+                2, 4, 5
         ] or attrs[0]['out_dtype'] not in [2, 4, 5]:
             return False
         return True

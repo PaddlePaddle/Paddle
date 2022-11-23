@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import shutil
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -21,6 +20,8 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import PassVersionChecker
 from paddle.fluid.core import AnalysisConfig
+
+os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
 class TensorRTSubgraphPassConvTest(InferencePassTest):

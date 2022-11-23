@@ -18,7 +18,6 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestInf(OpTest):

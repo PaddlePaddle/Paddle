@@ -12,20 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
 import os
-import signal
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 IS_SPARSE = True
@@ -94,7 +83,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                     initializer=fluid.initializer.Constant(value=0.1)))
             cost = fluid.layers.cross_entropy(input=predict_word,
                                               label=words[4])
-            avg_cost = fluid.layers.mean(cost)
+            avg_cost = paddle.mean(cost)
             return avg_cost, predict_word
 
         word_dict = paddle.dataset.imikolov.build_dict()

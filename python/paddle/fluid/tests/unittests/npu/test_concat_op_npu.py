@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -218,10 +216,8 @@ class TestConcatAPIWithLoDTensorArray(unittest.TestCase):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = fluid.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
-        self.assertTrue(
-            np.array_equal(
-                res[0], np.concatenate([self.x] * self.iter_num,
-                                       axis=self.axis)))
+        np.testing.assert_allclose(
+            res[0], np.concatenate([self.x] * self.iter_num, axis=self.axis))
 
 
 if __name__ == '__main__':

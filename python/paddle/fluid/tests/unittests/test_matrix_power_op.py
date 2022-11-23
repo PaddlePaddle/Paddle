@@ -285,8 +285,9 @@ class TestMatrixPowerAPI(unittest.TestCase):
             fetches = exe.run(fluid.default_main_program(),
                               feed={"input_x": input_np},
                               fetch_list=[result])
-            self.assertTrue(
-                np.allclose(fetches[0], np.linalg.matrix_power(input_np, -2)))
+            np.testing.assert_allclose(fetches[0],
+                                       np.linalg.matrix_power(input_np, -2),
+                                       rtol=1e-05)
 
     def test_static(self):
         for place in self.places:
@@ -298,9 +299,9 @@ class TestMatrixPowerAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = paddle.to_tensor(input_np)
                 result = paddle.linalg.matrix_power(input, -2)
-                self.assertTrue(
-                    np.allclose(result.numpy(),
-                                np.linalg.matrix_power(input_np, -2)))
+                np.testing.assert_allclose(result.numpy(),
+                                           np.linalg.matrix_power(input_np, -2),
+                                           rtol=1e-05)
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
@@ -358,10 +359,8 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                                   fetch_list=[result])
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         paddle.enable_static()
@@ -378,10 +377,8 @@ class TestMatrixPowerSingularAPI(unittest.TestCase):
                     result = paddle.linalg.matrix_power(input, -2)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

@@ -162,11 +162,10 @@ class TestFusedTransformerEncoderLayer(unittest.TestCase):
                                    base_out.numpy(),
                                    rtol=self.rtol,
                                    atol=self.atol)
-        self.assertTrue(
-            np.allclose(fused_out.grad.numpy(),
-                        base_out.grad.numpy(),
-                        rtol=self.rtol,
-                        atol=self.atol))
+        np.testing.assert_allclose(fused_out.grad.numpy(),
+                                   base_out.grad.numpy(),
+                                   rtol=self.rtol,
+                                   atol=self.atol)
 
 
 class TestFusedTransformerEncoderLayerAct(TestFusedTransformerEncoderLayer):

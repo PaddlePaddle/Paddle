@@ -169,6 +169,169 @@ __global__ void GridSampleCudaKernel(const int nthreads,
   }
 }
 
+template <typename T>
+__global__ void GridSample3DCudaKernel(const int nthreads,
+                                       int out_c,
+                                       int out_d,
+                                       int out_h,
+                                       int out_w,
+                                       int in_d,
+                                       int in_h,
+                                       int in_w,
+                                       const T* input,
+                                       const T* grid,
+                                       T* output,
+                                       const Mode interpolation_mode,
+                                       const PaddingMode padding_mode,
+                                       bool align_corners) {
+  int inp_sW = 1;
+  int inp_sH = in_w;
+  int inp_sD = in_h * in_w;
+  int inp_sC = in_d * inp_sD;
+  int inp_sN = out_c * inp_sC;
+
+  int grid_sCoor = 1;
+  int grid_sW = 3;
+  int grid_sH = out_w * grid_sW;
+  int grid_sD = out_h * grid_sH;
+  int grid_sN = out_d * grid_sD;
+
+  int out_sW = 1;
+  int out_sH = out_w;
+  int out_sD = out_h * out_w;
+  int out_sC = out_d * out_sD;
+  int out_sN = out_c * out_sC;
+
+  CUDA_KERNEL_LOOP_TYPE(index, nthreads, int) {
+    const int w = index % out_w;
+    const int h = (index / out_w) % out_h;
+    const int d = (index / (out_h * out_w)) % out_d;
+    const int n = index / (out_d * out_h * out_w);
+    const int grid_offset =
+        n * grid_sN + d * grid_sD + h * grid_sH + w * grid_sW;
+    // get the corresponding input x, y, z co-ordinates from grid
+    T ix = grid[grid_offset];
+    T iy = grid[grid_offset + grid_sCoor];
+    T iz = grid[grid_offset + 2 * grid_sCoor];
+    ix = ComputePositions(ix, in_w, padding_mode, align_corners);
+    iy = ComputePositions(iy, in_h, padding_mode, align_corners);
+    iz = ComputePositions(iz, in_d, padding_mode, align_corners);
+    if (interpolation_mode == Mode::bilinear) {
+      // get corner pixel values from (x, y, z)
+      // for 4d, we used north-east-south-west
+      // for 5d, we add top-bottom
+      int ix_tnw = static_cast<int>(std::floor(ix));
+      int iy_tnw = static_cast<int>(std::floor(iy));
+      int iz_tnw = static_cast<int>(std::floor(iz));
+
+      int ix_tne = ix_tnw + 1;
+      int iy_tne = iy_tnw;
+      int iz_tne = iz_tnw;
+
+      int ix_tsw = ix_tnw;
+      int iy_tsw = iy_tnw + 1;
+      int iz_tsw = iz_tnw;
+
+      int ix_tse = ix_tnw + 1;
+      int iy_tse = iy_tnw + 1;
+      int iz_tse = iz_tnw;
+
+      int ix_bnw = ix_tnw;
+      int iy_bnw = iy_tnw;
+      int iz_bnw = iz_tnw + 1;
+
+      int ix_bne = ix_tnw + 1;
+      int iy_bne = iy_tnw;
+      int iz_bne = iz_tnw + 1;
+
+      int ix_bsw = ix_tnw;
+      int iy_bsw = iy_tnw + 1;
+      int iz_bsw = iz_tnw + 1;
+
+      int ix_bse = ix_tnw + 1;
+      int iy_bse = iy_tnw + 1;
+      int iz_bse = iz_tnw + 1;
+
+      // get surfaces to each neighbor:
+      T tnw = (ix_bse - ix) * (iy_bse - iy) * (iz_bse - iz);
+      T tne = (ix - ix_bsw) * (iy_bsw - iy) * (iz_bsw - iz);
+      T tsw = (ix_bne - ix) * (iy - iy_bne) * (iz_bne - iz);
+      T tse = (ix - ix_bnw) * (iy - iy_bnw) * (iz_bnw - iz);
+      T bnw = (ix_tse - ix) * (iy_tse - iy) * (iz - iz_tse);
+      T bne = (ix - ix_tsw) * (iy_tsw - iy) * (iz - iz_tsw);
+      T bsw = (ix_tne - ix) * (iy - iy_tne) * (iz - iz_tne);
+      T bse = (ix - ix_tnw) * (iy - iy_tnw) * (iz - iz_tnw);
+
+      auto inp_ptr_NC = input + n * inp_sN;
+      auto out_ptr_NCDHW =
+          output + n * out_sN + d * out_sD + h * out_sH + w * out_sW;
+      for (int c = 0; c < out_c;
+           ++c, inp_ptr_NC += inp_sC, out_ptr_NCDHW += out_sC) {
+        *out_ptr_NCDHW = static_cast<T>(0);
+        if (InBounds3D(iz_tnw, iy_tnw, ix_tnw, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_tnw * inp_sD + iy_tnw * inp_sH + ix_tnw * inp_sW] *
+              tnw;
+        }
+        if (InBounds3D(iz_tne, iy_tne, ix_tne, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_tne * inp_sD + iy_tne * inp_sH + ix_tne * inp_sW] *
+              tne;
+        }
+        if (InBounds3D(iz_tsw, iy_tsw, ix_tsw, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_tsw * inp_sD + iy_tsw * inp_sH + ix_tsw * inp_sW] *
+              tsw;
+        }
+        if (InBounds3D(iz_tse, iy_tse, ix_tse, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_tse * inp_sD + iy_tse * inp_sH + ix_tse * inp_sW] *
+              tse;
+        }
+        if (InBounds3D(iz_bnw, iy_bnw, ix_bnw, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_bnw * inp_sD + iy_bnw * inp_sH + ix_bnw * inp_sW] *
+              bnw;
+        }
+        if (InBounds3D(iz_bne, iy_bne, ix_bne, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_bne * inp_sD + iy_bne * inp_sH + ix_bne * inp_sW] *
+              bne;
+        }
+        if (InBounds3D(iz_bsw, iy_bsw, ix_bsw, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_bsw * inp_sD + iy_bsw * inp_sH + ix_bsw * inp_sW] *
+              bsw;
+        }
+        if (InBounds3D(iz_bse, iy_bse, ix_bse, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW +=
+              inp_ptr_NC[iz_bse * inp_sD + iy_bse * inp_sH + ix_bse * inp_sW] *
+              bse;
+        }
+      }
+    } else if (interpolation_mode == Mode::nearest) {
+      int ix_nearest = static_cast<int>(std::round(ix));
+      int iy_nearest = static_cast<int>(std::round(iy));
+      int iz_nearest = static_cast<int>(std::round(iz));
+
+      // assign nearest neighor pixel value to output pixel
+      auto inp_ptr_NC = input + n * inp_sN;
+      auto out_ptr_NCDHW =
+          output + n * out_sN + d * out_sD + h * out_sH + w * out_sW;
+      for (int c = 0; c < out_c;
+           ++c, inp_ptr_NC += inp_sC, out_ptr_NCDHW += out_sC) {
+        if (InBounds3D(iz_nearest, iy_nearest, ix_nearest, in_d, in_h, in_w)) {
+          *out_ptr_NCDHW =
+              inp_ptr_NC[iz_nearest * inp_sD + iy_nearest * inp_sH +
+                         ix_nearest * inp_sW];
+        } else {
+          *out_ptr_NCDHW = static_cast<T>(0);
+        }
+      }
+    }
+  }
+}
+
 template <typename T, typename Context>
 void GridSampleKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -193,38 +356,78 @@ void GridSampleKernel(const Context& dev_ctx,
     enum_mode = Mode::bilinear;
   }
 
-  const int n = grid.dims()[0];
-  const int out_h = grid.dims()[1];
-  const int out_w = grid.dims()[2];
-  const int c = x.dims()[1];
-  const int in_h = x.dims()[2];
-  const int in_w = x.dims()[3];
-  VLOG(3) << "n: " << n << "; c: " << c << "; out_h: " << out_h
-          << "; out_w: " << out_w;
+  if (x.dims().size() == 4) {
+    const int n = grid.dims()[0];
+    const int out_h = grid.dims()[1];
+    const int out_w = grid.dims()[2];
+    const int c = x.dims()[1];
+    const int in_h = x.dims()[2];
+    const int in_w = x.dims()[3];
+    VLOG(3) << "n: " << n << "; c: " << c << "; out_h: " << out_h
+            << "; out_w: " << out_w;
 
-  auto* output_data = dev_ctx.template Alloc<T>(out);
-  VLOG(3) << "out dims: " << out->dims()[0] << "; " << out->dims()[1] << "; "
-          << out->dims()[2] << "; " << out->dims()[3];
+    auto* output_data = dev_ctx.template Alloc<T>(out);
+    VLOG(3) << "out dims: " << out->dims()[0] << "; " << out->dims()[1] << "; "
+            << out->dims()[2] << "; " << out->dims()[3];
 
-  int count = static_cast<int>(n * out_h * out_w);
-  auto cu_stream = dev_ctx.stream();
-  backends::gpu::GpuLaunchConfig config =
-      backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
-  GridSampleCudaKernel<T>
-      <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
-          count,
-          n,
-          c,
-          out_h,
-          out_w,
-          in_h,
-          in_w,
-          x.data<T>(),
-          grid.data<T>(),
-          output_data,
-          enum_mode,
-          enum_padding_mode,
-          align_corners);
+    int count = static_cast<int>(n * out_h * out_w);
+    auto cu_stream = dev_ctx.stream();
+    backends::gpu::GpuLaunchConfig config =
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
+    GridSampleCudaKernel<T>
+        <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
+            count,
+            n,
+            c,
+            out_h,
+            out_w,
+            in_h,
+            in_w,
+            x.data<T>(),
+            grid.data<T>(),
+            output_data,
+            enum_mode,
+            enum_padding_mode,
+            align_corners);
+  } else {
+    const int n = grid.dims()[0];
+    const int out_d = grid.dims()[1];
+    const int out_h = grid.dims()[2];
+    const int out_w = grid.dims()[3];
+    const int c = x.dims()[1];
+    const int in_d = x.dims()[2];
+    const int in_h = x.dims()[3];
+    const int in_w = x.dims()[4];
+
+    VLOG(3) << "n: " << n << "; c: " << c << "; out_d: " << out_d
+            << "; out_h: " << out_h << "; out_w: " << out_w;
+
+    auto* output_data = dev_ctx.template Alloc<T>(out);
+    VLOG(3) << "out dims: " << out->dims()[0] << "; " << out->dims()[1] << "; "
+            << out->dims()[2] << "; " << out->dims()[3] << "; "
+            << out->dims()[4];
+
+    int count = static_cast<int>(n * out_d * out_h * out_w);
+    auto cu_stream = dev_ctx.stream();
+    backends::gpu::GpuLaunchConfig config =
+        backends::gpu::GetGpuLaunchConfig1D(dev_ctx, count);
+    GridSample3DCudaKernel<T>
+        <<<config.block_per_grid, config.thread_per_block, 0, cu_stream>>>(
+            count,
+            c,
+            out_d,
+            out_h,
+            out_w,
+            in_d,
+            in_h,
+            in_w,
+            x.data<T>(),
+            grid.data<T>(),
+            output_data,
+            enum_mode,
+            enum_padding_mode,
+            align_corners);
+  }
 }
 
 }  // namespace phi

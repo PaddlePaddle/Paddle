@@ -18,8 +18,10 @@ import sys
 import traceback
 import linecache
 import re
+import numpy as np
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
+from paddle.fluid.dygraph.dygraph_to_static.utils import _is_api_in_module_helper, RE_PYMODULE
 
 ERROR_DATA = "Error data about original source code information and traceback."
 
@@ -66,6 +68,7 @@ class TraceBackFrame(OriginInfo):
         self.location = location
         self.function_name = function_name
         self.source_code = source_code
+        self.error_line = ''
 
     def formated_message(self):
         # self.source_code may be empty in some functions.
@@ -85,6 +88,7 @@ class TraceBackFrameRange(OriginInfo):
         self.location = location
         self.function_name = function_name
         self.source_code = []
+        self.error_line = ''
         blank_count = []
         begin_lineno = max(1, self.location.lineno - int(SOURCE_CODE_RANGE / 2))
 
@@ -98,6 +102,7 @@ class TraceBackFrameRange(OriginInfo):
                 blank_count.append(len(line) - len(line_lstrip))
 
             if i == self.location.lineno:
+                self.error_line = self.source_code[-1]
                 hint_msg = '~' * len(self.source_code[-1]) + ' <--- HERE'
                 self.source_code.append(hint_msg)
                 blank_count.append(blank_count[-1])
@@ -143,6 +148,10 @@ class SuggestionDict(object):
         return self.suggestion_dict[key]
 
 
+class Dy2StKeyError(Exception):
+    pass
+
+
 class ErrorData(object):
     """
     Error data attached to an exception which is raised in un-transformed code.
@@ -159,9 +168,42 @@ class ErrorData(object):
 
     def create_exception(self):
         message = self.create_message()
-        new_exception = self.error_type(message)
+        if self.error_type is KeyError:
+            new_exception = Dy2StKeyError(message)
+        else:
+            new_exception = self.error_type(message)
         setattr(new_exception, ERROR_DATA, self)
         return new_exception
+
+    def numpy_api_check(self, format_exception, error_line):
+        if self.error_type is not TypeError:
+            return format_exception
+
+        tb = self.origin_traceback
+        func_str = None
+        for frame in tb:
+            searched_name = re.search(
+                r'({module})*{name}'.format(module=RE_PYMODULE,
+                                            name=frame.name), error_line)
+            if searched_name:
+                func_str = searched_name.group(0)
+                break
+        try:
+            module_result = eval("_is_api_in_module_helper({}, '{}')".format(
+                func_str, "numpy"))
+            is_numpy_api_err = module_result or (func_str.startswith("numpy.")
+                                                 or func_str.startswith("np."))
+        except Exception:
+            is_numpy_api_err = False
+
+        if is_numpy_api_err and func_str:
+            return [
+                "TypeError: Code '{}' called numpy API {}, please use Paddle API to replace it."
+                .format(error_line, func_str),
+                "           values will be changed to variables by dy2static, numpy api can not handle variables"
+            ]
+        else:
+            return format_exception
 
     def create_message(self):
         """
@@ -173,6 +215,7 @@ class ErrorData(object):
         header_message = "In transformed code:"
         message_lines.append(header_message)
         message_lines.append("")
+        error_line = None
 
         # Simplify error value to improve readability if error is raised in runtime
         if self.in_runtime:
@@ -206,6 +249,7 @@ class ErrorData(object):
                     dygraph_func_info.source_code)
 
             message_lines.append(traceback_frame.formated_message())
+            error_line = traceback_frame.error_line
         message_lines.append("")
 
         # Add paddle traceback after user code traceback
@@ -223,6 +267,10 @@ class ErrorData(object):
         # is gather than 1, for example, the error_type is IndentationError.
         format_exception = traceback.format_exception_only(
             self.error_type, self.error_value)
+        if error_line is not None:
+            format_exception = self.numpy_api_check(format_exception,
+                                                    error_line)
+
         error_message = [
             " " * BLANK_COUNT_BEFORE_FILE_STR + line
             for line in format_exception
@@ -274,19 +322,25 @@ class ErrorData(object):
         bottom_error_message = error_value_lines[empty_line_idx + 1:]
         revise_suggestion = self._create_revise_suggestion(bottom_error_message)
 
-        user_filepath = ''
         error_traceback = []
         user_code_traceback_index = []
         pattern = 'File "(?P<filepath>.+)", line (?P<lineno>.+), in (?P<function_name>.+)'
+
+        # Distinguish user code and framework code using static_info_map
+        static_info_map = {}
+        for k, v in self.origin_info_map.items():
+            origin_filepath = v.location.filepath
+            origin_lineno = v.location.lineno
+            static_info_map[(origin_filepath, origin_lineno)] = k
+
         for i in range(0, len(error_value_lines_strip), 2):
             if error_value_lines_strip[i].startswith("File "):
                 re_result = re.search(pattern, error_value_lines_strip[i])
                 tmp_filepath, lineno_str, function_name = re_result.groups()
                 code = error_value_lines_strip[
                     i + 1] if i + 1 < len(error_value_lines_strip) else ''
-                if i == 0:
-                    user_filepath = tmp_filepath
-                if tmp_filepath == user_filepath:
+
+                if static_info_map.get((tmp_filepath, int(lineno_str))):
                     user_code_traceback_index.append(len(error_traceback))
 
                 error_traceback.append(

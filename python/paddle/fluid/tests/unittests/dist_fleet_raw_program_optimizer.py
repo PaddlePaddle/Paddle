@@ -13,12 +13,9 @@
 # limitations under the License.
 
 from test_dist_base import TestDistRunnerBase, runtime_main
-import unittest
 import paddle
-import os
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
-import numpy as np
 from functools import reduce
 import paddle.fluid as fluid
 
@@ -76,7 +73,7 @@ class TestFleetMetaOptimizerPrecision(TestDistRunnerBase):
         # Train program
         predict = cnn_model(images)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')

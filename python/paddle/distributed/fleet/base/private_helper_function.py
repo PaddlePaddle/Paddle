@@ -15,7 +15,6 @@ import sys
 import time
 import socket
 from contextlib import closing
-from six import string_types
 
 __all__ = []
 
@@ -24,15 +23,15 @@ def wait_server_ready(endpoints):
     """
     Wait until parameter servers are ready, use connext_ex to detect
     port readiness.
-    
+
     Args:
     endpoints (list|tuple): endpoints string list, like:
     ["127.0.0.1:8080", "127.0.0.1:8081"]
-    
-    Examples:
-    .. code-block:: python
 
-         wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
+    Examples:
+        .. code-block:: python
+
+             wait_server_ready(["127.0.0.1:8080", "127.0.0.1:8081"])
     """
     assert not isinstance(endpoints, str)
     while True:

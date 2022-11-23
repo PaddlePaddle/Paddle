@@ -18,8 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using framework::Tensor;
+using LoDTensor = phi::DenseTensor;
 
 namespace {
 
@@ -27,8 +26,10 @@ inline int DivUp(int x, int y) { return (x + y - 1) / y; }
 
 // Forward prop (shared memory version, for small future_context)
 template <typename T>
-__global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
-                                           int num_sequence, int input_dim,
+__global__ void RowConvForwardSharedMemory(const T *in,
+                                           const T *wt,
+                                           int num_sequence,
+                                           int input_dim,
                                            int future_context,
                                            const size_t *batch_indices,
                                            T *out) {
@@ -68,9 +69,13 @@ __global__ void RowConvForwardSharedMemory(const T *in, const T *wt,
 
 // Forward prop (naive version)
 template <typename T>
-__global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
-                               int input_dim, int future_context,
-                               const size_t *batch_indices, T *out) {
+__global__ void RowConvForward(const T *in,
+                               const T *wt,
+                               int num_sequence,
+                               int input_dim,
+                               int future_context,
+                               const size_t *batch_indices,
+                               T *out) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -94,8 +99,10 @@ __global__ void RowConvForward(const T *in, const T *wt, int num_sequence,
 
 // Compute input gradient (shared memory version, for small future_context)
 template <typename T>
-__global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
-                                             int num_sequence, int input_dim,
+__global__ void RowConvGradInputSharedMemory(const T *dout,
+                                             const T *wt,
+                                             int num_sequence,
+                                             int input_dim,
                                              int future_context,
                                              const size_t *batch_indices,
                                              T *din) {
@@ -135,9 +142,13 @@ __global__ void RowConvGradInputSharedMemory(const T *dout, const T *wt,
 
 // Compute input gradient (Naive version)
 template <typename T>
-__global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
-                                 int input_dim, int future_context,
-                                 const size_t *batch_indices, T *din) {
+__global__ void RowConvGradInput(const T *dout,
+                                 const T *wt,
+                                 int num_sequence,
+                                 int input_dim,
+                                 int future_context,
+                                 const size_t *batch_indices,
+                                 T *din) {
   int d = blockIdx.x * blockDim.x + threadIdx.x;  // index along input_dim
   int bly = blockDim.y;
   int thy = threadIdx.y;
@@ -162,9 +173,12 @@ __global__ void RowConvGradInput(const T *dout, const T *wt, int num_sequence,
 
 // Compute W gradient (small future_context version)
 template <typename T>
-__global__ void RowConvGradFilterImproved(const T *in, const T *dout,
-                                          int num_sequence, int input_dim,
-                                          int future_context, int block_x,
+__global__ void RowConvGradFilterImproved(const T *in,
+                                          const T *dout,
+                                          int num_sequence,
+                                          int input_dim,
+                                          int future_context,
+                                          int block_x,
                                           int block_y,
                                           const size_t *batch_indices,
                                           T *dfilter) {
@@ -246,10 +260,15 @@ __global__ void RowConvGradFilterImproved(const T *in, const T *dout,
 
 // Compute weight(filter) gradient
 template <typename T>
-__global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
-                                  int input_dim, int future_context,
-                                  int block_x, int block_y,
-                                  const size_t *batch_indices, T *dfilter) {
+__global__ void RowConvGradFilter(const T *in,
+                                  const T *dout,
+                                  int num_sequence,
+                                  int input_dim,
+                                  int future_context,
+                                  int block_x,
+                                  int block_y,
+                                  const size_t *batch_indices,
+                                  T *dfilter) {
   int blx = blockDim.x;
   int thx = threadIdx.x;
   int thy = threadIdx.y;
@@ -303,12 +322,11 @@ __global__ void RowConvGradFilter(const T *in, const T *dout, int num_sequence,
 }  // namespace
 
 template <typename T>
-class RowConvKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Filter = context.Input<phi::DenseTensor>("Filter");
     auto *Out = context.Output<LoDTensor>("Out");
 
     const T *in = X->data<T>();
@@ -358,19 +376,20 @@ class RowConvKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class RowConvGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class RowConvGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *X = context.Input<LoDTensor>("X");
-    auto *Filter = context.Input<Tensor>("Filter");
+    auto *Filter = context.Input<phi::DenseTensor>("Filter");
     auto *dOut = context.Input<LoDTensor>(framework::GradVarName("Out"));
     const T *in = X->data<T>();
     const T *weights = Filter->data<T>();
     const T *dout = dOut->data<T>();
 
-    Tensor *dX = context.Output<LoDTensor>(framework::GradVarName("X"));
-    Tensor *dFilter = context.Output<Tensor>(framework::GradVarName("Filter"));
+    phi::DenseTensor *dX =
+        context.Output<LoDTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *dFilter =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     int batch_size = 0;
     bool is_tensor = X->lod().empty();
     if (is_tensor) {
@@ -398,7 +417,7 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
     size_t *idx = mixv_batch_indices.CUDAMutableData(context.GetPlace());
 
     auto &device_ctx = context.cuda_device_context();
-    phi::funcs::SetConstant<platform::CUDADeviceContext, T> zero;
+    phi::funcs::SetConstant<phi::GPUContext, T> zero;
 
     if (dFilter) {
       T *dfilter = dFilter->mutable_data<T>(context.GetPlace());
@@ -415,8 +434,15 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             sizeof(T);
         RowConvGradFilterImproved<T>
             <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-                in, dout, num_sequence, input_dim, future_context, block_x,
-                block_y, idx, dfilter);
+                in,
+                dout,
+                num_sequence,
+                input_dim,
+                future_context,
+                block_x,
+                block_y,
+                idx,
+                dfilter);
       } else {
         dim3 block_dim = dim3(32, 32);
         dim3 grid_dim = dim3(DivUp(input_dim, block_dim.x), 1);
@@ -426,8 +452,15 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
             (block_x * block_y * 2) * sizeof(T);  // For 2 arrays of size 32x32
         RowConvGradFilter<T>
             <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-                in, dout, num_sequence, input_dim, future_context, block_x,
-                block_y, idx, dfilter);
+                in,
+                dout,
+                num_sequence,
+                input_dim,
+                future_context,
+                block_x,
+                block_y,
+                idx,
+                dfilter);
       }
     }
 
@@ -439,7 +472,12 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
         int mem_per_block = (future_context * block_dim.x) * sizeof(T);
         RowConvGradInputSharedMemory<T>
             <<<grid_dim, block_dim, mem_per_block, device_ctx.stream()>>>(
-                dout, weights, num_sequence, input_dim, future_context, idx,
+                dout,
+                weights,
+                num_sequence,
+                input_dim,
+                future_context,
+                idx,
                 din);
       } else {
         dim3 block_dim = dim3(32, 32);
@@ -455,8 +493,6 @@ class RowConvGradKernel<platform::CUDADeviceContext, T>
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    row_conv, ops::RowConvKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    row_conv_grad,
-    ops::RowConvGradKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(row_conv, ops::RowConvKernel<phi::GPUContext, float>);
+REGISTER_OP_CUDA_KERNEL(row_conv_grad,
+                        ops::RowConvGradKernel<phi::GPUContext, float>);

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import math
 import sys
 import os
@@ -153,7 +151,7 @@ def model():
 
     label = layers.data(name='score', shape=[1], dtype='float32')
     square_cost = layers.square_error_cost(input=scale_infer, label=label)
-    avg_cost = layers.mean(square_cost)
+    avg_cost = paddle.mean(square_cost)
 
     return scale_infer, avg_cost
 

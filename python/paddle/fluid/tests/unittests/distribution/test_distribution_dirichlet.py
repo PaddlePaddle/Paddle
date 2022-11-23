@@ -18,9 +18,10 @@ import numpy as np
 import paddle
 import scipy.stats
 
-import config
 from config import ATOL, DEVICES, RTOL
 import parameterize as param
+
+np.random.seed(2022)
 
 
 @param.place(DEVICES)

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import typing
 
 import paddle
 from paddle.fluid import framework as framework
@@ -34,12 +35,12 @@ prim_option = PrimOption()
 @framework.static_only
 def prim_enabled():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
-    Shows whether the automatic differentiation mechanism based on 
+    Shows whether the automatic differentiation mechanism based on
     automatic differential basic operators is ON. Defaults to OFF.
-     
+
     Returns:
         flag(bool): Whether the automatic differentiation mechanism based on automatic differential basic operators is ON.
 
@@ -49,7 +50,7 @@ def prim_enabled():
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -65,19 +66,19 @@ def prim_enabled():
 @framework.static_only
 def enable_prim():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
-    Turns ON automatic differentiation mechanism based on automatic 
+    Turns ON automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -89,19 +90,19 @@ def enable_prim():
 @framework.static_only
 def disable_prim():
     """
-    .. note::
+    Note:
         **ONLY available in the static mode.**
 
-    Turns OFF automatic differentiation mechanism based on automatic 
+    Turns OFF automatic differentiation mechanism based on automatic
     differential basic operators.
-    
+
     Examples:
 
         .. code-block:: python
 
             import paddle
             from paddle.incubate.autograd import enable_prim, disable_prim, prim_enabled
-            
+
             paddle.enable_static()
             enable_prim()
 
@@ -158,13 +159,6 @@ def get_output_var_list(op):
         ]
 
 
-def to_tensors(xs):
-    if isinstance(xs, paddle.fluid.framework.Variable):
-        return [xs]
-    else:
-        return xs
-
-
 def flatten(inp):
     if inp is None or isinstance(inp, paddle.fluid.framework.Variable):
         return [inp]
@@ -177,3 +171,12 @@ def flatten(inp):
 def flatten_and_remove_none(inp):
     flattened = flatten(inp)
     return [var for var in flattened if var is not None]
+
+
+def as_tensors(xs):
+    if isinstance(xs, framework.Variable):
+        return (xs, )
+    elif isinstance(xs, typing.Sequence):
+        return tuple(xs)
+    else:
+        return xs

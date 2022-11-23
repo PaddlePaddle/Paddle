@@ -47,3 +47,11 @@ PD_REGISTER_GENERAL_KERNEL(assign_sr,
                            phi::sr::AssignKernel<phi::GPUContext>,
                            ALL_DTYPE) {}
 #endif
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_GENERAL_KERNEL(assign_sr,
+                           XPU,
+                           ALL_LAYOUT,
+                           phi::sr::AssignKernel<phi::XPUContext>,
+                           ALL_DTYPE) {}
+#endif

@@ -20,7 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 
 class FusedGateAttentionOp : public framework::OperatorWithKernel {
@@ -28,19 +28,25 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Query"), "Input", "Query",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Query"), "Input", "Query", "fused_gate_attention");
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearWeight"),
+                   "Input",
+                   "OutLinearWeight",
                    "fused_gate_attention");
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearWeight"), "Input", "OutLinearWeight",
-                   "fused_gate_attention");
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"),
+                   "Input",
+                   "OutLinearBias",
                    "fused_gate_attention");
 
-    OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"), "Output", "SoftmaxOut",
+    OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"),
+                   "Output",
+                   "SoftmaxOut",
                    "fused_gate_attention");
-    OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
-                   "fused_gate_attention");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                   "fused_gate_attention");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("FMHAOut"), "Output", "FMHAOut", "fused_gate_attention");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "fused_gate_attention");
 
     auto input_q_dims = ctx->GetInputDim("Query");
     int batch_size = input_q_dims[0];
@@ -51,10 +57,14 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("merge_qkv")) {
       // QKV's input: [batch_size, seq_len_m, seq_len_r, qkv_dim]
       // QKV's weight: [3, num_head, head_dim, qkv_dim]
-      OP_INOUT_CHECK(ctx->HasInput("QKVWeight"), "Input", "QKVWeight",
+      OP_INOUT_CHECK(ctx->HasInput("QKVWeight"),
+                     "Input",
+                     "QKVWeight",
                      "fused_gate_attention");
-      OP_INOUT_CHECK(ctx->HasOutput("QKVTransposeOut"), "Output",
-                     "QKVTransposeOut", "fused_gate_attention");
+      OP_INOUT_CHECK(ctx->HasOutput("QKVTransposeOut"),
+                     "Output",
+                     "QKVTransposeOut",
+                     "fused_gate_attention");
 
       auto qkv_w_dims = ctx->GetInputDim("QKVWeight");
 
@@ -62,14 +72,21 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
       head_dim = qkv_w_dims[2];
       m_size = seq_len_r;
 
-      ctx->SetOutputDim("QKVTransposeOut", {3, batch_size, seq_len_m, num_head,
-                                            seq_len_r, head_dim});
+      ctx->SetOutputDim(
+          "QKVTransposeOut",
+          {3, batch_size, seq_len_m, num_head, seq_len_r, head_dim});
     } else {
-      OP_INOUT_CHECK(ctx->HasInput("QueryWeight"), "Input", "QueryWeight",
+      OP_INOUT_CHECK(ctx->HasInput("QueryWeight"),
+                     "Input",
+                     "QueryWeight",
                      "fused_gate_attention");
-      OP_INOUT_CHECK(ctx->HasInput("KeyWeight"), "Input", "KeyWeight",
+      OP_INOUT_CHECK(ctx->HasInput("KeyWeight"),
+                     "Input",
+                     "KeyWeight",
                      "fused_gate_attention");
-      OP_INOUT_CHECK(ctx->HasInput("ValueWeight"), "Input", "ValueWeight",
+      OP_INOUT_CHECK(ctx->HasInput("ValueWeight"),
+                     "Input",
+                     "ValueWeight",
                      "fused_gate_attention");
 
       auto input_k_dims = ctx->GetInputDim("Key");
@@ -93,9 +110,13 @@ class FusedGateAttentionOp : public framework::OperatorWithKernel {
                       {batch_size, seq_len_m, seq_len_r, num_head, head_dim});
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
-      OP_INOUT_CHECK(ctx->HasInput("GateWeight"), "Input", "GateWeight",
+      OP_INOUT_CHECK(ctx->HasInput("GateWeight"),
+                     "Input",
+                     "GateWeight",
                      "fused_gate_attention");
-      OP_INOUT_CHECK(ctx->HasInput("GateBias"), "Input", "GateBias",
+      OP_INOUT_CHECK(ctx->HasInput("GateBias"),
+                     "Input",
+                     "GateBias",
                      "fused_gate_attention");
       ctx->SetOutputDim("GateOut",
                         {batch_size, seq_len_m, seq_len_r, num_head, head_dim});
@@ -153,7 +174,7 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
   {
-    q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w) 
+    q = paddle.einsum('nbqa,ahc->nbqhc', q_data, self.query_w)
     k = paddle.einsum('nbka,ahc->nbkhc', m_data, self.key_w)
     v = paddle.einsum('nbka,ahc->nbkhc', m_data, self.value_w)
 
@@ -168,10 +189,10 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                                     self.gating_w) + self.gating_b
         gate_values_1 = nn.functional.sigmoid(gate_values)
         weighted_avg *= gate_values_1
-    
+
     output = paddle.einsum('nbqhc,hco->nbqo', weighted_avg,
                           self.output_w) + self.output_b
-                
+
   }
     )DOC");
   }
@@ -182,8 +203,8 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Query"), "Input", "Query",
-                   "fused_gate_attention_grad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Query"), "Input", "Query", "fused_gate_attention_grad");
     if (ctx->HasOutput(framework::GradVarName("Query"))) {
       ctx->SetOutputDim(framework::GradVarName("Query"),
                         ctx->GetInputDim("Query"));
@@ -193,16 +214,24 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->Attrs().Get<bool>("merge_qkv")) {
-      OP_INOUT_CHECK(ctx->HasInput("QKVWeight"), "Input", "QKVWeight",
+      OP_INOUT_CHECK(ctx->HasInput("QKVWeight"),
+                     "Input",
+                     "QKVWeight",
                      "fused_gate_attention_arad");
       ctx->SetOutputDim(framework::GradVarName("QKVWeight"),
                         ctx->GetInputDim("QKVWeight"));
     } else {
-      OP_INOUT_CHECK(ctx->HasInput("QueryWeight"), "Input", "QueryWeight",
+      OP_INOUT_CHECK(ctx->HasInput("QueryWeight"),
+                     "Input",
+                     "QueryWeight",
                      "fused_aate_attention_arad");
-      OP_INOUT_CHECK(ctx->HasInput("KeyWeight"), "Input", "KeyWeight",
+      OP_INOUT_CHECK(ctx->HasInput("KeyWeight"),
+                     "Input",
+                     "KeyWeight",
                      "fused_aate_attention_arad");
-      OP_INOUT_CHECK(ctx->HasInput("ValueWeight"), "Input", "ValueWeight",
+      OP_INOUT_CHECK(ctx->HasInput("ValueWeight"),
+                     "Input",
+                     "ValueWeight",
                      "fused_aate_attention_arad");
 
       for (auto& name : {"QueryWeight", "KeyWeight", "ValueWeight"}) {
@@ -210,7 +239,9 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       }
     }
 
-    OP_INOUT_CHECK(ctx->HasInput("OutLinearWeight"), "Input", "OutLinearWeight",
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearWeight"),
+                   "Input",
+                   "OutLinearWeight",
                    "fused_aate_attention_arad");
 
     if (ctx->Attrs().Get<bool>("has_gating")) {
@@ -245,7 +276,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Query"), this->InputGrad("Query"));
 
     op->SetAttrMap(this->Attrs());
-    bool merge_qkv = BOOST_GET_CONST(bool, op->GetAttr("merge_qkv"));
+    bool merge_qkv = PADDLE_GET_CONST(bool, op->GetAttr("merge_qkv"));
     if (merge_qkv) {
       op->SetInput("QKVWeight", this->Input("QKVWeight"));
       op->SetOutput(framework::GradVarName("QKVWeight"),
@@ -276,7 +307,7 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
 
-    bool has_gating = BOOST_GET_CONST(bool, op->GetAttr("has_gating"));
+    bool has_gating = PADDLE_GET_CONST(bool, op->GetAttr("has_gating"));
     if (has_gating) {
       op->SetInput("GateWeight", this->Input("GateWeight"));
       op->SetOutput(framework::GradVarName("GateWeight"),
@@ -304,7 +335,8 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fused_gate_attention, ops::FusedGateAttentionOp,
+    fused_gate_attention,
+    ops::FusedGateAttentionOp,
     ops::FusedGateAttentionOpMaker,
     ops::FusedGateAttentionGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedGateAttentionGradOpMaker<paddle::imperative::OpBase>);
