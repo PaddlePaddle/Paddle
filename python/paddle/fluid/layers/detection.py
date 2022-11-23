@@ -604,8 +604,8 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
 
             def get_focal_loss(pred, label, fg_num, num_classes):
-                pred = fluid.layers.reshape(pred, [-1, num_classes])
-                label = fluid.layers.reshape(label, [-1, 1])
+                pred = paddle.reshape(pred, [-1, num_classes])
+                label = paddle.reshape(label, [-1, 1])
                 label.stop_gradient = True
                 loss = fluid.layers.sigmoid_focal_loss(
                     pred, label, fg_num, gamma=2.0, alpha=0.25)
