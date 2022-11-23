@@ -23,10 +23,9 @@ import os
 
 
 class TrtConvertFcTest(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # The output has diff between gpu and trt in CI windows
-        if (os.name == 'nt'):
+        if os.name == 'nt':
             return False
         return True
 
@@ -34,12 +33,14 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.random.random([batch, 3, 64, (int)(attrs[0]["m"] / 2),
-                                     2]).astype(np.float32)
+            return np.random.random(
+                [batch, 3, 64, (int)(attrs[0]["m"] / 2), 2]
+            ).astype(np.float32)
 
         def generate_w(batch, attrs: List[Dict[str, Any]]):
-            return np.random.random([attrs[0]["m"],
-                                     attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["m"], attrs[0]["n"]]).astype(
+                np.float32
+            )
 
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
             return np.random.random([attrs[0]["n"]]).astype(np.float32)
@@ -53,7 +54,7 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
                         "m": m,
                         "n": n,
                     },
-                    {}
+                    {},
                 ]
 
                 ops_config = [
@@ -62,12 +63,10 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
                         "op_inputs": {
                             "Input": ["input_data"],
                             "W": ["w_data"],
-                            "Bias": ["bias_data"]
+                            "Bias": ["bias_data"],
                         },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
+                        "op_outputs": {"Out": ["output_data"]},
+                        "op_attrs": dics[0],
                     },
                 ]
 
@@ -76,24 +75,26 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":
-                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":
-                        TensorConfig(
-                            data_gen=partial(generate_bias, batch, dics))
+                        "w_data": TensorConfig(
+                            data_gen=partial(generate_w, batch, dics)
+                        ),
+                        "bias_data": TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics)
+                        ),
                     },
                     inputs={
-                        "input_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input1, batch, dics)),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)
+                        ),
                     },
-                    outputs=["output_data"])
+                    outputs=["output_data"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 32, 16, 2],
@@ -121,19 +122,23 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
         # clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), (1e-3, 1e-3)
+            attrs, False
+        ), (1e-3, 1e-3)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), 1e-5
+            attrs, True
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, True), (1e-3, 1e-3)
+            attrs, True
+        ), (1e-3, 1e-3)
 
     def test(self):
         self.run_test()
@@ -143,10 +148,9 @@ class TrtConvertFcTest(TrtLayerAutoScanTest):
 
 
 class TrtConvertFcTest2(TrtLayerAutoScanTest):
-
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # The output has diff between gpu and trt in CI windows
-        if (os.name == 'nt'):
+        if os.name == 'nt':
             return False
         return True
 
@@ -157,8 +161,9 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
             return np.random.random([batch, 3, 64, 14]).astype(np.float32)
 
         def generate_w(batch, attrs: List[Dict[str, Any]]):
-            return np.random.random([attrs[0]["m"],
-                                     attrs[0]["n"]]).astype(np.float32)
+            return np.random.random([attrs[0]["m"], attrs[0]["n"]]).astype(
+                np.float32
+            )
 
         def generate_bias(batch, attrs: List[Dict[str, Any]]):
             return np.random.random([attrs[0]["n"]]).astype(np.float32)
@@ -172,7 +177,7 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
                         "m": m,
                         "n": n,
                     },
-                    {}
+                    {},
                 ]
 
                 ops_config = [
@@ -181,12 +186,10 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
                         "op_inputs": {
                             "Input": ["input_data"],
                             "W": ["w_data"],
-                            "Bias": ["bias_data"]
+                            "Bias": ["bias_data"],
                         },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
+                        "op_outputs": {"Out": ["output_data"]},
+                        "op_attrs": dics[0],
                     },
                 ]
 
@@ -195,24 +198,26 @@ class TrtConvertFcTest2(TrtLayerAutoScanTest):
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":
-                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":
-                        TensorConfig(
-                            data_gen=partial(generate_bias, batch, dics))
+                        "w_data": TensorConfig(
+                            data_gen=partial(generate_w, batch, dics)
+                        ),
+                        "bias_data": TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics)
+                        ),
                     },
                     inputs={
-                        "input_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input1, batch, dics)),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)
+                        ),
                     },
-                    outputs=["output_data"])
+                    outputs=["output_data"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 3, 32, 14],
@@ -277,7 +282,7 @@ class TrtConvertFcTest3(TrtLayerAutoScanTest):
                         "m": m,
                         "n": n,
                     },
-                    {}
+                    {},
                 ]
 
                 ops_config = [
@@ -286,12 +291,10 @@ class TrtConvertFcTest3(TrtLayerAutoScanTest):
                         "op_inputs": {
                             "Input": ["input_data"],
                             "W": ["w_data"],
-                            "Bias": ["bias_data"]
+                            "Bias": ["bias_data"],
                         },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
+                        "op_outputs": {"Out": ["output_data"]},
+                        "op_attrs": dics[0],
                     },
                 ]
 
@@ -300,24 +303,26 @@ class TrtConvertFcTest3(TrtLayerAutoScanTest):
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={
-                        "w_data":
-                        TensorConfig(data_gen=partial(generate_w, batch, dics)),
-                        "bias_data":
-                        TensorConfig(
-                            data_gen=partial(generate_bias, batch, dics))
+                        "w_data": TensorConfig(
+                            data_gen=partial(generate_w, batch, dics)
+                        ),
+                        "bias_data": TensorConfig(
+                            data_gen=partial(generate_bias, batch, dics)
+                        ),
                     },
                     inputs={
-                        "input_data":
-                        TensorConfig(
-                            data_gen=partial(generate_input1, batch, dics)),
+                        "input_data": TensorConfig(
+                            data_gen=partial(generate_input1, batch, dics)
+                        ),
                     },
-                    outputs=["output_data"])
+                    outputs=["output_data"],
+                )
 
                 yield program_config
 
     def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, 14, 1, 2],
