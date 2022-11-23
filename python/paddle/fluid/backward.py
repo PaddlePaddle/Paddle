@@ -1348,6 +1348,7 @@ def _append_backward_ops_(
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
+            print("sub lock", sub_block_path)
             _append_backward_ops_(
                 sub_block,
                 sub_block_path,
