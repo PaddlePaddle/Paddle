@@ -107,7 +107,6 @@ __all__ = [
     'label_smooth',
     'roi_pool',
     'roi_align',
-    'dice_loss',
     'image_resize',
     'image_resize_short',
     'resize_linear',
@@ -6268,53 +6267,6 @@ def roi_align(
         },
     )
     return align_out
-
-
-def dice_loss(input, label, epsilon=0.00001, name=None):
-    r"""
-
-    Dice loss for comparing the similarity between the input predictions and the label.
-    This implementation is for binary classification, where the input is sigmoid
-    predictions of each pixel, usually used for segmentation task. The dice loss can
-    be defined as the following equation:
-
-    .. math::
-
-        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
-                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
-                  &= \frac{(union\_area - intersection\_area)}{total\_area}
-
-
-    Parameters:
-        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_k, D]`, where :math:`N_1` is
-                          the batch_size, :math:`D` is the number of categories. It is usually the output
-                          predictions of sigmoid activation. The data type can be float32 or float64.
-        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_k, 1]`.
-                          where :math:`N_1` is the batch_size. The data type can be int32 or int64.
-        epsilon (float): The epsilon will be added to the numerator and denominator.
-                         If both input and label are empty, it makes sure dice is 1.
-                         Default: 0.00001
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor, which shape is [1], data type is the same as `input` .
-
-    Example:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.randn((3,224,224,2))
-            label = paddle.randint(high=2, shape=(3,224,224,1))
-            predictions = F.softmax(x)
-            loss = F.dice_loss(input=predictions, label=label)
-    """
-    return paddle.nn.functional.dice_loss(
-        input, label, epsilon=epsilon, name=name
-    )
 
 
 def image_resize(
