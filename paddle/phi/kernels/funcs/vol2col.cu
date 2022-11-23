@@ -15,14 +15,13 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/operators/math/vol2col.h"
-#include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 template <class T>
 __global__ void vol2col(int num_kernels,
@@ -112,12 +111,12 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol.dims().size(),
                     4,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimension of  vol should be 4, but received %d.",
                         vol.dims().size()));
   PADDLE_ENFORCE_EQ(col->dims().size(),
                     7,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimension of col should be 7, but received %d.",
                         col->dims().size()));
 
@@ -149,7 +148,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_depth_tmp,
                     output_depth,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
                         input_depth_tmp,
                         output_depth));
@@ -160,7 +159,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(
       input_height_tmp,
       output_height,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
           input_height_tmp,
           output_height));
@@ -170,7 +169,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_width_tmp,
                     output_width,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
                         input_width_tmp,
                         output_width));
@@ -180,7 +179,7 @@ void Vol2ColFunctor<DeviceContext, T>::operator()(
 
   int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-  platform::ChangeThreadNum(context, &max_threads);
+  phi::backends::gpu::ChangeThreadNum(context, &max_threads);
 #endif
 
   const int threads = max_threads;
@@ -318,12 +317,12 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
     const DataLayout data_layout) const {
   PADDLE_ENFORCE_EQ(vol->dims().size(),
                     4,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimension of vol  should be 4, but received %d.",
                         vol->dims().size()));
   PADDLE_ENFORCE_EQ(col.dims().size(),
                     7,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The dimension of col  should be 7, but received %d.",
                         col.dims().size()));
 
@@ -356,7 +355,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_depth_tmp,
                     output_depth,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "input_depth(%d) and output_depth(%d) are mismatching.",
                         input_depth_tmp,
                         output_depth));
@@ -367,7 +366,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
   PADDLE_ENFORCE_EQ(
       input_height_tmp,
       output_height,
-      platform::errors::InvalidArgument(
+      phi::errors::InvalidArgument(
           "input_height(%d) and output_height(%d) are mismatching.",
           input_height_tmp,
           output_height));
@@ -377,7 +376,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
                          1;
   PADDLE_ENFORCE_EQ(input_width_tmp,
                     output_width,
-                    platform::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "input_width(%d) and output_width(%d) are mismatching.",
                         input_width_tmp,
                         output_width));
@@ -386,7 +385,7 @@ void Col2VolFunctor<DeviceContext, T>::operator()(
 
   int max_threads = 1024;
 #ifdef WITH_NV_JETSON
-  platform::ChangeThreadNum(context, &max_threads);
+  phi::backends::gpu::ChangeThreadNum(context, &max_threads);
 #endif
 
   const int threads = max_threads;
@@ -423,6 +422,5 @@ template class Vol2ColFunctor<phi::GPUContext, double>;
 template class Col2VolFunctor<phi::GPUContext, float>;
 template class Col2VolFunctor<phi::GPUContext, double>;
 
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+}  // namespace funcs
+}  // namespace phi

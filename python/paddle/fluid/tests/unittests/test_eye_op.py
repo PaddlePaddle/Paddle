@@ -109,45 +109,6 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
-        paddle.disable_static()
-        batch_shape = [2]
-        out = paddle.eye(10, 10, dtype="int64")
-        out = paddle.unsqueeze(out, 0)
-        out = paddle.expand(out, [2, -1, -1])
-
-        result = np.eye(10, dtype="int64")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
-        paddle.disable_static()
-        batch_shape = [3, 2]
-        out = paddle.eye(10, 10, dtype="int64")
-        out = paddle.unsqueeze(out, [0, 1])
-        out = paddle.expand(out, [3, 2, -1, -1])
-        result = np.eye(10, dtype="int64")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
 
@@ -206,18 +167,6 @@ class TestEyeRowsCol(UnittestBase):
     def var_prefix(self):
         return "Var["
 
-    def call_func(self, x):
-        rows = paddle.assign(3)
-        cols = paddle.assign(10)
-        out = paddle.eye(rows, cols)
-        return out
-
-    def test_error(self):
-        with self.assertRaises(TypeError):
-            paddle.eye(-1)
-
-
-class TestEyeRowsCol2(TestEyeRowsCol):
     def call_func(self, x):
         rows = paddle.assign(3)
         cols = paddle.assign(10)

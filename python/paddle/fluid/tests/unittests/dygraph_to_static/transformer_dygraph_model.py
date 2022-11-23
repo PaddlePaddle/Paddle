@@ -138,12 +138,13 @@ class MultiHeadAttention(Layer):
         k = self.k_fc(keys)
         v = self.v_fc(values)
         # split head
+
         q = paddle.reshape(x=q, shape=[0, 0, self.n_head, self.d_key])
-        q = layers.transpose(x=q, perm=[0, 2, 1, 3])
+        q = paddle.transpose(x=q, perm=[0, 2, 1, 3])
         k = paddle.reshape(x=k, shape=[0, 0, self.n_head, self.d_key])
-        k = layers.transpose(x=k, perm=[0, 2, 1, 3])
+        k = paddle.transpose(x=k, perm=[0, 2, 1, 3])
         v = paddle.reshape(x=v, shape=[0, 0, self.n_head, self.d_value])
-        v = layers.transpose(x=v, perm=[0, 2, 1, 3])
+        v = paddle.transpose(x=v, perm=[0, 2, 1, 3])
 
         if cache is not None:
             cache_k, cache_v = cache["k"], cache["v"]
@@ -160,8 +161,10 @@ class MultiHeadAttention(Layer):
         if self.dropout_rate:
             weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
             out = layers.matmul(weights, v)
-        out = layers.transpose(out, perm=[0, 2, 1, 3])
+
+        out = paddle.transpose(out, perm=[0, 2, 1, 3])
         out = paddle.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
         out = self.proj_fc(out)
         return out
 
@@ -703,7 +706,7 @@ class Transformer(Layer):
 
         def merge_batch_beams(tensor):
             var_dim_in_state = 2  # count in beam dim
-            tensor = layers.transpose(
+            tensor = paddle.transpose(
                 tensor,
                 list(range(var_dim_in_state, len(tensor.shape)))
                 + list(range(0, var_dim_in_state)),
@@ -714,7 +717,7 @@ class Transformer(Layer):
                 [0] * (len(tensor.shape) - var_dim_in_state)
                 + [batch_size * beam_size],
             )
-            res = layers.transpose(
+            res = paddle.transpose(
                 tensor,
                 list(
                     range(
@@ -728,7 +731,7 @@ class Transformer(Layer):
 
         def split_batch_beams(tensor):
             var_dim_in_state = 1
-            tensor = layers.transpose(
+            tensor = paddle.transpose(
                 tensor,
                 list(range(var_dim_in_state, len(tensor.shape)))
                 + list(range(0, var_dim_in_state)),
@@ -738,7 +741,7 @@ class Transformer(Layer):
                 [0] * (len(tensor.shape) - var_dim_in_state)
                 + [batch_size, beam_size],
             )
-            res = layers.transpose(
+            res = paddle.transpose(
                 tensor,
                 list(
                     range(
@@ -879,7 +882,7 @@ class Transformer(Layer):
 
         predict_ids = paddle.stack(predict_ids, axis=0)
         parent_ids = paddle.stack(parent_ids, axis=0)
-        finished_seq = layers.transpose(
+        finished_seq = paddle.transpose(
             layers.gather_tree(predict_ids, parent_ids), [1, 2, 0]
         )
         finished_scores = topk_scores

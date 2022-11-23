@@ -139,45 +139,6 @@ class API_TestTensorEye(unittest.TestCase):
         paddle.enable_static()
         self.assertEqual((out.numpy() == expected_result).all(), True)
 
-        paddle.disable_static(paddle.NPUPlace(0))
-        batch_shape = [2]
-        out = paddle.eye(10, 10, dtype="int32")
-        out = paddle.unsqueeze(out,[0])
-        out = paddle.expand(out,[2,-1,-1])
-
-        result = np.eye(10, dtype="int32")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
-        self.assertEqual((out.numpy() == expected_result).all(), True)
-
-        paddle.disable_static(paddle.NPUPlace(0))
-        batch_shape = [3, 2]
-        out = paddle.eye(10, 10, dtype="int32")
-        out = paddle.unsqueeze(out,[0,1])
-        out = paddle.expand(out,[3,2,-1,-1])
-
-        result = np.eye(10, dtype="int32")
-        expected_result = []
-        for index in reversed(batch_shape):
-            tmp_result = []
-            for i in range(index):
-                tmp_result.append(result)
-            result = tmp_result
-            expected_result = np.stack(result, axis=0)
-        paddle.enable_static()
-        self.assertEqual(
-            out.numpy().shape == np.array(expected_result).shape, True
-        )
-        self.assertEqual((out.numpy() == expected_result).all(), True)
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
