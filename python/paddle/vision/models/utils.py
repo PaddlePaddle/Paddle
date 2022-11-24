@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 import paddle.nn as nn
 from collections import OrderedDict
 from typing import Dict
@@ -92,6 +93,14 @@ class IntermediateLayerGetter(nn.LayerDict):
     def forward(self, x):
         out = OrderedDict()
         for name, module in self.items():
+
+            if (isinstance(module, nn.Linear) and x.ndim == 4) or (
+                len(module.sublayers()) > 0
+                and isinstance(module.sublayers()[0], nn.Linear)
+                and x.ndim == 4
+            ):
+                x = paddle.flatten(x, 1)
+
             x = module(x)
             if name in self.return_layers:
                 out_name = self.return_layers[name]
