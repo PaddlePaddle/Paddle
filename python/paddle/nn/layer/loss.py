@@ -14,12 +14,9 @@
 # limitations under the License.
 
 # TODO: define loss functions of neural network
-import paddle.fluid as fluid
 import paddle
 from .. import functional as F
-from paddle.fluid.framework import in_dygraph_mode
 from .. import Layer
-from paddle import in_dynamic_mode
 
 __all__ = []
 
@@ -516,82 +513,6 @@ class HSigmoidLoss(Layer):
             name=self._name,
         )
         return out
-
-
-class MSELoss(Layer):
-    r"""
-    **Mean Square Error Loss**
-    Computes the mean square error (squared L2 norm) of given input and label.
-
-    If :attr:`reduction` is set to ``'none'``, loss is calculated as:
-
-    .. math::
-        Out = (input - label)^2
-
-    If :attr:`reduction` is set to ``'mean'``, loss is calculated as:
-
-    .. math::
-        Out = \operatorname{mean}((input - label)^2)
-
-    If :attr:`reduction` is set to ``'sum'``, loss is calculated as:
-
-    .. math::
-        Out = \operatorname{sum}((input - label)^2)
-
-    where `input` and `label` are `float32` tensors of same shape.
-
-    Parameters:
-        reduction (string, optional): The reduction method for the output,
-            could be 'none' | 'mean' | 'sum'.
-            If :attr:`reduction` is ``'mean'``, the reduced mean loss is returned.
-            If :attr:`size_average` is ``'sum'``, the reduced sum loss is returned.
-            If :attr:`reduction` is ``'none'``, the unreduced loss is returned.
-            Default is ``'mean'``.
-
-    Shape:
-        input (Tensor): Input tensor, the data type is float32 or float64
-        label (Tensor): Label tensor, the data type is float32 or float64
-        output (Tensor): output tensor storing the MSE loss of input and label, the data type is same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-
-            mse_loss = paddle.nn.loss.MSELoss()
-            input = paddle.to_tensor([1.5])
-            label = paddle.to_tensor([1.7])
-            output = mse_loss(input, label)
-            print(output)
-            # [0.04000002]
-    """
-
-    def __init__(self, reduction='mean'):
-        super().__init__()
-        if reduction not in ['sum', 'mean', 'none']:
-            raise ValueError(
-                "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
-            )
-        self.reduction = reduction
-
-    def forward(self, input, label):
-        if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'MSELoss'
-            )
-            fluid.data_feeder.check_variable_and_dtype(
-                label, 'label', ['float32', 'float64'], 'MSELoss'
-            )
-
-        if in_dygraph_mode():
-            square_out = paddle._C_ops.square(paddle.subtract(input, label))
-        else:
-            square_out = paddle.square(paddle.subtract(input, label))
-
-        mse_loss = paddle.nn.MSELoss(self.reduction)
-
-        return mse_loss(square_out)
 
 
 class L1Loss(Layer):
