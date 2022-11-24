@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,20 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/math/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
 
-#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/utils/data_type.h"
 
-namespace paddle {
-namespace operators {
-namespace math {
+namespace phi {
+namespace funcs {
 
 using Tensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 
 template <typename T>
 struct HardLabelCrossEntropyCPUFunctorImpl {
@@ -54,17 +53,17 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
       for (int j = 0; j < num_remain; j++) {
         int lbl = static_cast<int>(label_data[i * num_remain + j]);
         if (lbl != ignore_index_) {
-          PADDLE_ENFORCE_GE(lbl,
-                            0,
-                            platform::errors::OutOfRange(
-                                "label value should >= 0 when label "
-                                "value(%f) not equal to ignore_index(%f)",
-                                lbl,
-                                ignore_index_));
+          PADDLE_ENFORCE_GE(
+              lbl,
+              0,
+              phi::errors::OutOfRange("label value should >= 0 when label "
+                                      "value(%f) not equal to ignore_index(%f)",
+                                      lbl,
+                                      ignore_index_));
           PADDLE_ENFORCE_LT(
               lbl,
               axis_dim_,
-              platform::errors::OutOfRange(
+              phi::errors::OutOfRange(
                   "label value should less than the shape of axis dimension "
                   "when label value(%f) not equal to ignore_index(%f), But "
                   "received label value as %ld and shape of axis dimension "
@@ -79,7 +78,7 @@ struct HardLabelCrossEntropyCPUFunctorImpl {
         loss_data[loss_idx] =
             lbl == ignore_index_
                 ? 0
-                : -math::TolerableValue<T>()(std::log(prob_data[index]));
+                : -phi::funcs::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
@@ -112,19 +111,18 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
     auto loss = EigenMatrix<T>::From(*out);
 
     loss.device(*ctx.eigen_device()) =
-        -((lbl * in.log().unaryExpr(math::TolerableValue<T>()))
+        -((lbl * in.log().unaryExpr(phi::funcs::TolerableValue<T>()))
               .reshape(batch_axis_remain)
               .sum(Eigen::DSizes<int, 1>(1)));
   } else {
     HardLabelCrossEntropyCPUFunctorImpl<T> functor_impl(
         out, prob, labels, ignore_index, axis_dim);
-    framework::VisitIntDataType(framework::TransToProtoVarType(labels->dtype()),
-                                functor_impl);
+    phi::VisitDataType(labels->dtype(), functor_impl);
   }
 }
 
 template class CrossEntropyFunctor<phi::CPUContext, float>;
 template class CrossEntropyFunctor<phi::CPUContext, double>;
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
+
+}  // namespace funcs
+}  // namespace phi

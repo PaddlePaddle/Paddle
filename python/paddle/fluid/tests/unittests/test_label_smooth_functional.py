@@ -48,11 +48,10 @@ class LabelSmoothTestCase(unittest.TestCase):
                 label_var = fluid.data(
                     "input", self.label_shape, dtype=self.dtype
                 )
-                y_var = fluid.layers.label_smooth(
+                y_var = F.label_smooth(
                     label_var,
                     prior_dist=self.prior_dist,
                     epsilon=self.epsilon,
-                    dtype=self.dtype,
                 )
         feed_dict = {"input": self.label}
         exe = fluid.Executor(place)

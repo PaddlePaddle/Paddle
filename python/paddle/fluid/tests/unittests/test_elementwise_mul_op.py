@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
@@ -384,6 +385,32 @@ class TestRealComplexElementwiseMulOp(TestComplexElementwiseMulOp):
         )
         self.grad_x = np.real(self.grad_out * np.conj(self.y))
         self.grad_y = self.grad_out * np.conj(self.x)
+
+
+class TestElementwiseMulop(unittest.TestCase):
+    def func_dygraph_mul(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray * tenor
+        expect_out = np_a * np_b
+        actual_out = np_a * tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor * nparray
+        actual_out = tensor_a * np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
+
+    def test_dygraph_mul(self):
+        with _test_eager_guard():
+            self.func_dygraph_mul()
 
 
 if __name__ == '__main__':

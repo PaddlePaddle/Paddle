@@ -1,6 +1,10 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 
+if(WITH_GPU)
+  proto_library(external_error_proto SRCS external_error.proto)
+endif()
+
 cc_library(
   flags
   SRCS flags.cc
@@ -47,6 +51,10 @@ cc_library(
 cc_library(
   lod_utils
   SRCS lod_utils.cc
+  DEPS phi_enforce)
+cc_library(
+  threadpool
+  SRCS threadpool.cc
   DEPS phi_enforce)
 
 cc_library(
