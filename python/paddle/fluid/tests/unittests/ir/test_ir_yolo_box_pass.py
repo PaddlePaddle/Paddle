@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
