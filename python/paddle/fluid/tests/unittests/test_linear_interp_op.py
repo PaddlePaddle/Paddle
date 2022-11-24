@@ -20,7 +20,6 @@ import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
-from paddle.nn.functional import interpolate
 
 
 def linear_interp_np(
@@ -242,7 +241,6 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
         self.outputs = {'Out': output_np}
 
 
-
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
     def test_case(self):
 
@@ -320,7 +318,6 @@ class TestResizeLinearOpUint8(OpTest):
         ).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
 
 
 class TestLinearInterpOpError(unittest.TestCase):

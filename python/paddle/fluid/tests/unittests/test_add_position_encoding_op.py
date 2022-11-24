@@ -15,9 +15,6 @@ import unittest
 import numpy as np
 import math
 from op_test import OpTest
-import paddle.fluid as fluid
-import paddle
-from paddle.fluid import Program, program_guard
 
 
 def add_position_encoding(input, alpha=1.0, beta=1.0):

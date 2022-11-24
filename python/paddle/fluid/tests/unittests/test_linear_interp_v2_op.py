@@ -396,7 +396,6 @@ class TestResizeLinearOpUint8(OpTest):
         self.align_mode = 1
 
 
-
 class TestLinearInterpOpError(unittest.TestCase):
     def test_error(self):
         with program_guard(Program(), Program()):

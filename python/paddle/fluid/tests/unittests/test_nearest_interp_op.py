@@ -16,7 +16,6 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 
 
 def nearest_neighbor_interp_np(
@@ -455,7 +454,6 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
-
 
 
 if __name__ == "__main__":

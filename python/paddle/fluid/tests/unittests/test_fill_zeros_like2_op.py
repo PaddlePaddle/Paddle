@@ -14,7 +14,6 @@
 
 import unittest
 import numpy as np
-import paddle.fluid as fluid
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 from op_test import OpTest
 
@@ -43,7 +42,6 @@ class TestFillZerosLike2OpFp16(TestFillZerosLike2Op):
 class TestFillZerosLike2OpFp64(TestFillZerosLike2Op):
     def init_dtype(self):
         self.dtype = np.float64
-
 
 
 if __name__ == "__main__":

@@ -15,8 +15,6 @@
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 
 class TestSimilarityFocusOp(OpTest):
@@ -227,6 +225,7 @@ class TestSimilarityFocusOp_axis3(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
 
 if __name__ == "__main__":
     unittest.main()

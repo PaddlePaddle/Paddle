@@ -17,7 +17,6 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid.framework import _test_eager_guard
 from paddle.nn.functional import interpolate
 import paddle
 
@@ -737,7 +736,6 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.align_corners = True
         self.align_mode = 1
         self.scale_by_1Dtensor = True
-
 
 
 @unittest.skipIf(

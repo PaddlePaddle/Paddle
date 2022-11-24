@@ -13,7 +13,6 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-import paddle
 import os
 import unittest
 import tempfile

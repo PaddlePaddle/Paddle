@@ -18,7 +18,6 @@ import numpy as np
 import math
 import sys
 from op_test import OpTest
-import paddle.fluid as fluid
 from decimal import Decimal, ROUND_HALF_UP
 
 
