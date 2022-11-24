@@ -161,16 +161,30 @@ bool run_test(int B, int T, int L, int A, int num_threads) {
 }
 
 int main(int argc, char** argv) {
-  if (argc < 5) {
+  if (argc == 1) {
+    (void)0;
+  } else if (argc < 5) {
     std::cerr << "Arguments: <Batch size> <Time step> <Label length> <Alphabet "
                  "size>\n";
     return 1;
   }
 
-  int B = atoi(argv[1]);
-  int T = atoi(argv[2]);
-  int L = atoi(argv[3]);
-  int A = atoi(argv[4]);
+  int B = 0;
+  int T = 0;
+  int L = 0;
+  int A = 0;
+  if (argc == 5) {
+    B = atoi(argv[1]);
+    T = atoi(argv[2]);
+    L = atoi(argv[3]);
+    A = atoi(argv[4]);
+  } else {
+    B = 32;
+    T = 50;
+    L = 20;
+    A = 50;
+  }
+
   std::cout << "Arguments: "
             << "\nBatch size: " << B << "\nTime step: " << T
             << "\nLabel length: " << L << "\nAlphabet size: " << A << std::endl;

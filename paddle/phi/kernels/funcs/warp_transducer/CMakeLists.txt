@@ -95,31 +95,33 @@ else()
 endif()
 
 if(WITH_GPU)
+  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cu")
+  message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gpu.cu")
   nv_test(
     test_rnnt_time_gpu
-    SRCS tests/test_time.cu
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cu"
     DEPS warprnnt)
   nv_test(
     test_rnnt_gpu
-    SRCS tests/test_gpu.cu
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gpu.cu"
     DEPS warprnnt)
 elseif(WITH_ROCM)
   hip_test(
     test_rnnt_time_gpu
-    SRCS tests/test_time.cu
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cu"
     DEPS warprnnt)
   hip_test(
     test_rnnt_gpu
-    SRCS tests/test_gpu.cu
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_gpu.cu"
     DEPS warprnnt)
 else()
   cc_test(
     test_rnnt_cpu
-    SRCS tests/test_cpu.cpp
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_cpu.cpp"
     DEPS warprnnt)
   cc_test(
     test_rnnt_time
-    SRCS tests/test_time.cpp
+    SRCS "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_time.cpp"
     DEPS warprnnt)
 endif()
 
