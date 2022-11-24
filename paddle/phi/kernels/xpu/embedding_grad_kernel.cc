@@ -43,7 +43,18 @@ void EmbeddingGradKernel(const Context& ctx,
           "number of ids in LookupTableV2GradXPUKernel."));
 
   auto& dev_ctx = ctx;
-  const int64_t* ids_data = ids_t->data<int64_t>();
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  const int64_t* ids_data;
+  if (ids_t->dtype() == phi::DataType::INT64) {
+    ids_data = ids_t->data<int64_t>();
+  } else {
+    int64_t* ids_tt = RAII_GUARD.alloc_l3_or_gm<int64_t>(ids_t->numel());
+    int r = xpu::cast<int32_t, int64_t>(
+        ctx.x_context(), ids_t->data<int>(), ids_tt, ids_t->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    ids_data = reinterpret_cast<const int64_t*>(ids_tt);
+  }
+
   const T* d_output_data = d_output_t->data<T>();
   T* d_table_data = dev_ctx.template Alloc<T>(d_table_t);
   int xm = d_table_t->dims()[0];

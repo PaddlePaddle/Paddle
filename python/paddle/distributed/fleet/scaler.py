@@ -16,7 +16,7 @@ import paddle
 from .base.topology import ParallelMode
 from paddle.distributed import fleet
 from types import MethodType
-from paddle.fluid import core
+from paddle.framework import core
 from paddle.fluid.dygraph import to_variable
 import numpy as np
 from paddle import _legacy_C_ops

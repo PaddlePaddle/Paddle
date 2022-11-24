@@ -182,6 +182,41 @@ inline Backend StringToBackend(const char* backend_cstr) {
   }
 }
 
+inline std::string BackendToString(const Backend& backend) {
+  switch (backend) {
+    case Backend::UNDEFINED:
+      return "Undefined(ALL_BACKEND)";
+    case Backend::CPU:
+      return "CPU";
+    case Backend::GPU:
+      return "GPU";
+    case Backend::XPU:
+      return "XPU";
+    case Backend::NPU:
+      return "NPU";
+    case Backend::MLU:
+      return "MLU";
+    case Backend::ONEDNN:
+      return "ONEDNN";
+    case Backend::GPUDNN:
+      return "GPUDNN";
+    case Backend::KPS:
+      return "KPS";
+    case Backend::IPU:
+      return "IPU";
+    default:
+      size_t device_type_id_ = static_cast<size_t>(backend) -
+                               static_cast<size_t>(Backend::NUM_BACKENDS);
+      std::string device_type = phi::GetGlobalDeviceType(device_type_id_);
+      if (!device_type.empty()) {
+        return device_type;
+      } else {
+        PD_THROW(
+            "Invalid enum backend type `", static_cast<int>(backend), "`.");
+      }
+  }
+}
+
 }  // namespace experimental
 }  // namespace paddle
 

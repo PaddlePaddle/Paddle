@@ -143,7 +143,7 @@ void ConvGradKernel(const Context& dev_ctx,
               paddle::platform::RecordEvent record_reorder(
                   "int_reorder",
                   paddle::platform::TracerEventType::UserDefined,
-                  2,
+                  1,
                   paddle::platform::EventRole::kUniqueOp);
               reorder_p->execute(
                   astream, *diff_weights_memory_p, *reorder_dst_memory_p);

@@ -39,10 +39,16 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         op_desc = dist_op.serial_op.desc
         op_dist_attr = dist_op.dist_attr
         in_name = op_desc.input('Input')[0]
+        out_name = op_desc.output('Out')[0]
+        in_var = dist_op.serial_op.block._var_recursive(in_name)
+        out_var = dist_op.serial_op.block._var_recursive(out_name)
         axes = op_desc.attr('axes')
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
         for axis in axes:
-            if is_dim_shard(in_dims_mapping[axis]):
+            if (
+                is_dim_shard(in_dims_mapping[axis])
+                and in_var.shape[axis] != out_var.shape[axis]
+            ):
                 return False
         return True
 
@@ -51,6 +57,8 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         op_dist_attr = dist_op.dist_attr
         in_name = op_desc.input('Input')[0]
         out_name = op_desc.output('Out')[0]
+        in_var = dist_op.serial_op.block._var_recursive(in_name)
+        out_var = dist_op.serial_op.block._var_recursive(out_name)
         axes = op_desc.attr('axes')
         decrease_axis = op_desc.attr('decrease_axis')
         in_dims_mapping = op_dist_attr.get_input_dims_mapping(in_name)
@@ -67,7 +75,11 @@ class DistributedSliceImpl(DistributedOperatorImpl):
         else:
             for i in range(len(out_dims_mapping)):
                 ref_index = ref_indices[i]
-                if ref_index in axes and is_dim_shard(out_dims_mapping[i]):
+                if (
+                    ref_index in axes
+                    and is_dim_shard(out_dims_mapping[i])
+                    and in_var.shape[ref_index] != out_var.shape[ref_index]
+                ):
                     return False
 
         return True

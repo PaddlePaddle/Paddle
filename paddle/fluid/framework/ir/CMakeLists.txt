@@ -76,6 +76,7 @@ pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
 pass_library(multi_batch_merge_pass base)
+pass_library(map_depthwise_conv_to_conv_pass inference)
 pass_library(conv_bn_fuse_pass inference)
 pass_library(seqconv_eltadd_relu_fuse_pass inference)
 pass_library(seqpool_concat_fuse_pass inference)
@@ -101,12 +102,15 @@ pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
 pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
+pass_library(conv2d_fusion_layout_transfer_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
 pass_library(skip_layernorm_fuse_pass base)
 pass_library(multihead_matmul_fuse_pass inference)
+pass_library(multihead_matmul_roformer_fuse_pass inference)
 pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
+pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
 pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
@@ -151,7 +155,7 @@ if(WITH_MKLDNN)
     mkldnn_placement_pass
     op_registry
     elementwise_add_op
-    gelu_op
+    generated_op
     activation_op
     softmax_op
     softmax
@@ -176,6 +180,7 @@ if(WITH_MKLDNN)
   pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
   pass_library(operator_scale_onednn_fuse_pass inference DIR mkldnn)
   pass_library(squeeze2_transpose2_onednn_fuse_pass inference DIR mkldnn)
   pass_library(operator_unsqueeze2_onednn_fuse_pass inference DIR mkldnn)
@@ -327,6 +332,10 @@ cc_test(
   SRCS fused_multi_transformer_decoder_pass_tester.cc
   DEPS fused_multi_transformer_decoder_pass)
 cc_test(
+  test_fuse_multi_transformer_layer_pass
+  SRCS fuse_multi_transformer_layer_pass_tester.cc
+  DEPS fuse_multi_transformer_layer_pass)
+cc_test(
   test_conv_bn_fuse_pass_cc
   SRCS conv_bn_fuse_pass_tester.cc
   DEPS conv_bn_fuse_pass)
@@ -412,7 +421,7 @@ if(WITH_MKLDNN)
       im2col
       vol2col
       batch_norm_op
-      gelu_op
+      generated_op
       activation_op
       elementwise_add_op
       concat_and_split

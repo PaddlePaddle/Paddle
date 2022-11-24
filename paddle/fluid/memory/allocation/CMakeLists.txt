@@ -4,7 +4,6 @@ set(ALLOCATOR_DEPS place stats profiler phi_backends device_context)
 set(ALLOCATOR_SRCS
     allocator.cc
     cpu_allocator.cc
-    locked_allocator.cc
     aligned_allocator.cc
     buffered_allocator.cc
     best_fit_allocator.cc

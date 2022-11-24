@@ -22,26 +22,27 @@ paddle.enable_static()
 
 
 class TestCustomStream(unittest.TestCase):
+    """
+    fill_constant(cpu)     gaussian_random
+      |     |      |              |
+      |     | matmul_v2(s1) fill_constant
+      |     |      |              |    |
+      |     |     elementwise_add(s1)  |
+      |     |           |              |
+      |  elementwise_sub(cpu)          |
+      |     |           |              |
+      |  tanh(cpu)     elementwise_add(s2)
+      |     |                  |
+    elementwise_sub(s1)      tanh(s2)
+                 |             |
+                elementwise_add(s2)
+                        |
+                  reduce_mean(s2)
+    """
+
     def setUp(self):
         self.steps = 3
 
-    ###
-    ### fill_constant(cpu)     gaussian_random
-    ###   |     |      |              |
-    ###   |     | matmul_v2(s1) fill_constant
-    ###   |     |      |              |    |
-    ###   |     |     elementwise_add(s1)  |
-    ###   |     |           |              |
-    ###   |  elementwise_sub(cpu)          |
-    ###   |     |           |              |
-    ###   |  tanh(cpu)     elementwise_add(s2)
-    ###   |     |                  |
-    ### elementwise_sub(s1)      tanh(s2)
-    ###              |             |
-    ###             elementwise_add(s2)
-    ###                     |
-    ###               reduce_mean(s2)
-    ###
     def set_custom_stream(self, prog):
         op_index_for_stream1 = [2, 4, 9]
         op_index_for_stream2 = [7, 8, 10, 11]

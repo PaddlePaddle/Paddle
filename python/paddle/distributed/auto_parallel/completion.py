@@ -18,7 +18,7 @@ import logging
 from paddle.fluid import core
 
 from .utils import is_naive_data_parallel, get_logger
-from .utils import is_gradient_clip_op, __not_shape_var_type__
+from .utils import is_gradient_clip_op, __no_shape_var_type__
 from .operators import find_compatible_distributed_operator_impls
 from .dist_context import _node_id
 from .dist_attribute import TensorDistributedAttribute
@@ -151,11 +151,7 @@ class Completer:
             return False
         tensor_desc = tensor_node.var()
         # Skip reader tensor
-        if (
-            tensor_desc.type() == core.VarDesc.VarType.READER
-            or tensor_desc.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY
-            or tensor_desc.type == core.VarDesc.VarType.STEP_SCOPES
-        ):
+        if tensor_desc.type() in __no_shape_var_type__:
             return False
         tensor_dist_attr = self._dist_context.get_tensor_dist_attr_for_graph(
             tensor_node
@@ -621,7 +617,7 @@ class Completer:
                             ):
                                 if (
                                     tensor_node.var().type()
-                                    in __not_shape_var_type__
+                                    in __no_shape_var_type__
                                     or len(tensor_node.var().shape()) != 1
                                 ):
                                     flag = False
@@ -633,7 +629,7 @@ class Completer:
                             ):
                                 if (
                                     tensor_node.var().type()
-                                    in __not_shape_var_type__
+                                    in __no_shape_var_type__
                                     or len(tensor_node.var().shape()) != 1
                                 ):
                                     flag = False
@@ -984,7 +980,7 @@ class Completer:
             # Copy the corresponding distributed attribute from graph to serial_main_program
             self._dist_context.copy_dist_attr_from_graph_to_program()
         else:
-            self._logger.info("Default data parallel will be set.")
+            self._logger.info("Default distributed attributed will be set.")
             self._dist_context.initialize(with_graph=False)
             # A fast and special completion for data parallel
             self._update_dist_attr_for_dp()
@@ -1054,6 +1050,17 @@ class Completer:
             for arg_name in serial_op.output_arg_names:
                 op_dist_attr = dist_op.dist_attr
                 serial_tensor = dist_op.get_serial_output(arg_name)
+                if serial_op.type in ["fill_constant"]:
+                    old_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                        arg_name
+                    )
+                    if len(old_dims_mapping) > 0:
+                        new_dims_mapping = [0] + [
+                            -1 for _ in range(len(old_dims_mapping) - 1)
+                        ]
+                        op_dist_attr.set_output_dims_mapping(
+                            arg_name, new_dims_mapping
+                        )
                 dist_tensor = self._dist_context.get_dist_tensor_for_program(
                     serial_tensor
                 )
@@ -1232,7 +1239,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name
@@ -1503,8 +1510,12 @@ class Completer:
                     self._dist_context.set_op_dist_attr_for_program(
                         grad_op, grad_op_dist_attr
                     )
-                    grad_op_dist_attr.impl_type = fwd_op_dist_attr.impl_type
-                    grad_op_dist_attr.impl_idx = fwd_op_dist_attr.impl_idx
+                    grad_op_dist_attr.impl_type = (
+                        fwd_op_dist_attr.impl_type  # noqa: F821
+                    )
+                    grad_op_dist_attr.impl_idx = (
+                        fwd_op_dist_attr.impl_idx  # noqa: F821
+                    )
 
                     continue
 
@@ -1533,7 +1544,7 @@ class Completer:
                                 input_var
                             ).dims_mapping
                     else:
-                        if fwd_op_dist_attr.get_input_dims_mapping(input_name):
+                        if input_name in forward_op.input_arg_names:
                             ref_dims_mapping = (
                                 fwd_op_dist_attr.get_input_dims_mapping(
                                     input_name
