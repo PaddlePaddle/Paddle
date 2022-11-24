@@ -168,6 +168,8 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
         {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
+        {"less_than", nvinfer1::ElementWiseOperation::kLESS},
+        {"greater_than", nvinfer1::ElementWiseOperation::kGREATER},
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -211,6 +213,17 @@ class ElementwiseTensorFloorDivOpConverter
   ElementwiseTensorFloorDivOpConverter() { op_type_ = "floordiv"; }
 };
 
+class ElementwiseTensorLessThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorLessThanOpConverter() { op_type_ = "less_than"; }
+};
+
+class ElementwiseTensorGreaterThanOpConverter
+    : public ElementwiseTensorOpConverter {
+ public:
+  ElementwiseTensorGreaterThanOpConverter() { op_type_ = "greater_than"; }
+};
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
@@ -248,3 +261,6 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_tensor,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_tensor,
                           ElementwiseTensorFloorDivOpConverter);
+REGISTER_TRT_OP_CONVERTER(less_than, ElementwiseTensorLessThanOpConverter);
+REGISTER_TRT_OP_CONVERTER(greater_than,
+                          ElementwiseTensorGreaterThanOpConverter);
