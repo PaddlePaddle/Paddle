@@ -97,6 +97,9 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
                                          &argument->ipu_custom_ops_info());
       argument->main_graph().SetNotOwned("custom_patterns",
                                          &argument->ipu_custom_patterns());
+      argument->main_graph().SetNotOwned(
+          "enable_model_runtime_executor",
+          &argument->ipu_enable_model_runtime_executor());
     }
   }
 #endif

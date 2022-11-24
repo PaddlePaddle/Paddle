@@ -494,7 +494,9 @@ class DataParallelOptimizationPass(PassBase):
             for idx in sorted(remove_op_indices, reverse=True):
                 assert (
                     block.ops[idx].type in remove_op_types
-                ), "Unexception: try to remove op {}".format(str(op))
+                ), "Unexception: try to remove op {}".format(
+                    str(block.ops[idx])
+                )
                 block._remove_op(idx)
 
             # insert coalecse op

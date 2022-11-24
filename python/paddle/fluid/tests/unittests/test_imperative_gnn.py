@@ -92,7 +92,7 @@ class TestDygraphGNN(unittest.TestCase):
 
             model = GCN('test_gcn', 50)
             logits = model(features, adj)
-            logits = fluid.layers.reshape(logits, logits.shape[1:])
+            logits = paddle.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = fluid.layers.softmax_with_cross_entropy(logits, labels)
@@ -130,7 +130,7 @@ class TestDygraphGNN(unittest.TestCase):
 
             model = GCN('test_gcn', 50)
             logits = model(to_variable(features), to_variable(adj))
-            logits = fluid.layers.reshape(logits, logits.shape[1:])
+            logits = paddle.reshape(logits, logits.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss = fluid.layers.softmax_with_cross_entropy(
@@ -158,7 +158,7 @@ class TestDygraphGNN(unittest.TestCase):
 
             model2 = GCN('test_gcn', 50)
             logits2 = model2(to_variable(features2), to_variable(adj2))
-            logits2 = fluid.layers.reshape(logits2, logits2.shape[1:])
+            logits2 = paddle.reshape(logits2, logits2.shape[1:])
             # In other example, it's nll with log_softmax. However, paddle's
             # log_loss only supports binary classification now.
             loss2 = fluid.layers.softmax_with_cross_entropy(

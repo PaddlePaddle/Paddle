@@ -19,6 +19,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 
+import paddle
 from paddle.fluid.dygraph.nn import Embedding
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph import declarative
@@ -261,7 +262,7 @@ class SkipGram(fluid.dygraph.Layer):
         )
         word_sim = paddle.sum(word_sim, axis=-1)
 
-        pred = fluid.layers.sigmoid(word_sim)
+        pred = paddle.nn.functional.sigmoid(word_sim)
 
         loss = fluid.layers.sigmoid_cross_entropy_with_logits(word_sim, label)
         loss = fluid.layers.reduce_mean(loss)

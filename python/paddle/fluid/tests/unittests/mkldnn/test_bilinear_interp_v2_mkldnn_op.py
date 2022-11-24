@@ -15,11 +15,11 @@
 import unittest
 import numpy as np
 import math
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
-def bilinear_interp_mkldnn_np(
+def bilinear_interp_onednn_np(
     input, out_h, out_w, out_size=None, actual_shape=None, data_layout='NCHW'
 ):
     """bilinear interpolation implement in shape [N, C, H, W]"""
@@ -65,17 +65,21 @@ def bilinear_interp_mkldnn_np(
 
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
-class TestBilinearInterpMKLDNNOp(OpTest):
+class TestBilinearInterpOneDNNOp(OpTest):
     def init_test_case(self):
+        pass
+
+    def init_data_type(self):
         pass
 
     def setUp(self):
         self.op_type = "bilinear_interp_v2"
         self.interp_method = 'bilinear'
         self._cpu_only = True
-        self.use_mkldnn = True
+        self.use_onednn = True
         self.input_shape = [1, 1, 2, 2]
         self.data_layout = 'NCHW'
+        self.dtype = np.float32
         # priority: actual_shape > out_size > scale > out_h & out_w
         self.out_h = 1
         self.out_w = 1
@@ -84,8 +88,12 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.actual_shape = None
 
         self.init_test_case()
+        self.init_data_type()
 
-        input_np = np.random.random(self.input_shape).astype("float32")
+        input_np = np.random.random(self.input_shape).astype(self.dtype)
+        if self.dtype == np.uint16:
+            input_np = convert_float_to_uint16(input_np)
+
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
@@ -114,7 +122,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_mkldnn_np(
+        output_np = bilinear_interp_onednn_np(
             input_np,
             out_h,
             out_w,
@@ -137,7 +145,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
             'out_w': self.out_w,
             'scale': self.scale,
             'data_layout': self.data_layout,
-            'use_mkldnn': self.use_mkldnn,
+            'use_mkldnn': self.use_onednn,
         }
         self.outputs = {'Out': output_np}
 
@@ -145,7 +153,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
         self.check_output(check_dygraph=False)
 
 
-class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
+class TestBilinearInterpOpOneDNNNHWC(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -154,14 +162,14 @@ class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
         self.data_layout = 'NHWC'
 
 
-class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNCase2(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
         self.out_w = 12
 
 
-class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNCase3(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -169,7 +177,7 @@ class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
         self.scale = [0.1, 0.05]
 
 
-class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNCase4(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -178,7 +186,7 @@ class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
-class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNCase5(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 9, 6]
         self.out_h = 12
@@ -186,7 +194,7 @@ class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
         self.out_size = np.array([13, 13]).astype("int32")
 
 
-class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNCase6(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -195,7 +203,7 @@ class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
         self.out_size = np.array([65, 129]).astype("int32")
 
 
-class TestBilinearNeighborInterpSame(TestBilinearInterpMKLDNNOp):
+class TestBilinearNeighborInterpOneDNNSame(TestBilinearInterpOneDNNOp):
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32
@@ -203,6 +211,24 @@ class TestBilinearNeighborInterpSame(TestBilinearInterpMKLDNNOp):
         self.scale = 2.0
         self.out_size = np.array([65, 129]).astype("int32")
 
+
+def create_test_class(parent):
+    class TestBf16Case(parent):
+        def init_data_type(self):
+            self.dtype = np.uint16
+
+    TestBf16Case.__name__ = "{0}_{1}".format(parent.__name__, "BF16")
+    globals()[TestBf16Case.__name__] = TestBf16Case
+
+
+create_test_class(TestBilinearInterpOneDNNOp)
+create_test_class(TestBilinearInterpOpOneDNNNHWC)
+create_test_class(TestBilinearNeighborInterpOneDNNCase2)
+create_test_class(TestBilinearNeighborInterpOneDNNCase3)
+create_test_class(TestBilinearNeighborInterpOneDNNCase4)
+create_test_class(TestBilinearNeighborInterpOneDNNCase5)
+create_test_class(TestBilinearNeighborInterpOneDNNCase6)
+create_test_class(TestBilinearNeighborInterpOneDNNSame)
 
 if __name__ == "__main__":
     from paddle import enable_static
