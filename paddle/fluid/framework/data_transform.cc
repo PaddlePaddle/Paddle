@@ -74,7 +74,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
         }
         dnnl::memory::desc out_mem_desc(
             vectorize(out.dims()),
-            ToMKLDNNDataType(TransToProtoVarType(in.type())),
+            phi::funcs::ToOneDNNDataType(in.dtype()),
             out_format);
         out.set_mem_desc(out_mem_desc);
       } else {

@@ -71,18 +71,6 @@ inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
   }
 }
 
-inline OneDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
-  static std::unordered_map<int, OneDNNDataType> dict{
-      {DataTypeTrait<float>::DataType(), OneDNNDataType::f32},
-      {DataTypeTrait<int8_t>::DataType(), OneDNNDataType::s8},
-      {DataTypeTrait<uint8_t>::DataType(), OneDNNDataType::u8},
-      {DataTypeTrait<int32_t>::DataType(), OneDNNDataType::s32},
-      {DataTypeTrait<platform::bfloat16>::DataType(), OneDNNDataType::bf16}};
-  auto iter = dict.find(static_cast<int>(type));
-  if (iter != dict.end()) return iter->second;
-  return OneDNNDataType::undef;
-}
-
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
                                     DataLayout out_layout,
                                     const phi::DenseTensor& in,

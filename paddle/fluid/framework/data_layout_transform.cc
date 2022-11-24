@@ -156,8 +156,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
   auto in_tz = phi::vectorize<int64_t>(in.dims());
   auto out_tz = in_tz;
 
-  memory::data_type in_type =
-      ToMKLDNNDataType(framework::TransToProtoVarType(in.dtype()));
+  memory::data_type in_type = phi::funcs::ToOneDNNDataType(in.dtype());
   PADDLE_ENFORCE_NE(
       in_type,
       memory::data_type::undef,
