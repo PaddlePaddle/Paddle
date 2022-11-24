@@ -137,7 +137,7 @@ def decoder_decode(context, is_sparse):
         current_score = pd.fc(
             input=current_state_with_lod, size=target_dict_dim, act='softmax'
         )
-        topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
+        topk_scores, topk_indices = paddle.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost
         accu_scores = pd.elementwise_add(
             x=pd.log(topk_scores),
