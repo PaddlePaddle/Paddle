@@ -33,6 +33,7 @@ from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
+from paddle.tensor import random
 import paddle.nn.functional as F
 
 
@@ -3555,7 +3556,7 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[13, 11], dtype='float32'
             )
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            out = random.uniform_random_batch_size_like(input, [-1, 11])
             return out
 
     def make_gaussian_random(self):
@@ -3730,7 +3731,9 @@ class TestBook(LayerTest):
                 dtype="float32",
                 append_batch_size=False,
             )
-            loss = layers.kldiv_loss(x=x, target=target, reduction='batchmean')
+            loss = paddle.nn.functional.kl_div(
+                input=x, label=target, reduction='batchmean'
+            )
             return loss
 
     def make_temporal_shift(self):
@@ -3772,7 +3775,7 @@ class TestBook(LayerTest):
         ):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
-            out = layers.mse_loss(input=x, label=y)
+            out = paddle.nn.functional.mse_loss(input=x, label=y)
             return out
 
     def make_square_error_cost(self):
