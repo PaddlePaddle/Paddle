@@ -119,9 +119,6 @@ int GroupNormPlugin::enqueue(int batch_size,
   float *mean_d = static_cast<float *>(workspace);
   float *variance_d = mean_d + input_shape[0] * groups_;
   float *temp_variance_d = variance_d + input_shape[0] * groups_;
-  // phi::DenseTensor mean_t;
-  // phi::DenseTensor variance_t;
-  // phi::DenseTensor temp_variance_t;
   auto input_type = getDataType();
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(1) << "TRT Plugin DataType selected. GroupNorm-->fp32";
