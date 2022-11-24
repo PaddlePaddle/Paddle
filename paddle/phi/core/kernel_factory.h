@@ -274,7 +274,8 @@ class KernelFactory {
   bool HasCompatiblePhiKernel(const std::string& op_type) const;
 
   KernelResult SelectKernelOrThrowError(const std::string& kernel_name,
-                                        const KernelKey& kernel_key) const;
+                                        const KernelKey& kernel_key,
+                                        bool use_gpudnn = false) const;
 
   bool HasKernel(const std::string& kernel_name,
                  const KernelKey& kernel_key) const;

@@ -307,6 +307,7 @@ class BaseAPI:
             'backend': None,
             'layout': None,
             'data_type': None,
+            'use_gpudnn': 'false',
             'dispatch': {},
         }
         if 'backend' in kernel_config and len(kernel_config['backend']) > 0:
@@ -317,6 +318,10 @@ class BaseAPI:
             kernel['data_type'] = kernel_config['data_type']
         if 'param' in kernel_config:
             kernel['param'] = kernel_config['param']
+        if 'use_gpudnn' in kernel_config:
+            kernel['use_gpudnn'] = kernel_config['use_gpudnn']
+            if isinstance(kernel['use_gpudnn'], bool):
+                kernel['use_gpudnn'] = str(kernel['use_gpudnn']).lower()
         kernel_funcs = re.compile(r'([a-zA-Z0-9_]+)\s*({[^}]+})?').findall(
             kernel_config['func']
         )
@@ -1119,10 +1124,15 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
+        cudnn_args = (
+            ''
+            if self.kernel['use_gpudnn'] == 'false'
+            else ', ' + self.kernel['use_gpudnn']
+        )
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}{cudnn_args});
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
