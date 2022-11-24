@@ -224,28 +224,34 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
 
 GenericPlugin::GenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
-    const InputOutPutVarInfo& in_out_info) {
+    const InputOutPutVarInfo& in_out_info,
+    bool with_fp16) {
   proto_op_desc_ = proto_op_desc;
   op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
   proto_op_desc_.SerializeToString(&op_meta_data_);
   inputs_data_type_ = in_out_info.inputs_data_type;
   outputs_data_type_ = in_out_info.outputs_data_type;
+  with_fp16_ = with_fp16;
 }
 
 GenericPlugin::GenericPlugin(
     const paddle::framework::proto::OpDesc& proto_op_desc,
     const std::vector<int>& inputs_data_type,
-    const std::vector<int>& outputs_data_type) {
+    const std::vector<int>& outputs_data_type,
+    bool with_fp16) {
   proto_op_desc_ = proto_op_desc;
   op_desc_ = std::move(framework::OpDesc(proto_op_desc_, nullptr));
   proto_op_desc_.SerializeToString(&op_meta_data_);
   inputs_data_type_ = inputs_data_type;
   outputs_data_type_ = outputs_data_type;
+  with_fp16_ = with_fp16;
 }
 
 GenericPlugin::GenericPlugin(void const* serial_data, size_t serial_length) {
   DeserializeValue(&serial_data, &serial_length, &inputs_data_type_);
   DeserializeValue(&serial_data, &serial_length, &outputs_data_type_);
+  DeserializeValue(&serial_data, &serial_length, &with_fp16_);
+
   std::string op_meta_data((char*)(serial_data), serial_length);  // NOLINT
   op_meta_data_ = std::move(op_meta_data);
   proto_op_desc_.ParseFromString(op_meta_data_);
@@ -269,8 +275,8 @@ int GenericPlugin::getNbInputs() const TRT_NOEXCEPT {
 }
 
 nvinfer1::IPluginV2DynamicExt* GenericPlugin::clone() const TRT_NOEXCEPT {
-  nvinfer1::IPluginV2DynamicExt* plugin =
-      new GenericPlugin(proto_op_desc_, inputs_data_type_, outputs_data_type_);
+  nvinfer1::IPluginV2DynamicExt* plugin = new GenericPlugin(
+      proto_op_desc_, inputs_data_type_, outputs_data_type_, with_fp16_);
   plugin->initialize();
   return plugin;
 }
@@ -280,6 +286,8 @@ void GenericPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, inputs_data_type_);
   // outputs_data_type_
   SerializeValue(&buffer, outputs_data_type_);
+  // use fp16
+  SerializeValue(&buffer, with_fp16_);
   // serialize op_meta_data_
   std::memcpy(buffer, op_meta_data_.c_str(), op_meta_data_.size());
   reinterpret_cast<char*&>(buffer) += op_meta_data_.size();
@@ -317,7 +325,8 @@ bool GenericPlugin::supportsFormatCombination(
     return (in_out[0].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
              in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-           (in_out[0].format == nvinfer1::TensorFormat::kLINEAR);
+           (in_out[0].format == nvinfer1::TensorFormat::kLINEAR) &&
+           (in_out[0].type == in_out[pos].type);
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
            (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
@@ -434,23 +443,34 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
   // [TODO]now generic plugin do not support FP16 and INT8 precision
-  auto protoType2PhiType = [](int proto_type) -> std::pair<phi::DataType, int> {
+  auto protoType2PhiType =
+      [&](int proto_type,
+          nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
     if (proto_type ==
-        static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP32))
-      return {phi::DataType::FLOAT32, sizeof(float)};
-    else if (proto_type ==
-                 static_cast<int>(
-                     framework::proto::VarType_Type::VarType_Type_INT64) ||
-             proto_type ==
-                 static_cast<int>(
-                     framework::proto::VarType_Type::VarType_Type_INT32))
+        static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP16)) {
+      return {phi::DataType::FLOAT16, sizeof(half)};
+    } else if (proto_type ==
+               static_cast<int>(
+                   framework::proto::VarType_Type::VarType_Type_FP32)) {
+      if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
+        return {phi::DataType::FLOAT16, sizeof(half)};
+      } else {
+        return {phi::DataType::FLOAT32, sizeof(float)};
+      }
+    } else if (proto_type ==
+                   static_cast<int>(
+                       framework::proto::VarType_Type::VarType_Type_INT64) ||
+               proto_type ==
+                   static_cast<int>(
+                       framework::proto::VarType_Type::VarType_Type_INT32)) {
       return {phi::DataType::INT32, sizeof(int32_t)};
-    else if (proto_type ==
-             static_cast<int>(
-                 framework::proto::VarType_Type::VarType_Type_BOOL))
+    } else if (proto_type ==
+               static_cast<int>(
+                   framework::proto::VarType_Type::VarType_Type_BOOL)) {
       return {phi::DataType::BOOL, sizeof(bool)};
-    else
+    } else {
       CHECK(false) << "precision is not supported";
+    }
   };
 
   // input
@@ -470,7 +490,9 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
 
-    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+    auto data_type_and_size =
+        protoType2PhiType(inputs_data_type_[i], data_type);
+
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
     std::shared_ptr<phi::Allocation> input_alloc(
@@ -482,7 +504,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     phi_kernel_contexts_[data_type]->EmplaceBackInput(
         &((*dense_tensor_inputs_)[i]));
   }
-
   // output
   for (int i = 0; i < getNbOutputs(); i++) {
     auto const& output_dims = output_desc[i].dims;
@@ -495,16 +516,20 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < output_shape.size(); k++)
       output_numel *= output_shape[k];
 
-    auto data_type_and_size = protoType2PhiType(inputs_data_type_[i]);
+    auto data_type_and_size =
+        protoType2PhiType(inputs_data_type_[i], data_type);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
+
     phi::DenseTensor output_densetonsor(output_alloc, output_meta);
+
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));
+
     phi_kernel_contexts_[data_type]->EmplaceBackOutput(
         &((*dense_tensor_outputs_)[i]));
   }

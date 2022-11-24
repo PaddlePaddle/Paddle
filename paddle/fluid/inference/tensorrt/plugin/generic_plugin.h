@@ -57,11 +57,13 @@ class GenericPlugin : public DynamicPluginTensorRT {
   GenericPlugin() {}
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
-                const InputOutPutVarInfo& in_out_info);
+                const InputOutPutVarInfo& in_out_info,
+                bool with_fp16_ = false);
 
   GenericPlugin(const paddle::framework::proto::OpDesc& proto_op_desc,
                 const std::vector<int>& inputs_data_type,
-                const std::vector<int>& outputs_data_type);
+                const std::vector<int>& outputs_data_type,
+                bool with_fp16_ = false);
 
   // It was used for tensorrt deserialization.
   // It should not be called by users.
@@ -86,7 +88,7 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   size_t getSerializationSize() const TRT_NOEXCEPT {
     return op_meta_data_.size() + SerializedSize(inputs_data_type_) +
-           SerializedSize(outputs_data_type_);
+           SerializedSize(outputs_data_type_) + SerializedSize(with_fp16_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT;
@@ -124,7 +126,8 @@ class GenericPlugin : public DynamicPluginTensorRT {
 
   bool isFp16Supported() {
     auto half_dtype = nvinfer1::DataType::kHALF;
-    return !(phi_kernels_.find(half_dtype) == phi_kernels_.end()) &&
+    return with_fp16_ &&
+           !(phi_kernels_.find(half_dtype) == phi_kernels_.end()) &&
            phi_kernels_[half_dtype]->IsValid();
   }
 
