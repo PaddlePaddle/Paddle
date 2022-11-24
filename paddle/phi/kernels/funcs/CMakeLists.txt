@@ -17,6 +17,7 @@ math_library(segment_pooling)
 math_library(sequence2batch)
 math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
 math_library(cross_entropy)
+math_library(im2col)
 math_library(vol2col)
 
 cc_library(

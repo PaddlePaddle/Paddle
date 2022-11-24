@@ -78,8 +78,6 @@ __all__ = [
     'data_norm',
     'reduce_sum',
     'reduce_mean',
-    'reduce_max',
-    'reduce_min',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -88,7 +86,6 @@ __all__ = [
     'l2_normalize',
     'matmul',
     'topk',
-    'transpose',
     'im2sequence',
     'row_conv',
     'multiplex',
@@ -103,10 +100,8 @@ __all__ = [
     'lod_reset',
     'lod_append',
     'pad',
-    'label_smooth',
     'roi_pool',
     'roi_align',
-    'dice_loss',
     'image_resize',
     'image_resize_short',
     'resize_linear',
@@ -114,21 +109,16 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'scatter',
     'random_crop',
-    'mean_iou',
     'relu',
     'log',
     'crop_tensor',
-    'pow',
     'prelu',
     'brelu',
-    'leaky_relu',
     'flatten',
     'pad2d',
     'unique',
     'unique_with_counts',
-    'expand',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -195,7 +185,7 @@ OP_NAMEMAPPING = {
 
 def _get_reduce_dim(dim, input):
     """
-    Internal function for reduce_sum, reduce_mean, reduce_max, reduce_min, reduce_prod.
+    Internal function for reduce_sum, reduce_mean, reduce_prod.
     It computes the attribute reduce_all value based on axis.
     """
     if dim is not None and not isinstance(dim, list):
@@ -3635,150 +3625,6 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
 
 
-def reduce_max(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the maximum of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimension along which the maximum is computed.
-            If :attr:`None`, compute the maximum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, results of maximum on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_max(x)  # [0.9]
-            fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
-            fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
-            fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
-            fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
-    """
-    helper = LayerHelper('reduce_max', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        return _C_ops.max(input, dim if dim is not None else [], keep_dim)
-
-    helper.append_op(
-        type='reduce_max',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim is not None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
-
-
-def reduce_min(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the minimum of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the minimum is computed.
-            If :attr:`None`, compute the minimum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, result of minimum on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_min(x)  # [0.1]
-            fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
-            fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
-            fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
-            fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
-    """
-    helper = LayerHelper('reduce_min', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        return _C_ops.min(input, dim if dim is not None else [], keep_dim)
-
-    helper.append_op(
-        type='reduce_min',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim is not None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
-
-
 def reduce_all(input, dim=None, keep_dim=False, name=None):
     """
 
@@ -4565,108 +4411,6 @@ def ctc_greedy_decoder(
             },
         )
         return ctc_out, ctc_out_len
-
-
-def transpose(x, perm, name=None):
-    """
-    Permute the data dimensions of `input` according to `perm`.
-
-    The `i`-th dimension  of the returned tensor will correspond to the
-    perm[i]-th dimension of `input`.
-
-    Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
-        perm (list|tuple): Permute the input according to the data of perm.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
-
-    For Example:
-
-        .. code-block:: text
-
-         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
-             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
-         shape(x) =  [2,3,4]
-
-         # Example 1
-         perm0 = [1,0,2]
-         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
-                   [[ 5  6  7  8]  [17 18 19 20]]
-                   [[ 9 10 11 12]  [21 22 23 24]]]
-         shape(y_perm0) = [3,2,4]
-
-         # Example 2
-         perm1 = [2,1,0]
-         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
-                   [[ 2 14] [ 6 18] [10 22]]
-                   [[ 3 15]  [ 7 19]  [11 23]]
-                   [[ 4 16]  [ 8 20]  [12 24]]]
-         shape(y_perm1) = [4,3,2]
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.randn([2, 3, 4])
-            x_transposed = paddle.transpose(x, perm=[1, 0, 2])
-            print(x_transposed.shape)
-            # [3L, 2L, 4L]
-
-    """
-    if in_dygraph_mode():
-        return _C_ops.transpose(x, perm)
-    else:
-        if _in_legacy_dygraph():
-            out, _ = _legacy_C_ops.transpose2(x, 'axis', perm)
-            return out
-
-    check_variable_and_dtype(
-        x,
-        'x',
-        [
-            'bool',
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'complex64',
-            'complex128',
-        ],
-        'transpose',
-    )
-    check_type(perm, 'perm', (list, tuple), 'transpose')
-    if isinstance(perm, tuple):
-        perm = list(perm)
-    if len(perm) != len(x.shape):
-        raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(x), "
-            "its length should be equal to dimensions of Input(x), "
-            "but received dimension of Input(x) is %s, "
-            "the length of Input(perm) is %s." % (len(x.shape), len(perm))
-        )
-    for idx, dim in enumerate(perm):
-        if dim >= len(x.shape):
-            raise ValueError(
-                "Each element in Input(perm) should be less than Input(x)'s dimension, "
-                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
-                "dimension %d." % (idx, perm[idx], len(x.shape))
-            )
-
-    helper = LayerHelper('transpose', **locals())
-    out = helper.create_variable_for_type_inference(x.dtype)
-    x_shape = helper.create_variable_for_type_inference(x.dtype)
-    helper.append_op(
-        type='transpose2',
-        inputs={'X': [x]},
-        outputs={'Out': [out], 'XShape': [x_shape]},
-        attrs={'axis': perm},
-    )
-    return out
 
 
 def im2sequence(
@@ -5638,95 +5382,6 @@ def pad(x, paddings, pad_value=0.0, name=None):
     return out
 
 
-def label_smooth(
-    label, prior_dist=None, epsilon=0.1, dtype="float32", name=None
-):
-    r"""
-    :alias_main: paddle.nn.functional.label_smooth
-        :alias: paddle.nn.functional.label_smooth,paddle.nn.functional.common.label_smooth
-        :old_api: paddle.fluid.layers.label_smooth
-
-    Label smoothing is a mechanism to regularize the classifier layer and is called
-    label-smoothing regularization (LSR).
-
-    Label smoothing is proposed to encourage the model to be less confident,
-    since optimizing the log-likelihood of the correct label directly may
-    cause overfitting and reduce the ability of the model to adapt. Label
-    smoothing replaces the ground-truth label :math:`y` with the weighted sum
-    of itself and some fixed distribution :math:`\mu`. For class :math:`k`,
-    i.e.
-
-    .. math::
-
-        \\tilde{y_k} = (1 - \epsilon) * y_k + \epsilon * \mu_k,
-
-    where :math:`1 - \epsilon` and :math:`\epsilon` are the weights
-    respectively, and :math:`\\tilde{y}_k` is the smoothed label. Usually
-    uniform distribution is used for :math:`\mu`.
-
-    See more details about label smoothing in https://arxiv.org/abs/1512.00567.
-
-    Parameters:
-        label(Variable): The input variable containing the label data. The
-                        label data should use one-hot representation. It's
-                        a multidimensional tensor with a shape of
-                        :math:`[N_1, ..., Depth]`, where Depth is class number. The dtype can be "float32" and "float64".
-        prior_dist(Variable, optional): The prior distribution to be used to smooth
-                        labels. If not provided, an uniform distribution
-                        is used. It's a multidimensional tensor with a shape of
-                        :math:`[1, class\_num]` . The default value is None.
-        epsilon(float, optional): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution. The default value is
-                        0.1.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
-                        as 'float32', 'float64'. The default value is 'float32'.
-        name(str, optional): The default value is None. Normally there is no need for user
-                        to set this property. For more information, please refer to
-                        :ref:`api_guide_Name`.
-
-    Returns:
-        Variable: The tensor variable containing the smoothed labels.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            label = layers.data(name="label", shape=[1], dtype="int32")
-            one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="float32")
-    """
-    if in_dygraph_mode():
-        return _C_ops.label_smooth(label, prior_dist, float(epsilon))
-
-    if epsilon > 1.0 or epsilon < 0.0:
-        raise ValueError("The value of epsilon must be between 0 and 1.")
-
-    if _non_static_mode():
-        return _legacy_C_ops.label_smooth(
-            label, prior_dist, 'epsilon', float(epsilon)
-        )
-
-    check_variable_and_dtype(
-        label, 'label', ['float32', 'float64'], 'label_smooth'
-    )
-
-    helper = LayerHelper("label_smooth", **locals())
-    label.stop_gradient = True
-    smooth_label = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="label_smooth",
-        inputs={"X": label, "PriorDist": prior_dist}
-        if prior_dist
-        else {"X": label},
-        outputs={"Out": smooth_label},
-        attrs={"epsilon": float(epsilon)},
-    )
-    return smooth_label
-
-
 @templatedoc()
 def roi_pool(
     input,
@@ -5959,53 +5614,6 @@ def roi_align(
         },
     )
     return align_out
-
-
-def dice_loss(input, label, epsilon=0.00001, name=None):
-    r"""
-
-    Dice loss for comparing the similarity between the input predictions and the label.
-    This implementation is for binary classification, where the input is sigmoid
-    predictions of each pixel, usually used for segmentation task. The dice loss can
-    be defined as the following equation:
-
-    .. math::
-
-        dice\_loss &= 1 - \frac{2 * intersection\_area}{total\_area} \\
-                  &= \frac{(total\_area - intersection\_area) - intersection\_area}{total\_area} \\
-                  &= \frac{(union\_area - intersection\_area)}{total\_area}
-
-
-    Parameters:
-        input (Tensor): Tensor, rank>=2, shape is :math:`[N_1, N_2, ..., N_k, D]`, where :math:`N_1` is
-                          the batch_size, :math:`D` is the number of categories. It is usually the output
-                          predictions of sigmoid activation. The data type can be float32 or float64.
-        label (Tensor): Tensor, the groud truth with the same rank as input, shape is :math:`[N_1, N_2, ..., N_k, 1]`.
-                          where :math:`N_1` is the batch_size. The data type can be int32 or int64.
-        epsilon (float): The epsilon will be added to the numerator and denominator.
-                         If both input and label are empty, it makes sure dice is 1.
-                         Default: 0.00001
-        name(str, optional): The default value is None.
-                             Normally there is no need for user to set this property.
-                             For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Tensor, which shape is [1], data type is the same as `input` .
-
-    Example:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn.functional as F
-
-            x = paddle.randn((3,224,224,2))
-            label = paddle.randint(high=2, shape=(3,224,224,1))
-            predictions = F.softmax(x)
-            loss = F.dice_loss(input=predictions, label=label)
-    """
-    return paddle.nn.functional.dice_loss(
-        input, label, epsilon=epsilon, name=name
-    )
 
 
 def image_resize(
@@ -7327,96 +6935,6 @@ def gather_nd(input, index, name=None):
     return output
 
 
-@deprecated(since="2.0.0", update_to="paddle.scatter")
-def scatter(input, index, updates, name=None, overwrite=True):
-    """
-    :alias_main: paddle.scatter
-        :alias: paddle.scatter,paddle.tensor.scatter,paddle.tensor.manipulation.scatter
-        :old_api: paddle.fluid.layers.scatter
-
-    **Scatter Layer**
-
-    Output is obtained by updating the input on selected indices based on updates.
-
-    .. code-block:: python
-
-        import numpy as np
-
-        #input:
-        input = np.array([[1, 1], [2, 2], [3, 3]])
-        index = np.array([2, 1, 0, 1])
-        # shape of updates should be the same as input
-        # shape of updates with dim > 1 should be the same as input
-        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
-        overwrite = False
-
-        # calculation:
-        if not overwrite:
-            for i in range(len(index)):
-                input[index[i]] = np.zeros((2))
-
-        for i in range(len(index)):
-            if (overwrite):
-                input[index[i]] = updates[i]
-            else:
-                input[index[i]] += updates[i]
-        # output:
-        out = np.array([[3, 3], [6, 6], [1, 1]])
-        out.shape # [3, 2]
-
-    Args:
-        input (Variable): The input N-D Tensor with rank>=1. Data type can be float32.
-        index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-        overwrite (bool): The mode that updating the output when there are same indices.
-            If True, use the overwrite mode to update the output of the same index,
-            if False, use the accumulate mode to update the output of the same index.
-            Default value is True.
-
-    Returns:
-        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[4, 2], dtype='float32', append_batch_size=False)
-
-            output = fluid.layers.scatter(input, index, updates, overwrite=False)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            in_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
-            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            update_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'data':in_data, "index":index_data, "update":update_data}, fetch_list=[output])
-            print(res)
-            # [array([[3., 3.],
-            #   [6., 6.],
-            #   [1., 1.]], dtype=float32)]
-    """
-    helper = LayerHelper('scatter', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="scatter",
-        inputs={"X": input, "Ids": index, "Updates": updates},
-        attrs={'overwrite': overwrite},
-        outputs={"Out": out},
-    )
-    return out
-
-
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -7558,73 +7076,6 @@ def relu(x, name=None):
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
     )
     return out
-
-
-def mean_iou(input, label, num_classes):
-    r"""
-    Mean Intersection-Over-Union is a common evaluation metric for
-    semantic image segmentation, which first computes the IOU for each
-    semantic class and then computes the average over classes.
-    IOU is defined as follows:
-
-    .. math::
-
-        IOU = \\frac{true\_positive}{(true\_positive + false\_positive + false\_negative)}.
-
-    The predictions are accumulated in a confusion matrix and mean-IOU
-    is then calculated from it.
-
-
-    Parameters:
-        input (Tensor): A n-D Tensor of prediction results for semantic labels with type int32 or int64.
-        label (Tensor): A Tensor of ground truth labels with type int32 or int64.
-                           Its shape should be the same as input.
-        num_classes (int32): The possible number of labels.
-
-    Returns:
-	Three Tensors.
-
-        - mean_iou(Tensor) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. \
-			    Data type is float32.
-        - out_wrong(Tensor) : A 1-D Tensor with shape [num_classes]. Data type is int32. \
-			     The wrong numbers of each class.
-        - out_correct(Tensor): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
-
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            iou_shape = [64, 32, 32]
-            num_classes = 5
-            predict = paddle.randint(low=0, high=255, shape=iou_shape, dtype='int64')
-            label = paddle.randint(low=0, high=255, shape=iou_shape, dtype='int64')
-            mean_iou, out_wrong, out_correct = paddle.metric.mean_iou(predict, label, num_classes)
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.mean_iou(input, label, 'num_classes', num_classes)
-
-    helper = LayerHelper('mean_iou', **locals())
-    check_variable_and_dtype(
-        input, 'Predictions', ['int32', 'int64'], 'mean_iou'
-    )
-    check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
-    out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
-    out_wrong = helper.create_variable_for_type_inference(dtype='int32')
-    out_correct = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type="mean_iou",
-        inputs={"Predictions": input, "Labels": label},
-        outputs={
-            "OutMeanIou": out_mean_iou,
-            "OutWrong": out_wrong,
-            "OutCorrect": out_correct,
-        },
-        attrs={"num_classes": num_classes},
-    )
-    return out_mean_iou, out_wrong, out_correct
 
 
 def crop_tensor(x, shape=None, offsets=None, name=None):
@@ -7965,59 +7416,6 @@ def pad2d(
     return out
 
 
-@templatedoc()
-def pow(x, factor=1.0, name=None):
-    """
-    This is Pow Activation Operator.
-
-    :math:`out = x^{factor}`
-
-    Args:
-        x(Variable): A ``Tensor`` or ``LoDTensor`` . The data type is ``float32`` or ``float64``.
-        factor(float32|Variable, optional): A scalar with type ``float32`` or a ``Tensor`` with shape [1] and type ``float32``.  The exponential factor of Pow. Default 1.0.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name="x", shape=[32,32], dtype="float32")
-
-            # example 1: argument factor is float
-            y_1 = fluid.layers.pow(x, factor=2.0)
-            # y_1 is x^{2.0}
-
-            # example 2: argument factor is Variable
-            factor_tensor = fluid.layers.fill_constant([1], "float32", 3.0)
-            y_2 = fluid.layers.pow(x, factor=factor_tensor)
-            # y_2 is x^{3.0}
-    """
-    check_variable_and_dtype(
-        x, 'x', ['int32', 'int64', 'float16', 'float32', 'float64'], 'pow'
-    )
-
-    helper = LayerHelper('pow', **locals())
-    inputs = {'X': x}
-    attrs = {}
-    if isinstance(factor, Variable):
-        check_variable_and_dtype(factor, 'factor', ['float32'], 'pow')
-        factor.stop_gradient = True
-        inputs['FactorTensor'] = factor
-    else:
-        attrs['factor'] = factor
-
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='pow', inputs=inputs, outputs={'Out': out}, attrs=attrs
-    )
-    return out
-
-
 @deprecated(since="2.0.0", update_to="paddle.static.nn.prelu")
 def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
     r"""
@@ -8170,33 +7568,6 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
     return out
 
 
-@deprecated(since="2.0.0", update_to="paddle.nn.functional.leaky_relu")
-@templatedoc()
-def leaky_relu(x, alpha=0.02, name=None):
-    """
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        alpha(${alpha_type}|0.02): ${alpha_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        output(${out_type}): ${out_comment}
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            x = paddle.to_tensor([[-1, 2], [3, -4]], dtype='float32')
-            y = paddle.fluid.layers.leaky_relu(x, alpha=0.1)
-            print(y) # [[-0.1, 2], [3, -0.4]]
-
-    """
-    return paddle.nn.functional.leaky_relu(x, alpha, name)
-
-
 def flatten(x, axis=1, name=None):
     r"""
     **Flatten op**
@@ -8285,128 +7656,6 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out, 'XShape': x_shape},
         attrs={"axis": axis},
-    )
-    return out
-
-
-@deprecated(since='2.0.0', update_to="paddle.expand")
-def expand(x, expand_times, name=None):
-    """
-    :alias_main: paddle.expand
-        :alias: paddle.expand,paddle.tensor.expand,paddle.tensor.manipulation.expand
-        :old_api: paddle.fluid.layers.expand
-
-    This operation tiles ``x`` multiple times according to the parameter ``expand_times``.
-    The times number for each dimension of ``x`` is set by the parameter ``expand_times``.
-    The rank of ``x`` should be less than or equal to 6. Please note that size of ``expand_times`` must be the same
-    with X's rank. Following is a using case:
-
-
-    .. code-block:: text
-
-        Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
-                [
-                   [[1], [2], [3]],
-                   [[4], [5], [6]]
-                ]
-
-        Attr(expand_times):  [1, 2, 2]
-
-        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
-                [
-                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
-                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
-                ]
-
-    Args:
-        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
-        expand_times (list|tuple|Variable): The data type is ``int32`` . If ``expand_times`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``expand_times`` is an Variable, it should be an 1-D Tensor.
-                Expand times number for each dimension of ``x`` .
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
-
-    Raises:
-        TypeError: The type of ``expand_times`` must be list, tuple or Variable.
-        ValueError: The elements of ``expand_times`` cannot be negative.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            # example 1:
-            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
-            # the shape of expanded_1 is [2, 6, 2].
-
-            # example 2:
-            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
-            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
-            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
-            # the shape of expanded_2 is [48, 56].
-    """
-    if _non_static_mode():
-        attrs = ()
-        expand_times_tensor = None
-        if isinstance(expand_times, (list, tuple)):
-            expand_times = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in expand_times
-            ]
-            attrs += ('expand_times', expand_times)
-        elif isinstance(expand_times, Variable):
-            expand_times_tensor = expand_times
-            expand_times_tensor.stop_gradient = True
-
-        return _legacy_C_ops.expand(x, expand_times_tensor, *attrs)
-
-    inputs = {"X": [x]}
-    attrs = {}
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'expand',
-    )
-    check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
-        raise ValueError(
-            "expand op bool date type must set the stop_gradient to be False"
-        )
-
-    helper = LayerHelper('expand', input=x, **locals())
-
-    def get_attr_expand_times(list_expand_times):
-        attrs_expand_times = []
-        for idx, times in enumerate(list_expand_times):
-            if isinstance(times, Variable):
-                attrs_expand_times.append(-1)
-            else:
-                attrs_expand_times.append(times)
-                assert (
-                    times > 0
-                ), "Each element given in expand_times must not be negative."
-        return attrs_expand_times
-
-    if isinstance(expand_times, Variable):
-        expand_times.stop_gradient = True
-        inputs['ExpandTimes'] = expand_times
-    elif isinstance(expand_times, (list, tuple)):
-        attrs['expand_times'] = get_attr_expand_times(expand_times)
-        if utils._contain_var(expand_times):
-            inputs['expand_times_tensor'] = utils._convert_to_tensor_list(
-                expand_times
-            )
-
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return out
 
