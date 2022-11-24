@@ -14,7 +14,7 @@
 
 from abc import ABC, abstractmethod
 
-from .graph import Graph, Node
+from ..graph import Graph
 
 
 _PATTERNS = {}
@@ -43,12 +43,12 @@ def convert_to_graph(ops, block):
 
     node_id = -1
     for op in ops:
-        attrs = op.attrs
+        attrs = op.all_attrs()
         attrs["type"] = op.type
         node_id += 1
 
         # create op node
-        op_node = Node(node_id, attrs)
+        op_node = graph.add_node(node_id, **attrs)
         graph.attrs["op_to_id"][op.desc.id()] = op_node.id
         graph.attrs["id_to_op"][op_node.id] = op.desc.id()
         for input_name in op.input_names:
@@ -65,7 +65,7 @@ def convert_to_graph(ops, block):
                     graph.attrs["var_to_id"][var_name] = var_node.id
                     graph.attrs["id_to_var"][var_node.id] = var_name
                 else:
-                    var_node_id = graph.attrs["vars"][var_name]
+                    var_node_id = graph.attrs["var_to_id"][var_name]
                     var_node = graph._nodes[var_node_id]
 
                 # create edge that input -> op
@@ -86,7 +86,7 @@ def convert_to_graph(ops, block):
                         graph.attrs["var_to_id"][var_name] = var_node.id
                         graph.attrs["id_to_var"][var_node.id] = var_name
                     else:
-                        var_node_id = graph.attrs["vars"][var_name]
+                        var_node_id = graph.attrs["var_to_id"][var_name]
                         var_node = graph._nodes[var_node_id]
 
                     # create edge that op -> output
@@ -118,30 +118,30 @@ class QKVPattern(BasePattern):
     def build(self):
         self.graph = Graph()
 
-        query = self.graph.add_node(0, {"type": "var"})
+        query = self.graph.add_node(0, **{"type": "var"})
 
-        q_weight = self.graph.add_node(1, {"dim": 2, "type": "param"})
-        k_weight = self.graph.add_node(2, {"dim": 2, "type": "param"})
-        v_weight = self.graph.add_node(3, {"dim": 2, "type": "param"})
+        q_weight = self.graph.add_node(1, **{"dim": 2, "type": "param"})
+        k_weight = self.graph.add_node(2, **{"dim": 2, "type": "param"})
+        v_weight = self.graph.add_node(3, **{"dim": 2, "type": "param"})
 
-        q_matmul = self.graph.add_node(4, {"type": "matmul_v2"})
-        k_matmul = self.graph.add_node(5, {"type": "matmul_v2"})
-        v_matmul = self.graph.add_node(6, {"type": "matmul_v2"})
+        q_matmul = self.graph.add_node(4, **{"type": "matmul_v2"})
+        k_matmul = self.graph.add_node(5, **{"type": "matmul_v2"})
+        v_matmul = self.graph.add_node(6, **{"type": "matmul_v2"})
 
-        q_x = self.graph.add_edge(0, 4, {"input_name": "X"})
-        k_x = self.graph.add_edge(0, 5, {"input_name": "X"})
-        v_x = self.graph.add_edge(0, 6, {"input_name": "X"})
-        q_y = self.graph.add_edge(1, 4, {"input_name": "Y"})
-        k_y = self.graph.add_edge(2, 5, {"input_name": "Y"})
-        v_y = self.graph.add_edge(3, 6, {"input_name": "Y"})
+        q_x = self.graph.add_edge(0, 4, **{"input_name": "X"})
+        k_x = self.graph.add_edge(0, 5, **{"input_name": "X"})
+        v_x = self.graph.add_edge(0, 6, **{"input_name": "X"})
+        q_y = self.graph.add_edge(1, 4, **{"input_name": "Y"})
+        k_y = self.graph.add_edge(2, 5, **{"input_name": "Y"})
+        v_y = self.graph.add_edge(3, 6, **{"input_name": "Y"})
 
-        q = self.graph.add_node(7, {"type": "var"})
-        k = self.graph.add_node(8, {"type": "var"})
-        v = self.graph.add_node(9, {"type": "var"})
+        q = self.graph.add_node(7, **{"type": "var"})
+        k = self.graph.add_node(8, **{"type": "var"})
+        v = self.graph.add_node(9, **{"type": "var"})
 
-        q_out = self.graph.add_edge(7, 4, {"output_name": "Out"})
-        k_out = self.graph.add_edge(8, 5, {"output_name": "Out"})
-        v_out = self.graph.add_edge(9, 6, {"output_name": "Out"})
+        q_out = self.graph.add_edge(7, 4, **{"output_name": "Out"})
+        k_out = self.graph.add_edge(8, 5, **{"output_name": "Out"})
+        v_out = self.graph.add_edge(9, 6, **{"output_name": "Out"})
 
         # Pattern
         self.graph.attrs["shard_tensor"] = [
