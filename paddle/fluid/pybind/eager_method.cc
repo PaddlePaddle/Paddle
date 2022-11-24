@@ -54,6 +54,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -1444,6 +1445,43 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor__use_cudnn(TensorObject* self,
+                                   PyObject* args,
+                                   PyObject* kwargs) {
+  EAGER_TRY
+  PADDLE_ENFORCE(self->tensor.defined() && self->tensor.is_dense_tensor(),
+                 paddle::platform::errors::Fatal(
+                     "function _use_cudnn is only effective for DenseTensor"));
+
+  bool use_cudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
+
+  // Set the same use_cudnn attribute, return directly
+  phi::DenseTensor* dense_tensor =
+      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensorMeta* dense_tensor_meta =
+      phi::DenseTensorUtils::GetMutableMeta(dense_tensor);
+  if (use_cudnn == dense_tensor_meta->use_cudnn) {
+    return ToPyObject(self->tensor);
+  }
+
+  // Share all other members of Tensor except use_cudnn
+  phi::DenseTensorMeta target_dense_meta = *dense_tensor_meta;
+  target_dense_meta.use_cudnn = use_cudnn;
+  phi::DenseTensor target_dense_tensor;
+  target_dense_tensor.ShareDataWith(*dense_tensor);
+  target_dense_tensor.set_meta(target_dense_meta);
+  // Construct returned tensor
+  paddle::experimental::Tensor target_tensor(
+      std::make_shared<phi::DenseTensor>(target_dense_tensor),
+      self->tensor.name());
+  target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+  VLOG(4) << "Tensor: " << target_tensor.name()
+          << " set use_cudnn = " << use_cudnn;
+
+  return ToPyObject(target_tensor);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -2008,6 +2046,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_copy_gradient_from",
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"_tensor_use_cudnn",
+     (PyCFunction)(void (*)(void))tensor__use_cudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     /** the methods to adapt old dygraph, will be removed in the future **/
