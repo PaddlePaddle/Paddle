@@ -95,7 +95,7 @@ class CNN(fluid.dygraph.Layer):
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
             dtype='float32'
         )
-        mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
+        mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
         emb = emb * mask_emb
         emb = paddle.reshape(
             emb, shape=[-1, self.channels, self.seq_len, self.hid_dim]
@@ -141,7 +141,7 @@ class BOW(fluid.dygraph.Layer):
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
             dtype='float32'
         )
-        mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
+        mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
         emb = emb * mask_emb
         emb = paddle.reshape(emb, shape=[-1, self.seq_len, self.hid_dim])
         bow_1 = fluid.layers.reduce_sum(emb, dim=1)
@@ -189,7 +189,7 @@ class GRU(fluid.dygraph.Layer):
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
             'float32'
         )
-        mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
+        mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
         emb = emb * mask_emb
         emb = paddle.reshape(emb, shape=[self.batch_size, -1, self.hid_dim])
         fc_1 = self._fc1(emb)
@@ -243,7 +243,8 @@ class BiGRU(fluid.dygraph.Layer):
         o_np_mask = (paddle.reshape(inputs, [-1, 1]) != self.dict_dim).astype(
             'float32'
         )
-        mask_emb = fluid.layers.expand(o_np_mask, [1, self.hid_dim])
+        mask_emb = paddle.expand(o_np_mask, [-1, self.hid_dim])
+
         emb = emb * mask_emb
         emb = paddle.reshape(emb, shape=[self.batch_size, -1, self.hid_dim])
         fc_1 = self._fc1(emb)
