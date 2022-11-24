@@ -78,6 +78,8 @@ static __global__ void FillIndex(T *indices, T num_rows, T num_cols) {
   }
 }
 
+// Sort by flag descending, True: descending. False: Ascending.
+// Default is false.
 static __global__ void FillIndexAndSegmentKernel(int2 *data,
                                                  int numel,
                                                  int nsort) {
@@ -102,11 +104,11 @@ static __global__ void FillIndexAndSegmentKernel(int2 *data,
     PADDLE_ENFORCE_GPU_SUCCESS(err);                                           \
   } while (false)
 
-template <typename key_t, typename value_type>
-static void RadixSortPairsImpl(const key_t *keys_in,
-                               key_t *keys_out,
-                               const value_type *values_in,
-                               value_type *values_out,
+template <typename KT, typename VT>
+static void RadixSortPairsImpl(const KT *keys_in,
+                               KT *keys_out,
+                               const VT *values_in,
+                               VT *values_out,
                                int64_t n,
                                bool descending,
                                int64_t begin_bit,
@@ -116,8 +118,8 @@ static void RadixSortPairsImpl(const key_t *keys_in,
     DenseTensor key_out_owner;
     int64_t key_out_owner_size = n;
     key_out_owner.Resize({key_out_owner_size});
-    ctx.template Alloc<key_t>(&key_out_owner);
-    keys_out = key_out_owner.data<key_t>();
+    ctx.template Alloc<KT>(&key_out_owner);
+    keys_out = key_out_owner.data<KT>();
   }
 
   if (descending) {
@@ -145,16 +147,16 @@ static void RadixSortPairsImpl(const key_t *keys_in,
   }
 }
 
-template <typename key_t, typename value_t>
+template <typename KT, typename VT>
 static void RadixSortPairs(const phi::GPUContext &ctx,
-                           const key_t *keys_in,
-                           key_t *keys_out,
-                           const value_t *values_in,
-                           value_t *values_out,
+                           const KT *keys_in,
+                           KT *keys_out,
+                           const VT *values_in,
+                           VT *values_out,
                            int64_t n,
                            bool descending = false,
                            int64_t begin_bit = 0,
-                           int64_t end_bit = sizeof(key_t) * 8) {
+                           int64_t end_bit = sizeof(KT) * 8) {
   RadixSortPairsImpl(keys_in,
                      keys_out,
                      values_in,
@@ -166,9 +168,9 @@ static void RadixSortPairs(const phi::GPUContext &ctx,
                      ctx);
 }
 
-template <typename key_t>
-static void RadixSortKeys(const key_t *keys_in,
-                          key_t *keys_out,
+template <typename KT>
+static void RadixSortKeys(const KT *keys_in,
+                          KT *keys_out,
                           int64_t n,
                           bool descending,
                           int64_t begin_bit,
@@ -195,9 +197,9 @@ static void RadixSortKeys(const key_t *keys_in,
   }
 }
 
-template <typename scalar_t>
-static __global__ void SortPostprocessKernel(const scalar_t *in,
-                                             scalar_t *out,
+template <typename T>
+static __global__ void SortPostprocessKernel(const T *in,
+                                             T *out,
                                              int64_t *index,
                                              const int2 *i_s_ptr,
                                              int nsegments,
@@ -207,8 +209,8 @@ static __global__ void SortPostprocessKernel(const scalar_t *in,
     int j = i % nsort;
 
     int offset = segment * nsort;
-    const scalar_t *in_ = in + offset;
-    scalar_t *out_ = out + offset;
+    const T *in_ = in + offset;
+    T *out_ = out + offset;
     int64_t *index_ = index + offset;
     const int2 *i_s_ptr_ = i_s_ptr + offset;
 
@@ -218,13 +220,13 @@ static __global__ void SortPostprocessKernel(const scalar_t *in,
   }
 }
 
-template <typename scalar_t>
+template <typename T>
 inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
                                          const int64_t nsort,
                                          const int64_t n,
                                          const bool descending,
-                                         const scalar_t *const self_ptr,
-                                         scalar_t *const values_ptr,
+                                         const T *const self_ptr,
+                                         T *const values_ptr,
                                          int64_t *const indices_ptr,
                                          const phi::GPUContext &ctx) {
   int64_t segment_bits = std::max<int64_t>(
@@ -255,7 +257,7 @@ inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
   auto i_s_ptr2_base = indices_and_segment2.data<int64_t>();
   auto i_s_ptr2 = reinterpret_cast<int2 *>(i_s_ptr2_base);
 
-  RadixSortPairs<scalar_t, int2>(
+  RadixSortPairs<T, int2>(
       ctx, self_ptr, nullptr, i_s_ptr, i_s_ptr2, n, descending);
 
   RadixSortKeys<int64_t>(reinterpret_cast<int64_t *>(i_s_ptr2),
