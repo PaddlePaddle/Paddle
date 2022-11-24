@@ -19,6 +19,7 @@
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 
+using dnnl::engine;
 using dnnl::inner_product_forward;
 using dnnl::memory;
 using dnnl::prop_kind;
@@ -30,14 +31,14 @@ namespace phi {
 template <typename XT, typename YT, typename OT>
 class MulPrimitiveFactory {
  public:
-  explicit MulPrimitiveFactory(const dnnl::engine &engine) : engine_(engine) {}
+  explicit MulPrimitiveFactory(const engine &engine) : engine_(engine) {}
 
   inner_product_forward CreateMulPrimitive(const DenseTensor *x_input,
                                            const DenseTensor *y_input,
                                            DenseTensor *output,
                                            int x_num_col_dims,
                                            int y_num_col_dims,
-                                           const OneDNNContext &ctx) {
+                                           const OneDNNContext &dev_ctx) {
     // TODO(intel-minghui) : Remove the restriction that only supports Input(Y)
     // as weights
     PADDLE_ENFORCE_EQ(
@@ -45,10 +46,11 @@ class MulPrimitiveFactory {
         true,
         errors::InvalidArgument(
             "Input(Y) must be fp32 data type since only fp32 data type is "
-            "supported in the current design of MKLDNN INT8."));
+            "supported in the current design of OneDNN INT8."));
 
-    auto x_matrix = UpdateDataFormat<XT>(x_input, x_num_col_dims, ctx);
-    auto y_matrix = UpdateDataFormat<YT>(y_input, y_num_col_dims, ctx);
+    /* check data format and reorder if need */
+    auto x_matrix = UpdateDataFormat<XT>(x_input, x_num_col_dims, dev_ctx);
+    auto y_matrix = UpdateDataFormat<YT>(y_input, y_num_col_dims, dev_ctx);
 
     auto output_dim = output->dims();
     if (output_dim.size() != 2) {
@@ -56,7 +58,7 @@ class MulPrimitiveFactory {
     }
 
     if (mul_) {
-      UpdateDataPointers(ctx, output, &x_matrix);
+      UpdateDataPointers(dev_ctx, output, &x_matrix);
       Execute();
       return *(mul_);
     }
@@ -67,10 +69,10 @@ class MulPrimitiveFactory {
 
     if (is_int8_) {
       const auto trans_y = TransposeInputY(&y_matrix);
-      auto scale_y =
-          ctx.HasDnnAttr("scale_y")
-              ? PADDLE_GET_CONST(std::vector<float>, ctx.GetDnnAttr("scale_y"))
-              : std::vector<float>();
+      auto scale_y = dev_ctx.HasDnnAttr("scale_y")
+                         ? PADDLE_GET_CONST(std::vector<float>,
+                                            dev_ctx.GetDnnAttr("scale_y"))
+                         : std::vector<float>();
       y_input_ = QuantInputY(trans_y, scale_y);
     } else {
       y_input_ = TransposeInputY(&y_matrix);
@@ -79,7 +81,7 @@ class MulPrimitiveFactory {
     auto dst_desc =
         CreateMemDescriptor<OT>(output, funcs::OneDNNMemoryFormat::any);
 
-    mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, ctx);
+    mul_ = CreateMulPrimitive(*x_input_, *y_input_, dst_desc, output, dev_ctx);
     Execute();
     return *(mul_);
   }
@@ -128,22 +130,23 @@ class MulPrimitiveFactory {
         user_y_desc, y_desc, input_y.get_data_handle(), scale_y);
   }
 
-  dnnl::primitive_attr CreateMulAttr(const OneDNNContext &ctx,
+  dnnl::primitive_attr CreateMulAttr(const OneDNNContext &dev_ctx,
                                      bool force_fp32_output) {
     dnnl::primitive_attr mul_attr;
 
-    auto scale_y_data =
-        ctx.HasDnnAttr("scale_y")
-            ? PADDLE_GET_CONST(std::vector<float>, ctx.GetDnnAttr("scale_y"))
-            : std::vector<float>();
-    auto scale_x_data = ctx.HasDnnAttr("scale_x")
-                            ? PADDLE_GET_CONST(float, ctx.GetDnnAttr("scale_x"))
-                            : 1.0f;
-    auto scale_out_data =
-        force_fp32_output ? 1.0f
-        : ctx.HasDnnAttr("scale_out")
-            ? PADDLE_GET_CONST(float, ctx.GetDnnAttr("scale_out"))
+    auto scale_y_data = dev_ctx.HasDnnAttr("scale_y")
+                            ? PADDLE_GET_CONST(std::vector<float>,
+                                               dev_ctx.GetDnnAttr("scale_y"))
+                            : std::vector<float>{1.0};
+    auto scale_x_data =
+        dev_ctx.HasDnnAttr("scale_x")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_x"))
             : 1.0f;
+    auto scale_out =
+        dev_ctx.HasDnnAttr("scale_out")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("scale_out"))
+            : 1.0f;
+    auto scale_out_data = force_fp32_output ? 1.0f : scale_out;
 
     bool is_multi_channel = scale_y_data.size() > 1;
     int count = is_multi_channel ? scale_y_data.size() : 1;
@@ -165,7 +168,7 @@ class MulPrimitiveFactory {
                                            const memory &y_memory,
                                            const memory::desc &dst_desc,
                                            DenseTensor *output,
-                                           const OneDNNContext &ctx) {
+                                           const OneDNNContext &dev_ctx) {
     const auto x_desc = x_memory.get_desc();
     const auto y_desc = y_memory.get_desc();
     inner_product_forward::primitive_desc mul_prim_desc;
@@ -175,17 +178,17 @@ class MulPrimitiveFactory {
 
     if (is_int8_) {
       bool force_fp32_output =
-          ctx.HasDnnAttr("force_fp32_output")
-              ? PADDLE_GET_CONST(bool, ctx.GetDnnAttr("force_fp32_output"))
+          dev_ctx.HasDnnAttr("force_fp32_output")
+              ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("force_fp32_output"))
               : false;
-      auto mul_attr = CreateMulAttr(ctx, force_fp32_output);
+      auto mul_attr = CreateMulAttr(dev_ctx, force_fp32_output);
       mul_prim_desc =
           inner_product_forward::primitive_desc(mul_desc, mul_attr, engine_);
     } else {
       mul_prim_desc = inner_product_forward::primitive_desc(mul_desc, engine_);
     }
 
-    output_ = CreateDstMemory(mul_prim_desc, ctx, output);
+    output_ = CreateDstMemory(mul_prim_desc, dev_ctx, output);
 
     return inner_product_forward(mul_prim_desc);
   }
@@ -202,7 +205,7 @@ class MulPrimitiveFactory {
   template <typename T>
   DenseTensor UpdateDataFormat(const DenseTensor *data,
                                int num_col_dims,
-                               const OneDNNContext &ctx) {
+                               const OneDNNContext &dev_ctx) {
     DenseTensor x_tmp;
     DenseTensor data_matrix;
     // This code is enforcing plain (non-blocked) memory arrangement
@@ -217,7 +220,7 @@ class MulPrimitiveFactory {
                          : src_mdesc;
 
     if (src_mdesc != dst_mdesc) {
-      x_tmp.mutable_data<T>(ctx.GetPlace(), data->memory_size());
+      dev_ctx.template Alloc<T>(&x_tmp, data->memory_size());
 
       Reorder(src_mdesc,
               dst_mdesc,
@@ -226,19 +229,19 @@ class MulPrimitiveFactory {
 
       x_tmp.Resize(data->dims());
       x_tmp.set_mem_desc(dst_mdesc);
-      data_matrix = paddle::framework::ReshapeToMatrix(x_tmp, num_col_dims);
+      data_matrix = ReshapeToMatrix(x_tmp, num_col_dims);
     } else {
-      data_matrix = paddle::framework::ReshapeToMatrix(*data, num_col_dims);
+      data_matrix = ReshapeToMatrix(*data, num_col_dims);
     }
 
     return data_matrix;
   }
 
-  void UpdateDataPointers(const OneDNNContext &ctx,
+  void UpdateDataPointers(const OneDNNContext &dev_ctx,
                           DenseTensor *out,
                           const DenseTensor *in) {
     x_input_->set_data_handle(phi::funcs::to_void_cast<XT>(in->data<XT>()));
-    output_->set_data_handle(out->mutable_data<OT>(ctx.GetPlace()));
+    output_->set_data_handle(dev_ctx.template Alloc<OT>(out));
     out->set_mem_desc(output_->get_desc());
   }
 
@@ -267,12 +270,12 @@ class MulPrimitiveFactory {
 
   memory CreateDstMemory(
       const inner_product_forward::primitive_desc &mul_prim_desc,
-      const OneDNNContext &ctx,
+      const OneDNNContext &dev_ctx,
       DenseTensor *output) {
     auto dst_desc = mul_prim_desc.dst_desc();
     auto buffer_size = dst_desc.get_size();
 
-    OT *output_data = output->mutable_data<OT>(ctx.GetPlace(), buffer_size);
+    OT *output_data = dev_ctx.template Alloc<OT>(output, buffer_size);
     output->set_mem_desc(dst_desc);
     return memory(dst_desc, engine_, phi::funcs::to_void_cast<OT>(output_data));
   }
@@ -312,7 +315,7 @@ class MulPrimitiveFactory {
         src_desc, dst_desc, phi::funcs::to_void_cast<YT>(input_y->data<YT>()));
   }
 
-  const dnnl::engine &engine_;
+  const engine &engine_;
   paddle::optional<memory> x_input_;
   paddle::optional<memory> y_input_;
   paddle::optional<memory> output_;
@@ -326,7 +329,7 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const OneDNNContext &dev_ctx,
     const DenseTensor *input_x,
     const DenseTensor *input_y,
-    const dnnl::engine &onednn_engine) {
+    const engine &onednn_engine) {
   std::string key =
       funcs::CreateKey(dev_ctx,
                        paddle::framework::TransToProtoVarType(input_x->dtype()),
@@ -349,14 +352,14 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
 }
 
 /* XT: input x data type, YT: input y data type */
-template <typename XT, typename YT, typename Context>
-inner_product_forward GetMulPrimitive(const Context &dev_ctx,
+template <typename XT, typename YT>
+inner_product_forward GetMulPrimitive(const OneDNNContext &dev_ctx,
                                       const DenseTensor *input_x,
                                       const DenseTensor *input_y,
                                       DenseTensor *output,
                                       int x_num_col_dims,
                                       int y_num_col_dims,
-                                      const dnnl::engine &onednn_engine) {
+                                      const engine &onednn_engine) {
   constexpr bool is_int8 = funcs::is_int8<XT>();
   bool force_fp32_output =
       dev_ctx.HasDnnAttr("force_fp32_output")
@@ -388,20 +391,21 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(paddle::platform::is_cpu_place(dev_ctx.GetPlace()),
                     true,
                     paddle::platform::errors::PreconditionNotMet(
-                        "Operator DNNL Mul must use CPUPlace"));
+                        "oneDNN MatmulWithFlatten kernel must use CPUPlace"));
 
   OneDNNContext::tls().log_lib_version();
   auto &onednn_engine = dev_ctx.GetEngine();
 
-  auto mul = GetMulPrimitive<XT, float, Context>(
+  auto out_dims = out->dims();
+
+  auto mul = GetMulPrimitive<XT, float>(
       dev_ctx, &x, &y, out, x_num_col_dims, y_num_col_dims, onednn_engine);
 
-  auto out_dims = out->dims();
   if (out_dims.size() != 2) {
     out->Resize(out_dims);
   }
 
-  auto in_md = dnnl::memory::desc(*dnnl_primitive_desc_query_md(
+  auto in_md = memory::desc(*dnnl_primitive_desc_query_md(
       mul.get_primitive_desc(), dnnl_query_dst_md, 0));
   out->set_mem_desc(in_md.reshape(phi::vectorize<int64_t>(out->dims())));
 }
