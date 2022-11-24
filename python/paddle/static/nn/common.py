@@ -1361,12 +1361,10 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
-            import paddle.fluid as fluid
-            from paddle.fluid.param_attr import ParamAttr
-            x = fluid.data(name="x", shape=[None,5,10,10], dtype="float32")
+            x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
             mode = 'channel'
             output = paddle.static.nn.prelu(
-                x,mode,param_attr=ParamAttr(name='alpha'))
+                x,mode,param_attr=paddle.ParamAttr(name='alpha'))
 
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
