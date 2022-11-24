@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void ConvActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
   auto act_types = phi::funcs::GetSupportedActivations();
-  std::vector<std::string> conv_types = {"conv2d"};
+  std::vector<std::string> conv_types = {"conv2d", "fused_conv2d"};
 
   for (auto& act_type : act_types) {
     FuseConvConcatAct(graph, act_type);
