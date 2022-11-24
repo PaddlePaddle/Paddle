@@ -33,6 +33,7 @@ from paddle.fluid.dygraph import nn
 from paddle.fluid.dygraph import base
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _test_eager_guard
+import paddle.nn.functional as F
 
 
 class LayerTest(unittest.TestCase):
@@ -716,7 +717,7 @@ class TestLayer(LayerTest):
         inp_np = np.arange(0, 24).reshape([2, 3, 2, 2]).astype('float32')
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            out = layers.conv2d_transpose(
+            out = paddle.static.nn.conv2d_transpose(
                 input=img,
                 num_filters=10,
                 filter_size=27,
@@ -2270,7 +2271,7 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
-            out = layers.conv3d_transpose(
+            out = paddle.static.nn.conv3d_transpose(
                 input=img, num_filters=12, filter_size=12, use_cudnn=False
             )
             static_rlt = self.get_static_graph_result(
@@ -3062,7 +3063,7 @@ class TestBook(LayerTest):
             fluid.default_main_program(), fluid.default_startup_program()
         ):
             img = self._get_data(name='pixel', shape=[3, 2, 2], dtype='float32')
-            return layers.conv2d_transpose(
+            return paddle.static.nn.conv2d_transpose(
                 input=img, num_filters=10, output_size=28
             )
 
@@ -3344,7 +3345,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32',
             )
-            out = layers.scatter(input=x, index=idx, updates=updates)
+            out = paddle.scatter(x, index=idx, updates=updates)
             return out
 
     def make_one_hot(self):
@@ -3359,9 +3360,7 @@ class TestBook(LayerTest):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             label = self._get_data(name="label", shape=[1], dtype="int32")
             one_hot_label = layers.one_hot(input=label, depth=10)
-            smooth_label = layers.label_smooth(
-                label=one_hot_label, epsilon=0.1, dtype="int32"
-            )
+            smooth_label = F.label_smooth(label=one_hot_label, epsilon=0.1)
             return smooth_label
 
     def make_topk(self):
@@ -3469,13 +3468,6 @@ class TestBook(LayerTest):
             output = layers.polygon_box_transform(input=x)
             return output
 
-    def make_mean_iou(self):
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[16], dtype='int32')
-            y = self._get_data(name='label', shape=[16], dtype='int32')
-            iou = layers.mean_iou(x, y, self._high_data_bound)
-            return iou
-
     def make_argsort(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3552,14 +3544,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
             return out
 
     def make_uniform_random_batch_size_like(self):
@@ -4132,38 +4116,6 @@ class TestBook(LayerTest):
             dy_res_value = dy_res.numpy()
         np.testing.assert_array_equal(static_res, dy_eager_res_value)
         np.testing.assert_array_equal(static_res, dy_res_value)
-
-    def test_dice_loss(self):
-        num_classes = 4
-        eps = 1e-6
-        input_np = np.random.rand(2, 3, num_classes).astype('float32')
-        label_np = np.random.randint(0, num_classes, [2, 3, 1], dtype=np.int64)
-
-        with self.static_graph():
-            input_ = layers.data(
-                name="input", shape=[None, 3, num_classes], dtype="float32"
-            )
-            label_ = layers.data(
-                name="label", shape=[None, 3, 1], dtype="int64"
-            )
-            output = layers.dice_loss(input_, label_, eps)
-            static_res = self.get_static_graph_result(
-                feed={'input': input_np, 'label': label_np}, fetch_list=[output]
-            )[0]
-
-        with self.dynamic_graph():
-            with _test_eager_guard():
-                input_ = base.to_variable(input_np)
-                label_ = base.to_variable(label_np)
-                dy_eager_res = layers.dice_loss(input_, label_, eps)
-                dy_eager_res_value = dy_eager_res.numpy()
-
-            input_ = base.to_variable(input_np)
-            label_ = base.to_variable(label_np)
-            dy_res = layers.dice_loss(input_, label_, eps)
-            dy_res_value = dy_res.numpy()
-        np.testing.assert_array_equal(static_res, dy_res_value)
-        np.testing.assert_array_equal(static_res, dy_eager_res_value)
 
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now

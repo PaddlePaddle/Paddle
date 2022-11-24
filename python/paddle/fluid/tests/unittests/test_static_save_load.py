@@ -138,17 +138,17 @@ class SimpleLSTMRNN(fluid.Layer):
                 paddle.reshape(self._input, shape=[1, -1, self._hidden_size])
             )
         real_res = fluid.layers.concat(res, 0)
-        real_res = fluid.layers.transpose(x=real_res, perm=[1, 0, 2])
+        real_res = paddle.transpose(x=real_res, perm=[1, 0, 2])
         last_hidden = fluid.layers.concat(self.hidden_array, 1)
         last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
         last_cell = fluid.layers.concat(self.cell_array, 1)
         last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
