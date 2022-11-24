@@ -82,6 +82,7 @@ list(
   celu_op.cc
   layernorm_shift_partition_op.cc
   tanhshrink_op.cc
+  take_along_axis_op.cc
   logsigmoid_op.cc
   preln_layernorm_shift_partition_op.cc
   merge_layernorm_op.cc
