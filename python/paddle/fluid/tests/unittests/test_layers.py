@@ -3554,14 +3554,6 @@ class TestBook(LayerTest):
             out = layers.cross_entropy(x, label, False, 4)
             return out
 
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
-            return out
-
     def make_uniform_random_batch_size_like(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()

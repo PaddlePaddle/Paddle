@@ -120,7 +120,6 @@ __all__ = [
     'pad2d',
     'unique',
     'unique_with_counts',
-    'expand',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -7966,128 +7965,6 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out, 'XShape': x_shape},
         attrs={"axis": axis},
-    )
-    return out
-
-
-@deprecated(since='2.0.0', update_to="paddle.expand")
-def expand(x, expand_times, name=None):
-    """
-    :alias_main: paddle.expand
-        :alias: paddle.expand,paddle.tensor.expand,paddle.tensor.manipulation.expand
-        :old_api: paddle.fluid.layers.expand
-
-    This operation tiles ``x`` multiple times according to the parameter ``expand_times``.
-    The times number for each dimension of ``x`` is set by the parameter ``expand_times``.
-    The rank of ``x`` should be less than or equal to 6. Please note that size of ``expand_times`` must be the same
-    with X's rank. Following is a using case:
-
-
-    .. code-block:: text
-
-        Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
-                [
-                   [[1], [2], [3]],
-                   [[4], [5], [6]]
-                ]
-
-        Attr(expand_times):  [1, 2, 2]
-
-        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
-                [
-                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
-                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
-                ]
-
-    Args:
-        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
-        expand_times (list|tuple|Variable): The data type is ``int32`` . If ``expand_times`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``expand_times`` is an Variable, it should be an 1-D Tensor.
-                Expand times number for each dimension of ``x`` .
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
-
-    Raises:
-        TypeError: The type of ``expand_times`` must be list, tuple or Variable.
-        ValueError: The elements of ``expand_times`` cannot be negative.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            # example 1:
-            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
-            # the shape of expanded_1 is [2, 6, 2].
-
-            # example 2:
-            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
-            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
-            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
-            # the shape of expanded_2 is [48, 56].
-    """
-    if _non_static_mode():
-        attrs = ()
-        expand_times_tensor = None
-        if isinstance(expand_times, (list, tuple)):
-            expand_times = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in expand_times
-            ]
-            attrs += ('expand_times', expand_times)
-        elif isinstance(expand_times, Variable):
-            expand_times_tensor = expand_times
-            expand_times_tensor.stop_gradient = True
-
-        return _legacy_C_ops.expand(x, expand_times_tensor, *attrs)
-
-    inputs = {"X": [x]}
-    attrs = {}
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'expand',
-    )
-    check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
-        raise ValueError(
-            "expand op bool date type must set the stop_gradient to be False"
-        )
-
-    helper = LayerHelper('expand', input=x, **locals())
-
-    def get_attr_expand_times(list_expand_times):
-        attrs_expand_times = []
-        for idx, times in enumerate(list_expand_times):
-            if isinstance(times, Variable):
-                attrs_expand_times.append(-1)
-            else:
-                attrs_expand_times.append(times)
-                assert (
-                    times > 0
-                ), "Each element given in expand_times must not be negative."
-        return attrs_expand_times
-
-    if isinstance(expand_times, Variable):
-        expand_times.stop_gradient = True
-        inputs['ExpandTimes'] = expand_times
-    elif isinstance(expand_times, (list, tuple)):
-        attrs['expand_times'] = get_attr_expand_times(expand_times)
-        if utils._contain_var(expand_times):
-            inputs['expand_times_tensor'] = utils._convert_to_tensor_list(
-                expand_times
-            )
-
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return out
 
