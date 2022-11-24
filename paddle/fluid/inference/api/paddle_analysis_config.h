@@ -391,13 +391,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
-  /// \brief Turn on Cutlass.
+  /// \brief Turn on CUTLASS.
   ///
   void EnableUseCutlass();
   ///
   /// \brief A boolean state telling whether the CUTLASS is turned on.
   ///
-  /// \return bool Whether the Cutlass is turned on.
+  /// \return bool Whether the CUTLASS is turned on.
   ///
   bool use_cutlass() const { return use_cutlass_; }
   ///
