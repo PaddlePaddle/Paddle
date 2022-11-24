@@ -267,6 +267,7 @@ def uniform_random_batch_size_like(
         .. code-block:: python
             import paddle
             import paddle.fluid as fluid
+            from paddle.tensor import random
             paddle.enable_static()
             # example 1:
             input = fluid.data(name="input", shape=[1, 3], dtype='float32')
