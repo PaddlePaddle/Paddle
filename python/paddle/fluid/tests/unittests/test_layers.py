@@ -3326,7 +3326,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32',
             )
-            out = layers.scatter(input=x, index=idx, updates=updates)
+            out = paddle.scatter(x, index=idx, updates=updates)
             return out
 
     def make_one_hot(self):
@@ -3457,13 +3457,6 @@ class TestBook(LayerTest):
             output = layers.l2_normalize(x, axis=1)
             return output
 
-    def make_mean_iou(self):
-        with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
-            x = self._get_data(name='x', shape=[16], dtype='int32')
-            y = self._get_data(name='label', shape=[16], dtype='int32')
-            iou = layers.mean_iou(x, y, self._high_data_bound)
-            return iou
-
     def make_argsort(self):
         with program_guard(
             fluid.default_main_program(), fluid.default_startup_program()
@@ -3490,23 +3483,15 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
-            out = layers.pad2d(
-                input,
-                paddings=[1, 2, 3, 4],
+
+            tmp_pad = paddle.nn.Pad2D(
+                padding=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape",
             )
-            out_1 = layers.pad2d(
-                input,
-                paddings=paddings,
-                mode='reflect',
-                data_format='NCHW',
-                name="shape",
-            )
+            out = tmp_pad(input)
             return out
-            return out_1
 
     def make_prelu(self):
         with program_guard(
@@ -3540,14 +3525,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
             return out
 
     def make_uniform_random_batch_size_like(self):
