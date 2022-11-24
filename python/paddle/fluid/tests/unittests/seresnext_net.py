@@ -164,7 +164,7 @@ def SE_ResNeXt50Small(use_feed):
     dropout = (
         pool
         if remove_dropout
-        else fluid.layers.dropout(x=pool, dropout_prob=0.2, seed=1)
+        else paddle.nn.functional.dropout(x=pool, p=0.2, seed=1)
     )
     # Classifier layer:
     prediction = fluid.layers.fc(input=dropout, size=1000, act='softmax')

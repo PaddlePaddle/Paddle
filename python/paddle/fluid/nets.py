@@ -256,7 +256,7 @@ def img_conv_group(
             tmp = layers.batch_norm(input=tmp, act=conv_act)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
-                tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
+                tmp = paddle.nn.functional.dropout(x=tmp, p=drop_rate)
 
     pool_out = layers.pool2d(
         input=tmp,
@@ -628,8 +628,6 @@ def scaled_dot_product_attention(
     weights = paddle.reshape(x=x, shape=product.shape)
 
     if dropout_rate:
-        weights = layers.dropout(
-            weights, dropout_prob=dropout_rate, is_test=False
-        )
+        weights = paddle.nn.functional.dropout(weights, p=dropout_rate)
     ctx_multiheads = layers.matmul(weights, v)
     return __combine_heads(ctx_multiheads)

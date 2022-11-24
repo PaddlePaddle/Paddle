@@ -249,10 +249,10 @@ class BaseModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -281,10 +281,10 @@ class BaseModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden
@@ -349,10 +349,10 @@ class BaseModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -422,10 +422,10 @@ class BaseModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden
@@ -760,10 +760,10 @@ class AttentionModel(fluid.dygraph.Layer):
                     enc_step_input, enc_hidden[i], enc_cell[i]
                 )
                 if self.dropout is not None and self.dropout > 0.0:
-                    enc_step_input = fluid.layers.dropout(
+                    enc_step_input = paddle.nn.functional.dropout(
                         enc_new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     enc_step_input = enc_new_hidden
@@ -803,10 +803,10 @@ class AttentionModel(fluid.dygraph.Layer):
                 new_dec_hidden.append(new_hidden)
                 new_dec_cell.append(new_cell)
                 if self.dropout is not None and self.dropout > 0.0:
-                    step_input = fluid.layers.dropout(
+                    step_input = paddle.nn.functional.dropout(
                         new_hidden,
-                        dropout_prob=self.dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=self.dropout,
+                        mode='upscale_in_train',
                     )
                 else:
                     step_input = new_hidden

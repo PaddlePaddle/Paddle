@@ -52,7 +52,7 @@ class TestGeneratorSeed(unittest.TestCase):
         print("x: {}".format(x.numpy()))
         print("x_again: {}".format(x_again.numpy()))
         x = x + x_again + x_third
-        y = fluid.layers.dropout(x, 0.5)
+        y = paddle.nn.functional.dropout(x, 0.5)
 
         paddle.set_cuda_rng_state(st)
 
@@ -66,7 +66,7 @@ class TestGeneratorSeed(unittest.TestCase):
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
         x1 = x1 + x1_again + x1_third
-        y1 = fluid.layers.dropout(x1, 0.5)
+        y1 = paddle.nn.functional.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
 

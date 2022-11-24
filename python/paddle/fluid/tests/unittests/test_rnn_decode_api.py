@@ -47,7 +47,7 @@ class EncoderCell(layers.RNNCell):
         for i in range(self.num_layers):
             out, new_state = self.lstm_cells[i](step_input, states[i])
             step_input = (
-                layers.dropout(out, self.dropout_prob)
+                paddle.nn.functional.dropout(out, self.dropout_prob)
                 if self.dropout_prob > 0
                 else out
             )
@@ -96,7 +96,7 @@ class DecoderCell(layers.RNNCell):
         for i in range(self.num_layers):
             out, new_lstm_state = self.lstm_cells[i](step_input, lstm_states[i])
             step_input = (
-                layers.dropout(out, self.dropout_prob)
+                paddle.nn.functional.dropout(out, self.dropout_prob)
                 if self.dropout_prob > 0
                 else out
             )

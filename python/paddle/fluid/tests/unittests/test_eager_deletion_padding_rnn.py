@@ -205,10 +205,10 @@ def lm_model(
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             rnn.step_output(input)
@@ -305,10 +305,10 @@ def lm_model(
                 input = m
 
                 if dropout is not None and dropout > 0.0:
-                    input = layers.dropout(
+                    input = paddle.nn.functional.dropout(
                         input,
-                        dropout_prob=dropout,
-                        dropout_implementation='upscale_in_train',
+                        p=dropout,
+                        mode='upscale_in_train',
                     )
 
             res.append(input)
@@ -383,10 +383,10 @@ def lm_model(
 
     x_emb = paddle.reshape(x_emb, shape=[-1, num_steps, hidden_size])
     if dropout is not None and dropout > 0.0:
-        x_emb = layers.dropout(
+        x_emb = paddle.nn.functional.dropout(
             x_emb,
-            dropout_prob=dropout,
-            dropout_implementation='upscale_in_train',
+            p=dropout,
+            mode='upscale_in_train',
         )
 
     if rnn_model == "padding":

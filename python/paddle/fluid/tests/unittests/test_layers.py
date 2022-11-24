@@ -127,9 +127,7 @@ class TestLayer(LayerTest):
             )
             dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
             ret = dropout(t)
-            ret2 = fluid.layers.dropout(
-                t, dropout_prob=0.35, seed=1, is_test=False
-            )
+            ret2 = paddle.nn.functional.dropout(t, p=0.35)
             static_ret, static_ret2 = self.get_static_graph_result(
                 feed={'data': inp}, fetch_list=[ret, ret2]
             )
@@ -138,18 +136,14 @@ class TestLayer(LayerTest):
                 t = base.to_variable(inp)
                 dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
                 dy_eager_ret = dropout(t)
-                dy_eager_ret2 = fluid.layers.dropout(
-                    t, dropout_prob=0.35, seed=1, is_test=False
-                )
+                dy_eager_ret2 = paddle.nn.functional.dropout(t, p=0.35, seed=1)
                 dy_eager_ret_value = dy_eager_ret.numpy()
                 dy_eager_ret2_value = dy_eager_ret2.numpy()
 
             t = base.to_variable(inp)
             dropout = nn.Dropout(p=0.35, seed=1, is_test=False)
             dy_ret = dropout(t)
-            dy_ret2 = fluid.layers.dropout(
-                t, dropout_prob=0.35, seed=1, is_test=False
-            )
+            dy_ret2 = paddle.nn.functional.dropout(t, p=0.35)
             dy_ret_value = dy_ret.numpy()
             dy_ret2_value = dy_ret2.numpy()
 

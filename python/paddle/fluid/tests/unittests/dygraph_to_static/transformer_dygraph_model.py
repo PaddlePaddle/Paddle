@@ -78,7 +78,9 @@ class PrePostProcessLayer(Layer):
             elif cmd == "d":  # add dropout
                 if dropout_rate:
                     self.functors.append(
-                        lambda x: layers.dropout(x, dropout_prob=dropout_rate)
+                        lambda x: paddle.nn.functional.dropout(
+                            x, p=dropout_rate
+                        )
                     )
 
     def forward(self, x, residual=None):
@@ -160,7 +162,7 @@ class MultiHeadAttention(Layer):
             product += attn_bias
         weights = layers.softmax(product)
         if self.dropout_rate:
-            weights = layers.dropout(weights, dropout_prob=self.dropout_rate)
+            weights = paddle.nn.functional.dropout(weights, p=self.dropout_rate)
             out = layers.matmul(weights, v)
 
         out = paddle.transpose(out, perm=[0, 2, 1, 3])
@@ -180,7 +182,7 @@ class FFN(Layer):
     def forward(self, x):
         hidden = self.fc1(x)
         if self.dropout_rate:
-            hidden = layers.dropout(hidden, dropout_prob=self.dropout_rate)
+            hidden = paddle.nn.functional.dropout(hidden, p=self.dropout_rate)
         out = self.fc2(hidden)
         return out
 
@@ -347,9 +349,9 @@ class WrapEncoder(Layer):
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
         enc_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
             )
             if self.emb_dropout
             else emb
@@ -551,9 +553,9 @@ class WrapDecoder(Layer):
         pos_enc.stop_gradient = True
         emb = word_emb + pos_enc
         dec_input = (
-            layers.dropout(
+            paddle.nn.functional.dropout(
                 emb,
-                dropout_prob=self.emb_dropout,
+                p=self.emb_dropout,
             )
             if self.emb_dropout
             else emb

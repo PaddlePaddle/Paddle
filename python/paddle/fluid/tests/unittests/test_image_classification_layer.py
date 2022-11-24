@@ -14,6 +14,7 @@
 
 import unittest
 
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program
@@ -54,7 +55,7 @@ class TestLayer(unittest.TestCase):
             images = fluid.layers.data(
                 name='pixel', shape=[3, 48, 48], dtype='float32'
             )
-            fluid.layers.dropout(x=images, dropout_prob=0.5)
+            paddle.nn.functional.dropout(x=images, p=0.5)
 
         print(str(main_program))
 
