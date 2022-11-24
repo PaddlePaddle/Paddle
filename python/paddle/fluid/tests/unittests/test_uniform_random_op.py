@@ -25,6 +25,7 @@ from paddle.fluid import Program, program_guard
 from paddle.fluid.framework import _test_eager_guard
 
 from test_attribute_var import UnittestBase
+from paddle.tensor import random
 
 
 def output_hist(out):
@@ -481,7 +482,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x1 = fluid.create_lod_tensor(
                     np.zeros((100, 784)), [[10, 10, 10, 70]], fluid.CPUPlace()
                 )
-                fluid.layers.uniform_random_batch_size_like(x1)
+                random.uniform_random_batch_size_like(x1)
 
             self.assertRaises(TypeError, test_Variable)
 
@@ -489,7 +490,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x1 = fluid.layers.data(
                     name='x2', shape=[100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x1, shape="shape")
+                random.uniform_random_batch_size_like(x1, shape="shape")
 
             self.assertRaises(TypeError, test_shape)
 
@@ -497,7 +498,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 x2 = fluid.layers.data(
                     name='x2', shape=[100, 784], dtype='float32'
                 )
-                fluid.layers.uniform_random_batch_size_like(x2, 'int32')
+                random.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
 
