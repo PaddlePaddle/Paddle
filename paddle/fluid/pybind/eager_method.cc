@@ -116,7 +116,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   }
   auto tensor_dims = self->tensor.shape();
   auto numpy_dtype = TensorDtype2NumpyDtype(self->tensor.type());
-  auto sizeof_dtype = phi::SizeOf(self->tensor.type());
+  auto sizeof_dtype = paddle::framework::DataTypeSize(self->tensor.type());
   Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];
   Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];
   size_t numel = 1;
@@ -203,7 +203,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::platform::GpuMemcpySync(
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
           kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -212,7 +213,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::platform::GpuMemcpySync(
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
-          phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
           kind);
     }
 #endif
@@ -256,7 +258,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           ->MemoryCopyD2H(
               pybind11::detail::array_proxy(array)->data,
               dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -265,7 +268,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           ->MemoryCopyD2H(
               pybind11::detail::array_proxy(array)->data,
               dense_tensor->data(),
-              phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
     }
 #endif
   } else {
@@ -1694,7 +1698,7 @@ static PyObject* tensor_method_element_size(TensorObject* self,
                                             PyObject* args,
                                             PyObject* kwargs) {
   EAGER_TRY
-  uint32_t element_size = phi::SizeOf(self->tensor.dtype());
+  uint32_t element_size = framework::DataTypeSize(self->tensor.dtype());
 
   return ToPyObject(element_size);
   EAGER_CATCH_AND_THROW_RETURN_NULL

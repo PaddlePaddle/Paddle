@@ -17,11 +17,11 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/gpu/cuda/cudnn_desc.h"
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
@@ -95,7 +95,8 @@ class CudnnFrontendConvHelper {
         .setStrides(strides.size(), strides.data())
         .setId(id)
         .setAlignment(GetAlignment(tensor))
-        .setDataType(paddle::platform::ToCudnnDataType(tensor->dtype()))
+        .setDataType(paddle::platform::ToCudnnDataType(
+            paddle::framework::TransToProtoVarType(tensor->dtype())))
         .build();
   }
 
