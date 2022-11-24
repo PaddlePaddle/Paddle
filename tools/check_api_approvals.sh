@@ -61,6 +61,18 @@ if [ "$api_doc_spec_diff" != "" ]; then
     check_approval 1 29231 79295425 23093488 39876205 65896652 54695910
 fi
 
+filter_fluid=`git diff --name-only upstream/develop |  grep "py$" | grep "^python/paddle/fluid/tests/unittest"`
+filter_fluid+=" `git diff --name-only upstream/develop | grep "py$" | grep -v "^python/paddle/fluid"| grep "^python/paddle"`"
+has_fluid=`git diff -U0 upstream/$BRANCH -- $filter_fluid | grep '^\+' | grep -v '^++' | grep -E "(fluid\.)|(paddle\.fluid)"`
+if [ "${has_fluid} != "" ]; then
+    echo_line="You must have one RD (XiaoguangHu01, jeff41404, lanxianghit or qingqing01) approval for the usage of fluid api.\n"
+    echo_line="${echo_line} and one TPM approval for the usage of fluid api: \n"
+    echo_line="${echo_line} jzhang533/ZhangJun, momozi1996/MoYan, dingjiaweiww/DingJiaWei, Ligoml/LiMengLiu for general function.\n"
+    echo_line="${echo_line} liuTINA0907/LiuShuangQiao for distributed related function.\n"
+    echo_line="${echo_line} leiqing1/LeiQing for inference related function.\n"
+    check_approval 1 46782768 8555991 47554610 7845005 29231 79295425 23093488 39876205 65896652 54695910
+fi
+
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
