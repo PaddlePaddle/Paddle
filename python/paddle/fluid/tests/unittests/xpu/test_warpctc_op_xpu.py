@@ -377,7 +377,7 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
 
                 def test_logits_len_Variable():
                     logits_length_data = np.array([5] * 16).astype("int64")
-                     paddle.nn.functional.ctc_loss(
+                    paddle.nn.functional.ctc_loss(
                         log_probs=logits,
                         labels=label,
                         input_lengths=logits_length_data,
@@ -413,7 +413,9 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
                 softmax = paddle.to_tensor(logits)
                 labels = paddle.to_tensor(labels)
 
-                paddle.nn.functional.ctc_loss(log_probs=softmax, labels=labels, reduction='none')
+                paddle.nn.functional.ctc_loss(
+                    log_probs=softmax, labels=labels, reduction='none'
+                )
 
             paddle.disable_static()
             self.assertRaises(ValueError, test_dygraph_with_lod)
