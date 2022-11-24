@@ -132,8 +132,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'log_loss',
-    'add_position_encoding',
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
@@ -8530,116 +8528,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
 
     helper.append_op(
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
-    )
-    return out
-
-
-def log_loss(input, label, epsilon=1e-4, name=None):
-    r"""
-
-    **Negative Log Loss Layer**
-
-    This layer accepts input predictions and target label and returns the
-    negative log loss.
-
-    .. math::
-
-        Out = -label * \log{(input + \epsilon)}
-              - (1 - label) * \log{(1 - input + \epsilon)}
-
-    Args:
-        input (Tensor|list):  A 2-D tensor with shape [N x 1], where N is the
-                                batch size. This input is a probability computed
-                                by the previous operator. Data type float32.
-        label (Tensor|list):  The ground truth which is a 2-D tensor with
-                                shape [N x 1], where N is the batch size.
-                                Data type float32.
-        epsilon (float, optional): A small number for numerical stability. Default 1e-4.
-        name(str|None): For detailed information, please refer to
-            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-
-    Returns:
-        Tensor, which shape is [N x 1], data type is float32.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          import paddle.nn.functional as F
-
-          label = paddle.randn((10,1))
-          prob = paddle.randn((10,1))
-          cost = F.log_loss(input=prob, label=label)
-    """
-    return paddle.nn.functional.log_loss(input, label, epsilon, name)
-
-
-def add_position_encoding(input, alpha, beta, name=None):
-    r"""
-
-    This operator performs weighted sum of input feature at each position
-    (position in the sequence) and the corresponding position encoding.
-
-    For more details of position encoding, please refer to `Attention Is All You
-    Need <http://arxiv.org/pdf/1706.03762.pdf>`_ .
-
-    The formula is as follows:
-
-    .. math::
-        PE(pos, 2i) &= \\sin{(pos / 10000^{2i / P})}   \\\\
-        PE(pos, 2i + 1) &= \\cos{(pos / 10000^{2i / P})}  \\\\
-        Out(:, pos, i) &= \\alpha * input(:, pos, i) + \\beta * PE(pos, i)
-
-    Where:
-      - :math:`PE(pos, 2i)` : the value at even index `2i` for encoding of position `pos`.
-      - :math:`PE(pos, 2i + 1)` : the value at odd index `2i+1` for encoding of position `pos`
-
-    Args:
-        input(Variable): A Tensor or LoDTensor (lod level is 1). If it is a
-            Tensor, the shape should be `[N, M, P]`, where `N` stands for
-            batch size, `M` for sequence length, `P` for the size of feature
-            dimension. If it is a LoDTensor, the shape should be `[N, P]`,
-            where `N` stands for the total sequence lengths in this mini-batch,
-            `P` for the size of feature. The data type should be float32 or float64.
-        alpha(float): Indicate the weight coefficient for `input` when performing
-            weighted sum.
-        beta(float): Indicate the weight coefficient for position encoding when
-            performing weighted sum.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Variable: A Tensor or LoDTensor. It has the same shape, data type and lod as `input`.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-
-          tensor = paddle.randn([16, 32, 64])
-          position_tensor = paddle.fluid.layers.add_position_encoding(
-                input=tensor, alpha=1.0, beta=1.0)
-
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.add_position_encoding(
-            input, "alpha", alpha, "beta", beta
-        )
-
-    helper = LayerHelper('add_position_encoding', **locals())
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], "add_position_encoding"
-    )
-    dtype = helper.input_dtype()
-
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    helper.append_op(
-        type="add_position_encoding",
-        inputs={"X": input},
-        outputs={"Out": out},
-        attrs={"alpha": alpha, "beta": beta},
     )
     return out
 
