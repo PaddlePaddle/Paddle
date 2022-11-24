@@ -26,6 +26,7 @@ from paddle.fluid.dygraph import (
 from paddle.optimizer.lr import NoamDecay
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+import paddle.nn.functional as F
 
 """
 Note(chenweihang): To compare loss of single-card and multi-card
@@ -934,7 +935,7 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
+            label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),

@@ -306,8 +306,9 @@ class SimpleAttention(fluid.dygraph.Layer):
         decoder_state_proj_reshape = paddle.reshape(
             decoder_state_fc, [-1, 1, decoder_state_fc.shape[1]]
         )
-        decoder_state_expand = fluid.layers.expand(
-            decoder_state_proj_reshape, [1, encoder_proj.shape[1], 1]
+        decoder_state_expand = paddle.expand(
+            decoder_state_proj_reshape,
+            [-1, encoder_proj.shape[1], -1],
         )
         concated = fluid.layers.elementwise_add(
             encoder_proj, decoder_state_expand
