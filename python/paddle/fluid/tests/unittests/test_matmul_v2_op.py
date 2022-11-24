@@ -714,6 +714,28 @@ class TestMatMulTypePromotion(TestComplexMatMulOp):
         self.grad_y = np.matmul(np.conj(self.x).T, self.grad_out)
 
 
+class TestMatmulop(unittest.TestCase):
+    def func_dygraph_matmul(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 4)).astype(np.float32)
+        np_b = np.random.random((4, 2)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor @ nparray
+        expect_out = np_a @ np_b
+        actual_out = tensor_a @ np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
+
+    def func_dygraph_matmul(self):
+        with _test_eager_guard():
+            self.func_dygraph_matmul()
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
