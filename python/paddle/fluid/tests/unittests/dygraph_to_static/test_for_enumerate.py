@@ -363,6 +363,7 @@ class TestTransformBase(unittest.TestCase):
 
     def _run(self, to_static):
         program_translator.enable(to_static)
+        self.dygraph_func.eval()
         with fluid.dygraph.guard():
             return self.dygraph_func(self.input)
 
@@ -390,6 +391,7 @@ class TestTransform(TestTransformBase):
 class TestTransformForOriginalList(TestTransform):
     def _run(self, to_static):
         program_translator.enable(to_static)
+        self.dygraph_func.eval()
         with fluid.dygraph.guard():
             return self.dygraph_func()
 
