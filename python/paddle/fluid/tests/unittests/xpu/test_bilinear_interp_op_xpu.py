@@ -39,7 +39,6 @@ def bilinear_interp_np(input,
         out_h = actual_shape[0]
         out_w = actual_shape[1]
     batch_size, channel, in_h, in_w = input.shape
-
     ratio_h = ratio_w = 0.0
     if out_h > 1:
         if (align_corners):
@@ -51,15 +50,12 @@ def bilinear_interp_np(input,
             ratio_w = (in_w - 1.0) / (out_w - 1.0)
         else:
             ratio_w = 1.0 * in_w / out_w
-
     out = np.zeros((batch_size, channel, out_h, out_w))
-
     for i in range(out_h):
         if (align_mode == 0 and not align_corners):
             h = int(ratio_h * (i + 0.5) - 0.5)
         else:
             h = int(ratio_h * i)
-
         h = max(0, h)
         hid = 1 if h < in_h - 1 else 0
         if (align_mode == 0 and not align_corners):
@@ -81,18 +77,13 @@ def bilinear_interp_np(input,
             else:
                 w1lambda = ratio_w * j - w
             w2lambda = 1.0 - w1lambda
-
             out[:, :, i, j] = h2lambda*(w2lambda*input[:, :, h, w] +
                                         w1lambda*input[:, :, h, w+wid]) + \
                 h1lambda*(w2lambda*input[:, :, h+hid, w] +
                           w1lambda*input[:, :, h+hid, w+wid])
-
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
-
     return out.astype(input.dtype)
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpOp(XPUOpTest):
@@ -104,21 +95,18 @@ class TestBilinearInterpOp(XPUOpTest):
         self.init_test_case()
         self.op_type = "bilinear_interp"
         input_np = np.random.random(self.input_shape).astype("float32")
-
         if self.data_layout == "NCHW":
             in_h = self.input_shape[2]
             in_w = self.input_shape[3]
         else:
             in_h = self.input_shape[1]
             in_w = self.input_shape[2]
-
         if self.scale > 0:
             out_h = int(in_h * self.scale)
             out_w = int(in_w * self.scale)
         else:
             out_h = self.out_h
             out_w = self.out_w
-
         output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
                                        self.actual_shape, self.align_corners,
                                        self.align_mode, self.data_layout)
@@ -127,7 +115,6 @@ class TestBilinearInterpOp(XPUOpTest):
             self.inputs['OutSize'] = self.out_size
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-
         self.attrs = {
             'out_h': self.out_h,
             'out_w': self.out_w,
@@ -138,15 +125,12 @@ class TestBilinearInterpOp(XPUOpTest):
             'data_layout': self.data_layout
         }
         self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(place)
-
     def test_check_grad(self):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', in_place=True)
-
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 5]
@@ -156,8 +140,6 @@ class TestBilinearInterpOp(XPUOpTest):
         self.out_size = np.array([3, 3]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase1(TestBilinearInterpOp):
@@ -169,8 +151,6 @@ class TestBilinearInterpCase1(TestBilinearInterpOp):
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase2(TestBilinearInterpOp):
@@ -182,8 +162,6 @@ class TestBilinearInterpCase2(TestBilinearInterpOp):
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase3(TestBilinearInterpOp):
@@ -195,8 +173,6 @@ class TestBilinearInterpCase3(TestBilinearInterpOp):
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase4(TestBilinearInterpOp):
@@ -209,8 +185,6 @@ class TestBilinearInterpCase4(TestBilinearInterpOp):
         self.out_size = np.array([2, 2]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase5(TestBilinearInterpOp):
@@ -223,8 +197,6 @@ class TestBilinearInterpCase5(TestBilinearInterpOp):
         self.out_size = np.array([11, 11]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpCase6(TestBilinearInterpOp):
@@ -237,8 +209,6 @@ class TestBilinearInterpCase6(TestBilinearInterpOp):
         self.out_size = np.array([65, 33]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpSame(TestBilinearInterpOp):
@@ -250,8 +220,6 @@ class TestBilinearInterpSame(TestBilinearInterpOp):
         self.scale = 0.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpActualShape(TestBilinearInterpOp):
@@ -264,8 +232,6 @@ class TestBilinearInterpActualShape(TestBilinearInterpOp):
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpDataLayout(TestBilinearInterpOp):
@@ -279,32 +245,24 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.align_corners = True
         self.align_mode = 1
         self.data_layout = "NHWC"
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
     def set_align_mode(self):
         self.align_corners = False
         self.align_mode = 0
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
     def set_align_mode(self):
         self.align_corners = True
         self.align_mode = 0
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpScale1(TestBilinearInterpOp):
@@ -316,8 +274,6 @@ class TestBilinearInterpScale1(TestBilinearInterpOp):
         self.scale = 2.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpScale2(TestBilinearInterpOp):
@@ -329,8 +285,6 @@ class TestBilinearInterpScale2(TestBilinearInterpOp):
         self.scale = 1.
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpScale3(TestBilinearInterpOp):
@@ -342,8 +296,6 @@ class TestBilinearInterpScale3(TestBilinearInterpOp):
         self.scale = 1.5
         self.align_corners = True
         self.align_mode = 1
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpZero(TestBilinearInterpOp):
@@ -355,8 +307,6 @@ class TestBilinearInterpZero(TestBilinearInterpOp):
         self.scale = 0.2
         self.align_corners = False
         self.align_mode = 0
-
-
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
 class TestBilinearInterpOp_attr_tensor(XPUOpTest):
@@ -371,10 +321,8 @@ class TestBilinearInterpOp_attr_tensor(XPUOpTest):
             'interp_method': self.interp_method,
             'align_corners': self.align_corners,
         }
-
         input_np = np.random.random(self.input_shape).astype("float32")
         self.inputs = {'X': input_np}
-
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale > 0:
@@ -384,7 +332,6 @@ class TestBilinearInterpOp_attr_tensor(XPUOpTest):
         else:
             out_h = self.out_h
             out_w = self.out_w
-
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
         elif self.out_size is not None:
@@ -393,21 +340,17 @@ class TestBilinearInterpOp_attr_tensor(XPUOpTest):
                 size_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs['SizeTensor'] = size_tensor
-
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         output_np = bilinear_interp_np(input_np, out_h, out_w, self.out_size,
                                        self.actual_shape, self.align_corners)
         self.outputs = {'Out': output_np}
-
     def test_check_output(self):
         place = paddle.XPUPlace(0)
         self.check_output_with_place(place)
-
     def test_check_grad(self):
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(place, ['X'], 'Out', in_place=True)
-
     def init_test_case(self):
         self.interp_method = 'bilinear'
         self.input_shape = [2, 3, 5, 5]
@@ -416,8 +359,6 @@ class TestBilinearInterpOp_attr_tensor(XPUOpTest):
         self.scale = 0.
         self.out_size = [3, 3]
         self.align_corners = True
-
-
 # out_size is a 1-D tensor
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -430,8 +371,6 @@ class TestBilinearInterp_attr_tensor_Case1(TestBilinearInterpOp_attr_tensor):
         self.scale = 0.
         self.out_size = [8, 12]
         self.align_corners = True
-
-
 # scale is a 1-D tensor
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -445,8 +384,6 @@ class TestBilinearInterp_attr_tensor_Case2(TestBilinearInterpOp_attr_tensor):
         self.out_size = np.array([66, 40]).astype("int32")
         self.align_corners = True
         self.shape_by_1Dtensor = True
-
-
 # scale is a 1-D tensor
 @unittest.skipIf(not paddle.is_compiled_with_xpu(),
                  "core is not compiled with XPU")
@@ -460,8 +397,45 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.out_size = None
         self.align_corners = True
         self.scale_by_1Dtensor = True
-
-
+@unittest.skipIf(not paddle.is_compiled_with_xpu(),
+                 "core is not compiled with XPU")
+class TestBilinearInterpOpAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32")
+        out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
+        out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
+        out3 = fluid.layers.resize_bilinear(x, out_shape=shape_tensor)
+        out4 = fluid.layers.resize_bilinear(
+            x, out_shape=[4, 4], actual_shape=actual_size)
+        out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
+        dim_data = np.array([12]).astype("int32")
+        shape_data = np.array([12, 12]).astype("int32")
+        actual_size_data = np.array([12, 12]).astype("int32")
+        scale_data = np.array([2.0]).astype("float32")
+        place = core.XPUPlace(0)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        results = exe.run(fluid.default_main_program(),
+                          feed={
+                              "x": x_data,
+                              "dim": dim_data,
+                              "shape_tensor": shape_data,
+                              "actual_size": actual_size_data,
+                              "scale_tensor": scale_data
+                          },
+                          fetch_list=[out1, out2, out3, out4, out5],
+                          return_numpy=True)
+        expect_res = bilinear_interp_np(
+            x_data, out_h=12, out_w=12, align_corners=True)
+        for res in results:
+            np.testing.assert_allclose(res, expect_res)
+'''
 
 if __name__ == "__main__":
     unittest.main()
