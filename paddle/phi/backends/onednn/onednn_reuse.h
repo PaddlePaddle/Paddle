@@ -47,7 +47,7 @@ bool constexpr is_int8() {
 
 template <typename T>
 constexpr bool is_bfloat16() {
-  return std::is_same<T, phi::dtype::bfloat16>::value;
+  return std::is_same<T, dtype::bfloat16>::value;
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
@@ -102,7 +102,7 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
     PADDLE_ENFORCE_NE(
         activation_type,
         activation_map.end(),
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "Activation '%s' not found in oneDNN algorithms mapper",
             fuse_activation));
 
@@ -810,7 +810,7 @@ class SoftmaxOneDNNHandler
     PADDLE_ENFORCE_EQ(
         x->dims(),
         out->dims(),
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
     const int canonical_axis = funcs::CanonicalAxis(axis, x->dims().size());
@@ -1145,7 +1145,7 @@ class PReluOneDNNHandler
                      const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {
-    auto weights_dims = phi::vectorize(weights.dims());
+    auto weights_dims = vectorize(weights.dims());
     // weights must have same size as X only for "element" case
     if (weights.dims().size() != x.dims().size()) {
       auto new_weights_dims = std::vector<int64_t>(x.dims().size(), 1);
@@ -1304,21 +1304,52 @@ class BatchNormOneDNNHandler
         flags);
   }
 
+  BatchNormOneDNNHandler(const dnnl::engine engine,
+                         Place cpu_place,
+                         const float epsilon,
+                         const DenseTensor* in_x,
+                         const DenseTensor* scale,
+                         const DenseTensor* out_grad)
+      : OneDNNHandlerNoCachingT<T,
+                                dnnl::batch_normalization_forward,
+                                dnnl::batch_normalization_backward>(engine,
+                                                                    cpu_place) {
+    auto scale_tz = vectorize<int64_t>(scale->dims());
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(),
+        1,
+        errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
+
+    this->AcquireForwardPrimitiveDescriptor(
+        dnnl::prop_kind::forward_training,
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::prop_kind::backward,
+        out_grad->mem_desc(),
+        in_x->mem_desc(),
+        epsilon,
+        dnnl::normalization_flags::use_scale_shift);
+  }
+
   std::shared_ptr<dnnl::memory> AcquireScaleShiftMemory(
       const DenseTensor* scale, const DenseTensor* shift) {
-    auto scale_tz = phi::vectorize(scale->dims());
+    auto scale_tz = vectorize(scale->dims());
     const unsigned int C = scale_tz[0];
     PADDLE_ENFORCE_EQ(
         scale_tz.size(),
         1,
-        phi::errors::InvalidArgument(
+        errors::InvalidArgument(
             "Dims of scale tensor must be 1, but received scale's size is %d",
             scale_tz.size()));
 
     auto scaleshift_memory =
         this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc());
 
-    // MKLDNN requires a single piece of memory for scale and shift/bias data
+    // oneDNN requires a single piece of memory for scale and shift/bias data
     auto mem_data_handle =
         reinterpret_cast<T*>(scaleshift_memory->get_data_handle());
     std::copy(scale->data<T>(), scale->data<T>() + C, mem_data_handle);
@@ -1692,7 +1723,7 @@ static std::vector<int64_t> GetInputStrides(const OneDNNContext& dev_ctx,
 
   auto& MatrixDimsFromVector =
       input_name == "X" ? RowMatrixDimsFromVector : ColumnMatrixDimsFromVector;
-  phi::funcs::MatDescriptor mat_dim = phi::funcs::CreateMatrixDescriptor(
+  MatDescriptor mat_dim = CreateMatrixDescriptor(
       MatrixDimsFromVector(new_dims), 0, transpose_input);
 
   std::vector<int64_t> strides;
@@ -1728,8 +1759,7 @@ static bool IsOutputFused(const OneDNNContext& dev_ctx) {
 }
 
 template <typename XT, typename YT, typename OT>
-class MatmulOneDNNHandler
-    : public phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
+class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
  public:
   MatmulOneDNNHandler(const OneDNNContext& dev_ctx,
                       const std::vector<int64_t>& x_org_dims,
@@ -1739,8 +1769,8 @@ class MatmulOneDNNHandler
                       const std::vector<int64_t>& x_strides_override,
                       const std::vector<int64_t>& y_strides_override,
                       bool is_output_fused)
-      : phi::funcs::OneDNNHandlerNoCachingT<XT, dnnl::matmul>(
-            dev_ctx.GetEngine(), dev_ctx.GetPlace()) {
+      : OneDNNHandlerNoCachingT<XT, dnnl::matmul>(dev_ctx.GetEngine(),
+                                                  dev_ctx.GetPlace()) {
     // M X K * K X N
     std::vector<int64_t> x_dims(x_org_dims);
     std::vector<int64_t> y_dims(y_org_dims);
@@ -1911,6 +1941,47 @@ class MatmulOneDNNHandler
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
+
+template <typename T>
+static void ExecuteMul(const OneDNNContext& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       const std::vector<int64_t>& x_dims,
+                       const std::vector<int64_t>& y_dims,
+                       bool trans_x,
+                       bool trans_y,
+                       DenseTensor* out) {
+  static const std::vector<int64_t> vec_placeholder;
+  MatmulOneDNNHandler<T, T, T> handler(dev_ctx,
+                                       x_dims,
+                                       y_dims,
+                                       trans_x,
+                                       trans_y,
+                                       vec_placeholder,
+                                       vec_placeholder,
+                                       false);
+
+  const auto src_memory_p = handler.AcquireSrcMemory(&x);
+  const auto weights_memory_p = handler.AcquireWeightsMemory(&y);
+  const auto dst_memory_p = handler.AcquireDstMemory(dev_ctx, out);
+
+  auto matmul_p = handler.AcquireForwardPrimitive();
+
+  std::unordered_map<int, dnnl::memory> matmul_args = {
+      {DNNL_ARG_SRC, *src_memory_p},
+      {DNNL_ARG_WEIGHTS, *weights_memory_p},
+      {DNNL_ARG_DST, *dst_memory_p}};
+
+  auto& astream = OneDNNContext::tls().get_stream();
+  matmul_p->execute(astream, matmul_args);
+  astream.wait();
+
+  // This kernel is flattening dims so then we need to unflattened version
+  // that should be set in out reshape require plain layout, but
+  // MatmulV2MKLDNNHanlder enforces one so it should work
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+}
 
 template <typename T, typename T_out>
 void ExecuteMatmul(const OneDNNContext& dev_ctx,
