@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import beam_search_decoder
-from .beam_search_decoder import *
+import unittest
+import numpy as np
 
-__all__ = beam_search_decoder.__all__
+import paddle
+
+
+class TestTensorDataPtr(unittest.TestCase):
+    def test_tensor_data_ptr(self):
+        np_src = np.random.random((3, 8, 8))
+        src = paddle.to_tensor(np_src, dtype="float64")
+        dst = paddle.Tensor()
+        src._share_buffer_to(dst)
+        self.assertEqual(src.data_ptr(), dst.data_ptr())
+
+
+if __name__ == '__main__':
+    unittest.main()

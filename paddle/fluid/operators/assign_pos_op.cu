@@ -23,8 +23,8 @@ We retain the following license from the original files:
 
 #include "paddle/fluid/operators/assign_pos_op.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 DECLARE_bool(avoid_op_randomness);
 
@@ -47,7 +47,7 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }

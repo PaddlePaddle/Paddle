@@ -16,6 +16,7 @@ import os
 import sys
 
 import paddle
+
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import declarative
 from paddle.fluid.param_attr import ParamAttr
@@ -214,8 +215,9 @@ class Upsample(fluid.dygraph.Layer):
         out_shape.stop_gradient = True
 
         # reisze by out_shape
-        out = paddle.nn.functional.interpolate(x = inputs, size = out_shape,
-             scale_factor = self.scale, mode='nearest')
+        out = paddle.nn.functional.interpolate(
+            x=inputs, size=out_shape, scale_factor=self.scale, mode='nearest'
+        )
         return out
 
 
@@ -344,9 +346,7 @@ class YOLOv3(fluid.dygraph.Layer):
                     name="yolo_box" + str(i),
                 )
                 self.boxes.append(boxes)
-                self.scores.append(
-                    fluid.layers.transpose(scores, perm=[0, 2, 1])
-                )
+                self.scores.append(paddle.transpose(scores, perm=[0, 2, 1]))
             self.downsample //= 2
 
         if not self.is_train:

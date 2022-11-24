@@ -168,6 +168,27 @@ class TestProcessGroupFp32(unittest.TestCase):
                 "rank {}: test allgather api2 ok\n".format(pg.rank())
             )
 
+            # test Reduce
+            # rank 0
+            x = np.random.random(self.shape).astype(self.dtype)
+            y = np.random.random(self.shape).astype(self.dtype)
+            tensor_x = paddle.to_tensor(x)
+            tensor_y = paddle.to_tensor(y)
+            sum_result = tensor_x + tensor_y
+            if pg.rank() == 0:
+                task = dist.reduce(tensor_x, 0, sync_op=True)
+                paddle.device.xpu.synchronize()
+            # rank 1
+            else:
+                task = dist.reduce(tensor_y, 0, sync_op=False)
+                task.wait()
+                paddle.device.xpu.synchronize()
+            if pg.rank() == 0:
+                assert np.array_equal(tensor_x, sum_result)
+            sys.stdout.write(
+                "rank {}: test reduce sum api ok\n".format(pg.rank())
+            )
+
 
 class TestProcessGroupFp16(TestProcessGroupFp32):
     def setUp(self):
