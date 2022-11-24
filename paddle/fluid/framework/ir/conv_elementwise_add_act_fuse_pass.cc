@@ -130,15 +130,22 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
                 ->assert_is_op_input("conv2d", "Input")
                 ->AsInput();
 
+#if CUDNN_VERSION >= 8000
+  std::unordered_set<std::string> conv_act_set(
+      {"identity", "relu", "sigmoid", "tanh", "swish"});
+#else
+  std::unordered_set<std::string> conv_act_set({"identity", "relu"});
+#endif
+
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
-  pattern(x);
+  pattern(x, conv_act_set);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    // if (!IsCompat(subgraph, g)) {
-    //   LOG(WARNING) << "Pass in op compat failed.";
-    //   return;
-    // }
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_NODES;
 
     auto base_op_desc = *conv_op->Op()->Proto();
@@ -150,7 +157,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
     if ((filter_tensor->dims()[0] % 8 != 0) ||
         (filter_tensor->dims()[1] % 8 != 0)) {
-      //return;
+      // return;
     }
 
     auto new_op_proto =

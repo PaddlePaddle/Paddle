@@ -138,6 +138,10 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
   FusePassBase::Init("data_layout_transfer", graph);
   auto *scope = param_scope();
 
+  // conv2d_fusion doesn't not support NHWC now, only cutlass support .
+  auto use_cutlass = Get<bool>("use_cutlass");
+  if (!use_cutlass) return;
+
   PADDLE_ENFORCE_EQ(graph->IsMainGraph(),
                     true,
                     platform::errors::InvalidArgument(
@@ -169,6 +173,12 @@ void Conv2dFusionLayoutTransferPass::ApplyImpl(ir::Graph *graph) const {
     if (data_format != "NCHW") return false;
 
     auto filter_names = op_node->Op()->Input("Filter");
+    auto act_type = op_node->Op()->GetAttrIfExists<std::string>("activation");
+    std::unordered_set<std::string> cutlass_act_set = {
+        "relu", "swish", "identity"};
+    if (!cutlass_act_set.count(act_type)) {
+      return false;
+    }
 
     // If filter's channel is not multiple of 8, conv2d_fusion not run at nhwc.
     for (const auto &filter_name : filter_names) {

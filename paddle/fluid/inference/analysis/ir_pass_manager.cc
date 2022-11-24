@@ -58,6 +58,7 @@ void IRPassManager::CreatePasses(Argument *argument,
   for (const std::string &pass_name : passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     pass->Set("use_varseqlen", new bool(argument->tensorrt_use_varseqlen()));
+    pass->Set("use_cutlass", new bool(argument->use_cutlass()));
     pass->Set("with_interleaved",
               new bool(argument->tensorrt_with_interleaved()));
     pass->Set("tensorrt_transformer_posid",
