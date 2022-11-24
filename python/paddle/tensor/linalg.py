@@ -1912,12 +1912,15 @@ def mv(x, vec, name=None):
 
 def det(x, name=None):
     """
+
     Calculates determinant value of a square matrix or batches of square matrices.
 
     Args:
-        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the
+        x (Tensor): the input matrix of size `(n, n)` or the
             batch of matrices of size `(*, n, n)` where `*` is one or more
             batch dimensions.
+        name(str, optional): Name of the output. Default is None. It's used
+            to print debug info for developers. Details: :ref:`api_guide_Name`
 
     Returns:
         Tensor, the determinant value of a square matrix or batches of square matrices.
@@ -1968,18 +1971,20 @@ def det(x, name=None):
 
 def slogdet(x, name=None):
     """
+
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
-    The determinant can be computed with ``sign * exp(logabsdet)
+    The determinant can be computed with ``sign * exp`` (logabsdet)
 
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
+
     Args:
         x (Tensor): the batch of matrices of size :math:`(*, n, n)`
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
+        y (Tensor), A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
     Examples:
@@ -2097,6 +2102,7 @@ def svd(x, full_matrices=False, name=None):
 
 def matrix_power(x, n, name=None):
     r"""
+
     Computes the n-th power of a square matrix or a batch of square matrices.
 
     Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
@@ -2122,8 +2128,8 @@ def matrix_power(x, n, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
-            data type should be the same as that of `x`.
+        - Tensor, The n-th power of the matrix (or the batch of matrices) `x`. Its
+          data type should be the same as that of `x`.
 
     Examples:
         .. code-block:: python
@@ -3058,8 +3064,9 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
 
 def solve(x, y, name=None):
     r"""
+
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
-    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
 
     .. math::
@@ -3068,9 +3075,9 @@ def solve(x, y, name=None):
     Specifically, this system of linear equations has one solution if and only if input 'X' is invertible.
 
     Args:
-        x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
+        x (Tensor): A square matrix or a batch of square matrices. Its shape should be ``[*, M, M]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
+        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be ``[*, M, K]``, where ``*`` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
