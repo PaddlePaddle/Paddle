@@ -164,8 +164,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
           "Input tensor type (%s) is not supported.",
           DataTypeToString(framework::TransToProtoVarType(in.dtype()))));
 
-  auto out_format =
-      phi::funcs::OneDNNFormatForSize(in_tz.size(), ToOneDNNFormat(out_layout));
+  auto out_format = phi::funcs::OneDNNFormatForSize(
+      in_tz.size(), phi::funcs::ToOneDNNFormat(out_layout));
   dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims

@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
 
 namespace paddle {
 namespace framework {
@@ -53,23 +54,6 @@ struct CastDataLayout {
 
 #ifdef PADDLE_WITH_MKLDNN
 using OneDNNDataType = dnnl::memory::data_type;
-
-inline OneDNNMemoryFormat ToOneDNNFormat(const DataLayout& layout) {
-  switch (layout) {
-    case DataLayout::kNHWC:
-      return OneDNNMemoryFormat::nhwc;
-    case DataLayout::kNCHW:
-      return OneDNNMemoryFormat::nchw;
-    case DataLayout::kNCDHW:
-      return OneDNNMemoryFormat::ncdhw;
-    case DataLayout::kNDHWC:
-      return OneDNNMemoryFormat::ndhwc;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Fail to convert layout %s to oneDNN format.",
-          phi::DataLayoutToString(layout)));
-  }
-}
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
                                     DataLayout out_layout,

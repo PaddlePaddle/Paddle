@@ -82,7 +82,7 @@ class TransferLayoutFunctor {
         // Just set layout/format. No real transform occur
 
         auto out_format = phi::funcs::OneDNNFormatForSize(
-            in_tensor.dims().size(), framework::ToOneDNNFormat(in_layout));
+            in_tensor.dims().size(), phi::funcs::ToOneDNNFormat(in_layout));
         out_tensor.ShareDataWith(in_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
