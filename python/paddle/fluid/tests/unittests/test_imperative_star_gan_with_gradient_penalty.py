@@ -163,7 +163,7 @@ class Conv2DLayer(fluid.dygraph.Layer):
             conv = self._norm(conv)
 
         if self.relufactor is not None:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
 
         return conv
 
@@ -205,7 +205,7 @@ class Deconv2DLayer(fluid.dygraph.Layer):
             deconv = self._norm(deconv)
 
         if self.relufactor is not None:
-            deconv = fluid.layers.leaky_relu(deconv, alpha=self.relufactor)
+            deconv = paddle.nn.functional.leaky_relu(deconv, self.relufactor)
 
         return deconv
 
@@ -310,9 +310,7 @@ class Generator(fluid.dygraph.Layer):
     def forward(self, input, label_trg):
         shape = input.shape
         label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
-        label_trg_e = fluid.layers.expand(
-            x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]]
-        )
+        label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
         input1 = fluid.layers.concat([input, label_trg_e], 1)
 

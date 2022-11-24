@@ -396,7 +396,7 @@ class conv2d(fluid.dygraph.Layer):
         if self.norm:
             conv = self.bn(conv)
         if self.relu:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
         return conv
 
 
@@ -468,7 +468,7 @@ class DeConv2D(fluid.dygraph.Layer):
         if self.norm:
             conv = self.bn(conv)
         if self.relu:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
         return conv
 
 
