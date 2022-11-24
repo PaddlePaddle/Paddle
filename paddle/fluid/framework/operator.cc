@@ -34,8 +34,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
+#include "paddle/phi/backends/dynload/nvtx.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -1202,17 +1204,45 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 struct OperatorWithKernel::CacheImpl {
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
-                     RuntimeInferShapeContext* infer_shape_ctx)
-      : kernel_ctx_(kernel_ctx), infer_shape_ctx_(infer_shape_ctx) {}
+                     RuntimeInferShapeContext* infer_shape_ctx,
+                     const std::vector<phi::DenseTensor*>& tensors)
+      : kernel_ctx_(kernel_ctx),
+        infer_shape_ctx_(infer_shape_ctx),
+        tensors_(tensors) {}
 
   phi::KernelContext* getKernelContext() { return kernel_ctx_.get(); }
   RuntimeInferShapeContext* getRuntimeInferShapeContext() {
     return infer_shape_ctx_.get();
   }
 
+  bool NeedInferShape() {
+    bool ret{false};
+    if (last_ddims_.empty() || tensors_.empty()) ret = true;
+    if (!ret) {
+      CHECK_EQ(last_ddims_.size(), tensors_.size());
+      for (size_t i = 0; i < last_ddims_.size(); ++i) {
+        if (tensors_[i]->dims() != last_ddims_[i]) {
+          ret = true;
+          break;
+        }
+      }
+    }
+    if (ret) {
+      last_ddims_.resize(tensors_.size());
+      for (size_t i = 0; i < last_ddims_.size(); ++i) {
+        last_ddims_[i] = tensors_[i]->dims();
+      }
+    }
+    VLOG(1) << "need infer shape is " << ret;
+    return ret;
+  }
+
+  std::vector<phi::DDim> last_ddims_;
+
  private:
   std::unique_ptr<phi::KernelContext> kernel_ctx_;
   std::unique_ptr<RuntimeInferShapeContext> infer_shape_ctx_;
+  std::vector<phi::DenseTensor*> tensors_;
 };
 
 static void CheckTensorNANOrInf(const std::string& op_type,
@@ -1507,21 +1537,27 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
+  phi::dynload::nvtxRangePushA("run_impl");
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
+  phi::dynload::nvtxRangePop();
   if (!enable_cache_runtime_context_) {
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
              !need_prepare_phi_data_) {
-    if (!all_kernels_must_compute_runtime_shape_)
+    phi::dynload::nvtxRangePushA("infer_shape");
+    if (!all_kernels_must_compute_runtime_shape_ && impl_->NeedInferShape())
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    phi::dynload::nvtxRangePop();
+    phi::dynload::nvtxRangePushA("kernel run");
     (*phi_kernel_)(impl_->getKernelContext());
+    phi::dynload::nvtxRangePop();
   } else {
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
@@ -1820,9 +1856,27 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        impl_ =
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx));
+        bool all_dense_tensor_input_{true};
+        for (auto& iter : Inputs()) {
+          for (auto& name : iter.second) {
+            all_dense_tensor_input_ &=
+                scope.FindVar(name)->IsType<phi::DenseTensor>();
+          }
+        }
+
+        std::vector<phi::DenseTensor*> tensors;
+        if (all_dense_tensor_input_) {
+          for (auto& iter : Inputs()) {
+            for (auto& name : iter.second) {
+              auto* t = scope.FindVar(name)->GetMutable<phi::DenseTensor>();
+              tensors.push_back(t);
+            }
+          }
+        }
+
+        impl_ = new CacheImpl(new phi::KernelContext(),
+                              new RuntimeInferShapeContext(*this, *runtime_ctx),
+                              tensors);
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
