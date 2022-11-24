@@ -1688,7 +1688,9 @@ class TestLayer(LayerTest):
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32'
             )
-            ret = layers.conv3d(input=images, num_filters=3, filter_size=2)
+            ret = paddle.static.nn.conv3d(
+                input=images, num_filters=3, filter_size=2
+            )
             static_ret = self.get_static_graph_result(
                 feed={'pixel': np.ones([2, 3, 6, 6, 6], dtype='float32')},
                 fetch_list=[ret],
@@ -3667,34 +3669,6 @@ class TestBook(LayerTest):
                 append_batch_size=False,
             )
             out = layers.batch_norm(data, momentum=momentum)
-            return out
-
-    def make_inplace_abn(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            out = layers.inplace_abn(data, act='leaky_relu', act_alpha=0.2)
-            return out
-
-    def make_inplace_abn_momentum_variable(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            data = self._get_data(
-                name='data', shape=[32, 128, 128], dtype="float32"
-            )
-            momentum = self._get_data(
-                name='momentum',
-                shape=[1],
-                dtype='float32',
-                append_batch_size=False,
-            )
-            out = layers.inplace_abn(
-                data, momentum=momentum, act='elu', act_alpha=2.0
-            )
             return out
 
     def make_range(self):
