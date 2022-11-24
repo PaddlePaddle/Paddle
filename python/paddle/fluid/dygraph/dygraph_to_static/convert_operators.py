@@ -532,7 +532,7 @@ def convert_len(var):
             # so we return a variable dynamically inferred from var.shape.
             if var.shape[0] > 0 and var.type == core.VarDesc.VarType.LOD_TENSOR:
                 return var.shape[0]
-            return nn.shape(var)[0]
+            return paddle.shape(var)[0]
         elif var.type == core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             return control_flow.array_length(var)
         else:
@@ -615,7 +615,7 @@ def convert_shape(x):
     if isinstance(x, Variable):
         values = list(x.shape)
         if has_negative(values):
-            shape_tensor = nn.shape(x)
+            shape_tensor = paddle.shape(x)
             for i, v in enumerate(values):
                 if v is None or v < 0:
                     values[i] = shape_tensor[i]

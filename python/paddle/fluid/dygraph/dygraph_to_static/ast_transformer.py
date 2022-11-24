@@ -77,6 +77,7 @@ from paddle.fluid.dygraph.dygraph_to_static.decorator_transformer import (
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import get_attribute_full_name
+import paddle
 
 __all__ = ['DygraphToStaticAst']
 
@@ -131,7 +132,7 @@ class DygraphToStaticAst(BaseTransformer):
         transformers = [
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
-            TensorShapeTransformer,  # Tensor.shape -> layers.shape(Tensor)
+            TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)
             BreakContinueTransformer,  # break/continue in loops
             ReturnTransformer,  # return in functions
             LogicalTransformer,  # logical and/or/not
