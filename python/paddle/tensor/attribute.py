@@ -93,7 +93,7 @@ def shape(input):
             paddle.enable_static()
 
             inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
-            output = fluid.layers.shape(inputs)
+            output = paddle.shape(inputs)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(fluid.default_startup_program())
