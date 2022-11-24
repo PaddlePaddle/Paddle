@@ -69,7 +69,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    bn = fluid.nn.InstanceNorm2D(shape[1])
+                    bn = paddle.nn.InstanceNorm2D(shape[1])
                     y = bn(fluid.dygraph.to_variable(x))
                 return y.numpy()
 
