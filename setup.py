@@ -611,11 +611,23 @@ def build_steps():
             if option_key.startswith(("CMAKE_", "WITH_")):
                 paddle_build_options[option_key] = option_value
             if option_key in other_options:
-                key = other_options[option_key]
+                print("type:", type(other_options[option_key]))
+                if (
+                    option_key == 'PYTHON_EXECUTABLE'
+                    or option_key == 'PYTHON_LIBRARY'
+                ):
+                    key = option_key + ":FILEPATH"
+                    print(key)
+                elif option_key == 'PYTHON_INCLUDE_DIR':
+                    key = key = option_key + ':PATH'
+                    print(key)
+                else:
+                    key = other_options[option_key]
                 if key not in paddle_build_options:
                     paddle_build_options[key] = option_value
         args = []
         options_process(args, paddle_build_options)
+        print("args:", args)
         cmake_run(args, build_path)
 
     # make
