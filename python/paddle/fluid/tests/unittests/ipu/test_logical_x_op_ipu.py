@@ -83,7 +83,7 @@ class TestLogicalAnd(IPUOpTest):
 
 class TestLogicalOr(TestLogicalAnd):
     def set_test_op(self):
-        self.op = paddle.layers.logical_or
+        self.op = paddle.logical_or
 
 
 if __name__ == "__main__":
