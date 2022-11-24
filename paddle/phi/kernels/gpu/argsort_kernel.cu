@@ -268,7 +268,7 @@ inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
                          segment_bits,
                          ctx);
 
-  SortPostprocessKernel<<<(n + 511) / 512, 512, 0, cu_stream>>>(
+  SortPostprocessKernel<<<grid, block, 0, cu_stream>>>(
       self_ptr, values_ptr, indices_ptr, i_s_ptr, nsegments, nsort);
 }
 
@@ -375,7 +375,9 @@ void ArgFullSort(const phi::GPUContext &ctx,
   sorted_out_ptr = out;
   sorted_indices_ptr = ind;
 
+  // create iter for counting input
   cub::CountingInputIterator<IndexType> counting_iter(0);
+  // segment_offset is used for move to next row
   cub::TransformInputIterator<IndexType,
                               SegmentOffsetIter,
                               cub::CountingInputIterator<IndexType>>
