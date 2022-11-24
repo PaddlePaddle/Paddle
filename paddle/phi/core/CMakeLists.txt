@@ -24,7 +24,7 @@ else()
   cc_library(
     kernel_factory
     SRCS kernel_factory.cc
-    DEPS phi_enforce)
+    DEPS phi_enforce convert_utils)
 endif()
 cc_library(
   kernel_context
