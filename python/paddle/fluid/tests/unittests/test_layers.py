@@ -3345,7 +3345,7 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 dtype='float32',
             )
-            out = layers.scatter(input=x, index=idx, updates=updates)
+            out = paddle.scatter(x, index=idx, updates=updates)
             return out
 
     def make_one_hot(self):
@@ -3552,14 +3552,6 @@ class TestBook(LayerTest):
             label = self._get_data(name="label", shape=[30, 1], dtype="int64")
             mode = 'channel'
             out = layers.cross_entropy(x, label, False, 4)
-            return out
-
-    def make_expand(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2])
             return out
 
     def make_uniform_random_batch_size_like(self):
