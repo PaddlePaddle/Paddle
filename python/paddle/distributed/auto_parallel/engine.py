@@ -1629,7 +1629,8 @@ class Engine:
                     core.Graph(dist_main_prog.desc), for_test=True
                 )
                 quant_weight_pass = QuantWeightPass(global_scope(), self._place)
-                quant_weight_pass.apply(test_graph)
+                for sub_graph in test_graph.all_sub_graphs():
+                    quant_weight_pass.apply(sub_graph)
                 dist_main_prog = test_graph.to_program()
             self._saver.save_inference_model(
                 path,

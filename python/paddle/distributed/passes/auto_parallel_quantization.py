@@ -157,8 +157,8 @@ class QuantizationPass(PassBase):
                     place=place,
                     quant_bits=self.get_attr('activation_bits'),
                 )
-                for sub_graph in main_graph.all_sub_graphs():
-                    out_scale_infer_pass.apply(sub_graph)
+                # for sub_graph in main_graph.all_sub_graphs():
+                #     out_scale_infer_pass.apply(sub_graph)
             except:
                 logging.warning(
                     "Unable to convert quant model with onnx_format=True, please update PaddlePaddle >= 2.4.0"
@@ -248,7 +248,11 @@ class QuantizationPass(PassBase):
                         quant_op.type == "moving_average_abs_max_scale"
                         or ip - qat_offset >= len(main_program.blocks[ib].ops)
                     ):
-                        consume_op = main_program.blocks[ib].vars[input_name].op
+                        consume_op = (
+                            main_program.blocks[ib]
+                            ._var_recursive(input_name)
+                            .op
+                        )
                     else:
                         consume_op = main_program.blocks[ib].ops[
                             ip - qat_offset
@@ -276,7 +280,7 @@ class QuantizationPass(PassBase):
 
                     for slot_name in quant_op.desc.input_names():
                         in_name = quant_op.desc.input(slot_name)[0]
-                        input_var = block.vars[in_name]
+                        input_var = block._var_recursive(in_name)
                         ref_dims_mapping = [-1]
                         if slot_name == "X":
                             continue
@@ -286,7 +290,7 @@ class QuantizationPass(PassBase):
                                 and quant_op.attr('quant_axis') != -1
                             ):
                                 x_name = quant_op.desc.input('X')[0]
-                                x_var = block.vars[x_name]
+                                x_var = block._var_recursive(x_name)
                                 x_dist_attr = (
                                     quant_op_dist_attr.get_input_dist_attr(
                                         x_name
@@ -309,7 +313,7 @@ class QuantizationPass(PassBase):
 
                     for slot_name in quant_op.desc.output_names():
                         output_name = quant_op.desc.output(slot_name)[0]
-                        output_var = block.vars[output_name]
+                        output_var = block._var_recursive(output_name)
                         ref_dims_mapping = [-1]
                         if slot_name == "Y":
                             dist_context.set_tensor_dist_attr_for_program(
@@ -413,7 +417,7 @@ class QuantizationPass(PassBase):
                                     origin_output_var
                                 ).dist_attr
                             )
-                            quant_output_var = block.vars[output_name]
+                            quant_output_var = block._var_recursive(output_name)
                             dist_context.set_tensor_dist_attr_for_program(
                                 quant_output_var, origin_out_tensor_dist_attr
                             )
