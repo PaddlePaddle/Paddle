@@ -104,7 +104,7 @@ class TrtConvertElementwiseTest_one_input_special_case0(TrtLayerAutoScanTest):
             if dynamic_shape:
                 ver = paddle_infer.get_trt_compile_version()
                 if ver[0] * 1000 + ver[1] * 100 + ver[0] * 10 < 8400:
-                    return 0, 2
+                    return 0, 4
                 return 1, 2
             return 0, 4
 
