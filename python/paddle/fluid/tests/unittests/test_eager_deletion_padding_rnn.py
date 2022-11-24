@@ -149,8 +149,8 @@ def lm_model(
             pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(pre_hidden, shape=[-1, hidden_size])
-            pre_cell = layers.reshape(pre_cell, shape=[-1, hidden_size])
+            pre_hidden = paddle.reshape(pre_hidden, shape=[-1, hidden_size])
+            pre_cell = paddle.reshape(pre_cell, shape=[-1, hidden_size])
             hidden_array.append(pre_hidden)
             cell_array.append(pre_cell)
 
@@ -270,10 +270,10 @@ def lm_model(
             pre_cell = paddle.slice(
                 init_cell, axes=[0], starts=[i], ends=[i + 1]
             )
-            pre_hidden = layers.reshape(
+            pre_hidden = paddle.reshape(
                 pre_hidden, shape=[-1, hidden_size], inplace=True
             )
-            pre_cell = layers.reshape(
+            pre_cell = paddle.reshape(
                 pre_cell, shape=[-1, hidden_size], inplace=True
             )
             hidden_array.append(pre_hidden)

@@ -85,7 +85,7 @@ class DynamicGRU(fluid.dygraph.Layer):
 
             # input_ = inputs[:, j:j+1, :]  # original code
             input_ = paddle.slice(inputs, axes=[1], starts=[j], ends=[j + 1])
-            input_ = fluid.layers.reshape(
+            input_ = paddle.reshape(
                 input_, [-1, input_.shape[2]], inplace=False
             )
             hidden, reset, gate = self.gru_unit(input_, hidden)
