@@ -1466,8 +1466,7 @@ PD_REGISTER_KERNEL(cross_entropy_with_softmax,
                    ALL_LAYOUT,
                    phi::CrossEntropyWithSoftmaxKernel,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(cross_entropy_with_softmax,

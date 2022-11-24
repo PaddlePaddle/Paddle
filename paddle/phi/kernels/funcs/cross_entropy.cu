@@ -154,8 +154,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 template class CrossEntropyFunctor<phi::GPUContext, float>;
 template class CrossEntropyFunctor<phi::GPUContext, double>;
 template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::float16>;
-#if defined(PADDLE_WITH_HIP) || \
-    (defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(8, 1, 0))
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(8, 1, 0)
 template class CrossEntropyFunctor<phi::GPUContext, phi::dtype::bfloat16>;
 #endif
 
