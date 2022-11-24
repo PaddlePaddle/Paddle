@@ -31,6 +31,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -454,10 +455,14 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step5";
 #endif
-      // step6. ffn1 matmul + bias_add + gelu.
+      // step6. ffn1 matmul + bias_add + act.
 
-      ffn1_linear_bias_gelu.ComputeForward(
-          buf1, ffn1_weights[i], ffn1_biases[i], nullptr, &ffn1_out, "gelu");
+      ffn1_linear_bias_gelu.ComputeForward(buf1,
+                                           ffn1_weights[i],
+                                           ffn1_biases[i],
+                                           nullptr,
+                                           &ffn1_out,
+                                           act_method);
 
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER
       VLOG(0) << "step6";
@@ -540,6 +545,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     int seq_len = input_x_dims[1];
     int dim_embed = input_x_dims[2];
     int bsz_seq = bsz * seq_len;
+    const std::string act_method = ctx.Attr<std::string>("act_method");
 
     // 1. layer norm
     const auto pre_layer_norm = ctx.Attr<bool>("pre_layer_norm");
@@ -979,7 +985,7 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
       fused_act_dropout_helper.DropoutActBias(dev_ctx,
                                               ffn1_out_data,
                                               ffn1_biases[i]->data<T>(),
-                                              "gelu",
+                                              act_method,
                                               ffn1_dropout_out_data,
                                               ffn1_dropout_mask_data);
 #ifdef _DEBUG_FUSED_MULTI_TRANSFORMER

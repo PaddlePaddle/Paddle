@@ -797,6 +797,14 @@ class TestFusedMultiTransformerOpFp16(TestFusedMultiTransformerOp):
         self.layers = 3  # odd layers
 
 
+# class TestFusedMultiTransformerOpActReluFp16(TestFusedMultiTransformerOp):
+#     def config(self):
+#         super().config()
+#         self.x_type = np.float16
+#         self.act_method = "relu"
+#         self.layers = 3  # odd layers
+
+
 class TestFusedMultiTransformerOpCacheKV(TestFusedMultiTransformerOp):
     def config(self):
         super().config()
