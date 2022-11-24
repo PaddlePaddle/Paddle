@@ -739,11 +739,11 @@ class TestImperative(unittest.TestCase):
             )
 
             a = paddle.expand(
-                paddle.reshape(paddle.reduce_sum(inp_data1), [1, 1]),
+                paddle.reshape(paddle.sum(inp_data1), [1, 1]),
                 [4, -1],
             )
             b = paddle.expand(
-                paddle.reshape(paddle.reduce_sum(inp_data2), [1, 1]),
+                paddle.reshape(paddle.sum(inp_data2), [1, 1]),
                 [4, -1],
             )
             cond = fluid.layers.less_than(x=a, y=b)
