@@ -98,7 +98,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_types.h"
 #endif
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
 #include "paddle/utils/variant.h"
 
