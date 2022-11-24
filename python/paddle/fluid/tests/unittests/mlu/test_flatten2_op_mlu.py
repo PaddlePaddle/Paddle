@@ -77,7 +77,7 @@ class TestFlattenOpSixDims(TestFlattenOp):
 
 class TestStaticFlattenInferShapePythonAPI(unittest.TestCase):
     def execute_api(self, x, axis=1):
-        if axis==0:
+        if axis == 0:
             x = paddle.flatten(x, 0, -1)
             x = paddle.unsqueeze(x, 0)
             return x
