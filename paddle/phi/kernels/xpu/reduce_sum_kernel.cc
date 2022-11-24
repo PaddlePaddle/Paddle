@@ -29,6 +29,7 @@ void SumRawKernel(const Context& dev_ctx,
                   bool reduce_all,
                   DataType out_dtype,
                   DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   int r = XPUReduce<Context, T>(dev_ctx,
                                 x,
                                 dims.GetData(),

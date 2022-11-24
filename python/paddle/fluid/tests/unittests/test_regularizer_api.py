@@ -41,7 +41,7 @@ def bow_net(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
@@ -133,7 +133,7 @@ class TestRegularizer(unittest.TestCase):
             param_list = fluid.default_main_program().block(0).all_parameters()
             para_sum = []
             for para in param_list:
-                para_mul = fluid.layers.square(x=para)
+                para_mul = paddle.square(x=para)
                 para_sum.append(fluid.layers.reduce_sum(input=para_mul))
             avg_cost_l2 += fluid.layers.sums(para_sum) * 0.5
 

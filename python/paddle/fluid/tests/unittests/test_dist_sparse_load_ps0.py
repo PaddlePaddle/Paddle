@@ -68,7 +68,9 @@ class SparseLoadOp(unittest.TestCase):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 model_path = tempfile.mkdtemp()
-                fluid.io.save_persistables(executor=exe, dirname=model_path)
+                paddle.distributed.io.save_persistables(
+                    executor=exe, dirname=model_path
+                )
         return model_path
 
 
