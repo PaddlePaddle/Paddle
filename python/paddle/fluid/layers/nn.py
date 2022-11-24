@@ -132,7 +132,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
     'shuffle_channel',
@@ -8530,79 +8529,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
-
-
-def bilinear_tensor_product(
-    x, y, size, act=None, name=None, param_attr=None, bias_attr=None
-):
-    r"""
-    :api_attr: Static Graph
-
-    **Bilinear Tensor Product Layer**
-
-    This layer performs bilinear tensor product on two inputs.
-    For example:
-
-    .. math::
-       out_{i} = x * W_{i} * {y^\mathrm{T}}, i=0,1,...,size-1
-
-    In this formula:
-      - :math:`x`: the first input contains M elements, shape is [batch_size, M].
-      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
-      - :math:`W_{i}`: the i-th learned weight, shape is [M, N].
-      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
-      - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
-
-    Args:
-        x (Variable): 2-D input tensor with shape [batch_size, M]. Data type
-            is float32 or float64.
-        y (Variable): 2-D input tensor with shape [batch_size, N]. Data type
-            should be same as **x**.
-        size (int): The dimension of this layer.
-        act (str|None): Activation to be applied to the output of this layer. Default None.
-        name(str|None): For detailed information, please refer to
-            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
-        param_attr (ParamAttr|None): To specify the weight parameter attribute.
-            Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        bias_attr (ParamAttr|None): To specify the bias parameter attribute.
-            Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
-    Returns:
-        Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            paddle.enable_static()
-            layer1 = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
-            layer2 = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
-            tensor = paddle.static.nn.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
-    """
-    helper = LayerHelper('bilinear_tensor_product', **locals())
-    dtype = helper.input_dtype('x')
-
-    param_shape = [size, x.shape[1], y.shape[1]]
-
-    w = helper.create_parameter(
-        attr=helper.param_attr, shape=param_shape, dtype=dtype, is_bias=False
-    )
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-
-    inputs = {"X": x, "Y": y, "Weight": w}
-    if helper.bias_attr:
-        bias_size = [1, size]
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True
-        )
-        inputs["Bias"] = bias
-    helper.append_op(
-        type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
-    )
-
-    # add activation
-    return helper.append_activation(out)
 
 
 @templatedoc()
