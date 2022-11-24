@@ -3469,14 +3469,6 @@ class TestBook(LayerTest):
             output = layers.polygon_box_transform(input=x)
             return output
 
-    def make_l2_normalize(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            x = self._get_data(name='x', shape=[8, 7, 10], dtype="float32")
-            output = paddle.linalg.norm(x, axis=1)
-            return output
-
     def make_mean_iou(self):
         with fluid.framework._dygraph_place_guard(place=fluid.CPUPlace()):
             x = self._get_data(name='x', shape=[16], dtype='int32')
