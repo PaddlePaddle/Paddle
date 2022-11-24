@@ -45,8 +45,9 @@ from paddle.distributed.collective import (
 from .group_sharded_storage import ParamStorage, GradStorage
 from .group_sharded_utils import Type, device_guard, GroupShardedClipGrad
 
+
 # CUDA alignment 256 bytes, cpu alignment 4096 bytes
-alignment = {"gpu": 256, "cpu": 4096}
+alignment = {"gpu": 256, "cpu": 4096, "xpu": 256}
 align = {
     Type.fp16.value: 2,
     Type.bf16.value: 2,
@@ -81,11 +82,13 @@ class GroupShardedOptimizerStage2(Optimizer):
         device="gpu",
         pertrain_sync_models=True,
         dp_group=None,
-        **kw
+        **kw,
     ):
 
         super().__init__(learning_rate=optim._learning_rate, parameters=params)
-        assert core.is_compiled_with_cuda(), "Only GPU is supported now"
+        assert (
+            core.is_compiled_with_cuda() or core.is_compiled_with_xpu()
+        ), "Only GPU and XPU is supported now"
 
         # Segmentation information
         self._dtype_rank_params = (
@@ -414,12 +417,10 @@ class GroupShardedOptimizerStage2(Optimizer):
                             dtype=dtype,
                             device=self._default_device,
                         )
-
                         param_storage.add_rank_params(
                             trainable_params, self._param2align
                         )
                         self.param_storages[dtype][dst_rank] = param_storage
-
         # Clear the InternalStorage keys which are not in use anymore
         dtype_in_use = list(self.dtype_rank_params.keys())
         dtype_to_pop = list(
