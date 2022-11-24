@@ -1087,6 +1087,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'recv_v2',
                 'cast',
                 'matmul',
+                'matmul_v2',
                 'cast',
                 'reduce_mean',
                 'elementwise_mul',
