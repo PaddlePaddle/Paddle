@@ -580,14 +580,14 @@ def build_steps():
             {
                 option: option
                 for option in (
-                    "PYTHON_LIBRARY:FILEPATH",
+                    "PYTHON_LIBRARY",
                     "INFERENCE_DEMO_INSTALL_DIR",
                     "ON_INFER",
-                    "PYTHON_EXECUTABLE:FILEPATH",
+                    "PYTHON_EXECUTABLE",
                     "TENSORRT_ROOT",
                     "CUDA_ARCH_NAME",
                     "CUDA_ARCH_BIN",
-                    "PYTHON_INCLUDE_DIR:PATH",
+                    "PYTHON_INCLUDE_DIR",
                     "PYTHON_LIBRARIES",
                     "PY_VERSION",
                     "CUB_PATH",
