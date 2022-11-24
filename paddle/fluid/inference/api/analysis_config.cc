@@ -100,6 +100,17 @@ void AnalysisConfig::EnableUseGpu(uint64_t memory_pool_init_size_mb,
   Update();
 }
 
+void AnalysisConfig::EnableUseCutlass() {
+#if defined(PADDLE_WITH_CUDA)
+  use_cutlass_ = true;
+#else
+  LOG(ERROR) << "Please compile with gpu to EnableGpu()";
+  use_cutlass_ = false;
+#endif
+
+  Update();
+}
+
 void AnalysisConfig::SetExecStream(void *stream) {
   PADDLE_ENFORCE_NOT_NULL(
       stream,
@@ -1210,6 +1221,7 @@ std::string AnalysisConfig::Summary() {
   // gpu info
   os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
   if (use_gpu_) {
+    os.InsertRow({"use_cutlass", use_cutlass_ ? "true" : "false"});
     os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
     os.InsertRow({"memory_pool_init_size",
                   std::to_string(memory_pool_init_size_mb_) + "MB"});

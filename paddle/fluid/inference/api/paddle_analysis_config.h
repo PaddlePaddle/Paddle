@@ -391,6 +391,9 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  ///
+  void EnableUseCutlass();
+  ///
   /// \return bool Whether the Cutlass is turned on.
   ///
   bool use_cutlass() const { return use_cutlass_; }
