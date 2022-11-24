@@ -27,7 +27,7 @@ from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
 from ...fluid import dygraph_utils
-from ..fluid.layers import utils
+from ...fluid.layers import utils
 from ...fluid.data_feeder import (
     check_variable_and_dtype,
     check_dtype,
