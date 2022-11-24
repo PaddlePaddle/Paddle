@@ -391,6 +391,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool use_gpu() const { return use_gpu_; }
   ///
+  /// \return bool Whether the Cutlass is turned on.
+  ///
+  bool use_cutlass() const { return use_cutlass_; }
+  ///
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
   /// \return bool Whether the XPU is turned on.
@@ -1015,6 +1019,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // GPU related.
   bool use_gpu_{false};
+  bool use_cutlass_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
   bool thread_local_stream_{false};

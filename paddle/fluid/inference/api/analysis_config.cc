@@ -375,6 +375,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_fc_padding_);
   // GPU related.
   CP_MEMBER(use_gpu_);
+  CP_MEMBER(use_cutlass_);
   CP_MEMBER(use_external_stream_);
   CP_MEMBER(exec_stream_);
   CP_MEMBER(use_cudnn_);

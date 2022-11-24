@@ -150,7 +150,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
     if ((filter_tensor->dims()[0] % 8 != 0) ||
         (filter_tensor->dims()[1] % 8 != 0)) {
-      return;
+      //return;
     }
 
     auto new_op_proto =
