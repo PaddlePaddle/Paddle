@@ -113,7 +113,6 @@ __all__ = [
     'elementwise_div',
     'elementwise_sub',
     'elementwise_mul',
-    'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',
     'gaussian_random_batch_size_like',
@@ -6598,6 +6597,657 @@ def slice(input, axes, starts, ends):
     )
 
     return out
+
+
+@deprecated(since='2.0.0', update_to="paddle.strided_slice")
+def strided_slice(input, axes, starts, ends, strides):
+    """
+    :alias_main: paddle.strided_slice
+        :alias: paddle.strided_slice,paddle.tensor.strided_slice,paddle.tensor.manipulation.strided_slice
+        :old_api: paddle.fluid.layers.strided_slice
+
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
+    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
+    Following examples will explain how strided_slice works:
+
+    .. code-block:: text
+
+        Case1:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [1, 0]
+                ends = [2, 3]
+                strides = [1, 1]
+            Then:
+                result = [ [5, 6, 7], ]
+
+        Case2:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [2, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [8, 7, 6], ]
+
+        Case3:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [0, 1]
+                ends = [-1, 1000]
+                strides = [1, 3]
+            Then:
+                result = [ [2], ]
+    Args:
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``bool``, ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
+                It represents slice step of corresponding axis in ``axes``.
+
+    Returns:
+        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Variable.
+        TypeError: The type of ``ends`` must be list, tuple or Variable.
+        TypeError: The type of ``strides`` must be list, tuple or Variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle
+
+            paddle.enable_static()
+            input = fluid.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            # example 1:
+            # attr starts is a list which doesn't contain tensor Variable.
+            axes = [0, 1, 2]
+            starts = [-3, 0, 2]
+            ends = [3, 2, 4]
+            strides_1 = [1, 1, 1]
+            strides_2 = [1, 1, 2]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides_1)
+            # sliced_1 is input[:, 0:3:1, 0:2:1, 2:4:1].
+
+
+            # example 2:
+            # attr starts is a list which contain tensor Variable.
+            minus_3 = fluid.layers.fill_constant([1], "int32", -3)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
+            # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
+    """
+    if in_dygraph_mode():
+        return _C_ops.strided_slice(input, axes, starts, ends, strides)
+
+    helper = LayerHelper('strided_slice', **locals())
+
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['bool', 'float32', 'float64', 'int32', 'int64'],
+        'strided_slice',
+    )
+    check_type(axes, 'axes', (list, tuple), 'strided_slice')
+    check_type(starts, 'starts', (list, tuple, Variable), 'strided_slice')
+    check_type(ends, 'ends', (list, tuple, Variable), 'strided_slice')
+    check_type(strides, 'strides', (list, tuple, Variable), 'strided_slice')
+
+    def check_list_elements_dtype(list_input, input_name):
+        if isinstance(list_input, Variable):
+            check_dtype(
+                list_input.dtype, input_name, ['int32'], 'strided_slice'
+            )
+        else:
+            for i, var in enumerate(list_input):
+                var_name = input_name + '[' + str(i) + ']'
+                if isinstance(var, Variable):
+                    check_dtype(var.dtype, var_name, ['int32'], 'strided_slice')
+
+    check_list_elements_dtype(axes, 'axes')
+    check_list_elements_dtype(starts, 'starts')
+    check_list_elements_dtype(ends, 'ends')
+    check_list_elements_dtype(strides, 'strides')
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert isinstance(dim, int)
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': input}
+    attrs = {'axes': axes}
+    infer_flags = list(1 for i in range(len(axes)))
+
+    if _non_static_mode():
+        inputs = {'Input': input}
+        attrs = {
+            'axes': axes,
+            'starts': starts,
+            'ends': ends,
+            'strides': strides,
+            'infer_flags': infer_flags,
+        }
+    else:
+        # starts
+        if isinstance(starts, Variable):
+            starts.stop_gradient = True
+            inputs['StartsTensor'] = starts
+        elif isinstance(starts, (list, tuple)):
+            attrs['starts'] = []
+            if utils._contain_var(starts):
+                inputs['StartsTensorList'] = get_new_list_tensor(starts)
+                for i, dim in enumerate(starts):
+                    if isinstance(dim, Variable):
+                        attrs['starts'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['starts'].append(dim)
+            else:
+                attrs['starts'] = starts
+
+        # ends
+        if isinstance(ends, Variable):
+            ends.stop_gradient = True
+            inputs['EndsTensor'] = ends
+        elif isinstance(ends, (list, tuple)):
+            attrs['ends'] = []
+            if utils._contain_var(ends):
+                inputs['EndsTensorList'] = get_new_list_tensor(ends)
+                for i, dim in enumerate(ends):
+                    if isinstance(dim, Variable):
+                        attrs['ends'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['ends'].append(dim)
+            else:
+                attrs['ends'] = ends
+
+        # strides
+        if isinstance(strides, Variable):
+            strides.stop_gradient = True
+            inputs['StridesTensor'] = strides
+        elif isinstance(strides, (list, tuple)):
+            attrs['strides'] = []
+            if utils._contain_var(strides):
+                inputs['StridesTensorList'] = get_new_list_tensor(strides)
+                for i, dim in enumerate(strides):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
+            else:
+                attrs['strides'] = strides
+        attrs['infer_flags'] = infer_flags
+    out = helper.create_variable_for_type_inference(
+        dtype=helper.input_dtype('input')
+    )
+    helper.append_op(
+        type='strided_slice', inputs=inputs, attrs=attrs, outputs={'Out': out}
+    )
+
+    return out
+
+
+def shape(input):
+    """
+    :alias_main: paddle.shape
+        :alias: paddle.shape,paddle.tensor.shape,paddle.tensor.attribute.shape
+        :old_api: paddle.fluid.layers.shape
+
+    **Shape Layer**
+
+    Get the shape of the input.
+
+    .. code-block:: text
+
+        Case1:
+            Given N-D Tensor:
+                input = [ [1, 2, 3, 4], [5, 6, 7, 8] ]
+
+            Then:
+                input.shape = [2, 4]
+
+        Case2:
+            Given SelectedRows:
+                input.rows = [0, 4, 19]
+                input.height = 20
+                input.value = [ [1, 2], [3, 4], [5, 6] ]  # inner tensor
+            Then:
+                input.shape = [3, 2]
+
+    Args:
+        input (Variable): The input can be N-D Tensor or SelectedRows with data type bool, float16, float32, float64, int32, int64.
+                          If input variable is type of SelectedRows, returns the shape of it's inner tensor.
+
+    Returns:
+        Variable (Tensor): The shape of the input variable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            paddle.enable_static()
+
+            inputs = fluid.data(name="x", shape=[3, 100, 100], dtype="float32")
+            output = fluid.layers.shape(inputs)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.ones((3, 100, 100)).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([  3, 100, 100], dtype=int32)]
+    """
+    if in_dygraph_mode():
+        out = _C_ops.shape(input)
+        out.stop_gradient = True
+        return out
+    if _in_legacy_dygraph():
+        out = _legacy_C_ops.shape(input)
+        out.stop_gradient = True
+        return out
+
+    check_variable_and_dtype(
+        input,
+        'input',
+        [
+            'bool',
+            'float16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'complex64',
+            'complex128',
+        ],
+        'shape',
+    )
+    helper = LayerHelper('shape', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='shape',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        stop_gradient=True,
+    )
+
+    return out
+
+
+@deprecated(since="2.0.0", update_to="paddle.numel")
+def size(input):
+    """
+    **Size Layer**
+
+    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
+
+    Args:
+        input (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+
+    Returns:
+        Tensor: The number of elements for the input Tensor.
+
+    Raises:
+        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid.layers as layers
+            paddle.enable_static()
+
+            input = layers.data(
+                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
+            rank = layers.size(input) # 300
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.numel(input)
+
+    if _in_legacy_dygraph():
+        return _legacy_C_ops.size(input)
+
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        "size",
+    )
+    helper = LayerHelper('size', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int64')
+    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
+
+    return out
+
+
+def _elementwise_op(helper):
+    op_type = helper.layer_type
+    x = helper.kwargs.get('x', None)
+    y = helper.kwargs.get('y', None)
+
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type,
+    )
+    check_variable_and_dtype(
+        y,
+        'y',
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+        op_type,
+    )
+
+    axis = helper.kwargs.get('axis', -1)
+    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
+    name = helper.kwargs.get('name', None)
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs={'axis': axis, 'use_mkldnn': use_mkldnn},
+    )
+    return helper.append_activation(out)
+
+
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+    """
+
+    Putting scale and bias to the input Tensor as following:
+
+    ``bias_after_scale`` is True:
+
+    .. math::
+                            Out=scale*X+bias
+
+    ``bias_after_scale`` is False:
+
+    .. math::
+                            Out=scale*(X+bias)
+
+    Args:
+        x(Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale(float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
+        bias(float): The bias to be put on the input.
+        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+
+    Returns:
+        Tensor: Output tensor of scale operator, with shape and data type same as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            # scale as a float32 number
+            import paddle
+
+            data = paddle.randn(shape=[2,3], dtype='float32')
+            res = paddle.scale(data, scale=2.0, bias=1.0)
+
+        .. code-block:: python
+
+            # scale with parameter scale as a Tensor
+            import paddle
+
+            data = paddle.randn(shape=[2, 3], dtype='float32')
+            factor = paddle.to_tensor([2], dtype='float32')
+            res = paddle.scale(data, scale=factor, bias=1.0)
+
+    """
+
+    if in_dygraph_mode():
+        out = _C_ops.scale(x, scale, float(bias), bias_after_scale)
+        return dygraph_utils._append_activation_in_dygraph(out)
+    if _non_static_mode():
+        _scale = scale.numpy().item(0) if isinstance(scale, Variable) else scale
+        out = _legacy_C_ops.scale(
+            x,
+            'scale',
+            float(_scale),
+            'bias',
+            float(bias),
+            'bias_after_scale',
+            bias_after_scale,
+        )
+        return dygraph_utils._append_activation_in_dygraph(out)
+
+    check_variable_and_dtype(
+        x,
+        "x",
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int8',
+            'int16',
+            'int32',
+            'int64',
+            'uint8',
+        ],
+        "scale",
+    )
+    inputs = {'X': [x]}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = [scale]
+    else:
+        attrs['scale'] = float(scale)
+    helper = LayerHelper('scale', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs
+    )
+    return helper.append_activation(out)
+
+
+def elementwise_add(x, y, axis=-1, act=None, name=None):
+    """
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # [3., 8., 6.]
+
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[3,4], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y, axis=1)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+
+            print(z_value) # z.shape=[2,3,4,5]
+
+
+        ..  code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+
+            def gen_data():
+                return {
+                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[5], dtype='float32')
+            z = fluid.layers.elementwise_add(x, y, axis=3)
+            # z = x + y
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+
+    """
+    if _non_static_mode():
+        return _elementwise_op_in_dygraph(
+            x,
+            y,
+            axis=axis,
+            act=act,
+            op_name='elementwise_add',
+            use_mkldnn=_global_flags()["FLAGS_use_mkldnn"],
+        )
+
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+
+
+@deprecated(since="2.0.0", update_to="paddle.divide")
+def elementwise_div(x, y, axis=-1, act=None, name=None):
+    """
+    Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            def gen_data():
+                return {
+                    "x": np.array([2, 3, 4]).astype('float32'),
+                    "y": np.array([1, 5, 2]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[3], dtype='float32')
+            y = fluid.data(name="y", shape=[3], dtype='float32')
+            z = fluid.layers.elementwise_div(x, y)
+            # z = x / y
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # [2., 0.6, 2.]
+        .. code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            def gen_data():
+                return {
+                    "x": np.ones((2, 3, 4, 5)).astype('float32'),
+                    "y": np.zeros((3, 4)).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[3,4], dtype='float32')
+            z = fluid.layers.elementwise_div(x, y, axis=1)
+            # z = x / y
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+        ..  code-block:: python
+            import paddle.fluid as fluid
+            import numpy as np
+            import paddle
+            def gen_data():
+                return {
+                    "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
+                    "y": np.random.randint(1, 5, size=[5]).astype('float32')
+                }
+            paddle.enable_static()
+            x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
+            y = fluid.data(name="y", shape=[5], dtype='float32')
+            z = fluid.layers.elementwise_div(x, y, axis=3)
+            # z = x / y
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            z_value = exe.run(feed=gen_data(),
+                                fetch_list=[z.name])
+            print(z_value) # z.shape=[2,3,4,5]
+    """
+    if _non_static_mode():
+        return _elementwise_op_in_dygraph(
+            x, y, axis=axis, act=act, op_name='elementwise_div'
+        )
+
+    return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
 @deprecated(since='2.0.0', update_to="paddle.strided_slice")
