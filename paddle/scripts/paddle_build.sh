@@ -173,9 +173,9 @@ function cmake_base() {
             #     export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3.7
             # -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.7m
             # -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so"
-                export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3
-                export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.6m
-                export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so
+                # export PYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.7.0/bin/python3
+                # export PYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.7.0/include/python3.6m
+                # export PYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.7.0/lib/libpython3.so
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
