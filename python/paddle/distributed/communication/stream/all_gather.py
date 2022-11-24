@@ -17,31 +17,10 @@ import paddle.fluid.framework as framework
 from paddle.distributed import collective
 
 
-def _check_tensor_shape(tensor, shape, nranks=1):
-    expect_shape = list(shape)
-    expect_shape[0] *= nranks
-    if list(tensor.shape) != expect_shape:
-        raise RuntimeError("The tensor for all_gather is not correctly-sized.")
-
-
-def _check_tensor_list_shape(tensor_list, shape, nranks=1):
-    if len(tensor_list) != nranks:
-        raise RuntimeError(
-            "The tensor_list for all_gather is not correctly-sized."
-        )
-    for tensor in tensor_list:
-        if tensor.shape != shape:
-            raise RuntimeError(
-                "The tensor_list for all_gather is not correctly-sized."
-            )
-
-
 def _all_gather_into_tensor_in_dygraph(
     out_tensor, in_tensor, group, sync_op, use_calc_stream
 ):
     group = collective._get_default_group() if group is None else group
-
-    _check_tensor_shape(out_tensor, in_tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.all_gather_into_tensor_on_calc_stream(
@@ -65,8 +44,6 @@ def _all_gather_in_dygraph(
 
     if len(tensor_list) == 0:
         tensor_list += [paddle.empty_like(tensor) for _ in range(group.nranks)]
-    else:
-        _check_tensor_list_shape(tensor_list, tensor.shape, group.nranks)
 
     if use_calc_stream:
         return group.process_group.all_gather_on_calc_stream(

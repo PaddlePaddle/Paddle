@@ -42,7 +42,7 @@ class TestBase(IPUOpTest):
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="bool"
         )
-        out = paddle.fluid.layers.logical_not(x)
+        out = paddle.logical_not(x)
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

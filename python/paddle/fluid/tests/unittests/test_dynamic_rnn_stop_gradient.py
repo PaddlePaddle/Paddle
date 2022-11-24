@@ -43,9 +43,9 @@ def build_and_run_program(place, batch_size, beam_size, stop_gradient=False):
         for _ in range(20):
             bs = layers.cast(bs, 'int64')
         bs.stop_gradient = stop_gradient
-        batch_pos = layers.expand(
+        batch_pos = paddle.expand(
             paddle.unsqueeze(paddle.arange(0, bs, 1, dtype=bs.dtype), [1]),
-            [1, beam_size],
+            [-1, beam_size],
         )
         topk_coordinates = paddle.stack([batch_pos, indices], axis=2)
         topk_coordinates.stop_gradient = stop_gradient
