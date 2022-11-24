@@ -323,7 +323,9 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->mem_desc(), phi::funcs::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, phi::funcs::GetPlainOneDNNFormat(dout_vec_dims.size()), ctx.GetPlace());
+        dx,
+        phi::funcs::GetPlainOneDNNFormat(dout_vec_dims.size()),
+        ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
 
