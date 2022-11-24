@@ -98,7 +98,6 @@ from .layer.conv import Conv3DTranspose  # noqa: F401
 from .layer.loss import BCEWithLogitsLoss  # noqa: F401
 from .layer.loss import CrossEntropyLoss  # noqa: F401
 from .layer.loss import HSigmoidLoss  # noqa: F401
-from .layer.loss import MSELoss  # noqa: F401
 from .layer.loss import L1Loss  # noqa: F401
 from .layer.loss import NLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
@@ -246,7 +245,6 @@ __all__ = [  # noqa
     'Maxout',
     'Softsign',
     'Transformer',
-    'MSELoss',
     'LogSigmoid',
     'BeamSearchDecoder',
     'ClipGradByNorm',
