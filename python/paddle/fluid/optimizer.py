@@ -2634,7 +2634,7 @@ class AdamaxOptimizer(Optimizer):
 
           import paddle.fluid as fluid
           import numpy
-
+          import paddle
           paddle.enable_static()
 
           # First create the Executor.
@@ -3879,7 +3879,7 @@ class ModelAverage(Optimizer):
 
         import paddle.fluid as fluid
         import numpy
-
+        import paddle
         paddle.enable_static()
 
         # First create the Executor.
@@ -4058,7 +4058,7 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
-
+            import paddle
             paddle.enable_static()
 
             # First create the Executor.
@@ -4114,7 +4114,7 @@ class ModelAverage(Optimizer):
 
             import paddle.fluid as fluid
             import numpy
-
+            import paddle
             paddle.enable_static()
 
             # First create the Executor.

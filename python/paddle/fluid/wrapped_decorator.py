@@ -14,6 +14,7 @@
 
 import decorator
 import contextlib
+import paddle
 
 __all__ = ['wrap_decorator', 'signature_safe_contextmanager']
 
@@ -21,6 +22,7 @@ __all__ = ['wrap_decorator', 'signature_safe_contextmanager']
 def wrap_decorator(decorator_func):
     @decorator.decorator
     def __impl__(func, *args, **kwargs):
+        paddle.enable_static()
         wrapped_func = decorator_func(func)
         return wrapped_func(*args, **kwargs)
 
