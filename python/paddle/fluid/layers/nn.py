@@ -101,7 +101,6 @@ __all__ = [
     'lod_reset',
     'lod_append',
     'pad',
-    'roi_align',
     'image_resize',
     'image_resize_short',
     'resize_linear',
@@ -5688,123 +5687,6 @@ def pad(x, paddings, pad_value=0.0, name=None):
         attrs={'paddings': paddings, 'pad_value': pad_value},
     )
     return out
-
-
-@templatedoc()
-def roi_align(
-    input,
-    rois,
-    pooled_height=1,
-    pooled_width=1,
-    spatial_scale=1.0,
-    sampling_ratio=-1,
-    rois_num=None,
-    name=None,
-):
-    """
-
-    ${comment}
-
-    Args:
-        input (Variable): ${x_comment}
-        rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-            a 2-D LoDTensor of shape (num_rois, 4), the lod level is 1. The
-            data type is float32 or float64. Given as [[x1, y1, x2, y2], ...],
-            (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
-            right coordinates.
-        pooled_height (int32, optional): ${pooled_height_comment} Default: 1
-        pooled_width (int32, optional): ${pooled_width_comment} Default: 1
-        spatial_scale (float32, optional): ${spatial_scale_comment} Default: 1.0
-        sampling_ratio(int32, optional): ${sampling_ratio_comment} Default: -1
-        rois_num (Tensor): The number of RoIs in each image. Default: None
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        Variable:
-
-        Output: ${out_comment}.
-
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            x = fluid.data(
-                name='data', shape=[None, 256, 32, 32], dtype='float32')
-            rois = fluid.data(
-                name='rois', shape=[None, 4], dtype='float32')
-            rois_num = fluid.data(name='rois_num', shape=[None], dtype='int32')
-            align_out = fluid.layers.roi_align(input=x,
-                                               rois=rois,
-                                               pooled_height=7,
-                                               pooled_width=7,
-                                               spatial_scale=0.5,
-                                               sampling_ratio=-1,
-                                               rois_num=rois_num)
-    """
-    if in_dygraph_mode():
-        assert (
-            rois_num is not None
-        ), "rois_num should not be None in dygraph mode."
-        return _C_ops.roi_align(
-            input,
-            rois,
-            rois_num,
-            pooled_height,
-            pooled_width,
-            spatial_scale,
-            sampling_ratio,
-            False,
-        )
-    if _in_legacy_dygraph():
-        assert (
-            rois_num is not None
-        ), "rois_num should not be None in dygraph mode."
-        align_out = _legacy_C_ops.roi_align(
-            input,
-            rois,
-            rois_num,
-            "pooled_height",
-            pooled_height,
-            "pooled_width",
-            pooled_width,
-            "spatial_scale",
-            spatial_scale,
-            "sampling_ratio",
-            sampling_ratio,
-        )
-        return align_out
-
-    check_variable_and_dtype(
-        input, 'input', ['float32', 'float64'], 'roi_align'
-    )
-    check_variable_and_dtype(rois, 'rois', ['float32', 'float64'], 'roi_align')
-    helper = LayerHelper('roi_align', **locals())
-    dtype = helper.input_dtype()
-    align_out = helper.create_variable_for_type_inference(dtype)
-    inputs = {
-        "X": input,
-        "ROIs": rois,
-    }
-    if rois_num is not None:
-        inputs['RoisNum'] = rois_num
-    helper.append_op(
-        type="roi_align",
-        inputs=inputs,
-        outputs={"Out": align_out},
-        attrs={
-            "pooled_height": pooled_height,
-            "pooled_width": pooled_width,
-            "spatial_scale": spatial_scale,
-            "sampling_ratio": sampling_ratio,
-        },
-    )
-    return align_out
 
 
 def image_resize(
