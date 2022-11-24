@@ -613,7 +613,7 @@ def convert_shape(x):
     #  (2) if x.shape does not contains -1, return lsit(x.shape) directly
 
     if isinstance(x, Variable):
-        values = list(x.shape)
+        values = list(paddle.shape(x))
         if has_negative(values):
             shape_tensor = paddle.shape(x)
             for i, v in enumerate(values):
@@ -621,7 +621,7 @@ def convert_shape(x):
                     values[i] = shape_tensor[i]
         return values
     else:
-        return x.shape
+        return paddle.shape(x)
 
 
 def convert_shape_compare(left, *args):

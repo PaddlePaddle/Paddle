@@ -22,13 +22,13 @@ from paddle.fluid.dygraph.jit import declarative
 
 def dyfunc_tensor_shape_1(x):
     x = fluid.dygraph.to_variable(x)
-    res = paddle.reshape(x, shape=x.shape)
+    res = paddle.reshape(x, shape=paddle.shape(x))
     return res
 
 
 def dyfunc_tensor_shape_2(x):
     x = paddle.to_tensor(x)
-    shape = x.shape
+    shape = paddle.shape(x)
     shape2 = shape
     res = paddle.reshape(x, shape2)
     return res
@@ -38,13 +38,15 @@ def dyfunc_tensor_shape_3(x):
     # Transform y.shape but run y.shape actually because y is not Tensor
     x = fluid.dygraph.to_variable(x)
     y = np.ones(5)
-    res = paddle.reshape(x, shape=y.shape)
+    res = paddle.reshape(x, shape=paddle.shape(y))
     return res
 
 
 def dyfunc_tensor_shape_4(x):
     x = fluid.dygraph.to_variable(x)
-    res = paddle.reshape(x, shape=(-1, x.shape[0], len(x.shape)))
+    res = paddle.reshape(
+        x, shape=(-1, paddle.shape(x)[0], len(paddle.shape(x)))
+    )
     return res
 
 
@@ -53,7 +55,7 @@ def dyfunc_tensor_shape_5(x):
     # `res = fluid.layers.reshape(x, shape=(-1,
     #           paddle.jit.dy2static.convert_var_shape(x)[0]))`
     x = fluid.dygraph.to_variable(x)
-    s = x.shape[0]
+    s = paddle.shape(x)[0]
     res = paddle.reshape(x, shape=(-1, s))
     return res
 
@@ -63,21 +65,21 @@ def dyfunc_tensor_shape_6(x):
     # `res = fluid.layers.reshape(x, shape=(-1,
     #           paddle.jit.dy2static.convert_var_shape(x)[0:]))`
     x = fluid.dygraph.to_variable(x)
-    s = x.shape[0:]
+    s = paddle.shape(x)[0:]
     res = paddle.reshape(x, shape=s)
     return res
 
 
 def dyfunc_tuple_shape_1(x):
     x = paddle.to_tensor(x)
-    a, b = x.shape
+    a, b = paddle.shape(x)
     res = paddle.reshape(x, shape=(b, a))
     return res
 
 
 def dyfunc_tuple_shape_2(x):
     x = paddle.to_tensor(x)
-    shape = x.shape
+    shape = paddle.shape(x)
     a, b = shape
     res = paddle.reshape(x, shape=(b, a))
     return res
@@ -96,7 +98,7 @@ def dyfunc_paddle_shape_api(x):
     a = paddle.shape(x)[0]
     # alias api will also not be converted.
     alias_old_api = paddle.fluid.layers
-    b = alias_old_api.shape(x)[1]
+    b = paddle.shape(x)[1]
     res = paddle.reshape(x, shape=(b, a))
     return res
 
@@ -104,17 +106,17 @@ def dyfunc_paddle_shape_api(x):
 def dyfunc_with_if_1(x):
     x = fluid.dygraph.to_variable(x)
     res = paddle.reshape(x, [-1, 1])
-    x_shape_0 = x.shape[0]
+    x_shape_0 = paddle.shape(x)[0]
     if x_shape_0 < 1:
         # `res.shape[0]` is transformed into
         #   `paddle.jit.dy2static.convert_var_shape(res)[0]`
-        if res.shape[0] > 1:
+        if paddle.shape(res)[0] > 1:
             res = fluid.layers.fill_constant(
-                value=2, shape=x.shape, dtype="int32"
+                value=2, shape=paddle.shape(x), dtype="int32"
             )
         else:
             res = fluid.layers.fill_constant(
-                value=3, shape=x.shape, dtype="int32"
+                value=3, shape=paddle.shape(x), dtype="int32"
             )
     return res
 
@@ -122,10 +124,12 @@ def dyfunc_with_if_1(x):
 def dyfunc_with_if_2(x):
     x = fluid.dygraph.to_variable(x)
     # `len(x.shape)` will not be transformed because x.shape is not used by Paddle api.
-    if len(x.shape) < 1:
+    if len(paddle.shape(x)) < 1:
         res = x
     else:
-        res = fluid.layers.fill_constant(value=8, shape=x.shape, dtype="int32")
+        res = fluid.layers.fill_constant(
+            value=8, shape=paddle.shape(x), dtype="int32"
+        )
 
     return res
 
@@ -134,14 +138,14 @@ def dyfunc_with_for_1(x):
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
-    for i in range(x.shape[0]):
+    for i in range(paddle.shape(x)[0]):
         res += 1
     return res
 
 
 def dyfunc_with_for_2(x):
     x = fluid.dygraph.to_variable(x)
-    x_shape_0 = x.shape[0]
+    x_shape_0 = paddle.shape(x)[0]
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
 
     # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
@@ -154,7 +158,7 @@ def dyfunc_with_for_3(x):
     x = fluid.dygraph.to_variable(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     # `len(x.shape)` is not transformed.
-    for i in range(len(x.shape)):
+    for i in range(len(paddle.shape(x))):
         res += 1
 
     return res
@@ -165,7 +169,7 @@ def dyfunc_with_while_1(x):
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     i = 1
-    while i < x.shape[0]:
+    while i < paddle.shape(x)[0]:
         res += 1
         i = i + 2
     return res
@@ -173,7 +177,7 @@ def dyfunc_with_while_1(x):
 
 def dyfunc_with_while_2(x):
     x = fluid.dygraph.to_variable(x)
-    x_shape_0 = x.shape[0]
+    x_shape_0 = paddle.shape(x)[0]
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
     # `x_shape_0` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
@@ -185,7 +189,7 @@ def dyfunc_with_while_2(x):
 
 def dyfunc_with_while_3(x):
     x = fluid.dygraph.to_variable(x)
-    x_shape = x.shape
+    x_shape = paddle.shape(x)
     res = fluid.layers.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
 
@@ -199,7 +203,7 @@ def dyfunc_with_while_3(x):
 def dyfunc_with_while_4(x):
     x = paddle.to_tensor(x)
     y = np.ones(5)
-    y_shape_0 = y.shape[0]
+    y_shape_0 = paddle.shape(y)[0]
     i = 1
 
     # Transform y_shape_0 but run y.shape[0] actually because y is not Tensor
@@ -211,7 +215,7 @@ def dyfunc_with_while_4(x):
 
 def dyfunc_change_shape_after_assign(x):
     x = paddle.to_tensor(x)
-    a, b = x.shape
+    a, b = paddle.shape(x)
     x = paddle.reshape(x, shape=(-1, 1))
     res = paddle.reshape(x, shape=(b, a))
     return res
@@ -226,7 +230,7 @@ def dyfunc_len_paddle_shape():
 def dyfunc_dict_assign_shape():
     x = paddle.to_tensor([1, 2])
     a = {}
-    a['shape'] = x.shape[0]
+    a['shape'] = paddle.shape(x)[0]
 
 
 # 1. Basic tests without control flow
@@ -588,8 +592,8 @@ class TestChangeShapeAfterAssign(TestTensorShapeBasic):
 
 def dyfunc_with_static_convert_var_shape(x):
     # Note: this will create `batch_size__static_convert_var_shape_suffix_0` firstly.
-    batch_size = x.shape[0]
-    if len(x.shape) < 1:
+    batch_size = paddle.shape(x)[0]
+    if len(paddle.shape(x)) < 1:
         res = x
     else:
         # Test for correctly to find `batch_size__static_convert_var_shape_suffix_0` in
