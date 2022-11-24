@@ -226,7 +226,12 @@ class RocksDBHandler {
   }
 
   int get_estimate_key_num(uint64_t& num_keys) {
-    // _db->GetAggregatedIntProperty("rocksdb.estimate-num-keys", &num_keys);
+    num_keys = 0;
+    for (size_t i = 0; i < _dbs.size(); i++) {
+      uint64_t cur_keys = 0;
+      _dbs[i]->GetAggregatedIntProperty("rocksdb.estimate-num-keys", &cur_keys);
+      num_keys += cur_keys;
+    }
     return 0;
   }
 

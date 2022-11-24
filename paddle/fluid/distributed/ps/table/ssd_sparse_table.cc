@@ -582,11 +582,33 @@ int64_t SSDSparseTable::LocalSize() {
 int32_t SSDSparseTable::Save(const std::string& path,
                              const std::string& param) {
   std::lock_guard<std::mutex> guard(_table_mutex);
+  int save_param = atoi(param.c_str());
+#ifdef PADDLE_WITH_HETERPS
+  int32_t ret = 0;
+  if (save_param > 3) {
+    ret = SaveWithStringMultiOutput(path, param);  // batch_model:4  xbox:5
+  } else {
+    ret = SaveWithBinary(path, param);  // batch_model:0  xbox:1
+  }
+  return ret;
+#else
+  // CPUPS PSCORE
+  return SaveWithString(path, param);  // batch_model:0  xbox:1
+#endif
+}
+
+// save shard_num 个文件
+int32_t SSDSparseTable::SaveWithString(const std::string& path,
+                                       const std::string& param) {
+  std::lock_guard<std::mutex> guard(_table_mutex);
   if (_real_local_shard_num == 0) {
     _local_show_threshold = -1;
     return 0;
   }
   int save_param = atoi(param.c_str());  // batch_model:0  xbox:1
+#ifdef PADDLE_WITH_HETERPS
+  save_param -= 4;
+#endif
   //    if (save_param == 5) {
   //        return save_patch(path, save_param);
   //    }
@@ -751,6 +773,591 @@ int32_t SSDSparseTable::Save(const std::string& path,
           << file_start_idx + _real_local_shard_num - 1;
   _local_show_threshold = tk.top();
   VLOG(0) << "local cache threshold: " << _local_show_threshold;
+  return 0;
+}
+
+// save shard_num * n 个文件, n由模型大小决定
+int32_t SSDSparseTable::SaveWithStringMultiOutput(const std::string& path,
+                                                  const std::string& param) {
+  if (_real_local_shard_num == 0) {
+    _local_show_threshold = -1;
+    return 0;
+  }
+  int save_param = atoi(param.c_str());
+#ifdef PADDLE_WITH_HETERPS
+  save_param -= 4;
+#endif
+  VLOG(0) << "table cache rate is: " << _config.sparse_table_cache_rate();
+  VLOG(0) << "enable_sparse_table_cache: "
+          << _config.enable_sparse_table_cache();
+  VLOG(0) << "LocalSize: " << LocalSize();
+  if (_config.enable_sparse_table_cache()) {
+    VLOG(0) << "Enable sparse table cache, top n:" << _cache_tk_size;
+  }
+  _cache_tk_size = LocalSize() * _config.sparse_table_cache_rate();
+  TopkCalculator tk(_real_local_shard_num, _cache_tk_size);
+  VLOG(0) << "TopkCalculator top n:" << _cache_tk_size;
+  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
+  std::string table_path = TableDir(path);
+  _afs_client.remove(paddle::string::format_string(
+      "%s/part-%03d-*", table_path.c_str(), _shard_idx));
+#ifdef PADDLE_WITH_GPU_GRAPH
+  int thread_num = _real_local_shard_num;
+#else
+  int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+#endif
+
+  std::atomic<uint32_t> feasign_size_all{0};
+  std::vector<paddle::framework::Channel<std::shared_ptr<MemRegion>>>
+      busy_channel;
+  std::vector<paddle::framework::Channel<std::shared_ptr<MemRegion>>>
+      free_channel;
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < _real_local_shard_num; i++) {
+    busy_channel.push_back(
+        paddle::framework::MakeChannel<std::shared_ptr<MemRegion>>());
+    free_channel.push_back(
+        paddle::framework::MakeChannel<std::shared_ptr<MemRegion>>());
+  }
+  threads.resize(_real_local_shard_num);
+
+  auto save_func = [this,
+                    &save_param,
+                    &table_path,
+                    &file_start_idx,
+                    &free_channel,
+                    &busy_channel](int file_num) {
+    int err_no = 0;
+    int split_num = 0;
+    int shard_num = file_num;
+    int part_num = 0;
+    shard_num = file_num;
+    part_num = 0;
+    FsChannelConfig channel_config;
+    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.deconverter =
+        _value_accesor->Converter(save_param).deconverter;
+
+    auto get_filename = [](int compress,
+                           int save_param,
+                           const char* table_path,
+                           int node_num,
+                           int shard_num,
+                           int part_num,
+                           int split_num) {
+      if (compress && (save_param == 0 || save_param == 3)) {
+        // return
+        // paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d.gz",
+        //     table_path, node_num, shard_num, part_num, split_num);
+        return paddle::string::format_string(
+            "%s/part-%05d-%03d.gz", table_path, shard_num, split_num);
+      } else {
+        // return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d",
+        //     table_path, node_num,  shard_num, part_num, split_num);
+        return paddle::string::format_string(
+            "%s/part-%05d-%03d", table_path, shard_num, split_num);
+      }
+    };
+    std::shared_ptr<MemRegion> region = nullptr;
+    // std::shared_ptr<AfsWriter> afs_writer = nullptr;
+    // std::shared_ptr<XboxConverter> xbox_converter = nullptr;
+    std::string filename;
+    int last_file_idx = -1;
+    std::shared_ptr<FsWriteChannel> write_channel = nullptr;
+
+    while (busy_channel[shard_num]->Get(region)) {
+      if (region->_file_idx != last_file_idx) {
+        filename = get_filename(_config.compress_in_save(),
+                                save_param,
+                                table_path.c_str(),
+                                _shard_idx,
+                                file_start_idx + shard_num,
+                                part_num,
+                                region->_file_idx);
+        channel_config.path = filename;
+        write_channel =
+            _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+        // afs_writer = _api_wrapper.open_writer(filename);
+        last_file_idx = region->_file_idx;
+        // xbox_converter = std::make_shared<XboxConverter>(afs_writer);
+      }
+      char* cursor = region->_buf;
+      int remain = region->_cur;
+      while (remain) {
+        uint32_t len = *(uint32_t*)cursor;
+        len -= sizeof(uint32_t);
+        remain -= sizeof(uint32_t);
+        cursor += sizeof(uint32_t);
+
+        uint64_t k = *(uint64_t*)cursor;
+        cursor += sizeof(uint64_t);
+        len -= sizeof(uint64_t);
+        remain -= sizeof(uint64_t);
+
+        float* value = (float*)cursor;
+        int dim = len / sizeof(float);
+
+        std::string format_value = _value_accesor->ParseToString(value, dim);
+        if (0 != write_channel->write_line(paddle::string::format_string(
+                     "%lu %s", k, format_value.c_str()))) {
+          VLOG(0) << "SSDSparseTable save failed, retry it! path:"
+                  << channel_config.path;
+        }
+        remain -= len;
+        cursor += len;
+      }
+      region->reset();
+      free_channel[shard_num]->Put(region);
+    }
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(save_func, i);
+  }
+
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
+  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    std::shared_ptr<MemRegion> region = nullptr;
+    std::vector<std::shared_ptr<MemRegion>> regions;
+    free_channel[i]->Put(std::make_shared<MemRegion>());
+    free_channel[i]->Put(std::make_shared<MemRegion>());
+    free_channel[i]->Get(region);
+    int retry_num = 0;
+    bool is_write_failed = false;
+    int feasign_size = 0;
+    auto& shard = _local_shards[i];
+    int file_idx = 0;
+    int switch_cnt = 0;
+    region->_file_idx = 0;
+    {
+      // auto ssd_timer =
+      // std::make_shared<CostTimer>("pslib_downpour_memtable_iterator_v2");
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        if (_config.enable_sparse_table_cache() &&
+            (save_param == 1 || save_param == 2)) {
+          // get_field get right decayed show
+          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+        }
+        if (_value_accesor->Save(it.value().data(), save_param)) {
+          uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
+                         sizeof(uint32_t);
+          int region_idx = i;
+          if (!region->buff_remain(len)) {
+            busy_channel[region_idx]->Put(region);
+            free_channel[region_idx]->Get(region);
+            // region->_file_idx = 0;
+            switch_cnt += 1;
+            if (switch_cnt % 1024 == 0) {
+              file_idx += 1;
+            }
+            region->_file_idx = file_idx;
+          }
+          int read_count = 0;
+          char* buf = region->acquire(len);
+          // CHECK(buf);
+          *(uint32_t*)(buf + read_count) = len;
+          read_count += sizeof(uint32_t);
+
+          *(uint64_t*)(buf + read_count) = it.key();
+          read_count += sizeof(uint64_t);
+
+          memcpy(buf + read_count,
+                 it.value().data(),
+                 sizeof(float) * it.value().size());
+          // if (save_param == 1 || save_param == 2) {
+          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     false);
+          // }
+          ++feasign_size;
+        }
+      }
+    }
+    // delta and cache is all in mem, base in rocksdb
+    if (save_param != 1) {
+      // int file_idx = 1;
+      // int switch_cnt = 0;
+      file_idx++;
+      switch_cnt = 0;
+      // ssd里的参数必须按key值升序, 而内存里的参数是乱序的,
+      // 这里必须重新申请region
+      busy_channel[i]->Put(region);
+      free_channel[i]->Get(region);
+      region->_file_idx = file_idx;
+      auto* it = _db->get_iterator(i);
+      for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        bool need_save = _value_accesor->Save(
+            paddle::string::str_to_float(it->value().data()), save_param);
+        _value_accesor->UpdateStatAfterSave(
+            paddle::string::str_to_float(it->value().data()), save_param);
+        if (need_save) {
+          uint32_t len =
+              sizeof(uint64_t) + it->value().size() + sizeof(uint32_t);
+          int region_idx = i;
+          uint64_t key = *((uint64_t*)const_cast<char*>(it->key().data()));
+          if (!region->buff_remain(len)) {
+            busy_channel[region_idx]->Put(region);
+            free_channel[region_idx]->Get(region);
+            switch_cnt += 1;
+            if (switch_cnt % 1024 == 0) {
+              // if (switch_cnt % 1 == 0) {
+              file_idx += 1;
+            }
+            region->_file_idx = file_idx;
+          }
+          int read_count = 0;
+          char* buf = region->acquire(len);
+          *(uint32_t*)(buf + read_count) = len;
+          read_count += sizeof(uint32_t);
+
+          *(uint64_t*)(buf + read_count) = key;
+          read_count += sizeof(uint64_t);
+
+          memcpy(buf + read_count, it->value().data(), it->value().size());
+          // if (save_param == 2) {
+          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     false);
+          // }
+          ++feasign_size;
+        }
+      }
+      delete it;
+    }
+    if (region->_cur) {
+      busy_channel[i]->Put(region);
+    }
+    feasign_size_all += feasign_size;
+    for (auto it = shard.begin(); it != shard.end(); ++it) {
+      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+    }
+  }
+  for (auto& channel : busy_channel) {
+    channel->Close();
+  }
+  for (int i = 0; i < threads.size(); i++) {
+    threads[i].join();
+  }
+  for (int i = 0; i < busy_channel.size(); i++) {
+    busy_channel[i].reset();
+    free_channel[i].reset();
+  }
+  busy_channel.clear();
+  free_channel.clear();
+  if (save_param == 3) {
+    //        update_table();
+    uint64_t ssd_key_num = 0;
+    _db->get_estimate_key_num(ssd_key_num);
+    _cache_tk_size =
+        (LocalSize() + ssd_key_num) * _config.sparse_table_cache_rate();
+    VLOG(0) << "DownpourSparseSSDTable update success.";
+  }
+  VLOG(0) << "DownpourSparseSSDTable save success, feasign size:"
+          << feasign_size_all << " ,path:"
+          << paddle::string::format_string("%s/%03d/part-%03d-",
+                                           path.c_str(),
+                                           _config.table_id(),
+                                           _shard_idx)
+          << " from " << file_start_idx << " to "
+          << file_start_idx + _real_local_shard_num - 1;
+  if (_config.enable_sparse_table_cache()) {
+    _local_show_threshold = tk.top();
+    VLOG(0) << "local cache threshold: " << _local_show_threshold;
+  }
+  // int32 may overflow need to change return value
+  return 0;
+}
+
+int32_t SSDSparseTable::SaveWithBinary(const std::string& path,
+                                       const std::string& param) {
+  if (_real_local_shard_num == 0) {
+    _local_show_threshold = -1;
+    return 0;
+  }
+  int save_param = atoi(param.c_str());
+  VLOG(0) << "table cache rate is: " << _config.sparse_table_cache_rate();
+  VLOG(0) << "enable_sparse_table_cache: "
+          << _config.enable_sparse_table_cache();
+  VLOG(0) << "LocalSize: " << LocalSize();
+  if (_config.enable_sparse_table_cache()) {
+    VLOG(0) << "Enable sparse table cache, top n:" << _cache_tk_size;
+  }
+  _cache_tk_size = LocalSize() * _config.sparse_table_cache_rate();
+  TopkCalculator tk(_real_local_shard_num, _cache_tk_size);
+  VLOG(0) << "TopkCalculator top n:" << _cache_tk_size;
+  size_t file_start_idx = _avg_local_shard_num * _shard_idx;
+  std::string table_path = TableDir(path);
+  _afs_client.remove(paddle::string::format_string(
+      "%s/part-%03d-*", table_path.c_str(), _shard_idx));
+#ifdef PADDLE_WITH_GPU_GRAPH
+  int thread_num = _real_local_shard_num;
+#else
+  int thread_num = _real_local_shard_num < 20 ? _real_local_shard_num : 20;
+#endif
+
+  std::atomic<uint32_t> feasign_size_all{0};
+  std::vector<paddle::framework::Channel<std::shared_ptr<MemRegion>>>
+      busy_channel;
+  std::vector<paddle::framework::Channel<std::shared_ptr<MemRegion>>>
+      free_channel;
+  std::vector<std::thread> threads;
+
+  for (int i = 0; i < _real_local_shard_num; i++) {
+    busy_channel.push_back(
+        paddle::framework::MakeChannel<std::shared_ptr<MemRegion>>());
+    free_channel.push_back(
+        paddle::framework::MakeChannel<std::shared_ptr<MemRegion>>());
+  }
+  threads.resize(_real_local_shard_num);
+
+  auto save_func = [this,
+                    &save_param,
+                    &table_path,
+                    &file_start_idx,
+                    &free_channel,
+                    &busy_channel](int file_num) {
+    int err_no = 0;
+    int split_num = 0;
+    int shard_num = file_num;
+    int part_num = 0;
+    shard_num = file_num;
+    part_num = 0;
+    FsChannelConfig channel_config;
+    channel_config.converter = _value_accesor->Converter(save_param).converter;
+    channel_config.deconverter =
+        _value_accesor->Converter(save_param).deconverter;
+
+    auto get_filename = [](int compress,
+                           int save_param,
+                           const char* table_path,
+                           int node_num,
+                           int shard_num,
+                           int part_num,
+                           int split_num) {
+      if (compress && (save_param == 0 || save_param == 3)) {
+        return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d.gz",
+                                             table_path,
+                                             node_num,
+                                             shard_num,
+                                             part_num,
+                                             split_num);
+      } else {
+        return paddle::string::format_string("%s/part-%03d-%05d-%03d-%03d",
+                                             table_path,
+                                             node_num,
+                                             shard_num,
+                                             part_num,
+                                             split_num);
+      }
+    };
+    std::shared_ptr<MemRegion> region = nullptr;
+    std::string filename;
+    int last_file_idx = -1;
+    std::shared_ptr<FsWriteChannel> write_channel = nullptr;
+    if (save_param != 1 && save_param != 2) {
+      while (busy_channel[shard_num]->Get(region)) {
+        if (region->_file_idx != last_file_idx) {
+          filename = get_filename(_config.compress_in_save(),
+                                  save_param,
+                                  table_path.c_str(),
+                                  _shard_idx,
+                                  file_start_idx + shard_num,
+                                  part_num,
+                                  region->_file_idx);
+          channel_config.path = filename;
+          write_channel =
+              _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+          last_file_idx = region->_file_idx;
+        }
+        if (0 != write_channel->write(region->_buf, region->_cur)) {
+          LOG(FATAL) << "DownpourSparseSSDTable save failed, retry it! path:"
+                     << channel_config.path;
+          CHECK(false);
+        }
+        region->reset();
+        free_channel[shard_num]->Put(region);
+      }
+    } else {
+      while (busy_channel[shard_num]->Get(region)) {
+        if (region->_file_idx != last_file_idx) {
+          filename = get_filename(_config.compress_in_save(),
+                                  save_param,
+                                  table_path.c_str(),
+                                  _shard_idx,
+                                  file_start_idx + shard_num,
+                                  part_num,
+                                  region->_file_idx);
+          channel_config.path = filename;
+          write_channel =
+              _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+          last_file_idx = region->_file_idx;
+        }
+        char* cursor = region->_buf;
+        int remain = region->_cur;
+        while (remain) {
+          uint32_t len = *(uint32_t*)cursor;
+          len -= sizeof(uint32_t);
+          remain -= sizeof(uint32_t);
+          cursor += sizeof(uint32_t);
+
+          uint64_t k = *(uint64_t*)cursor;
+          cursor += sizeof(uint64_t);
+          len -= sizeof(uint64_t);
+          remain -= sizeof(uint64_t);
+
+          float* value = (float*)cursor;
+          int dim = len / sizeof(float);
+
+          std::string format_value = _value_accesor->ParseToString(value, dim);
+          if (0 != write_channel->write_line(paddle::string::format_string(
+                       "%lu %s", k, format_value.c_str()))) {
+            LOG(FATAL) << "SSDSparseTable save failed, retry it! path:"
+                       << channel_config.path;
+          }
+          remain -= len;
+          cursor += len;
+        }
+        region->reset();
+        free_channel[shard_num]->Put(region);
+      }
+    }
+    // write_channel->close();
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(save_func, i);
+  }
+
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
+  for (size_t i = 0; i < _real_local_shard_num; ++i) {
+    std::shared_ptr<MemRegion> region = nullptr;
+    std::vector<std::shared_ptr<MemRegion>> regions;
+    free_channel[i]->Put(std::make_shared<MemRegion>());
+    free_channel[i]->Put(std::make_shared<MemRegion>());
+    free_channel[i]->Get(region);
+    int retry_num = 0;
+    bool is_write_failed = false;
+    int feasign_size = 0;
+    auto& shard = _local_shards[i];
+    region->_file_idx = 0;
+    {
+      for (auto it = shard.begin(); it != shard.end(); ++it) {
+        if (_config.enable_sparse_table_cache() &&
+            (save_param == 1 || save_param == 2)) {
+          // get_field get right decayed show
+          tk.push(i, _value_accesor->GetField(it.value().data(), "show"));
+        }
+        if (_value_accesor->Save(it.value().data(), save_param)) {
+          uint32_t len = sizeof(uint64_t) + it.value().size() * sizeof(float) +
+                         sizeof(uint32_t);
+          int region_idx = i;
+          if (!region->buff_remain(len)) {
+            busy_channel[region_idx]->Put(region);
+            free_channel[region_idx]->Get(region);
+            region->_file_idx = 0;
+          }
+          int read_count = 0;
+          char* buf = region->acquire(len);
+          // CHECK(buf);
+          *(uint32_t*)(buf + read_count) = len;
+          read_count += sizeof(uint32_t);
+
+          *(uint64_t*)(buf + read_count) = it.key();
+          read_count += sizeof(uint64_t);
+
+          memcpy(buf + read_count,
+                 it.value().data(),
+                 sizeof(float) * it.value().size());
+          ++feasign_size;
+        }
+      }
+    }
+    // delta and cache is all in mem, base in rocksdb
+    if (save_param != 1) {
+      int file_idx = 1;
+      int switch_cnt = 0;
+      busy_channel[i]->Put(region);
+      free_channel[i]->Get(region);
+      region->_file_idx = file_idx;
+      auto* it = _db->get_iterator(i);
+      for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        bool need_save = _value_accesor->Save(
+            paddle::string::str_to_float(it->value().data()), save_param);
+        _value_accesor->UpdateStatAfterSave(
+            paddle::string::str_to_float(it->value().data()), save_param);
+        if (need_save) {
+          uint32_t len =
+              sizeof(uint64_t) + it->value().size() + sizeof(uint32_t);
+          int region_idx = i;
+          uint64_t key = *((uint64_t*)const_cast<char*>(it->key().data()));
+          if (!region->buff_remain(len)) {
+            busy_channel[region_idx]->Put(region);
+            free_channel[region_idx]->Get(region);
+            switch_cnt += 1;
+            if (switch_cnt % 1024 == 0) {
+              file_idx += 1;
+            }
+            region->_file_idx = file_idx;
+          }
+          int read_count = 0;
+          char* buf = region->acquire(len);
+          *(uint32_t*)(buf + read_count) = len;
+          read_count += sizeof(uint32_t);
+
+          *(uint64_t*)(buf + read_count) = key;
+          read_count += sizeof(uint64_t);
+
+          memcpy(buf + read_count, it->value().data(), it->value().size());
+          // if (save_param == 2) {
+          //     _value_accesor->update_time_decay((float*)(buf + read_count),
+          //     false);
+          // }
+          ++feasign_size;
+        }
+      }
+      delete it;
+    }
+    if (region->_cur) {
+      busy_channel[i]->Put(region);
+    }
+    feasign_size_all += feasign_size;
+    for (auto it = shard.begin(); it != shard.end(); ++it) {
+      _value_accesor->UpdateStatAfterSave(it.value().data(), save_param);
+    }
+  }
+  for (auto& channel : busy_channel) {
+    channel->Close();
+  }
+  for (int i = 0; i < threads.size(); i++) {
+    threads[i].join();
+  }
+  for (int i = 0; i < busy_channel.size(); i++) {
+    busy_channel[i].reset();
+    free_channel[i].reset();
+  }
+
+  busy_channel.clear();
+  free_channel.clear();
+  if (save_param == 3) {
+    //        update_table();
+    uint64_t ssd_key_num = 0;
+    _db->get_estimate_key_num(ssd_key_num);
+    _cache_tk_size =
+        (LocalSize() + ssd_key_num) * _config.sparse_table_cache_rate();
+    VLOG(0) << "DownpourSparseSSDTable update success.";
+  }
+  VLOG(0) << "DownpourSparseSSDTable save success, feasign size:"
+          << feasign_size_all << " ,path:"
+          << paddle::string::format_string("%s/%03d/part-%03d-",
+                                           path.c_str(),
+                                           _config.table_id(),
+                                           _shard_idx)
+          << " from " << file_start_idx << " to "
+          << file_start_idx + _real_local_shard_num - 1;
+  if (_config.enable_sparse_table_cache()) {
+    _local_show_threshold = tk.top();
+    VLOG(0) << "local cache threshold: " << _local_show_threshold;
+  }
+  // int32 may overflow need to change return value
   return 0;
 }
 
@@ -941,13 +1548,29 @@ int32_t SSDSparseTable::Load(const std::string& path,
     LOG(WARNING) << "SSDSparseTable load file is empty, path:" << path;
     return -1;
   }
+  if (load_param > 3) {
+    size_t file_start_idx = _shard_idx * _avg_local_shard_num;
+    return LoadWithString(file_start_idx,
+                          file_start_idx + _real_local_shard_num,
+                          file_list,
+                          param);
+  } else {
+    return LoadWithBinary(table_path, load_param);
+  }
+}
 
-  size_t file_start_idx = _shard_idx * _avg_local_shard_num;
-
+int32_t SSDSparseTable::LoadWithString(
+    size_t file_start_idx,
+    size_t end_idx,
+    const std::vector<std::string>& file_list,
+    const std::string& param) {
   if (file_start_idx >= file_list.size()) {
     return 0;
   }
-
+  int load_param = atoi(param.c_str());
+#ifdef PADDLE_WITH_HETERPS
+  load_param -= 4;
+#endif
   size_t feature_value_size =
       _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
@@ -1096,141 +1719,230 @@ int32_t SSDSparseTable::Load(const std::string& path,
   return 0;
 }
 
-//加载path目录下数据[start_idx, end_idx)
-int32_t SSDSparseTable::Load(size_t start_idx,
-                             size_t end_idx,
-                             const std::vector<std::string>& file_list,
-                             const std::string& param) {
-  if (start_idx >= file_list.size()) {
-    return 0;
-  }
-  int load_param = atoi(param.c_str());
+int32_t SSDSparseTable::LoadWithBinary(const std::string& path, int param) {
   size_t feature_value_size =
       _value_accesor->GetAccessorInfo().size / sizeof(float);
   size_t mf_value_size =
       _value_accesor->GetAccessorInfo().mf_size / sizeof(float);
+  // task pool _file_num_one_shard default 7
+  auto task_pool = std::make_shared<::ThreadPool>(_real_local_shard_num * 7);
+  int thread_num = _real_local_shard_num;
+  // omp_set_num_threads(thread_num);
+  auto filelists = _afs_client.list(
+      paddle::string::format_string("%s/part-%03d*", path.c_str(), _shard_idx));
+  //#pragma omp parallel for schedule(dynamic)
+  std::vector<std::future<int>> tasks;
 
-  end_idx = static_cast<int>(end_idx) < _sparse_table_shard_num
-                ? end_idx
-                : _sparse_table_shard_num;
-#ifdef PADDLE_WITH_HETERPS
-  int thread_num = end_idx - start_idx;
-#else
-  int thread_num = (end_idx - start_idx) < 20 ? (end_idx - start_idx) : 20;
-#endif
-  omp_set_num_threads(thread_num);
-#pragma omp parallel for schedule(dynamic)
-  for (size_t i = start_idx; i < end_idx; ++i) {
-    FsChannelConfig channel_config;
-    channel_config.path = file_list[i];
-    channel_config.converter = _value_accesor->Converter(load_param).converter;
-    channel_config.deconverter =
-        _value_accesor->Converter(load_param).deconverter;
-
-    int retry_num = 0;
-    int err_no = 0;
-    bool is_read_failed = false;
-    std::vector<std::pair<char*, int>> ssd_keys;
-    std::vector<std::pair<char*, int>> ssd_values;
-    std::vector<uint64_t> tmp_key;
-    ssd_keys.reserve(FLAGS_pserver_load_batch_size);
-    ssd_values.reserve(FLAGS_pserver_load_batch_size);
-    tmp_key.reserve(FLAGS_pserver_load_batch_size);
-    do {
-      ssd_keys.clear();
-      ssd_values.clear();
-      tmp_key.clear();
-      err_no = 0;
-      is_read_failed = false;
-      std::string line_data;
-      auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
-      char* end = NULL;
-      int local_shard_id = i % _avg_local_shard_num;
-      auto& shard = _local_shards[local_shard_id];
-      float data_buffer[FLAGS_pserver_load_batch_size * feature_value_size];
-      float* data_buffer_ptr = data_buffer;
-      uint64_t mem_count = 0;
-      uint64_t ssd_count = 0;
-      uint64_t mem_mf_count = 0;
-      uint64_t ssd_mf_count = 0;
-      try {
-        while (read_channel->read_line(line_data) == 0 &&
-               line_data.size() > 1) {
-          uint64_t key = std::strtoul(line_data.data(), &end, 10);
-          if (FLAGS_pserver_open_strict_check) {
-            if (key % _sparse_table_shard_num != i) {
-              LOG(WARNING) << "SSDSparseTable key:" << key
-                           << " not match shard,"
-                           << " file_idx:" << i
-                           << " shard num:" << _sparse_table_shard_num
-                           << " file:" << channel_config.path;
-              continue;
-            }
-          }
-          size_t value_size =
-              _value_accesor->ParseFromString(++end, data_buffer_ptr);
-          // ssd or mem
-          if (_value_accesor->SaveSSD(data_buffer_ptr)) {
-            tmp_key.emplace_back(key);
-            ssd_keys.emplace_back(
-                std::make_pair((char*)&tmp_key.back(), sizeof(uint64_t)));
-            ssd_values.emplace_back(std::make_pair((char*)data_buffer_ptr,
-                                                   value_size * sizeof(float)));
-            data_buffer_ptr += feature_value_size;
-            if (static_cast<int>(ssd_keys.size()) ==
-                FLAGS_pserver_load_batch_size) {
-              _db->put_batch(
-                  local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
-              ssd_keys.clear();
-              ssd_values.clear();
-              tmp_key.clear();
-              data_buffer_ptr = data_buffer;
-            }
-            ssd_count++;
-            if (value_size > feature_value_size - mf_value_size) {
-              ssd_mf_count++;
-            }
-          } else {
-            auto& value = shard[key];
-            value.resize(value_size);
-            _value_accesor->ParseFromString(end, value.data());
-            mem_count++;
-            if (value_size > feature_value_size - mf_value_size) {
-              mem_mf_count++;
-            }
-          }
-        }
-        // last batch
-        if (ssd_keys.size() > 0) {
-          _db->put_batch(local_shard_id, ssd_keys, ssd_values, ssd_keys.size());
-        }
-        read_channel->close();
-        if (err_no == -1) {
-          ++retry_num;
-          is_read_failed = true;
-          LOG(ERROR) << "SSDSparseTable load failed after read, retry it! path:"
-                     << channel_config.path << " , retry_num=" << retry_num;
-          continue;
-        }
-
-        _db->flush(local_shard_id);
-        LOG(INFO) << "Table>> load done. ALL[" << mem_count + ssd_count
-                  << "] MEM[" << mem_count << "] MEM_MF[" << mem_mf_count
-                  << "] SSD[" << ssd_count << "] SSD_MF[" << ssd_mf_count
-                  << "].";
-      } catch (...) {
-        ++retry_num;
-        is_read_failed = true;
-        LOG(ERROR) << "SSDSparseTable load failed after read, retry it! path:"
-                   << channel_config.path << " , retry_num=" << retry_num;
+  for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
+    // FsChannelConfig channel_config;
+    // channel_config.converter = _value_accesor->Converter(param).converter;
+    // channel_config.deconverter =
+    // _value_accesor->Converter(param).deconverter;
+    for (auto& filename : filelists) {
+      std::vector<std::string> split_filename_string =
+          paddle::string::split_string<std::string>(filename, "-");
+      int file_split_idx =
+          atoi(split_filename_string[split_filename_string.size() - 1].c_str());
+      int file_shard_idx =
+          atoi(split_filename_string[split_filename_string.size() - 3].c_str());
+      if (file_shard_idx != shard_idx) {
+        continue;
       }
-    } while (is_read_failed);
-  }
-  LOG(INFO) << "load num:" << LocalSize();
-  LOG(INFO) << "SSDSparseTable load success, path from " << file_list[start_idx]
-            << " to " << file_list[end_idx - 1];
+      auto future = task_pool->enqueue([this,
+                                        feature_value_size,
+                                        mf_value_size,
+                                        shard_idx,
+                                        filename,
+                                        file_split_idx,
+                                        param]() -> int {
+        // &channel_config]() -> int {
+        FsChannelConfig channel_config;
+        channel_config.converter = _value_accesor->Converter(param).converter;
+        channel_config.deconverter =
+            _value_accesor->Converter(param).deconverter;
+        int err_no = 0;
+        uint64_t mem_count = 0;
+        uint64_t mem_mf_count = 0;
+        uint64_t ssd_count = 0;
+        uint64_t ssd_mf_count = 0;
 
-  _cache_tk_size = LocalSize() * _config.sparse_table_cache_rate();
+        channel_config.path = filename;
+        auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
+        // auto reader = _api_wrapper.open_reader(filename);
+        auto& shard = _local_shards[shard_idx];
+        rocksdb::Options options;
+        options.comparator = _db->get_comparator();
+        rocksdb::BlockBasedTableOptions bbto;
+        bbto.format_version = 5;
+        bbto.use_delta_encoding = false;
+        bbto.block_size = 4 * 1024;
+        bbto.block_restart_interval = 6;
+        bbto.cache_index_and_filter_blocks = false;
+        bbto.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
+        bbto.whole_key_filtering = true;
+        options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto));
+        options.OptimizeLevelStyleCompaction();
+        options.keep_log_file_num = 100;
+        options.max_log_file_size = 50 * 1024 * 1024;  // 50MB
+        options.create_if_missing = true;
+        options.use_direct_reads = true;
+        options.write_buffer_size = 256 * 1024 * 1024;  // 256MB
+        options.max_write_buffer_number = 8;
+        options.max_bytes_for_level_base =
+            options.max_write_buffer_number * options.write_buffer_size;
+        options.min_write_buffer_number_to_merge = 1;
+        options.target_file_size_base = 1024 * 1024 * 1024;  // 1024MB
+        options.memtable_prefix_bloom_size_ratio = 0.02;
+        options.num_levels = 4;
+        options.max_open_files = -1;
+
+        options.compression = rocksdb::kNoCompression;
+
+        rocksdb::SstFileWriter sst_writer(rocksdb::EnvOptions(), options);
+        int use_sst = 0;
+        if (file_split_idx != 0) {
+          std::string path =
+              paddle::string::format_string("%s_%d/part-%03d.sst",
+                                            FLAGS_rocksdb_path.c_str(),
+                                            shard_idx,
+                                            file_split_idx);
+          rocksdb::Status status = sst_writer.Open(path);
+          if (!status.ok()) {
+            VLOG(0) << "sst writer open " << path << "failed";
+            abort();
+          }
+          use_sst = 1;
+        }
+        uint64_t last_k = 0;
+        int buf_len = 1024 * 1024 * 10;
+        char* buf = (char*)malloc(buf_len + 10);
+        // used for cache converted line
+        char* convert_buf = (char*)malloc(buf_len + 10);
+        int ret = 0;
+        char* cursor = buf;
+        char* convert_cursor = convert_buf;
+        int remain = 0;
+        while (1) {
+          remain = ret;
+          cursor = buf + remain;
+          ret = read_channel->read(cursor, buf_len - remain);
+          // ret = reader->read(cursor, buf_len - remain);
+          if (ret <= 0) {
+            break;
+          }
+          cursor = buf;
+          convert_cursor = convert_buf;
+          ret += remain;
+          do {
+            if (ret >= sizeof(uint32_t)) {
+              uint32_t len = *(uint32_t*)cursor;
+              if (ret >= len) {
+                ret -= sizeof(uint32_t);
+                len -= sizeof(uint32_t);
+                cursor += sizeof(uint32_t);
+
+                uint64_t k = *(uint64_t*)cursor;
+                cursor += sizeof(uint64_t);
+                ret -= sizeof(uint64_t);
+                len -= sizeof(uint64_t);
+
+                float* value = (float*)cursor;
+                int dim = len / sizeof(float);
+
+                // copy value to convert_buf
+                memcpy(convert_cursor, cursor, len);
+                float* convert_value = (float*)convert_cursor;
+
+                if (use_sst) {
+                  if (last_k >= k) {
+                    VLOG(0) << "[last_k: " << last_k << "][k: " << k
+                            << "][shard_idx: " << shard_idx
+                            << "][file_split_idx: " << file_split_idx << "]"
+                            << value[0];
+                    abort();
+                  }
+                  last_k = k;
+                  _value_accesor->UpdatePassId(convert_value, 0);
+                  rocksdb::Status status = sst_writer.Put(
+                      rocksdb::Slice((char*)(&k), sizeof(uint64_t)),
+                      rocksdb::Slice((char*)convert_value,
+                                     dim * sizeof(float)));
+                  if (!status.ok()) {
+                    VLOG(0) << "fatal in Put file: " << filename;
+                    abort();
+                  }
+                  ssd_count += 1;
+                  if (dim > feature_value_size - mf_value_size) {
+                    ssd_mf_count++;
+                  }
+                } else {
+                  auto& feature_value = shard[k];
+                  _value_accesor->UpdatePassId(convert_value, 0);
+                  feature_value.resize(dim);
+                  memcpy(const_cast<float*>(feature_value.data()),
+                         convert_value,
+                         dim * sizeof(float));
+                  mem_count += 1;
+                  if (dim > feature_value_size - mf_value_size) {
+                    mem_mf_count++;
+                  }
+                }
+                cursor += len;
+                convert_cursor += dim * sizeof(float);
+                ret -= len;
+              } else {
+                memcpy(buf, cursor, ret);
+                break;
+              }
+            } else {
+              memcpy(buf, cursor, ret);
+              break;
+            }
+          } while (ret);
+        }
+        if (use_sst) {
+          rocksdb::Status status = sst_writer.Finish();
+          if (!status.ok()) {
+            VLOG(0) << "fatal in finish file: " << filename << ", "
+                    << status.getState();
+            ;
+            abort();
+          }
+        }
+        free(buf);
+        free(convert_buf);
+        // read_channel->close();
+        // VLOG(0) << "[last_k: " << last_k << "][remain: " << remain
+        //         << "][shard_idx: " << shard_idx
+        //         << "][file_split_idx: " << file_split_idx << "]";
+        VLOG(0) << "Table " << filename << " load done. ALL["
+                << mem_count + ssd_count << "] MEM[" << mem_count << "] MEM_MF["
+                << mem_mf_count << "] SSD[" << ssd_count << "] SSD_MF["
+                << ssd_mf_count << "].";
+        return 0;
+      });
+      tasks.push_back(std::move(future));
+    }
+  }
+  for (auto& fut : tasks) {
+    fut.wait();
+  }
+  tasks.clear();
+  for (int shard_idx = 0; shard_idx < _real_local_shard_num; shard_idx++) {
+    auto sst_filelist = _afs_client.list(paddle::string::format_string(
+        "%s_%d/part-*", FLAGS_rocksdb_path.c_str(), shard_idx));
+    if (sst_filelist.size() > 0) {
+      int ret = _db->ingest_externel_file(shard_idx, sst_filelist);
+      if (ret) {
+        VLOG(0) << "ingest file failed";
+        abort();
+      }
+    }
+  }
+  uint64_t ssd_key_num = 0;
+  _db->get_estimate_key_num(ssd_key_num);
+  _cache_tk_size =
+      (LocalSize() + ssd_key_num) * _config.sparse_table_cache_rate();
   return 0;
 }
 

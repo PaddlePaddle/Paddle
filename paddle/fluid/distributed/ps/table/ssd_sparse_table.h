@@ -21,6 +21,41 @@
 namespace paddle {
 namespace distributed {
 
+class MemRegion {
+ public:
+  MemRegion() {
+    _cap = 2 * 1024 * 1024;
+    _buf = (char*)malloc(_cap);
+    _cur = 0;
+    _file_idx = -1;
+  }
+  virtual ~MemRegion() { free(_buf); }
+  bool buff_remain(int len) {
+    if (_cap - _cur < len) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  char* acquire(int len) {
+    if (_cap - _cur < len) {
+      return nullptr;
+    } else {
+      char* ret = _buf + _cur;
+      _cur += len;
+      return ret;
+    }
+  }
+  void reset() {
+    _cur = 0;
+    _file_idx = -1;
+  }
+  int _cap;
+  int _cur;
+  int _file_idx;
+  char* _buf;
+};
+
 class SSDSparseTable : public MemorySparseTable {
  public:
   typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
@@ -56,6 +91,10 @@ class SSDSparseTable : public MemorySparseTable {
 
   virtual int32_t Save(const std::string& path,
                        const std::string& param) override;
+  int32_t SaveWithString(const std::string& path, const std::string& param);
+  int32_t SaveWithStringMultiOutput(const std::string& path,
+                                    const std::string& param);
+  int32_t SaveWithBinary(const std::string& path, const std::string& param);
   virtual int32_t SaveCache(
       const std::string& path,
       const std::string& param,
@@ -74,11 +113,11 @@ class SSDSparseTable : public MemorySparseTable {
   //加载path目录下数据
   virtual int32_t Load(const std::string& path,
                        const std::string& param) override;
-  //加载path目录下数据[start_idx, end_idx)
-  virtual int32_t Load(size_t start_idx,
-                       size_t end_idx,
-                       const std::vector<std::string>& file_list,
-                       const std::string& param);
+  int32_t LoadWithString(size_t file_start_idx,
+                         size_t end_idx,
+                         const std::vector<std::string>& file_list,
+                         const std::string& param);
+  int32_t LoadWithBinary(const std::string& path, int param);
   int64_t LocalSize();
 
   std::pair<int64_t, int64_t> PrintTableStat() override;
