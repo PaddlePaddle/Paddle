@@ -1242,6 +1242,4 @@ cc_test(
   SRCS phi_utils_test.cc
   DEPS phi_utils)
 
-cc_test(
-  convert_utils_test
-  SRCS convert_utils_test.cc)
+cc_test(convert_utils_test SRCS convert_utils_test.cc)
