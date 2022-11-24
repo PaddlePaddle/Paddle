@@ -175,12 +175,12 @@ class TestIfElse(unittest.TestCase):
             ie = layers.IfElse(ifcond)
             with ie.true_block():
                 true_target = ie.input(src)
-                true_target = fluid.layers.exp(true_target)
+                true_target = paddle.exp(true_target)
                 ie.output(true_target)
 
             with ie.false_block():
                 false_target = ie.input(src)
-                false_target = fluid.layers.tanh(false_target)
+                false_target = paddle.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
             out = layers.reduce_sum(if_out[0])
@@ -244,7 +244,7 @@ class TestIfElseError(unittest.TestCase):
                 ie = layers.IfElse(ifcond)
                 with ie.true_block():
                     true_target = ie.input(src)
-                    true_target = fluid.layers.exp(true_target)
+                    true_target = paddle.exp(true_target)
                     ie.output([])
 
 

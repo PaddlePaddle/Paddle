@@ -42,7 +42,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             store = paddle.fluid.core.TCPStore(
                 "127.0.0.1", 6272, is_master, nranks, 30
             )
-            pg = paddle.fluid.core.ProcessGroupGloo(store, rank, nranks)
+            pg = paddle.fluid.core.ProcessGroupGloo.create(store, rank, nranks)
 
             # test allreduce sum
             # rank 0

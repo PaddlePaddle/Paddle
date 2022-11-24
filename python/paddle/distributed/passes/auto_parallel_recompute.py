@@ -29,6 +29,7 @@ from paddle.distributed.auto_parallel.utils import (
 )
 from paddle.distributed.auto_parallel.utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
+    insert_dependencies_for_two_ops,
 )
 
 
@@ -449,6 +450,7 @@ class RecomputePass(PassBase):
                     while idx - 1 >= 0 and ops[idx - 1].type == "sum":
                         idx -= 1
                     segment_descs = ckpt_ops_dict[fwd_op_id][1]
+                    rc_op = None
                     for _, op_desc in reversed(list(enumerate(segment_descs))):
                         rc_op = main_block._insert_op_without_sync(
                             idx, type='nop'
@@ -466,7 +468,15 @@ class RecomputePass(PassBase):
                         )
 
                     ckpt_ops_dict[fwd_op_id][0] = False
-
+                    if rc_op:
+                        insert_dependencies_for_two_ops(
+                            main_block,
+                            idx,
+                            main_block.ops[rc_op.idx - 1],
+                            rc_op,
+                            self._dist_context,
+                            sync=False,
+                        )
         main_program._sync_with_cpp()
 
     def reset_op_dist_attr(self, op, var_name_dict):

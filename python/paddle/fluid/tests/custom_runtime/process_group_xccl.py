@@ -28,7 +28,7 @@ def init_process_group(strategy=None):
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
-    pg_group = core.ProcessGroupCustom(
+    pg_group = core.ProcessGroupCustom.create(
         store,
         ParallelEnv().device_type,
         rank,

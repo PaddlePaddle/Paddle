@@ -151,15 +151,15 @@ def _new_process_group_impl(
     genv = _get_global_env()
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        pg = core.ProcessGroupGloo(store, rank, world_size, group_id)
+        pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
-        pg = core.ProcessGroupNCCL(store, rank, world_size, group_id)
+        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
     elif backend == "xccl":
-        pg = core.ProcessGroupCustom(
+        pg = core.ProcessGroupCustom.create(
             store, genv.device_type, rank, world_size, group_id
         )
     elif backend == "bkcl":
-        pg = core.ProcessGroupBKCL(store, rank, world_size, group_id)
+        pg = core.ProcessGroupBKCL.create(store, rank, world_size, group_id)
     return pg
 
 

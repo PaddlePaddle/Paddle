@@ -127,8 +127,8 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
     if (kernel_iter != iter->second.end()) {
       return {kernel_iter->second, false};
     }
-    LOG(WARNING) << "The cudnn kernel for [" << kernel_name
-                 << "] is not registered.";
+    VLOG(3) << "The cudnn kernel for [" << kernel_name
+            << "] is not registered.";
   }
 #endif
   auto kernel_iter = iter->second.find(kernel_key);
@@ -334,11 +334,17 @@ std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   os << "{";
   bool need_comma_kernels = false;
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    if (need_comma_kernels) os << ",";
-    os << "\"" << op_kernel_pair.first << "\":[";
+    if (need_comma_kernels) {
+      os << ",";
+      os << std::endl;
+    }
+    os << "\"" << op_kernel_pair.first << " \":[" << std::endl;
     bool need_comma_per_kernel = false;
     for (const auto& kernel_pair : op_kernel_pair.second) {
-      if (need_comma_per_kernel) os << ",";
+      if (need_comma_per_kernel) {
+        os << ",";
+        os << std::endl;
+      }
       os << "{\"" << kernel_pair.first << "\":" << kernel_pair.second << "}";
       need_comma_per_kernel = true;
     }

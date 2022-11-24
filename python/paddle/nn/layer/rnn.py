@@ -20,7 +20,8 @@ import paddle
 from paddle import framework
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
-from paddle.nn import Layer, LayerList
+from paddle.nn import Layer
+from .container import LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import flatten, map_structure
 from paddle import _C_ops, _legacy_C_ops
@@ -30,10 +31,7 @@ from paddle.framework import core
 from paddle.static import default_startup_program
 from paddle.static import program_guard
 
-try:
-    from collections.abc import Sequence
-except:
-    from collections import Sequence
+from collections.abc import Sequence
 
 __all__ = []
 
