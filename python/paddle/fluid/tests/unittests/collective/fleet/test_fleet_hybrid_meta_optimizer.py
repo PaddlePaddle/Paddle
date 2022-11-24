@@ -1094,7 +1094,7 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
                 'elementwise_mul_grad',
                 'reduce_mean_grad',
                 'cast',
-                'matmul_grad',
+                'matmul_v2_grad',
                 'c_sync_calc_stream',
                 'send_v2',
                 'fill_constant',
