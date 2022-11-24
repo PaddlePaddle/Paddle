@@ -272,37 +272,37 @@ inline void SegmentedSortPairsByFullSort(const int64_t nsegments,
 
 // The method is called when # of the rows of the input is less than or equal to
 // 32
-template <typename T, typename IndType>
+template <typename T, typename IndexType>
 void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
                             const DenseTensor *input,
                             DenseTensor *output,
                             DenseTensor *indices,
-                            const IndType num_rows,
-                            const IndType num_cols,
+                            const IndexType num_rows,
+                            const IndexType num_cols,
                             const bool descending) {
   auto gpu_stream = ctx.stream();
   DenseTensor input_indices;
-  const std::vector<IndType> dims = {num_rows, num_cols};
+  const std::vector<IndexType> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
-  ctx.template Alloc<IndType>(&input_indices);
+  ctx.template Alloc<IndexType>(&input_indices);
   size_t temp_storage_bytes = -1;
 
-  IndType numel = num_rows * num_cols;
+  IndexType numel = num_rows * num_cols;
   if (numel == 0) {
     return;
   }
 
-  IndType numel_or_intmax =
+  IndexType numel_or_intmax =
       std::min(numel, static_cast<int64_t>(std::numeric_limits<int>::max()));
-  IndType nsort = num_cols;
-  IndType nbatch = (numel_or_intmax / nsort) * nsort;
+  IndexType nsort = num_cols;
+  IndexType nbatch = (numel_or_intmax / nsort) * nsort;
 
   T *sorted_out_ptr;
-  IndType *sorted_indices_ptr;
+  IndexType *sorted_indices_ptr;
   const T *inp = input->data<T>();
   T *out = ctx.template Alloc<T>(output);
-  IndType *ind = ctx.template Alloc<IndType>(indices);
+  IndexType *ind = ctx.template Alloc<IndexType>(indices);
   sorted_out_ptr = out;
   sorted_indices_ptr = ind;
 
@@ -310,7 +310,7 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
 
   while (remaining > 0) {
     int64_t n = std::min(remaining, nbatch);
-    IndType nsegments = n / nsort;
+    IndexType nsegments = n / nsort;
 
     SegmentedSortPairsByFullSort(nsegments,
                                  nsort,
@@ -328,23 +328,23 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
   }
 }
 
-template <typename T, typename IndType>
+template <typename T, typename IndexType>
 void ArgFullSort(const phi::GPUContext &ctx,
                  const DenseTensor *input,
                  DenseTensor *output,
                  DenseTensor *indices,
-                 const IndType num_rows,
-                 const IndType num_cols,
+                 const IndexType num_rows,
+                 const IndexType num_cols,
                  const bool descending) {
   auto cu_stream = ctx.stream();
   DenseTensor input_indices;
-  const std::vector<IndType> dims = {num_rows, num_cols};
+  const std::vector<IndexType> dims = {num_rows, num_cols};
   auto dim = phi::make_ddim(dims);
   input_indices.Resize(dim);
-  ctx.template Alloc<IndType>(&input_indices);
+  ctx.template Alloc<IndexType>(&input_indices);
   size_t temp_storage_bytes = -1;
 
-  auto ComputeBlockSize = [](IndType col) {
+  auto ComputeBlockSize = [](IndexType col) {
     if (col > 512)
       return 1024;
     else if (col > 256 && col <= 512)
@@ -363,20 +363,20 @@ void ArgFullSort(const phi::GPUContext &ctx,
   int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   // Init a index array
   FillIndex<<<grid_size, block_size, 0, cu_stream>>>(
-      input_indices.data<IndType>(), num_rows, num_cols);
+      input_indices.data<IndexType>(), num_rows, num_cols);
 
   T *sorted_out_ptr;
-  IndType *sorted_indices_ptr;
+  IndexType *sorted_indices_ptr;
   const T *inp = input->data<T>();
   T *out = ctx.template Alloc<T>(output);
-  IndType *ind = ctx.template Alloc<IndType>(indices);
+  IndexType *ind = ctx.template Alloc<IndexType>(indices);
   sorted_out_ptr = out;
   sorted_indices_ptr = ind;
 
-  cub::CountingInputIterator<IndType> counting_iter(0);
-  cub::TransformInputIterator<IndType,
+  cub::CountingInputIterator<IndexType> counting_iter(0);
+  cub::TransformInputIterator<IndexType,
                               SegmentOffsetIter,
-                              cub::CountingInputIterator<IndType>>
+                              cub::CountingInputIterator<IndexType>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   gpuError_t err;
@@ -385,7 +385,7 @@ void ArgFullSort(const phi::GPUContext &ctx,
                 ctx,
                 inp,
                 sorted_out_ptr,
-                input_indices.data<IndType>(),
+                input_indices.data<IndexType>(),
                 sorted_indices_ptr,
                 num_cols * num_rows,
                 num_rows,
@@ -399,7 +399,7 @@ void ArgFullSort(const phi::GPUContext &ctx,
                 ctx,
                 inp,
                 sorted_out_ptr,
-                input_indices.data<IndType>(),
+                input_indices.data<IndexType>(),
                 sorted_indices_ptr,
                 num_cols * num_rows,
                 num_rows,
@@ -418,15 +418,18 @@ void ArgsortKernel(const Context &dev_ctx,
                    bool descending,
                    DenseTensor *output,
                    DenseTensor *indices) {
-  auto size = input.numel();
   auto in_dims = input.dims();
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
+  const T *in_data = input.data<T>();
+  auto size = input.numel();
   T *out_data = dev_ctx.template Alloc<T>(output);
   int64_t *ids_data = dev_ctx.template Alloc<int64_t>(indices);
-  const T *in_data = input.data<T>();
-
+  
   // Use thrust for parallel acceleration when the input size is equal to the
+  // length of the ‘axis’ dimension.
+  // Compared to the following 'Special case for full sort', ascending sort is
+  // 34 times faster and descending sort is 31 times faster.
   if (size == in_dims[axis]) {
     thrust::sequence(thrust::device, ids_data, ids_data + size);
     thrust::copy(thrust::device, in_data, in_data + size, out_data);
@@ -438,6 +441,7 @@ void ArgsortKernel(const Context &dev_ctx,
     return;
   }
 
+  // Special case for full sort, speedup ~190x.
   if (axis == -1 || axis + 1 == in_dims.size()) {
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
@@ -460,6 +464,7 @@ void ArgsortKernel(const Context &dev_ctx,
                               descending);
     }
   } else {
+    // if not full sort, do transpose first
     std::vector<int> trans;
     for (int i = 0; i < axis; i++) {
       trans.push_back(i);
@@ -477,6 +482,7 @@ void ArgsortKernel(const Context &dev_ctx,
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     T *trans_inp_data = dev_ctx.template Alloc<T>(&trans_inp);
+    // Do transpose
     TransposeKernel<T, Context>(dev_ctx, input, trans, &trans_inp);
 
     const int64_t input_height =
@@ -488,6 +494,7 @@ void ArgsortKernel(const Context &dev_ctx,
     dev_ctx.template Alloc<T>(&tmp_out);
 
     DenseTensor tmp_indices;
+    // temp indices for sorting
     tmp_indices.Resize(trans_dims);
     dev_ctx.template Alloc<int64_t>(&tmp_indices);
     dev_ctx.template Alloc<int64_t>(indices);
@@ -511,6 +518,7 @@ void ArgsortKernel(const Context &dev_ctx,
     }
 
     TransposeKernel<int64_t, Context>(dev_ctx, tmp_indices, trans, indices);
+    // transpose back
     TransposeKernel<T, Context>(dev_ctx, tmp_out, trans, output);
     return;
   }
