@@ -34,6 +34,7 @@ from . import autograd  # noqa: F401
 from . import autotune  # noqa: F401
 from . import nn  # noqa: F401
 from . import asp  # noqa: F401
+from . import multiprocessing  # noqa: F401
 
 from .nn.loss import identity_loss
 

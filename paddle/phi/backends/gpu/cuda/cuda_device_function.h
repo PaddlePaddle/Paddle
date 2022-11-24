@@ -67,10 +67,8 @@ template <>
 __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleDownSync(
     unsigned mask, phi::dtype::bfloat16 val, int delta, int width) {
 #if defined(PADDLE_CUDA_BF16)
-  return phi::dtype::bfloat16(__shfl_down_sync(mask,
-                                               static_cast<nv_bfloat16>(val),
-                                               static_cast<unsigned>(delta),
-                                               width));
+  return phi::dtype::bfloat16(__shfl_down_sync(
+      mask, val.to_nv_bfloat16(), static_cast<unsigned>(delta), width));
 #else
   PADDLE_ENFORCE(
       false, "__shfl_down_sync with bfloat16 is not supported on cuda <= 11.");
@@ -114,7 +112,7 @@ __forceinline__ __device__ phi::dtype::bfloat16 CudaShuffleXorSync(
     unsigned mask, phi::dtype::bfloat16 val, int width) {
 #if defined(PADDLE_CUDA_BF16)
   return phi::dtype::bfloat16(
-      __shfl_xor_sync(mask, static_cast<nv_bfloat16>(val), width));
+      __shfl_xor_sync(mask, val.to_nv_bfloat16(), width));
 #else
   PADDLE_ENFORCE(
       false, "__shfl_xor_sync with bfloat16 is not supported on cuda <= 11.");

@@ -164,7 +164,7 @@ class TestDygraphDoubleGrad(TestCase):
         x.stop_gradient = False
 
         alpha = 0.2
-        y = fluid.layers.leaky_relu(x, alpha=alpha)
+        y = paddle.nn.functional.leaky_relu(x, alpha)
         y = y * y
         z = y * y
 

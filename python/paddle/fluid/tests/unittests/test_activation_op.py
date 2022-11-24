@@ -1689,7 +1689,6 @@ class TestLeakyRelu_ZeroDim(TestLeakyRelu):
 
 class TestLeakyReluAPI(unittest.TestCase):
     # test paddle.nn.LeakyReLU, paddle.nn.functional.leaky_relu,
-    # fluid.layers.leaky_relu
     def setUp(self):
         np.random.seed(1024)
         self.x_np = np.random.uniform(-1, 1, [10, 12]).astype('float32')
@@ -2784,8 +2783,8 @@ class TestPow_factor_tensor(TestActivation):
 
         factor_1 = 2.0
         factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
-        out_1 = fluid.layers.pow(x, factor=factor_1)
-        out_2 = fluid.layers.pow(x, factor=factor_2)
+        out_1 = paddle.pow(x, factor_1)
+        out_2 = paddle.pow(x, factor_2)
         out_4 = paddle.pow(x, factor_1, name='pow_res')
         out_6 = paddle.pow(x, factor_2)
         self.assertEqual(('pow_res' in out_4.name), True)
@@ -2800,27 +2799,6 @@ class TestPow_factor_tensor(TestActivation):
         assert np.allclose(res_1, np.power(input, 2))
         assert np.allclose(res_2, np.power(input, 3))
         assert np.allclose(res_6, np.power(input, 3))
-
-    def test_error(self):
-        in1 = fluid.layers.data(
-            name="in1", shape=[11, 17], append_batch_size=False, dtype="int32"
-        )
-        in2 = fluid.layers.data(
-            name="in2", shape=[11, 17], append_batch_size=False, dtype="int64"
-        )
-        in3 = fluid.layers.data(
-            name="in3", shape=[11, 17], append_batch_size=False, dtype="float32"
-        )
-        in4 = fluid.layers.data(
-            name="in4", shape=[11, 17], append_batch_size=False, dtype="float64"
-        )
-
-        factor_1 = fluid.layers.fill_constant([1], "float64", 3.0)
-
-        self.assertRaises(TypeError, fluid.layers.pow, x=in1, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in2, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in3, factor=factor_1)
-        self.assertRaises(TypeError, fluid.layers.pow, x=in4, factor=factor_1)
 
 
 def ref_stanh(x, scale_a=0.67, scale_b=1.7159):
@@ -3699,6 +3677,7 @@ def create_test_act_bf16_class(
 
 
 create_test_act_bf16_class(TestRelu)
+create_test_act_bf16_class(TestAbs)
 
 if __name__ == "__main__":
     unittest.main()
