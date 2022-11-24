@@ -295,7 +295,7 @@ class Fleet(object):
                 if gpus_num != 1:
                     raise ValueError(
                         "CUDA_VISIBLE_DEVICES shoule be set only 1 card if you use `python` to launch fleet program."
-                   )
+                    )
 
         if paddle.fluid.framework._non_static_mode():
             if self.worker_num() == 1:
@@ -1610,19 +1610,22 @@ class Fleet(object):
 
         can_not_apply_optimizer_list = []
         # fix set collective and fleet ps gpu error
-        if self._is_collective and len(self._user_defined_strategy.sparse_table_configs) > 0:
+        if self._is_collective and len(
+                self._user_defined_strategy.sparse_table_configs) > 0:
             context["use_fleet_ps"] = True
             from ..meta_optimizers import ParameterServerOptimizer
-            meta_optimizer = ParameterServerOptimizer(self.user_defined_optimizer)
+            meta_optimizer = ParameterServerOptimizer(
+                self.user_defined_optimizer)
             meta_optimizer._set_basic_info(loss, self._role_maker,
-                                     self.user_defined_optimizer,
-                                     copy_user_defined_strategy)
+                                           self.user_defined_optimizer,
+                                           copy_user_defined_strategy)
             can_not_apply_optimizer_list.append(meta_optimizer)
             from ..meta_optimizers import ParameterServerGraphOptimizer
-            graph_optimizer = ParameterServerGraphOptimizer(self.user_defined_optimizer)
+            graph_optimizer = ParameterServerGraphOptimizer(
+                self.user_defined_optimizer)
             graph_optimizer._set_basic_info(loss, self._role_maker,
-                                     self.user_defined_optimizer,
-                                     copy_user_defined_strategy)
+                                            self.user_defined_optimizer,
+                                            copy_user_defined_strategy)
             can_not_apply_optimizer_list.append(graph_optimizer)
         else:
             # compile time
@@ -1638,7 +1641,7 @@ class Fleet(object):
                 # turn on all the strategy for each optimizer
                 for opt in distributed_optimizer_list:
                     opt._enable_strategy(copy_user_defined_strategy, context)
-    
+
             valid_optimizer_list = []
             valid_graph_optimizer_list = []
             # recall meta optimizers for ranking

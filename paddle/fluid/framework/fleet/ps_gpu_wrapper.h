@@ -34,9 +34,9 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
+#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-#include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/heter_util.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/fleet/heter_ps/mem_pool.h"
@@ -199,7 +199,6 @@ class PSGPUWrapper {
                 int total_len,
                 int* key2slot);
 
-
   void divide_to_device(std::shared_ptr<HeterContext> gpu_task);
   void add_slot_feature(std::shared_ptr<HeterContext> gpu_task);
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
@@ -209,7 +208,7 @@ class PSGPUWrapper {
   void LoadIntoMemory(bool is_shuffle);
   void BeginPass();
   void EndPass();
-  void add_key_to_local(const std::vector<uint64_t> & keys);
+  void add_key_to_local(const std::vector<uint64_t>& keys);
   void add_key_to_gputask(std::shared_ptr<HeterContext> gpu_task);
   void resize_gputask(std::shared_ptr<HeterContext> gpu_task);
   void SparseTableToHbm();
@@ -231,7 +230,7 @@ class PSGPUWrapper {
       return;
     }
     if (FLAGS_gpugraph_storage_mode == GpuGraphStorageMode::WHOLE_HBM) {
-        this->EndPass();
+      this->EndPass();
     }
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
       delete hbm_pools_[i];
@@ -336,8 +335,8 @@ class PSGPUWrapper {
 
       cpu_reday_channels_.resize(dev_ids.size());
       for (size_t i = 0; i < dev_ids.size(); i++) {
-          cpu_reday_channels_[i] = paddle::framework::MakeChannel<task_info>();
-          cpu_reday_channels_[i]->SetCapacity(16);
+        cpu_reday_channels_[i] = paddle::framework::MakeChannel<task_info>();
+        cpu_reday_channels_[i]->SetCapacity(16);
       }
 
       current_task_ = nullptr;
@@ -439,7 +438,7 @@ class PSGPUWrapper {
 
     cpu_work_pool_.resize(thread_keys_shard_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
-        cpu_work_pool_[i].reset(new ::ThreadPool(16));
+      cpu_work_pool_[i].reset(new ::ThreadPool(16));
     }
 
     auto sparse_table_accessor = sparse_table.accessor();
@@ -655,7 +654,7 @@ class PSGPUWrapper {
     }
     hbm_pools_.resize(resource_->total_device() * num_of_dim);
     for (size_t i = 0; i < hbm_pools_.size(); i++) {
-        hbm_pools_[i] = new HBMMemoryPoolFix();
+      hbm_pools_[i] = new HBMMemoryPoolFix();
     }
 
     mem_pools_.resize(resource_->total_device() * num_of_dim);
@@ -767,8 +766,8 @@ class PSGPUWrapper {
 
 #ifdef PADDLE_WITH_CUDA
   std::vector<MemoryPool*> mem_pools_;
-  std::vector<HBMMemoryPoolFix*> hbm_pools_;  // in multi mfdim, one table need hbm
-                                           // pools of totol dims number
+  std::vector<HBMMemoryPoolFix*> hbm_pools_;  // in multi mfdim, one table need
+                                              // hbm pools of totol dims number
 #endif
 
   std::shared_ptr<
@@ -787,8 +786,8 @@ class PSGPUWrapper {
       paddle::framework::ChannelObject<std::shared_ptr<HeterContext>>>
       buildpull_ready_channel_ =
           paddle::framework::MakeChannel<std::shared_ptr<HeterContext>>();
-  std::vector<std::shared_ptr<
-      paddle::framework::ChannelObject<task_info>>> cpu_reday_channels_;
+  std::vector<std::shared_ptr<paddle::framework::ChannelObject<task_info>>>
+      cpu_reday_channels_;
   std::shared_ptr<HeterContext> current_task_ = nullptr;
   std::thread pre_build_threads_;
   std::thread buildpull_threads_;

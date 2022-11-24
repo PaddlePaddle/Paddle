@@ -131,13 +131,13 @@ class GraphShard {
   }
 
   void shrink_to_fit() {
-    bucket.shrink_to_fit() ;
-    for (size_t i = 0; i < bucket.size(); i ++) {
-       bucket[i]->shrink_to_fit();
+    bucket.shrink_to_fit();
+    for (size_t i = 0; i < bucket.size(); i++) {
+      bucket[i]->shrink_to_fit();
     }
   }
 
-  void merge_shard(GraphShard * &shard) {
+  void merge_shard(GraphShard *&shard) {
     bucket.reserve(bucket.size() + shard->bucket.size());
     for (size_t i = 0; i < shard->bucket.size(); i++) {
       auto node_id = shard->bucket[i]->get_id();
@@ -564,17 +564,18 @@ class GraphTable : public Table {
                                   int part_num,
                                   bool reverse);
   int32_t parse_edge_and_load(std::string etype2files,
-                                        std::string graph_data_local_path,
-                                        int part_num,
-                                        bool reverse);
+                              std::string graph_data_local_path,
+                              int part_num,
+                              bool reverse);
   int32_t parse_node_and_load(std::string ntype2files,
-                                        std::string graph_data_local_path,
-                                        int part_num);
+                              std::string graph_data_local_path,
+                              int part_num);
   std::string get_inverse_etype(std::string &etype);
-  int32_t parse_type_to_typepath(std::string &type2files,
-                                 std::string graph_data_local_path,
-                                 std::vector<std::string> &res_type,
-                                 std::unordered_map<std::string, std::string> &res_type2path);
+  int32_t parse_type_to_typepath(
+      std::string &type2files,
+      std::string graph_data_local_path,
+      std::vector<std::string> &res_type,
+      std::unordered_map<std::string, std::string> &res_type2path);
   int32_t load_edges(const std::string &path,
                      bool reverse,
                      const std::string &edge_type);
@@ -704,7 +705,7 @@ class GraphTable : public Table {
   virtual int32_t add_node_to_ssd(
       int type_id, int idx, uint64_t src_id, char *data, int len);
   virtual paddle::framework::GpuPsCommGraph make_gpu_ps_graph(
-      int idx, const std::vector<uint64_t> & ids);
+      int idx, const std::vector<uint64_t> &ids);
   virtual paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
@@ -712,7 +713,9 @@ class GraphTable : public Table {
   int32_t make_complementary_graph(int idx, int64_t byte_size);
   int32_t dump_edges_to_ssd(int idx);
   int32_t get_partition_num(int idx) { return partitions[idx].size(); }
-  std::vector<int> slot_feature_num_map() const { return slot_feature_num_map_; }
+  std::vector<int> slot_feature_num_map() const {
+    return slot_feature_num_map_;
+  }
   std::vector<uint64_t> get_partition(int idx, int index) {
     if (idx >= (int)partitions.size() || index >= (int)partitions[idx].size())
       return std::vector<uint64_t>();

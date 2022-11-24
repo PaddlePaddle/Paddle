@@ -52,8 +52,9 @@ class GraphGpuWrapper {
                     int slice_num,
                     const std::string& edge_type);
   void upload_batch(int type, int slice_num, int slot_num);
-  std::vector<GpuPsCommGraphFea> get_sub_graph_fea(std::vector<std::vector<uint64_t>> &node_ids, int slot_num);
-  void build_gpu_graph_fea(GpuPsCommGraphFea &sub_graph_fea, int i);
+  std::vector<GpuPsCommGraphFea> get_sub_graph_fea(
+      std::vector<std::vector<uint64_t>>& node_ids, int slot_num);
+  void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
@@ -114,7 +115,11 @@ class GraphGpuWrapper {
                                              int walk_degree,
                                              int len);
   NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
-      int gpu_id, int edge_type_len, uint64_t* key, int sample_size, int len,
+      int gpu_id,
+      int edge_type_len,
+      uint64_t* key,
+      int sample_size,
+      int len,
       std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
   gpuStream_t get_local_stream(int gpuid);
   std::vector<uint64_t> graph_neighbor_sample(int gpu_id,
@@ -123,7 +128,7 @@ class GraphGpuWrapper {
                                               int sample_size);
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
-  std::vector<int> slot_feature_num_map() const ;
+  std::vector<int> slot_feature_num_map() const;
   void set_feature_separator(std::string ch);
   void set_slot_feature_separator(std::string ch);
   int get_feature_of_nodes(int gpu_id,
@@ -136,10 +141,10 @@ class GraphGpuWrapper {
   int get_feature_info_of_nodes(int gpu_id,
                                 uint64_t* d_nodes,
                                 int node_num,
-                                uint32_t * size_list,
-                                uint32_t * size_list_prefix_sum,
-                                std::shared_ptr<phi::Allocation> & feature_list,
-                                std::shared_ptr<phi::Allocation> & slot_list);
+                                uint32_t* size_list,
+                                uint32_t* size_list_prefix_sum,
+                                std::shared_ptr<phi::Allocation>& feature_list,
+                                std::shared_ptr<phi::Allocation>& slot_list);
   void release_graph();
   void release_graph_edge();
   void release_graph_node();
