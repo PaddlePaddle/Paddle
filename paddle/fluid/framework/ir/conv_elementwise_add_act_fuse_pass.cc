@@ -118,6 +118,14 @@ ConvElementwiseAddActFusePass::ConvElementwiseAddActFusePass() {
       .AddOutput("Out")
       .IsTensor()
       .End();
+
+  AddOpCompat(OpCompat("swish"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
 }
 
 void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -137,10 +145,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
   std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 #endif
 
-    std::unordered_set<std::string> cutlass_only_act_set = {"swish"};
-    if (Get<bool>("use_cutlass")) {
-        conv_act_set.insert("swish");
-    }
+  std::unordered_set<std::string> cutlass_only_act_set = {"swish"};
+  if (Get<bool>("use_cutlass")) {
+    conv_act_set.insert("swish");
+  }
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, conv_act_set);
@@ -163,7 +171,8 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     // when this conv2d_fusion problem size is not supported by cutlass
     // and cuDNN does not support this activation, we should not apply this pass
     if (((filter_tensor->dims()[0] % 8 != 0) ||
-        (filter_tensor->dims()[1] % 8 != 0)) && cutlass_only_act_set.count(act_op_type)) {
+         (filter_tensor->dims()[1] % 8 != 0)) &&
+        cutlass_only_act_set.count(act_op_type)) {
       return;
     }
 
@@ -209,4 +218,5 @@ REGISTER_PASS_CAPABILITY(conv_elementwise_add_act_fuse_pass)
             .EQ("relu", 0)
             .EQ("sigmoid", 0)
             .EQ("tanh", 0)
-            .EQ("identity", 0));
+            .EQ("identity", 0)
+            .EQ("swish", 0));
