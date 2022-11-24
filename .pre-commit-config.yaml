@@ -1,4 +1,4 @@
-#exclude all third-party libraries and auto-generated files globally
+# Exclude all third-party libraries and auto-generated files globally
 exclude: |
     (?x)^(
         patches/.+|
