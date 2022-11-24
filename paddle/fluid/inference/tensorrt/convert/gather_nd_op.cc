@@ -27,7 +27,7 @@ class GatherNdOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto index = engine_->GetITensor(op_desc.Input("Index")[0]);
-    auto output_name = op_desc.Output("Out").front();
+    auto output_name = op_desc.Output("Out")[0];
 
     // AddGatherV2 is supported by the trt version of 8.2.
 #if IS_TRT_VERSION_GE(8200)
