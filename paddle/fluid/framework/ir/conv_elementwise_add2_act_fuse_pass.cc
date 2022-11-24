@@ -133,7 +133,7 @@ void ConvElementwiseAdd2ActFusePass::ApplyImpl(ir::Graph* graph) const {
 
 #if CUDNN_VERSION >= 8000
   std::unordered_set<std::string> conv_act_set(
-      {"identity", "relu", "sigmoid", "tanh", "swish"});
+      {"identity", "relu", "sigmoid", "tanh"});
 #else
   std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 #endif

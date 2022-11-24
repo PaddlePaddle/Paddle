@@ -132,10 +132,15 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
 #if CUDNN_VERSION >= 8000
   std::unordered_set<std::string> conv_act_set(
-      {"identity", "relu", "sigmoid", "tanh", "swish"});
+      {"identity", "relu", "sigmoid", "tanh"});
 #else
   std::unordered_set<std::string> conv_act_set({"identity", "relu"});
 #endif
+
+    std::unordered_set<std::string> cutlass_only_act_set = {"swish"};
+    if (Get<bool>("use_cutlass")) {
+        conv_act_set.insert("swish");
+    }
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, conv_act_set);
@@ -155,9 +160,11 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     auto* scope = param_scope();
     auto* filter_var = scope->FindLocalVar(conv_filter->Name());
     auto* filter_tensor = filter_var->GetMutable<phi::DenseTensor>();
-    if ((filter_tensor->dims()[0] % 8 != 0) ||
-        (filter_tensor->dims()[1] % 8 != 0)) {
-      // return;
+    // when this conv2d_fusion problem size is not supported by cutlass
+    // and cuDNN does not support this activation, we should not apply this pass
+    if (((filter_tensor->dims()[0] % 8 != 0) ||
+        (filter_tensor->dims()[1] % 8 != 0)) && cutlass_only_act_set.count(act_op_type)) {
+      return;
     }
 
     auto new_op_proto =
