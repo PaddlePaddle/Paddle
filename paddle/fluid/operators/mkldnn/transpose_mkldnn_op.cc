@@ -15,7 +15,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {

@@ -16,10 +16,10 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_utils.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/funcs/gpu_utils.h"
-#include "paddle/phi/kernels/funcs/transpose_op.h"
+#include "paddle/phi/kernels/funcs/transpose_functor.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
 namespace phi {
