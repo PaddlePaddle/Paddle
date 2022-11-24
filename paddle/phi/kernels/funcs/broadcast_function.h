@@ -780,7 +780,6 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<InT,
 template <typename T>
 static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
   std::stringstream ss;
-  ss << "[";
   bool is_last = true;
   for (int i = reversed_v.size() - 1; i >= 0; --i) {
     if (is_last) {
@@ -790,7 +789,6 @@ static std::string ReversedVectorToString(const std::vector<T> &reversed_v) {
       ss << ", " << reversed_v[i];
     }
   }
-  ss << "]";
   return ss.str();
 }
 
