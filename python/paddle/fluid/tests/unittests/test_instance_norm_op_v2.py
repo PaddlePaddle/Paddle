@@ -96,7 +96,7 @@ class TestInstanceNorm(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ins = fluid.nn.InstanceNorm2D(shape[1])
+                    ins = paddle.nn.InstanceNorm2D(shape[1])
                     x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
                     y = ins(x)
                     exe.run(fluid.default_startup_program())
