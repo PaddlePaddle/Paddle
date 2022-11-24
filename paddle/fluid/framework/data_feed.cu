@@ -28,6 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
+#include "paddle/phi/kernels/graph_reindex_kernel.h"
+#include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
 DECLARE_bool(enable_opt_get_features);
 DECLARE_int32(gpugraph_storage_mode);
@@ -51,6 +53,170 @@ const int CUDA_NUM_THREADS = 512;
 inline int GET_BLOCKS(const int N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
+
+template <typename T>
+__global__ void fill_idx(T* idx, size_t len) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    idx[i] = i;
+  }
+}
+
+/**
+* @brief sort cub
+*/
+template <typename K, typename V>
+void cub_sort_pairs(int len, const K* in_keys, K* out_keys,
+                    const V* in_vals, V* out_vals, cudaStream_t stream,
+                    std::shared_ptr<phi::Allocation>& d_buf_,
+                    const paddle::platform::Place& place_) {
+  size_t temp_storage_bytes = 0;
+  CUDA_CHECK(cub::DeviceRadixSort::SortPairs(NULL, temp_storage_bytes,
+      in_keys, out_keys, in_vals, out_vals, len, 0, 8 * sizeof(K), stream, false));
+  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
+    d_buf_ = memory::AllocShared(
+        place_,
+        temp_storage_bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  }
+  CUDA_CHECK(cub::DeviceRadixSort::SortPairs(d_buf_->ptr(), temp_storage_bytes,
+      in_keys, out_keys, in_vals, out_vals, len, 0, 8 * sizeof(K),
+      stream, false));
+}
+
+/**
+* @Brief cub run length encode
+*/
+template<typename K, typename V, typename TNum>
+void cub_runlength_encode(int N, const K* in_keys, K* out_keys,
+                          V* out_sizes, TNum* d_out_len, cudaStream_t stream,
+                          std::shared_ptr<phi::Allocation>& d_buf_,
+                          const paddle::platform::Place& place_) {
+  size_t temp_storage_bytes = 0;
+  CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(NULL, temp_storage_bytes,
+      in_keys, out_keys, out_sizes, d_out_len, N, stream));
+  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
+    d_buf_ = memory::AllocShared(
+        place_,
+        temp_storage_bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  }
+  CUDA_CHECK(cub::DeviceRunLengthEncode::Encode(d_buf_->ptr(),
+      temp_storage_bytes, in_keys, out_keys, out_sizes, d_out_len, N, stream));
+}
+
+/**
+* @brief exclusive sum
+*/
+template <typename K>
+void cub_exclusivesum(int N, const K* in, K* out, cudaStream_t stream,
+                      std::shared_ptr<phi::Allocation>& d_buf_,
+                      const paddle::platform::Place& place_) {
+  size_t temp_storage_bytes = 0;
+  CUDA_CHECK(cub::DeviceScan::ExclusiveSum(NULL, temp_storage_bytes,
+      in, out, N, stream));
+  if (d_buf_ == NULL || d_buf_->size() < temp_storage_bytes) {
+    d_buf_ = memory::AllocShared(
+        place_,
+        temp_storage_bytes,
+        phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  }
+  CUDA_CHECK(cub::DeviceScan::ExclusiveSum(d_buf_->ptr(),
+      temp_storage_bytes, in, out, N, stream));
+}
+
+template <typename T>
+__global__ void kernel_fill_restore_idx(size_t N,
+                                        const T* d_sorted_idx,
+                                        const T* d_offset,
+                                        const T* d_merged_cnts,
+                                        T* d_restore_idx) {
+  CUDA_KERNEL_LOOP(i, N) {
+    const T& off = d_offset[i];
+    const T& num = d_merged_cnts[i];
+    for (size_t k = 0; k < num; k++) {
+      d_restore_idx[d_sorted_idx[off + k]] = i;
+    }
+  }
+}
+
+template <typename T>
+__global__ void kernel_fill_restore_idx_by_search(
+    size_t N, const T* d_sorted_idx, size_t merge_num, const T* d_offset,
+    T* d_restore_idx) {
+  CUDA_KERNEL_LOOP(i, N) {
+    if (i < d_offset[1]) {
+      d_restore_idx[d_sorted_idx[i]] = 0;
+      continue;
+    }
+    int high = merge_num - 1;
+    int low = 1;
+    while (low < high) {
+      int mid = (low + high) / 2;
+      if (i < d_offset[mid + 1]) {
+        high = mid;
+      } else {
+        low = mid + 1;
+      }
+    }
+    d_restore_idx[d_sorted_idx[i]] = low;
+  }
+}
+
+// For unique node and inverse id.
+int dedup_keys_and_fillidx(int total_nodes_num,
+                           const uint64_t* d_keys,
+                           uint64_t* d_merged_keys,  // input
+                           uint64_t* d_sorted_keys,  // output
+                           uint32_t* d_restore_idx,  // inverse
+                           uint32_t* d_sorted_idx,
+                           uint32_t* d_offset,
+                           uint32_t* d_merged_cnts,
+                           cudaStream_t stream,
+                           std::shared_ptr<phi::Allocation>& d_buf_,
+                           const paddle::platform::Place& place_) {
+  int merged_size = 0;  // Final num
+  auto d_index_in = memory::Alloc(
+      place_, sizeof(uint32_t) * (total_nodes_num + 1),
+      phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+  uint32_t* d_index_in_ptr = reinterpret_cast<uint32_t* >(d_index_in->ptr());
+  int *d_merged_size = reinterpret_cast<int *>(&d_index_in_ptr[total_nodes_num]);
+  fill_idx<<<GET_BLOCKS(total_nodes_num),
+             CUDA_NUM_THREADS,
+             0,
+             stream>>>(d_index_in_ptr, total_nodes_num);
+  cub_sort_pairs(total_nodes_num, d_keys, d_sorted_keys, d_index_in_ptr,
+                 d_sorted_idx, stream, d_buf_, place_);
+  cub_runlength_encode(total_nodes_num, d_sorted_keys, d_merged_keys,
+                       d_merged_cnts, d_merged_size, stream, d_buf_,
+                       place_);
+  CUDA_CHECK(cudaMemcpyAsync((void*)&merged_size, (void*)d_merged_size,
+             sizeof(int), cudaMemcpyDeviceToHost, stream));
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  cub_exclusivesum(merged_size, d_merged_cnts, d_offset, stream, d_buf_,
+                   place_);
+
+  if (total_nodes_num < merged_size * 2) {
+    kernel_fill_restore_idx<<<GET_BLOCKS(merged_size),
+                              CUDA_NUM_THREADS,
+                              0,
+                              stream>>>(merged_size,
+                                        d_sorted_idx,
+                                        d_offset,
+                                        d_merged_cnts,
+                                        d_restore_idx);
+  } else {
+    // used mid search fill idx when high dedup rate
+    kernel_fill_restore_idx_by_search<<<GET_BLOCKS(total_nodes_num),
+                                        CUDA_NUM_THREADS,
+                                        0,
+                                        stream>>>(
+        total_nodes_num, d_sorted_idx, merged_size, d_offset, d_restore_idx);
+  }
+  CUDA_CHECK(cudaStreamSynchronize(stream));
+  return merged_size;
+}
+
 // fill slot values
 __global__ void FillSlotValueOffsetKernel(const int ins_num,
                                           const int used_slot_num,
@@ -355,6 +521,27 @@ __global__ void GraphFillSlotLodKernel(int64_t *id_tensor, int len) {
   CUDA_KERNEL_LOOP(idx, len) { id_tensor[idx] = idx; }
 }
 
+// fill sage neighbor results
+__global__ void FillActualNeighbors(int64_t* vals,
+                                    int64_t* actual_vals,
+                                    int64_t* actual_vals_dst,
+                                    int* actual_sample_size,
+                                    int* cumsum_actual_sample_size,
+                                    int sample_size,
+                                    int len,
+                                    int mod) {
+  const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < len) {
+    int offset1 = cumsum_actual_sample_size[i];
+    int offset2 = sample_size * i;
+    int dst_id = i % mod;
+    for (int j = 0; j < actual_sample_size[i]; j++) {
+      actual_vals[offset1 + j] = vals[offset2 + j];
+      actual_vals_dst[offset1 + j] = dst_id;
+    }
+  }
+}
+
 int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
                                             bool gpu_graph_training,
                                             size_t cursor) {
@@ -364,7 +551,6 @@ int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
       feed_vec_[1]->mutable_data<int64_t>({total_instance}, this->place_);
   clk_tensor_ptr_ =
       feed_vec_[2]->mutable_data<int64_t>({total_instance}, this->place_);
-  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   if (gpu_graph_training) {
     uint64_t *ins_cursor, *ins_buf;
     ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_->ptr());
@@ -397,8 +583,96 @@ int GraphDataGenerator::FillIdShowClkTensor(int total_instance,
   return 0;
 }
 
+int GraphDataGenerator::FillGraphIdShowClkTensor(int uniq_instance,
+                                                 int total_instance,
+                                                 int index) {
+  id_tensor_ptr_ =
+      feed_vec_[0]->mutable_data<int64_t>({uniq_instance, 1}, this->place_);
+  show_tensor_ptr_ =
+      feed_vec_[1]->mutable_data<int64_t>({uniq_instance}, this->place_);
+  clk_tensor_ptr_ =
+      feed_vec_[2]->mutable_data<int64_t>({uniq_instance}, this->place_);
+  int index_offset = 3 + slot_num_ * 2 + 5 * samples_.size();
+  index_tensor_ptr_ =
+      feed_vec_[index_offset]->mutable_data<int>({total_instance}, this->place_);
+
+  int len_samples = samples_.size();
+  int *num_nodes_tensor_ptr_[len_samples];
+  int *next_num_nodes_tensor_ptr_[len_samples];
+  int64_t *edges_src_tensor_ptr_[len_samples];
+  int64_t *edges_dst_tensor_ptr_[len_samples];
+  int *edges_split_tensor_ptr_[len_samples];
+
+  std::vector<std::vector<int>> edges_split_num_for_graph = edges_split_num_vec_[index];
+  std::vector<std::shared_ptr<phi::Allocation>> graph_edges = graph_edges_vec_[index];
+  for (int i = 0; i < len_samples; i++) {
+    int offset = 3 + 2 * slot_num_ + 5 * i;
+    std::vector<int> edges_split_num = edges_split_num_for_graph[i];
+
+    int neighbor_len = edges_split_num[edge_to_id_len_ + 2];
+    num_nodes_tensor_ptr_[i] =
+        feed_vec_[offset]->mutable_data<int>({1}, this->place_);
+    next_num_nodes_tensor_ptr_[i] =
+        feed_vec_[offset + 1]->mutable_data<int>({1}, this->place_);
+    edges_src_tensor_ptr_[i] =
+        feed_vec_[offset + 2]->mutable_data<int64_t>({neighbor_len, 1}, this->place_);
+    edges_dst_tensor_ptr_[i] =
+        feed_vec_[offset + 3]->mutable_data<int64_t>({neighbor_len, 1}, this->place_);
+    edges_split_tensor_ptr_[i] =
+        feed_vec_[offset + 4]->mutable_data<int>({edge_to_id_len_}, this->place_);
+
+    // [edges_split_num, next_num_nodes, num_nodes, neighbor_len]
+    cudaMemcpyAsync(next_num_nodes_tensor_ptr_[i],
+                    edges_split_num.data() + edge_to_id_len_,
+                    sizeof(int),
+                    cudaMemcpyHostToDevice,
+                    train_stream_);
+    cudaMemcpyAsync(num_nodes_tensor_ptr_[i],
+                    edges_split_num.data() + edge_to_id_len_ + 1,
+                    sizeof(int),
+                    cudaMemcpyHostToDevice,
+                    train_stream_);
+    cudaMemcpyAsync(edges_split_tensor_ptr_[i],
+                    edges_split_num.data(),
+                    sizeof(int) * edge_to_id_len_,
+                    cudaMemcpyHostToDevice,
+                    train_stream_);
+    cudaMemcpyAsync(edges_src_tensor_ptr_[i],
+                    graph_edges[i * 2]->ptr(),
+                    sizeof(int64_t) * neighbor_len,
+                    cudaMemcpyDeviceToDevice,
+                    train_stream_);
+    cudaMemcpyAsync(edges_dst_tensor_ptr_[i],
+                    graph_edges[i * 2 + 1]->ptr(),
+                    sizeof(int64_t) * neighbor_len,
+                    cudaMemcpyDeviceToDevice,
+                    train_stream_);
+  }
+
+  cudaMemcpyAsync(id_tensor_ptr_,
+                  final_sage_nodes_vec_[index]->ptr(),
+                  sizeof(int64_t) * uniq_instance,
+                  cudaMemcpyDeviceToDevice,
+                  train_stream_);
+  cudaMemcpyAsync(index_tensor_ptr_,
+                  inverse_vec_[index]->ptr(),
+                  sizeof(int) * total_instance,
+                  cudaMemcpyDeviceToDevice,
+                  train_stream_);
+  GraphFillCVMKernel<<<GET_BLOCKS(uniq_instance),
+                       CUDA_NUM_THREADS,
+                       0,
+                       train_stream_>>>(show_tensor_ptr_, uniq_instance);
+  GraphFillCVMKernel<<<GET_BLOCKS(uniq_instance),
+                       CUDA_NUM_THREADS,
+                       0,
+                       train_stream_>>>(clk_tensor_ptr_, uniq_instance);
+  return 0;
+}
+
 int GraphDataGenerator::FillGraphSlotFeature(int total_instance,
-                                             bool gpu_graph_training) {
+                                             bool gpu_graph_training,
+                                             std::shared_ptr<phi::Allocation> final_sage_nodes) {
   uint64_t *ins_cursor, *ins_buf;
   if (gpu_graph_training) {
     ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_->ptr());
@@ -408,18 +682,24 @@ int GraphDataGenerator::FillGraphSlotFeature(int total_instance,
         feed_vec_[0]->mutable_data<int64_t>({total_instance, 1}, this->place_);
     ins_cursor = (uint64_t *)id_tensor_ptr_;
   }
-  return FillSlotFeature(ins_cursor, total_instance);
+
+  if (!sage_mode_) {
+    return FillSlotFeature(ins_cursor, total_instance);
+  } else {
+    uint64_t* sage_nodes_ptr = reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
+    return FillSlotFeature(sage_nodes_ptr, total_instance);
+  }
 }
 
-int GraphDataGenerator::MakeInsPair() {
+int GraphDataGenerator::MakeInsPair(cudaStream_t stream) {
   uint64_t *walk = reinterpret_cast<uint64_t *>(d_walk_->ptr());
   uint64_t *ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_->ptr());
   int *random_row = reinterpret_cast<int *>(d_random_row_->ptr());
   int *d_pair_num = reinterpret_cast<int *>(d_pair_num_->ptr());
-  cudaMemsetAsync(d_pair_num, 0, sizeof(int), train_stream_);
+  cudaMemsetAsync(d_pair_num, 0, sizeof(int), stream);
   int len = buf_state_.len;
   // make pair
-  GraphFillIdKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, train_stream_>>>(
+  GraphFillIdKernel<<<GET_BLOCKS(len), CUDA_NUM_THREADS, 0, stream>>>(
       ins_buf + ins_buf_pair_len_ * 2,
       d_pair_num,
       walk,
@@ -433,8 +713,8 @@ int GraphDataGenerator::MakeInsPair() {
                   d_pair_num,
                   sizeof(int),
                   cudaMemcpyDeviceToHost,
-                  train_stream_);
-  cudaStreamSynchronize(train_stream_);
+                  stream);
+  cudaStreamSynchronize(stream);
   ins_buf_pair_len_ += h_pair_num;
 
   if (debug_mode_) {
@@ -452,7 +732,7 @@ int GraphDataGenerator::MakeInsPair() {
   return ins_buf_pair_len_;
 }
 
-int GraphDataGenerator::FillInsBuf() {
+int GraphDataGenerator::FillInsBuf(cudaStream_t stream) {
   if (ins_buf_pair_len_ >= batch_size_) {
     return batch_size_;
   }
@@ -464,50 +744,78 @@ int GraphDataGenerator::FillInsBuf() {
   if (total_instance == 0) {
     return -1;
   }
-  return MakeInsPair();
+  return MakeInsPair(stream);
 }
 
 int GraphDataGenerator::GenerateBatch() {
   int total_instance = 0;
   platform::CUDADeviceGuard guard(gpuid_);
   int res = 0;
-  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   if (!gpu_graph_training_) {
-    total_instance = (infer_node_start_ + batch_size_ <= infer_node_end_)
-                         ? batch_size_
-                         : infer_node_end_ - infer_node_start_;
-    VLOG(1) << "in graph_data generator:batch_size = " << batch_size_
-            << " instance = " << total_instance;
-    total_instance *= 2;
-    if (total_instance == 0) {
-      return 0;
+    if (!sage_mode_) {
+      total_instance = (infer_node_start_ + batch_size_ <= infer_node_end_)
+                           ? batch_size_
+                           : infer_node_end_ - infer_node_start_;
+      VLOG(1) << "in graph_data generator:batch_size = " << batch_size_
+              << " instance = " << total_instance;
+      total_instance *= 2;
+      if (total_instance == 0) {
+        return 0;
+      }
+      FillIdShowClkTensor(total_instance, gpu_graph_training_, cursor_);
+    } else {
+      if (sage_batch_count_ == sage_batch_num_) {
+        return 0;
+      }
+      FillGraphIdShowClkTensor(uniq_instance_vec_[sage_batch_count_],
+                               total_instance_vec_[sage_batch_count_],
+                               sage_batch_count_);
     }
-    FillIdShowClkTensor(total_instance, gpu_graph_training_, cursor_);
   } else {
-    while (ins_buf_pair_len_ < batch_size_) {
-      res = FillInsBuf();
-      if (res == -1) {
-        if (ins_buf_pair_len_ == 0) {
-          return 0;
-        } else {
-          break;
+    if (!sage_mode_) {
+      while (ins_buf_pair_len_ < batch_size_) {
+        res = FillInsBuf(train_stream_);
+        if (res == -1) {
+          if (ins_buf_pair_len_ == 0) {
+            return 0;
+          } else {
+            break;
+          }
         }
       }
+      total_instance =
+          ins_buf_pair_len_ < batch_size_ ? ins_buf_pair_len_ : batch_size_;
+      total_instance *= 2;
+      VLOG(2) << "total_instance: " << total_instance
+              << ", ins_buf_pair_len = " << ins_buf_pair_len_;
+      FillIdShowClkTensor(total_instance, gpu_graph_training_);
+    } else {
+      if (sage_batch_count_ == sage_batch_num_) {
+        return 0;
+      }
+      FillGraphIdShowClkTensor(uniq_instance_vec_[sage_batch_count_],
+                               total_instance_vec_[sage_batch_count_],
+                               sage_batch_count_);
     }
-    total_instance =
-        ins_buf_pair_len_ < batch_size_ ? ins_buf_pair_len_ : batch_size_;
-    total_instance *= 2;
-    VLOG(2) << "total_instance: " << total_instance
-            << ", ins_buf_pair_len = " << ins_buf_pair_len_;
-    FillIdShowClkTensor(total_instance, gpu_graph_training_);
   }
 
   if (slot_num_ > 0) {
-    FillGraphSlotFeature(total_instance, gpu_graph_training_);
+    if (!sage_mode_) {
+      FillGraphSlotFeature(total_instance, gpu_graph_training_);
+    } else {
+      FillGraphSlotFeature(uniq_instance_vec_[sage_batch_count_],
+                           gpu_graph_training_,
+                           final_sage_nodes_vec_[sage_batch_count_]);
+    }
   }
   offset_.clear();
   offset_.push_back(0);
-  offset_.push_back(total_instance);
+  if (!sage_mode_) {
+    offset_.push_back(total_instance);
+  } else {
+    offset_.push_back(uniq_instance_vec_[sage_batch_count_]);
+    sage_batch_count_ += 1;
+  }
   LoD lod{offset_};
   feed_vec_[0]->set_lod(lod);
   if (slot_num_ > 0) {
@@ -518,7 +826,9 @@ int GraphDataGenerator::GenerateBatch() {
 
   cudaStreamSynchronize(train_stream_);
   if (!gpu_graph_training_) return 1;
-  ins_buf_pair_len_ -= total_instance / 2;
+  if (!sage_mode_) {
+    ins_buf_pair_len_ -= total_instance / 2;
+  }
   return 1;
 }
 
@@ -812,7 +1122,18 @@ int GraphDataGenerator::FillSlotFeature(uint64_t *d_walk, size_t key_num) {
   platform::CUDADeviceGuard guard(gpuid_);
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   std::shared_ptr<phi::Allocation> d_feature_list;
-  std::shared_ptr<phi::Allocation> d_slot_list;  
+  std::shared_ptr<phi::Allocation> d_slot_list;
+
+  if (sage_mode_) {
+    size_t temp_storage_bytes = (key_num + 1) * sizeof(uint32_t);
+    if (d_feature_size_list_buf_ == NULL || d_feature_size_list_buf_->size() < temp_storage_bytes) {
+      d_feature_size_list_buf_ = memory::AllocShared(this->place_, temp_storage_bytes);
+    }
+    if (d_feature_size_prefixsum_buf_ == NULL || d_feature_size_prefixsum_buf_->size() < temp_storage_bytes) {
+      d_feature_size_prefixsum_buf_ = memory::AllocShared(this->place_, temp_storage_bytes);
+    }
+  }
+
   uint32_t * d_feature_size_list_ptr = reinterpret_cast<uint32_t*> (d_feature_size_list_buf_->ptr());       
   uint32_t * d_feature_size_prefixsum_ptr = reinterpret_cast<uint32_t*> (d_feature_size_prefixsum_buf_->ptr());                           
   int fea_num = gpu_graph_ptr->get_feature_info_of_nodes(gpuid_,
@@ -1033,11 +1354,13 @@ int GraphDataGenerator::FillFeatureBuf(
   return ret;
 }
 
-// 尝试插入table, 0表示插入成功
+// 对于deepwalk模式，尝试插入table，0表示插入成功，1表示插入失败；
+// 对于sage模式，尝试插入table，table数量不够则清空table重新插入，返回值无影响。
 int GraphDataGenerator::InsertTable(
     const unsigned long *d_keys,
     unsigned long len,
     std::shared_ptr<phi::Allocation> d_uniq_node_num) {
+  // Used under NOT WHOLE_HBM.
   uint64_t h_uniq_node_num = 0;
   uint64_t *d_uniq_node_num_ptr =
       reinterpret_cast<uint64_t *>(d_uniq_node_num->ptr());
@@ -1047,26 +1370,487 @@ int GraphDataGenerator::InsertTable(
                   cudaMemcpyDeviceToHost,
                   sample_stream_);
   cudaStreamSynchronize(sample_stream_);
-  // 产生了足够多的node，采样结束
-  VLOG(2) << "table capcity: " << train_table_cap_ << ", " << h_uniq_node_num
-          << " used";
-  if (h_uniq_node_num + len >= train_table_cap_) {
-    return 1;
+  
+  if (gpu_graph_training_) {
+    VLOG(2) << "table capacity: " << train_table_cap_ << ", " << h_uniq_node_num
+            << " used";
+    if (h_uniq_node_num + len >= train_table_cap_) {
+      if (!sage_mode_) {
+        return 1;
+      } else {
+        // Copy unique nodes first.
+        uint64_t copy_len = CopyUniqueNodes();
+        copy_unique_len_ += copy_len;
+        table_->clear(sample_stream_);
+        cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), sample_stream_);
+      }
+    }
+  } else {
+    // used only for sage_mode.
+    if (h_uniq_node_num + len >= infer_table_cap_) {
+      uint64_t copy_len = CopyUniqueNodes();
+      copy_unique_len_ += copy_len;
+      table_->clear(sample_stream_);
+      cudaMemsetAsync(d_uniq_node_num_ptr, 0, sizeof(uint64_t), sample_stream_);
+    }
   }
+
   table_->insert(d_keys, len, d_uniq_node_num_ptr, sample_stream_);
   CUDA_CHECK(cudaStreamSynchronize(sample_stream_));
   return 0;
 }
 
-void GraphDataGenerator::DoWalk() {
-  int device_id = place_.GetDeviceId();
-  debug_gpu_memory_info(device_id, "DoWalk start");
-  if (gpu_graph_training_) {
-    FillWalkBuf();
-  } else {
-    FillInferBuf();
+std::vector<std::shared_ptr<phi::Allocation>> GraphDataGenerator::SampleNeighbors(
+    int64_t* uniq_nodes, int len, int sample_size,
+    std::vector<int>& edges_split_num, int64_t* neighbor_len) {
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+  auto sample_res = gpu_graph_ptr->graph_neighbor_sample_all_edge_type(
+      gpuid_, edge_to_id_len_, (uint64_t*)uniq_nodes, sample_size, len,
+      edge_type_graph_);
+
+  int* all_sample_count_ptr =
+      reinterpret_cast<int* >(sample_res.actual_sample_size_mem->ptr());
+
+  auto cumsum_actual_sample_size = memory::Alloc(
+      place_,
+      (len * edge_to_id_len_ + 1) * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int* cumsum_actual_sample_size_ptr =
+      reinterpret_cast<int*>(cumsum_actual_sample_size->ptr());
+  cudaMemsetAsync(cumsum_actual_sample_size_ptr,
+                  0,
+                  (len * edge_to_id_len_ + 1) * sizeof(int),
+                  sample_stream_);
+
+  size_t temp_storage_bytes = 0;
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(NULL,
+                                           temp_storage_bytes,
+                                           all_sample_count_ptr,
+                                           cumsum_actual_sample_size_ptr + 1,
+                                           len * edge_to_id_len_,
+                                           sample_stream_));
+  auto d_temp_storage = memory::Alloc(
+      place_,
+      temp_storage_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  CUDA_CHECK(cub::DeviceScan::InclusiveSum(d_temp_storage->ptr(),
+                                           temp_storage_bytes,
+                                           all_sample_count_ptr,
+                                           cumsum_actual_sample_size_ptr + 1,
+                                           len * edge_to_id_len_,
+                                           sample_stream_));
+  cudaStreamSynchronize(sample_stream_);
+
+  edges_split_num.resize(edge_to_id_len_);
+  for (int i = 0; i < edge_to_id_len_; i++) {
+    cudaMemcpyAsync(
+        edges_split_num.data() + i,
+        cumsum_actual_sample_size_ptr + (i + 1) * len,
+        sizeof(int),
+        cudaMemcpyDeviceToHost,
+        sample_stream_);
   }
-  debug_gpu_memory_info(device_id, "DoWalk end");
+
+  CUDA_CHECK(cudaStreamSynchronize(sample_stream_));
+
+  int all_sample_size = edges_split_num[edge_to_id_len_ - 1];
+  auto final_sample_val = memory::AllocShared(
+      place_,
+      all_sample_size * sizeof(int64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  auto final_sample_val_dst = memory::AllocShared(
+      place_,
+      all_sample_size * sizeof(int64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int64_t* final_sample_val_ptr =
+      reinterpret_cast<int64_t* >(final_sample_val->ptr());
+  int64_t* final_sample_val_dst_ptr =
+      reinterpret_cast<int64_t* >(final_sample_val_dst->ptr());
+  int64_t* all_sample_val_ptr =
+      reinterpret_cast<int64_t* >(sample_res.val_mem->ptr());
+  FillActualNeighbors<<<GET_BLOCKS(len * edge_to_id_len_),
+                        CUDA_NUM_THREADS,
+                        0,
+                        sample_stream_>>>(all_sample_val_ptr,
+                                          final_sample_val_ptr,
+                                          final_sample_val_dst_ptr,
+                                          all_sample_count_ptr,
+                                          cumsum_actual_sample_size_ptr,
+                                          sample_size,
+                                          len * edge_to_id_len_,
+                                          len);
+  *neighbor_len = all_sample_size;
+  cudaStreamSynchronize(sample_stream_);
+
+  std::vector<std::shared_ptr<phi::Allocation>> sample_results;
+  sample_results.emplace_back(final_sample_val);
+  sample_results.emplace_back(final_sample_val_dst);
+  return sample_results;
+}
+
+std::shared_ptr<phi::Allocation> GraphDataGenerator::FillReindexHashTable(
+    int64_t* input, int num_input, int64_t len_hashtable,
+    int64_t* keys, int* values, int* key_index, int* final_nodes_len) {
+  phi::BuildHashTable<int64_t><<<GET_BLOCKS(num_input),
+                                 CUDA_NUM_THREADS,
+                                 0,
+                                 sample_stream_>>>(input,
+                                                   num_input,
+                                                   len_hashtable,
+                                                   keys,
+                                                   key_index);
+
+  // Get item index count.
+  auto item_count = memory::Alloc(
+      place_,
+      (num_input + 1) * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int* item_count_ptr = reinterpret_cast<int* >(item_count->ptr());
+  cudaMemsetAsync(item_count_ptr, 0,
+                  sizeof(int) * (num_input + 1), sample_stream_);
+  phi::GetItemIndexCount<int64_t><<<GET_BLOCKS(num_input),
+                                    CUDA_NUM_THREADS,
+                                    0,
+                                    sample_stream_>>>(input,
+                                                      item_count_ptr,
+                                                      num_input,
+                                                      len_hashtable,
+                                                      keys,
+                                                      key_index);
+
+  size_t temp_storage_bytes = 0;
+  cub::DeviceScan::ExclusiveSum(NULL,
+                                temp_storage_bytes,
+                                item_count_ptr,
+                                item_count_ptr,
+                                num_input + 1,
+                                sample_stream_);
+  auto d_temp_storage = memory::Alloc(
+      place_,
+      temp_storage_bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  cub::DeviceScan::ExclusiveSum(d_temp_storage->ptr(),
+                                temp_storage_bytes,
+                                item_count_ptr,
+                                item_count_ptr,
+                                num_input + 1,
+                                sample_stream_);
+
+  int total_unique_items = 0;
+  cudaMemcpyAsync(&total_unique_items,
+                  item_count_ptr + num_input,
+                  sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  sample_stream_);
+  cudaStreamSynchronize(sample_stream_);
+
+  auto unique_items = memory::AllocShared(
+      place_,
+      total_unique_items * sizeof(int64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int64_t* unique_items_ptr = reinterpret_cast<int64_t* >(unique_items->ptr());
+  *final_nodes_len = total_unique_items;
+
+  // Get unique items
+  phi::FillUniqueItems<int64_t><<<GET_BLOCKS(num_input),
+                                  CUDA_NUM_THREADS,
+                                  0,
+                                  sample_stream_>>>(input,
+                                                    num_input,
+                                                    len_hashtable,
+                                                    unique_items_ptr,
+                                                    item_count_ptr,
+                                                    keys,
+                                                    values,
+                                                    key_index);
+  cudaStreamSynchronize(sample_stream_);
+  return unique_items;
+}
+
+std::shared_ptr<phi::Allocation> GraphDataGenerator::GetReindexResult(
+    int64_t* reindex_src_data, int64_t* center_nodes, int* final_nodes_len,
+    int node_len, int64_t neighbor_len) {
+  // Reset reindex table
+  int64_t* d_reindex_table_key_ptr =
+      reinterpret_cast<int64_t* >(d_reindex_table_key_->ptr());
+  int* d_reindex_table_value_ptr =
+      reinterpret_cast<int* >(d_reindex_table_value_->ptr());
+  int* d_reindex_table_index_ptr =
+      reinterpret_cast<int* >(d_reindex_table_index_->ptr());
+
+  // Fill table with -1.
+  cudaMemsetAsync(d_reindex_table_key_ptr, -1,
+                  reindex_table_size_ * sizeof(int64_t), sample_stream_);
+  cudaMemsetAsync(d_reindex_table_value_ptr, -1,
+                  reindex_table_size_ * sizeof(int), sample_stream_);
+  cudaMemsetAsync(d_reindex_table_index_ptr, -1,
+                  reindex_table_size_ * sizeof(int), sample_stream_);
+
+  auto all_nodes = memory::AllocShared(
+      place_,
+      (node_len + neighbor_len) * sizeof(int64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int64_t *all_nodes_data = reinterpret_cast<int64_t *>(all_nodes->ptr());
+
+  cudaMemcpyAsync(all_nodes_data, center_nodes, sizeof(int64_t) * node_len,
+                  cudaMemcpyDeviceToDevice, sample_stream_);
+  cudaMemcpyAsync(all_nodes_data + node_len, reindex_src_data,
+                  sizeof(int64_t) * neighbor_len,
+                  cudaMemcpyDeviceToDevice, sample_stream_);
+
+  cudaStreamSynchronize(sample_stream_);
+
+  auto final_nodes = FillReindexHashTable(all_nodes_data,
+                                          node_len + neighbor_len,
+                                          reindex_table_size_,
+                                          d_reindex_table_key_ptr,
+                                          d_reindex_table_value_ptr,
+                                          d_reindex_table_index_ptr,
+                                          final_nodes_len);
+
+  phi::ReindexSrcOutput<int64_t><<<GET_BLOCKS(neighbor_len), CUDA_NUM_THREADS, 0,
+                                   sample_stream_>>>(reindex_src_data, neighbor_len,
+                                                     reindex_table_size_,
+                                                     d_reindex_table_key_ptr,
+                                                     d_reindex_table_value_ptr);
+  return final_nodes;
+}
+
+std::shared_ptr<phi::Allocation> GraphDataGenerator::GenerateSampleGraph(
+    uint64_t* node_ids, int len, int* final_len,
+    std::shared_ptr<phi::Allocation>& inverse) {
+  VLOG(2) << "Get Unique Nodes";
+
+  auto uniq_nodes = memory::Alloc(
+      place_, len * sizeof(uint64_t),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int* inverse_ptr = reinterpret_cast<int* >(inverse->ptr());
+  int64_t* uniq_nodes_data = reinterpret_cast<int64_t* >(uniq_nodes->ptr());
+  int uniq_len =
+      dedup_keys_and_fillidx(len,
+                             node_ids,
+                             reinterpret_cast<uint64_t* >(uniq_nodes_data),
+                             reinterpret_cast<uint64_t* >(d_sorted_keys_->ptr()),
+                             reinterpret_cast<uint32_t* >(inverse_ptr),
+                             reinterpret_cast<uint32_t* >(d_sorted_idx_->ptr()),
+                             reinterpret_cast<uint32_t* >(d_offset_->ptr()),
+                             reinterpret_cast<uint32_t* >(d_merged_cnts_->ptr()),
+                             sample_stream_, d_buf_, place_);
+  int len_samples = samples_.size();
+
+  VLOG(2) << "Sample Neighbors and Reindex";
+  std::vector<int> edges_split_num;
+  std::vector<std::shared_ptr<phi::Allocation>> final_nodes_vec;
+  std::vector<std::shared_ptr<phi::Allocation>> graph_edges;
+  std::vector<std::vector<int>> edges_split_num_for_graph;
+  std::vector<int> final_nodes_len_vec;
+
+  for (int i = 0; i < len_samples; i++) {
+    edges_split_num.clear();
+    std::shared_ptr<phi::Allocation> neighbors, reindex_dst;
+    int64_t neighbors_len = 0;
+    if (i == 0) {
+      auto sample_results =
+          SampleNeighbors(uniq_nodes_data, uniq_len, samples_[i],
+                          edges_split_num, &neighbors_len);
+      neighbors = sample_results[0];
+      reindex_dst = sample_results[1];
+      edges_split_num.push_back(uniq_len);
+    } else {
+      int64_t* final_nodes_data =
+          reinterpret_cast<int64_t* >(final_nodes_vec[i - 1]->ptr());
+      auto sample_results =
+          SampleNeighbors(final_nodes_data, final_nodes_len_vec[i - 1],
+                          samples_[i], edges_split_num, &neighbors_len);
+      neighbors = sample_results[0];
+      reindex_dst = sample_results[1];
+      edges_split_num.push_back(final_nodes_len_vec[i - 1]);
+    }
+
+    int64_t* reindex_src_data = reinterpret_cast<int64_t* >(neighbors->ptr());
+    int final_nodes_len = 0;
+    if (i == 0) {
+      auto tmp_final_nodes =
+          GetReindexResult(reindex_src_data, uniq_nodes_data, &final_nodes_len,
+                           uniq_len, neighbors_len);
+      final_nodes_vec.emplace_back(tmp_final_nodes);
+      final_nodes_len_vec.emplace_back(final_nodes_len);
+    } else {
+      int64_t* final_nodes_data =
+          reinterpret_cast<int64_t* >(final_nodes_vec[i - 1]->ptr());
+      auto tmp_final_nodes =
+          GetReindexResult(reindex_src_data, final_nodes_data, &final_nodes_len,
+                           final_nodes_len_vec[i - 1], neighbors_len);
+      final_nodes_vec.emplace_back(tmp_final_nodes);
+      final_nodes_len_vec.emplace_back(final_nodes_len);
+    }
+    edges_split_num.emplace_back(final_nodes_len_vec[i]); // [edges_split_num, next_num_nodes, num_nodes]
+    edges_split_num.emplace_back(neighbors_len);
+    graph_edges.emplace_back(neighbors);
+    graph_edges.emplace_back(reindex_dst);
+    edges_split_num_for_graph.emplace_back(edges_split_num);
+  }
+  graph_edges_vec_.emplace_back(graph_edges);
+  edges_split_num_vec_.emplace_back(edges_split_num_for_graph);
+
+  *final_len = final_nodes_len_vec[len_samples - 1];
+  return final_nodes_vec[len_samples - 1];
+}
+
+uint64_t GraphDataGenerator::CopyUniqueNodes() {
+  if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+    uint64_t h_uniq_node_num = 0;
+    uint64_t *d_uniq_node_num =
+        reinterpret_cast<uint64_t *>(d_uniq_node_num_->ptr());
+    cudaMemcpyAsync(&h_uniq_node_num,
+                    d_uniq_node_num,
+                    sizeof(uint64_t),
+                    cudaMemcpyDeviceToHost,
+                    sample_stream_);
+    cudaStreamSynchronize(sample_stream_);
+    auto d_uniq_node = memory::AllocShared(
+        place_,
+        h_uniq_node_num * sizeof(uint64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    uint64_t *d_uniq_node_ptr =
+        reinterpret_cast<uint64_t *>(d_uniq_node->ptr());
+
+    auto d_node_cursor = memory::AllocShared(
+        place_,
+        sizeof(uint64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+
+    uint64_t *d_node_cursor_ptr =
+        reinterpret_cast<uint64_t *>(d_node_cursor->ptr());
+    cudaMemsetAsync(d_node_cursor_ptr, 0, sizeof(uint64_t), sample_stream_);
+    // uint64_t unused_key = std::numeric_limits<uint64_t>::max();
+    table_->get_keys(d_uniq_node_ptr, d_node_cursor_ptr, sample_stream_);
+
+    cudaStreamSynchronize(sample_stream_);
+
+    host_vec_.resize(h_uniq_node_num + copy_unique_len_);
+    cudaMemcpyAsync(host_vec_.data() + copy_unique_len_,
+                    d_uniq_node_ptr,
+                    sizeof(uint64_t) * h_uniq_node_num,
+                    cudaMemcpyDeviceToHost,
+                    sample_stream_);
+    cudaStreamSynchronize(sample_stream_);
+    return h_uniq_node_num;
+  }
+  return 0;
+}
+
+void GraphDataGenerator::DoWalkandSage() {
+  int device_id = place_.GetDeviceId();
+  debug_gpu_memory_info(device_id, "DoWalkandSage start");
+  platform::CUDADeviceGuard guard(gpuid_);
+  if (gpu_graph_training_) {
+    bool train_flag = FillWalkBuf();
+    if (sage_mode_) {
+      sage_batch_num_ = 0;
+      if (train_flag) {
+        int total_instance = 0, uniq_instance = 0;
+        bool ins_pair_flag = true;
+        uint64_t *ins_buf, *ins_cursor;
+        while (ins_pair_flag) {
+          int res = 0;
+          while (ins_buf_pair_len_ < batch_size_) {
+            res = FillInsBuf(sample_stream_);
+            if (res == -1) {
+              if (ins_buf_pair_len_ == 0) {
+                ins_pair_flag = false;
+              }
+              break;
+            }
+          }
+
+          if (!ins_pair_flag) {
+            break;
+          }
+
+          total_instance =
+              ins_buf_pair_len_ < batch_size_ ? ins_buf_pair_len_ : batch_size_;
+          total_instance *= 2;
+
+          ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_->ptr());
+          ins_cursor = ins_buf + ins_buf_pair_len_ * 2 - total_instance;
+          auto inverse = memory::AllocShared(
+              place_, total_instance * sizeof(int),
+              phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+          auto final_sage_nodes =
+              GenerateSampleGraph(ins_cursor, total_instance, &uniq_instance, inverse);
+          if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+            uint64_t *final_sage_nodes_ptr =
+                reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
+            InsertTable(final_sage_nodes_ptr, uniq_instance, d_uniq_node_num_);
+          }
+          final_sage_nodes_vec_.emplace_back(final_sage_nodes);
+          inverse_vec_.emplace_back(inverse);
+          uniq_instance_vec_.emplace_back(uniq_instance);
+          total_instance_vec_.emplace_back(total_instance);
+          ins_buf_pair_len_ -= total_instance / 2;
+          sage_batch_num_ += 1;
+        }
+        uint64_t h_uniq_node_num = CopyUniqueNodes();
+        VLOG(0) << "train sage_batch_num: " << sage_batch_num_;
+      }
+    }
+  } else {
+    bool infer_flag = FillInferBuf();
+    if (sage_mode_) {
+      sage_batch_num_ = 0;
+      if (infer_flag) {
+        int total_instance = 0, uniq_instance = 0;
+        total_instance = (infer_node_start_ + batch_size_ <= infer_node_end_)
+                              ? batch_size_
+                              : infer_node_end_ - infer_node_start_;
+        total_instance *= 2;
+        while (total_instance != 0) {
+          uint64_t *d_type_keys =
+              reinterpret_cast<uint64_t *>(d_device_keys_[cursor_]->ptr());
+          d_type_keys += infer_node_start_;
+          infer_node_start_ += total_instance / 2;
+          auto node_buf = memory::AllocShared(
+              place_,
+              total_instance * sizeof(uint64_t),
+              phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+          int64_t *node_buf_ptr = reinterpret_cast<int64_t *>(node_buf->ptr());
+          CopyDuplicateKeys<<<GET_BLOCKS(total_instance / 2),
+                              CUDA_NUM_THREADS,
+                              0,
+                              sample_stream_>>>(
+              node_buf_ptr, d_type_keys, total_instance / 2);
+          uint64_t* node_buf_ptr_ = reinterpret_cast<uint64_t *>(node_buf->ptr());
+          auto inverse = memory::AllocShared(
+              place_, total_instance * sizeof(int),
+              phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+          auto final_sage_nodes =
+              GenerateSampleGraph(node_buf_ptr_, total_instance, &uniq_instance,
+                                  inverse);
+          cudaStreamSynchronize(sample_stream_);
+          if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+            uint64_t *final_sage_nodes_ptr =
+                reinterpret_cast<uint64_t *>(final_sage_nodes->ptr());
+            InsertTable(final_sage_nodes_ptr, uniq_instance, d_uniq_node_num_);
+          }
+          final_sage_nodes_vec_.emplace_back(final_sage_nodes);
+          inverse_vec_.emplace_back(inverse);
+          uniq_instance_vec_.emplace_back(uniq_instance);
+          total_instance_vec_.emplace_back(total_instance);
+          sage_batch_num_ += 1;
+
+          total_instance = (infer_node_start_ + batch_size_ <= infer_node_end_)
+                               ? batch_size_
+                               : infer_node_end_ - infer_node_start_;
+          total_instance *= 2;
+        }
+
+        uint64_t h_uniq_node_num = CopyUniqueNodes();
+        VLOG(0) << "infer sage_batch_num: " << sage_batch_num_;
+      }
+    }
+  }
+  debug_gpu_memory_info(device_id, "DoWalkandSage end");
 }
 
 void GraphDataGenerator::clear_gpu_mem() {
@@ -1077,6 +1861,15 @@ void GraphDataGenerator::clear_gpu_mem() {
     d_sampleidx2rows_[i].reset();
   }
   delete table_;
+  if (sage_mode_) {
+    d_reindex_table_key_.reset();
+    d_reindex_table_value_.reset();
+    d_reindex_table_index_.reset();
+    d_sorted_keys_.reset();
+    d_sorted_idx_.reset();
+    d_offset_.reset();
+    d_merged_cnts_.reset();
+  }
 }
 
 int GraphDataGenerator::FillInferBuf() {
@@ -1101,15 +1894,17 @@ int GraphDataGenerator::FillInferBuf() {
             ? infer_table_cap_
             : device_key_size - global_infer_node_type_start[infer_cursor];
 
-    host_vec_.resize(total_row_);
     uint64_t *d_type_keys =
         reinterpret_cast<uint64_t *>(d_device_keys_[infer_cursor]->ptr());
-    cudaMemcpyAsync(host_vec_.data(),
-                    d_type_keys + global_infer_node_type_start[infer_cursor],
-                    sizeof(uint64_t) * total_row_,
-                    cudaMemcpyDeviceToHost,
-                    sample_stream_);
-    cudaStreamSynchronize(sample_stream_);
+    if (!sage_mode_) {
+      host_vec_.resize(total_row_);
+      cudaMemcpyAsync(host_vec_.data(),
+                      d_type_keys + global_infer_node_type_start[infer_cursor],
+                      sizeof(uint64_t) * total_row_,
+                      cudaMemcpyDeviceToHost,
+                      sample_stream_);
+      cudaStreamSynchronize(sample_stream_);
+    }
     VLOG(1) << "cursor: " << infer_cursor
             << " start: " << global_infer_node_type_start[infer_cursor]
             << " num: " << total_row_;
@@ -1118,7 +1913,7 @@ int GraphDataGenerator::FillInferBuf() {
     infer_node_end_ = global_infer_node_type_start[infer_cursor];
     cursor_ = infer_cursor;
   }
-  return 0;
+  return 1;
 }
 
 void GraphDataGenerator::ClearSampleState() {
@@ -1229,17 +2024,19 @@ int GraphDataGenerator::FillWalkBuf() {
       continue;
     }
 
-    if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
-      if (InsertTable(d_type_keys + start, tmp_len, d_uniq_node_num_) != 0) {
-        VLOG(2) << "in step 0, insert key stage, table is full";
-        update = false;
-        break;
-      }
-      if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
-          0) {
-        VLOG(2) << "in step 0, insert sample res stage, table is full";
-        update = false;
-        break;
+    if (!sage_mode_) {
+      if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+        if (InsertTable(d_type_keys + start, tmp_len, d_uniq_node_num_) != 0) {
+          VLOG(2) << "in step 0, insert key stage, table is full";
+          update = false;
+          break;
+        }
+        if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
+            0) {
+          VLOG(2) << "in step 0, insert sample res stage, table is full";
+          update = false;
+          break;
+        }
       }
     }
     FillOneStep(d_type_keys + start,
@@ -1282,12 +2079,14 @@ int GraphDataGenerator::FillWalkBuf() {
       int sample_key_len = sample_res.total_sample_size;
       sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
       total_samples += sample_res.total_sample_size;
-      if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
-        if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
-            0) {
-          VLOG(2) << "in step: " << step << ", table is full";
-          update = false;
-          break;
+      if (!sage_mode_) {
+        if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+          if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
+              0) {
+            VLOG(2) << "in step: " << step << ", table is full";
+            update = false;
+            break;
+          }
         }
       }
       FillOneStep(d_type_keys + start,
@@ -1351,63 +2150,20 @@ int GraphDataGenerator::FillWalkBuf() {
     delete[] h_len_per_row;
     delete[] h_prefix_sum;
   }
-  if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
-    // table_->prefetch(cudaCpuDeviceId, sample_stream_);
-    // thrust::pair<uint64_t, uint64_t> *kv = table_->data();
-    // size_t size = table_->size();
-    // uint64_t unused_key = std::numeric_limits<uint64_t>::max();
-    // for (size_t i = 0; i < size; i++) {
-    //   if (kv[i].first == unused_key) {
-    //     continue;
-    //   }
-    //   host_vec_.push_back(kv[i].first);
-    // }
 
-    uint64_t h_uniq_node_num = 0;
-    uint64_t *d_uniq_node_num =
-        reinterpret_cast<uint64_t *>(d_uniq_node_num_->ptr());
-    cudaMemcpyAsync(&h_uniq_node_num,
-                    d_uniq_node_num,
-                    sizeof(uint64_t),
-                    cudaMemcpyDeviceToHost,
-                    sample_stream_);
-    cudaStreamSynchronize(sample_stream_);
-    VLOG(2) << "h_uniq_node_num: " << h_uniq_node_num;
-    // 临时显存, 存储去重后的nodeid
-    auto d_uniq_node = memory::AllocShared(
-        place_,
-        h_uniq_node_num * sizeof(uint64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    uint64_t *d_uniq_node_ptr =
-        reinterpret_cast<uint64_t *>(d_uniq_node->ptr());
-
-    auto d_node_cursor = memory::AllocShared(
-        place_,
-        sizeof(uint64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-
-    uint64_t *d_node_cursor_ptr =
-        reinterpret_cast<uint64_t *>(d_node_cursor->ptr());
-    cudaMemsetAsync(d_node_cursor_ptr, 0, sizeof(uint64_t), sample_stream_);
-    // uint64_t unused_key = std::numeric_limits<uint64_t>::max();
-    table_->get_keys(d_uniq_node_ptr, d_node_cursor_ptr, sample_stream_);
-
-    cudaStreamSynchronize(sample_stream_);
-
-    host_vec_.resize(h_uniq_node_num);
-    cudaMemcpyAsync(host_vec_.data(),
-                    d_uniq_node_ptr,
-                    sizeof(uint64_t) * h_uniq_node_num,
-                    cudaMemcpyDeviceToHost,
-                    sample_stream_);
-    cudaStreamSynchronize(sample_stream_);
-    
+  if (!sage_mode_) {
+    uint64_t h_uniq_node_num = CopyUniqueNodes();
     VLOG(0) << "sample_times:" << sample_times
         << ", d_walk_size:" << buf_size_
         << ", d_walk_offset:" << i
         << ", total_rows:" << total_row_
-        << ", total_samples:" << total_samples
-        << ", h_uniq_node_num:" << h_uniq_node_num;
+        << ", total_samples:" << total_samples;
+  } else {
+    VLOG(0) << "sample_times:" << sample_times
+          << ", d_walk_size:" << buf_size_
+          << ", d_walk_offset:" << i
+          << ", total_rows:" << total_row_
+          << ", total_samples:" << total_samples;
   }
   return total_row_ != 0;
 }
@@ -1425,8 +2181,13 @@ void GraphDataGenerator::AllocResource(int thread_id,
 
   platform::CUDADeviceGuard guard(gpuid_);
   if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
-    table_ = new HashTable<uint64_t, uint64_t>(
-        train_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor);
+    if (gpu_graph_training_) {
+      table_ = new HashTable<uint64_t, uint64_t>(
+          train_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor);
+    } else {
+      table_ = new HashTable<uint64_t, uint64_t>(
+          infer_table_cap_ / FLAGS_gpugraph_hbm_table_load_factor);
+    }
   }
   VLOG(1) << "AllocResource gpuid " << gpuid_
           << " feed_vec.size: " << feed_vec.size()
@@ -1436,7 +2197,11 @@ void GraphDataGenerator::AllocResource(int thread_id,
                       platform::DeviceContextPool::Instance().Get(place_))
                       ->stream();
   // feed_vec_ = feed_vec;
-  slot_num_ = (feed_vec.size() - 3) / 2;
+  if (!sage_mode_) {
+    slot_num_ = (feed_vec.size() - 3) / 2;
+  } else {
+    slot_num_ = (feed_vec.size() - 4 - samples_.size() * 5) / 2;
+  }
 
   // infer_node_type_start_ = std::vector<int>(h_device_keys_.size(), 0);
   // for (size_t i = 0; i < h_device_keys_.size(); i++) {
@@ -1461,8 +2226,6 @@ void GraphDataGenerator::AllocResource(int thread_id,
     h_device_keys_len_.push_back(h_graph_all_type_keys_len[i][thread_id]);
   }
   VLOG(2) << "h_device_keys size: " << h_device_keys_len_.size();
-  
-
 
   size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
   d_prefix_sum_ = memory::AllocShared(
@@ -1521,14 +2284,68 @@ void GraphDataGenerator::AllocResource(int thread_id,
   shuffle_seed_ = 0;
 
   ins_buf_pair_len_ = 0;
-  d_ins_buf_ =
-      memory::AllocShared(place_, (batch_size_ * 2 * 2) * sizeof(uint64_t));
-  d_pair_num_ = memory::AllocShared(place_, sizeof(int));
+  if (!sage_mode_) {
+    d_ins_buf_ =
+        memory::AllocShared(place_, (batch_size_ * 2 * 2) * sizeof(uint64_t));
+    d_pair_num_ = memory::AllocShared(place_, sizeof(int));
+  } else {
+    d_ins_buf_ = memory::AllocShared(
+        place_,
+        (batch_size_ * 2 * 2) * sizeof(uint64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_pair_num_ = memory::AllocShared(
+        place_,
+        sizeof(int),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  }
 
   d_slot_tensor_ptr_ =
       memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *));
   d_slot_lod_tensor_ptr_ =
       memory::AllocShared(place_, slot_num_ * sizeof(uint64_t *));
+
+  if (sage_mode_) {
+    reindex_table_size_ = batch_size_ * 2;
+    // get hashtable size
+    for (int i = 0; i < samples_.size(); i++) {
+      reindex_table_size_ *= (samples_[i] * edge_to_id_len_ + 1);
+    }
+    int64_t next_pow2 =
+        1 << static_cast<size_t>(1 + std::log2(reindex_table_size_ >> 1));
+    reindex_table_size_ = next_pow2 << 1;
+
+    d_reindex_table_key_ = memory::AllocShared(
+        place_,
+        reindex_table_size_ * sizeof(int64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_reindex_table_value_ = memory::AllocShared(
+        place_,
+        reindex_table_size_ * sizeof(int),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_reindex_table_index_ = memory::AllocShared(
+        place_,
+        reindex_table_size_ * sizeof(int),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    edge_type_graph_ =
+        gpu_graph_ptr->get_edge_type_graph(gpuid_, edge_to_id_len_);
+
+    d_sorted_keys_ = memory::AllocShared(
+        place_,
+        (batch_size_ * 2 * 2) * sizeof(uint64_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_sorted_idx_ = memory::AllocShared(
+        place_,
+        (batch_size_ * 2 * 2) * sizeof(uint32_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_offset_ = memory::AllocShared(
+        place_,
+        (batch_size_ * 2 * 2) * sizeof(uint32_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+    d_merged_cnts_ = memory::AllocShared(
+        place_,
+        (batch_size_ * 2 * 2) * sizeof(uint32_t),
+        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  }
 
   cudaStreamSynchronize(sample_stream_);
 
@@ -1538,12 +2355,17 @@ void GraphDataGenerator::AllocResource(int thread_id,
 void GraphDataGenerator::AllocTrainResource(int thread_id) {
   if (slot_num_ > 0) {
     platform::CUDADeviceGuard guard(gpuid_);
-    d_feature_size_list_buf_ = memory::AllocShared(
-        place_, (batch_size_ * 2)  * sizeof(uint32_t));
-    d_feature_size_prefixsum_buf_ = memory::AllocShared(
-        place_, (batch_size_ * 2 + 1)  * sizeof(uint32_t));
+    if (!sage_mode_) {
+      d_feature_size_list_buf_ = memory::AllocShared(
+          place_, (batch_size_ * 2)  * sizeof(uint32_t));
+      d_feature_size_prefixsum_buf_ = memory::AllocShared(
+          place_, (batch_size_ * 2 + 1)  * sizeof(uint32_t));
+    } else {
+      d_feature_size_list_buf_ = NULL;
+      d_feature_size_prefixsum_buf_ = NULL;
+    }
   }
-}                                       
+}
 
 void GraphDataGenerator::SetConfig(
     const paddle::framework::DataFeedDesc &data_feed_desc) {
@@ -1574,10 +2396,22 @@ void GraphDataGenerator::SetConfig(
           << ", infer_table_cap: " << infer_table_cap_;
   std::string first_node_type = graph_config.first_node_type();
   std::string meta_path = graph_config.meta_path();
+  sage_mode_ = graph_config.sage_mode();
+  std::string str_samples = graph_config.samples();
   auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
   debug_gpu_memory_info("init_conf start");
   gpu_graph_ptr->init_conf(first_node_type, meta_path);
   debug_gpu_memory_info("init_conf end");
+
+  auto edge_to_id = gpu_graph_ptr->edge_to_id;
+  edge_to_id_len_ = edge_to_id.size();
+  sage_batch_count_ = 0;
+  auto samples = paddle::string::split_string<std::string>(str_samples, ";");
+  for (size_t i = 0; i < samples.size(); i++) {
+    int sample_size = std::stoi(samples[i]);
+    samples_.emplace_back(sample_size);
+  }
+  copy_unique_len_ = 0;
 };
 
 }  // namespace framework
