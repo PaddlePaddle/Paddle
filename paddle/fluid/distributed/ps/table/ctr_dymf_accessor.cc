@@ -192,7 +192,8 @@ void CtrDymfAccessor::UpdateStatAfterSave(float* value, int param) {
 int32_t CtrDymfAccessor::Create(float** values, size_t num) {
   for (size_t value_item = 0; value_item < num; ++value_item) {
     float* value = values[value_item];
-    value[common_feature_value.UnseenDaysIndex()] = 0;
+    common_feature_value.UnseenDays(value) = 0;
+    common_feature_value.PassId(value) = 0;
     value[common_feature_value.DeltaScoreIndex()] = 0;
     value[common_feature_value.ShowIndex()] = 0;
     value[common_feature_value.ClickIndex()] = 0;
@@ -332,6 +333,9 @@ std::string CtrDymfAccessor::ParseToString(const float* v, int param) {
 
 int CtrDymfAccessor::ParseFromString(const std::string& str, float* value) {
   auto ret = paddle::string::str_to_float(str.data(), value);
+  float unseen_day = value[common_feature_value.UnseenDaysIndex()];
+  common_feature_value.UnseenDays(value) = (uint16_t)(unseen_day);
+  common_feature_value.PassId(value) = 0;
   CHECK(ret >= 7) << "expect more than 7 real:" << ret;
   return ret;
 }
@@ -340,7 +344,6 @@ bool CtrDymfAccessor::SaveMemCache(float* value,
                                    int param,
                                    double global_cache_threshold,
                                    uint16_t pass_id) {
-  auto base_threshold = _config.ctr_accessor_param().base_threshold();
   return common_feature_value.Show(value) > global_cache_threshold ||
          common_feature_value.PassId(value) >= pass_id;
 }
