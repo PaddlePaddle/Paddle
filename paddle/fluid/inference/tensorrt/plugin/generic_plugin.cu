@@ -322,10 +322,10 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
   } else if (op_desc_.Type() == "pad3d") {
-    return (in_out[0].type == nvinfer1::DataType::kFLOAT ||
+    return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
              in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-           (in_out[0].format == nvinfer1::TensorFormat::kLINEAR) &&
+           (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR) &&
            (in_out[0].type == in_out[pos].type);
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
