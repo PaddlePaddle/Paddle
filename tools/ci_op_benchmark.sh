@@ -39,10 +39,9 @@ function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  for sub_dir in "" "/elementwise" "/reduce_ops"
-  do
-    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
-  done
+  # the operators under paddle/fluid/operators directory
+  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
+  # the operators under paddle/phi/kernels directory
   for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
