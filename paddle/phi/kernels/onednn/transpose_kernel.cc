@@ -19,6 +19,53 @@
 
 namespace phi {
 
+static void SetInMemDescWithSqueeze2FuseSupport(
+    const std::vector<int> fused_squeeze2_axes,
+    DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const std::set<int64_t> squeeze2_axes_set(fused_squeeze2_axes.begin(),
+                                            fused_squeeze2_axes.end());
+  const std::vector<int64_t>& x_vec_dims = in_md.dims();
+  std::vector<int64_t> squeezed_op_tz(
+      x_vec_dims.size() - fused_squeeze2_axes.size(), 0);
+
+  int j = 0;
+  for (size_t i = 0; i < x_vec_dims.size(); ++i) {
+    if (squeeze2_axes_set.count(i) ||
+        squeeze2_axes_set.count(i - x_vec_dims.size())) {
+      PADDLE_ENFORCE_EQ(
+          x_vec_dims[i],
+          1,
+          errors::InvalidArgument(
+              "Squeeze2 input dim %d should be equal to one, but get %d.",
+              i,
+              x_vec_dims[i]));
+      continue;
+    }
+    squeezed_op_tz[j++] = x_vec_dims[i];
+  }
+
+  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  in->Resize(make_ddim(squeezed_op_tz));
+}
+
+void SetInMemDescWithLogicalLayoutFusesSupport(
+    const OneDNNContext& dev_ctx,
+    DenseTensor* in,
+    const dnnl::memory::desc& in_md) {
+  const auto fused_squeeze2_axes =
+      dev_ctx.HasDnnAttr("fused_squeeze2_axes")
+          ? PADDLE_GET_CONST(std::vector<int>,
+                             dev_ctx.GetDnnAttr("fused_squeeze2_axes"))
+          : std::vector<int>();
+  if (fused_squeeze2_axes.empty()) {
+    in->set_mem_desc(in_md);
+    in->Resize(make_ddim(in_md.dims()));
+  } else {
+    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes, in, in_md);
+  }
+}
+
 template <typename T, typename Context>
 void TransposeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
@@ -27,9 +74,9 @@ void TransposeKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_EQ(
       dev_ctx.GetPlace().GetType() == phi::AllocationType::CPU,
       true,
-      errors::PreconditionNotMet("Operator DNNL Transpose must use CPUPlace"));
+      errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
-  funcs::SetInMemDescWithLogicalLayoutFusesSupport(
+  SetInMemDescWithLogicalLayoutFusesSupport(
       dev_ctx, const_cast<DenseTensor*>(&x), x.mem_desc());
 
   if (axis.size() == 1) {
@@ -40,17 +87,15 @@ void TransposeKernel(const Context& dev_ctx,
 
   auto x_vec_dims = vectorize(x.dims());
   auto x_type = funcs::ToOneDNNDataType(x.dtype());
-  const auto& onednn_engine = dev_ctx.GetEngine();
   funcs::ReorderOneDNNHandler reorder_handler(
-      x_vec_dims, x.dtype(), x_type, onednn_engine);
-
+      x_vec_dims, x.dtype(), x_type, dev_ctx.GetEngine());
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
       x.mem_desc(), funcs::to_void_cast(x.data<T>()));
-
   auto dst_md =
       dnnl::memory::desc(x_vec_dims,
                          x.mem_desc().data_type(),
                          funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
+
   // a trick is used here to fake transpose of out_md, so later it will be
   // "untransposed", leaving output data in plain format tag
   std::vector<int64_t> fake_strides(axis.size());
@@ -60,14 +105,11 @@ void TransposeKernel(const Context& dev_ctx,
     fake_strides[axis[i]] = total_stride;
     total_stride *= dims[axis[i]];
   }
-
   dst_md =
       dnnl::memory::desc(x_vec_dims, x.mem_desc().data_type(), fake_strides);
-  auto dst_data = dev_ctx.Alloc(out, x.type());
-
+  auto dst_data = dev_ctx.template Alloc(out, x.type(), dst_md.get_size());
   auto reorder_dst_memory_p =
-      std::make_shared<dnnl::memory>(dst_md, onednn_engine, dst_data);
-
+      std::make_shared<dnnl::memory>(dst_md, dev_ctx.GetEngine(), dst_data);
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
 
