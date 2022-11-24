@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
 
 _FLOPS_COMPUTE_FUNC_MAP = {}
 
@@ -24,30 +23,24 @@ def prod(s):
     return p
 
 
-def flops(op_type: str, input_shapes: Union[tuple, dict], attrs) -> int:
+def flops(op_type: str, input_shapes: dict, attrs: dict) -> int:
     """
-    count flops for operation.
+    count FLOPs for operation.
 
     Args:
         op_type (str): the type of operation.
-        input_shapes (tuple|dict): the shapes of inputs.
+        input_shapes (dict): the shapes of inputs.
         attrs (dict): the attributes of the operation.
 
     Returns:
-        the total flops of the operation.
+        the total FLOPs of the operation.
     """
-
-    if isinstance(input_shapes, dict):
-        input_shapes_tmp = []
-        for k in sorted(input_shapes.keys()):
-            input_shapes_tmp += input_shapes[k]
-        input_shapes = input_shapes_tmp
 
     if op_type not in _FLOPS_COMPUTE_FUNC_MAP:
         return 0
     else:
         func = _FLOPS_COMPUTE_FUNC_MAP[op_type]
-        return func(input_shapes, **attrs)
+        return func(input_shapes, attrs)
 
 
 def register_flops(op_type):
@@ -64,10 +57,10 @@ def register_flops(op_type):
 
 
 @register_flops("dropout")
-def _dropout_flops(input_shapes, **attrs):
+def _dropout_flops(input_shapes, attrs):
     return 0
 
 
 @register_flops("relu")
-def _relu_flops(input_shapes, **attrs):
-    return prod(input_shapes[0])
+def _relu_flops(input_shapes, attrs):
+    return prod(input_shapes.get('X')[0])
