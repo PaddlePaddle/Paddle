@@ -1864,7 +1864,7 @@ def fast_decode(
                 layers.assign(pre_caches[i]["v"], caches[i]["v"])
             length_cond = layers.less_than(x=step_idx, y=max_len)
             finish_cond = paddle.logical_not(layers.is_empty(x=selected_ids))
-            layers.logical_and(x=length_cond, y=finish_cond, out=cond)
+            paddle.logical_and(x=length_cond, y=finish_cond, out=cond)
 
         finished_ids, finished_scores = layers.beam_search_decode(
             ids, scores, beam_size=beam_size, end_id=eos_idx
