@@ -79,8 +79,6 @@ __all__ = [
     'data_norm',
     'reduce_sum',
     'reduce_mean',
-    'reduce_max',
-    'reduce_min',
     'reduce_all',
     'reduce_any',
     'dropout',
@@ -112,18 +110,14 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'scatter',
     'random_crop',
-    'mean_iou',
     'relu',
     'log',
     'crop_tensor',
-    'brelu',
     'flatten',
     'pad2d',
     'unique',
     'unique_with_counts',
-    'expand',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -190,7 +184,7 @@ OP_NAMEMAPPING = {
 
 def _get_reduce_dim(dim, input):
     """
-    Internal function for reduce_sum, reduce_mean, reduce_max, reduce_min, reduce_prod.
+    Internal function for reduce_sum, reduce_mean, reduce_prod.
     It computes the attribute reduce_all value based on axis.
     """
     if dim is not None and not isinstance(dim, list):
@@ -2200,6 +2194,7 @@ def pool2d(
 
     pool_padding = update_padding(pool_padding, data_format)
     if in_dygraph_mode():
+        input = input._use_cudnn(use_cudnn)
         return _C_ops.pool2d(
             input,
             pool_size,
@@ -2212,7 +2207,6 @@ def pool2d(
             global_pooling,
             False,
             padding_algorithm,
-            use_cudnn,
         )
     op_type = 'pool2d'
     helper = LayerHelper(op_type, **locals())
@@ -3936,150 +3930,6 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     """
 
     return paddle.mean(x=input, axis=dim, keepdim=keep_dim, name=name)
-
-
-def reduce_max(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the maximum of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimension along which the maximum is computed.
-            If :attr:`None`, compute the maximum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, results of maximum on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_max(x)  # [0.9]
-            fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
-            fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
-            fluid.layers.reduce_max(x, dim=1, keep_dim=True)  # [[0.9], [0.7]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
-            fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
-    """
-    helper = LayerHelper('reduce_max', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        return _C_ops.max(input, dim if dim is not None else [], keep_dim)
-
-    helper.append_op(
-        type='reduce_max',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim is not None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
-
-
-def reduce_min(input, dim=None, keep_dim=False, name=None):
-    """
-
-    Computes the minimum of tensor elements over the given dimension.
-
-    Args:
-        input (Variable): The input variable which is a Tensor, the data type is float32,
-            float64, int32, int64.
-        dim (list|int, optional): The dimensions along which the minimum is computed.
-            If :attr:`None`, compute the minimum over all elements of
-            :attr:`input` and return a Tensor variable with a single element,
-            otherwise must be in the range :math:`[-rank(input), rank(input))`.
-            If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
-            output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true, default
-            value is False.
-        name(str, optional): The default value is None.  Normally there is no need for
-            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: Tensor, result of minimum on the specified dim of input tensor,
-        it's data type is the same as input's Tensor.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-
-            # x is a Tensor variable with following elements:
-            #    [[0.2, 0.3, 0.5, 0.9]
-            #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
-            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
-            fluid.layers.reduce_min(x)  # [0.1]
-            fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
-            fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
-            fluid.layers.reduce_min(x, dim=1, keep_dim=True)  # [[0.2], [0.1]]
-
-            # y is a Tensor variable with shape [2, 2, 2] and elements as below:
-            #      [[[1.0, 2.0], [3.0, 4.0]],
-            #      [[5.0, 6.0], [7.0, 8.0]]]
-            # Each example is followed by the corresponding output tensor.
-            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
-            fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
-            fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
-    """
-    helper = LayerHelper('reduce_min', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    if dim is not None and not isinstance(dim, list):
-        dim = [dim]
-
-    if in_dygraph_mode():
-        return _C_ops.min(input, dim if dim is not None else [], keep_dim)
-
-    helper.append_op(
-        type='reduce_min',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'dim': dim if dim is not None and dim != [] else [0],
-            'keep_dim': keep_dim,
-            'reduce_all': True
-            if dim is None or dim == [] or len(dim) == len(input.shape)
-            else False,
-        },
-    )
-    return out
 
 
 def reduce_all(input, dim=None, keep_dim=False, name=None):
@@ -7392,96 +7242,6 @@ def gather_nd(input, index, name=None):
     return output
 
 
-@deprecated(since="2.0.0", update_to="paddle.scatter")
-def scatter(input, index, updates, name=None, overwrite=True):
-    """
-    :alias_main: paddle.scatter
-        :alias: paddle.scatter,paddle.tensor.scatter,paddle.tensor.manipulation.scatter
-        :old_api: paddle.fluid.layers.scatter
-
-    **Scatter Layer**
-
-    Output is obtained by updating the input on selected indices based on updates.
-
-    .. code-block:: python
-
-        import numpy as np
-
-        #input:
-        input = np.array([[1, 1], [2, 2], [3, 3]])
-        index = np.array([2, 1, 0, 1])
-        # shape of updates should be the same as input
-        # shape of updates with dim > 1 should be the same as input
-        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
-        overwrite = False
-
-        # calculation:
-        if not overwrite:
-            for i in range(len(index)):
-                input[index[i]] = np.zeros((2))
-
-        for i in range(len(index)):
-            if (overwrite):
-                input[index[i]] = updates[i]
-            else:
-                input[index[i]] += updates[i]
-        # output:
-        out = np.array([[3, 3], [6, 6], [1, 1]])
-        out.shape # [3, 2]
-
-    Args:
-        input (Variable): The input N-D Tensor with rank>=1. Data type can be float32.
-        index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
-        updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
-        overwrite (bool): The mode that updating the output when there are same indices.
-            If True, use the overwrite mode to update the output of the same index,
-            if False, use the accumulate mode to update the output of the same index.
-            Default value is True.
-
-    Returns:
-        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[4, 2], dtype='float32', append_batch_size=False)
-
-            output = fluid.layers.scatter(input, index, updates, overwrite=False)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
-
-            in_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
-            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
-            update_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
-
-            res = exe.run(fluid.default_main_program(), feed={'data':in_data, "index":index_data, "update":update_data}, fetch_list=[output])
-            print(res)
-            # [array([[3., 3.],
-            #   [6., 6.],
-            #   [1., 1.]], dtype=float32)]
-    """
-    helper = LayerHelper('scatter', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="scatter",
-        inputs={"X": input, "Ids": index, "Updates": updates},
-        attrs={'overwrite': overwrite},
-        outputs={"Out": out},
-    )
-    return out
-
-
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -7623,73 +7383,6 @@ def relu(x, name=None):
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out}
     )
     return out
-
-
-def mean_iou(input, label, num_classes):
-    r"""
-    Mean Intersection-Over-Union is a common evaluation metric for
-    semantic image segmentation, which first computes the IOU for each
-    semantic class and then computes the average over classes.
-    IOU is defined as follows:
-
-    .. math::
-
-        IOU = \\frac{true\_positive}{(true\_positive + false\_positive + false\_negative)}.
-
-    The predictions are accumulated in a confusion matrix and mean-IOU
-    is then calculated from it.
-
-
-    Parameters:
-        input (Tensor): A n-D Tensor of prediction results for semantic labels with type int32 or int64.
-        label (Tensor): A Tensor of ground truth labels with type int32 or int64.
-                           Its shape should be the same as input.
-        num_classes (int32): The possible number of labels.
-
-    Returns:
-	Three Tensors.
-
-        - mean_iou(Tensor) : A 1-D Tensor representing the mean intersection-over-union with shape [1]. \
-			    Data type is float32.
-        - out_wrong(Tensor) : A 1-D Tensor with shape [num_classes]. Data type is int32. \
-			     The wrong numbers of each class.
-        - out_correct(Tensor): A 1-D  Tensor with shape [num_classes]. Data type is int32. The correct numbers of each class.
-
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle
-
-            iou_shape = [64, 32, 32]
-            num_classes = 5
-            predict = paddle.randint(low=0, high=255, shape=iou_shape, dtype='int64')
-            label = paddle.randint(low=0, high=255, shape=iou_shape, dtype='int64')
-            mean_iou, out_wrong, out_correct = paddle.metric.mean_iou(predict, label, num_classes)
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.mean_iou(input, label, 'num_classes', num_classes)
-
-    helper = LayerHelper('mean_iou', **locals())
-    check_variable_and_dtype(
-        input, 'Predictions', ['int32', 'int64'], 'mean_iou'
-    )
-    check_variable_and_dtype(label, 'Labels', ['int32', 'int64'], 'mean_iou')
-    out_mean_iou = helper.create_variable_for_type_inference(dtype='float32')
-    out_wrong = helper.create_variable_for_type_inference(dtype='int32')
-    out_correct = helper.create_variable_for_type_inference(dtype='int32')
-    helper.append_op(
-        type="mean_iou",
-        inputs={"Predictions": input, "Labels": label},
-        outputs={
-            "OutMeanIou": out_mean_iou,
-            "OutWrong": out_wrong,
-            "OutCorrect": out_correct,
-        },
-        attrs={"num_classes": num_classes},
-    )
-    return out_mean_iou, out_wrong, out_correct
 
 
 def crop_tensor(x, shape=None, offsets=None, name=None):
@@ -8030,52 +7723,6 @@ def pad2d(
     return out
 
 
-@templatedoc()
-def brelu(x, t_min=0.0, t_max=24.0, name=None):
-    """
-    ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        t_min(${t_min_type}|0.0): ${t_min_comment}
-        t_max(${t_max_type}|24.0): ${t_max_comment}
-        name(str|None): The default value is None. Normally there is no need for user to set this property.
-                        For more information, please refer to :ref:`api_guide_Name`.
-    Returns:
-        ${out_type}: ${out_comment}
-
-    Examples:
-
-    .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            import numpy as np
-            paddle.enable_static()
-
-            input_brelu = np.array([[-1,6],[1,15.6]])
-            with fluid.dygraph.guard():
-                x = fluid.dygraph.to_variable(input_brelu)
-                y = fluid.layers.brelu(x, t_min=1.0, t_max=10.0)
-                print(y.numpy())
-                #[[ 1.  6.]
-                #[ 1. 10.]]
-    """
-    if _non_static_mode():
-        return _legacy_C_ops.brelu(x, 't_min', t_min, 't_max', t_max)
-
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'brelu')
-
-    helper = LayerHelper('brelu', **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='brelu',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'t_min': t_min, 't_max': t_max},
-    )
-    return out
-
-
 def flatten(x, axis=1, name=None):
     r"""
     **Flatten op**
@@ -8164,128 +7811,6 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out, 'XShape': x_shape},
         attrs={"axis": axis},
-    )
-    return out
-
-
-@deprecated(since='2.0.0', update_to="paddle.expand")
-def expand(x, expand_times, name=None):
-    """
-    :alias_main: paddle.expand
-        :alias: paddle.expand,paddle.tensor.expand,paddle.tensor.manipulation.expand
-        :old_api: paddle.fluid.layers.expand
-
-    This operation tiles ``x`` multiple times according to the parameter ``expand_times``.
-    The times number for each dimension of ``x`` is set by the parameter ``expand_times``.
-    The rank of ``x`` should be less than or equal to 6. Please note that size of ``expand_times`` must be the same
-    with X's rank. Following is a using case:
-
-
-    .. code-block:: text
-
-        Input(X) is a 3-D tensor with shape [2, 3, 1]:
-
-                [
-                   [[1], [2], [3]],
-                   [[4], [5], [6]]
-                ]
-
-        Attr(expand_times):  [1, 2, 2]
-
-        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-
-                [
-                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
-                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
-                ]
-
-    Args:
-        x (Variable): A ``Tensor`` or ``LoDTensor`` with dimension in [1, 6]. The data type is ``bool``, ``float32``, ``float64`` or ``int32`` .
-        expand_times (list|tuple|Variable): The data type is ``int32`` . If ``expand_times`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``expand_times`` is an Variable, it should be an 1-D Tensor.
-                Expand times number for each dimension of ``x`` .
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: A ``Tensor`` or ``LoDTensor``. The data type is same as ``x``. After expanding, size of each dimension of output is equal to the size of the corresponding dimension of ``x`` multiplying the corresponding value given by ``expand_times`` .
-
-    Raises:
-        TypeError: The type of ``expand_times`` must be list, tuple or Variable.
-        ValueError: The elements of ``expand_times`` cannot be negative.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            # example 1:
-            data_1 = fluid.layers.fill_constant(shape=[2, 3, 1], dtype='int32', value=0)
-            expanded_1 = fluid.layers.expand(data_1, expand_times=[1, 2, 2])
-            # the shape of expanded_1 is [2, 6, 2].
-
-            # example 2:
-            data_2 = fluid.layers.fill_constant(shape=[12, 14], dtype="int32", value=3)
-            expand_times = fluid.layers.fill_constant(shape=[2], dtype="int32", value=4)
-            expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
-            # the shape of expanded_2 is [48, 56].
-    """
-    if _non_static_mode():
-        attrs = ()
-        expand_times_tensor = None
-        if isinstance(expand_times, (list, tuple)):
-            expand_times = [
-                item.numpy().item(0) if isinstance(item, Variable) else item
-                for item in expand_times
-            ]
-            attrs += ('expand_times', expand_times)
-        elif isinstance(expand_times, Variable):
-            expand_times_tensor = expand_times
-            expand_times_tensor.stop_gradient = True
-
-        return _legacy_C_ops.expand(x, expand_times_tensor, *attrs)
-
-    inputs = {"X": [x]}
-    attrs = {}
-    check_variable_and_dtype(
-        x,
-        'x',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'expand',
-    )
-    check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
-    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
-        raise ValueError(
-            "expand op bool date type must set the stop_gradient to be False"
-        )
-
-    helper = LayerHelper('expand', input=x, **locals())
-
-    def get_attr_expand_times(list_expand_times):
-        attrs_expand_times = []
-        for idx, times in enumerate(list_expand_times):
-            if isinstance(times, Variable):
-                attrs_expand_times.append(-1)
-            else:
-                attrs_expand_times.append(times)
-                assert (
-                    times > 0
-                ), "Each element given in expand_times must not be negative."
-        return attrs_expand_times
-
-    if isinstance(expand_times, Variable):
-        expand_times.stop_gradient = True
-        inputs['ExpandTimes'] = expand_times
-    elif isinstance(expand_times, (list, tuple)):
-        attrs['expand_times'] = get_attr_expand_times(expand_times)
-        if utils._contain_var(expand_times):
-            inputs['expand_times_tensor'] = utils._convert_to_tensor_list(
-                expand_times
-            )
-
-    dtype = helper.input_dtype(input_param_name='x')
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='expand', inputs=inputs, outputs={'Out': out}, attrs=attrs
     )
     return out
 
