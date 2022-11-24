@@ -78,7 +78,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         in_place=inplace,
                     )
                     if activation == 'leaky_relu':
-                        bn = fluid.layers.leaky_relu(bn, alpha)
+                        bn = paddle.nn.functional.leaky_relu(bn, alpha)
                     if activation == 'elu':
                         bn = paddle.nn.functional.elu(bn, alpha)
 

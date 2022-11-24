@@ -774,7 +774,7 @@ def detection_output(
         code_type='decode_center_size',
     )
     scores = nn.softmax(input=scores)
-    scores = nn.transpose(scores, perm=[0, 2, 1])
+    scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_variable_for_type_inference(
         dtype=decoded_box.dtype
@@ -2443,7 +2443,7 @@ def multi_box_head(
             stride=stride,
         )
 
-        mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
+        mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
         mbox_locs.append(mbox_loc_flatten)
 
@@ -2456,7 +2456,7 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
-        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
+        conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
         conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 

@@ -60,7 +60,7 @@ def dyfunc_with_if_else2(x, col=100):
     if paddle.mean(x).numpy()[0] > x.numpy()[row][col]:
         y = fluid.layers.relu(x)
     else:
-        x_pow = fluid.layers.pow(x, 2)
+        x_pow = paddle.pow(x, 2)
         y = paddle.tanh(x_pow)
     return y
 

@@ -19,6 +19,7 @@ import logging
 
 import paddle
 import paddle.fluid as fluid
+import paddle
 
 from ....log_helper import get_logger
 from .utils import (
@@ -74,7 +75,7 @@ class AdaRoundLoss:
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
             reg_term = fluid.layers.reduce_sum(
-                -fluid.layers.pow(paddle.abs(2 * h_v - 1), factor=beta) + 1
+                -paddle.pow(paddle.abs(2 * h_v - 1), beta) + 1
             )
 
             # calculate the rounding loss

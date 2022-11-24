@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
@@ -30,8 +32,8 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             data2 = fluid.data(
                 name="data2", shape=[8, 32, 128], dtype="float32"
             )
-            trans1 = fluid.layers.transpose(data1, perm=[0, 2, 1])
-            trans2 = fluid.layers.transpose(data2, perm=[0, 2, 1])
+            trans1 = paddle.transpose(data1, perm=[0, 2, 1])
+            trans2 = paddle.transpose(data2, perm=[0, 2, 1])
             flatt1 = fluid.layers.flatten(trans1)
             flatt2 = fluid.layers.flatten(trans2)
             concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
