@@ -37,12 +37,6 @@ struct FusedMultiTransformerEncoderPattern : public PatternBase {
 
   // Q, K, V path
   PATTERN_DECL_NODE(input0);
-  PATTERN_DECL_NODE(layer_norm);
-  PATTERN_DECL_NODE(layer_norm_scale);
-  PATTERN_DECL_NODE(layer_norm_bias);
-  PATTERN_DECL_NODE(layer_norm_mean);
-  PATTERN_DECL_NODE(layer_norm_variance);
-  PATTERN_DECL_NODE(layer_norm_out);
   PATTERN_DECL_NODE(matmul0);
   PATTERN_DECL_NODE(matmul1);
   PATTERN_DECL_NODE(matmul2);
@@ -73,6 +67,8 @@ struct FusedMultiTransformerEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(transpose2_0_out);
   PATTERN_DECL_NODE(transpose2_1_out);
   PATTERN_DECL_NODE(transpose2_2_out);
+  PATTERN_DECL_NODE(scale_q);
+  PATTERN_DECL_NODE(scale_q_out);
 
   // Q, K matmul
   PATTERN_DECL_NODE(matmul_qk);
@@ -98,29 +94,30 @@ struct FusedMultiTransformerEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(eltadd_linear);
   PATTERN_DECL_NODE(eltadd_linear_b);
   PATTERN_DECL_NODE(eltadd_linear_out);
+  PATTERN_DECL_NODE(dropout_linear);
+  PATTERN_DECL_NODE(dropout_linear_out);
 
   // output elementwise_add
   PATTERN_DECL_NODE(eltadd_out)
   PATTERN_DECL_NODE(attention_output);
 
-  // while loop
-  PATTERN_DECL_NODE(while0);
+  // post layer_norm
+  PATTERN_DECL_NODE(layer_norm);
+  PATTERN_DECL_NODE(layer_norm_scale);
+  PATTERN_DECL_NODE(layer_norm_bias);
+  PATTERN_DECL_NODE(layer_norm_mean);
+  PATTERN_DECL_NODE(layer_norm_variance);
+  PATTERN_DECL_NODE(layer_norm_out);
 
   // Feed Forward nodes
-  PATTERN_DECL_NODE(ffn_layer_norm);
-  PATTERN_DECL_NODE(ffn_layer_norm_scale);
-  PATTERN_DECL_NODE(ffn_layer_norm_bias);
-  PATTERN_DECL_NODE(ffn_layer_norm_mean);
-  PATTERN_DECL_NODE(ffn_layer_norm_variance);
-  PATTERN_DECL_NODE(ffn_layer_norm_out);
   PATTERN_DECL_NODE(ffn_matmul0);
   PATTERN_DECL_NODE(ffn_matmul0_w);
   PATTERN_DECL_NODE(ffn_matmul0_out);
   PATTERN_DECL_NODE(ffn_eltadd0);    // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_b);  // ELEMENTWISE_ADD
   PATTERN_DECL_NODE(ffn_eltadd0_out);
-  PATTERN_DECL_NODE(ffn_gelu);
-  PATTERN_DECL_NODE(ffn_gelu_out);
+  PATTERN_DECL_NODE(ffn_relu);
+  PATTERN_DECL_NODE(ffn_relu_out);
   PATTERN_DECL_NODE(ffn_matmul1);
   PATTERN_DECL_NODE(ffn_matmul1_w);
   PATTERN_DECL_NODE(ffn_matmul1_out);
@@ -131,6 +128,13 @@ struct FusedMultiTransformerEncoderPattern : public PatternBase {
   // output elementwise_add
   PATTERN_DECL_NODE(ffn_eltadd_out)
   PATTERN_DECL_NODE(ffn_output);
+
+  PATTERN_DECL_NODE(ffn_layer_norm);
+  PATTERN_DECL_NODE(ffn_layer_norm_scale);
+  PATTERN_DECL_NODE(ffn_layer_norm_bias);
+  PATTERN_DECL_NODE(ffn_layer_norm_mean);
+  PATTERN_DECL_NODE(ffn_layer_norm_variance);
+  PATTERN_DECL_NODE(ffn_layer_norm_out);
 };
 
 struct FusedMultiTransformerEncoderFuseQKVPattern : public PatternBase {
