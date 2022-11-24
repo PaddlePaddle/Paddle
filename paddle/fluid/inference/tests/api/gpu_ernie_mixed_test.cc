@@ -211,5 +211,84 @@ TEST(Ernie_gpu_fp16_with_ir, compare_results) {
   }
 }
 
+// Compare results
+TEST(Ernie_gpu_bf16_no_ir, compare_results) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_infer_model);
+  config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kBf16);
+  config.SwitchIrOptim(false);
+
+  auto predictor = CreatePaddlePredictor(config);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+
+  std::ifstream fin(FLAGS_refer_result);
+  std::string line;
+  std::vector<float> ref;
+
+  while (std::getline(fin, line)) {
+    Split(line, ' ', &ref);
+  }
+
+  std::vector<PaddleTensor> outputs;
+  for (size_t i = 0; i < input_slots_all.size(); i++) {
+    outputs.clear();
+    predictor->Run(input_slots_all[i], &outputs);
+
+    auto output = outputs.front();
+    size_t outputs_size = 1;
+    for (auto dim : output.shape) {
+      outputs_size *= dim;
+    }
+    float *result = reinterpret_cast<float *>(output.data.data());
+    for (size_t j = 0; j < outputs_size; ++j) {
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+    }
+  }
+}
+
+// Compare results
+TEST(Ernie_gpu_bf16_with_ir, compare_results) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_infer_model);
+  config.EnableUseGpu(512, 0, paddle_infer::PrecisionType::kBf16);
+  config.SwitchIrOptim(true);
+  // The fc_fuse_pass has diff, which will be repaired later.
+  config.pass_builder()->DeletePass("fc_fuse_pass");
+  // There is a problem with the model itself, which has nothing to do with
+  // constant_folding_pass.
+  config.pass_builder()->DeletePass("constant_folding_pass");
+
+  auto predictor = CreatePaddlePredictor(config);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  LoadInputData(&input_slots_all);
+
+  std::ifstream fin(FLAGS_refer_result);
+  std::string line;
+  std::vector<float> ref;
+
+  while (std::getline(fin, line)) {
+    Split(line, ' ', &ref);
+  }
+
+  std::vector<PaddleTensor> outputs;
+  for (size_t i = 0; i < input_slots_all.size(); i++) {
+    outputs.clear();
+    predictor->Run(input_slots_all[i], &outputs);
+
+    auto output = outputs.front();
+    size_t outputs_size = 1;
+    for (auto dim : output.shape) {
+      outputs_size *= dim;
+    }
+    float *result = reinterpret_cast<float *>(output.data.data());
+    for (size_t j = 0; j < outputs_size; ++j) {
+      EXPECT_NEAR(ref[i * outputs_size + j], result[j], 1e-2);
+    }
+  }
+}
+
 }  // namespace inference
 }  // namespace paddle

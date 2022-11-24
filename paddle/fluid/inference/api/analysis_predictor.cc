@@ -1261,19 +1261,20 @@ void AnalysisPredictor::PrepareArgument() {
   }
   if (!config_.ir_optim()) {
     argument_.SetEnableAnalysisOptim(false);
-    if (config_.enable_gpu_fp16_) {
+    if (config_.enable_gpu_mixed_) {
       argument_.SetEnableAnalysisOptim(true);
       std::vector<std::string>({"float_to_mixed_pass"}).swap(passes);
       if (config_.ir_debug_) {
         passes.push_back("graph_viz_pass");
       }
-      LOG(INFO) << "This model run in Paddle-GPU float16 mode with no ir "
-                   "optimization.";
+      LOG(INFO)
+          << "This model run in Paddle-GPU mixed precision mode with no ir "
+             "optimization.";
     } else {
       LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
     }
-  } else if (config_.enable_gpu_fp16_) {
-    LOG(INFO) << "This model run in Paddle-GPU float16 mode.";
+  } else if (config_.enable_gpu_mixed_) {
+    LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
   }
   argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
@@ -1283,7 +1284,7 @@ void AnalysisPredictor::PrepareArgument() {
   // mixed precison.
   argument_.SetModelPrecision(static_cast<int>(model_precision_));
   argument_.SetMixedBlackList(config_.mixed_black_list_);
-  argument_.SetEnableGPUFp16(config_.enable_gpu_fp16_);
+  argument_.SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_.SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
 }

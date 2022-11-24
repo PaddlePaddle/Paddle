@@ -203,8 +203,8 @@ void FloatToMixedPass::Init(Graph* graph) const {
 }
 
 void FloatToMixedPass::ApplyImpl(Graph* graph) const {
-  auto enable_gpu_fp16 = Get<bool>("enable_gpu_fp16");
-  if (!enable_gpu_fp16) return;
+  auto enable_gpu_mixed = Get<bool>("enable_gpu_mixed");
+  if (!enable_gpu_mixed) return;
 
   CHECK_NOTNULL(graph);
   CHECK_EQ(graph->IsMainGraph(), true);
