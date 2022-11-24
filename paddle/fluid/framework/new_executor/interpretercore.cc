@@ -311,6 +311,22 @@ void InterpreterCore::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
   execution_config_.skip_gc_vars = skip_gc_vars;
 }
 
+void InterpreterCore::SetJitInputVars(
+    const std::set<std::string>& jit_input_vars) {
+  PADDLE_ENFORCE_EQ(
+      execution_config_.jit_input_vars.empty(),
+      true,
+      platform::errors::PreconditionNotMet(
+          "execution_config_.jit_input_vars can only be initialized once, now "
+          "execution_config_.jit_input_vars is "
+          "not empty, do not call SetJitInputVars method repeatedly."));
+  execution_config_.jit_input_vars = jit_input_vars;
+}
+
+const std::set<std::string>& InterpreterCore::JitInputVars() const {
+  return execution_config_.jit_input_vars;
+}
+
 const VariableScope* InterpreterCore::GetVariableScope() const {
   return &var_scope_;
 }
@@ -502,6 +518,34 @@ void InterpreterCore::BuildOperatorDependences() {
 
     for (auto inst_id : op_list) {
       dependecy_count_[inst_id]++;
+    }
+  }
+
+  // add event for the input var of jit program, since there are async copied
+  // from gpu_pinned place to gpu place on compute stream.
+  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
+    if (dependecy_count_[i] == 0) {
+      auto& inst = vec_instruction_[i];
+      if (inst.Type() == interpreter::kMemcpyD2H) {
+        for (auto& item : next_instr.Inputs()) {
+          for (auto var_id : item.second) {
+            auto name = var_scope_.GetNameById(var_id);
+            if (JitInputVars().count(name)) {
+              auto& events = stream_analyzer_.EventMap();
+              if (events.count(var_id) == 0) {
+                auto device_event = std::make_shared<platform::DeviceEvent>(
+                    place, platform::GenerateDeviceEventFlag());
+                events.emplace(var_id, std::move(device_event));
+              }
+
+              // Add events for next_instr.inputs
+              inst->AddInputEvent(var_id, events.at(var_id), platform::kCPU);
+              VLOG(4) << "Add input event for input: " << name << " of "
+                      << inst.Type();
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -812,6 +856,20 @@ void InterpreterCore::ExecuteInstructionList(
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
+      // NOTE(zhiqiu): hot fix for jit input var
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto* default_dev_ctx = pool.Get(place);
+      if (inst.Type() == interpreter::kMemcpyD2H) {
+        for (auto& event : vec_instr.at(i).InputEvents()) {
+          platform::RecordEvent record(
+              "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
+          VLOG(3) << "Record event on default stream in jit_input_var: "
+                  << event.var_id_ << " "
+                  << var_scope_.GetNameById(event.var_id_);
+          event.event_->Record(dev_ctx);
+        }
+      }
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),
                                  [this, i] { RunInstructionAsync(i); });
     }

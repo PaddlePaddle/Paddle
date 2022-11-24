@@ -354,6 +354,11 @@ inline void RunProgramAPI(
       skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
       // update interpretercore skip_gc_var
       interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
+
+      std::set<std::string> input_vars;
+      input_vars.insert(input_names.begin(), input_names.end());
+      interpreter_core->SetJitInputVars(skip_eager_delete_vars);
+
       interpretercore_info_cache.UpdateSkipEagerDeleteVars(
           program_id, false, skip_eager_delete_vars);
       VLOG(2) << "Get skip GC vars size is: " << skip_eager_delete_vars.size();

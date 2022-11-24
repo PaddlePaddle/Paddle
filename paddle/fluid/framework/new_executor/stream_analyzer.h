@@ -39,6 +39,10 @@ class StreamAnalyzer {
 
   DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
+  std::map<size_t, std::shared_ptr<platform::DeviceEvent>>& EventMap() const {
+    return var_id2event_;
+  }
+
  private:
   std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
                                          const Instruction& next_instr);
