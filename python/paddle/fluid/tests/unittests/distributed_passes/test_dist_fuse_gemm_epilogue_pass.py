@@ -21,8 +21,8 @@ import unittest
 from dist_pass_test_base import DistPassTestBase
 
 paddle.enable_static()
-np.random.seed(2022)
 paddle.seed(2022)
+np.random.seed(2022)
 
 
 def verify_op_count(op_types, op_name, target_count):
