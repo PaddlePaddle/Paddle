@@ -16,6 +16,7 @@ import unittest
 import copy
 
 import paddle
+
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.operators.common import (
@@ -151,9 +152,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul
                 param1 = paddle.fluid.layers.create_parameter(
@@ -184,9 +183,7 @@ class TestDistOpCost(unittest.TestCase):
                 tmp_out = paddle.matmul(out1, tmp_param)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
@@ -262,9 +259,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # matmul_v2
                 param1 = paddle.fluid.layers.create_parameter(
@@ -296,9 +291,7 @@ class TestDistOpCost(unittest.TestCase):
                 tmp_out = paddle.matmul(out1, tmp_param)
                 out2 = paddle.matmul(tmp_out, param2)  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
@@ -373,9 +366,7 @@ class TestDistOpCost(unittest.TestCase):
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
                             ["x", None],
                         )
-                out = paddle.fluid.layers.transpose(
-                    out, [1, 0]
-                )  # [8, 2] [-1, 0]
+                out = paddle.transpose(out, [1, 0])  # [8, 2] [-1, 0]
 
                 # mul
                 param1 = paddle.fluid.layers.create_parameter(
@@ -410,9 +401,7 @@ class TestDistOpCost(unittest.TestCase):
                     tmp_out, param2
                 )  # [8, 4] [-1, 0]
 
-                out8 = paddle.fluid.layers.transpose(
-                    out2, [1, 0]
-                )  # [4, 8] [0, -1]
+                out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]

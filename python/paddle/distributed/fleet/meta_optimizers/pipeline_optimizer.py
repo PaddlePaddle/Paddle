@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-import paddle.fluid as fluid
+import paddle
 from paddle.fluid.optimizer import PipelineOptimizer as PO
 from .meta_optimizer_base import MetaOptimizerBase
 from .common import (
@@ -210,7 +210,7 @@ class PipelineOptimizer(MetaOptimizerBase):
         orig_startup_program = (
             startup_program
             if startup_program
-            else fluid.default_startup_program()
+            else paddle.static.default_startup_program()
         )
         block = loss.block
         program = block.program

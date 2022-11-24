@@ -22,6 +22,7 @@ from test_imperative_base import new_program_scope
 from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 from paddle.fluid import core
 import numpy as np
+import paddle.nn.functional as F
 
 np.set_printoptions(suppress=True)
 
@@ -479,15 +480,16 @@ class MultiHeadAttentionLayer(Layer):
         reshaped_q = paddle.reshape(
             x=q, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_q = fluid.layers.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
+
+        transpose_q = paddle.transpose(x=reshaped_q, perm=[0, 2, 1, 3])
         reshaped_k = paddle.reshape(
             x=k, shape=[0, 0, self._n_head, self._d_key]
         )
-        transpose_k = fluid.layers.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
+        transpose_k = paddle.transpose(x=reshaped_k, perm=[0, 2, 1, 3])
         reshaped_v = paddle.reshape(
             x=v, shape=[0, 0, self._n_head, self._d_value]
         )
-        transpose_v = fluid.layers.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
+        transpose_v = paddle.transpose(x=reshaped_v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
         product = paddle.matmul(
@@ -513,7 +515,7 @@ class MultiHeadAttentionLayer(Layer):
         # combine heads
         if len(out.shape) != 4:
             raise ValueError("Input(x) should be a 4-D Tensor.")
-        trans_x = fluid.layers.transpose(out, perm=[0, 2, 1, 3])
+        trans_x = paddle.transpose(out, perm=[0, 2, 1, 3])
         final_out = paddle.reshape(
             x=trans_x,
             shape=[0, 0, trans_x.shape[2] * trans_x.shape[3]],
@@ -1087,7 +1089,7 @@ class TransFormer(Layer):
         enc_output = self._wrap_encoder_layer(enc_inputs)
         predict = self._wrap_decoder_layer(dec_inputs, enc_output)
         if self._label_smooth_eps:
-            label_out = fluid.layers.label_smooth(
+            label_out = F.label_smooth(
                 label=fluid.layers.one_hot(
                     input=label, depth=self._trg_vocab_size
                 ),

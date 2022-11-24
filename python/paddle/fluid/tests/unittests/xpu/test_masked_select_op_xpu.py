@@ -58,6 +58,9 @@ class XPUTestMaskedSelectOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Y')
+
         def init(self):
             self.shape = (50, 3)
 

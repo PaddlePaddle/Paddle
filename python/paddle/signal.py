@@ -259,6 +259,7 @@ def stft(
     name=None,
 ):
     r"""
+
     Short-time Fourier transform (STFT).
 
     The STFT computes the discrete Fourier transforms (DFT) of short overlapping
@@ -271,9 +272,12 @@ def stft(
 
     Where:
     - :math:`t`: The :math:`t`-th input window.
+
     - :math:`\omega`: Frequency :math:`0 \leq \omega < \text{n\_fft}` for `onesided=False`,
-        or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`.
+      or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`.
+
     - :math:`N`: Value of `n_fft`.
+
     - :math:`H`: Value of `hop_length`.
 
     Args:
@@ -300,9 +304,9 @@ def stft(
             to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`(
-            real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
-            `onesided` is `False`)
+        The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`
+        (real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`
+        (`onesided` is `False`)
 
     Examples:
         .. code-block:: python
@@ -319,6 +323,7 @@ def stft(
             x = paddle.randn([8, 48000], dtype=paddle.float64) + \
                     paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
             y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
+
     """
     check_variable_and_dtype(
         x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'stft'

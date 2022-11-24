@@ -1,6 +1,10 @@
 # compatible utils used for fluid op system
 add_subdirectory(compat)
 
+if(WITH_GPU)
+  proto_library(external_error_proto SRCS external_error.proto)
+endif()
+
 cc_library(errors SRCS errors.cc)
 set(phi_enforce_deps errors flags)
 if(WITH_GPU)
