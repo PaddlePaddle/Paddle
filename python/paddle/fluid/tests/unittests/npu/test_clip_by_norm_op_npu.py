@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -57,7 +55,7 @@ class TestClipByNormOp(OpTest):
         self.check_output_with_place(self.place)
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1.0
 
     def init_dtype(self):
@@ -67,7 +65,7 @@ class TestClipByNormOp(OpTest):
 class TestCase1(TestClipByNormOp):
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 
@@ -97,7 +95,7 @@ class TestClipByNormOpFp16(TestClipByNormOp):
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 

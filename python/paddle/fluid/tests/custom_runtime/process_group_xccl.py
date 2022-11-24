@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
 import unittest
@@ -23,6 +24,14 @@ import shutil
 import paddle
 from paddle.fluid import core
 from datetime import timedelta
+=======
+import unittest
+import random
+import numpy as np
+
+import paddle
+from paddle.fluid import core
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.fluid.dygraph.parallel import ParallelEnv
@@ -33,16 +42,28 @@ def init_process_group(strategy=None):
     rank = ParallelEnv().local_rank
     is_master = True if rank == 0 else False
     store = paddle.fluid.core.TCPStore("127.0.0.1", 6173, is_master, nranks)
+<<<<<<< HEAD
     pg_group = core.ProcessGroupCustom(
         store, rank, nranks,
         paddle.CustomPlace(ParallelEnv().device_type,
                            ParallelEnv().device_id))
+=======
+    pg_group = core.ProcessGroupCustom.create(
+        store,
+        ParallelEnv().device_type,
+        rank,
+        nranks,
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     return pg_group
 
 
 class TestProcessGroupFp32(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         paddle.seed(2022)
         random.seed(2022)
@@ -55,8 +76,13 @@ class TestProcessGroupFp32(unittest.TestCase):
 
     def test_create_process_group_xccl(self):
         with _test_eager_guard():
+<<<<<<< HEAD
             paddle.set_device('custom_cpu:%d' %
                               paddle.distributed.ParallelEnv().dev_id)
+=======
+            device_id = paddle.distributed.ParallelEnv().dev_id
+            paddle.set_device('custom_cpu:%d' % device_id)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             pg = init_process_group()
 
@@ -67,11 +93,19 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             sum_result = tensor_x + tensor_y
             if pg.rank() == 0:
+<<<<<<< HEAD
                 task = pg.allreduce(tensor_x)
                 task.wait()
                 # assert np.array_equal(tensor_x, sum_result)
             else:
                 task = pg.allreduce(tensor_y)
+=======
+                task = pg.all_reduce(tensor_x, core.ReduceOp.SUM, sync_op=True)
+                task.wait()
+                # assert np.array_equal(tensor_x, sum_result)
+            else:
+                task = pg.all_reduce(tensor_y, core.ReduceOp.SUM, sync_op=True)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 task.wait()
                 # assert np.array_equal(tensor_y, sum_result)
 
@@ -85,11 +119,19 @@ class TestProcessGroupFp32(unittest.TestCase):
             max_result = paddle.maximum(tensor_x, tensor_y)
 
             if pg.rank() == 0:
+<<<<<<< HEAD
                 task = pg.allreduce(tensor_x, core.ReduceOp.MAX)
                 task.wait()
                 # assert np.array_equal(tensor_x, max_result)
             else:
                 task = pg.allreduce(tensor_y, core.ReduceOp.MAX)
+=======
+                task = pg.all_reduce(tensor_x, core.ReduceOp.MAX, sync_op=True)
+                task.wait()
+                # assert np.array_equal(tensor_x, max_result)
+            else:
+                task = pg.all_reduce(tensor_y, core.ReduceOp.MAX, sync_op=True)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 task.wait()
                 # assert np.array_equal(tensor_y, max_result)
 
@@ -105,14 +147,24 @@ class TestProcessGroupFp32(unittest.TestCase):
 
             broadcast_result = paddle.assign(tensor_x)
             if pg.rank() == 0:
+<<<<<<< HEAD
                 task = pg.broadcast(tensor_x, 0)
                 task.synchronize()
+=======
+                task = pg.broadcast(tensor_x, 0, sync_op=True)
+                task.wait()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
                 assert task.is_completed()
                 # assert np.array_equal(broadcast_result, tensor_x)
             else:
+<<<<<<< HEAD
                 task = pg.broadcast(tensor_y, 0)
                 task.synchronize()
+=======
+                task = pg.broadcast(tensor_y, 0, sync_op=True)
+                task.wait()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
                 assert task.is_completed()
                 # assert np.array_equal(broadcast_result, tensor_y)
@@ -122,11 +174,19 @@ class TestProcessGroupFp32(unittest.TestCase):
             # test barrier
             # rank 0
             if pg.rank() == 0:
+<<<<<<< HEAD
                 task = pg.barrier()
                 task.wait()
             # rank 1
             else:
                 task = pg.barrier()
+=======
+                task = pg.barrier(device_id)
+                task.wait()
+            # rank 1
+            else:
+                task = pg.barrier(device_id)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 task.wait()
 
             print("test barrier api ok\n")
@@ -143,17 +203,31 @@ class TestProcessGroupFp32(unittest.TestCase):
             out = np.random.random(out_shape).astype(self.dtype)
             tensor_out = paddle.to_tensor(out)
             if pg.rank() == 0:
+<<<<<<< HEAD
                 task = pg.all_gather(tensor_x, tensor_out)
+=======
+                task = pg.all_gather(tensor_out, tensor_x, sync_op=True)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
             # rank 1
             else:
+<<<<<<< HEAD
                 task = pg.all_gather(tensor_y, tensor_out)
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
             out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
             out_2 = paddle.slice(tensor_out, [0], [out_shape[0] // 2],
                                  [out_shape[0]])
+=======
+                task = pg.all_gather(tensor_out, tensor_y, sync_op=True)
+                task.wait()
+                # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+            out_1 = paddle.slice(tensor_out, [0], [0], [out_shape[0] // 2])
+            out_2 = paddle.slice(
+                tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             # assert np.array_equal(tensor_x, out_1)
             # assert np.array_equal(tensor_y, out_2)
             print("test allgather api ok\n")
@@ -168,10 +242,19 @@ class TestProcessGroupFp32(unittest.TestCase):
             tensor_y = paddle.to_tensor(y)
             tensor_out1 = paddle.to_tensor(out1)
             tensor_out2 = paddle.to_tensor(out2)
+<<<<<<< HEAD
             raw_tensor_x_2 = paddle.slice(tensor_x, [0], [self.shape[0] // 2],
                                           [self.shape[0]])
             raw_tensor_y_1 = paddle.slice(tensor_y, [0], [0],
                                           [self.shape[0] // 2])
+=======
+            raw_tensor_x_2 = paddle.slice(
+                tensor_x, [0], [self.shape[0] // 2], [self.shape[0]]
+            )
+            raw_tensor_y_1 = paddle.slice(
+                tensor_y, [0], [0], [self.shape[0] // 2]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if pg.rank() == 0:
                 task = pg.alltoall(tensor_x, tensor_out1)
                 task.wait()
@@ -181,8 +264,14 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task = pg.alltoall(tensor_y, tensor_out2)
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
+<<<<<<< HEAD
             out1_2 = paddle.slice(tensor_out1, [0], [self.shape[0] // 2],
                                   [self.shape[0]])
+=======
+            out1_2 = paddle.slice(
+                tensor_out1, [0], [self.shape[0] // 2], [self.shape[0]]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out2_1 = paddle.slice(tensor_out2, [0], [0], [self.shape[0] // 2])
             # if pg.rank() == 0:
             #     assert np.array_equal(out1_2.numpy(), raw_tensor_y_1.numpy())
@@ -228,8 +317,14 @@ class TestProcessGroupFp32(unittest.TestCase):
                 task.wait()
                 # paddle.fluid.core._custom_device_synchronize("custom_cpu", -1)
             out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
+<<<<<<< HEAD
             out2 = paddle.slice(tensor_x, [0], [self.shape[0]],
                                 [self.shape[0] * 2])
+=======
+            out2 = paddle.slice(
+                tensor_x, [0], [self.shape[0]], [self.shape[0] * 2]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             # if pg.rank() == 0:
             #     assert np.array_equal(tensor_y, out1)
             # else:

@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import unittest
 
 import paddle
 import numpy as np
 import paddle.distributed as dist
+<<<<<<< HEAD
 from paddle.fluid.dygraph.nn import Linear
 from paddle.autograd import PyLayer
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
 from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+=======
+from paddle.autograd import PyLayer
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    fused_allreduce_gradients,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 batch = 5
 in_dim = 20
@@ -31,7 +35,10 @@ out_dim = 10
 
 
 class cus_tanh(PyLayer):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     @staticmethod
     def forward(ctx, x):
         y = paddle.tanh(x)
@@ -40,7 +47,11 @@ class cus_tanh(PyLayer):
 
     @staticmethod
     def backward(ctx, dy):
+<<<<<<< HEAD
         y, = ctx.saved_tensor()
+=======
+        (y,) = ctx.saved_tensor()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         grad = dy * (1 - paddle.square(y))
         return grad
 
@@ -48,7 +59,7 @@ class cus_tanh(PyLayer):
 class SimpleNet(paddle.nn.Layer):
 
     def __init__(self, train_id, model_id):
-        super(SimpleNet, self).__init__()
+        super().__init__()
         self.w = self.create_parameter(shape=[in_dim, batch], dtype="float32")
         self.linear = paddle.nn.Linear(in_dim, out_dim)
         self.tanh = paddle.tanh

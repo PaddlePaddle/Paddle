@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
@@ -55,8 +53,14 @@ class TestMLUCumSumOp2(TestMLUCumSumOp):
         self.attrs = {'axis': -1, 'reverse': True}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.flip(np.flip(self.inputs['X'], axis=2).cumsum(axis=2),
                            axis=2)
+=======
+            'Out': np.flip(
+                np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -97,10 +101,20 @@ class TestNPUCumSumExclusive1(TestMLUCumSumOp):
         a = np.random.random((4, 5, 65)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -111,10 +125,20 @@ class TestNPUCumSumExclusive2(TestMLUCumSumOp):
         a = np.random.random((1, 1, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -125,10 +149,20 @@ class TestNPUCumSumExclusive3(TestMLUCumSumOp):
         a = np.random.random((4, 5, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -139,10 +173,20 @@ class TestNPUCumSumExclusive4(TestMLUCumSumOp):
         a = np.random.random((1, 1, 3049)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -153,10 +197,20 @@ class TestNPUCumSumExclusive5(TestMLUCumSumOp):
         a = np.random.random((4, 5, 3096)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -168,11 +222,21 @@ class TestNPUCumSumReverseExclusive(TestMLUCumSumOp):
         self.inputs = {'X': a}
         a = np.flip(a, axis=2)
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate(
                 (np.flip(a[:, :, :-1].cumsum(axis=2),
                          axis=2), np.zeros((4, 5, 1), dtype=self.dtype)),
                 axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 

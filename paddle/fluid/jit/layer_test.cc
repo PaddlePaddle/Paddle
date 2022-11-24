@@ -14,6 +14,10 @@
 
 #include <cmath>
 #include <string>
+<<<<<<< HEAD
+=======
+#include <vector>
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 #include "gtest/gtest.h"
 
@@ -25,6 +29,10 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/jit/function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/jit/function_utils.h"
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/serializer.h"
@@ -36,6 +44,10 @@ USE_OP_ITSELF(reduce_mean);
 USE_OP_ITSELF(feed);
 USE_OP_ITSELF(fetch);
 USE_OP_ITSELF(scale);
+<<<<<<< HEAD
+=======
+USE_OP_ITSELF(transfer_layout);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
@@ -67,18 +79,59 @@ std::vector<Tensor> PrepareInputs(const phi::Place& place) {
   return utils::ToTensors({t});
 }
 
+<<<<<<< HEAD
+=======
+TEST(CpuLayerTest, Function) {
+  auto func_null = Function();
+  EXPECT_TRUE(!func_null.IsValid());
+}
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 TEST(CpuLayerTest, Construct) {
   auto place = phi::CPUPlace();
   std::string path = "./multi_program_load/export";
   auto layer = jit::Load(path, place);
+<<<<<<< HEAD
   auto inputs = PrepareInputs(place);
 
+=======
+
+  float fbias = layer.Attribute<float>("fbias");
+  EXPECT_FLOAT_EQ(fbias, 1.4);
+
+  int ds = layer.Attribute<int>("down_sampling");
+  EXPECT_EQ(ds, 4);
+
+  std::string fstr = layer.Attribute<std::string>("fstr");
+  EXPECT_STREQ(fstr.c_str(), "save str property");
+
+  std::vector<int> ints = layer.Attribute<std::vector<int>>("ints");
+  EXPECT_EQ(ints[0], 10);
+  EXPECT_EQ(ints[1], 20);
+
+  std::vector<float> floats = layer.Attribute<std::vector<float>>("floats");
+  EXPECT_FLOAT_EQ(floats[0], 1.1);
+  EXPECT_FLOAT_EQ(floats[1], 2.2);
+
+  std::vector<std::string> strs =
+      layer.Attribute<std::vector<std::string>>("strs");
+  EXPECT_STREQ(strs[0].c_str(), "hello");
+  EXPECT_STREQ(strs[1].c_str(), "world");
+
+  // functions
+  auto inputs = PrepareInputs(place);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto outs = layer.forward(inputs);
   auto out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
+<<<<<<< HEAD
   outs = (*func)(inputs);
+=======
+  EXPECT_TRUE(func.IsValid());
+  outs = func(inputs);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   out_data = outs[0].data<float>();
   EXPECT_NEAR(out_data[0], 1.41562390, 1e-6);
   auto pow_out =
@@ -103,7 +156,12 @@ TEST(GpuLayerTest, Construct) {
   EXPECT_NEAR(out_data[0], 0.02194316, 1e-6);
 
   auto func = layer.Function("infer");
+<<<<<<< HEAD
   outs = (*func)(inputs);
+=======
+  EXPECT_TRUE(func.IsValid());
+  outs = func(inputs);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   gpu_tensor = outs[0];
   cpu_tensor = paddle::experimental::copy_to(gpu_tensor, phi::CPUPlace(), true);
   out_data = cpu_tensor.data<float>();

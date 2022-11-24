@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -84,6 +82,7 @@ class TestRank3(TestWhereIndexOp):
 
     def init_config(self):
         self.inputs = {
+<<<<<<< HEAD
             'Condition':
             np.array([[[True, False], [False, True]],
                       [[False, True], [True, False]],
@@ -94,6 +93,22 @@ class TestRank3(TestWhereIndexOp):
             'Out':
             np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                      dtype='int64')
+=======
+            'Condition': np.array(
+                [
+                    [[True, False], [False, True]],
+                    [[False, True], [True, False]],
+                    [[False, False], [False, True]],
+                ]
+            ),
+        }
+
+        self.outputs = {
+            'Out': np.array(
+                [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                dtype='int64',
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 

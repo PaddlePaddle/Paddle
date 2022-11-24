@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import math
 import time
 import unittest
 
@@ -22,15 +19,15 @@ import numpy as np
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph import declarative, ProgramTranslator
-from paddle.fluid.dygraph.nn import BatchNorm, Conv2D, Linear, Pool2D
+from paddle.fluid.dygraph import ProgramTranslator
 from test_resnet import ResNet, optimizer_setting, SEED
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
-    else fluid.CPUPlace()
+place = (
+    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+)
 
 program_translator = ProgramTranslator()
 
@@ -62,10 +59,20 @@ def train(to_static, build_strategy=None):
             for batch_id in range(100):
                 start_time = time.time()
                 img = paddle.to_tensor(
+<<<<<<< HEAD
                     np.random.random([batch_size, 3, 224,
                                       224]).astype('float32'))
                 label = paddle.to_tensor(
                     np.random.randint(0, 100, [batch_size, 1], dtype='int64'))
+=======
+                    np.random.random([batch_size, 3, 224, 224]).astype(
+                        'float32'
+                    )
+                )
+                label = paddle.to_tensor(
+                    np.random.randint(0, 100, [batch_size, 1], dtype='int64')
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 img.stop_gradient = True
                 label.stop_gradient = True
 
@@ -91,9 +98,17 @@ def train(to_static, build_strategy=None):
 
                 end_time = time.time()
                 if batch_id % 2 == 0:
-                    print( "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f" % \
-                        ( epoch, batch_id, total_loss.numpy() / total_sample, \
-                            total_acc1.numpy() / total_sample, total_acc5.numpy() / total_sample, end_time-start_time))
+                    print(
+                        "epoch %d | batch step %d, loss %0.3f, acc1 %0.3f, acc5 %0.3f, time %f"
+                        % (
+                            epoch,
+                            batch_id,
+                            total_loss.numpy() / total_sample,
+                            total_acc1.numpy() / total_sample,
+                            total_acc5.numpy() / total_sample,
+                            end_time - start_time,
+                        )
+                    )
                 if batch_id == 10:
                     break
 
@@ -109,9 +124,20 @@ class TestResnet(unittest.TestCase):
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(static_loss, dygraph_loss),
                         msg="static_loss: {} \n dygraph_loss: {}".format(
                             static_loss, dygraph_loss))
+=======
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
+                static_loss, dygraph_loss
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

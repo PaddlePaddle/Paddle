@@ -36,8 +36,15 @@ class TestBase(unittest.TestCase):
 
         place = fluid.CUDAPlace(0)
         t = fluid.LoDTensor()
+<<<<<<< HEAD
         t.set(np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
               place)
+=======
+        t.set(
+            np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
+            place,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         del t
 
         t = fluid.LoDTensor()

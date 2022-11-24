@@ -2,6 +2,7 @@ add_subdirectory(garbage_collector)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
 
+<<<<<<< HEAD
 set(STANDALONE_EXECUTOR_SRCS
     data_transfer.cc
     new_executor_defs.cc
@@ -47,6 +48,13 @@ if(WITH_GPU OR WITH_ROCM)
   set(STANDALONE_EXECUTOR_DEPS ${STANDALONE_EXECUTOR_DEPS}
                                interpretercore_fast_garbage_collector)
 endif()
+=======
+set(STANDALONE_EXECUTOR_SRCS interpretercore.cc new_executor_defs.cc
+                             stream_analyzer.cc standalone_executor.cc)
+
+set(STANDALONE_EXECUTOR_DEPS interpreter interpretercore_garbage_collector
+                             workqueue)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 cc_library(
   standalone_executor
@@ -64,11 +72,19 @@ if(WITH_GPU
    AND NOT WIN32)
   add_custom_target(
     download_program
+<<<<<<< HEAD
     COMMAND wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
             --no-check-certificate
     COMMAND
       wget -nc https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
       --no-check-certificate)
+=======
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_main_program
+    COMMAND wget -nc --no-check-certificate
+            https://paddle-ci.gz.bcebos.com/new_exec/lm_startup_program
+    WORKING_DIRECTORY "${CC_TESTS_DIR}")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   # all operators used in the program
   set(OPS
@@ -95,6 +111,7 @@ if(WITH_GPU
       memcpy_h2d_op
       memcpy_d2h_op
       fetch_v2_op)
+<<<<<<< HEAD
 
   # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
   set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper
@@ -111,4 +128,17 @@ if(WITH_GPU
     target_link_libraries(standalone_executor_test profiler)
     add_dependencies(standalone_executor_test profiler)
   endif()
+=======
+
+  # All deps of the operators above, part of GLOB_OPERATOR_DEPS.
+  set(OP_DEPS generator softmax selected_rows_functor jit_kernel_helper
+              concat_and_split cross_entropy)
+  cc_test(standalone_executor_test SRCS standalone_executor_test.cc)
+
+  # add_dependencies(standalone_executor_test download_program)
+  # if(WITH_PROFILER)
+  #   target_link_libraries(standalone_executor_test profiler)
+  #   add_dependencies(standalone_executor_test profiler)
+  # endif()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()

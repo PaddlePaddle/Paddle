@@ -31,7 +31,7 @@ bidirectional_list = ["bidirectional", "bidirect"]
 class TestSimpleRNN(unittest.TestCase):
 
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestSimpleRNN, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
@@ -42,6 +42,7 @@ class TestSimpleRNN(unittest.TestCase):
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
+<<<<<<< HEAD
         rnn1 = SimpleRNN(16,
                          32,
                          2,
@@ -52,6 +53,14 @@ class TestSimpleRNN(unittest.TestCase):
                                    2,
                                    time_major=self.time_major,
                                    direction=self.direction)
+=======
+        rnn1 = SimpleRNN(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        rnn2 = paddle.nn.SimpleRNN(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         convert_params_for_net(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -119,7 +128,7 @@ class TestSimpleRNN(unittest.TestCase):
 class TestGRU(unittest.TestCase):
 
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestGRU, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
@@ -130,16 +139,12 @@ class TestGRU(unittest.TestCase):
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
-        rnn1 = GRU(16,
-                   32,
-                   2,
-                   time_major=self.time_major,
-                   direction=self.direction)
-        rnn2 = paddle.nn.GRU(16,
-                             32,
-                             2,
-                             time_major=self.time_major,
-                             direction=self.direction)
+        rnn1 = GRU(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        rnn2 = paddle.nn.GRU(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
         convert_params_for_net(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -207,7 +212,7 @@ class TestGRU(unittest.TestCase):
 class TestLSTM(unittest.TestCase):
 
     def __init__(self, time_major=True, direction="forward", place="cpu"):
-        super(TestLSTM, self).__init__("runTest")
+        super().__init__("runTest")
         self.time_major = time_major
         self.direction = direction
         self.num_directions = 2 if direction in bidirectional_list else 1
@@ -218,6 +223,7 @@ class TestLSTM(unittest.TestCase):
         # `__init__` to avoid using an error device set by another test case.
         place = paddle.set_device(self.place)
         paddle.disable_static(place)
+<<<<<<< HEAD
         rnn1 = LSTM(16,
                     32,
                     2,
@@ -228,6 +234,14 @@ class TestLSTM(unittest.TestCase):
                               2,
                               time_major=self.time_major,
                               direction=self.direction)
+=======
+        rnn1 = LSTM(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+        rnn2 = paddle.nn.LSTM(
+            16, 32, 2, time_major=self.time_major, direction=self.direction
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         convert_params_for_net(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -244,9 +258,16 @@ class TestLSTM(unittest.TestCase):
         prev_c = np.random.randn(2 * self.num_directions, 4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
+<<<<<<< HEAD
         y2, (h2,
              c2) = rnn2(paddle.to_tensor(x),
                         (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
+=======
+        y2, (h2, c2) = rnn2(
+            paddle.to_tensor(x),
+            (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
@@ -307,12 +328,10 @@ def predict_test_util(place, mode, stop_gradient=True):
     class Net(paddle.nn.Layer):
 
         def __init__(self):
-            super(Net, self).__init__()
-            self.rnn = getattr(paddle.nn, mode)(16,
-                                                32,
-                                                2,
-                                                direction="bidirectional",
-                                                dropout=0.1)
+            super().__init__()
+            self.rnn = getattr(paddle.nn, mode)(
+                16, 32, 2, direction="bidirectional", dropout=0.1
+            )
 
         def forward(self, input):
             return self.rnn(input)
@@ -327,8 +346,14 @@ def predict_test_util(place, mode, stop_gradient=True):
     y = y * mask
     loss = paddle.mean(y)
     loss.backward()
+<<<<<<< HEAD
     optimizer = paddle.optimizer.Adam(learning_rate=0.1,
                                       parameters=rnn.parameters())
+=======
+    optimizer = paddle.optimizer.Adam(
+        learning_rate=0.1, parameters=rnn.parameters()
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     optimizer.step()
     rnn.eval()
     y, _ = rnn(x)
@@ -337,7 +362,12 @@ def predict_test_util(place, mode, stop_gradient=True):
     rnn.train()
 
     rnn = paddle.jit.to_static(
+<<<<<<< HEAD
         rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)])
+=======
+        rnn, [paddle.static.InputSpec(shape=[None, None, 16], dtype=x.dtype)]
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(temp_dir.name, "./inference/%s_infer" % mode)
 
@@ -348,13 +378,27 @@ def predict_test_util(place, mode, stop_gradient=True):
     new_scope = paddle.static.Scope()
     with paddle.static.scope_guard(new_scope):
         exe = paddle.static.Executor(place)
+<<<<<<< HEAD
         [inference_program, feed_target_names,
          fetch_targets] = paddle.static.load_inference_model(save_dirname, exe)
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: x.numpy()},
                           fetch_list=fetch_targets)
+=======
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(save_dirname, exe)
+        results = exe.run(
+            inference_program,
+            feed={feed_target_names[0]: x.numpy()},
+            fetch_list=fetch_targets,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         np.testing.assert_equal(
-            y.numpy(), results[0])  # eval results equal predict results
+            y.numpy(), results[0]
+        )  # eval results equal predict results
     paddle.disable_static()
 
     temp_dir.cleanup()
@@ -362,8 +406,9 @@ def predict_test_util(place, mode, stop_gradient=True):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
-        else ["cpu"]
+    devices = (
+        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
+    )
     for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:

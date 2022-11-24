@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -38,22 +36,28 @@ class TestLookupTableV2(OpTest):
         self.init_padding_idx()
         np.random.seed(SEED)
         w = np.random.random([self.vocab, self.dim]).astype(self.dtype)
+<<<<<<< HEAD
         x = np.random.randint(0, self.vocab,
                               size=(self.bsz,
                                     self.seqlen)).astype(self.ids_dtype)
+=======
+        x = np.random.randint(
+            0, self.vocab, size=(self.bsz, self.seqlen)
+        ).astype(self.ids_dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = w[x]
         if self.padding_idx != -1:
             out[np.squeeze(x == self.padding_idx)] = np.zeros(self.dim)
 
         self.inputs = {
             'W': OpTest.np_dtype_to_fluid_dtype(w),
-            'Ids': OpTest.np_dtype_to_fluid_dtype(x)
+            'Ids': OpTest.np_dtype_to_fluid_dtype(x),
         }
         self.attrs = {
             'is_sparse': False,
             'is_distributed': False,
             'remote_prefetch': False,
-            'padding_idx': self.padding_idx
+            'padding_idx': self.padding_idx,
         }
         self.outputs = {'Out': out}
 
@@ -80,9 +84,15 @@ class TestLookupTableV2(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['W'],
                                        'Out',
                                        max_relative_error=0.01)
+=======
+            self.check_grad_with_place(
+                self.place, ['W'], 'Out', max_relative_error=0.01
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(self.place, ['W'], 'Out')
 

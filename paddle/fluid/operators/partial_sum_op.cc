@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class PartialSumOp : public framework::OperatorWithKernel {
  public:
@@ -94,7 +94,7 @@ class PartialSumOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto inputs = ctx.MultiInput<phi::DenseTensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
     for (auto *input : inputs) {
@@ -155,20 +155,15 @@ class PartialSumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "Input tensors of partial_sum operator.").AsDuplicable();
     AddOutput("Out", "Output tensor of partial_sum operator.");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int>("start_index", "The start index of tensor wanted to be added.")
         .SetDefault(0);
     AddAttr<int>("length", "The length of tensor wanted to be added.")
         .SetDefault(-1);
     AddComment(R"DOC(
 PartialSum Operator.
-This Op can sum the vars by specifying the initial position(start_index) and length(length). 
+This Op can sum the vars by specifying the initial position(start_index) and length(length).
 This OP exists in contrib, which means that it is not shown to the public.
-Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be 
+Only 2-D Tensor or LodTensor input is supported. Slice and concat can only be
 performed along the second dimension.
 
 Examples:

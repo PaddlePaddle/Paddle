@@ -48,7 +48,11 @@ namespace reader = operators::reader;
 // Check whether the tensor shape matches the VarDesc shape
 // Return the different shape if exists
 static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+<<<<<<< HEAD
     const framework::LoDTensor &tensor,
+=======
+    const phi::DenseTensor &tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const framework::VarDesc &var_desc,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
@@ -117,8 +121,8 @@ template <typename QueueType>
 class MultiDeviceFeedReader {
  public:
   using ResultDictList =
-      std::vector<std::unordered_map<std::string, framework::LoDTensor>>;
-  using ResultList = std::vector<std::vector<framework::LoDTensor>>;
+      std::vector<std::unordered_map<std::string, phi::DenseTensor>>;
+  using ResultList = std::vector<paddle::framework::LoDTensorArray>;
 
   static constexpr bool kKeepOrder =
       std::is_same<QueueType,
@@ -332,7 +336,7 @@ class MultiDeviceFeedReader {
   std::vector<std::future<Status>> futures_;
   std::vector<std::exception_ptr> exceptions_;
 
-  std::vector<std::vector<framework::LoDTensor>> ret_;
+  std::vector<paddle::framework::LoDTensorArray> ret_;
   bool drop_last_;
   bool pin_memory_;
 };
@@ -356,7 +360,11 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
             auto &tensor_list = result_list[0];
             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
             var_list.reserve(tensor_list.size());
+<<<<<<< HEAD
             auto func = [](framework::LoDTensor &lod_tensor) {
+=======
+            auto func = [](phi::DenseTensor &lod_tensor) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               std::string act_name =
                   imperative::GetCurrentTracer()->GenerateUniqueName(
                       "generated_var");
@@ -366,7 +374,11 @@ void BindMultiDeviceReader(py::module *module, const char *reader_name) {
               new_var->SetDataType(
                   framework::TransToProtoVarType(lod_tensor.dtype()));
               auto *tensor =
+<<<<<<< HEAD
                   new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+=======
+                  new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               *tensor = std::move(lod_tensor);
               return new_var;
             };
@@ -387,7 +399,11 @@ void BindReader(py::module *module) {
   auto &m = *module;
 
   m.def("diff_tensor_shape",
+<<<<<<< HEAD
         [](const framework::LoDTensor &tensor,
+=======
+        [](const phi::DenseTensor &tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
@@ -427,7 +443,11 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::LoDTensorBlockingQueue &self,
+<<<<<<< HEAD
              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+=======
+             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())
@@ -445,7 +465,11 @@ void BindReader(py::module *module) {
       .def(
           "push",
           [](reader::OrderedMultiDeviceLoDTensorBlockingQueue &self,
+<<<<<<< HEAD
              const std::vector<framework::LoDTensor> &lod_tensor_vec) {
+=======
+             const paddle::framework::LoDTensorArray &lod_tensor_vec) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return self.Push(lod_tensor_vec);
           },
           py::call_guard<py::gil_scoped_release>())

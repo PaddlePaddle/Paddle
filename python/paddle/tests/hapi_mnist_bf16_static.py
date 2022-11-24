@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import numpy as np
 import paddle
 
@@ -25,7 +22,6 @@ from paddle.vision.datasets import MNIST
 from paddle.vision.models import LeNet
 import paddle.static.amp as amp
 import random
-from paddle import callbacks
 import argparse
 import ast
 
@@ -41,11 +37,21 @@ set_device('cpu')
 
 def parse_args():
     parser = argparse.ArgumentParser("Lenet BF16 train static script")
+<<<<<<< HEAD
     parser.add_argument('-bf16',
                         '--bf16',
                         type=ast.literal_eval,
                         default=False,
                         help="whether use bf16")
+=======
+    parser.add_argument(
+        '-bf16',
+        '--bf16',
+        type=ast.literal_eval,
+        default=False,
+        help="whether use bf16",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     args = parser.parse_args()
     return args
 
@@ -53,14 +59,14 @@ def parse_args():
 class MnistDataset(MNIST):
 
     def __init__(self, mode, return_label=True):
-        super(MnistDataset, self).__init__(mode=mode)
+        super().__init__(mode=mode)
         self.return_label = return_label
 
     def __getitem__(self, idx):
         img = np.reshape(self.images[idx], [1, 28, 28])
         if self.return_label:
             return img, np.array(self.labels[idx]).astype('int64')
-        return img,
+        return (img,)
 
     def __len__(self):
         return len(self.images)
@@ -77,8 +83,12 @@ def compute_accuracy(pred, gt):
 
 def main(args):
     print('download training data and load training data')
-    train_dataset = MnistDataset(mode='train', )
-    val_dataset = MnistDataset(mode='test', )
+    train_dataset = MnistDataset(
+        mode='train',
+    )
+    val_dataset = MnistDataset(
+        mode='test',
+    )
     test_dataset = MnistDataset(mode='test', return_label=False)
 
     im_shape = (-1, 1, 28, 28)
@@ -92,10 +102,27 @@ def main(args):
     if args.bf16:
         optim = amp.bf16.decorate_bf16(
             optim,
+<<<<<<< HEAD
             amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(custom_bf16_list={
                 'matmul_v2', 'pool2d', 'relu', 'scale', 'elementwise_add',
                 'reshape2', 'slice', 'reduce_mean', 'conv2d'
             }, ))
+=======
+            amp_lists=amp.bf16.AutoMixedPrecisionListsBF16(
+                custom_bf16_list={
+                    'matmul_v2',
+                    'pool2d',
+                    'relu',
+                    'scale',
+                    'elementwise_add',
+                    'reshape2',
+                    'slice',
+                    'reduce_mean',
+                    'conv2d',
+                },
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # Configuration model
     model.prepare(optim, paddle.nn.CrossEntropyLoss(), Accuracy())
@@ -107,9 +134,15 @@ def main(args):
     model.fit(train_dataset, epochs=2, batch_size=batch_size, verbose=1)
     eval_result = model.evaluate(val_dataset, batch_size=batch_size, verbose=1)
 
+<<<<<<< HEAD
     output = model.predict(test_dataset,
                            batch_size=batch_size,
                            stack_outputs=True)
+=======
+    output = model.predict(
+        test_dataset, batch_size=batch_size, stack_outputs=True
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     np.testing.assert_equal(output[0].shape[0], len(test_dataset))
 

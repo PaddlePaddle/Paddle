@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -22,7 +20,6 @@ import signal
 import time
 import socket
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -47,14 +44,21 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
         ring_id = 0
         rootid = 1
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(name="tindata",
                                   shape=[10, 1000],
                                   dtype='float32')
+=======
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype='float32'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             toutdata = main_prog.current_block().create_var(
                 name="outofbroadcast",
                 dtype='float32',
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=False)
             main_prog.global_block().append_op(type="c_broadcast",
                                                inputs={'X': tindata},
@@ -67,6 +71,22 @@ class TestCollectiveBroadcast(TestCollectiveRunnerBase):
                                                inputs={'X': toutdata},
                                                outputs={'Out': toutdata},
                                                attrs={'ring_id': ring_id})
+=======
+                stop_gradient=False,
+            )
+            main_prog.global_block().append_op(
+                type="c_broadcast",
+                inputs={'X': tindata},
+                attrs={'ring_id': ring_id, 'root': rootid},
+                outputs={'Out': toutdata},
+            )
+            main_prog.global_block().append_op(
+                type="c_sync_comm_stream",
+                inputs={'X': toutdata},
+                outputs={'Out': toutdata},
+                attrs={'ring_id': ring_id},
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return toutdata
 
 

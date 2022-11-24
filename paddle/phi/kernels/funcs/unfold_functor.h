@@ -26,7 +26,7 @@ inline int CalcOutputSize(int input_size,
                           int stride) {
   const int dkernel = dilation * (filter_size - 1) + 1;
   int output_size = (input_size + padding1 + padding2 - dkernel) / stride + 1;
-  return output_size;
+  return input_size == -1 ? -1 : output_size;
 }
 
 }  // namespace funcs

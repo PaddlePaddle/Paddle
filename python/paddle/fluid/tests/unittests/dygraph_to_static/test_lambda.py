@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import paddle
@@ -85,14 +83,25 @@ class TestLambda(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.init_func()
 
     def init_func(self):
         self.dyfuncs = [
-            call_lambda_as_func, call_lambda_directly, call_lambda_in_func,
-            call_lambda_with_ifExpr, call_lambda_with_ifExpr2
+            call_lambda_as_func,
+            call_lambda_directly,
+            call_lambda_in_func,
+            call_lambda_with_ifExpr,
+            call_lambda_with_ifExpr2,
         ]
 
     def run_static(self, func):
@@ -111,7 +120,12 @@ class TestLambda(unittest.TestCase):
     def test_ast_to_func(self):
         for func in self.dyfuncs:
             self.assertTrue(
+<<<<<<< HEAD
                 (self.run_dygraph(func) == self.run_static(func)).all())
+=======
+                (self.run_dygraph(func) == self.run_static(func)).all()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

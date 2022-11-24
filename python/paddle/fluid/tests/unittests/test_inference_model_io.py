@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import os
+<<<<<<< HEAD
 import six
+=======
+import importlib
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import tempfile
 import numpy as np
 import paddle.fluid.core as core
@@ -30,14 +32,26 @@ import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.framework import Program, program_guard
+<<<<<<< HEAD
 from paddle.fluid.io import save_inference_model, load_inference_model, save_persistables
 from paddle.fluid.transpiler import memory_optimize
+=======
+from paddle.fluid.io import (
+    save_inference_model,
+    load_inference_model,
+    save_persistables,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 class InferModel(object):
 
+=======
+class InferModel:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self, list):
         self.program = list[0]
         self.feed_var_names = list[1]
@@ -71,6 +85,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
+<<<<<<< HEAD
         for i in six.moves.xrange(100):
             tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5,
                                                           2]]).astype("float32")
@@ -82,37 +97,67 @@ class TestBook(unittest.TestCase):
                         'y': tensor_y
                     },
                     fetch_list=[avg_cost])
+=======
+        for i in range(100):
+            tensor_x = np.array([[1, 1], [1, 2], [3, 4], [5, 2]]).astype(
+                "float32"
+            )
+            tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
+
+            exe.run(
+                program,
+                feed={'x': tensor_x, 'y': tensor_y},
+                fetch_list=[avg_cost],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # Separated model and unified model
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, program)
-        save_inference_model(UNI_MODEL_DIR, ["x", "y"], [avg_cost], exe,
-                             program, 'model', 'params')
+        save_inference_model(
+            UNI_MODEL_DIR,
+            ["x", "y"],
+            [avg_cost],
+            exe,
+            program,
+            'model',
+            'params',
+        )
         main_program = program.clone()._prune_with_input(
-            feeded_var_names=["x", "y"], targets=[avg_cost])
+            feeded_var_names=["x", "y"], targets=[avg_cost]
+        )
         params_str = save_persistables(exe, None, main_program, None)
 
+<<<<<<< HEAD
         expected = exe.run(program,
                            feed={
                                'x': tensor_x,
                                'y': tensor_y
                            },
                            fetch_list=[avg_cost])[0]
+=======
+        expected = exe.run(
+            program, feed={'x': tensor_x, 'y': tensor_y}, fetch_list=[avg_cost]
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
         model_0 = InferModel(load_inference_model(MODEL_DIR, exe))
         with open(os.path.join(UNI_MODEL_DIR, 'model'), "rb") as f:
             model_str = f.read()
         model_1 = InferModel(
-            load_inference_model(None, exe, model_str, params_str))
+            load_inference_model(None, exe, model_str, params_str)
+        )
 
         for model in [model_0, model_1]:
-            outs = exe.run(model.program,
-                           feed={
-                               model.feed_var_names[0]: tensor_x,
-                               model.feed_var_names[1]: tensor_y
-                           },
-                           fetch_list=model.fetch_vars)
+            outs = exe.run(
+                model.program,
+                feed={
+                    model.feed_var_names[0]: tensor_x,
+                    model.feed_var_names[1]: tensor_y,
+                },
+                fetch_list=model.fetch_vars,
+            )
             actual = outs[0]
 
             self.assertEqual(model.feed_var_names, ["x", "y"])
@@ -122,8 +167,19 @@ class TestBook(unittest.TestCase):
 
         root_path.cleanup()
 
+<<<<<<< HEAD
         self.assertRaises(ValueError, fluid.io.load_inference_model, None, exe,
                           model_str, None)
+=======
+        self.assertRaises(
+            ValueError,
+            fluid.io.load_inference_model,
+            None,
+            exe,
+            model_str,
+            None,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestSaveInferenceModel(unittest.TestCase):
@@ -163,8 +219,9 @@ class TestSaveInferenceModel(unittest.TestCase):
             y = layers.data(name='y', shape=[1], dtype='int32')
             predict = fluid.layers.fc(input=x, size=2, act='softmax')
             acc = fluid.layers.accuracy(input=predict, label=y)
-            auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                                  label=y)
+            auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+                input=predict, label=y
+            )
             cost = fluid.layers.cross_entropy(input=predict, label=y)
             avg_cost = paddle.mean(x=cost)
 
@@ -173,8 +230,14 @@ class TestSaveInferenceModel(unittest.TestCase):
         exe.run(init_program, feed={}, fetch_list=[])
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
+<<<<<<< HEAD
             save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe,
                                  program)
+=======
+            save_inference_model(
+                MODEL_DIR, ["x", "y"], [avg_cost], exe, program
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             root_path.cleanup()
             expected_warn = "please ensure that you have set the auc states to zeros before saving inference model"
             self.assertTrue(len(w) > 0)
@@ -206,11 +269,20 @@ class TestInstance(unittest.TestCase):
         # will print warning message
 
         cp_prog = CompiledProgram(program).with_data_parallel(
-            loss_name=avg_cost.name)
+            loss_name=avg_cost.name
+        )
 
         save_inference_model(MODEL_DIR, ["x", "y"], [avg_cost], exe, cp_prog)
+<<<<<<< HEAD
         self.assertRaises(TypeError, save_inference_model,
                           [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog])
+=======
+        self.assertRaises(
+            TypeError,
+            save_inference_model,
+            [MODEL_DIR, ["x", "y"], [avg_cost], [], cp_prog],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         root_path.cleanup()
 
 
@@ -241,6 +313,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in six.moves.xrange(3):
             exe.run(program,
                     feed={
@@ -261,34 +334,111 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                           MODEL_DIR, [x, y], ['avg_cost'], exe)
         self.assertRaises(ValueError, paddle.static.save_inference_model,
                           MODEL_DIR, [x, y], 'avg_cost', exe)
+=======
+        for i in range(3):
+            exe.run(
+                program,
+                feed={'x': tensor_x, 'y': tensor_y},
+                fetch_list=[avg_cost],
+            )
+
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            None,
+            ['x', 'y'],
+            [avg_cost],
+            exe,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR + "/",
+            [x, y],
+            [avg_cost],
+            exe,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR,
+            ['x', 'y'],
+            [avg_cost],
+            exe,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR,
+            'x',
+            [avg_cost],
+            exe,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR,
+            [x, y],
+            ['avg_cost'],
+            exe,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR,
+            [x, y],
+            'avg_cost',
+            exe,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         model_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(model_path)
-        self.assertRaises(ValueError, paddle.static.save_inference_model,
-                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR + "_isdir",
+            [x, y],
+            [avg_cost],
+            exe,
+        )
         os.rmdir(model_path)
 
         params_path = MODEL_DIR + "_isdir.pdmodel"
         os.makedirs(params_path)
-        self.assertRaises(ValueError, paddle.static.save_inference_model,
-                          MODEL_DIR + "_isdir", [x, y], [avg_cost], exe)
+        self.assertRaises(
+            ValueError,
+            paddle.static.save_inference_model,
+            MODEL_DIR + "_isdir",
+            [x, y],
+            [avg_cost],
+            exe,
+        )
         os.rmdir(params_path)
 
-        paddle.static.io.save_inference_model(MODEL_DIR, [x, y], [avg_cost],
-                                              exe)
+        paddle.static.io.save_inference_model(
+            MODEL_DIR, [x, y], [avg_cost], exe
+        )
 
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdmodel"))
         self.assertTrue(os.path.exists(MODEL_DIR + ".pdiparams"))
 
+<<<<<<< HEAD
         expected = exe.run(program,
                            feed={
                                'x': tensor_x,
                                'y': tensor_y
                            },
                            fetch_list=[avg_cost])[0]
+=======
+        expected = exe.run(
+            program, feed={'x': tensor_x, 'y': tensor_y}, fetch_list=[avg_cost]
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        six.moves.reload_module(executor)  # reload to build a new scope
+        importlib.reload(executor)  # reload to build a new scope
 
+<<<<<<< HEAD
         self.assertRaises(ValueError, paddle.static.load_inference_model, None,
                           exe)
         self.assertRaises(ValueError, paddle.static.load_inference_model,
@@ -322,6 +472,53 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                            model.feed_var_names[1]: tensor_y
                        },
                        fetch_list=model.fetch_vars)
+=======
+        self.assertRaises(
+            ValueError, paddle.static.load_inference_model, None, exe
+        )
+        self.assertRaises(
+            ValueError, paddle.static.load_inference_model, MODEL_DIR + "/", exe
+        )
+        self.assertRaises(
+            ValueError, paddle.static.load_inference_model, [MODEL_DIR], exe
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.load_inference_model,
+            MODEL_DIR,
+            exe,
+            pserver_endpoints=None,
+        )
+        self.assertRaises(
+            ValueError,
+            paddle.static.load_inference_model,
+            MODEL_DIR,
+            exe,
+            unsupported_param=None,
+        )
+        self.assertRaises(
+            (TypeError, ValueError),
+            paddle.static.load_inference_model,
+            None,
+            exe,
+            model_filename="illegal",
+            params_filename="illegal",
+        )
+
+        model = InferModel(
+            paddle.static.io.load_inference_model(MODEL_DIR, exe)
+        )
+        root_path.cleanup()
+
+        outs = exe.run(
+            model.program,
+            feed={
+                model.feed_var_names[0]: tensor_x,
+                model.feed_var_names[1]: tensor_y,
+            },
+            fetch_list=model.fetch_vars,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         actual = outs[0]
 
         self.assertEqual(model.feed_var_names, ["x", "y"])
@@ -361,6 +558,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in six.moves.xrange(3):
             exe.run(program,
                     feed={
@@ -368,6 +566,14 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                         'y': tensor_y
                     },
                     fetch_list=[avg_cost])
+=======
+        for i in range(3):
+            exe.run(
+                program,
+                feed={'x': tensor_x, 'y': tensor_y},
+                fetch_list=[avg_cost],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # test if return type of serialize_program is bytes
         res1 = paddle.static.io.serialize_program([x, y], [avg_cost])
@@ -377,9 +583,14 @@ class TestSaveInferenceModelNew(unittest.TestCase):
         self.assertTrue(isinstance(res2, bytes))
         # test if variables in program is empty
         res = paddle.static.io._serialize_persistables(Program(), None)
-        self.assertEqual(res, None)
-        self.assertRaises(TypeError, paddle.static.io.deserialize_persistables,
-                          None, None, None)
+        self.assertIsNone(res)
+        self.assertRaises(
+            TypeError,
+            paddle.static.io.deserialize_persistables,
+            None,
+            None,
+            None,
+        )
 
     def test_normalize_program(self):
         init_program = fluid.default_startup_program()
@@ -404,6 +615,7 @@ class TestSaveInferenceModelNew(unittest.TestCase):
 
         tensor_x = np.array([[1, 1], [1, 2], [5, 2]]).astype("float32")
         tensor_y = np.array([[-2], [-3], [-7]]).astype("float32")
+<<<<<<< HEAD
         for i in six.moves.xrange(3):
             exe.run(program,
                     feed={
@@ -411,19 +623,34 @@ class TestSaveInferenceModelNew(unittest.TestCase):
                         'y': tensor_y
                     },
                     fetch_list=[avg_cost])
+=======
+        for i in range(3):
+            exe.run(
+                program,
+                feed={'x': tensor_x, 'y': tensor_y},
+                fetch_list=[avg_cost],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # test if return type of serialize_program is bytes
         res = paddle.static.normalize_program(program, [x, y], [avg_cost])
         self.assertTrue(isinstance(res, Program))
         # test program type
-        self.assertRaises(TypeError, paddle.static.normalize_program, None,
-                          [x, y], [avg_cost])
+        self.assertRaises(
+            TypeError, paddle.static.normalize_program, None, [x, y], [avg_cost]
+        )
         # test feed_vars type
-        self.assertRaises(TypeError, paddle.static.normalize_program, program,
-                          'x', [avg_cost])
+        self.assertRaises(
+            TypeError, paddle.static.normalize_program, program, 'x', [avg_cost]
+        )
         # test fetch_vars type
-        self.assertRaises(TypeError, paddle.static.normalize_program, program,
-                          [x, y], 'avg_cost')
+        self.assertRaises(
+            TypeError,
+            paddle.static.normalize_program,
+            program,
+            [x, y],
+            'avg_cost',
+        )
 
 
 class TestLoadInferenceModelError(unittest.TestCase):
@@ -431,8 +658,9 @@ class TestLoadInferenceModelError(unittest.TestCase):
     def test_load_model_not_exist(self):
         place = core.CPUPlace()
         exe = executor.Executor(place)
-        self.assertRaises(ValueError, load_inference_model,
-                          './test_not_exist_dir', exe)
+        self.assertRaises(
+            ValueError, load_inference_model, './test_not_exist_dir', exe
+        )
 
 
 if __name__ == '__main__':

@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include <string>
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -34,6 +38,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     // choose cudnn kernel if the runtime supported.
     bool use_cudnn =
         ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
@@ -56,6 +61,14 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
         ctx.GetPlace(),
         framework::StringToDataLayout(data_format),
         library_);
+=======
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    phi::DataLayout layout_ = DataLayout::kAnyLayout;
+    if (ctx.HasAttr("data_format")) {
+      layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
+    }
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 
@@ -72,14 +85,6 @@ class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "data_format",
-        "(string, default NCHW) Only used in "
-        "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout")
         .AsExtra();
     AddComment(R"DOC(
 Sequence Softmax Operator.
@@ -142,6 +147,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     // choose cudnn kernel if the runtime supported.
     bool use_cudnn =
         ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
@@ -164,6 +170,14 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
         ctx.GetPlace(),
         framework::StringToDataLayout(data_format),
         library_);
+=======
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Out");
+    phi::DataLayout layout_ = DataLayout::kAnyLayout;
+    if (ctx.HasAttr("data_format")) {
+      layout_ = phi::StringToDataLayout(ctx.Attr<std::string>("data_format"));
+    }
+    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout_);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 

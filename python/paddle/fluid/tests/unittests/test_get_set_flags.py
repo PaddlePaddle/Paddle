@@ -21,7 +21,7 @@ class TestGetAndSetFlags(unittest.TestCase):
     def test_api(self):
         flags = {
             'FLAGS_eager_delete_tensor_gb': 1.0,
-            'FLAGS_check_nan_inf': True
+            'FLAGS_check_nan_inf': True,
         }
 
         fluid.set_flags(flags)

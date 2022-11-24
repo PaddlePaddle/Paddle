@@ -27,9 +27,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 using EigenArrayMap =
@@ -54,7 +54,11 @@ class BatchNormOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -69,7 +73,11 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

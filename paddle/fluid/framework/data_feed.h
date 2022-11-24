@@ -60,8 +60,11 @@ class Scope;
 class Variable;
 class NeighborSampleResult;
 class NodeQueryResult;
+<<<<<<< HEAD
 template <typename KeyType, typename ValType>
 class HashTable;
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace framework
 }  // namespace paddle
 
@@ -404,7 +407,7 @@ class CustomParser {
                             const char* str,
                             std::vector<Record>* instances) {
     return 0;
-  };
+  }
   virtual bool ParseOneInstance(
       const std::string& line,
       std::function<void(std::vector<SlotRecord>&, int)>
@@ -564,8 +567,8 @@ class MiniBatchGpuPack {
       }
     }
   }
-  LoDTensor& float_tensor(void) { return float_tensor_; }
-  LoDTensor& uint64_tensor(void) { return uint64_tensor_; }
+  phi::DenseTensor& float_tensor(void) { return float_tensor_; }
+  phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
 
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
@@ -630,9 +633,9 @@ class MiniBatchGpuPack {
   const SlotRecord* batch_ins_ = nullptr;
 
   // uint64 tensor
-  LoDTensor uint64_tensor_;
+  phi::DenseTensor uint64_tensor_;
   // float tensor
-  LoDTensor float_tensor_;
+  phi::DenseTensor float_tensor_;
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -880,9 +883,12 @@ struct BufState {
 
   int GetNextBatch() {
     cursor += len;
+<<<<<<< HEAD
     if (row_num - cursor < 0) {
       return 0;
     }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     int tmp_len = cursor + batch_size > row_num ? row_num - cursor : batch_size;
     if (tmp_len == 0) {
       return 0;
@@ -897,6 +903,7 @@ struct BufState {
 
 class GraphDataGenerator {
  public:
+<<<<<<< HEAD
   GraphDataGenerator(){};
   virtual ~GraphDataGenerator(){};
   void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
@@ -909,17 +916,32 @@ class GraphDataGenerator {
   int FillInferBuf();
   void DoWalk();
   int FillSlotFeature(uint64_t* d_walk);
+=======
+  GraphDataGenerator() {}
+  virtual ~GraphDataGenerator() {}
+  void SetConfig(const paddle::framework::DataFeedDesc& data_feed_desc);
+  void AllocResource(const paddle::platform::Place& place,
+                     std::vector<phi::DenseTensor*> feed_vec);
+  int AcquireInstance(BufState* state);
+  int GenerateBatch();
+  int FillWalkBuf(std::shared_ptr<phi::Allocation> d_walk);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   int FillFeatureBuf(uint64_t* d_walk, uint64_t* d_feature, size_t key_num);
   int FillFeatureBuf(std::shared_ptr<phi::Allocation> d_walk,
                      std::shared_ptr<phi::Allocation> d_feature);
   void FillOneStep(uint64_t* start_ids,
                    uint64_t* walk,
                    int len,
+<<<<<<< HEAD
                    NeighborSampleResult& sample_res,
+=======
+                   NeighborSampleResult& sample_res,  // NOLINT
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                    int cur_degree,
                    int step,
                    int* len_per_row);
   int FillInsBuf();
+<<<<<<< HEAD
   int FillIdShowClkTensor(int total_instance,
                           bool gpu_graph_training,
                           size_t cursor = 0);
@@ -957,11 +979,20 @@ class GraphDataGenerator {
 
  protected:
   HashTable<uint64_t, uint64_t>* table_;
+=======
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+    type_to_index_[type] = h_device_keys_.size();
+    h_device_keys_.push_back(device_keys);
+  }
+
+ protected:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   int walk_degree_;
   int walk_len_;
   int window_;
   int once_sample_startid_len_;
   int gpuid_;
+<<<<<<< HEAD
   size_t cursor_;
   int thread_id_;
   size_t jump_rows_;
@@ -976,11 +1007,28 @@ class GraphDataGenerator {
   cudaStream_t sample_stream_;
   paddle::platform::Place place_;
   std::vector<LoDTensor*> feed_vec_;
+=======
+  // start ids
+  // int64_t* device_keys_;
+  // size_t device_key_size_;
+  std::vector<std::vector<uint64_t>*> h_device_keys_;
+  std::unordered_map<int, int> type_to_index_;
+  // point to device_keys_
+  size_t cursor_;
+  size_t jump_rows_;
+  int64_t* id_tensor_ptr_;
+  int64_t* show_tensor_ptr_;
+  int64_t* clk_tensor_ptr_;
+  cudaStream_t stream_;
+  paddle::platform::Place place_;
+  std::vector<phi::DenseTensor*> feed_vec_;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<size_t> offset_;
   std::shared_ptr<phi::Allocation> d_prefix_sum_;
   std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
 
   std::shared_ptr<phi::Allocation> d_walk_;
+<<<<<<< HEAD
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
   std::shared_ptr<phi::Allocation> d_len_per_row_;
@@ -990,12 +1038,19 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
 
+=======
+  std::shared_ptr<phi::Allocation> d_feature_;
+  std::shared_ptr<phi::Allocation> d_len_per_row_;
+  std::shared_ptr<phi::Allocation> d_random_row_;
+  //
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<std::shared_ptr<phi::Allocation>> d_sampleidx2rows_;
   int cur_sampleidx2row_;
   // record the keys to call graph_neighbor_sample
   std::shared_ptr<phi::Allocation> d_sample_keys_;
   int sample_keys_len_;
 
+<<<<<<< HEAD
   std::shared_ptr<phi::Allocation> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
@@ -1007,6 +1062,17 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_reindex_table_index_;
   std::vector<std::shared_ptr<phi::Allocation>> edge_type_graph_;
   int64_t reindex_table_size_;
+=======
+  std::set<int> finish_node_type_;
+  std::unordered_map<int, size_t> node_type_start_;
+  std::vector<int> infer_node_type_start_;
+
+  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::shared_ptr<phi::Allocation> d_feature_buf_;
+  std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
+  std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   int ins_buf_pair_len_;
   // size of a d_walk buf
   size_t buf_size_;
@@ -1015,6 +1081,7 @@ class GraphDataGenerator {
   BufState buf_state_;
   int batch_size_;
   int slot_num_;
+<<<<<<< HEAD
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
   int shuffle_seed_;
@@ -1030,6 +1097,13 @@ class GraphDataGenerator {
   int total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;
+=======
+  int shuffle_seed_;
+  int debug_mode_;
+  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> meta_path_;
+  bool gpu_graph_training_;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 class DataFeed {
@@ -1094,13 +1168,17 @@ class DataFeed {
   virtual void SetParseLogKey(bool parse_logkey) {}
   virtual void SetEnablePvMerge(bool enable_pv_merge) {}
   virtual void SetCurrentPhase(int current_phase) {}
+<<<<<<< HEAD
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   virtual void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
     gpu_graph_data_generator_.SetDeviceKeys(device_keys, type);
 #endif
   }
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual const std::vector<uint64_t>& GetHostVec() {
     return gpu_graph_data_generator_.GetHostVec();
@@ -1118,6 +1196,8 @@ class DataFeed {
 #endif
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   virtual void SetGpuGraphMode(int gpu_graph_mode) {
     gpu_graph_mode_ = gpu_graph_mode;
   }
@@ -1212,9 +1292,9 @@ class DataFeed {
       use_slots_index_;  // -1: not used; >=0: the index of use_slots_
 
   // The data read by DataFeed will be stored here
-  std::vector<LoDTensor*> feed_vec_;
+  std::vector<phi::DenseTensor*> feed_vec_;
 
-  LoDTensor* rank_offset_;
+  phi::DenseTensor* rank_offset_;
 
   // the batch size defined by user
   int default_batch_size_;
@@ -1238,7 +1318,10 @@ class DataFeed {
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   GraphDataGenerator gpu_graph_data_generator_;
 #endif
+<<<<<<< HEAD
   bool train_mode_;
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 // PrivateQueueDataFeed is the base virtual class for ohther DataFeeds.
@@ -1706,7 +1789,11 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   virtual bool ParseOneInstanceFromPipe(Record* instance);
   virtual void ParseOneInstanceFromSo(const char* str,
                                       Record* instance,
+<<<<<<< HEAD
                                       CustomParser* parser){};
+=======
+                                      CustomParser* parser) {}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,

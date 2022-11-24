@@ -12,19 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
+<<<<<<< HEAD
 from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+=======
+from paddle.fluid.framework import _test_eager_guard
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import tempfile
 import os
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.save_dir = os.path.join(self.temp_dir.name, "fake_dir")
@@ -53,6 +58,7 @@ class TestSaveLoadAPIError(unittest.TestCase):
         exe = fluid.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
+<<<<<<< HEAD
             fluid.io.load_vars(executor=exe,
                                dirname=self.save_dir,
                                main_program="program")
@@ -63,6 +69,20 @@ class TestSaveLoadAPIError(unittest.TestCase):
                                dirname=self.save_dir,
                                main_program="program",
                                vars="vars")
+=======
+            fluid.io.load_vars(
+                executor=exe, dirname=self.save_dir, main_program="program"
+            )
+
+        # case 2: main_program type error when vars not None
+        with self.assertRaises(TypeError):
+            fluid.io.load_vars(
+                executor=exe,
+                dirname=self.save_dir,
+                main_program="program",
+                vars="vars",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_load_vars_error(self):
         with _test_eager_guard():
@@ -71,7 +91,10 @@ class TestSaveLoadAPIError(unittest.TestCase):
 
 
 class TestSaveInferenceModelAPIError(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -89,6 +112,7 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
         with self.assertRaisesRegexp(
+<<<<<<< HEAD
                 ValueError, "not involved in the target_vars calculation"):
             fluid.io.save_inference_model(dirname=os.path.join(
                 self.temp_dir.name, 'model'),
@@ -96,6 +120,17 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
                                           target_vars=[z],
                                           executor=exe,
                                           main_program=main_prog)
+=======
+            ValueError, "not involved in the target_vars calculation"
+        ):
+            fluid.io.save_inference_model(
+                dirname=os.path.join(self.temp_dir.name, 'model'),
+                feeded_var_names=['x', 'y'],
+                target_vars=[z],
+                executor=exe,
+                main_program=main_prog,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_useless_feeded_var_names(self):
         with _test_eager_guard():
@@ -104,7 +139,10 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
 
 
 class TestWhenTrainWithNoGrad(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

@@ -41,11 +41,10 @@ class StackOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto input = op_desc.Input("X");
     int input_num = input.size();
-    nvinfer1::ITensor** inputs =
-        (nvinfer1::ITensor**)malloc(input_num * sizeof(nvinfer1::ITensor*));
+    std::vector<nvinfer1::ITensor*> inputs;
 
     for (int i = 0; i < input_num; ++i) {
-      inputs[i] = engine_->GetITensor(input[i]);
+      inputs.push_back(engine_->GetITensor(input[i]));
       if (op_desc.HasAttr("out_threshold")) {
         float out_scale =
             PADDLE_GET_CONST(float, op_desc.GetAttr("out_threshold"));
@@ -54,10 +53,39 @@ class StackOpConverter : public OpConverter {
     }
 
     int axis = PADDLE_GET_CONST(int, op_desc.GetAttr("axis"));
+<<<<<<< HEAD
+=======
+    int output_rank = inputs[0]->getDimensions().nbDims + 1;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (axis < 0) {
-      axis = axis + inputs[0]->getDimensions().nbDims + 1;
+      axis = axis + output_rank;
+    }
+    // Now, axis is relative to output_rank.
+
+    auto* shape_tensor = Shape(inputs[0]);
+    std::vector<nvinfer1::ITensor*> shape_tensor_vec;
+    for (int i = 0; i < output_rank; i++) {
+      if (i < axis) {
+        shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i));
+      } else if (i > axis) {
+        shape_tensor_vec.push_back(GetEleTensorOfShape(shape_tensor, i - 1));
+      } else {
+        shape_tensor_vec.push_back(Add1DConstantLayer(1));
+      }
+    }
+    auto* after_shape_tensor = Concat(shape_tensor_vec);
+
+    for (int i = 0; i < input_num; ++i) {
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
+      reshape_layer->setInput(1, *after_shape_tensor);
+      inputs[i] = reshape_layer->getOutput(0);
     }
 
+    auto* layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Concatenation, inputs.data(), inputs.size());
+    layer->setAxis(axis);
+
+<<<<<<< HEAD
     nvinfer1::ILayer* layer = nullptr;
 #if IS_TRT_VERSION_GE(6000)
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
@@ -73,9 +101,10 @@ class StackOpConverter : public OpConverter {
         "You are running the TRT Dynamic Shape mode, need to confirm that "
         "your TRT version is no less than 6.0"));
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto output_name = op_desc.Output("Y").front();
     RreplenishLayerAndOutput(layer, "stack", {output_name}, test_mode);
-    free(inputs);
   }
 };
 

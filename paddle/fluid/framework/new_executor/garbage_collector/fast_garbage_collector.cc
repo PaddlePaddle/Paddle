@@ -17,12 +17,18 @@
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 void InterpreterCoreFastGarbageCollector::Add(
     Variable* var,
     platform::DeviceEvent* event,
     const platform::DeviceContext* ctx) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "Not implemented for InterpreterCoreFastGarbageCollector."));
+=======
+void InterpreterCoreFastGarbageCollector::Add(Variable* var,
+                                              const Instruction&) {
+  Add(var);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
@@ -30,8 +36,8 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     return;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+  if (var->IsType<phi::DenseTensor>()) {
+    Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
   } else if (var->IsType<
                  operators::reader::
                      OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {

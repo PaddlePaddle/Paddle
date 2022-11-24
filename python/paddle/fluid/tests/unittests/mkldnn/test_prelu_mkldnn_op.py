@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 
 
 def ref_prelu(x, weight, mode):
@@ -29,12 +31,14 @@ def ref_prelu(x, weight, mode):
     elif mode == "channel":
         if len(weight.shape) > 1:
             for i in range(x.shape[1]):
-                result[:, i] = np.where(x[:, i] > 0, x[:, i],
-                                        x[:, i] * weight[0, i])
+                result[:, i] = np.where(
+                    x[:, i] > 0, x[:, i], x[:, i] * weight[0, i]
+                )
         else:
             for i in range(x.shape[1]):
-                result[:, i] = np.where(x[:, i] > 0, x[:, i],
-                                        x[:, i] * weight[i])
+                result[:, i] = np.where(
+                    x[:, i] > 0, x[:, i], x[:, i] * weight[i]
+                )
     elif mode == "element":
         result = np.where(x[:] > 0, x[:], x[:] * weight)
 
@@ -118,11 +122,17 @@ def create_bf16_test_class(parent):
 
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestPReluBF16OneDNNOp(parent):
+<<<<<<< HEAD
 
         def set_inputs(self, ):
+=======
+        def set_inputs(
+            self,
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.inputs = {
                 'X': convert_float_to_uint16(self.x),
-                'Alpha': convert_float_to_uint16(self.alpha)
+                'Alpha': convert_float_to_uint16(self.alpha),
             }
 
         def set_dtype_attr(self):
@@ -138,12 +148,18 @@ def create_bf16_test_class(parent):
             elif self.mode == "channel":
                 if len(self.alpha.shape) > 1:
                     for i in range(self.x.shape[1]):
-                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
-                                                 dout[:, i] * self.alpha[0, i])
+                        self.dx[:, i] = np.where(
+                            self.x[:, i] > 0,
+                            dout[:, i],
+                            dout[:, i] * self.alpha[0, i],
+                        )
                 else:
                     for i in range(self.x.shape[1]):
-                        self.dx[:, i] = np.where(self.x[:, i] > 0, dout[:, i],
-                                                 dout[:, i] * self.alpha[i])
+                        self.dx[:, i] = np.where(
+                            self.x[:, i] > 0,
+                            dout[:, i],
+                            dout[:, i] * self.alpha[i],
+                        )
                     self.dx
             elif self.mode == "element":
                 self.dx = np.where(self.x[:] > 0, dout[:], dout[:] * self.alpha)
@@ -157,10 +173,12 @@ def create_bf16_test_class(parent):
         def test_check_grad(self):
             self.calculate_grads()
             self.check_grad_with_place(
-                core.CPUPlace(), ["X", "Alpha"],
+                core.CPUPlace(),
+                ["X", "Alpha"],
                 "Out",
                 user_defined_grads=[self.dx, self.dalpha],
-                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)])
+                user_defined_grad_outputs=[convert_float_to_uint16(self.dout)],
+            )
 
     cls_name = "{0}_{1}".format(parent.__name__, "BF16")
     TestPReluBF16OneDNNOp.__name__ = cls_name

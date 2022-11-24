@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import sys
 
@@ -41,7 +44,10 @@ def np_masked_select(shape, x, mask):
 
 
 class TestMaskedSelectOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.init()
         self.__class__.use_mlu = True
@@ -65,20 +71,31 @@ class TestMaskedSelectOp(OpTest):
 
 
 class TestMaskedSelectOp1(TestMaskedSelectOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init(self):
         self.shape = (6, 8, 9, 18)
 
 
 class TestMaskedSelectOp2(TestMaskedSelectOp):
+<<<<<<< HEAD
 
     def init(self):
         self.shape = (168, )
+=======
+    def init(self):
+        self.shape = (168,)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 @skip_check_grad_ci(reason="get_numeric_gradient not support int32")
 class TestMaskedSelectOpInt32(TestMaskedSelectOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.int32
 
@@ -87,13 +104,17 @@ class TestMaskedSelectOpInt32(TestMaskedSelectOp):
 
 
 class TestMaskedSelectOpFp16(TestMaskedSelectOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.float16
 
     def test_check_grad(self):
         x_grad = self.inputs['Mask'].astype(self.dtype)
         x_grad = x_grad * (1 / x_grad.size)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Y',
                                    user_defined_grads=[x_grad])
@@ -101,6 +122,14 @@ class TestMaskedSelectOpFp16(TestMaskedSelectOp):
 
 class TestMaskedSelectAPI(unittest.TestCase):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Y', user_defined_grads=[x_grad]
+        )
+
+
+class TestMaskedSelectAPI(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_imperative_mode(self):
         paddle.disable_static()
         shape = (88, 6, 8)
@@ -125,27 +154,48 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.device.MLUPlace(0))
 
+<<<<<<< HEAD
         res = exe.run(paddle.static.default_main_program(),
                       feed={
                           "x": np_x,
                           "mask": np_mask
                       },
                       fetch_list=[out])
+=======
+        res = exe.run(
+            paddle.static.default_main_program(),
+            feed={"x": np_x, "mask": np_mask},
+            fetch_list=[out],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.assertEqual(np.allclose(res, np_out), True)
 
 
 class TestMaskedSelectError(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
+=======
+    def test_error(self):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+<<<<<<< HEAD
             mask_float = paddle.fluid.data(shape=shape,
                                            dtype='float32',
                                            name='mask_float')
+=======
+            mask_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='mask_float'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             np_x = np.random.random(shape).astype('float32')
             np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 

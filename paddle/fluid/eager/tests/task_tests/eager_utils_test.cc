@@ -82,7 +82,7 @@ TEST(EagerUtils, AutoGradMeta) {
   CHECK_NOTNULL(grad_node0.get());
 
   EagerUtils::SetHistory(autograd_meta1, test_node);
-  EagerUtils::SetHistory({autograd_meta1}, test_node);
+  EagerUtils::SetHistory(autograd_meta1, test_node);
   std::shared_ptr<GradNodeBase> grad_node1 = EagerUtils::grad_node(et1);
   CHECK_NOTNULL(grad_node1.get());
 
@@ -163,7 +163,11 @@ TEST(EagerUtils, PassStopGradient) {
                                     auto_grad1.get(),
                                     auto_grad2.get(),
                                     auto_grad3.get());
+<<<<<<< HEAD
   CHECK(auto_grad0->StopGradient() == false);
+=======
+  CHECK(auto_grad0->StopGradient() == true);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);
@@ -176,7 +180,7 @@ TEST(EagerUtils, TrySyncToVar) {
       egr::EagerUtils::TrySyncToVar(tensor)};
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+  const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
   const float* ptr = framework_tensor.data<float>();
   VLOG(6) << "Check Value for SyncToVarsSingle";
@@ -197,7 +201,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     CHECK_EQ(framework_tensor.numel(), tensors[0].numel());
@@ -209,7 +213,7 @@ TEST(EagerUtils, TrySyncToVars) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
+    const auto& framework_tensor = var->Get<phi::DenseTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     VLOG(6) << "Check Value for SyncToVarsMultiple";

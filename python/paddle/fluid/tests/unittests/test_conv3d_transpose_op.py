@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -21,16 +19,16 @@ import paddle
 
 paddle.enable_static()
 import paddle.fluid.core as core
-import paddle.fluid as fluid
 from op_test import OpTest
 
 
 def conv3dtranspose_forward_naive(input_, filter_, attrs):
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
-        raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
-                         "It can only be 'SAME' or 'VALID'." %
-                         str(padding_algorithm))
+        raise ValueError(
+            "Unknown Attr(padding_algorithm): '%s'. "
+            "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+        )
 
     if attrs['data_format'] == 'NHWC':
         input_ = np.transpose(input_, [0, 4, 1, 2, 3])
@@ -41,17 +39,30 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     out_c = f_out_c * groups
     sub_in_c = in_c // groups
 
-    stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
-        'dilations']
+    stride, pad, dilations = (
+        attrs['strides'],
+        attrs['paddings'],
+        attrs['dilations'],
+    )
 
     def _get_padding_with_SAME(input_shape, kernel_size, kernel_stride):
         padding = []
+<<<<<<< HEAD
         for input_size, filter_size, stride_size in zip(input_shape,
                                                         kernel_size,
                                                         kernel_stride):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
                 ((out_size - 1) * stride_size + filter_size - input_size, 0))
+=======
+        for input_size, filter_size, stride_size in zip(
+            input_shape, kernel_size, kernel_stride
+        ):
+            out_size = int((input_size + stride_size - 1) / stride_size)
+            pad_sum = np.max(
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -87,6 +98,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
             for i in range(in_h):
                 for j in range(in_w):
                     for g in range(groups):
+<<<<<<< HEAD
                         input_masked = input_[n,
                                               g * sub_in_c:(g + 1) * sub_in_c,
                                               d, i, j]  # (c)
@@ -108,6 +120,46 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
 
     out = out[:, :, pad_d_0:out_d - pad_d_1, pad_h_0:out_h - pad_h_1,
               pad_w_0:out_w - pad_w_1]
+=======
+                        input_masked = input_[
+                            n, g * sub_in_c : (g + 1) * sub_in_c, d, i, j
+                        ]  # (c)
+                        input_masked = np.reshape(
+                            input_masked, (sub_in_c, 1, 1, 1)
+                        )
+                        input_masked = np.tile(input_masked, (1, f_d, f_h, f_w))
+
+                        for k in range(f_out_c):
+                            tmp_out = np.sum(
+                                input_masked
+                                * filter_[
+                                    g * sub_in_c : (g + 1) * sub_in_c,
+                                    k,
+                                    :,
+                                    :,
+                                    :,
+                                ],
+                                axis=0,
+                            )
+                            d1, d2 = d * stride[0], d * stride[0] + d_bolck_d
+                            i1, i2 = i * stride[1], i * stride[1] + d_bolck_h
+                            j1, j2 = j * stride[2], j * stride[2] + d_bolck_w
+                            out[
+                                n,
+                                g * f_out_c + k,
+                                d1 : d2 : dilations[0],
+                                i1 : i2 : dilations[1],
+                                j1 : j2 : dilations[2],
+                            ] += tmp_out
+
+    out = out[
+        :,
+        :,
+        pad_d_0 : out_d - pad_d_1,
+        pad_h_0 : out_h - pad_h_1,
+        pad_w_0 : out_w - pad_w_1,
+    ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if attrs['data_format'] == 'NHWC':
         out = np.transpose(out, [0, 2, 3, 4, 1])
     return out
@@ -137,11 +189,12 @@ class TestConv3DTransposeOp(OpTest):
             'dilations': self.dilations,
             'groups': self.groups,
             'use_cudnn': self.use_cudnn,
-            'data_format': self.data_format
+            'data_format': self.data_format,
         }
 
-        output = conv3dtranspose_forward_naive(input_, filter_,
-                                               self.attrs).astype("float32")
+        output = conv3dtranspose_forward_naive(
+            input_, filter_, self.attrs
+        ).astype("float32")
 
         self.outputs = {'Output': output}
 
@@ -155,6 +208,7 @@ class TestConv3DTransposeOp(OpTest):
     def test_check_grad(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
+<<<<<<< HEAD
             self.check_grad_with_place(place,
                                        set(['Input', 'Filter']),
                                        'Output',
@@ -163,10 +217,23 @@ class TestConv3DTransposeOp(OpTest):
             self.check_grad(set(['Input', 'Filter']),
                             'Output',
                             max_relative_error=0.03)
+=======
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.03,
+            )
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.03
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_no_filter(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['Input'],
                                        'Output',
                                        max_relative_error=0.03,
@@ -176,10 +243,27 @@ class TestConv3DTransposeOp(OpTest):
                             'Output',
                             max_relative_error=0.03,
                             no_grad_set=set(['Filter']))
+=======
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+        elif self.check_no_filter:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Filter']),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_no_input(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['Filter'],
                                        'Output',
                                        max_relative_error=0.03,
@@ -189,6 +273,22 @@ class TestConv3DTransposeOp(OpTest):
                             'Output',
                             max_relative_error=0.03,
                             no_grad_set=set(['Input']))
+=======
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
+        elif self.check_no_input:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.03,
+                no_grad_set=set(['Input']),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -303,8 +403,9 @@ class Test_NHWC(TestConv3DTransposeOp):
 
 
 # ------------ test_cudnn ------------
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNN(TestConv3DTransposeOp):
 
     def init_op_type(self):
@@ -312,8 +413,9 @@ class TestCUDNN(TestConv3DTransposeOp):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
 
     def init_test_case(self):
@@ -330,8 +432,9 @@ class TestCUDNNWithSymmetricPad(TestWithSymmetricPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
 
     def init_test_case(self):
@@ -348,8 +451,9 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithSAMEPad(TestWithSAMEPad):
 
     def init_test_case(self):
@@ -366,8 +470,9 @@ class TestCUDNNWithSAMEPad(TestWithSAMEPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithVALIDPad(TestWithVALIDPad):
 
     def init_test_case(self):
@@ -384,8 +489,9 @@ class TestCUDNNWithVALIDPad(TestWithVALIDPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithStride(TestWithStride):
 
     def init_test_case(self):
@@ -402,8 +508,9 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithGroups(TestWithGroups):
 
     def init_test_case(self):
@@ -435,8 +542,9 @@ class TestCUDNNWithGroups(TestWithGroups):
 #         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNN_NHWC(TestConv3DTransposeOp):
 
     def init_test_case(self):
@@ -454,8 +562,9 @@ class TestCUDNN_NHWC(TestConv3DTransposeOp):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
 
     def init_test_case(self):
@@ -473,8 +582,9 @@ class TestCUDNNWithSymmetricPad_NHWC(TestWithSymmetricPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
 
     def init_test_case(self):
@@ -492,8 +602,9 @@ class TestCUDNNWithAsymmetricPad_NHWC(TestWithAsymmetricPad):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithStride_NHWC(TestWithStride):
 
     def init_test_case(self):
@@ -511,8 +622,9 @@ class TestCUDNNWithStride_NHWC(TestWithStride):
         self.op_type = "conv3d_transpose"
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCUDNNWithGroups_NHWC(TestWithGroups):
 
     def init_test_case(self):

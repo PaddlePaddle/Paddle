@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 import numpy as np
@@ -24,7 +22,13 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from op_test import OpTest
-from test_pool2d_op import pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive, adaptive_start_index, adaptive_end_index
+from test_pool2d_op import (
+    pool2D_forward_naive,
+    avg_pool2D_forward_naive,
+    max_pool2D_forward_naive,
+    adaptive_start_index,
+    adaptive_end_index,
+)
 from paddle.nn.functional import avg_pool2d, max_pool2d
 
 paddle.enable_static()
@@ -81,25 +85,33 @@ def create_test_fp16_class(parent):
     globals()[cls_name] = TestFp16Case
 
 
-def pool2d_backward_navie(x,
-                          ksize,
-                          strides,
-                          paddings,
-                          global_pool=0,
-                          ceil_mode=False,
-                          exclusive=True,
-                          adaptive=False,
-                          data_format='NCHW',
-                          pool_type="max",
-                          padding_algorithm="EXPLICIT"):
+def pool2d_backward_navie(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=True,
+    adaptive=False,
+    data_format='NCHW',
+    pool_type="max",
+    padding_algorithm="EXPLICIT",
+):
     # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
-        for input_size, filter_size, stride_size in zip(input_shape, pool_size,
-                                                        pool_stride):
+        for input_size, filter_size, stride_size in zip(
+            input_shape, pool_size, pool_stride
+        ):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
+<<<<<<< HEAD
                 ((out_size - 1) * stride_size + filter_size - input_size, 0))
+=======
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -109,9 +121,10 @@ def pool2d_backward_navie(x,
     if isinstance(padding_algorithm, str):
         padding_algorithm = padding_algorithm.upper()
         if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
-            raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
-                             "It can only be 'SAME' or 'VALID'." %
-                             str(padding_algorithm))
+            raise ValueError(
+                "Unknown Attr(padding_algorithm): '%s'. "
+                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            )
 
         if padding_algorithm == "VALID":
             paddings = [0, 0, 0, 0]
@@ -119,7 +132,8 @@ def pool2d_backward_navie(x,
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
                     " must be False. "
-                    "Received ceil_mode: True.")
+                    "Received ceil_mode: True."
+                )
         elif padding_algorithm == "SAME":
             input_data_shape = []
             if data_format == "NCHW":
@@ -148,10 +162,20 @@ def pool2d_backward_navie(x,
     if adaptive:
         H_out, W_out = ksize
     else:
-        H_out = (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1) // strides[0] + 1 \
-            if ceil_mode else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
-        W_out = (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1) // strides[1] + 1 \
-            if ceil_mode else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        H_out = (
+            (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1)
+            // strides[0]
+            + 1
+            if ceil_mode
+            else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
+        )
+        W_out = (
+            (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1)
+            // strides[1]
+            + 1
+            if ceil_mode
+            else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        )
 
     x_grad = np.zeros_like(x)
     for i in range(H_out):
@@ -179,6 +203,7 @@ def pool2d_backward_navie(x,
                 in_w_end = np.min((in_w_end, W))
 
             if pool_type == 'avg':
+<<<<<<< HEAD
                 if (exclusive or adaptive):
                     field_size = (in_h_end - in_h_start) * (in_w_end -
                                                             in_w_start)
@@ -193,6 +218,28 @@ def pool2d_backward_navie(x,
                         idx_w = idx % (in_w_end - in_w_start)
                         x_grad[n, c, in_h_start + idx_h,
                                in_w_start + idx_w] += 1
+=======
+                if exclusive or adaptive:
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
+                x_grad[:, :, in_h_start:in_h_end, in_w_start:in_w_end] += (
+                    1 / field_size
+                )
+            elif pool_type == 'max':
+                for n in range(N):
+                    for c in range(C):
+                        idx = np.argmax(
+                            x[
+                                n, c, in_h_start:in_h_end, in_w_start:in_w_end
+                            ].flatten()
+                        )
+                        idx_h = idx // (in_w_end - in_w_start)
+                        idx_w = idx % (in_w_end - in_w_start)
+                        x_grad[
+                            n, c, in_h_start + idx_h, in_w_start + idx_w
+                        ] += 1
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if data_format == "NHWC":
         x_grad = x_grad.transpose([0, 2, 3, 1])
@@ -220,6 +267,7 @@ class TestPool2D_Op(OpTest):
 
         input = np.random.random(self.shape).astype(self.dtype)
         if self.pool_type == "max":
+<<<<<<< HEAD
             input = np.array([x for x in range(np.prod(self.shape))
                               ]).reshape(self.shape).astype(self.dtype)
         output = pool2D_forward_naive(input, self.ksize, self.strides,
@@ -228,6 +276,26 @@ class TestPool2D_Op(OpTest):
                                       self.adaptive, self.data_format,
                                       self.pool_type,
                                       self.padding_algorithm).astype(self.dtype)
+=======
+            input = (
+                np.array([x for x in range(np.prod(self.shape))])
+                .reshape(self.shape)
+                .astype(self.dtype)
+            )
+        output = pool2D_forward_naive(
+            input,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            self.data_format,
+            self.pool_type,
+            self.padding_algorithm,
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -290,6 +358,7 @@ class TestPool2D_Op(OpTest):
         self.check_output_with_place(fluid.NPUPlace(0), atol=1e-3)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         x_grad = pool2d_backward_navie(self.inputs["X"],
                                        ksize=self.ksize,
                                        strides=self.strides,
@@ -307,6 +376,29 @@ class TestPool2D_Op(OpTest):
                                    'Out',
                                    max_relative_error=0.06,
                                    user_defined_grads=[x_grad])
+=======
+        x_grad = pool2d_backward_navie(
+            self.inputs["X"],
+            ksize=self.ksize,
+            strides=self.strides,
+            paddings=self.paddings,
+            global_pool=self.global_pool,
+            ceil_mode=False,
+            exclusive=self.exclusive,
+            adaptive=self.adaptive,
+            data_format=self.data_format,
+            pool_type=self.pool_type,
+            padding_algorithm=self.padding_algorithm,
+        )
+        x_grad = x_grad / np.prod(self.outputs['Out'].shape)
+        self.check_grad_with_place(
+            fluid.NPUPlace(0),
+            set(['X']),
+            'Out',
+            max_relative_error=0.06,
+            user_defined_grads=[x_grad],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestCase1(TestPool2D_Op):
@@ -406,7 +498,7 @@ class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
         self.paddings = [0, 0, 0, 0]
 
 
-#-------test pool2d with asymmetric padding-----
+# -------test pool2d with asymmetric padding-----
 class TestPool2D_AsyPadding(TestPool2D_Op):
 
     def init_test_case(self):
@@ -501,7 +593,7 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
         self.shape = [2, 3, 8, 8]
 
 
-#----------- test channel_last --------------
+# ----------- test channel_last --------------
 class TestPool2D_channel_last(TestPool2D_Op):
 
     def init_data_format(self):
@@ -653,9 +745,15 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
         self.shape = [2, 7, 7, 3]
 
 
+<<<<<<< HEAD
 class TestAvgPoolAdaptive_AsyPadding_channel_last(TestAvgPoolAdaptive_AsyPadding
                                                   ):
 
+=======
+class TestAvgPoolAdaptive_AsyPadding_channel_last(
+    TestAvgPoolAdaptive_AsyPadding
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_data_format(self):
         self.data_format = "NHWC"
 

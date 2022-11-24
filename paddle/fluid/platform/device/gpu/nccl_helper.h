@@ -59,7 +59,11 @@ inline ncclDataType_t ToNCCLDataType(framework::proto::VarType::Type type) {
     return ncclUint8;
   } else if (type == framework::proto::VarType::BOOL) {
     return ncclUint8;
+<<<<<<< HEAD
 #if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+=======
+#if NCCL_VERSION_CODE >= 21000
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   } else if (type == framework::proto::VarType::BF16) {
     return ncclBfloat16;
 #endif
@@ -86,7 +90,11 @@ inline ncclDataType_t ToNCCLDataType(experimental::DataType type) {
     return ncclInt8;
   } else if (type == experimental::DataType::BOOL) {
     return ncclUint8;
+<<<<<<< HEAD
 #if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+=======
+#if NCCL_VERSION_CODE >= 21000
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   } else if (type == experimental::DataType::BFLOAT16) {
     return ncclBfloat16;
 #endif
@@ -135,6 +143,10 @@ struct NCCLContext {
     ctx_->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(CUDAPlace(dev_id))
+            .get());
+    ctx_->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
     ctx_->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()

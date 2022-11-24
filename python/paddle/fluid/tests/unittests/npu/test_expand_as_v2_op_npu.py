@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -129,6 +127,7 @@ class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([2, 12, 14]).astype("float32")
+<<<<<<< HEAD
         x = fluid.layers.data(name='x',
                               shape=[12, 14],
                               append_batch_size=False,
@@ -138,16 +137,36 @@ class TestExpandAsV2API(unittest.TestCase):
                               shape=[2, 12, 14],
                               append_batch_size=False,
                               dtype="float32")
+=======
+        x = fluid.layers.data(
+            name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
+        )
+
+        y = fluid.layers.data(
+            name='target_tensor',
+            shape=[2, 12, 14],
+            append_batch_size=False,
+            dtype="float32",
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         out_1 = paddle.expand_as(x, y=y)
 
         exe = fluid.Executor(place=fluid.NPUPlace(0))
+<<<<<<< HEAD
         res_1 = exe.run(fluid.default_main_program(),
                         feed={
                             "x": input1,
                             "target_tensor": input2
                         },
                         fetch_list=[out_1])
+=======
+        res_1 = exe.run(
+            fluid.default_main_program(),
+            feed={"x": input1, "target_tensor": input2},
+            fetch_list=[out_1],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 

@@ -16,7 +16,7 @@ from ..wrapped_decorator import wrap_decorator
 from ..framework import _non_static_mode
 import warnings
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 
 # NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
@@ -28,8 +28,15 @@ def _inplace_apis_in_dygraph_only_(func):
         if not _non_static_mode():
             origin_api_name = func.__name__[:-1]
             warnings.warn(
+<<<<<<< HEAD
                 "In static mode, {}() is the same as {}() and does not perform inplace operation."
                 .format(func.__name__, origin_api_name))
+=======
+                "In static mode, {}() is the same as {}() and does not perform inplace operation.".format(
+                    func.__name__, origin_api_name
+                )
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             origin_func = "{}.{}".format(func.__module__, origin_api_name)
             return eval(origin_func)(*args, **kwargs)
         return func(*args, **kwargs)

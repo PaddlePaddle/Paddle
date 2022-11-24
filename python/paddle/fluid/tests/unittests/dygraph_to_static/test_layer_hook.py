@@ -24,14 +24,21 @@ def forward_post_hook1(layer, input, output):
 
 
 def forward_pre_hook1(layer, input):
-    input_return = (input[0] * 2, )
+    input_return = (input[0] * 2,)
     return input_return
 
 
 class SimpleNet(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self, ):
         super(SimpleNet, self).__init__()
+=======
+    def __init__(
+        self,
+    ):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fc1 = paddle.nn.Linear(10, 10)
         # sublayer1 register post hook
         self.fc1.register_forward_post_hook(forward_post_hook1)
@@ -85,12 +92,29 @@ class TestNestLayerHook(unittest.TestCase):
         st_out = self.train_net(to_static=True)
         load_out = self.load_train()
         print(st_out, dy_out, load_out)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(st_out, dy_out),
                         msg='dygraph_res is {}\nstatic_res is {}'.format(
                             dy_out, st_out))
         self.assertTrue(np.allclose(st_out, load_out),
                         msg='load_out is {}\nstatic_res is {}'.format(
                             load_out, st_out))
+=======
+        np.testing.assert_allclose(
+            st_out,
+            dy_out,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                dy_out, st_out
+            ),
+        )
+        np.testing.assert_allclose(
+            st_out,
+            load_out,
+            rtol=1e-05,
+            err_msg='load_out is {}\nstatic_res is {}'.format(load_out, st_out),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

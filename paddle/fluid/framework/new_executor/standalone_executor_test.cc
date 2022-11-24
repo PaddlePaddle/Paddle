@@ -50,7 +50,7 @@ USE_OP_ITSELF(concat_grad);
 USE_OP_ITSELF(elementwise_mul_grad);
 USE_OP_ITSELF(sigmoid_grad);
 USE_OP_ITSELF(tanh_grad);
-USE_OP(sum);
+USE_OP_ITSELF(sum);
 USE_OP_ITSELF(slice_grad);
 USE_OP_ITSELF(lookup_table_grad);
 USE_OP_ITSELF(sqrt);
@@ -63,7 +63,8 @@ USE_OP_ITSELF(memcpy_d2h);
 USE_OP_ITSELF(fetch_v2);
 
 PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(uniform_random_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform_raw, GPU, ALL_LAYOUT);
+PD_DECLARE_KERNEL(uniform, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(transpose, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(reshape, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(split, GPU, ALL_LAYOUT);
@@ -100,6 +101,10 @@ PD_DECLARE_KERNEL(slice_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(cross_entropy_with_softmax_grad, GPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(sqrt, GPU, ALL_LAYOUT);
+<<<<<<< HEAD
+=======
+PD_DECLARE_KERNEL(add_n, GPU, ALL_LAYOUT);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 namespace paddle {
 namespace framework {
@@ -138,6 +143,7 @@ ProgramDesc GetLmMainProgram() {
   return main_prog;
 }
 
+<<<<<<< HEAD
 // TEST(StandaloneExecutor, run) {
 //   auto place = platform::CUDAPlace(0);
 //   ProgramDesc test_prog = load_from_file("lm_startup_program");
@@ -163,11 +169,15 @@ ProgramDesc GetLmMainProgram() {
 // }
 
 TEST(InterpreterCore, skip_gc_vars) {
+=======
+TEST(StandaloneExecutor, run) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto place = platform::CUDAPlace(0);
   ProgramDesc startup_prog = load_from_file("lm_startup_program");
   ProgramDesc main_prog = GetLmMainProgram();
 
   Scope scope;
+<<<<<<< HEAD
 
   std::shared_ptr<InterpreterCore> startup_core =
       CreateInterpreterCore(place, startup_prog, &scope);
@@ -231,6 +241,134 @@ void TestShareWorkQueue(const ProgramDesc& prog,
       const float* fetch_data =
           PADDLE_GET_CONST(LoDTensor, fetch_list[i]).data<float>();
       ASSERT_FLOAT_EQ(*fetch_data, fetch_results.at(i));
+=======
+  StandaloneExecutor startup_exec(place, startup_prog);
+  startup_exec.Run(&scope, {}, {});
+  StandaloneExecutor exec(place, main_prog);
+  exec.Run(&scope, {}, {});
+  auto start = std::chrono::steady_clock::now();
+
+  for (size_t i = 0; i < 10; ++i) {
+    if (i % 200 == 0) {
+      std::cout << i << std::endl;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+    }
+  };
+
+  run_and_check(core1);
+  run_and_check(core2);
+  run_and_check(core1);
+  run_and_check(core2);
+}
+
+TEST(InterpreterCore, workqueue_multiplexing) {
+  ProgramDesc program;
+  BlockDesc* main_block = program.MutableBlock(0);
+  VarDesc* var_a = main_block->Var("a");
+  VarDesc* var_b = main_block->Var("b");
+  VarDesc* var_c = main_block->Var("c");
+  var_a->SetType(proto::VarType::LOD_TENSOR);
+  var_b->SetType(proto::VarType::LOD_TENSOR);
+  var_c->SetType(proto::VarType::LOD_TENSOR);
+
+  OpDesc* add = main_block->AppendOp();
+  add->SetType("elementwise_add");
+  add->SetInput("X", {"a"});
+  add->SetInput("Y", {"b"});
+  add->SetOutput("Out", {"c"});
+
+  float data_a[] = {0, 1, 2, 3};
+  float data_b[] = {0.0, 0.1, 0.2, 0.3};
+
+<<<<<<< HEAD
+  phi::DDim dims = phi::make_ddim({2, 2});
+  const platform::CPUPlace place = platform::CPUPlace();
+
+  LoDTensor tensor_a = LoDTensor();
+  LoDTensor tensor_b = LoDTensor();
+
+  std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
+  std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));
+
+=======
+    exec.Run(&scope, {}, {});
+  }
+
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> diff = end - start;
+
+  std::cout << "time cost " << diff.count() << std::endl;
+}
+
+TEST(InterpreterCore, skip_gc_vars) {
+  auto place = platform::CUDAPlace(0);
+  ProgramDesc startup_prog = load_from_file("lm_startup_program");
+  ProgramDesc main_prog = GetLmMainProgram();
+
+  Scope scope;
+
+  std::shared_ptr<InterpreterCore> startup_core =
+      CreateInterpreterCore(place, startup_prog, &scope);
+  startup_core->Run({}, {});
+
+  std::set<std::string> skip_gc_vars = {"uniform_0.tmp_0",
+                                        "transpose_0.tmp_0",
+                                        "embedding_0.tmp_0",
+                                        "slice_0.tmp_0",
+                                        "split_1.tmp_2"};
+  std::set<std::string> gc_vars = {"uniform_1.tmp_0",
+                                   "matmul_0.tmp_0",
+                                   "split_0.tmp_0",
+                                   "elementwise_add_0.tmp_0",
+                                   "tmp_0"};
+
+  std::shared_ptr<InterpreterCore> main_core =
+      CreateInterpreterCore(place, main_prog, &scope, {}, skip_gc_vars);
+
+  auto check_gc_result =
+      [](Scope& scope, std::set<std::string>& vars, bool is_skip_gc) {
+        // the first local scope is created in startup_core
+        // the second local scope is created in main_core
+        ASSERT_EQ(scope.kids().size(), 2UL);
+        auto* local_scope = scope.kids().back();
+        for (const std::string& var_name : vars) {
+          ASSERT_EQ(local_scope->FindVar(var_name)
+                        ->GetMutable<phi::DenseTensor>()
+                        ->IsInitialized(),
+                    is_skip_gc);
+        }
+      };
+
+  main_core->Run({}, {});
+  check_gc_result(scope, skip_gc_vars, true);
+  check_gc_result(scope, gc_vars, false);
+
+  main_core->Run({}, {});
+  check_gc_result(scope, skip_gc_vars, true);
+  check_gc_result(scope, gc_vars, false);
+}
+
+void TestShareWorkQueue(const ProgramDesc& prog,
+                        const std::vector<std::string>& feed_names,
+                        const std::vector<phi::DenseTensor>& feed_tensors,
+                        const std::vector<std::string>& fetch_names,
+                        const std::vector<float>& fetch_results) {
+  const platform::CPUPlace place = platform::CPUPlace();
+
+  Scope scope;
+  std::shared_ptr<InterpreterCore> core1 =
+      CreateInterpreterCore(place, prog, &scope, fetch_names);
+  std::shared_ptr<InterpreterCore> core2 =
+      CreateInterpreterCore(place, prog, &scope, fetch_names);
+  core2->ShareWorkQueueFrom(core1);
+
+  auto run_and_check = [&feed_names, &feed_tensors, &fetch_results](
+                           std::shared_ptr<InterpreterCore> core) {
+    FetchList fetch_list = core->Run(feed_names, feed_tensors);
+    for (size_t i = 0; i < fetch_list.size(); ++i) {
+      const float* fetch_data =
+          PADDLE_GET_CONST(phi::DenseTensor, fetch_list[i]).data<float>();
+      ASSERT_FLOAT_EQ(*fetch_data, fetch_results.at(i));
     }
   };
 
@@ -262,12 +400,13 @@ TEST(InterpreterCore, workqueue_multiplexing) {
   phi::DDim dims = phi::make_ddim({2, 2});
   const platform::CPUPlace place = platform::CPUPlace();
 
-  LoDTensor tensor_a = LoDTensor();
-  LoDTensor tensor_b = LoDTensor();
+  phi::DenseTensor tensor_a = phi::DenseTensor();
+  phi::DenseTensor tensor_b = phi::DenseTensor();
 
   std::copy_n(data_a, 4, tensor_a.mutable_data<float>(dims, place));
   std::copy_n(data_b, 4, tensor_b.mutable_data<float>(dims, place));
 
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   TestShareWorkQueue(
       program, {"a", "b"}, {tensor_a, tensor_b}, {"c"}, {0.0, 1.1, 2.2, 3.3});
 }

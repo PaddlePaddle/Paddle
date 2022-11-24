@@ -20,11 +20,17 @@ from op_test import OpTest
 from paddle.fluid.framework import _test_eager_guard
 
 
+<<<<<<< HEAD
 def nll_loss_1d(logs,
                 targets,
                 weight=None,
                 reduction='mean',
                 ignore_index=-100):
+=======
+def nll_loss_1d(
+    logs, targets, weight=None, reduction='mean', ignore_index=-100
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     input_shape = logs.shape
     N = input_shape[0]
     C = input_shape[1]
@@ -41,17 +47,29 @@ def nll_loss_1d(logs,
     if reduction == 'sum':
         return np.sum(out), np.array([total_weight]).astype('float64')
     elif reduction == 'mean':
+<<<<<<< HEAD
         return out.sum() / total_weight, np.array([total_weight
                                                    ]).astype('float64')
+=======
+        return out.sum() / total_weight, np.array([total_weight]).astype(
+            'float64'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     elif reduction == 'none':
         return out
 
 
+<<<<<<< HEAD
 def nll_loss_2d(logs,
                 targets,
                 weight=None,
                 reduction='mean',
                 ignore_index=-100):
+=======
+def nll_loss_2d(
+    logs, targets, weight=None, reduction='mean', ignore_index=-100
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     input_shape = logs.shape
     N = input_shape[0]
     H = input_shape[2]
@@ -71,8 +89,14 @@ def nll_loss_2d(logs,
     if reduction == 'sum':
         return np.sum(out), np.array([total_weight]).astype('float64')
     elif reduction == 'mean':
+<<<<<<< HEAD
         return out.sum() / total_weight, np.array([total_weight
                                                    ]).astype('float64')
+=======
+        return out.sum() / total_weight, np.array([total_weight]).astype(
+            'float64'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     elif reduction == 'none':
         return out
 
@@ -83,12 +107,21 @@ class TestNLLLoss(unittest.TestCase):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
@@ -96,6 +129,7 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             static_result = exe.run(prog,
                                     feed={
                                         "input": input_np,
@@ -107,31 +141,59 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+            (static_result,) = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[res],
+            )
+
+        with fluid.dygraph.guard():
+            nll_loss = paddle.nn.loss.NLLLoss()
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         with fluid.dygraph.guard():
             with _test_eager_guard():
                 nll_loss = paddle.nn.loss.NLLLoss()
+<<<<<<< HEAD
                 eager_res = nll_loss(paddle.to_tensor(input_np),
                                      paddle.to_tensor(label_np))
+=======
+                eager_res = nll_loss(
+                    paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np)[0]
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_sum(self):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
             label = fluid.data(name='label', shape=[10], dtype='int64')
@@ -139,6 +201,7 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             static_result = exe.run(prog,
                                     feed={
                                         "input": input_np,
@@ -150,6 +213,19 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+            (static_result,) = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[res],
+            )
+
+        with fluid.dygraph.guard():
+            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
             with _test_eager_guard():
@@ -163,21 +239,29 @@ class TestNLLLoss(unittest.TestCase):
                 loss.backward()
 
         expected = nll_loss_1d(input_np, label_np, reduction='sum')[0]
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_mean(self):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
-        weight_np = np.random.random(size=(10, )).astype(np.float64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+        weight_np = np.random.random(size=(10,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         # place = fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
@@ -187,47 +271,73 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np)
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
             with _test_eager_guard():
                 nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                     weight=paddle.to_tensor(weight_np))
                 eager_res = nll_loss(paddle.to_tensor(input_np),
                                      paddle.to_tensor(label_np))
+=======
+                    weight=paddle.to_tensor(weight_np)
+                )
+                eager_res = nll_loss(
+                    paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 loss = eager_res.sum()
                 loss.backward()
                 eager_result = eager_res.numpy()
 
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
-        self.assertTrue(np.allclose(eager_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(eager_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_sum(self):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
-        weight_np = np.random.random(size=(10, )).astype(np.float64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+        weight_np = np.random.random(size=(10,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         # place = fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[10, 10], dtype='float64')
@@ -237,16 +347,19 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
@@ -255,17 +368,28 @@ class TestNLLLoss(unittest.TestCase):
                                label_np,
                                weight=weight_np,
                                reduction='sum')[0]
+=======
+                weight=paddle.to_tensor(weight_np), reduction='sum'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+            dy_result = dy_res.numpy()
+        expected = nll_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='sum'
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_mean_cpu(self):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
-        weight_np = np.random.random(size=(10, )).astype(np.float64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+        weight_np = np.random.random(size=(10,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CPUPlace()
@@ -277,32 +401,42 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np)
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
         expected = nll_loss_1d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_1D_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
         input_np = np.random.random(size=(10, 10)).astype(np.float64)
         np.random.seed(200)
-        label_np = np.random.randint(0, 10, size=(10, )).astype(np.int64)
-        weight_np = np.random.random(size=(10, )).astype(np.float64)
+        label_np = np.random.randint(0, 10, size=(10,)).astype(np.int64)
+        weight_np = np.random.random(size=(10,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CPUPlace()
@@ -314,16 +448,19 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
@@ -332,10 +469,21 @@ class TestNLLLoss(unittest.TestCase):
                                label_np,
                                weight=weight_np,
                                reduction='none')
+=======
+                weight=paddle.to_tensor(weight_np), reduction='none'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+            dy_result = dy_res.numpy()
+        expected = nll_loss_1d(
+            input_np, label_np, weight=weight_np, reduction='none'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_mean(self):
         np.random.seed(200)
@@ -344,6 +492,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -351,11 +500,24 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             nll_loss = paddle.nn.loss.NLLLoss()
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             static_result = exe.run(prog,
                                     feed={
                                         "input": input_np,
@@ -367,13 +529,26 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+            (static_result,) = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[res],
+            )
+
+        with fluid.dygraph.guard():
+            nll_loss = paddle.nn.loss.NLLLoss()
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_sum(self):
         np.random.seed(200)
@@ -382,6 +557,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -389,11 +565,24 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             static_result = exe.run(prog,
                                     feed={
                                         "input": input_np,
@@ -405,22 +594,36 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+            (static_result,) = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[res],
+            )
+
+        with fluid.dygraph.guard():
+            nll_loss = paddle.nn.loss.NLLLoss(reduction='sum')
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, reduction='sum')[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_mean(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -428,6 +631,18 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
@@ -435,40 +650,56 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np)
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_mean_cpu(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
+<<<<<<< HEAD
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5],
                                dtype='float64')
+=======
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
@@ -476,41 +707,63 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np)
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         expected = nll_loss_2d(input_np, label_np, weight=weight_np)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_2D_with_weight_sum(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
 
@@ -518,16 +771,19 @@ class TestNLLLoss(unittest.TestCase):
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
@@ -537,10 +793,22 @@ class TestNLLLoss(unittest.TestCase):
                                label_np,
                                weight=weight_np,
                                reduction='sum')[0]
+=======
+                weight=paddle.to_tensor(weight_np), reduction='sum'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+            dy_result = dy_res.numpy()
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        expected = nll_loss_2d(
+            input_np, label_np, weight=weight_np, reduction='sum'
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_mean(self):
         np.random.seed(200)
@@ -549,6 +817,7 @@ class TestNLLLoss(unittest.TestCase):
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -556,11 +825,24 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             nll_loss = paddle.nn.loss.NLLLoss()
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
+<<<<<<< HEAD
             static_result = exe.run(prog,
                                     feed={
                                         "input": input_np,
@@ -572,27 +854,42 @@ class TestNLLLoss(unittest.TestCase):
             nll_loss = paddle.nn.loss.NLLLoss()
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+            (static_result,) = exe.run(
+                prog,
+                feed={"input": input_np, "label": label_np},
+                fetch_list=[res],
+            )
+
+        with fluid.dygraph.guard():
+            nll_loss = paddle.nn.loss.NLLLoss()
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        input_np_reshape = np.reshape(input_np,
-                                      (input_shape[0], input_shape[1], 1, -1))
+        input_np_reshape = np.reshape(
+            input_np, (input_shape[0], input_shape[1], 1, -1)
+        )
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
         expected = nll_loss_2d(input_np_reshape, label_np_reshape)[0]
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_mean(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -600,48 +897,78 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
             nll_loss = paddle.nn.loss.NLLLoss(weight=weight)
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np))
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np)
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        input_np_reshape = np.reshape(input_np,
-                                      (input_shape[0], input_shape[1], 1, -1))
+        input_np_reshape = np.reshape(
+            input_np, (input_shape[0], input_shape[1], 1, -1)
+        )
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
+<<<<<<< HEAD
         expected = nll_loss_2d(input_np_reshape,
                                label_np_reshape,
                                weight=weight_np)[0]
+=======
+        expected = nll_loss_2d(
+            input_np_reshape, label_np_reshape, weight=weight_np
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_sum(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         place = fluid.CPUPlace()
@@ -649,49 +976,82 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
             nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='sum')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='sum')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np), reduction='sum'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        input_np_reshape = np.reshape(input_np,
-                                      (input_shape[0], input_shape[1], 1, -1))
+        input_np_reshape = np.reshape(
+            input_np, (input_shape[0], input_shape[1], 1, -1)
+        )
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
+<<<<<<< HEAD
         expected = nll_loss_2d(input_np_reshape,
                                label_np_reshape,
                                weight=weight_np,
                                reduction='sum')[0]
+=======
+        expected = nll_loss_2d(
+            input_np_reshape,
+            label_np_reshape,
+            weight=weight_np,
+            reduction='sum',
+        )[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.CPUPlace()
         #place = fluid.CPUPlace()
@@ -699,90 +1059,148 @@ class TestNLLLoss(unittest.TestCase):
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5, 5],
                                dtype='float64')
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+        # place = fluid.CPUPlace()
+        with fluid.program_guard(prog, startup_prog):
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
             nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np), reduction='none'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        out_shape = (input_shape[0], ) + input_shape[2:]
-        input_np_reshape = np.reshape(input_np,
-                                      (input_shape[0], input_shape[1], 1, -1))
+        out_shape = (input_shape[0],) + input_shape[2:]
+        input_np_reshape = np.reshape(
+            input_np, (input_shape[0], input_shape[1], 1, -1)
+        )
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
+<<<<<<< HEAD
         expected = nll_loss_2d(input_np_reshape,
                                label_np_reshape,
                                weight=weight_np,
                                reduction='none')
+=======
+        expected = nll_loss_2d(
+            input_np_reshape,
+            label_np_reshape,
+            weight=weight_np,
+            reduction='none',
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         expected = np.reshape(expected, out_shape)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
     def test_NLLLoss_in_dims_not_2or4_with_weight_no_reduce_cpu(self):
         np.random.seed(200)
         input_np = np.random.random(size=(5, 3, 5, 5, 5)).astype(np.float64)
         np.random.seed(200)
         label_np = np.random.randint(0, 3, size=(5, 5, 5, 5)).astype(np.int64)
-        weight_np = np.random.random(size=(3, )).astype(np.float64)
+        weight_np = np.random.random(size=(3,)).astype(np.float64)
         prog = fluid.Program()
         startup_prog = fluid.Program()
         place = fluid.CPUPlace()
         with fluid.program_guard(prog, startup_prog):
+<<<<<<< HEAD
             input = fluid.data(name='input',
                                shape=[5, 3, 5, 5, 5],
                                dtype='float64')
+=======
+            input = fluid.data(
+                name='input', shape=[5, 3, 5, 5, 5], dtype='float64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.data(name='label', shape=[5, 5, 5, 5], dtype='int64')
             weight = fluid.data(name='weight', shape=[3], dtype='float64')
             nll_loss = paddle.nn.loss.NLLLoss(weight=weight, reduction='none')
             res = nll_loss(input, label)
 
             exe = fluid.Executor(place)
-            static_result = exe.run(prog,
-                                    feed={
-                                        "input": input_np,
-                                        "label": label_np,
-                                        "weight": weight_np
-                                    },
-                                    fetch_list=[res])
+            (static_result,) = exe.run(
+                prog,
+                feed={
+                    "input": input_np,
+                    "label": label_np,
+                    "weight": weight_np,
+                },
+                fetch_list=[res],
+            )
 
         with fluid.dygraph.guard():
             nll_loss = paddle.nn.loss.NLLLoss(
+<<<<<<< HEAD
                 weight=paddle.to_tensor(weight_np), reduction='none')
             dy_res = nll_loss(paddle.to_tensor(input_np),
                               paddle.to_tensor(label_np))
+=======
+                weight=paddle.to_tensor(weight_np), reduction='none'
+            )
+            dy_res = nll_loss(
+                paddle.to_tensor(input_np), paddle.to_tensor(label_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dy_result = dy_res.numpy()
 
         input_shape = input_np.shape
         label_shape = label_np.shape
-        out_shape = (input_shape[0], ) + input_shape[2:]
-        input_np_reshape = np.reshape(input_np,
-                                      (input_shape[0], input_shape[1], 1, -1))
+        out_shape = (input_shape[0],) + input_shape[2:]
+        input_np_reshape = np.reshape(
+            input_np, (input_shape[0], input_shape[1], 1, -1)
+        )
         label_np_reshape = np.reshape(label_np, (label_shape[0], 1, -1))
+<<<<<<< HEAD
         expected = nll_loss_2d(input_np_reshape,
                                label_np_reshape,
                                weight=weight_np,
                                reduction='none')
+=======
+        expected = nll_loss_2d(
+            input_np_reshape,
+            label_np_reshape,
+            weight=weight_np,
+            reduction='none',
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         expected = np.reshape(expected, out_shape)
-        self.assertTrue(np.allclose(static_result, expected))
-        self.assertTrue(np.allclose(static_result, dy_result))
-        self.assertTrue(np.allclose(dy_result, expected))
+        np.testing.assert_allclose(static_result, expected, rtol=1e-05)
+        np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
+        np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
 
 
 class TestNLLLossOp1DWithReduce(OpTest):
@@ -796,20 +1214,31 @@ class TestNLLLossOp1DWithReduce(OpTest):
         self.python_api = paddle.nn.functional.nll_loss
         self.python_out_sig = ["Out"]
         np.random.seed(200)
-        input_np = np.random.uniform(0.1, 0.8,
-                                     self.input_shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.input_shape).astype(
+            "float64"
+        )
         np.random.seed(200)
-        label_np = np.random.randint(0, self.input_shape[1],
-                                     self.label_shape).astype("int64")
+        label_np = np.random.randint(
+            0, self.input_shape[1], self.label_shape
+        ).astype("int64")
         output_np, total_weight_np = nll_loss_1d(input_np, label_np)
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)
+<<<<<<< HEAD
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_1d(input_np,
                                                      label_np,
                                                      weight=weight_np)
+=======
+            weight_np = np.random.uniform(0.1, 0.8, self.input_shape[1]).astype(
+                "float64"
+            )
+            output_np, total_weight_np = nll_loss_1d(
+                input_np, label_np, weight=weight_np
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
@@ -844,22 +1273,33 @@ class TestNLLLossOp1DNoReduce(OpTest):
         self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
-        input_np = np.random.uniform(0.1, 0.8,
-                                     self.input_shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.input_shape).astype(
+            "float64"
+        )
         np.random.seed(200)
-        label_np = np.random.randint(0, self.input_shape[1],
-                                     self.label_shape).astype("int64")
+        label_np = np.random.randint(
+            0, self.input_shape[1], self.label_shape
+        ).astype("int64")
         output_np = nll_loss_1d(input_np, label_np, reduction='none')
         total_weight_np = np.array([0]).astype('float64')
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)
+<<<<<<< HEAD
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_1d(input_np,
                                                      label_np,
                                                      weight=weight_np,
                                                      reduction='none')
+=======
+            weight_np = np.random.uniform(0.1, 0.8, self.input_shape[1]).astype(
+                "float64"
+            )
+            output_np, total_weight_np = nll_loss_1d(
+                input_np, label_np, weight=weight_np, reduction='none'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
@@ -894,20 +1334,31 @@ class TestNLLLossOp2DWithReduce(OpTest):
         self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
-        input_np = np.random.uniform(0.1, 0.8,
-                                     self.input_shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.input_shape).astype(
+            "float64"
+        )
         np.random.seed(200)
-        label_np = np.random.randint(0, self.input_shape[1],
-                                     self.label_shape).astype("int64")
+        label_np = np.random.randint(
+            0, self.input_shape[1], self.label_shape
+        ).astype("int64")
         output_np, total_weight_np = nll_loss_2d(input_np, label_np)
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)
+<<<<<<< HEAD
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_2d(input_np,
                                                      label_np,
                                                      weight=weight_np)
+=======
+            weight_np = np.random.uniform(0.1, 0.8, self.input_shape[1]).astype(
+                "float64"
+            )
+            output_np, total_weight_np = nll_loss_2d(
+                input_np, label_np, weight=weight_np
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
@@ -942,22 +1393,33 @@ class TestNLLLossOp2DNoReduce(OpTest):
         self.python_out_sig = ["Out"]
         self.with_weight = False
         np.random.seed(200)
-        input_np = np.random.uniform(0.1, 0.8,
-                                     self.input_shape).astype("float64")
+        input_np = np.random.uniform(0.1, 0.8, self.input_shape).astype(
+            "float64"
+        )
         np.random.seed(200)
-        label_np = np.random.randint(0, self.input_shape[1],
-                                     self.label_shape).astype("int64")
+        label_np = np.random.randint(
+            0, self.input_shape[1], self.label_shape
+        ).astype("int64")
         output_np = nll_loss_2d(input_np, label_np, reduction='none')
         total_weight_np = np.array([0]).astype('float64')
         self.inputs = {'X': input_np, 'Label': label_np}
         if self.with_weight:
             np.random.seed(200)
+<<<<<<< HEAD
             weight_np = np.random.uniform(0.1, 0.8,
                                           self.input_shape[1]).astype("float64")
             output_np, total_weight_np = nll_loss_2d(input_np,
                                                      label_np,
                                                      weight=weight_np,
                                                      reduction='none')
+=======
+            weight_np = np.random.uniform(0.1, 0.8, self.input_shape[1]).astype(
+                "float64"
+            )
+            output_np, total_weight_np = nll_loss_2d(
+                input_np, label_np, weight=weight_np, reduction='none'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.inputs['Weight'] = weight_np
 
         self.outputs = {'Out': output_np, 'Total_weight': total_weight_np}
@@ -1006,6 +1468,7 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             startup_prog = paddle.static.Program()
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
+<<<<<<< HEAD
                 x = paddle.fluid.data(name='x', shape=[
                     10,
                 ], dtype='float64')
@@ -1014,6 +1477,22 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
                                               10,
                                           ],
                                           dtype='float64')
+=======
+                x = paddle.fluid.data(
+                    name='x',
+                    shape=[
+                        10,
+                    ],
+                    dtype='float64',
+                )
+                label = paddle.fluid.data(
+                    name='label',
+                    shape=[
+                        10,
+                    ],
+                    dtype='float64',
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 nll_loss = paddle.nn.loss.NLLLoss()
                 res = nll_loss(x, label)
 
@@ -1021,8 +1500,8 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
 
         def test_x_dim_imperative_lt_2():
             with fluid.dygraph.guard():
-                x_np = np.random.random(size=(5, )).astype(np.float64)
-                label_np = np.random.randint(0, 10, size=(5, )).astype(np.int64)
+                x_np = np.random.random(size=(5,)).astype(np.float64)
+                label_np = np.random.randint(0, 10, size=(5,)).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss()
@@ -1038,9 +1517,15 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+<<<<<<< HEAD
                 label = paddle.fluid.data(name='label',
                                           shape=[10],
                                           dtype='int64')
+=======
+                label = paddle.fluid.data(
+                    name='label', shape=[10], dtype='int64'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
                 res = nll_loss(x, label)
 
@@ -1049,14 +1534,15 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
         def test_NLLLoss_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
-                label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
+                label_np = np.random.randint(0, 3, size=(5,)).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
                 nll_loss = paddle.nn.loss.NLLLoss(reduction='')
                 res = nll_loss(x, label)
 
-        self.assertRaises(ValueError,
-                          test_NLLLoss_reduction_imperative_not_sum_mean_none)
+        self.assertRaises(
+            ValueError, test_NLLLoss_reduction_imperative_not_sum_mean_none
+        )
 
         def test_nll_loss_function_reduction_not_sum_mean_none():
             prog = paddle.static.Program()
@@ -1064,25 +1550,33 @@ class TestNLLLossInvalidArgs(unittest.TestCase):
             place = paddle.CPUPlace()
             with paddle.static.program_guard(prog, startup_prog):
                 x = paddle.fluid.data(name='x', shape=[10, 10], dtype='float64')
+<<<<<<< HEAD
                 label = paddle.fluid.data(name='label',
                                           shape=[10],
                                           dtype='int64')
+=======
+                label = paddle.fluid.data(
+                    name='label', shape=[10], dtype='int64'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
-        self.assertRaises(ValueError,
-                          test_nll_loss_function_reduction_not_sum_mean_none)
+        self.assertRaises(
+            ValueError, test_nll_loss_function_reduction_not_sum_mean_none
+        )
 
         def test_nll_loss_function_reduction_imperative_not_sum_mean_none():
             with fluid.dygraph.guard():
                 x_np = np.random.random(size=(5, 3)).astype(np.float64)
-                label_np = np.random.randint(0, 3, size=(5, )).astype(np.int64)
+                label_np = np.random.randint(0, 3, size=(5,)).astype(np.int64)
                 x = paddle.to_tensor(x_np)
                 label = paddle.to_tensor(label_np)
                 res = paddle.nn.functional.nll_loss(x, label, reduction='')
 
         self.assertRaises(
             ValueError,
-            test_nll_loss_function_reduction_imperative_not_sum_mean_none)
+            test_nll_loss_function_reduction_imperative_not_sum_mean_none,
+        )
 
 
 if __name__ == "__main__":

@@ -31,7 +31,11 @@ void FullValue(const Context& dev_ctx, DenseTensor* tensor, T val) {
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CooFullLikeKernel(const Context& dev_ctx,
+=======
+void FullLikeCooKernel(const Context& dev_ctx,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                        const SparseCooTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -51,7 +55,11 @@ void CooFullLikeKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CsrFullLikeKernel(const Context& dev_ctx,
+=======
+void FullLikeCsrKernel(const Context& dev_ctx,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                        const SparseCsrTensor& x,
                        const Scalar& val,
                        DataType dtype,
@@ -78,10 +86,17 @@ void CsrFullLikeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(coo_full_like,
                    CPU,
                    ALL_LAYOUT,
                    phi::CooFullLikeKernel,
+=======
+PD_REGISTER_KERNEL(full_like_coo,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FullLikeCooKernel,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                    float,
                    double,
                    uint8_t,
@@ -96,10 +111,17 @@ PD_REGISTER_KERNEL(coo_full_like,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(csr_full_like,
                    CPU,
                    ALL_LAYOUT,
                    phi::CsrFullLikeKernel,
+=======
+PD_REGISTER_KERNEL(full_like_csr,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::FullLikeCsrKernel,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                    float,
                    double,
                    uint8_t,

@@ -22,8 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class DropoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -37,7 +35,11 @@ class DropoutOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "Seed") {
       VLOG(10) << "var_name:" << var_name
@@ -71,20 +73,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                             true,
                             platform::errors::InvalidArgument(
                                 "'dropout_prob' must be between 0.0 and 1.0."));
-        });
+        })
+        .SupportTensor();
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
-                  "A flag indicating whether to use a fixed seed to generate "
-                  "random mask. NOTE: DO NOT set this flag to true in "
-                  "training. Setting this flag to true is only useful in "
-                  "unittest or for debug that always the same output units "
-                  "will be dropped.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"

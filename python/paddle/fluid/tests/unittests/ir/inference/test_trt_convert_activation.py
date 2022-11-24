@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
@@ -41,11 +41,27 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
+<<<<<<< HEAD
                         "relu", "sigmoid", "tanh", "relu6", "elu", "selu",
                         "softsign", "stanh", "thresholded_relu", "softplus"
                 ]:
                     # few samples to reduce time
                     #for beta in [-0.2, 0.5, 0.67, 3]:
+=======
+                    "relu",
+                    "sigmoid",
+                    "tanh",
+                    "relu6",
+                    "elu",
+                    "selu",
+                    "softsign",
+                    "stanh",
+                    "thresholded_relu",
+                    "softplus",
+                ]:
+                    # few samples to reduce time
+                    # for beta in [-0.2, 0.5, 0.67, 3]:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     #    for alpha in [-0.2, 0.5, 0.67, 3]:
                     for beta in [0.67]:
                         for alpha in [0.67]:
@@ -62,6 +78,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                             if op_type == "softplus":
                                 dics = [{"beta": beta}]
 
+<<<<<<< HEAD
                             ops_config = [{
                                 "op_type": op_type,
                                 "op_inputs": {
@@ -72,23 +89,49 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 },
                                 "op_attrs": dics[0]
                             }]
+=======
+                            ops_config = [
+                                {
+                                    "op_type": op_type,
+                                    "op_inputs": {"X": ["input_data"]},
+                                    "op_outputs": {"Out": ["output_data"]},
+                                    "op_attrs": dics[0],
+                                }
+                            ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                             ops = self.generate_op_config(ops_config)
 
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={},
                                 inputs={
+<<<<<<< HEAD
                                     "input_data":
                                     TensorConfig(data_gen=partial(
                                         generate_input1, dims, batch, dics))
                                 },
                                 outputs=["output_data"])
+=======
+                                    "input_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input1, dims, batch, dics
+                                        )
+                                    )
+                                },
+                                outputs=["output_data"],
+                            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -131,19 +174,30 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False
+        ), 1e-3
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-3
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test(self):
         self.run_test()

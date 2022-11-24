@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -41,7 +39,7 @@ class TestElementwiseSubOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -130,25 +128,34 @@ class TestSubtractAPI(unittest.TestCase):
 
             place = paddle.NPUPlace(0)
             exe = paddle.static.Executor(place)
+<<<<<<< HEAD
             x_value, y_value, z_value = exe.run(feed={
                 "x": x_np,
                 "y": y_np
             },
                                                 fetch_list=[x, y, z])
+=======
+            x_value, y_value, z_value = exe.run(
+                feed={"x": x_np, "y": y_np}, fetch_list=[x, y, z]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-            z_expected = np.array([1., -2., 2.])
+            z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual(
                 (x_value == x_np).all(),
                 True,
-                msg="x_value = {}, but expected {}".format(x_value, x_np))
+                msg="x_value = {}, but expected {}".format(x_value, x_np),
+            )
             self.assertEqual(
                 (y_value == y_np).all(),
                 True,
-                msg="y_value = {}, but expected {}".format(y_value, y_np))
+                msg="y_value = {}, but expected {}".format(y_value, y_np),
+            )
             self.assertEqual(
                 (z_value == z_expected).all(),
                 True,
-                msg="z_value = {}, but expected {}".format(z_value, z_expected))
+                msg="z_value = {}, but expected {}".format(z_value, z_expected),
+            )
 
 
 class TestSubtractError(unittest.TestCase):
@@ -156,6 +163,7 @@ class TestSubtractError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             # the input of elementwise_add must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.NPUPlace(0))
             y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
@@ -169,6 +177,23 @@ class TestSubtractError(unittest.TestCase):
             y2 = paddle.static.data(name='y2',
                                     shape=[3, 4, 5, 6],
                                     dtype="uint8")
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
+            )
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.NPUPlace(0)
+            )
+            self.assertRaises(TypeError, paddle.subtract, x1, y1)
+
+            # the input dtype must be float16 or float32 or float64 or int32 or int64
+            x2 = paddle.static.data(
+                name='x2', shape=[3, 4, 5, 6], dtype="uint8"
+            )
+            y2 = paddle.static.data(
+                name='y2', shape=[3, 4, 5, 6], dtype="uint8"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertRaises(TypeError, paddle.subtract, x2, y2)
 
 
@@ -188,9 +213,15 @@ class TestSubtractNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             sum = paddle.add(a, b)
             c = paddle.assign(b)
@@ -214,6 +245,7 @@ class TestSubtractNet(unittest.TestCase):
 
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -221,9 +253,19 @@ class TestSubtractNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -231,8 +273,8 @@ class TestSubtractNet(unittest.TestCase):
         npu_pred, npu_loss = self._test(True)
         cpu_pred, cpu_loos = self._test(False)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loos))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loos, rtol=1e-6)
 
 
 if __name__ == '__main__':

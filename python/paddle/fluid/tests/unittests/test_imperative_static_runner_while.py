@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import contextlib
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
@@ -26,8 +22,6 @@ from paddle.fluid import core
 from paddle.fluid import unique_name
 from test_imperative_base import new_program_scope
 from jit_load_rename_var import rename_var_with_generator
-
-import paddle.fluid.transpiler.details.program_utils as pu
 
 LOADED_VAR_SUFFIX = ".load_0"
 
@@ -45,9 +39,15 @@ def while_softmax_regression(img):
     i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
     times = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
     pred = fluid.layers.fc(input=img, size=10, act='softmax')
+<<<<<<< HEAD
     i, times, pred = fluid.layers.while_loop(cond=cond,
                                              body=body,
                                              loop_vars=[i, times, pred])
+=======
+    i, times, pred = fluid.layers.while_loop(
+        cond=cond, body=body, loop_vars=[i, times, pred]
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return pred
 
 
@@ -71,7 +71,8 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         def __reader__():
             for _ in range(self.batch_num):
                 batch_image, batch_label = _get_random_images_and_labels(
-                    [self.batch_size, 784], [self.batch_size, 1])
+                    [self.batch_size, 784], [self.batch_size, 1]
+                )
                 yield batch_image, batch_label
 
         return __reader__
@@ -91,20 +92,35 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
         optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         optimizer.minimize(avg_loss)
 
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(feed_list=[img, label],
                                                     capacity=5,
                                                     iterable=True)
+=======
+        loader = fluid.io.DataLoader.from_generator(
+            feed_list=[img, label], capacity=5, iterable=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         loader.set_batch_generator(self._random_batch_reader(), places=place)
 
         for data in loader():
             exe.run(main_program, feed=data, fetch_list=[avg_loss])
 
+<<<<<<< HEAD
         fluid.io.save_inference_model(self.save_dirname, ["img"], [pred],
                                       exe,
                                       model_filename=self.model_filename,
@@ -114,6 +130,24 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
     def load_and_train_dygraph(self):
         place = fluid.CUDAPlace(
             0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        fluid.io.save_inference_model(
+            self.save_dirname,
+            ["img"],
+            [pred],
+            exe,
+            model_filename=self.model_filename,
+            params_filename=self.params_filename,
+            clip_extra=False,
+        )
+
+    def load_and_train_dygraph(self):
+        place = (
+            fluid.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         with fluid.dygraph.guard(place):
             fluid.default_startup_program().random_seed = self.seed
             fluid.default_main_program().random_seed = self.seed
@@ -121,18 +155,26 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
             while_net = fluid.dygraph.static_runner.StaticModelRunner(
-                self.save_dirname)
+                self.save_dirname
+            )
 
             dy_param_init_value = {}
             for param in while_net.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
-            sgd = fluid.optimizer.SGD(learning_rate=0.001,
-                                      parameter_list=while_net.parameters())
+            sgd = fluid.optimizer.SGD(
+                learning_rate=0.001, parameter_list=while_net.parameters()
+            )
 
             train_loader = fluid.io.DataLoader.from_generator(capacity=10)
+<<<<<<< HEAD
             train_loader.set_batch_generator(self._random_batch_reader(),
                                              places=place)
+=======
+            train_loader.set_batch_generator(
+                self._random_batch_reader(), places=place
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             while_net.train()
 
@@ -174,37 +216,66 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
             optimizer.minimize(avg_loss)
 
+<<<<<<< HEAD
             place = fluid.CUDAPlace(
                 0) if core.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+            place = (
+                fluid.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
 
+<<<<<<< HEAD
             fluid.io.load_params(exe,
                                  self.save_dirname,
                                  main_program=fluid.default_main_program(),
                                  filename=self.params_filename)
+=======
+            fluid.io.load_params(
+                exe,
+                self.save_dirname,
+                main_program=fluid.default_main_program(),
+                filename=self.params_filename,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             static_param_init_value = {}
             static_param_name_list = []
             for param in fluid.default_main_program().all_parameters():
                 static_param_name_list.append(param.name)
                 static_param_init_value[param.name] = fluid.executor._fetch_var(
-                    param.name)
+                    param.name
+                )
 
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(feed_list=[img, label],
                                                         capacity=5,
                                                         iterable=True)
             loader.set_batch_generator(self._random_batch_reader(),
                                        places=place)
+=======
+            loader = fluid.io.DataLoader.from_generator(
+                feed_list=[img, label], capacity=5, iterable=True
+            )
+            loader.set_batch_generator(
+                self._random_batch_reader(), places=place
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             for data in loader():
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
 
-                out = exe.run(fluid.default_main_program(),
-                              feed=data,
-                              fetch_list=[avg_loss])
+                out = exe.run(
+                    fluid.default_main_program(),
+                    feed=data,
+                    fetch_list=[avg_loss],
+                )
 
             static_param_value = {}
             static_out = out[0]
@@ -219,26 +290,35 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
 
         # # Phase 2. load model & train dygraph
         with unique_name.guard():
-            dy_out, dy_param_init_value, dy_param_value = \
-            self.load_and_train_dygraph()
+            (
+                dy_out,
+                dy_param_init_value,
+                dy_param_value,
+            ) = self.load_and_train_dygraph()
 
         with unique_name.guard():
-            static_out, static_param_init_value, static_param_value = \
-                self.load_and_train_static()
+            (
+                static_out,
+                static_param_init_value,
+                static_param_value,
+            ) = self.load_and_train_static()
 
         # Phase 3. compare
         with unique_name.guard():
             dict_old_new_init = rename_var_with_generator(
-                static_param_init_value.keys())
-        for key, value in six.iteritems(static_param_init_value):
+                static_param_init_value.keys()
+            )
+        for key, value in static_param_init_value.items():
             key = dict_old_new_init[key]
-            self.assertTrue(np.array_equal(value, dy_param_init_value[key]))
+            np.testing.assert_array_equal(value, dy_param_init_value[key])
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
-        for key, value in six.iteritems(static_param_value):
+        for key, value in static_param_value.items():
             key += LOADED_VAR_SUFFIX
-            self.assertTrue(np.allclose(value, dy_param_value[key], atol=1e-5))
+            np.testing.assert_allclose(
+                value, dy_param_value[key], rtol=1e-05, atol=1e-05
+            )
 
 
 if __name__ == '__main__':

@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
 import os
-import sys
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient, FSTimeOut, FSFileExistsError, FSFileNotExistsError
+from paddle.distributed.fleet.utils.fs import (
+    FSFileExistsError,
+    FSFileNotExistsError,
+    HDFSClient,
+    LocalFS,
+)
 
 java_home = os.environ["JAVA_HOME"]
 
@@ -221,10 +222,19 @@ class FSTestBase(unittest.TestCase):
             pass
 
     def _test_list_dir(self, fs):
+<<<<<<< HEAD
         fs = HDFSClient("/usr/local/hadoop-2.7.7/",
                         None,
                         time_out=15 * 1000,
                         sleep_inter=100)
+=======
+        fs = HDFSClient(
+            "/usr/local/hadoop-2.7.7/",
+            None,
+            time_out=15 * 1000,
+            sleep_inter=100,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         fs.ls_dir("test_not_exists")
 
     def _test_touch(self, fs):

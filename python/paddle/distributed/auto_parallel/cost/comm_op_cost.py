@@ -14,7 +14,7 @@
 
 import math
 
-from .base_cost import register_op_cost, CommOpCost, _g_op_cost_factory
+from .base_cost import CommOpCost, register_op_cost
 
 
 @register_op_cost
@@ -22,9 +22,13 @@ class AllreduceSumOpCost(CommOpCost):
     OP_TYPE = "c_allreduce_sum"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(AllreduceSumOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         # use tree if cross machine and use ring if in a single machine
@@ -39,6 +43,7 @@ class AllreduceSumOpCost(CommOpCost):
 
     def calc_time_ring(self):
         alpha = self.comm_context.base_ring
+<<<<<<< HEAD
         alpha += 2 * (self.rank_count -
                       self.machine_count) * self.comm_context.intra_ring
         alpha += 2 * (self.machine_count - 1) * (
@@ -46,15 +51,48 @@ class AllreduceSumOpCost(CommOpCost):
         beta = self.comm_context.get_max_beta(self.group_ranks)
         time = alpha + 2 * (self.rank_count -
                             1) / self.rank_count * self.comm_count * beta
+=======
+        alpha += (
+            2
+            * (self.rank_count - self.machine_count)
+            * self.comm_context.intra_ring
+        )
+        alpha += (
+            2
+            * (self.machine_count - 1)
+            * (
+                self.comm_context.inter_ring
+                + self.hops * self.comm_context.switch
+            )
+        )
+        beta = self.comm_context.get_max_beta(self.group_ranks)
+        time = (
+            alpha
+            + 2
+            * (self.rank_count - 1)
+            / self.rank_count
+            * self.comm_count
+            * beta
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         return time
 
     def calc_time_tree(self):
         alpha = self.comm_context.base_tree
+<<<<<<< HEAD
         alpha += 2 * (self.rank_count / self.machine_count -
                       1) * self.comm_context.intra_tree
+=======
+        alpha += (
+            2
+            * (self.rank_count / self.machine_count - 1)
+            * self.comm_context.intra_tree
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         alpha += math.log2(self.machine_count) * (
-            self.comm_context.inter_tree + self.hops * self.comm_context.switch)
+            self.comm_context.inter_tree + self.hops * self.comm_context.switch
+        )
         beta = self.comm_context.get_max_beta(self.group_ranks)
 
         time = alpha + 2 * self.comm_count * beta
@@ -67,9 +105,13 @@ class AllgatherOpCost(CommOpCost):
     OP_TYPE = "c_allgather"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(AllgatherOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         time = self.calc_time_ring()
@@ -77,13 +119,27 @@ class AllgatherOpCost(CommOpCost):
 
     def calc_time_ring(self):
         alpha = self.comm_context.base_ring
+<<<<<<< HEAD
         alpha += (self.rank_count -
                   self.machine_count) * self.comm_context.intra_ring
+=======
+        alpha += (
+            self.rank_count - self.machine_count
+        ) * self.comm_context.intra_ring
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         alpha += (self.machine_count - 1) * (
-            self.comm_context.inter_ring + self.hops * self.comm_context.switch)
+            self.comm_context.inter_ring + self.hops * self.comm_context.switch
+        )
         beta = self.comm_context.get_max_beta(self.group_ranks)
+<<<<<<< HEAD
         time = alpha + (self.rank_count -
                         1) / self.rank_count * self.comm_count * beta
+=======
+        time = (
+            alpha
+            + (self.rank_count - 1) / self.rank_count * self.comm_count * beta
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return time
 
 
@@ -92,9 +148,13 @@ class BroadcastOpCost(CommOpCost):
     OP_TYPE = "c_broadcast"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(BroadcastOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         time = self.calc_time_ring()
@@ -103,7 +163,10 @@ class BroadcastOpCost(CommOpCost):
     def calc_time_ring(self):
         alpha = self.comm_context.base_ring
         if self.machine_count > 1:
-            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+            alpha += (
+                self.comm_context.inter_ring
+                + self.hops * self.comm_context.switch
+            )
         else:
             alpha += self.comm_context.intra_ring
         beta = self.comm_context.get_max_beta(self.group_ranks)
@@ -117,9 +180,13 @@ class IdentityOpCost(CommOpCost):
     OP_TYPE = "c_identity"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(IdentityOpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         return 0
@@ -130,14 +197,21 @@ class RecvOpCost(CommOpCost):
     OP_TYPE = "recv_v2"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(RecvOpCost, self).__init__(op=op,
                                          op_desc=op_desc,
                                          comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         alpha = self.comm_context.base_ring
         if self.machine_count > 1:
-            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+            alpha += (
+                self.comm_context.inter_ring
+                + self.hops * self.comm_context.switch
+            )
         else:
             alpha += self.comm_context.intra_ring
         beta = self.comm_context.get_max_beta(self.group_ranks)
@@ -150,14 +224,21 @@ class SendOpCost(CommOpCost):
     OP_TYPE = "send_v2"
 
     def __init__(self, op=None, op_desc=None, comm_context=None):
+<<<<<<< HEAD
         super(SendOpCost, self).__init__(op=op,
                                          op_desc=op_desc,
                                          comm_context=comm_context)
+=======
+        super().__init__(op=op, op_desc=op_desc, comm_context=comm_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def calc_time(self):
         alpha = self.comm_context.base_ring
         if self.machine_count > 1:
-            alpha += self.comm_context.inter_ring + self.hops * self.comm_context.switch
+            alpha += (
+                self.comm_context.inter_ring
+                + self.hops * self.comm_context.switch
+            )
         else:
             alpha += self.comm_context.intra_ring
         beta = self.comm_context.get_max_beta(self.group_ranks)

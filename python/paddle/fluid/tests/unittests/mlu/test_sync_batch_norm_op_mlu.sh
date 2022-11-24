@@ -17,3 +17,8 @@
 set -e
 
 MLU_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch test_sync_batch_norm_op_mlu_baseline.py
+<<<<<<< HEAD
+=======
+
+MLU_VISIBLE_DEVICES=0,1 python -m paddle.distributed.launch test_parallel_dygraph_sync_batch_norm_mlu.py
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

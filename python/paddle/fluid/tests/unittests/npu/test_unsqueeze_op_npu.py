@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -100,7 +98,7 @@ class TestUnsqueeze2Op(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.x.reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_npu(self):

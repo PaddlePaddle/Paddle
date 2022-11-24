@@ -54,6 +54,7 @@ bool HasAllocation(const phi::TensorBase& t) {
 
 BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
   if (HasAllocation(t) && t.place().GetType() != AllocationType::UNDEFINED) {
+<<<<<<< HEAD
     BackendSet backend_set(phi::TransToPhiBackend(t.place()));
     switch (t.layout()) {
       case DataLayout::MKLDNN:
@@ -62,24 +63,31 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
       default:
         // do nothing
         break;
+=======
+    phi::Backend backend_key = phi::TransToPhiBackend(t.place());
+    BackendSet backend_set(backend_key);
+    if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
+        static_cast<const phi::DenseTensor&>(t).meta().use_cudnn) {
+      backend_set = backend_set | BackendSet(Backend::GPUDNN);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
     return backend_set;
   }
   return BackendSet(Backend::UNDEFINED);
 }
 
-std::size_t CountLeadingZeros(uint64_t val) {
+std::size_t CountLeadingZeros(uint32_t val) {
 #if defined(__clang__) || defined(__GNUC__)
-  return __builtin_clzl(val);
+  return __builtin_clz(val);
 #elif defined(_MSC_VER)
-  return __lzcnt64(val);
+  return __lzcnt(val);
 #else
   if (val == 0) {
-    return 64;
+    return 32;
   }
   std::size_t zero_bits = 0;
-  for (std::size_t shift = 64 >> 1; shift; shift >>= 1) {
-    uint64_t tmp = val >> shift;
+  for (std::size_t shift = 32 >> 1; shift; shift >>= 1) {
+    uint32_t tmp = val >> shift;
     if (tmp) {
       val = tmp;
     } else {
@@ -126,7 +134,13 @@ Backend ParseBackend(const Place& place) {
   return phi::TransToPhiBackend(place);
 }
 Backend ParseBackend(const Tensor& tensor) {
-  return phi::TransToPhiBackend(tensor.place());
+  Backend backend_key = phi::TransToPhiBackend(tensor.place());
+  if (backend_key == Backend::GPU &&
+      phi::DenseTensor::classof(tensor.impl().get()) &&
+      static_cast<phi::DenseTensor*>(tensor.impl().get())->meta().use_cudnn) {
+    return Backend::GPUDNN;
+  }
+  return backend_key;
 }
 
 Backend ParseBackendWithInputOrder(const Place& place, const Tensor& tensor) {

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -52,9 +50,17 @@ class TestArgsortOp(OpTest):
     def get_output(self):
         if self.descending:
             self.indices = np.flip(
+<<<<<<< HEAD
                 np.argsort(self.x, kind='heapsort', axis=self.axis), self.axis)
             self.sorted_x = np.flip(
                 np.sort(self.x, kind='heapsort', axis=self.axis), self.axis)
+=======
+                np.argsort(self.x, kind='heapsort', axis=self.axis), self.axis
+            )
+            self.sorted_x = np.flip(
+                np.sort(self.x, kind='heapsort', axis=self.axis), self.axis
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.indices = np.argsort(self.x, kind='heapsort', axis=self.axis)
             self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis)
@@ -167,9 +173,15 @@ class TestArgsortOpAxis0NPUFP32(TestArgsortOp):
         self.__class__.use_npu = True
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ["X"],
                                    "Out",
                                    max_relative_error=0.03)
+=======
+        self.check_grad_with_place(
+            self.place, ["X"], "Out", max_relative_error=0.03
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestArgsortOpAxis1NPUFP32(TestArgsortOpAxis0NPUFP32):
@@ -244,10 +256,16 @@ class TestArgsortOpAxis0NPUINT64(TestArgsortOp):
         self.init_axis()
         self.init_direction()
 
+<<<<<<< HEAD
         self.x = np.random.randint(low=-100,
                                    high=100,
                                    size=self.input_shape,
                                    dtype=self.dtype).astype(self.dtype)
+=======
+        self.x = np.random.randint(
+            low=-100, high=100, size=self.input_shape, dtype=self.dtype
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.inputs = {"X": self.x}
         self.attrs = {"axis": self.axis, "descending": self.descending}
         self.get_output()

@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy
+import numpy as np
 
 import op_test
 import paddle
@@ -35,11 +33,12 @@ class TestAssignValueOp(op_test.OpTest):
         self.init_data()
         self.attrs["shape"] = self.value.shape
         self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
-            self.value.dtype)
+            self.value.dtype
+        )
         self.outputs = {"Out": self.value}
 
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.float32)
+        self.value = np.random.random(size=(2, 5)).astype(np.float32)
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
@@ -49,22 +48,28 @@ class TestAssignValueOp(op_test.OpTest):
 class TestAssignValueOp2(TestAssignValueOp):
 
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int32)
+        self.value = np.random.random(size=(2, 5)).astype(np.int32)
         self.attrs["int32_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp3(TestAssignValueOp):
 
     def init_data(self):
-        self.value = numpy.random.random(size=(2, 5)).astype(numpy.int64)
+        self.value = np.random.random(size=(2, 5)).astype(np.int64)
         self.attrs["int64_values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignValueOp4(TestAssignValueOp):
 
     def init_data(self):
+<<<<<<< HEAD
         self.value = numpy.random.choice(a=[False, True],
                                          size=(2, 5)).astype(numpy.bool)
+=======
+        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+            np.bool
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.attrs["bool_values"] = [int(v) for v in self.value.flat]
 
 
@@ -72,10 +77,21 @@ class TestAssignApi(unittest.TestCase):
 
     def setUp(self):
         self.init_dtype()
+<<<<<<< HEAD
         self.value = (-100 + 200 * numpy.random.random(size=(2, 5))).astype(
             self.dtype)
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.value = (-100 + 200 * np.random.random(size=(2, 5))).astype(
+            self.dtype
+        )
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_dtype(self):
         self.dtype = "float32"
@@ -88,8 +104,12 @@ class TestAssignApi(unittest.TestCase):
 
         exe = fluid.Executor(self.place)
         [fetched_x] = exe.run(main_program, feed={}, fetch_list=[x])
+<<<<<<< HEAD
         self.assertTrue(numpy.array_equal(fetched_x, self.value),
                         "fetch_x=%s val=%s" % (fetched_x, self.value))
+=======
+        np.testing.assert_array_equal(fetched_x, self.value)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.assertEqual(fetched_x.dtype, self.value.dtype)
 
 
@@ -109,10 +129,21 @@ class TestAssignApi4(TestAssignApi):
 
     def setUp(self):
         self.init_dtype()
+<<<<<<< HEAD
         self.value = numpy.random.choice(a=[False, True],
                                          size=(2, 5)).astype(numpy.bool)
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+            np.bool
+        )
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_dtype(self):
         self.dtype = "bool"

@@ -30,20 +30,38 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
 
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(
+<<<<<<< HEAD
                 kwargs['in_dtype'])
 
         shape_op = OpConfig(type="shape",
                             inputs={"Input": ["input_data"]},
                             outputs={"Out": ["output_data"]})
+=======
+                kwargs['in_dtype']
+            )
+
+        shape_op = OpConfig(
+            type="shape",
+            inputs={"Input": ["input_data"]},
+            outputs={"Out": ["output_data"]},
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         program_config = ProgramConfig(
             ops=[shape_op],
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data":
                 TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
+=======
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             },
-            outputs=["output_data"])
+            outputs=["output_data"],
+        )
 
         yield program_config
 
@@ -51,10 +69,19 @@ class TestMkldnnShapeOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
+<<<<<<< HEAD
     @given(in_shape=st.lists(st.integers(min_value=1, max_value=3),
                              min_size=1,
                              max_size=6),
            in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]))
+=======
+    @given(
+        in_shape=st.lists(
+            st.integers(min_value=1, max_value=3), min_size=1, max_size=6
+        ),
+        in_dtype=st.sampled_from([np.float32, np.uint16, np.int8, np.uint8]),
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

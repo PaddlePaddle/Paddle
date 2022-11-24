@@ -35,14 +35,23 @@ class Variable;
 
 void TransformData(const OpKernelType &expected_kernel_type,
                    const OpKernelType &kernel_type_for_var,
+<<<<<<< HEAD
                    const Tensor &input_tensor,
                    Tensor *out);
+=======
+                   const phi::DenseTensor &input_tensor,
+                   phi::DenseTensor *out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 /**
  * Set OutVar from InVar, except the tensor is shared with `tensor`
  */
 void SetTensorToVariable(const Variable &in_var,
+<<<<<<< HEAD
                          const Tensor &tensor,
+=======
+                         const phi::DenseTensor &tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                          Variable *out_var);
 }  // namespace framework
 }  // namespace paddle

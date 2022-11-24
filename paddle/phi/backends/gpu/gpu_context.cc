@@ -21,6 +21,7 @@ limitations under the License. */
 #include <future>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
@@ -54,8 +55,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(phi): remove fluid header.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
@@ -252,7 +252,13 @@ struct GPUContext::Impl {
       phi::DestroyDnnHandle(dnn_handle_);
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
       if (nccl_comm_) {
-        PADDLE_ENFORCE_GPU_SUCCESS(dynload::ncclCommDestroy(nccl_comm_));
+        // NOTE(liyurui): It is not recommend calling CUDA runtime API
+        // in destructor. Since we can not ensure the release order of
+        // static object, calling ncclCommDestroy in static object destructor
+        // is a undefined behavior, CUDA driver may be already unloaded
+        // from process.
+        // If you really need to release the resource of nccl_comm,
+        // try to get the nccl_comm out and use ncclCommDestroy outside.
       }
 #endif
       phi::DestroyBlasHandle(blas_handle_);
@@ -293,6 +299,7 @@ struct GPUContext::Impl {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
     return DnnWorkspaceHandle(allocator_, stream());
+<<<<<<< HEAD
   }
 
   void SetStream(gpuStream_t stream) {
@@ -304,6 +311,19 @@ struct GPUContext::Impl {
     stream_->set_raw_stream(stream);
   }
 
+=======
+  }
+
+  void SetStream(gpuStream_t stream) {
+    if (stream_ == nullptr) {
+      auto s = Stream(reinterpret_cast<StreamId>(stream));
+      stream_ = new CUDAStream(place_, s);
+      stream_owned_ = true;
+    }
+    stream_->set_raw_stream(stream);
+  }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void SetCUDAStream(CUDAStream* stream, bool clear = true) {
     if (clear && stream_owned_ && stream_) {
       delete stream_;
@@ -312,6 +332,7 @@ struct GPUContext::Impl {
     stream_ = stream;
     // TODO(phi): reset related handles?
   }
+<<<<<<< HEAD
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
@@ -319,6 +340,15 @@ struct GPUContext::Impl {
     return s;
   }
 
+=======
+
+  gpuStream_t stream() const {
+    auto s = stream_->raw_stream();
+    PD_CHECK(s != nullptr, "the gpu stream is nullptr.");
+    return s;
+  }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   CUDAStream* cuda_stream() const {
     PD_CHECK(stream_ != nullptr, "the gpu stream is nullptr.");
     return stream_;
@@ -575,7 +605,11 @@ struct GPUContext::Impl {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
         } else {
+<<<<<<< HEAD
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+=======
+          blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
@@ -717,6 +751,26 @@ struct GPUContext::Impl {
     }
   }
 
+<<<<<<< HEAD
+=======
+  bool HasDnnAttr(const std::string& attr_name) const {
+    return dnn_attrs_.count(attr_name) != 0UL;
+  }
+
+  const Attribute& GetDnnAttr(const std::string& attr_name) const {
+    auto iter = dnn_attrs_.find(attr_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        dnn_attrs_.end(),
+        phi::errors::NotFound("Attribute `%s` is not found in OneDNNContext."));
+    return iter->second;
+  }
+
+  void SetDnnAttr(const std::string& attr_name, Attribute attr) {
+    dnn_attrs_[attr_name] = attr;
+  }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -780,8 +834,18 @@ struct GPUContext::Impl {
   Allocator* allocator_{nullptr};  // external resource.
   // A internal resouce to initinalize eigen_device.
   std::unique_ptr<internal::EigenGpuStreamDevice> eigen_stream_{nullptr};
+
+  // Holds some attributes only used by the gpudnn kernel calculation
+  // Because DeviceContext is a global singleton, you need to ensure thread
+  // safety, use the thread_local variable
+  static thread_local AttributeMap dnn_attrs_;
 };
 
+<<<<<<< HEAD
+=======
+thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;
@@ -999,5 +1063,17 @@ void GPUContext::SetMaxGridDimSize(const std::array<int, 3>& val) {
 void GPUContext::SetDriverVersion(int val) { impl_->driver_version_ = val; }
 
 void GPUContext::SetRuntimeVersion(int val) { impl_->runtime_version_ = val; }
+
+bool GPUContext::HasDnnAttr(const std::string& attr_name) const {
+  return impl_->HasDnnAttr(attr_name);
+}
+
+const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
+  return impl_->GetDnnAttr(attr_name);
+}
+
+void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
+  return impl_->SetDnnAttr(attr_name, std::move(attr));
+}
 
 }  // namespace phi

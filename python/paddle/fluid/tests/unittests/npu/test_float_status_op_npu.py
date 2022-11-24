@@ -19,7 +19,7 @@ import sys
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 import paddle
-import paddle._C_ops as ops
+import paddle._legacy_C_ops as ops
 
 
 class TestGetFloatStatusOp(unittest.TestCase):

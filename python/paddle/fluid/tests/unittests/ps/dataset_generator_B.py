@@ -23,7 +23,10 @@ categorical_range_ = range(14, 40)
 
 
 class CriteoDataset(dg.MultiSlotDataGenerator):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def generate_sample(self, line):
         """
         Read the data line by line and process it as a dictionary
@@ -40,8 +43,14 @@ class CriteoDataset(dg.MultiSlotDataGenerator):
                     dense_feature.append(0.0)
                 else:
                     dense_feature.append(
+<<<<<<< HEAD
                         (float(features[idx]) - cont_min_[idx - 1]) /
                         cont_diff_[idx - 1])
+=======
+                        (float(features[idx]) - cont_min_[idx - 1])
+                        / cont_diff_[idx - 1]
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = [int(features[0])]
             feature_name = ["dense_feature"]
             feature_name.append("label")

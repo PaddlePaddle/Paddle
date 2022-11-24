@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import sys
 
@@ -37,7 +36,7 @@ class TestUnsqueezeOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_mlu(self):
@@ -64,7 +63,7 @@ class TestUnsqueezeOp1(TestUnsqueezeOp):
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
-        self.axes = (-1, )
+        self.axes = (-1,)
         self.new_shape = (20, 5, 1)
 
 
@@ -105,17 +104,18 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
 
         axes_tensor_list = []
         for index, ele in enumerate(self.axes):
-            axes_tensor_list.append(("axes" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            axes_tensor_list.append(
+                ("axes" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
-            "AxesTensorList": axes_tensor_list
+            "AxesTensorList": axes_tensor_list,
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_mlu(self):
@@ -141,7 +141,7 @@ class TestUnsqueezeOp1_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
-        self.axes = (-1, )
+        self.axes = (-1,)
         self.new_shape = (20, 5, 1)
 
 
@@ -179,12 +179,12 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
 
         self.inputs = {
             "X": np.random.random(self.ori_shape).astype("float32"),
-            "AxesTensor": np.array(self.axes).astype("int32")
+            "AxesTensor": np.array(self.axes).astype("int32"),
         }
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
-            "XShape": np.random.random(self.ori_shape).astype("float32")
+            "XShape": np.random.random(self.ori_shape).astype("float32"),
         }
 
     def set_mlu(self):
@@ -210,7 +210,7 @@ class TestUnsqueezeOp1_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
-        self.axes = (-1, )
+        self.axes = (-1,)
         self.new_shape = (20, 5, 1)
 
 

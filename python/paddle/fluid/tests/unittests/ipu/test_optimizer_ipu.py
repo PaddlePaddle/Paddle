@@ -57,6 +57,7 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(name='image',
                                            shape=[1, 3, 10, 10],
                                            dtype='float32')
@@ -64,18 +65,38 @@ class TestBase(IPUOpTest):
                                                 num_filters=3,
                                                 filter_size=3,
                                                 bias_attr=False)
+=======
+                image = paddle.static.data(
+                    name='image', shape=[1, 3, 10, 10], dtype='float32'
+                )
+                conv1 = paddle.static.nn.conv2d(
+                    image, num_filters=3, filter_size=3, bias_attr=False
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']
-                opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                           weight_decay=weight_decay)
+                opt = paddle.optimizer.SGD(
+                    learning_rate=1e-1, weight_decay=weight_decay
+                )
                 if self.attrs['optimizer'] == 'adam':
+<<<<<<< HEAD
                     opt = paddle.optimizer.Adam(learning_rate=1e-1,
                                                 weight_decay=weight_decay)
                 elif self.attrs['optimizer'] == 'lamb':
 
                     opt = paddle.optimizer.Lamb(learning_rate=1e-1,
                                                 lamb_weight_decay=weight_decay)
+=======
+                    opt = paddle.optimizer.Adam(
+                        learning_rate=1e-1, weight_decay=weight_decay
+                    )
+                elif self.attrs['optimizer'] == 'lamb':
+
+                    opt = paddle.optimizer.Lamb(
+                        learning_rate=1e-1, lamb_weight_decay=weight_decay
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 opt.minimize(loss)
 
             if run_ipu:
@@ -91,18 +112,34 @@ class TestBase(IPUOpTest):
                 ipu_strategy = paddle.static.IpuStrategy()
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options(
+<<<<<<< HEAD
                     {'loss_scaling': self.attrs["loss_scaling"]})
+=======
+                    {'loss_scaling': self.attrs["loss_scaling"]}
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 if "use_no_bias_optimizer" in self.attrs.keys():
-                    ipu_strategy.set_options({
-                        "use_no_bias_optimizer":
-                        self.attrs["use_no_bias_optimizer"]
-                    })
+                    ipu_strategy.set_options(
+                        {
+                            "use_no_bias_optimizer": self.attrs[
+                                "use_no_bias_optimizer"
+                            ]
+                        }
+                    )
                 if "accl1_type" in self.attrs.keys():
                     ipu_strategy.set_options(
+<<<<<<< HEAD
                         {"accl1_type": self.attrs["accl1_type"]})
                 program = paddle.static.IpuCompiledProgram(
                     main_prog,
                     ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+=======
+                        {"accl1_type": self.attrs["accl1_type"]}
+                    )
+                program = paddle.static.IpuCompiledProgram(
+                    main_prog, ipu_strategy=ipu_strategy
+                ).compile(feed_list, fetch_list)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             else:
                 program = main_prog
 
@@ -118,7 +155,9 @@ class TestBase(IPUOpTest):
         ipu_loss = self._test_optimizer(True).flatten()
         cpu_loss = self._test_optimizer(False).flatten()
 
-        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=self.atol))
+        np.testing.assert_allclose(
+            ipu_loss, cpu_loss, rtol=1e-05, atol=self.atol
+        )
 
 
 @unittest.skip('do not support L2 regularization')
@@ -207,7 +246,7 @@ class TestLambNoBias(TestBase):
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
-            "use_no_bias_optimizer": True
+            "use_no_bias_optimizer": True,
         }
 
 
@@ -219,7 +258,7 @@ class TestLambCase2(TestBase):
             "optimizer": 'lamb',
             "weight_decay": 0.1,
             "loss_scaling": 6.0,
-            "accl1_type": "FLOAT16"
+            "accl1_type": "FLOAT16",
         }
 
 

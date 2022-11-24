@@ -17,6 +17,10 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 namespace phi {
 
@@ -29,6 +33,14 @@ void LogSoftmaxKernel(const Context& dev_ctx,
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
 
+<<<<<<< HEAD
+=======
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, out, 0.0);
+    return;
+  }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   if (x.numel() != 0) {
     auto x_shape = phi::vectorize<int>(x.dims());
     dev_ctx.template Alloc<T>(out);

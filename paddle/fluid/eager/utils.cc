@@ -296,7 +296,11 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
 
+<<<<<<< HEAD
     VLOG(3) << "Perform View between Output Tensor("
+=======
+    VLOG(4) << "Perform View between Output Tensor("
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()
             << "), share allocation and inplace version.";
@@ -409,7 +413,7 @@ std::vector<paddle::experimental::Tensor> EagerUtils::RecoverTensorWrapper(
   }
   return ret;
 }
-
+// TODO(jiabin): remove all this when we fix all test using tmp grad
 void EagerUtils::CheckAndRetainGrad(
     const paddle::experimental::Tensor& tensor) {
   VLOG(6) << "Check RetainGradForTensor: " << tensor.name();

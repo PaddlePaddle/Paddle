@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -33,9 +31,15 @@ def test_static_assert_true(self, x_list, p_list):
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
+<<<<<<< HEAD
                 np.testing.assert_allclose(result[0],
                                            expected_output,
                                            rtol=5e-5)
+=======
+                np.testing.assert_allclose(
+                    result[0], expected_output, rtol=5e-5
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
@@ -44,9 +48,15 @@ def test_dygraph_assert_true(self, x_list, p_list):
             input_tensor = paddle.to_tensor(x)
             output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
+<<<<<<< HEAD
             np.testing.assert_allclose(output.numpy(),
                                        expected_output,
                                        rtol=5e-5)
+=======
+            np.testing.assert_allclose(
+                output.numpy(), expected_output, rtol=5e-5
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def gen_input():
@@ -115,7 +125,7 @@ class TestCondAPIError(unittest.TestCase):
         p_list_error = ('fro_', '_nuc', -0.7, 0, 1.5, 3)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
                 self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
@@ -135,7 +145,7 @@ class TestCondAPIError(unittest.TestCase):
         p_list_error = ('f ro', 'fre', 'NUC', -1.6, 0, 5)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
@@ -151,13 +161,13 @@ class TestCondAPIError(unittest.TestCase):
         paddle.enable_static()
 
         x_list_n_n, x_list_m_n = gen_empty_input()
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)

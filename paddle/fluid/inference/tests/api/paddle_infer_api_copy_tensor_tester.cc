@@ -31,7 +31,11 @@ class InferApiTesterUtils {
   static std::unique_ptr<Tensor> CreateInferTensorForTest(
       const std::string &name, PlaceType place, void *p_scope) {
     auto var = static_cast<paddle::framework::Scope *>(p_scope)->Var(name);
+<<<<<<< HEAD
     var->GetMutable<paddle::framework::LoDTensor>();
+=======
+    var->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     paddle::platform::DeviceContextPool &pool =
         paddle::platform::DeviceContextPool::Instance();
     const auto &dev_ctxs = pool.device_contexts();

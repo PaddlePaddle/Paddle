@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import numpy as np
 import unittest
 import sys
@@ -43,7 +46,12 @@ def ComputeGrad(x, y, out, axis):
 
         for ax in range(len(shape_out)):
             if (ax < src_axis or ax >= src_axis + len(shape_x)) or (
+<<<<<<< HEAD
                     shape_out[ax] > 1 and shape_x[ax - src_axis] == 1):
+=======
+                shape_out[ax] > 1 and shape_x[ax - src_axis] == 1
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 reduce_axes_x.append(ax)
 
     if shape_y != shape_out:
@@ -54,7 +62,12 @@ def ComputeGrad(x, y, out, axis):
 
         for ax in range(len(shape_out)):
             if (ax < src_axis or ax >= src_axis + len(shape_y)) or (
+<<<<<<< HEAD
                     shape_out[ax] > 1 and shape_y[ax - src_axis] == 1):
+=======
+                shape_out[ax] > 1 and shape_y[ax - src_axis] == 1
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 reduce_axes_y.append(ax)
 
     if len(reduce_axes_x) > 0:
@@ -81,7 +94,10 @@ def ComputeGrad(x, y, out, axis):
 
 
 class TestElementwiseMaxOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_max"
@@ -92,7 +108,11 @@ class TestElementwiseMaxOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.out}
@@ -108,7 +128,12 @@ class TestElementwiseMaxOp(OpTest):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         sgn = np.random.choice([-1, 1], [13, 17]).astype(self.dtype)
         self.y = self.x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+<<<<<<< HEAD
             self.dtype)
+=======
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y)
 
     def init_axis(self):
@@ -119,9 +144,15 @@ class TestElementwiseMaxOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['X', 'Y'],
                                        'Out',
                                        max_relative_error=0.5)
+=======
+            self.check_grad_with_place(
+                self.place, ['X', 'Y'], 'Out', max_relative_error=0.5
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(
                 self.place,
@@ -131,10 +162,20 @@ class TestElementwiseMaxOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['Y'],
                                        'Out',
                                        no_grad_set=set("X"),
                                        max_relative_error=0.9)
+=======
+            self.check_grad_with_place(
+                self.place,
+                ['Y'],
+                'Out',
+                no_grad_set=set("X"),
+                max_relative_error=0.9,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(
                 self.place,
@@ -145,10 +186,20 @@ class TestElementwiseMaxOp(OpTest):
 
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['X'],
                                        'Out',
                                        no_grad_set=set("Y"),
                                        max_relative_error=0.1)
+=======
+            self.check_grad_with_place(
+                self.place,
+                ['X'],
+                'Out',
+                no_grad_set=set("Y"),
+                max_relative_error=0.1,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(
                 self.place,
@@ -159,7 +210,10 @@ class TestElementwiseMaxOp(OpTest):
 
 
 class TestElementwiseMaxOp_int32(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.int32
 
@@ -175,15 +229,24 @@ class TestElementwiseMaxOp_int32(TestElementwiseMaxOp):
 
 
 class TestElementwiseMaxOp_FP16(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.float16
 
 
 @skip_check_grad_ci(
+<<<<<<< HEAD
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseMaxOp_scalar(TestElementwiseMaxOp):
 
+=======
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
+class TestElementwiseMaxOp_scalar(TestElementwiseMaxOp):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_input_output(self):
         self.x = np.random.random_integers(-5, 5, [2, 3, 20]).astype(self.dtype)
         self.y = np.array([0.5]).astype(self.dtype)
@@ -191,22 +254,40 @@ class TestElementwiseMaxOp_scalar(TestElementwiseMaxOp):
 
 
 class TestElementwiseMaxOp_vector(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
         sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
         self.y = self.x + sgn * np.random.uniform(0.1, 1,
                                                   (100, )).astype(self.dtype)
+=======
+    def init_input_output(self):
+        self.x = np.random.random((100,)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x + sgn * np.random.uniform(0.1, 1, (100,)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y)
 
 
 class TestElementwiseMaxOp_broadcast_0(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
         sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
         self.y = self.x[:, 0, 0] + sgn * \
             np.random.uniform(1, 2, (100, )).astype(self.dtype)
+=======
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y.reshape(100, 1, 1))
 
     def init_axis(self):
@@ -214,12 +295,21 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseMaxOp):
 
 
 class TestElementwiseMaxOp_broadcast_1(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
         sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
         self.y = self.x[0, :, 0] + sgn * \
             np.random.uniform(1, 2, (100, )).astype(self.dtype)
+=======
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y.reshape(1, 100, 1))
 
     def init_axis(self):
@@ -227,6 +317,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseMaxOp):
 
     def test_check_grad_ingore_x(self):
         _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['Y'],
                                    'Out',
                                    no_grad_set=set("X"),
@@ -247,10 +338,39 @@ class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
         sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
         self.y = self.x[0, 0, :] + sgn * \
             np.random.uniform(1, 2, (100, )).astype(self.dtype)
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+
+
+class TestElementwiseMaxOp_broadcast_2(TestElementwiseMaxOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+        self.y = self.x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y.reshape(1, 1, 100))
 
     def test_check_grad_normal(self):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    user_defined_grads=[dx, dy])
@@ -277,6 +397,40 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp):
         sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
         self.y = self.x[0, :, :, 0] + sgn * \
             np.random.uniform(1, 2, (50, 2)).astype(self.dtype)
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy]
+        )
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+
+
+class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
+        self.y = self.x[0, :, :, 0] + sgn * np.random.uniform(
+            1, 2, (50, 2)
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y.reshape(1, 50, 2, 1))
 
     def init_axis(self):
@@ -284,27 +438,48 @@ class TestElementwiseMaxOp_broadcast_3(TestElementwiseMaxOp):
 
 
 class TestElementwiseMaxOp_broadcast_4(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(self.dtype)
         self.y = self.x + sgn * \
             np.random.uniform(1, 2, (2, 3, 1, 5)).astype(self.dtype)
+=======
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(self.dtype)
+        self.y = self.x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y)
 
 
 class TestElementwiseMaxOp_broadcast_5(TestElementwiseMaxOp):
+<<<<<<< HEAD
 
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
         sgn = np.random.choice([-1, 1], (2, 3, 1, 1)).astype(self.dtype)
         self.y = self.x + sgn * \
             np.random.uniform(1, 2, (2, 3, 1, 1)).astype(self.dtype)
+=======
+    def init_input_output(self):
+        self.x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
+        sgn = np.random.choice([-1, 1], (2, 3, 1, 1)).astype(self.dtype)
+        self.y = self.x + sgn * np.random.uniform(1, 2, (2, 3, 1, 1)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.out = np.maximum(self.x, self.y)
 
 
 class TestElementwiseMaxNet(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def _test(self, run_mlu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -319,9 +494,15 @@ class TestElementwiseMaxNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             c = paddle.maximum(a, b)
 
@@ -344,6 +525,7 @@ class TestElementwiseMaxNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -354,6 +536,19 @@ class TestElementwiseMaxNet(unittest.TestCase):
             if epoch % 10 == 0:
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+            if epoch % 10 == 0:
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         return pred_res, loss_res
 
@@ -361,8 +556,13 @@ class TestElementwiseMaxNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
+<<<<<<< HEAD
         self.assertTrue(np.allclose(mlu_pred, cpu_pred))
         self.assertTrue(np.allclose(mlu_loss, cpu_loss))
+=======
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(mlu_loss, cpu_loss)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

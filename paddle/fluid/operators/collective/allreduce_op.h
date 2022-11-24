@@ -39,8 +39,13 @@ class AllReduceOpKernel : public framework::OpKernel<T> {
                           "AllReduce op can run on gpu place only for now."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+<<<<<<< HEAD
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
+=======
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     int dtype =
         platform::ToNCCLDataType(framework::TransToProtoVarType(in->dtype()));

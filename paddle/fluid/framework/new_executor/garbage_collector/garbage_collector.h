@@ -15,6 +15,10 @@
 
 #include <queue>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -30,10 +34,16 @@ class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
   virtual ~InterpreterCoreGarbageCollector() {}
+<<<<<<< HEAD
   virtual void Add(Variable* var) = 0;
   virtual void Add(Variable* var,
                    platform::DeviceEvent* event,
                    const platform::DeviceContext* ctx) = 0;
+=======
+
+  virtual void Add(Variable* var, const Instruction& instruction) = 0;
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 
  protected:
@@ -42,6 +52,13 @@ class InterpreterCoreGarbageCollector {
   int64_t cur_memory_size_;
   memory::SpinLock spinlock_;
 };
+
+bool IsInterpretercoreFastGCEnabled();
+
+std::unique_ptr<InterpreterCoreGarbageCollector>
+CreateInterpreterCoreGarbageCollector(
+    const platform::Place& place,
+    const std::vector<Instruction>& vec_instruction);
 
 }  // namespace framework
 }  // namespace paddle

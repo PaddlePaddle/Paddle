@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 from paddle.fluid import core
 from paddle.static import program_guard, Program
@@ -30,13 +28,19 @@ class TestArangeOp(OpTest):
         self.inputs = {
             'Start': np.array([self.case[0]]).astype(self.dtype),
             'End': np.array([self.case[1]]).astype(self.dtype),
-            'Step': np.array([self.case[2]]).astype(self.dtype)
+            'Step': np.array([self.case[2]]).astype(self.dtype),
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.arange(self.case[0], self.case[1],
                       self.case[2]).astype(self.dtype)
+=======
+            'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
+                self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def init_config(self):
@@ -88,8 +92,16 @@ class TestArangeAPI(unittest.TestCase):
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
+<<<<<<< HEAD
             place = paddle.CUDAPlace(
                 0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+=======
+            place = (
+                paddle.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -100,8 +112,16 @@ class TestArangeAPI(unittest.TestCase):
 class TestArangeImperative(unittest.TestCase):
 
     def test_out(self):
+<<<<<<< HEAD
         place = paddle.CUDAPlace(
             0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+=======
+        place = (
+            paddle.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

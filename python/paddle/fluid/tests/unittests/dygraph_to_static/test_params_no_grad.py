@@ -20,9 +20,14 @@ import unittest
 
 
 class Net(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(Net, self).__init__()
+=======
+    def __init__(self):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.emb1 = nn.Embedding(100, 16)
         self.emb2 = nn.Embedding(100, 16)
 
@@ -54,10 +59,18 @@ def train():
 
 
 class TestParamsNoGrad(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_two_card(self):
         if paddle.is_compiled_with_cuda() and len(
                 paddle.static.cuda_places()) > 1:
+=======
+    def test_two_card(self):
+        if (
+            paddle.is_compiled_with_cuda()
+            and len(paddle.static.cuda_places()) > 1
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             dist.spawn(train, nprocs=2, gpus='0,1')
 
 

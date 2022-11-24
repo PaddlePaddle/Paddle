@@ -12,23 +12,30 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/operators/mlu/mlu_baseop.h"
 #include "paddle/fluid/operators/sum_op.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
+using SelectedRows = phi::SelectedRows;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SumMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto out_var = ctx.OutputVar("Out");
-    if (out_var->IsType<framework::LoDTensor>()) {
+    if (out_var->IsType<phi::DenseTensor>()) {
       // init
-      auto *out = out_var->GetMutable<framework::LoDTensor>();
-      auto ins = ctx.MultiInput<Tensor>("X");
+      auto *out = out_var->GetMutable<phi::DenseTensor>();
+      auto ins = ctx.MultiInput<phi::DenseTensor>("X");
       out->mutable_data<T>(ctx.GetPlace());
       auto place = ctx.GetPlace();
       int ins_size = static_cast<int>(ins.size());

@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    skip_check_grad_ci,
+    convert_float_to_uint16,
+)
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestElementwiseAddOp(OpTest):
@@ -37,47 +41,83 @@ class TestElementwiseAddOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
     def check_eager(self):
-        return (self.use_mkldnn == False and self.axis == -1)
+        return not self.use_mkldnn and self.axis == -1
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output(check_dygraph=(self.use_mkldnn == False),
                           check_eager=self.check_eager())
+=======
+        self.check_output(
+            check_dygraph=(not self.use_mkldnn),
+            check_eager=self.check_eager(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad(['X', 'Y'],
                         'Out',
                         check_dygraph=(self.use_mkldnn == False),
                         check_eager=self.check_eager())
+=======
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=(not self.use_mkldnn),
+            check_eager=self.check_eager(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad(['Y'],
                         'Out',
                         no_grad_set=set("X"),
                         check_dygraph=(self.use_mkldnn == False),
                         check_eager=self.check_eager())
+=======
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(not self.use_mkldnn),
+            check_eager=self.check_eager(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_ingore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad(['X'],
                         'Out',
                         no_grad_set=set('Y'),
                         check_dygraph=(self.use_mkldnn == False),
                         check_eager=self.check_eager())
+=======
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(not self.use_mkldnn),
+            check_eager=self.check_eager(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -91,8 +131,30 @@ class TestElementwiseAddOp(OpTest):
         self.axis = -1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+class TestElementwiseAddOp_ZeroDim1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
     def init_dtype(self):
@@ -104,12 +166,16 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
+                    place, atol=1e-3, check_dygraph=(not self.use_mkldnn)
+                )
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or core.cudnn_version() < 8100,
-    "core is not compiled with CUDA and cudnn version need larger than 8.1.0")
+    not core.is_compiled_with_cuda()
+    or core.cudnn_version() < 8100
+    or paddle.device.cuda.get_device_capability()[0] < 8,
+    "only support compiled with CUDA and cudnn version need larger than 8.1.0 and device's compute capability is at least 8.0",
+)
 class TestBF16ElementwiseAddOp(OpTest):
 
     def setUp(self):
@@ -123,9 +189,18 @@ class TestBF16ElementwiseAddOp(OpTest):
         self.axis = -1
 
         self.inputs = {
+<<<<<<< HEAD
             'X':
             OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.x)),
             'Y': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(self.y))
+=======
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                convert_float_to_uint16(self.x)
+            ),
+            'Y': OpTest.np_dtype_to_fluid_dtype(
+                convert_float_to_uint16(self.y)
+            ),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': False}
         self.outputs = {'Out': convert_float_to_uint16(self.out)}
@@ -140,6 +215,7 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         place = core.CUDAPlace(0)
+<<<<<<< HEAD
         self.check_grad_with_place(place, ['Y'],
                                    'Out',
                                    no_grad_set=set("X"),
@@ -151,10 +227,22 @@ class TestBF16ElementwiseAddOp(OpTest):
                                    'Out',
                                    no_grad_set=set('Y'),
                                    check_eager=False)
+=======
+        self.check_grad_with_place(
+            place, ['Y'], 'Out', no_grad_set=set("X"), check_eager=False
+        )
+
+    def test_check_grad_ingore_y(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', no_grad_set=set('Y'), check_eager=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -164,7 +252,8 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -174,7 +263,8 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast."
+)
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -184,7 +274,8 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -196,16 +287,16 @@ class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
 
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
 class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
@@ -376,7 +467,8 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -389,7 +481,8 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -483,10 +576,19 @@ class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.CPUPlace())
             y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.CPUPlace())
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            )
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
@@ -515,7 +617,7 @@ class TestAddApi(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
+                    "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -525,7 +627,7 @@ class TestAddApi(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -536,7 +638,7 @@ class TestAddApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
@@ -621,7 +723,7 @@ class TestComplexElementwiseAddOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -631,14 +733,22 @@ class TestComplexElementwiseAddOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
+<<<<<<< HEAD
         self.grad_out = np.ones(
             self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
+=======
+        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
+            self.shape, self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.grad_x = self.grad_out
         self.grad_y = self.grad_out
 
@@ -646,6 +756,7 @@ class TestComplexElementwiseAddOp(OpTest):
         self.check_output(check_eager=False)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(['X', 'Y'],
                         'Out',
                         user_defined_grads=[self.grad_x, self.grad_y],
@@ -664,6 +775,32 @@ class TestComplexElementwiseAddOp(OpTest):
                         no_grad_set=set('Y'),
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out])
+=======
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
@@ -671,12 +808,19 @@ class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
-            self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
+<<<<<<< HEAD
         self.grad_out = np.ones(
             self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
+=======
+        self.grad_out = np.ones(self.shape, self.dtype) + 1j * np.ones(
+            self.shape, self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.grad_x = np.real(self.grad_out)
         self.grad_y = self.grad_out
 
@@ -691,12 +835,67 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
-    def test_dygraph_add(self):
+    def func_dygraph_add(self):
         paddle.disable_static()
         a = 1.5
-        b = paddle.full([4, 5, 6], True, dtype='bool')
+        b = paddle.full([2], True, dtype='bool')
+        # special case: scalar + tensor(bool)
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float64)
+        np_b = np.random.random((2, 3, 4)).astype(np.float64)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: tensor + tensor
+        expect_out = np_a + np_b
+        actual_out = tensor_a + tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor + scalar
+        expect_out = np_a + 1
+        actual_out = tensor_a + 1
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: scalar + tenor
+        expect_out = 1 + np_a
+        actual_out = 1 + tensor_a
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
+
+    def test_dygraph_add(self):
+        with _test_eager_guard():
+            self.func_dygraph_add()
+        self.func_dygraph_add()
+
+
+class TestElementwiseAddop1(unittest.TestCase):
+    def func_dygraph_add(self):
+        paddle.disable_static()
+
+        np_a = np.random.random((2, 3, 4)).astype(np.float32)
+        np_b = np.random.random((2, 3, 4)).astype(np.float32)
+
+        tensor_a = paddle.to_tensor(np_a, dtype="float32")
+        tensor_b = paddle.to_tensor(np_b, dtype="float32")
+
+        # normal case: nparray + tenor
+        expect_out = np_a + np_b
+        actual_out = np_a + tensor_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        # normal case: tensor + nparray
+        actual_out = tensor_a + np_b
+        np.testing.assert_allclose(actual_out, expect_out)
+
+        paddle.enable_static()
+
+    def test_dygraph_add(self):
+        with _test_eager_guard():
+            self.func_dygraph_add()
 
 
 if __name__ == '__main__':

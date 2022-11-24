@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
 import numpy as np
-import six
 
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, Linear
+from paddle.fluid.dygraph.nn import Pool2D, Linear
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 
@@ -31,6 +27,7 @@ SEED = 123123111
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  num_channels,
@@ -68,6 +65,49 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                               pool_padding=pool_padding,
                               global_pooling=global_pooling,
                               use_cudnn=use_cudnn)
+=======
+    def __init__(
+        self,
+        num_channels,
+        num_filters,
+        filter_size,
+        pool_size,
+        pool_stride,
+        pool_padding=0,
+        pool_type='max',
+        global_pooling=False,
+        conv_stride=1,
+        conv_padding=0,
+        conv_dilation=1,
+        conv_groups=1,
+        act=None,
+        use_cudnn=False,
+        param_attr=None,
+        bias_attr=None,
+    ):
+        super().__init__()
+
+        self._conv2d = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=conv_stride,
+            padding=conv_padding,
+            dilation=conv_dilation,
+            groups=conv_groups,
+            weight_attr=None,
+            bias_attr=None,
+        )
+
+        self._pool2d = Pool2D(
+            pool_size=pool_size,
+            pool_type=pool_type,
+            pool_stride=pool_stride,
+            pool_padding=pool_padding,
+            global_pooling=global_pooling,
+            use_cudnn=use_cudnn,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def forward(self, inputs):
         x = self._conv2d(inputs)
@@ -78,8 +118,9 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
 class MNIST(fluid.dygraph.Layer):
 
     def __init__(self):
-        super(MNIST, self).__init__()
+        super().__init__()
 
+<<<<<<< HEAD
         self._simple_img_conv_pool_1 = SimpleImgConvPool(1,
                                                          20,
                                                          5,
@@ -103,11 +144,34 @@ class MNIST(fluid.dygraph.Layer):
                               initializer=fluid.initializer.NormalInitializer(
                                   loc=0.0, scale=scale)),
                           act="softmax")
+=======
+        self._simple_img_conv_pool_1 = SimpleImgConvPool(
+            1, 20, 5, 2, 2, act="relu"
+        )
+
+        self._simple_img_conv_pool_2 = SimpleImgConvPool(
+            20, 50, 5, 2, 2, act="relu"
+        )
+
+        self.pool_2_shape = 50 * 4 * 4
+        SIZE = 100  # 10
+        scale = (2.0 / (self.pool_2_shape**2 * SIZE)) ** 0.5
+        self._fc = Linear(
+            self.pool_2_shape,
+            SIZE,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.NormalInitializer(
+                    loc=0.0, scale=scale
+                )
+            ),
+            act="softmax",
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def forward(self, inputs):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         x = self._fc(x)
         return x
 
@@ -121,21 +185,41 @@ class TestDygraphMultiForward(unittest.TestCase):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             mnist = MNIST()
+<<<<<<< HEAD
             sgd = SGDOptimizer(learning_rate=1e-3,
                                parameter_list=mnist.parameters())
             train_reader = paddle.batch(paddle.dataset.mnist.train(),
                                         batch_size=128,
                                         drop_last=True)
+=======
+            sgd = SGDOptimizer(
+                learning_rate=1e-3, parameter_list=mnist.parameters()
+            )
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             dy_param_init_value = {}
             mnist.eval()
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
                     dy_x_data = np.array([
                         x[0].reshape(1, 28, 28) for x in data
                     ]).astype('float32')
                     y_data = np.array([x[1] for x in data
                                        ]).astype('int64').reshape(128, 1)
+=======
+                    dy_x_data = np.array(
+                        [x[0].reshape(1, 28, 28) for x in data]
+                    ).astype('float32')
+                    y_data = (
+                        np.array([x[1] for x in data])
+                        .astype('int64')
+                        .reshape(128, 1)
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                     img = to_variable(dy_x_data)
                     label = to_variable(y_data)
@@ -154,11 +238,15 @@ class TestDygraphMultiForward(unittest.TestCase):
         with new_program_scope():
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe = fluid.Executor(
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
 
             mnist = MNIST()
             sgd = SGDOptimizer(learning_rate=1e-3)
+<<<<<<< HEAD
             train_reader = paddle.batch(paddle.dataset.mnist.train(),
                                         batch_size=128,
                                         drop_last=True)
@@ -166,6 +254,15 @@ class TestDygraphMultiForward(unittest.TestCase):
             img = fluid.layers.data(name='pixel',
                                     shape=[1, 28, 28],
                                     dtype='float32')
+=======
+            train_reader = paddle.batch(
+                paddle.dataset.mnist.train(), batch_size=128, drop_last=True
+            )
+
+            img = fluid.layers.data(
+                name='pixel', shape=[1, 28, 28], dtype='float32'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             cost = mnist(img)
             loss = fluid.layers.cross_entropy(cost, label)
@@ -177,14 +274,17 @@ class TestDygraphMultiForward(unittest.TestCase):
             for param in mnist.parameters():
                 static_param_name_list.append(param.name)
 
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
+            out = exe.run(
+                fluid.default_startup_program(),
+                fetch_list=static_param_name_list,
+            )
 
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
 
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
                     static_x_data = np.array([
                         x[0].reshape(1, 28, 28) for x in data
                     ]).astype('float32')
@@ -198,16 +298,38 @@ class TestDygraphMultiForward(unittest.TestCase):
                                       "label": y_data
                                   },
                                   fetch_list=fetch_list)
+=======
+                    static_x_data = np.array(
+                        [x[0].reshape(1, 28, 28) for x in data]
+                    ).astype('float32')
+                    y_data = (
+                        np.array([x[1] for x in data])
+                        .astype('int64')
+                        .reshape([128, 1])
+                    )
+
+                    fetch_list = [avg_loss.name]
+                    out = exe.run(
+                        fluid.default_main_program(),
+                        feed={"pixel": static_x_data, "label": y_data},
+                        fetch_list=fetch_list,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                     static_out = out[0]
 
-        self.assertTrue(np.allclose(dy_x_data.all(), static_x_data.all()))
+        np.testing.assert_allclose(
+            dy_x_data.all(), static_x_data.all(), rtol=1e-05
+        )
 
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+        for key, value in static_param_init_value.items():
+            np.testing.assert_allclose(
+                value, dy_param_init_value[key], rtol=1e-05
+            )
 
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

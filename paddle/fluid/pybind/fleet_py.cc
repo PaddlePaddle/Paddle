@@ -108,8 +108,15 @@ void BindCommunicatorContext(py::module* m) {
                     int,
                     bool,
                     bool,
+<<<<<<< HEAD
                     int64_t>())
+=======
+                    int64_t,
+                    const std::vector<int32_t>&>())
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .def("var_name", [](const CommContext& self) { return self.var_name; })
+      .def("remote_sparse_ids",
+           [](const CommContext& self) { return self.remote_sparse_ids; })
       .def("trainer_id",
            [](const CommContext& self) { return self.trainer_id; })
       .def("table_id", [](const CommContext& self) { return self.table_id; })
@@ -368,18 +375,25 @@ void BindGraphGpuWrapper(py::module* m) {
                &GraphGpuWrapper::graph_neighbor_sample))
       .def("set_device", &GraphGpuWrapper::set_device)
       .def("set_feature_separator", &GraphGpuWrapper::set_feature_separator)
+<<<<<<< HEAD
       .def("set_slot_feature_separator",
            &GraphGpuWrapper::set_slot_feature_separator)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .def("init_service", &GraphGpuWrapper::init_service)
       .def("set_up_types", &GraphGpuWrapper::set_up_types)
       .def("query_node_list", &GraphGpuWrapper::query_node_list)
       .def("add_table_feat_conf", &GraphGpuWrapper::add_table_feat_conf)
+<<<<<<< HEAD
       .def("load_edge_file",
            py::overload_cast<std::string, std::string, bool>(
                &GraphGpuWrapper::load_edge_file))
       .def("load_edge_file",
            py::overload_cast<std::string, std::string, int, bool>(
                &GraphGpuWrapper::load_edge_file))
+=======
+      .def("load_edge_file", &GraphGpuWrapper::load_edge_file)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .def("load_node_and_edge", &GraphGpuWrapper::load_node_and_edge)
       .def("upload_batch",
            py::overload_cast<int, int, int, const std::string&>(
@@ -403,6 +417,7 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("get_partition", &GraphGpuWrapper::get_partition)
       .def("load_node_weight", &GraphGpuWrapper::load_node_weight)
       .def("export_partition_files", &GraphGpuWrapper::export_partition_files)
+<<<<<<< HEAD
       .def("load_node_file",
            py::overload_cast<std::string, std::string>(
                &GraphGpuWrapper::load_node_file))
@@ -412,6 +427,9 @@ void BindGraphGpuWrapper(py::module* m) {
       .def("release_graph", &GraphGpuWrapper::release_graph)
       .def("release_graph_edge", &GraphGpuWrapper::release_graph_edge)
       .def("release_graph_node", &GraphGpuWrapper::release_graph_node)
+=======
+      .def("load_node_file", &GraphGpuWrapper::load_node_file)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .def("finalize", &GraphGpuWrapper::finalize);
 }
 #endif

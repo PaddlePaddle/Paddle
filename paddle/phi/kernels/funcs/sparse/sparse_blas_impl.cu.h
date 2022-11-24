@@ -101,7 +101,11 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     gpu_type);
   });
   if (batch_size > 1) {
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11070
+=======
+#if CUDA_VERSION >= 11080
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCsrSetStridedBatch(
           *descriptor, batch_size, M + 1, batch_nnz);
@@ -109,7 +113,11 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCsrSetStridedBatch', which is "
+<<<<<<< HEAD
         "supported from CUDA 11.7"));
+=======
+        "supported from CUDA 11.8"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #endif
   }
 }
@@ -155,7 +163,11 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   });
 
   if (batch_size > 1) {
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11070
+=======
+#if CUDA_VERSION >= 11080
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCooSetStridedBatch(
           *descriptor, batch_size, batch_nnz);
@@ -163,7 +175,11 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "Batch Sparse matmul use 'cusparseCooSetStridedBatch', which is "
+<<<<<<< HEAD
         "supported from CUDA 11.7"));
+=======
+        "supported from CUDA 11.8"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #endif
   }
 }
@@ -174,7 +190,11 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCsrTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
+<<<<<<< HEAD
     PD_VISIT_INTEGRAL_TYPES(
+=======
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         x.non_zero_crows().dtype(), "Csr CuSparseSpMatDescriptor", ([&] {
           CreateCsrDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -184,7 +204,11 @@ class CuSparseSpMatDescriptor {
   explicit CuSparseSpMatDescriptor(const phi::SparseCooTensor& x,
                                    const phi::GPUContext& dev_ctx)
       : dev_ctx_(dev_ctx) {
+<<<<<<< HEAD
     PD_VISIT_INTEGRAL_TYPES(
+=======
+    PD_VISIT_BASE_INTEGRAL_TYPES(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         x.non_zero_indices().dtype(), "Coo CuSparseSpMatDescriptor", ([&] {
           CreateCooDescriptor<T, data_t>(x, dev_ctx_, &descriptor_);
         }));
@@ -241,7 +265,11 @@ class CuSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11070
+=======
+#if CUDA_VERSION >= 11080
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
         phi::dynload::cusparseDnMatSetStridedBatch(
             descriptor_, batch_size, M * N);
@@ -249,7 +277,11 @@ class CuSparseDnMatDescriptor {
 #else
       PADDLE_THROW(phi::errors::Unimplemented(
           "Batch Sparse matmul use 'cusparseDnMatSetStridedBatch', which is "
+<<<<<<< HEAD
           "supported from CUDA 11.7"));
+=======
+          "supported from CUDA 11.8"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #endif
     }
     VLOG(6) << "Create cusparseDnMatDescr_t " << &descriptor_;
@@ -337,8 +369,15 @@ void SparseBlas<phi::GPUContext>::SPMM(bool transa,
                                           &buffer_size);
   });
 
+<<<<<<< HEAD
   paddle::memory::allocation::AllocationPtr tmp_buffer =
       paddle::memory::Alloc(dev_ctx_, buffer_size);
+=======
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMM(handle,
@@ -383,8 +422,15 @@ void SparseBlas<phi::GPUContext>::SPMV(bool transa,
                                           &buffer_size);
   });
 
+<<<<<<< HEAD
   paddle::memory::allocation::AllocationPtr tmp_buffer =
       paddle::memory::Alloc(dev_ctx_, buffer_size);
+=======
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void* tmp_buffer_ptr = tmp_buffer->ptr();
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
     phi::dynload::cusparseSpMV(handle,
@@ -431,8 +477,15 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
                                            &buffer_size);
   });
 
+<<<<<<< HEAD
   paddle::memory::allocation::AllocationPtr tmp_buffer =
       paddle::memory::Alloc(dev_ctx_, buffer_size);
+=======
+  paddle::memory::allocation::AllocationPtr tmp_buffer = paddle::memory::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void* tmp_buffer_ptr = tmp_buffer->ptr();
 
   dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {

@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/kernels/xpu/elementwise.h"
 #include "xpu/refactor/math.h"
 
 namespace paddle {
@@ -40,19 +41,20 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
       nullptr,
       platform::errors::InvalidArgument("Cannot get input Variable X"));
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       x_var->IsType<framework::LoDTensor>(),
+=======
+      x_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       true,
       platform::errors::InvalidArgument(
           "XPU only support LoDTensor, Input(X) is not LoDTensor"));
 
-  auto x = x_var->Get<framework::LoDTensor>();
-  auto* y = ctx.Input<framework::LoDTensor>("Y");
-  auto* z = ctx.Output<framework::LoDTensor>("Out");
-  z->mutable_data<T>(ctx.GetPlace());
-  auto x_dims = x.dims();
-  auto y_dims = y->dims();
-  int max_dim = std::max(x_dims.size(), y_dims.size());
+  auto x = x_var->Get<phi::DenseTensor>();
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* z = ctx.Output<phi::DenseTensor>("Out");
   int axis = ctx.Attr<int>("axis");
+<<<<<<< HEAD
   axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
 
   PADDLE_ENFORCE_GE(
@@ -109,6 +111,12 @@ void XPUElementwise(const framework::ExecutionContext& ctx,
           "XPU kernel Elementwise occur error in XPUElementwise error code ",
           ret,
           XPUAPIErrorMsg[ret]));
+=======
+
+  auto& dev_ctx =
+      ctx.template device_context<paddle::platform::XPUDeviceContext>();
+  phi::XPUElementwise<T, XPUType>(dev_ctx, x, *y, axis, z, func);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 template <typename T, typename XPUType>
@@ -123,6 +131,7 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
                                           const std::vector<int>&,
                                           const std::vector<int>&)> func,
                         bool use_x_y_data) {
+<<<<<<< HEAD
   auto* x = ctx.Input<framework::Tensor>("X");
   auto* y = ctx.Input<framework::Tensor>("Y");
   auto* dz = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -170,12 +179,18 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
   const T* x_data = use_x_y_data ? x->data<T>() : z->data<T>();
   const T* y_data = use_x_y_data ? y->data<T>() : z->data<T>();
   const T* z_data = z->data<T>();
+=======
+  auto* x = ctx.Input<phi::DenseTensor>("X");
+  auto* y = ctx.Input<phi::DenseTensor>("Y");
+  auto* dz = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+  auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+  auto* dy = ctx.Output<phi::DenseTensor>(framework::GradVarName("Y"));
+  int axis = ctx.Attr<int>("axis");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-  const T* dz_data = dz->data<T>();
-  T* dx_data = nullptr;
-  T* dy_data = nullptr;
   auto& dev_ctx =
       ctx.template device_context<paddle::platform::XPUDeviceContext>();
+<<<<<<< HEAD
 
   if (dx) {
     dx_data = dx->mutable_data<T>(ctx.GetPlace());
@@ -200,6 +215,10 @@ void XPUElementwiseGrad(const framework::ExecutionContext& ctx,
           "XPU kernel Elementwise occur error in XPUElementwise error code ",
           ret,
           XPUAPIErrorMsg[ret]));
+=======
+  phi::XPUElementwiseGrad<T, XPUType>(
+      dev_ctx, *x, *y, *dz, axis, dx, dy, func, use_x_y_data);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 }  // namespace operators

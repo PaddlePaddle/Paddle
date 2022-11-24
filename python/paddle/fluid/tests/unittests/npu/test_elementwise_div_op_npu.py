@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -43,7 +41,7 @@ class TestElementwiseDiv(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -75,9 +73,15 @@ class TestElementwiseDiv(OpTest):
         )
 
     def test_check_grad_ingore_y(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    no_grad_set=set("Y"))
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set("Y")
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestElementwiseDivFp16(OpTest):
@@ -95,7 +99,7 @@ class TestElementwiseDivFp16(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(y),
         }
         self.attrs = {}
         self.outputs = {'Out': out}
@@ -131,9 +135,15 @@ class TestElementwiseDivNet(unittest.TestCase):
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
             c = paddle.static.data(name="c", shape=[32, 32], dtype='float32')
             d = paddle.static.data(name="d", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             e = paddle.multiply(a, b)
             f = paddle.multiply(c, d)
@@ -159,18 +169,23 @@ class TestElementwiseDivNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "c": c_np,
-                                             "d": d_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={
+                    "a": a_np,
+                    "b": b_np,
+                    "c": c_np,
+                    "d": d_np,
+                    "label": label_np,
+                },
+                fetch_list=[prediction, loss],
+            )
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -178,8 +193,8 @@ class TestElementwiseDivNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 class TestFloatStatus(unittest.TestCase):
@@ -193,9 +208,9 @@ class TestFloatStatus(unittest.TestCase):
         self.assertEqual(flag.numpy().sum(), 0.0)
 
         x = paddle.to_tensor([12.564], stop_gradient=False)
-        y = paddle.to_tensor([2.], stop_gradient=False)
+        y = paddle.to_tensor([2.0], stop_gradient=False)
         z = x / y
-        out = 32768. * z
+        out = 32768.0 * z
 
         ops.get_float_status(flag, flag)
         self.assertEqual(flag.numpy().sum(), 0.0)

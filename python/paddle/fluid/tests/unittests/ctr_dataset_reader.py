@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import logging
 import tarfile
@@ -62,8 +60,12 @@ def load_lr_input_record(sent):
     return res
 
 
+<<<<<<< HEAD
 class CtrReader(object):
 
+=======
+class CtrReader:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         pass
 
@@ -99,9 +101,10 @@ class DatasetCtrReader(fleet.MultiSlotDataGenerator):
                 dnn_input = load_dnn_input_record(fs[0])
                 lr_input = load_lr_input_record(fs[1])
                 click = [int(fs[2])]
-                yield ("dnn_data", dnn_input), \
-                      ("lr_data", lr_input), \
-                      ("click", click)
+                yield ("dnn_data", dnn_input), ("lr_data", lr_input), (
+                    "click",
+                    click,
+                )
 
         return iter
 
@@ -117,7 +120,13 @@ def prepare_data():
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
+<<<<<<< HEAD
     assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], err_info
+=======
+    assert (
+        'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
+    ), err_info
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     dnn_input_dim = res[0]
@@ -128,10 +137,9 @@ def prepare_data():
     return dnn_input_dim, lr_input_dim, train_file_path
 
 
-def gen_fake_line(dnn_data_num=7,
-                  dnn_data_range=1e5,
-                  lr_data_num=5,
-                  lr_data_range=1e5):
+def gen_fake_line(
+    dnn_data_num=7, dnn_data_range=1e5, lr_data_num=5, lr_data_range=1e5
+):
     line = ""
 
     # for deep data
@@ -190,16 +198,21 @@ def prepare_fake_data(file_nums=4, file_lines=500):
     warnings.warn("Fake data write in {}".format(file_dir))
     for file_index in range(file_nums):
         with open(
-                os.path.join(file_dir,
-                             "ctr_train_data_part_{}".format(file_index)),
-                'w+') as fin:
+            os.path.join(file_dir, "ctr_train_data_part_{}".format(file_index)),
+            'w+',
+        ) as fin:
             file_str = ""
             file_str += gen_zero_line()
             for line_index in range(file_lines - 1):
                 file_str += gen_fake_line()
             fin.write(file_str)
             warnings.warn(
+<<<<<<< HEAD
                 "Write done ctr_train_data_part_{}".format(file_index))
+=======
+                "Write done ctr_train_data_part_{}".format(file_index)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     file_list = [os.path.join(file_dir, x) for x in os.listdir(file_dir)]
     assert len(file_list) == file_nums

@@ -17,6 +17,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <stdio.h>
+<<<<<<< HEAD
 #include <time.h>
 #include <algorithm>
 #include <random>
@@ -62,6 +63,13 @@ inline std::vector<int> shuffle_int_vector(int n) {
   return std::move(ret);
 }
 
+=======
+#include "paddle/fluid/platform/enforce.h"
+
+namespace paddle {
+namespace framework {
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #define CUDA_CHECK(cmd)                                                       \
   do {                                                                        \
     cudaError_t e = cmd;                                                      \
@@ -79,9 +87,12 @@ class CudaDeviceRestorer {
 };
 
 inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
+<<<<<<< HEAD
   if (!FLAGS_gpugraph_debug_gpu_memory) {
     return;
   }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   CudaDeviceRestorer r;
 
   size_t avail{0};
@@ -100,9 +111,12 @@ inline void debug_gpu_memory_info(int gpu_id, const char* desc) {
 }
 
 inline void debug_gpu_memory_info(const char* desc) {
+<<<<<<< HEAD
   if (!FLAGS_gpugraph_debug_gpu_memory) {
     return;
   }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   CudaDeviceRestorer r;
 
   int device_num = 0;

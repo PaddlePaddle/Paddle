@@ -71,16 +71,24 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
   ReplaceAll(&format_path, R"(\\)", "/");
   ReplaceAll(&format_path, R"(\)", "/");
 
+<<<<<<< HEAD
   std::string layer_prefix =
       format_path.substr(format_path.find_last_of("/") + 1);
   std::string dir_path =
       format_path.substr(0, format_path.length() - layer_prefix.length());
+=======
+  std::string layer_name =
+      format_path.substr(format_path.find_last_of("/") + 1);
+  std::string dir_path =
+      format_path.substr(0, format_path.length() - layer_name.length());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   DIR* dir = opendir(dir_path.c_str());
   struct dirent* ptr;
 
   while ((ptr = readdir(dir)) != nullptr) {
     std::string file_name = ptr->d_name;
 
+<<<<<<< HEAD
     if (StartsWith(file_name, layer_prefix) &&
         EndsWith(file_name, PDMODEL_SUFFIX)) {
       std::string prefix = file_name.substr(
@@ -95,6 +103,23 @@ const std::vector<std::pair<std::string, std::string>> PdmodelFilePaths(
         pdmodel_paths.emplace_back(
             std::make_pair(func_name, dir_path + file_name));
       }
+=======
+    if (StartsWith(file_name, layer_name) &&
+        EndsWith(file_name, PDMODEL_SUFFIX)) {
+      std::string prefix = file_name.substr(
+          0, file_name.length() - std::string(PDMODEL_SUFFIX).length());
+
+      if (prefix == layer_name) {
+        pdmodel_paths.emplace_back(
+            std::make_pair("forward", dir_path + file_name));
+      } else {
+        std::string func_name = prefix.substr(layer_name.size() + 1);
+        pdmodel_paths.emplace_back(
+            std::make_pair(func_name, dir_path + file_name));
+      }
+      VLOG(3) << "func_name: " << pdmodel_paths.back().first
+              << ", path:" << dir_path + file_name;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
   }
   closedir(dir);

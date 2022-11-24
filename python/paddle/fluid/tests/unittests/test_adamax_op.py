@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -22,8 +20,7 @@ from op_test import OpTest
 class TestAdamaxOp1(OpTest):
 
     def setUp(self):
-        '''Test Adamax Operator with supplied attributes
-        '''
+        '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -43,18 +40,23 @@ class TestAdamaxOp1(OpTest):
             'Moment': moment,
             'InfNorm': inf_norm,
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
         }
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
 
         param_out, moment_out, inf_norm_out = adamax_step(
+<<<<<<< HEAD
             self.inputs, self.attrs)
+=======
+            self.inputs, self.attrs
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.outputs = {
             'ParamOut': param_out,
             'MomentOut': moment_out,
-            'InfNormOut': inf_norm_out
+            'InfNormOut': inf_norm_out,
         }
 
     def test_check_output(self):
@@ -62,8 +64,7 @@ class TestAdamaxOp1(OpTest):
 
 
 class TestAdamaxOp2(OpTest):
-    '''Test Adamax Operator with default attributes
-    '''
+    '''Test Adamax Operator with default attributes'''
 
     def setUp(self):
         self.op_type = "adamax"
@@ -85,7 +86,7 @@ class TestAdamaxOp2(OpTest):
             'Moment': moment,
             'InfNorm': inf_norm,
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
         }
 
         attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
@@ -94,7 +95,7 @@ class TestAdamaxOp2(OpTest):
         self.outputs = {
             'ParamOut': param_out,
             'MomentOut': moment_out,
-            'InfNormOut': inf_norm_out
+            'InfNormOut': inf_norm_out,
         }
 
     def test_check_output(self):
@@ -104,8 +105,7 @@ class TestAdamaxOp2(OpTest):
 class TestAdamaxOpMultipleSteps(OpTest):
 
     def setUp(self):
-        '''Test Adamax Operator with supplied attributes
-        '''
+        '''Test Adamax Operator with supplied attributes'''
         self.op_type = "adamax"
         self.num_steps = 10
 
@@ -127,7 +127,7 @@ class TestAdamaxOpMultipleSteps(OpTest):
             'Moment': moment,
             'InfNorm': inf_norm,
             'LearningRate': np.array([learning_rate]).astype("float32"),
-            'Beta1Pow': np.array([beta1_pow]).astype("float32")
+            'Beta1Pow': np.array([beta1_pow]).astype("float32"),
         }
 
         self.attrs = {'beta1': beta1, 'beta2': beta2, 'epsilon': epsilon}
@@ -135,12 +135,17 @@ class TestAdamaxOpMultipleSteps(OpTest):
     def test_check_output(self):
         for _ in range(self.num_steps):
             param_out, moment_out, inf_norm_out = adamax_step(
+<<<<<<< HEAD
                 self.inputs, self.attrs)
+=======
+                self.inputs, self.attrs
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             self.outputs = {
                 'ParamOut': param_out,
                 'MomentOut': moment_out,
-                'InfNormOut': inf_norm_out
+                'InfNormOut': inf_norm_out,
             }
 
             # Verify output for this step
@@ -155,8 +160,9 @@ class TestAdamaxOpMultipleSteps(OpTest):
             self.inputs['Beta1Pow'] *= self.attrs['beta1']
 
             # Randomize gradient for next step
-            self.inputs['Grad'] = np.random.uniform(
-                -1, 1, (102, 105)).astype("float32")
+            self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
+                "float32"
+            )
 
 
 def adamax_step(inputs, attributes):
@@ -180,7 +186,7 @@ def adamax_step(inputs, attributes):
 
     moment_out = beta1 * moment + (1 - beta1) * grad
     inf_norm_out = np.maximum(beta2 * inf_norm + epsilon, np.abs(grad))
-    lr_t = (lr / (1 - beta1_pow))
+    lr_t = lr / (1 - beta1_pow)
     param_out = param - lr_t * np.divide(moment_out, inf_norm_out)
 
     return param_out, moment_out, inf_norm_out
@@ -190,9 +196,11 @@ class TestAdamaxOpV2(unittest.TestCase):
 
     def test_adamax_op_invalid_input(self):
         import paddle
+
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
+<<<<<<< HEAD
             adam = paddle.optimizer.Adamax(0.1,
                                            beta1=-1,
                                            parameters=linear.parameters())
@@ -204,6 +212,19 @@ class TestAdamaxOpV2(unittest.TestCase):
             adam = paddle.optimizer.Adamax(0.1,
                                            epsilon=-1,
                                            parameters=linear.parameters())
+=======
+            adam = paddle.optimizer.Adamax(
+                0.1, beta1=-1, parameters=linear.parameters()
+            )
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adamax(
+                0.1, beta2=-1, parameters=linear.parameters()
+            )
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.Adamax(
+                0.1, epsilon=-1, parameters=linear.parameters()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

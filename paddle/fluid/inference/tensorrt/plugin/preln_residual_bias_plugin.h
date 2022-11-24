@@ -45,10 +45,25 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
     bias_.resize(bias_size);
     scale_.resize(scale_size);
 
+<<<<<<< HEAD
+=======
+    fp16_bias_.resize(bias_size);
+    fp16_scale_.resize(scale_size);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     fp16_ele_bias_.resize(ele_bias_size);
     std::copy(ele_bias, ele_bias + ele_bias_size, fp16_ele_bias_.data());
     std::copy(bias, bias + bias_size, bias_.data());
     std::copy(scale, scale + scale_size, scale_.data());
+<<<<<<< HEAD
+=======
+    for (int i = 0; i < bias_size; i++) {
+      fp16_bias_[i] = static_cast<half>(bias[i]);
+    }
+    for (int i = 0; i < scale_size; i++) {
+      fp16_scale_[i] = static_cast<half>(scale[i]);
+    }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 
   explicit PrelnResidualBiasPluginDynamic(const float* bias,
@@ -76,7 +91,13 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   PrelnResidualBiasPluginDynamic(void const* serial_data,
                                  size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &bias_);
+<<<<<<< HEAD
     DeserializeValue(&serial_data, &serial_length, &scale_);
+=======
+    DeserializeValue(&serial_data, &serial_length, &fp16_bias_);
+    DeserializeValue(&serial_data, &serial_length, &scale_);
+    DeserializeValue(&serial_data, &serial_length, &fp16_scale_);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     DeserializeValue(&serial_data, &serial_length, &fp32_ele_bias_);
     DeserializeValue(&serial_data, &serial_length, &fp16_ele_bias_);
     DeserializeValue(&serial_data, &serial_length, &bias_size_);
@@ -95,12 +116,21 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   size_t getSerializationSize() const TRT_NOEXCEPT override;
   void serialize(void* buffer) const TRT_NOEXCEPT override;
 
+<<<<<<< HEAD
   nvinfer1::DimsExprs getOutputDimensions(int output_index,
                                           const nvinfer1::DimsExprs* inputs,
                                           int nb_inputs,
                                           nvinfer1::IExprBuilder& expr_builder)
       TRT_NOEXCEPT override;
 
+=======
+  nvinfer1::DimsExprs getOutputDimensions(
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
+      nvinfer1::IExprBuilder& expr_builder)  // NOLINT
+      TRT_NOEXCEPT override;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
                                  int nb_inputs,
@@ -131,13 +161,30 @@ class PrelnResidualBiasPluginDynamic : public DynamicPluginTensorRT {
   void terminate() TRT_NOEXCEPT override;
 
  private:
+<<<<<<< HEAD
   std::vector<float> bias_;
   std::vector<float> scale_;
+=======
+  // bias for fp32 mode
+  std::vector<float> bias_;
+  // bias for fp16 mode
+  std::vector<half> fp16_bias_;
+  // scale for fp32 mode
+  std::vector<float> scale_;
+  // scale for fp16 mode
+  std::vector<half> fp16_scale_;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<float> fp32_ele_bias_;
   std::vector<half> fp16_ele_bias_;
 
   float* bias_gpu_{nullptr};
+<<<<<<< HEAD
   float* scale_gpu_{nullptr};
+=======
+  half* fp16_bias_gpu_{nullptr};
+  float* scale_gpu_{nullptr};
+  half* fp16_scale_gpu_{nullptr};
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void* ele_bias_gpu_{nullptr};
 
   int bias_size_;

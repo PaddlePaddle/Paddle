@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 import os
@@ -30,10 +29,19 @@ class TestDistSeResneXt2x2(TestDistBase):
 
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place("dist_se_resnext.py",
                               delta=1e-7,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "dist_se_resnext.py",
+            delta=1e-7,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

@@ -13,113 +13,45 @@
 # limitations under the License.
 
 import numpy as np
+<<<<<<< HEAD
 import os
 import pickle
 import io
 from datetime import timedelta
+=======
+import pickle
+import io
+import datetime
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable
 from ..fluid.framework import in_dygraph_mode
-from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import _non_static_mode
-from ..fluid.framework import _in_legacy_dygraph
-from ..fluid.framework import convert_np_dtype_to_dtype_
-from ..fluid.framework import _varbase_creator
-from ..fluid.data_feeder import convert_dtype
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.data_feeder import check_type
-from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
-from ..fluid.dygraph import layers
-from ..fluid.dygraph.parallel import prepare_context
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.core as core
+<<<<<<< HEAD
 from paddle import _C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
 import contextlib
+=======
+from paddle import _legacy_C_ops
+from .fleet.layers.mpu.mp_ops import split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_identity  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_concat  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_split  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _mp_allreduce  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_lookup_table  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _Linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _set_var_distributed  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _c_softmax_with_cross_entropy  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_linear  # noqa: F401
+from .fleet.layers.mpu.mp_ops import _parallel_embedding  # noqa: F401
+from .communication.group import Group, _add_new_group, is_initialized
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 __all__ = []
-
-
-class ReduceOp:
-    """
-    Specify the type of operation used for element-wise reductions.
-    It should be one of the following values:
-
-        ReduceOp.SUM
-
-        ReduceOp.MAX
-
-        ReduceOp.MIN
-
-        ReduceOp.PROD
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            import paddle
-            from paddle.distributed import ReduceOp
-            from paddle.distributed import init_parallel_env
-
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().local_rank == 0:
-                np_data = np.array([[4, 5, 6], [4, 5, 6]])
-            else:
-                np_data = np.array([[1, 2, 3], [1, 2, 3]])
-            data = paddle.to_tensor(np_data)
-            paddle.distributed.all_reduce(data, op=ReduceOp.SUM)
-            out = data.numpy()
-            # [[5, 7, 9], [5, 7, 9]]
-    """
-    SUM = 0
-    MAX = 1
-    MIN = 2
-    PROD = 3
-    AVG = 4
-
-
-class Group():
-    """
-    The abstract representation of group.
-    """
-
-    def __init__(self, rank, rank_num, id=0, ranks=[], pg=None, name=None):
-        self.rank = rank
-        self.nranks = rank_num
-        self.id = id
-        self.ranks = ranks
-        self.pg = pg
-        self.name = name
-
-    def is_member(self):
-        if self.rank < 0:
-            return False
-        if self.nranks < 2:
-            return False
-        return True
-
-    def get_group_rank(self, rank):
-        if self.is_member() and rank in self.ranks:
-            return self.ranks.index(rank)
-        else:
-            return -1
-
-    @property
-    def process_group(self):
-        return self.pg
-
-    def __repr__(self):
-        debug_str = "rank: {}, nranks: {}, id: {}, ranks: ".format(
-            self.rank, self.nranks, self.id)
-        debug_str += ", ".join(map(str, self.ranks))
-        debug_str += "; name: "
-        debug_str += self.name if self.name else "None"
-        return debug_str
-
 
 _global_env = None
 
@@ -134,6 +66,7 @@ def _get_global_env():
 # group map : the map of all group, 0 for GlobalGroup
 # Dict[int, Group]
 _group_map = {}
+_global_env_gid = 0
 
 # group map by name : the map of all groups from their names
 # Dict[name, Group]
@@ -146,9 +79,11 @@ _group_map_backend = {}
 # Name of the default group for init_parallel_env
 _default_group_name = "_default_pg"
 
-_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter']
+_valid_backend_list = ['nccl', 'gloo', 'hccl', 'heter', 'xccl', 'bkcl']
 _default_store = None  # the default tcp store
 _default_backend = None
+_default_timeout = datetime.timedelta(seconds=1800)
+_start_ring_id = 0
 
 
 def _set_default_backend(backend):
@@ -163,16 +98,22 @@ def _set_default_store(store):
 
 def _get_group_map():
     global _group_map
-    if not _group_map:
+    if _global_env_gid not in _group_map:
         genv = _get_global_env()
+<<<<<<< HEAD
         _group_map[0] = Group(genv.rank,
                               genv.world_size,
                               ranks=list(range(genv.world_size)))
+=======
+        _group_map[_global_env_gid] = Group(
+            genv.rank, 0, list(range(genv.world_size))
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return _group_map
 
 
 def _get_global_group():
-    return _get_group_map()[0]
+    return _get_group_map()[_global_env_gid]
 
 
 def _get_group_map_by_name():
@@ -182,8 +123,15 @@ def _get_group_map_by_name():
 
 def _get_default_group():
     global _group_map_by_name
+<<<<<<< HEAD
     assert is_initialized(), ("Call paddle.distributed.init_parallel_env first "
                               "to initialize the distributed environment.")
+=======
+    assert is_initialized(), (
+        "Call paddle.distributed.init_parallel_env first "
+        "to initialize the distributed environment."
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return _get_group_map_by_name()[_default_group_name]
 
 
@@ -203,6 +151,7 @@ def _set_group_map_backend(group, backend):
     global _group_map_backend
     assert group not in _group_map_backend
     _group_map_backend[group] = backend
+<<<<<<< HEAD
 
 
 def _new_ring_id():
@@ -255,17 +204,36 @@ def _new_process_group_impl(backend,
                             group_id=0,
                             src_rank=None,
                             dst_rank=None):
+=======
+
+
+def _new_ring_id():
+    # NOTE(liyurui): For compatible reason, auto parallel and eager mode relay on previous syntax.
+    if in_dygraph_mode():
+        global _start_ring_id
+        _start_ring_id += 1
+        return _start_ring_id + max(_get_global_env().nrings, 9)
+    else:
+        return len(_get_group_map()) + max(_get_global_env().nrings, 9)
+
+
+def _new_process_group_impl(
+    backend,
+    store,
+    rank,
+    world_size,
+    group_name,
+    pg_options,
+    group_id=0,
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     pg = None
     genv = _get_global_env()
-    if backend != 'heter':
-        assert src_rank is None and dst_rank is None, (
-            "src_rank and dst_rank "
-            "can only be set for heter backend.")
     assert backend in _valid_backend_list, "Unsupported backend: %s." % backend
     if backend == "gloo":
-        place = core.CPUPlace()
-        pg = core.ProcessGroupGloo(store, rank, world_size, place, group_id)
+        pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
+<<<<<<< HEAD
         place = core.CUDAPlace(genv.device_id)
         pg = core.ProcessGroupNCCL(store, rank, world_size, place, group_id)
     elif backend == "hccl":
@@ -304,6 +272,15 @@ def _new_process_group_impl(backend,
                                     src_rank=src_rank,
                                     dst_rank=dst_rank)
 
+=======
+        pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
+    elif backend == "xccl":
+        pg = core.ProcessGroupCustom.create(
+            store, genv.device_type, rank, world_size, group_id
+        )
+    elif backend == "bkcl":
+        pg = core.ProcessGroupBKCL.create(store, rank, world_size, group_id)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return pg
 
 
@@ -333,7 +310,12 @@ def barrier(group=None):
 
     if in_dygraph_mode():
         group = _get_default_group() if group is None else group
-        task = group.process_group.barrier()
+        place = paddle.fluid.framework._current_expected_place()
+        if isinstance(place, paddle.fluid.core.CPUPlace):
+            task = group.process_group.barrier()
+        else:
+            device_id = place.get_device_id()
+            task = group.process_group.barrier(device_id)
         task.wait()
         return
 
@@ -341,17 +323,26 @@ def barrier(group=None):
 
     temp = fill_constant([1], dtype="int32", value="1")
     if _non_static_mode():
-        return _C_ops.barrier(temp, temp, 'ring_id', ring_id)
+        return _legacy_C_ops.barrier(temp, temp, 'ring_id', ring_id)
 
     op_type = 'barrier'
 
     if not isinstance(ring_id, int):
         raise ValueError("The type of 'group' for barrier must be int.")
     helper = LayerHelper(op_type, **locals())
+<<<<<<< HEAD
     helper.append_op(type=op_type,
                      inputs={'X': [temp]},
                      outputs={'Out': [temp]},
                      attrs={'ring_id': ring_id})
+=======
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [temp]},
+        outputs={'Out': [temp]},
+        attrs={'ring_id': ring_id},
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 # _custom_gid provides a way for users to
@@ -365,7 +356,7 @@ def _set_custom_gid(gid):
     _custom_gid = gid
 
 
-def new_group(ranks=None, backend=None):
+def new_group(ranks=None, backend=None, timeout=_default_timeout):
     """
 
     Creates a new distributed communication group.
@@ -373,6 +364,7 @@ def new_group(ranks=None, backend=None):
     Args:
         ranks (list): The global ranks of group members.
         backend (str): The backend used to create group, only nccl is supported now.
+        timeout (datetime.timedelta, optional): The waiting timeout for store relevant options, default is 30 minutes.
 
     Returns:
         Group: The group instance.
@@ -385,7 +377,7 @@ def new_group(ranks=None, backend=None):
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
             gp = paddle.distributed.new_group([2,4,6])
-            paddle.distributed.all_reduce(tindata, group=gp, use_calc_stream=False)
+            paddle.distributed.all_reduce(tindata, group=gp, sync_op=False)
 
     """
     global _custom_gid
@@ -403,11 +395,13 @@ def new_group(ranks=None, backend=None):
                 ranks = global_ranks
             assert len(ranks) <= len(global_ranks), (
                 "Size of new group must be less than or "
-                "equal to that of the default global group.")
+                "equal to that of the default global group."
+            )
         size = len(ranks)
         ranks = sorted(ranks)
-        if backend == 'heter' or (size > 1 and global_rank in ranks):
+        if size > 1 and global_rank in ranks:
             rank = 0 if backend == 'heter' else ranks.index(global_rank)
+<<<<<<< HEAD
             src_rank = ranks[0] if backend == 'heter' else None
             dst_rank = ranks[1] if backend == 'heter' else None
             pg = _new_process_group_impl(backend,
@@ -419,22 +413,44 @@ def new_group(ranks=None, backend=None):
                                          group_id=gid,
                                          src_rank=src_rank,
                                          dst_rank=dst_rank)
+=======
+            pg = _new_process_group_impl(
+                backend,
+                _default_store,
+                rank,
+                size,
+                group_name,
+                pg_options=None,
+                group_id=gid,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             rank = -1
             pg = None
-        group = Group(rank, size, id=gid, ranks=ranks, pg=pg, name=group_name)
+        group = Group(rank, gid, ranks, pg=pg, name=group_name)
         _group_map_by_name[group_name] = group
         _group_map[gid] = group
         _group_map_backend[group] = backend
+<<<<<<< HEAD
+=======
+        # TODO: The method below is a new method for group management, will replace the previous
+        # three in the future.
+        _add_new_group(group)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # TODO(shenliang03): This is a temporary solution to solve the problem of
         # hang caused by tcp
         paddle.distributed.barrier(group=group)
+<<<<<<< HEAD
+=======
+        if paddle.distributed.get_world_size() > 1:
+            paddle.distributed.barrier()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return group
 
     if not backend:
         backend = 'nccl'
-    assert backend == 'nccl', ("backend other than nccl is not supported yet")
+    assert backend == 'nccl', "backend other than nccl is not supported yet"
 
     genv = _get_global_env()
     global_rank = genv.rank
@@ -442,13 +458,13 @@ def new_group(ranks=None, backend=None):
     ring_id = _new_ring_id()
 
     if global_rank not in ranks:
-        gp = Group(-1, -1, ring_id, ranks)
+        gp = Group(-1, ring_id, ranks)
         _group_map[ring_id] = gp
     else:
         ranks = sorted(ranks)
         group_rank = ranks.index(global_rank)
         group_size = len(ranks)
-        gp = Group(group_rank, group_size, ring_id, ranks)
+        gp = Group(group_rank, ring_id, ranks)
         _group_map[ring_id] = gp
 
         if group_size >= 2:
@@ -463,27 +479,37 @@ def new_group(ranks=None, backend=None):
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                core.NCCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.NCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_npu():
                 place = core.NPUPlace(genv.device_id)
-                core.HCCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.HCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             elif core.is_compiled_with_mlu():
                 place = core.MLUPlace(genv.device_id)
-                core.CNCLParallelContext(strategy,
-                                         place).init_with_ring_id(ring_id)
+                core.CNCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
+            elif core.is_compiled_with_xpu():
+                place = core.XPUPlace(genv.device_id)
+                core.BKCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
-                assert False, ("no cuda device found")
+                assert False, "no cuda device found"
         else:
             return gp
 
     # TODO(shenliang03): This is a temporary solution to solve the problem of
     # hang caused by cross-creation of new_group
-    tmp = paddle.to_tensor(
-        [1], dtype="int32") if _non_static_mode() else fill_constant(
-            [0], dtype="int32", value="1")
-    paddle.distributed.all_reduce(tmp, use_calc_stream=True)
+    tmp = (
+        paddle.to_tensor([1], dtype="int32")
+        if _non_static_mode()
+        else fill_constant([0], dtype="int32", value="1")
+    )
+    paddle.distributed.all_reduce(tmp, sync_op=True)
     paddle.distributed.wait(tmp)
     return gp
 
@@ -578,7 +604,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 
             paddle.distributed.init_parallel_env()
             tindata = paddle.randn(shape=[2, 3])
-            paddle.distributed.all_reduce(tindata, use_calc_stream=True)
+            paddle.distributed.all_reduce(tindata, sync_op=True)
             paddle.distributed.wait(tindata)
 
     """
@@ -597,7 +623,7 @@ def wait(tensor, group=None, use_calc_stream=True):
 def _sync_calc_stream(tensor):
 
     if _non_static_mode():
-        return _C_ops.c_sync_calc_stream(tensor, tensor)
+        return _legacy_C_ops.c_sync_calc_stream(tensor, tensor)
 
     op_type = 'c_sync_calc_stream'
 
@@ -612,7 +638,9 @@ def _sync_calc_stream(tensor):
 def _sync_comm_stream(tensor, ring_id=0):
 
     if _non_static_mode():
-        return _C_ops.c_sync_comm_stream([tensor], [tensor], 'ring_id', ring_id)
+        return _legacy_C_ops.c_sync_comm_stream(
+            [tensor], [tensor], 'ring_id', ring_id
+        )
 
     op_type = 'c_sync_comm_stream'
 
@@ -623,6 +651,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         outputs={'Out': [tensor]},
         attrs={'ring_id': ring_id},
     )
+<<<<<<< HEAD
 
 
 def broadcast(tensor, src, group=None, use_calc_stream=True):
@@ -915,11 +944,16 @@ def reduce(tensor, dst, op=ReduceOp.SUM, group=None, use_calc_stream=True):
 
 
 def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
+=======
+
+
+def all_gather(tensor_list, tensor, group=None, sync_op=True):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     """
 
     Gather tensors from all participators and all get the result. As shown
-    below, 4 GPUs each start 4 processes and the data on each GPU is represnted
-    by the GPU number. Through the all_gather operator, each GPU will have data
+    below, one process is started with a GPU and the data of this process is represented
+    by its group rank. Through the all_gather operator, each GPU will have data
     from all GPUs.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/allgather.png
@@ -929,12 +963,20 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
     Args:
         tensor_list (list): A list of output Tensors. Every element in the list must be a Tensor whose data type
+<<<<<<< HEAD
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         tensor (Tensor): The Tensor to send. Its data type
             should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
         group (Group): The group instance return by new_group or None for global default group.
         use_calc_stream (bool): Wether to use calculation stream (True) or communication stream (False).
             Default to True.
+=======
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, bfloat16, complex64 or complex128.
+        tensor (Tensor): The Tensor to send. Its data type
+            should be float16, float32, float64, int32, int64, int8, uint8, bool, complex64 or complex128.
+        group (Group, optional): The group instance return by new_group or None for global default group.
+        sync_op (bool, optional): Whether this op is a sync op. The default value is True.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     Returns:
         None.
@@ -944,17 +986,26 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            init_parallel_env()
+            dist.init_parallel_env()
             tensor_list = []
+<<<<<<< HEAD
             if paddle.distributed.ParallelEnv().local_rank == 0:
                 data1 = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
                 paddle.distributed.all_gather(tensor_list, data1)
             else:
                 data2 = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
                 paddle.distributed.all_gather(tensor_list, data2)
+=======
+            if dist.get_rank() == 0:
+                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            else:
+                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            dist.all_gather(tensor_list, data)
+            print(tensor_list)
+            # [[[4, 5, 6], [4, 5, 6]], [[1, 2, 3], [1, 2, 3]]] (2 GPUs)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     """
     if group is not None and not group.is_member():
         return
@@ -965,8 +1016,14 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             list_of_complex.append(paddle.as_complex(tensor))
         return list_of_complex
 
+<<<<<<< HEAD
     is_input_complex = (tensor.dtype == paddle.complex64
                         or tensor.dtype == paddle.complex128)
+=======
+    is_input_complex = (
+        tensor.dtype == paddle.complex64 or tensor.dtype == paddle.complex128
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if is_input_complex:
         tensor = paddle.as_real(tensor)
 
@@ -978,7 +1035,7 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             out = paddle.empty(tensor_shape, tensor.dtype)
         else:
             out = paddle.concat(tensor_list, axis=0)
-        task = group.process_group.all_gather(tensor, out)
+        task = group.process_group.all_gather_into_tensor(out, tensor, sync_op)
         task.wait()
         tensor_list.clear()
         list_of_tensor = paddle.split(out, group.nranks, 0)
@@ -988,20 +1045,30 @@ def all_gather(tensor_list, tensor, group=None, use_calc_stream=True):
             tensor_list.extend(list_of_tensor)
         return
 
+    use_calc_stream = sync_op
     ring_id = 0 if group is None else group.id
     nranks = _get_global_group().nranks if group is None else group.nranks
 
     if _non_static_mode():
-        out = _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
-                                 'ring_id', ring_id, 'nranks', nranks)
+        out = _legacy_C_ops.c_allgather(
+            tensor,
+            'use_calc_stream',
+            use_calc_stream,
+            'ring_id',
+            ring_id,
+            'nranks',
+            nranks,
+        )
     else:
         op_type = 'c_allgather'
         helper = LayerHelper(op_type, **locals())
         out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
         if not isinstance(tensor_list, list):
-            raise ValueError("The type of 'tensor_list' for all_gather "
-                             "should be list.")
+            raise ValueError(
+                "The type of 'tensor_list' for all_gather " "should be list."
+            )
         for elem in tensor_list:
+<<<<<<< HEAD
             check_variable_and_dtype(elem, 'tensor_list', [
                 'float16', 'float32', 'float64', 'int32', 'int64', 'bool',
                 'int8', 'uint8', 'complex64', 'complex128'
@@ -1805,43 +1872,77 @@ def split(x,
             :width: 800
             :alt: split_col_row
             :align: center
+=======
+            check_variable_and_dtype(
+                elem,
+                'tensor_list',
+                [
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'bool',
+                    'int8',
+                    'uint8',
+                    'complex64',
+                    'complex128',
+                ],
+                'all_gather',
+            )
+        check_variable_and_dtype(
+            tensor,
+            'tensor',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'int8',
+                'uint8',
+                'complex64',
+                'complex128',
+            ],
+            'all_gather',
+        )
+        helper.append_op(
+            type=op_type,
+            inputs={'X': [tensor]},
+            outputs={'Out': [out]},
+            attrs={
+                'ring_id': ring_id,
+                'use_calc_stream': use_calc_stream,
+                'nranks': nranks,
+            },
+        )
 
-    Args:
-        x (Tensor): Input tensor. It's data type should be float16, float32, float64, int32 or int64.
-        size (list|tuple): A list or tuple with two elements indicating the shape of the weight.
-        operation (str): The name of the operation. The supported operations are 'linear' and 'embedding'.
-        axis (int, Optional): Indicate along which axis to split the weight. Default: 0.
-        num_partitions (int, Optional): How many parts the weight is partitioned. Default: 1.
-        gather_out (bool, Optional): Whether to gather the output after computation. By default, the output
-            on each partitions will be gathered after computation. Default: True.
-        weight_attr (ParamAttr, Optional): The parameter attribute for the learnable
-            weights(Parameter) of the specified operation. Default: None.
-        bias_attr (ParamAttr, Optional): The parameter attribute for the bias
-            of the specified operation. Default: None.
-        name (str, Optional): The default value is None. Normally there is no need for user to set this
-            property. Default: None. For more information, please refer to :ref:`api_guide_Name`.
+    list_of_tensor = paddle.split(out, nranks, 0)
+    if is_input_complex:
+        tensor_list.extend(convert_to_complex(list_of_tensor))
+    else:
+        tensor_list.extend(list_of_tensor)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-    Returns:
-        Tensor.
 
-    Examples:
-        .. code-block:: python
+def _convert_object_to_tensor(obj):
+    _pickler = pickle.Pickler
+    f = io.BytesIO()
+    _pickler(f).dump(obj)
+    data = np.frombuffer(f.getvalue(), dtype=np.uint8)
+    tensor = paddle.to_tensor(data)
+    return tensor, tensor.numel()
 
-            # required: distributed
-            import paddle
-            import paddle.distributed.fleet as fleet
 
-            paddle.enable_static()
-            paddle.set_device('gpu:%d'%paddle.distributed.ParallelEnv().dev_id)
-            fleet.init(is_collective=True)
-            data = paddle.randint(0, 8, shape=[10,4])
-            emb_out = paddle.distributed.split(
-                data,
-                (8, 8),
-                operation="embedding",
-                num_partitions=2)
+def _convert_tensor_to_object(tensor, len_of_tensor):
+    _unpickler = pickle.Unpickler
+    return _unpickler(io.BytesIO(tensor.numpy()[:len_of_tensor])).load()
 
+
+def all_gather_object(object_list, obj, group=None):
     """
+<<<<<<< HEAD
     assert isinstance(
         size,
         (list, tuple)), ("The type of size for "
@@ -1933,13 +2034,13 @@ def alltoall(in_tensor_list, out_tensor_list, group=None, use_calc_stream=True):
     As shown below, the in_tensor_list in GPU0 includes 0_0 and 0_1, and GPU1 includes 1_0 and 1_1.
     Through alltoall operator, the 0_0 in GPU0 will be sent to GPU0 and 0_1 to GPU1, 1_0 in GPU1 sent to GPU0 and 1_1 to GPU1.
     Finally the out_tensor_list in GPU0 includes 0_0 and 1_0, and GPU1 includes 0_1 and 1_1.
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-    .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/alltoall.png
-        :width: 800
-        :alt: alltoall
-        :align: center
+    Gather picklable objects from all participators and all get the result. Similiar to all_gather(), but python object can be passed in.
 
     Args:
+<<<<<<< HEAD
         in_tensor_list (list): A list of input Tensors. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
         out_tensor_list (list): A list of output Tensors. The data type of its elements should be the same as the
@@ -2123,17 +2224,16 @@ def _get_group_rank(global_rank, group=None):
 def send(tensor, dst=0, group=None, use_calc_stream=True):
     """
     Send a tensor to the receiver.
+=======
+        object_list (list): A list of output object. The datatype of every element in the list is same as the input obj.
+        obj (Any): The picklable object to send.
+        group (Group): The group instance return by new_group or None for global default group.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-    Args:
-        tensor (Tensor): The Tensor to send. Its data type
-            should be float16, float32, float64, int32 or int64.
-        dst (int): The destination rank id.
-        group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
-        use_calc_stream (bool, optional): Whether to use calculate stream or communication stream. Default: True.
-    
     Returns:
         None.
 
+<<<<<<< HEAD
     Examples:
         .. code-block:: python
 
@@ -2195,19 +2295,24 @@ def recv(tensor, src=0, group=None, use_calc_stream=True):
     
     Returns:
         None.
+=======
+    Warning:
+        This API only supports the dygraph mode.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     Examples:
         .. code-block:: python
 
             # required: distributed
             import paddle
-            from paddle.distributed import init_parallel_env
+            import paddle.distributed as dist
 
-            init_parallel_env()
-            if paddle.distributed.ParallelEnv().rank == 0:
-                data = paddle.to_tensor([7, 8, 9])
-                paddle.distributed.send(data, dst=1)
+            dist.init_parallel_env()
+            object_list = []
+            if dist.get_rank() == 0:
+                obj = {"foo": [1, 2, 3]}
             else:
+<<<<<<< HEAD
                 data = paddle.to_tensor([1,2,3])
                 paddle.distributed.recv(data, src=0)
             out = data.numpy()
@@ -2632,3 +2737,34 @@ def _reduce_scatter_base(output,
             return task
     else:
         raise RuntimeError("Don't support static graph mode currently.")
+=======
+                obj = {"bar": [4, 5, 6]}
+            dist.all_gather_object(object_list, obj)
+            print(object_list)
+            # [{'foo': [1, 2, 3]}, {'bar': [4, 5, 6]}] (2 GPUs)
+    """
+    assert (
+        in_dygraph_mode()
+    ), "all_gather_object doesn't support static graph mode."
+
+    tensor, len_of_tensor = _convert_object_to_tensor(obj)
+
+    # gather len_of_tensor from all ranks
+    list_len_of_tensor = []
+    all_gather(list_len_of_tensor, len_of_tensor, group)
+    # get the max length from list
+    max_len_of_tensor = int(max(list_len_of_tensor).item())
+    # resize the input tensor to max length avoid hang in all gather
+    # Note(liyurui): Maybe we should support various length all_gather?
+    # Now this operation is efficient for we don't support resize in python.
+    numpy_data = tensor.numpy()
+    numpy_data = np.resize(numpy_data, [max_len_of_tensor])
+    input_tensor = paddle.to_tensor(numpy_data)
+
+    tensor_list = []
+    all_gather(tensor_list, input_tensor, group)
+    for i, tensor in enumerate(tensor_list):
+        object_list.append(
+            _convert_tensor_to_object(tensor, list_len_of_tensor[i])
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

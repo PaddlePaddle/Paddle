@@ -12,38 +12,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
-import os
 import sys
-import six
 import time
 import unittest
-import multiprocessing
 import numpy as np
 
 import paddle.fluid as fluid
-from paddle.io import Dataset, BatchSampler, DataLoader
+from paddle.io import DataLoader
 from paddle.fluid.dygraph.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
 
-from test_multiprocess_dataloader_iterable_dataset_static import RandomDataset, RandomBatchedDataset, prepare_places
-from test_multiprocess_dataloader_iterable_dataset_static import EPOCH_NUM, BATCH_SIZE, IMAGE_SIZE, SAMPLE_NUM, CLASS_NUM
+from test_multiprocess_dataloader_iterable_dataset_static import (
+    RandomDataset,
+    RandomBatchedDataset,
+    prepare_places,
+)
+from test_multiprocess_dataloader_iterable_dataset_static import (
+    EPOCH_NUM,
+    BATCH_SIZE,
+    IMAGE_SIZE,
+    SAMPLE_NUM,
+    CLASS_NUM,
+)
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
 
     def __init__(self):
-        super(SimpleFCNet, self).__init__()
+        super().__init__()
 
-        param_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.8))
-        bias_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.5))
+        param_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.8)
+        )
+        bias_attr = fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.5)
+        )
         self._fcs = []
         in_channel = IMAGE_SIZE
         for hidden_size in [10, 20, 30]:
             self._fcs.append(
+<<<<<<< HEAD
                 Linear(in_channel,
                        hidden_size,
                        act='tanh',
@@ -56,6 +63,26 @@ class SimpleFCNet(fluid.dygraph.Layer):
                    act='softmax',
                    param_attr=param_attr,
                    bias_attr=bias_attr))
+=======
+                Linear(
+                    in_channel,
+                    hidden_size,
+                    act='tanh',
+                    param_attr=param_attr,
+                    bias_attr=bias_attr,
+                )
+            )
+            in_channel = hidden_size
+        self._fcs.append(
+            Linear(
+                in_channel,
+                CLASS_NUM,
+                act='softmax',
+                param_attr=param_attr,
+                bias_attr=bias_attr,
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def forward(self, image):
         out = image
@@ -74,16 +101,26 @@ class TestDygraphDataLoader(unittest.TestCase):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+<<<<<<< HEAD
             dataloader = DataLoader(dataset,
                                     num_workers=num_workers,
                                     batch_size=BATCH_SIZE,
                                     drop_last=True,
                                     persistent_workers=persistent_workers)
+=======
+            dataloader = DataLoader(
+                dataset,
+                num_workers=num_workers,
+                batch_size=BATCH_SIZE,
+                drop_last=True,
+                persistent_workers=persistent_workers,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)
@@ -101,7 +138,7 @@ class TestDygraphDataLoader(unittest.TestCase):
         ret = {
             "time": end_t - start_t,
             "step": step_list,
-            "loss": np.array(loss_list)
+            "loss": np.array(loss_list),
         }
         print("time cost", ret['time'], 'step_list', ret['step'])
         return ret
@@ -112,15 +149,29 @@ class TestDygraphDataLoader(unittest.TestCase):
             for persistent_workers in [False, True]:
                 results = []
                 for num_workers in [0, 2]:
-                    print(self.__class__.__name__, p, num_workers,
-                          persistent_workers)
+                    print(
+                        self.__class__.__name__,
+                        p,
+                        num_workers,
+                        persistent_workers,
+                    )
                     sys.stdout.flush()
+<<<<<<< HEAD
                     ret = self.run_main(num_workers=num_workers,
                                         places=p,
                                         persistent_workers=persistent_workers)
+=======
+                    ret = self.run_main(
+                        num_workers=num_workers,
+                        places=p,
+                        persistent_workers=persistent_workers,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     results.append(ret)
-                assert results[0]['loss'].shape[0] * 2 == results[1][
-                    'loss'].shape[0]
+                assert (
+                    results[0]['loss'].shape[0] * 2
+                    == results[1]['loss'].shape[0]
+                )
 
 
 class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
@@ -133,16 +184,26 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
+<<<<<<< HEAD
             dataloader = DataLoader(dataset,
                                     num_workers=num_workers,
                                     batch_size=None,
                                     drop_last=True,
                                     persistent_workers=persistent_workers)
+=======
+            dataloader = DataLoader(
+                dataset,
+                num_workers=num_workers,
+                batch_size=None,
+                drop_last=True,
+                persistent_workers=persistent_workers,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             step_list = []
             loss_list = []
             start_t = time.time()
-            for _ in six.moves.range(EPOCH_NUM):
+            for _ in range(EPOCH_NUM):
                 step = 0
                 for image, label in dataloader():
                     out = fc_net(image)
@@ -160,7 +221,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
         ret = {
             "time": end_t - start_t,
             "step": step_list,
-            "loss": np.array(loss_list)
+            "loss": np.array(loss_list),
         }
         print("time cost", ret['time'], 'step_list', ret['step'])
         return ret

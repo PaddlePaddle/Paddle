@@ -13,14 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_scale.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, int BlockSize>
 __global__ void SequenceScaleKernel(T* seq,
@@ -40,7 +40,11 @@ class ScaleLoDTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
                   const T* scales,
+<<<<<<< HEAD
                   framework::LoDTensor* seq) {
+=======
+                  phi::DenseTensor* seq) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;

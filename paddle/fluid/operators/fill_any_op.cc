@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -26,7 +30,7 @@ class FillAnyOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("value_int", "The int var to fill in Tensor").SetDefault(0);
     AddComment(R"DOC(Fill operator with backward;
-                Fill an tensor with `value`. 
+                Fill an tensor with `value`.
                 )DOC");
   };
 };
@@ -34,18 +38,12 @@ class FillAnyOpMaker : public framework::OpProtoAndCheckerMaker {
 class FillAnyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "FillAny");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "FillAny");
-    auto x_dims = context->GetInputDim("X");
-    context->SetOutputDim("Out", x_dims);
-  }
 };
 
 class FillAnyGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
@@ -58,6 +56,8 @@ class FillAnyGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename T>
@@ -82,11 +82,22 @@ DECLARE_INPLACE_OP_INFERER(FillAnyGradInplaceInferer,
 }  // namespace paddle
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(fill_any,
+                            FillAnyInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+DECLARE_INFER_SHAPE_FUNCTOR(fill_any_grad,
+                            FillAnyGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 REGISTER_OPERATOR(fill_any,
                   ops::FillAnyOp,
                   ops::FillAnyOpMaker,
                   ops::FillAnyGradOpMaker<paddle::framework::OpDesc>,
                   ops::FillAnyGradOpMaker<paddle::imperative::OpBase>,
+<<<<<<< HEAD
                   ops::FillAnyOpInplaceInferer);
 
 REGISTER_OPERATOR(fill_any_grad,
@@ -110,3 +121,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillAnyGradKernel<phi::CPUContext, int>,
     ops::FillAnyGradKernel<phi::CPUContext, paddle::platform::float16>,
     ops::FillAnyGradKernel<phi::CPUContext, bool>);
+=======
+                  ops::FillAnyOpInplaceInferer,
+                  FillAnyInferShapeFunctor);
+
+REGISTER_OPERATOR(fill_any_grad,
+                  ops::FillAnyGradOp,
+                  ops::FillAnyGradInplaceInferer,
+                  FillAnyGradInferShapeFunctor);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

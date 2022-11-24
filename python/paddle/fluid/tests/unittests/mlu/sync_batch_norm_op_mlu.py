@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import numpy as np
 import argparse
 import os
@@ -23,7 +26,10 @@ sys.path.append("..")
 import signal
 import time
 from contextlib import closing
+<<<<<<< HEAD
 from six import string_types
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import math
 import paddle
 import paddle.fluid as fluid
@@ -34,7 +40,14 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
+<<<<<<< HEAD
 from test_sync_batch_norm_base_mlu import TestSyncBatchNormRunnerBase, runtime_main
+=======
+from test_sync_batch_norm_base_mlu import (
+    TestSyncBatchNormRunnerBase,
+    runtime_main,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from op_test import OpTest, _set_use_system_allocator
 
 from test_sync_batch_norm_op import create_or_get_tensor
@@ -44,11 +57,18 @@ paddle.enable_static()
 
 
 class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         self.global_ring_id = 0
 
         self.dtype = np.float32
+<<<<<<< HEAD
+=======
+        self.bn_dtype = np.float32
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.N = 8
         self.C = 16
         self.H = 32
@@ -56,6 +76,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-3
 
+<<<<<<< HEAD
     def get_model(self,
                   main,
                   startup,
@@ -64,21 +85,49 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                   seed,
                   sync_bn=False,
                   only_forward=False):
+=======
+    def get_model(
+        self,
+        main,
+        startup,
+        place,
+        layout,
+        seed,
+        sync_bn=False,
+        only_forward=False,
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         """Build program."""
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 data = fluid.layers.data(name='input',
                                          shape=self.dshape,
                                          dtype=self.dtype,
                                          append_batch_size=False)
+=======
+                data = fluid.layers.data(
+                    name='input',
+                    shape=self.dshape,
+                    dtype=self.dtype,
+                    append_batch_size=False,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 conv = fluid.layers.conv2d(
                     input=data,
                     num_filters=32,
                     filter_size=1,
                     param_attr=fluid.ParamAttr(name='conv2d_weight'),
                     bias_attr=False,
+<<<<<<< HEAD
                     use_cudnn=use_cudnn)
+=======
+                    use_cudnn=use_cudnn,
+                )
+                if self.bn_dtype == np.float16:
+                    conv = fluid.layers.cast(conv, 'float16')
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 bn = fluid.layers.batch_norm(
                     conv,
                     param_attr=fluid.ParamAttr(name='bn_scale'),
@@ -86,10 +135,18 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     moving_mean_name='bn_moving_mean',
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
+<<<<<<< HEAD
                     is_test=only_forward)
                 # if self.dtype == np.float16:
                 #     bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = fluid.layers.sigmoid(bn)
+=======
+                    is_test=only_forward,
+                )
+                if self.bn_dtype == np.float16:
+                    bn = fluid.layers.cast(bn, 'float32')
+                sigmoid = paddle.nn.functional.sigmoid(bn)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 out = fluid.layers.reduce_sum(sigmoid)
                 # if not sync_bn:
                 #     out = out / core.get_mlu_device_count()

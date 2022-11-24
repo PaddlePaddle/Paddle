@@ -65,6 +65,7 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
     runtime_python_node->end_ns = (*runtimenode)->EndNs();
     runtime_python_node->process_id = (*runtimenode)->ProcessId();
     runtime_python_node->thread_id = (*runtimenode)->ThreadId();
+    runtime_python_node->correlation_id = (*runtimenode)->CorrelationId();
     host_python_node->runtime_node_ptrs.push_back(runtime_python_node);
     // copy DeviceTraceEventNode
     for (auto devicenode = (*runtimenode)->GetDeviceTraceEventNodes().begin();
@@ -78,6 +79,30 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
       device_python_node->device_id = (*devicenode)->DeviceId();
       device_python_node->context_id = (*devicenode)->ContextId();
       device_python_node->stream_id = (*devicenode)->StreamId();
+      device_python_node->correlation_id = (*devicenode)->CorrelationId();
+      if (device_python_node->type == TracerEventType::Kernel) {
+        KernelEventInfo kernel_info = (*devicenode)->KernelInfo();
+        device_python_node->block_x = kernel_info.block_x;
+        device_python_node->block_y = kernel_info.block_y;
+        device_python_node->block_z = kernel_info.block_z;
+        device_python_node->grid_x = kernel_info.grid_x;
+        device_python_node->grid_y = kernel_info.grid_y;
+        device_python_node->grid_z = kernel_info.grid_z;
+        device_python_node->shared_memory = kernel_info.dynamic_shared_memory +
+                                            kernel_info.static_shared_memory;
+        device_python_node->registers_per_thread =
+            kernel_info.registers_per_thread;
+        device_python_node->blocks_per_sm = kernel_info.blocks_per_sm;
+        device_python_node->warps_per_sm = kernel_info.warps_per_sm;
+        device_python_node->occupancy = kernel_info.occupancy;
+      } else if (device_python_node->type == TracerEventType::Memcpy) {
+        MemcpyEventInfo memcpy_info = (*devicenode)->MemcpyInfo();
+        device_python_node->num_bytes = memcpy_info.num_bytes;
+      } else if (device_python_node->type == TracerEventType::Memset) {
+        MemsetEventInfo memset_info = (*devicenode)->MemsetInfo();
+        device_python_node->num_bytes = memset_info.num_bytes;
+        device_python_node->value = memset_info.value;
+      }
       runtime_python_node->device_node_ptrs.push_back(device_python_node);
     }
   }
@@ -110,6 +135,23 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
   return host_python_node;
 }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+ProfilerResult::ProfilerResult(
+    std::unique_ptr<NodeTrees> tree,
+    const ExtraInfo& extra_info,
+    const std::map<uint32_t, gpuDeviceProp> device_property_map)
+    : tree_(tree.release()),
+      extra_info_(extra_info),
+      device_property_map_(device_property_map) {
+  if (tree_ != nullptr) {
+    std::map<uint64_t, HostTraceEventNode*> nodetrees = tree_->GetNodeTrees();
+    for (auto it = nodetrees.begin(); it != nodetrees.end(); ++it) {
+      thread_event_trees_map_[it->first] = CopyTree(it->second);
+    }
+  }
+}
+#endif
+
 ProfilerResult::ProfilerResult(std::unique_ptr<NodeTrees> tree,
                                const ExtraInfo& extra_info)
     : tree_(tree.release()), extra_info_(extra_info) {
@@ -134,12 +176,20 @@ void ProfilerResult::Save(const std::string& file_name,
                           const std::string format) {
   if (format == std::string("json")) {
     ChromeTracingLogger logger(file_name);
+    logger.LogMetaInfo(version_, span_indx_);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    logger.LogDeviceProperty(device_property_map_);
+#endif
     tree_->LogMe(&logger);
-    logger.LogMetaInfo(GetExtraInfo());
+    logger.LogExtraInfo(GetExtraInfo());
   } else if (format == std::string("pb")) {
     SerializationLogger logger(file_name);
+    logger.LogMetaInfo(version_, span_indx_);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    logger.LogDeviceProperty(device_property_map_);
+#endif
     tree_->LogMe(&logger);
-    logger.LogMetaInfo(GetExtraInfo());
+    logger.LogExtraInfo(GetExtraInfo());
   }
   return;
 }

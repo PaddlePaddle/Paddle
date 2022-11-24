@@ -127,7 +127,11 @@ class SparseFcOpConverter : public OpConverter {
         Y_v,
         platform::errors::NotFound(
             "Can not find %s presistale var of sparse_fc in scope.", w_name));
+<<<<<<< HEAD
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+=======
+    auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
             ? PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
@@ -323,7 +327,11 @@ class SparseFcOpConverter : public OpConverter {
     int bias_num = 0;
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
+<<<<<<< HEAD
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
+=======
+      auto* b_t = b_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       bias_data = weight_data = const_cast<float*>(static_cast<const float*>(
           engine_->GetFp32TrtWeight(op_desc.Input("Bias").front(), *b_t)
               .get()

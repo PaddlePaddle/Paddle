@@ -27,8 +27,13 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+=======
+#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/core/generator.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 

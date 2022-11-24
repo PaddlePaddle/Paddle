@@ -24,8 +24,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class TileOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -40,7 +38,11 @@ class TileOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;
@@ -74,7 +76,8 @@ class TileOpMaker : public framework::OpProtoAndCheckerMaker {
               "the corresponding value given by Attr(repeat_times).");
     AddAttr<std::vector<int>>("repeat_times",
                               "The number of repeat times for each dimension.")
-        .SetDefault({});
+        .SetDefault({})
+        .SupportTensor();
     AddComment(R"DOC(
 Tile operator repeats the input by given times number. You should set times
 number for each dimension by providing attribute 'repeat_times'. The rank of X
@@ -114,6 +117,7 @@ class TileGradOp : public framework::OperatorWithKernel {
                    "TileGrad");
 
     auto x_dims = ctx->GetInputDim("X");
+<<<<<<< HEAD
 
     std::vector<int> repeat_times =
         ctx->Attrs().Get<std::vector<int>>("repeat_times");
@@ -150,6 +154,8 @@ class TileGradOp : public framework::OperatorWithKernel {
         }
       }
     }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto x_grad_name = framework::GradVarName("X");
 
     if (ctx->HasOutput(x_grad_name)) {
@@ -167,7 +173,11 @@ class TileGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "repeat_times_tensor" || var_name == "RepeatTimes") {
       return expected_kernel_type;

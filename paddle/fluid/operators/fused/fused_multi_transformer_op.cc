@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedMultiTransformerOp : public framework::OperatorWithKernel {
  private:
@@ -143,12 +143,15 @@ class FusedMultiTransformerOp : public framework::OperatorWithKernel {
                             "head %d, but got %d",
                             trans_qkvw ? y_dim[1] : y_dim[2],
                             c_dim[2]));  // num_head
+<<<<<<< HEAD
       PADDLE_ENFORCE_GT(
           c_dim[3],
           0,
           paddle::platform::errors::InvalidArgument(
               "The forth dim of CacheKV must be greater than 0, but got %d",
               c_dim[3]));  // cache_seq_len
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(c_dim[4],
                         trans_qkvw ? y_dim[2] : y_dim[3],
                         paddle::platform::errors::InvalidArgument(
@@ -197,6 +200,10 @@ class FusedMultiTransformerOpOpMaker
     AddInput("QKVW", "The qkv weight tensor.").AsDuplicable();
     AddInput("QKVBias", "The qkv bias tensor.").AsDispensable().AsDuplicable();
     AddInput("CacheKV", "(optional) The cached KV for generation inference.")
+        .AsDispensable()
+        .AsDuplicable();
+    AddInput("PreCaches",
+             "(optional) The prefix caches for generation inference.")
         .AsDispensable()
         .AsDuplicable();
     AddInput("TimeStep",

@@ -20,9 +20,18 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
+<<<<<<< HEAD
 
 namespace phi {
 
+=======
+#include "paddle/phi/core/attribute.h"
+
+namespace phi {
+
+using TensorNameMap = std::map<std::string, std::vector<std::string>>;
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 class OneDNNContextThreadLocals {
   // default mkldnn session id
 
@@ -134,6 +143,29 @@ class OneDNNContext : public CPUContext {
     return OneDNNContextThreadLocals::fetch();
   }
 
+<<<<<<< HEAD
+=======
+  // Several methods for adapting ONEDNN-specific attributes and inputs
+  bool HasDnnAttr(const std::string& attr_name) const;
+  const Attribute& GetDnnAttr(const std::string& attr_name) const;
+  void SetDnnAttr(const std::string& attr_name, Attribute attr);
+
+  bool HasDnnInput(const std::string& input_name) const;
+  const DenseTensor* GetDnnInput(const std::string& input_name) const;
+  void SetDnnInput(const std::string& input_name, const DenseTensor* input);
+
+  void SetInputsName(const TensorNameMap& inputs_name);
+
+  void SetOutputsName(const TensorNameMap& outputs_name);
+
+  const std::vector<std::string>& GetInputsName(const std::string& input) const;
+
+  const std::vector<std::string>& GetOutputsName(
+      const std::string& output) const;
+
+  static const char* name() { return "OneDNNContext"; }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

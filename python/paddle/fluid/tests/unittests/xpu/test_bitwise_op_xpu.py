@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -23,12 +21,16 @@ sys.path.append("..")
 import paddle
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
 
-################## TEST OP: BitwiseAnd ##################
+# ----------------- TEST OP: BitwiseAnd -------------------- #
 class XPUTestBitwiseAnd(XPUOpTestWrapper):
 
     def __init__(self):
@@ -44,6 +46,7 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'bitwise_and'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -52,12 +55,20 @@ class XPUTestBitwiseAnd(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out = np.bitwise_and(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -107,7 +118,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseAnd, stype)
 
 
-################## TEST OP: BitwiseOr ##################
+# -------------- TEST OP: BitwiseOr ----------------- #
 class XPUTestBitwiseOr(XPUOpTestWrapper):
 
     def __init__(self):
@@ -123,6 +134,7 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'bitwise_or'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -131,12 +143,20 @@ class XPUTestBitwiseOr(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out = np.bitwise_or(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -186,7 +206,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseOr, stype)
 
 
-################## TEST OP: BitwiseXor ##################
+# --------------- TEST OP: BitwiseXor ---------------- #
 class XPUTestBitwiseXor(XPUOpTestWrapper):
 
     def __init__(self):
@@ -202,6 +222,7 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'bitwise_xor'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
@@ -210,12 +231,20 @@ class XPUTestBitwiseXor(XPUOpTestWrapper):
                                   self.high,
                                   self.y_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+            y = np.random.randint(
+                self.low, self.high, self.y_shape, dtype=self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out = np.bitwise_xor(x, y)
 
             self.attrs = {'use_xpu': True}
             self.inputs = {
                 'X': OpTest.np_dtype_to_fluid_dtype(x),
-                'Y': OpTest.np_dtype_to_fluid_dtype(y)
+                'Y': OpTest.np_dtype_to_fluid_dtype(y),
             }
             self.outputs = {'Out': out}
 
@@ -265,7 +294,7 @@ for stype in support_types:
     create_test_class(globals(), XPUTestBitwiseXor, stype)
 
 
-##################  TEST OP: BitwiseNot ##################
+# ----------------  TEST OP: BitwiseNot ------------------ #
 class XPUTestBitwiseNot(XPUOpTestWrapper):
 
     def __init__(self):
@@ -281,10 +310,16 @@ class XPUTestBitwiseNot(XPUOpTestWrapper):
         def set_case(self):
             self.op_type = 'bitwise_not'
 
+<<<<<<< HEAD
             x = np.random.randint(self.low,
                                   self.high,
                                   self.x_shape,
                                   dtype=self.dtype)
+=======
+            x = np.random.randint(
+                self.low, self.high, self.x_shape, dtype=self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out = np.bitwise_not(x)
 
             self.attrs = {'use_xpu': True}

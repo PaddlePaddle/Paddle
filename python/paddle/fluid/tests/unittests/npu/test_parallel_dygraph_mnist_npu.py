@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import unittest
@@ -48,6 +46,7 @@ rank_table_file = b"""{
 }"""
 
 need_envs = {
+<<<<<<< HEAD
     "ASCEND_AICPU_PATH":
     os.getenv("ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"),
     "ASCEND_OPP_PATH":
@@ -60,6 +59,18 @@ need_envs = {
     "1",
     "RANK_TABLE_FILE":
     "rank_table_file.json",
+=======
+    "ASCEND_AICPU_PATH": os.getenv(
+        "ASCEND_AICPU_PATH", "/usr/local/Ascend/nnae/latest"
+    ),
+    "ASCEND_OPP_PATH": os.getenv(
+        "ASCEND_OPP_PATH", "/usr/local/Ascend/nnae/latest/opp"
+    ),
+    "HCCL_CONNECT_TIMEOUT": "7200",
+    "HCCL_WHITELIST_DISABLE": "1",
+    "HCCL_SECURITY_MODE": "1",
+    "RANK_TABLE_FILE": "rank_table_file.json",
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 
@@ -80,7 +91,8 @@ class TestParallelDygraphMnistNPU(TestDistBase):
                 delta=1e-3,
                 check_error_log=True,
                 need_envs=need_envs,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 class TestFleetDygraphMnistNPU(TestParallelDygraphMnistNPU):

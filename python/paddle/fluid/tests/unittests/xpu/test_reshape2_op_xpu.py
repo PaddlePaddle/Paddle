@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import sys
 import unittest
@@ -23,7 +21,11 @@ sys.path.append("..")
 import paddle
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -57,7 +59,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_output(self):
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.infered_shape),
-                'XShape': np.random.random(self.ori_shape).astype(self.dtype)
+                'XShape': np.random.random(self.ori_shape).astype(self.dtype),
             }
 
         def init_attrs(self):
@@ -98,13 +100,17 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_input(self):
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
+<<<<<<< HEAD
                 "Shape": np.array(self.actual_shape, dtype="int32")
+=======
+                "Shape": np.array(self.actual_shape, dtype="int32"),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
         def init_test_output(self):
             self.outputs = {
                 "Out": self.inputs["X"].reshape(self.actual_shape),
-                'XShape': np.random.random(self.ori_shape).astype(self.dtype)
+                'XShape': np.random.random(self.ori_shape).astype(self.dtype),
             }
 
     # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
@@ -119,29 +125,42 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_input(self):
             shape_tensor = []
             for index, ele in enumerate(self.new_shape):
-                shape_tensor.append(("x" + str(index), np.ones(
-                    (1)).astype('int32') * ele))
+                shape_tensor.append(
+                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                )
 
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
-                'ShapeTensor': shape_tensor
+                'ShapeTensor': shape_tensor,
             }
 
         def init_attrs(self):
             self.attrs = {'shape': self.shape, "use_xpu": True}
 
+<<<<<<< HEAD
     class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor
                                                   ):
 
+=======
+    class TestReshapeOpDimInfer1_attr_ShapeTensor(
+        TestReshapeOp_attr_ShapeTensor
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def init_data(self):
             self.ori_shape = (5, 20)
             self.new_shape = (5, -1, 20)
             self.infered_shape = (5, -1, 20)
             self.shape = (5, -1, -1)
 
+<<<<<<< HEAD
     class TestReshapeOpDimInfer2_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor
                                                   ):
 
+=======
+    class TestReshapeOpDimInfer2_attr_ShapeTensor(
+        TestReshapeOp_attr_ShapeTensor
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def init_data(self):
             self.ori_shape = (10, 2, 6)
             self.new_shape = (10, 0, 3, -1)
@@ -159,7 +178,11 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_input(self):
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
+<<<<<<< HEAD
                 "Shape": np.array(self.new_shape, dtype="int32")
+=======
+                "Shape": np.array(self.new_shape, dtype="int32"),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
         def init_attrs(self):

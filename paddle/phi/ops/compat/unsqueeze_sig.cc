@@ -18,6 +18,7 @@
 namespace phi {
 
 KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   if (ctx.HasOutput("XShape")) {
     if (ctx.InputSize("AxesTensorList") > 0) {
       VLOG(2) << "unsqueeze2 in AxesTensorList";
@@ -45,6 +46,20 @@ KernelSignature UnsqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
       VLOG(2) << "unsqueeze2 in axes";
       return KernelSignature("unsqueeze", {"X"}, {"axes"}, {"Out"});
     }
+=======
+  if (ctx.InputSize("AxesTensorList") > 0) {
+    VLOG(2) << "unsqueeze2 in AxesTensorList";
+    return KernelSignature(
+        "unsqueeze_with_xshape", {"X"}, {"AxesTensorList"}, {"Out", "XShape"});
+  } else if (ctx.InputSize("AxesTensor") > 0) {
+    VLOG(2) << "unsqueeze2 in AxesTensor";
+    return KernelSignature(
+        "unsqueeze_with_xshape", {"X"}, {"AxesTensor"}, {"Out", "XShape"});
+  } else {
+    VLOG(2) << "unsqueeze2 in axes";
+    return KernelSignature(
+        "unsqueeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 }
 

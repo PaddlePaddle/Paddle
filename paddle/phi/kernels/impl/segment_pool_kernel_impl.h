@@ -16,7 +16,10 @@
 
 #include <string>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/eigen.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
@@ -97,7 +100,7 @@ void SegmentKernelLaunchHelper(const Context& dev_ctx,
     out->Resize({dims});
     dev_ctx.template Alloc<T>(out);
 
-    T init_value = 0;
+    T init_value = static_cast<T>(0);
     if (pooltype == "MAX") {
       init_value = static_cast<T>(-FLT_MAX);
     } else if (pooltype == "MIN") {

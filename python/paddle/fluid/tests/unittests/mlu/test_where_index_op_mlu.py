@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import sys
 
 sys.path.append("..")
@@ -30,7 +33,10 @@ paddle.enable_static()
 
 
 class TestWhereIndexOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = "where_index"
         self.place = paddle.device.MLUPlace(0)
@@ -49,7 +55,10 @@ class TestWhereIndexOp(OpTest):
 
 
 class TestAllFalse(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = "where_index"
         self.place = paddle.device.MLUPlace(0)
@@ -80,7 +89,10 @@ class TestAllFalse(unittest.TestCase):
 
 
 class TestRank2(TestWhereIndexOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_config(self):
         self.inputs = {
             'Condition': np.array([[True, False], [False, True]]),
@@ -90,6 +102,7 @@ class TestRank2(TestWhereIndexOp):
 
 
 class TestRank3(TestWhereIndexOp):
+<<<<<<< HEAD
 
     def init_config(self):
         self.inputs = {
@@ -103,11 +116,32 @@ class TestRank3(TestWhereIndexOp):
             'Out':
             np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
                      dtype='int64')
+=======
+    def init_config(self):
+        self.inputs = {
+            'Condition': np.array(
+                [
+                    [[True, False], [False, True]],
+                    [[False, True], [True, False]],
+                    [[False, False], [False, True]],
+                ]
+            ),
+        }
+
+        self.outputs = {
+            'Out': np.array(
+                [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
+                dtype='int64',
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
 class TestWhereOpError(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_api(self):
         with program_guard(Program(), Program()):
             cond = fluid.layers.data(name='cond', shape=[4], dtype='bool')
@@ -120,9 +154,13 @@ class TestWhereOpError(unittest.TestCase):
 
 
 class TestWhereRaiseError(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_errors(self):
 
+=======
+    def test_errors(self):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def test_type():
             fluid.layers.where([10])
 

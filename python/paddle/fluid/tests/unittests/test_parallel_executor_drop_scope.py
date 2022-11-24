@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
@@ -44,6 +42,7 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         exec_strateg = fluid.ExecutionStrategy()
         exec_strateg.num_iteration_per_drop_scope = 10
 
+<<<<<<< HEAD
         train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
                                            main_program=train_program,
                                            loss_name=loss.name,
@@ -52,13 +51,27 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
                                           main_program=test_program,
                                           share_vars_from=train_exe,
                                           exec_strategy=exec_strateg)
+=======
+        train_exe = fluid.ParallelExecutor(
+            use_cuda=use_cuda,
+            main_program=train_program,
+            loss_name=loss.name,
+            exec_strategy=exec_strateg,
+        )
+        test_exe = fluid.ParallelExecutor(
+            use_cuda=use_cuda,
+            main_program=test_program,
+            share_vars_from=train_exe,
+            exec_strategy=exec_strateg,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
         train_exe.run(feed={"X": x}, fetch_list=[loss.name])
         test_exe.run(feed={"X": x}, fetch_list=[loss.name])
 
-        assert train_exe._need_create_local_exe_scopes() == False
-        assert test_exe._need_create_local_exe_scopes() == False
+        assert not train_exe._need_create_local_exe_scopes()
+        assert not test_exe._need_create_local_exe_scopes()
 
         # drop the local execution scope immediately
         train_exe.drop_local_exe_scopes()

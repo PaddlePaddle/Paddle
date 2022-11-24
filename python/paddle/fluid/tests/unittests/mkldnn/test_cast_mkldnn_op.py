@@ -12,20 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
 import paddle
 import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
 from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
 class TestCastBF16ToFP32MKLDNNOp(OpTest):
 
     def init_data(self):
@@ -36,12 +33,20 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
         self.init_data()
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
+<<<<<<< HEAD
         prepare_dtype = lambda x: int(core.VarDesc.VarType.BF16 if x.dtype != np
                                       .float32 else core.VarDesc.VarType.FP32)
+=======
+        prepare_dtype = lambda x: int(
+            core.VarDesc.VarType.BF16
+            if x.dtype != np.float32
+            else core.VarDesc.VarType.FP32
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.attrs = {
             'in_dtype': prepare_dtype(self.x),
             'out_dtype': prepare_dtype(self.out),
-            'use_mkldnn': True
+            'use_mkldnn': True,
         }
         self.op_type = 'cast'
 
@@ -50,11 +55,13 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
+            core.CPUPlace(),
+            ["X"],
             "Out",
             check_dygraph=False,
             user_defined_grads=[self.inputs['X']],
-            user_defined_grad_outputs=[self.outputs['Out']])
+            user_defined_grad_outputs=[self.outputs['Out']],
+        )
 
 
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):

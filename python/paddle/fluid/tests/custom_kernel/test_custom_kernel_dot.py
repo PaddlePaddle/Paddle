@@ -14,7 +14,6 @@
 
 import os
 import sys
-import site
 import unittest
 import numpy as np
 
@@ -27,8 +26,11 @@ class TestCustomKernelDot(unittest.TestCase):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
 
         # --inplace to place output so file to current dir
-        cmd = 'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
-            cur_dir, sys.executable)
+        cmd = (
+            'cd {} && {} custom_kernel_dot_setup.py build_ext --inplace'.format(
+                cur_dir, sys.executable
+            )
+        )
         os.system(cmd)
 
     def test_custom_kernel_dot_run(self):
@@ -38,11 +40,13 @@ class TestCustomKernelDot(unittest.TestCase):
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
 
         import paddle
+
         paddle.set_device('cpu')
         x = paddle.to_tensor(x_data)
         y = paddle.to_tensor(y_data)
         out = paddle.dot(x, y)
 
+<<<<<<< HEAD
         self.assertTrue(
             np.array_equal(out.numpy(), result),
             "custom kernel dot out: {},\n numpy dot out: {}".format(
@@ -51,13 +55,30 @@ class TestCustomKernelDot(unittest.TestCase):
 
 class TestCustomKernelDotC(unittest.TestCase):
 
+=======
+        np.testing.assert_array_equal(
+            out.numpy(),
+            result,
+            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
+                out.numpy(), result
+            ),
+        )
+
+
+class TestCustomKernelDotC(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
 
         # --inplace to place output so file to current dir
         cmd = 'cd {} && {} custom_kernel_dot_c_setup.py build_ext --inplace'.format(
+<<<<<<< HEAD
             cur_dir, sys.executable)
+=======
+            cur_dir, sys.executable
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         os.system(cmd)
 
     def test_custom_kernel_dot_run(self):
@@ -65,6 +86,7 @@ class TestCustomKernelDotC(unittest.TestCase):
         x_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         y_data = np.random.uniform(1, 5, [2, 10]).astype(np.int8)
         result = np.sum(x_data * y_data, axis=1).reshape([2, 1])
+<<<<<<< HEAD
 
         import paddle
         paddle.set_device('cpu')
@@ -76,6 +98,23 @@ class TestCustomKernelDotC(unittest.TestCase):
             np.array_equal(out.numpy(), result),
             "custom kernel dot out: {},\n numpy dot out: {}".format(
                 out.numpy(), result))
+=======
+
+        import paddle
+
+        paddle.set_device('cpu')
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+        out = paddle.dot(x, y)
+
+        np.testing.assert_array_equal(
+            out.numpy(),
+            result,
+            err_msg='custom kernel dot out: {},\n numpy dot out: {}'.format(
+                out.numpy(), result
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

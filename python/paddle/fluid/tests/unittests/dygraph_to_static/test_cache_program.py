@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from collections import Counter
@@ -46,10 +44,14 @@ class TestCacheProgram(unittest.TestCase):
                 cur_out = out
                 # Check forward ops
                 prev_ops = cur_ops
-                cur_ops = Counter([
-                    op.type for op in fluid.default_main_program().block(0).ops
-                ])
+                cur_ops = Counter(
+                    [
+                        op.type
+                        for op in fluid.default_main_program().block(0).ops
+                    ]
+                )
                 if batch_id > 0:
+<<<<<<< HEAD
                     prev_out_numpy = prev_out[0].numpy() if isinstance(
                         prev_out, (tuple, list)) else prev_out.numpy()
                     cur_out_numpy = cur_out[0].numpy() if isinstance(
@@ -59,6 +61,26 @@ class TestCacheProgram(unittest.TestCase):
                         msg=
                         'Output in previous batch is {}\n Output in current batch is \n{}'
                         .format(prev_out_numpy, cur_out_numpy))
+=======
+                    prev_out_numpy = (
+                        prev_out[0].numpy()
+                        if isinstance(prev_out, (tuple, list))
+                        else prev_out.numpy()
+                    )
+                    cur_out_numpy = (
+                        cur_out[0].numpy()
+                        if isinstance(cur_out, (tuple, list))
+                        else cur_out.numpy()
+                    )
+                    np.testing.assert_allclose(
+                        prev_out_numpy,
+                        cur_out_numpy,
+                        rtol=1e-05,
+                        err_msg='Output in previous batch is {}\n Output in current batch is \n{}'.format(
+                            prev_out_numpy, cur_out_numpy
+                        ),
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     self.assertEqual(prev_ops, cur_ops)
 
 
@@ -90,7 +112,8 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
         with fluid.dygraph.guard(fluid.CPUPlace()):
             dygraph_net = self.dygraph_class()
             adam = fluid.optimizer.AdamOptimizer(
-                learning_rate=0.001, parameter_list=dygraph_net.parameters())
+                learning_rate=0.001, parameter_list=dygraph_net.parameters()
+            )
             loss_data = []
             for batch_id in range(self.batch_num):
                 input = fluid.dygraph.to_variable(self.data)
@@ -106,9 +129,20 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
     def test_with_optimizer(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_loss, static_loss),
                         msg='dygraph is {}\n static_res is \n{}'.format(
                             dygraph_loss, static_loss))
+=======
+        np.testing.assert_allclose(
+            dygraph_loss,
+            static_loss,
+            rtol=1e-05,
+            err_msg='dygraph is {}\n static_res is \n{}'.format(
+                dygraph_loss, static_loss
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def simple_func(x):

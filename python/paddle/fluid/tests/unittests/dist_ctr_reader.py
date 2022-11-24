@@ -108,8 +108,12 @@ def load_lr_input_record(sent):
 feeding_index = {'dnn_input': 0, 'lr_input': 1, 'click': 2}
 
 
+<<<<<<< HEAD
 class Dataset(object):
 
+=======
+class Dataset:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def train(self):
         '''
         Load trainset.
@@ -164,7 +168,13 @@ def load_data_meta():
     lines = read_data('data.meta.txt')
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
+<<<<<<< HEAD
     assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], err_info
+=======
+    assert (
+        'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
+    ), err_info
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     logger.info('dnn input dim: %d' % res[0])

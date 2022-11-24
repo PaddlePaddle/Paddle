@@ -21,11 +21,13 @@ from paddle.distributed.passes import new_pass, PassManager
 import unittest
 from dist_pass_test_base import DistPassTestBase
 
+paddle.enable_static()
+
 
 class DemoNet(nn.Layer):
 
     def __init__(self):
-        super(DemoNet, self).__init__()
+        super().__init__()
 
         self.conv1 = nn.Conv2D(3, 8, (3, 3), data_format="NHWC")
         self.bn1 = nn.BatchNorm2D(8, data_format="NHWC")
@@ -46,9 +48,15 @@ class TestFuseAdamPass(DistPassTestBase):
         self.rtol = 1e-4
 
     def get_model(self, place, batch_size=32, image_shape=[224, 224, 3]):
+<<<<<<< HEAD
         image = paddle.static.data(shape=[batch_size] + image_shape,
                                    dtype='float32',
                                    name='image')
+=======
+        image = paddle.static.data(
+            shape=[batch_size] + image_shape, dtype='float32', name='image'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         model = DemoNet()
         pred_out = model(image)
@@ -84,10 +92,14 @@ class TestFuseAdamPass(DistPassTestBase):
         for op in main_prog.global_block().ops:
             op_type.append(op.type)
             if op.type == "sgd":
-                self.assertTrue("@FUSEDVAR@_sgd_Param_batch_norm2d_0.b_0" in
-                                op.input("Param"))
-                self.assertTrue("@FUSEDVAR@_sgd_Grad_batch_norm2d_0.b_0@GRAD" in
-                                op.input("Grad"))
+                self.assertTrue(
+                    "@FUSEDVAR@_sgd_Param_batch_norm2d_0.b_0"
+                    in op.input("Param")
+                )
+                self.assertTrue(
+                    "@FUSEDVAR@_sgd_Grad_batch_norm2d_0.b_0@GRAD"
+                    in op.input("Grad")
+                )
         self.assertTrue("coalesce_tensor" in op_type)
 
     def test_fuse_adam(self):

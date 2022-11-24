@@ -27,6 +27,7 @@ class EagerVariable;
 }
 namespace paddle {
 namespace framework {
+class VarDesc;
 class BlockDesc;
 using Attribute = paddle::variant<paddle::blank,
                                   int,
@@ -41,7 +42,14 @@ using Attribute = paddle::variant<paddle::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
+<<<<<<< HEAD
                                   std::vector<double>>;
+=======
+                                  std::vector<double>,
+                                  VarDesc*,
+                                  std::vector<VarDesc*>,
+                                  double>;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 }  // namespace framework
 namespace imperative {

@@ -83,6 +83,15 @@ typedef struct C_CCLComm_st* C_CCLComm;
 
 typedef enum { SUM = 0, AVG, MAX, MIN, PRODUCT } C_CCLReduceOp;
 
+<<<<<<< HEAD
+=======
+typedef struct C_Profiler_st* C_Profiler;
+
+void profiler_add_runtime_trace_event(C_Profiler prof, void* event);
+
+void profiler_add_device_trace_event(C_Profiler prof, void* event);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -593,6 +602,10 @@ struct C_DeviceInterface {
                           size_t count,
                           C_DataType data_type,
                           C_CCLReduceOp op,
+<<<<<<< HEAD
+=======
+                          size_t root,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                           C_CCLComm comm,
                           C_Stream stream);
 
@@ -631,6 +644,29 @@ struct C_DeviceInterface {
 
   void* reserved_ccl_api[8];
 
+<<<<<<< HEAD
+=======
+  //////////////////
+  // profiler api //
+  //////////////////
+
+  C_Status (*profiler_initialize)(C_Profiler prof, void** user_data);
+
+  C_Status (*profiler_finalize)(C_Profiler prof, void* user_data);
+
+  C_Status (*profiler_prepare_tracing)(C_Profiler prof, void* user_data);
+
+  C_Status (*profiler_start_tracing)(C_Profiler prof, void* user_data);
+
+  C_Status (*profiler_stop_tracing)(C_Profiler prof, void* user_data);
+
+  C_Status (*profiler_collect_trace_data)(C_Profiler prof,
+                                          uint64_t start_ns,
+                                          void* user_data);
+
+  void* reserved_profiler_api[8];
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   ///////////////
   // other api //
   ///////////////

@@ -14,30 +14,83 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/infermeta/unary.h"
-
 namespace phi {
 namespace funcs {
 
-struct InfinityV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorContainsInfV2(tensor, out);
+template <typename T, class Enable = void>
+struct IsNanFunctor {
+  HOSTDEVICE bool operator()(const T& a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isnan(a);
+#else
+    return std::isnan(a);
+#endif
   }
 };
 
-struct NANV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorContainsNANV2(tensor, out);
+template <typename T>
+struct IsNanFunctor<T,
+                    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T& a) const { return false; }
+};
+
+// isnan is defined in namespace std in float16.h, but
+// on rocm platform, it still got:
+// "error: call to 'isnan' is ambiguous".
+// So use phi::dtype::isnan here.
+template <>
+struct IsNanFunctor<phi::dtype::float16, void> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+    return phi::dtype::isnan(a);
   }
 };
 
-struct IsfiniteV2Functor {
-  void operator()(const DenseTensor& tensor, DenseTensor* out) {
-    paddle::framework::TensorIsfiniteV2(tensor, out);
+template <typename T, class Enable = void>
+struct IsInfFunctor {
+  HOSTDEVICE bool operator()(const T& a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isinf(a);
+#else
+    return std::isinf(a);
+#endif
+  }
+};
+
+template <typename T>
+struct IsInfFunctor<T,
+                    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T& a) const { return false; }
+};
+
+template <>
+struct IsInfFunctor<phi::dtype::float16, void> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+    return phi::dtype::isinf(a);
+  }
+};
+
+template <typename T, class Enable = void>
+struct IsFiniteFunctor {
+  HOSTDEVICE bool operator()(const T& a) const {
+#if defined(__CUDACC__) || defined(__HIPCC__)
+    return ::isfinite(a);
+#else
+    return std::isfinite(a);
+#endif
+  }
+};
+
+template <typename T>
+struct IsFiniteFunctor<
+    T,
+    typename std::enable_if<std::is_integral<T>::value>::type> {
+  HOSTDEVICE bool operator()(const T& a) const { return true; }
+};
+
+template <>
+struct IsFiniteFunctor<phi::dtype::float16, void> {
+  HOSTDEVICE bool operator()(const phi::dtype::float16& a) const {
+    return phi::dtype::isfinite(a);
   }
 };
 

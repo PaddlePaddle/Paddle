@@ -50,8 +50,13 @@ struct FusedResidualDropoutBiasTester {
   bool has_bias = true;
   bool add_residual = true;
 
+<<<<<<< HEAD
   framework::Tensor src, residual, bias, out, mask;
   framework::Tensor dsrc, dbias;
+=======
+  phi::DenseTensor src, residual, bias, out, mask;
+  phi::DenseTensor dsrc, dbias;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   std::vector<T> src_vec, residual_vec, bias_vec;
   std::vector<T> correct_out, correct_dsrc, correct_dbias;

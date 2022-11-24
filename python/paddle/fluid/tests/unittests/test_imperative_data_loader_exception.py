@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import time
 import unittest
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid import core
-import paddle.compat as cpt
 from paddle.fluid.framework import _test_eager_guard
 
 
@@ -38,8 +36,9 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
 
     def func_test_not_capacity(self):
         with fluid.dygraph.guard():
-            with self.assertRaisesRegexp(ValueError,
-                                         "Please give value to capacity."):
+            with self.assertRaisesRegexp(
+                ValueError, "Please give value to capacity."
+            ):
                 fluid.io.DataLoader.from_generator()
 
     def test_not_capacity(self):
@@ -58,18 +57,26 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
                                                         iterable=False,
                                                         use_multiprocess=False)
             loader.set_batch_generator(error_sample_genarator(self.batch_num),
                                        places=fluid.CPUPlace())
+=======
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, iterable=False, use_multiprocess=False
+            )
+            loader.set_batch_generator(
+                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             exception = None
             try:
                 for _ in loader():
                     print("test_single_process_with_thread_expection")
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 
@@ -89,10 +96,19 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
                                                         use_multiprocess=True)
             loader.set_batch_generator(error_sample_genarator(self.batch_num),
                                        places=fluid.CPUPlace())
+=======
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True
+            )
+            loader.set_batch_generator(
+                error_sample_genarator(self.batch_num), places=fluid.CPUPlace()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             exception = None
             try:
                 for _ in loader():
@@ -114,25 +130,35 @@ class TestDygraphDataLoaderWithException(unittest.TestCase):
                 for _ in range(batch_num):
                     time.sleep(80)
                     batch_image, batch_label = get_random_images_and_labels(
-                        [batch_size, 784], [batch_size, 1])
+                        [batch_size, 784], [batch_size, 1]
+                    )
                     yield batch_image, batch_label
 
             return __reader__
 
         with fluid.dygraph.guard():
+<<<<<<< HEAD
             loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
                                                         use_multiprocess=True)
             loader.set_batch_generator(slow_batch_generator_creator(
                 self.batch_size, self.batch_num),
                                        places=fluid.CPUPlace())
+=======
+            loader = fluid.io.DataLoader.from_generator(
+                capacity=self.capacity, use_multiprocess=True
+            )
+            loader.set_batch_generator(
+                slow_batch_generator_creator(self.batch_size, self.batch_num),
+                places=fluid.CPUPlace(),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             exception = None
             try:
                 for _ in range(self.epoch_num):
                     for image, _ in loader():
                         fluid.layers.relu(image)
             except core.EnforceNotMet as ex:
-                self.assertIn("Blocking queue is killed",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Blocking queue is killed", str(ex))
                 exception = ex
             self.assertIsNotNone(exception)
 

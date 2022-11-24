@@ -152,7 +152,11 @@ class FcOpConverter : public OpConverter {
         Y_v,
         platform::errors::NotFound(
             "Can not find %s presistale var of fc in scope.", w_name));
+<<<<<<< HEAD
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+=======
+    auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     int x_num_col_dims =
         op_desc.HasAttr("x_num_col_dims")
             ? PADDLE_GET_CONST(int, op_desc.GetAttr("x_num_col_dims"))
@@ -322,7 +326,11 @@ class FcOpConverter : public OpConverter {
     TensorRTEngine::Weight bias{weight.get().type, nullptr, 0};
     if (with_bias) {
       auto* b_v = scope.GetVar(op_desc.Input("Bias").front());
+<<<<<<< HEAD
       auto* b_t = b_v->GetMutable<framework::LoDTensor>();
+=======
+      auto* b_t = b_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       bias = engine_->GetTrtWeight(op_desc.Input("Bias").front(), *b_t);
     }
 

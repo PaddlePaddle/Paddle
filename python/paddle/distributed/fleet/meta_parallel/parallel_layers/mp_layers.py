@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.dygraph.layers import Layer
-from .random import get_rng_state_tracker
-from paddle.nn import functional as F
-from paddle import framework
-from ...base import topology as tp
-from paddle.autograd import PyLayer
+from ...layers.mpu.mp_layers import VocabParallelEmbedding  # noqa: F401
+from ...layers.mpu.mp_layers import ColumnParallelLinear  # noqa: F401
+from ...layers.mpu.mp_layers import RowParallelLinear  # noqa: F401
+from ...layers.mpu.mp_layers import ParallelCrossEntropy  # noqa: F401
 
 __all__ = []
+<<<<<<< HEAD
 
 # Follow this paper to achieve the file:
 # Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
@@ -263,3 +261,5 @@ class ParallelCrossEntropy(Layer):
         loss = paddle.distributed.collective._c_softmax_with_cross_entropy(
             input, label, group=self.model_parallel_group)
         return loss
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

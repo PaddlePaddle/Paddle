@@ -69,7 +69,11 @@ struct TestReduceOpHandle {
       for (int i = 0; i < count; ++i) {
         auto p = p::CUDAPlace(i);
         gpu_list_.push_back(p);
+<<<<<<< HEAD
         ctxs_.emplace_back(new p::phi::GPUContext(p));
+=======
+        ctxs_.emplace_back(new phi::GPUContext(p));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       }
       nccl_ctxs_.reset(new platform::NCCLContextMap(gpu_list_));
 #else
@@ -228,7 +232,7 @@ struct TestReduceOpHandle {
               out_select_rows.rows()[k]));
     }
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 
@@ -251,7 +255,11 @@ struct TestReduceOpHandle {
           in_var,
           platform::errors::NotFound("Variable %s is not found in scope.",
                                      "input"));
+<<<<<<< HEAD
       auto in_lod_tensor = in_var->GetMutable<f::LoDTensor>();
+=======
+      auto in_lod_tensor = in_var->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       in_lod_tensor->mutable_data<float>(kDims, gpu_list_[input_scope_idx]);
       in_lod_tensor->set_lod(lod);
 
@@ -263,10 +271,10 @@ struct TestReduceOpHandle {
     PADDLE_ENFORCE_NOT_NULL(out_var,
                             platform::errors::NotFound(
                                 "Variable %s is not found in scope.", "out"));
-    auto out_lodtensor = out_var->GetMutable<f::LoDTensor>();
+    auto out_lodtensor = out_var->GetMutable<phi::DenseTensor>();
 
     auto in_var = param_scopes_[output_scope_idx]->FindVar("input");
-    auto in_lodtensor = in_var->Get<f::LoDTensor>();
+    auto in_lodtensor = in_var->Get<phi::DenseTensor>();
 
     out_lodtensor->ShareDataWith(in_lodtensor);
 
@@ -277,9 +285,9 @@ struct TestReduceOpHandle {
 
     p::CPUPlace cpu_place;
 
-    auto &rt = out_var->Get<f::LoDTensor>();
+    auto &rt = out_var->Get<phi::DenseTensor>();
 
-    f::Tensor result_tensor;
+    phi::DenseTensor result_tensor;
     f::TensorCopySync(rt, cpu_place, &result_tensor);
     float *ct = result_tensor.data<float>();
 

@@ -19,16 +19,25 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+<<<<<<< HEAD
 template <typename DeviceContext,
           typename T,
           bool is_test,
           typename Enable = void>
+=======
+template <typename DeviceContext, typename T, typename Enable = void>
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 class SoftmaxFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
+<<<<<<< HEAD
                   const framework::Tensor* X,
                   framework::Tensor* Y);
+=======
+                  const phi::DenseTensor* X,
+                  phi::DenseTensor* Y);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T, typename Enable = void>
@@ -36,9 +45,15 @@ class SoftmaxGradFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const int axis_dim,
+<<<<<<< HEAD
                   const framework::Tensor* y,
                   const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
+=======
+                  const phi::DenseTensor* y,
+                  const phi::DenseTensor* y_grad,
+                  phi::DenseTensor* x_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -46,17 +61,28 @@ template <typename T, typename DeviceContext>
 class SoftmaxCUDNNFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor* X,
                   framework::Tensor* Y);
+=======
+                  const phi::DenseTensor* X,
+                  phi::DenseTensor* Y);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename T, typename DeviceContext>
 class SoftmaxGradCUDNNFunctor {
  public:
   void operator()(const DeviceContext& context,
+<<<<<<< HEAD
                   const framework::Tensor* Y,
                   const framework::Tensor* y_grad,
                   framework::Tensor* x_grad);
+=======
+                  const phi::DenseTensor* Y,
+                  const phi::DenseTensor* y_grad,
+                  phi::DenseTensor* x_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 #endif

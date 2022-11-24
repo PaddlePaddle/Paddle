@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/split_kernel.h"
 
-#include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 namespace phi {
@@ -62,6 +62,9 @@ void SplitKernel(const Context& dev_ctx,
 }
 
 }  // namespace phi
+=======
+#include "paddle/phi/kernels/impl/split_kernel_impl.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 PD_REGISTER_KERNEL(split,
                    CPU,
@@ -74,5 +77,22 @@ PD_REGISTER_KERNEL(split,
                    bool,
                    uint8_t,
                    int8_t,
+<<<<<<< HEAD
+=======
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(split_with_num,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::SplitWithNumKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   bool,
+                   uint8_t,
+                   int8_t,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {}

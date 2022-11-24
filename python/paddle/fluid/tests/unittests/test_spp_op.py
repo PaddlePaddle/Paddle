@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -36,6 +34,7 @@ class TestSppOp(OpTest):
             bins = np.power(2, i)
             kernel_size = [0, 0]
             padding = [0, 0]
+<<<<<<< HEAD
             kernel_size[0] = np.ceil(hsize /
                                      bins.astype("double")).astype("int32")
             padding[0] = ((kernel_size[0] * bins - hsize + 1) /
@@ -47,8 +46,27 @@ class TestSppOp(OpTest):
                           2).astype("int32")
             out_level = self.pool2D_forward_naive(input, kernel_size,
                                                   kernel_size, padding)
+=======
+            kernel_size[0] = np.ceil(hsize / bins.astype("double")).astype(
+                "int32"
+            )
+            padding[0] = ((kernel_size[0] * bins - hsize + 1) / 2).astype(
+                "int32"
+            )
+
+            kernel_size[1] = np.ceil(wsize / bins.astype("double")).astype(
+                "int32"
+            )
+            padding[1] = ((kernel_size[1] * bins - wsize + 1) / 2).astype(
+                "int32"
+            )
+            out_level = self.pool2D_forward_naive(
+                input, kernel_size, kernel_size, padding
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             out_level_flatten.append(
-                out_level.reshape(nsize, bins * bins * csize))
+                out_level.reshape(nsize, bins * bins * csize)
+            )
             if i == 0:
                 output = out_level_flatten[i]
             else:
@@ -59,7 +77,7 @@ class TestSppOp(OpTest):
         }
         self.attrs = {
             'pyramid_height': self.pyramid_height,
-            'pooling_type': self.pool_type
+            'pooling_type': self.pool_type,
         }
         self.outputs = {'Out': output.astype('float64')}
 

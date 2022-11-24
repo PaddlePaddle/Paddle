@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -41,7 +39,7 @@ class TestSliceOp(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -67,9 +65,15 @@ class TestSliceOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['Input'],
                                        'Out',
                                        max_relative_error=0.02)
+=======
+            self.check_grad_with_place(
+                self.place, ['Input'], 'Out', max_relative_error=0.02
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(self.place, ['Input'], 'Out')
 
@@ -106,14 +110,14 @@ class TestSliceOpTensor(TestSliceOp):
         self.inputs = {
             'Input': self.input,
             'StartsTensor': self.starts,
-            'EndsTensor': self.ends
+            'EndsTensor': self.ends,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             'starts': [-1, -1, -1],
             'ends': [-1, -1, -1],
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -135,14 +139,14 @@ class TestSliceOpTensor2(TestSliceOpTensor):
         self.inputs = {
             'Input': self.input,
             'StartsTensor': self.starts,
-            'EndsTensor': self.ends
+            'EndsTensor': self.ends,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             'starts': [-1],
             'ends': [-1],
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -175,25 +179,27 @@ class TestSliceOpTensorList(TestSliceOp):
 
         self.starts_tensor_list = []
         for index, ele in enumerate(self.starts):
-            self.starts_tensor_list.append(("start" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.starts_tensor_list.append(
+                ("start" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.ends_tensor_list = []
         for index, ele in enumerate(self.ends):
-            self.ends_tensor_list.append(("end" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.ends_tensor_list.append(
+                ("end" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'Input': self.input,
             'StartsTensorList': self.starts_tensor_list,
-            'EndsTensorList': self.ends_tensor_list
+            'EndsTensorList': self.ends_tensor_list,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             'starts': [-1, -1, -1],
             'ends': [-1, -1, -1],
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -215,25 +221,27 @@ class TestSliceOpTensorList2(TestSliceOpTensorList):
 
         self.starts_tensor_list = []
         for index, ele in enumerate(self.starts):
-            self.starts_tensor_list.append(("start" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.starts_tensor_list.append(
+                ("start" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.ends_tensor_list = []
         for index, ele in enumerate(self.ends):
-            self.ends_tensor_list.append(("end" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            self.ends_tensor_list.append(
+                ("end" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'Input': self.input,
             'StartsTensorList': self.starts_tensor_list,
-            'EndsTensorList': self.ends_tensor_list
+            'EndsTensorList': self.ends_tensor_list,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             'starts': [-1],
             'ends': [-1],
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
@@ -274,9 +282,15 @@ class TestSliceNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=data_shape, dtype='float32')
             b = paddle.static.data(name="b", shape=data_shape, dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[batch_size, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[batch_size, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             sum = paddle.add(a, b)
             z = paddle.slice(sum, axes=[0, 1], starts=[0, 0], ends=[33, 2])
@@ -284,7 +298,8 @@ class TestSliceNet(unittest.TestCase):
             prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
 
             cost = paddle.fluid.layers.softmax_with_cross_entropy(
-                logits=prediction, label=label)
+                logits=prediction, label=label
+            )
             loss = paddle.mean(cost)
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
@@ -299,6 +314,7 @@ class TestSliceNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(EPOCH):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -306,9 +322,19 @@ class TestSliceNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -316,8 +342,8 @@ class TestSliceNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-6)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-6)
 
 
 class TestSliceOpDecsDim(OpTest):
@@ -367,9 +393,15 @@ class TestSliceOpDecsDim(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(self.place, ['Input'],
                                        'Out',
                                        max_relative_error=0.5)
+=======
+            self.check_grad_with_place(
+                self.place, ['Input'], 'Out', max_relative_error=0.5
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.check_grad_with_place(self.place, ['Input'], 'Out')
 
@@ -445,7 +477,11 @@ class TestSliceOpDecsDimStartsTensor(TestSliceOpDecsDim):
     def set_inputs(self):
         self.inputs = {
             'Input': self.input,
+<<<<<<< HEAD
             "StartsTensor": np.array(self.starts, dtype='int32')
+=======
+            "StartsTensor": np.array(self.starts, dtype='int32'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def set_attrs(self):
@@ -479,7 +515,11 @@ class TestSliceOpDecsDimStartsTensorStartsAndEndsTensor(TestSliceOpDecsDim):
         self.inputs = {
             'Input': self.input,
             "StartsTensor": np.array(self.starts, dtype='int64'),
+<<<<<<< HEAD
             "EndsTensor": np.array(self.ends, dtype='int32')
+=======
+            "EndsTensor": np.array(self.ends, dtype='int32'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def set_attrs(self):
@@ -502,8 +542,13 @@ class TestSliceOpDecsDimStartsTensorStartsAndEndsTensor(TestSliceOpDecsDim):
 
 
 class TestSliceOpDecsDimStartsTensorStartsAndEndsTensorFP16(
+<<<<<<< HEAD
         TestSliceOpDecsDimStartsTensorStartsAndEndsTensor):
 
+=======
+    TestSliceOpDecsDimStartsTensorStartsAndEndsTensor
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -513,8 +558,9 @@ class TestSliceOpDecsDimStartsListTensor(TestSliceOpDecsDim):
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
-            starts_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            starts_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
 
@@ -553,9 +599,15 @@ class TestSliceOpDecsDimStartsListTensor2(TestSliceOpDecsDimStartsListTensor):
         self.starts_infer = [-1]
 
 
+<<<<<<< HEAD
 class TestSliceOpDecsDimStartsListTensorFP16(TestSliceOpDecsDimStartsListTensor
                                              ):
 
+=======
+class TestSliceOpDecsDimStartsListTensorFP16(
+    TestSliceOpDecsDimStartsListTensor
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -577,12 +629,18 @@ class TestSliceOpInt64(OpTest):
             'axes': self.axes,
             'starts': self.starts,
             'ends': self.ends,
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
+<<<<<<< HEAD
         self.input = np.random.randint(100,
                                        size=(3, 4, 5, 6)).astype(self.dtype)
+=======
+        self.input = np.random.randint(100, size=(3, 4, 5, 6)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.starts = [1, 0, 2]
         self.ends = [3, 3, 4]
         self.axes = [0, 1, 2]
@@ -606,19 +664,25 @@ class TestSliceOpTensorInt64(TestSliceOpInt64):
         self.inputs = {
             'Input': self.input,
             'StartsTensor': self.starts,
-            'EndsTensor': self.ends
+            'EndsTensor': self.ends,
         }
         self.outputs = {'Out': self.out}
         self.attrs = {
             'axes': self.axes,
             'starts': [-1, -1, -1],
             'ends': [-1, -1, -1],
-            'infer_flags': self.infer_flags
+            'infer_flags': self.infer_flags,
         }
 
     def config(self):
+<<<<<<< HEAD
         self.input = np.random.randint(100,
                                        size=(3, 4, 5, 6)).astype(self.dtype)
+=======
+        self.input = np.random.randint(100, size=(3, 4, 5, 6)).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.starts = np.array([1, 0, 2]).astype('int32')
         self.ends = np.array([3, 3, 4]).astype('int32')
         self.axes = [0, 1, 2]

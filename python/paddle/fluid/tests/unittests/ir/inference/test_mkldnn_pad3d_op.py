@@ -17,20 +17,29 @@ from program_config import TensorConfig, ProgramConfig, OpConfig
 import numpy as np
 from functools import partial
 import unittest
+<<<<<<< HEAD
 from hypothesis import given, reproduce_failure
+=======
+from hypothesis import given
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import hypothesis.strategies as st
 
 
 class TestOneDNNPad3DOp(MkldnnAutoScanTest):
+<<<<<<< HEAD
 
     def sample_program_configs(self, *args, **kwargs):
 
+=======
+    def sample_program_configs(self, *args, **kwargs):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
 
         def generate_paddings():
             return np.random.randint(0, 4, size=(6)).astype(np.int32)
 
+<<<<<<< HEAD
         pad3d_op = OpConfig(type="pad3d",
                             inputs={
                                 "X": ["input_data"],
@@ -42,17 +51,39 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
                                 "data_format": kwargs['data_format'],
                                 "paddings": kwargs['paddings'],
                             })
+=======
+        pad3d_op = OpConfig(
+            type="pad3d",
+            inputs={"X": ["input_data"], "Paddings": ["paddings_data"]},
+            outputs={"Out": ["output_data"]},
+            attrs={
+                "mode": "constant",
+                "data_format": kwargs['data_format'],
+                "paddings": kwargs['paddings'],
+            },
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         program_config = ProgramConfig(
             ops=[pad3d_op],
             weights={},
             inputs={
+<<<<<<< HEAD
                 "input_data":
                 TensorConfig(data_gen=partial(generate_input, *args, **kwargs)),
                 "paddings_data":
                 TensorConfig(data_gen=generate_paddings)
             },
             outputs=["output_data"])
+=======
+                "input_data": TensorConfig(
+                    data_gen=partial(generate_input, *args, **kwargs)
+                ),
+                "paddings_data": TensorConfig(data_gen=generate_paddings),
+            },
+            outputs=["output_data"],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         yield program_config
 
@@ -60,12 +91,30 @@ class TestOneDNNPad3DOp(MkldnnAutoScanTest):
         config = self.create_inference_config(use_mkldnn=True)
         yield config, (1e-5, 1e-5)
 
+<<<<<<< HEAD
     @given(data_format=st.sampled_from(['NCDHW', 'NDHWC']),
            use_paddings_tensor=st.sampled_from([True, False]),
            in_shape=st.sampled_from([[2, 3, 4, 5, 6], [1, 4, 1, 3, 2],
                                      [4, 3, 2, 1, 1], [1, 1, 1, 1, 1]]),
            paddings=st.sampled_from([[0, 0, 0, 0, 0, 0], [1, 2, 0, 1, 2, 1],
                                      [2, 5, 11, 3, 4, 3], [0, 5, 0, 1, 0, 2]]))
+=======
+    @given(
+        data_format=st.sampled_from(['NCDHW', 'NDHWC']),
+        use_paddings_tensor=st.sampled_from([True, False]),
+        in_shape=st.sampled_from(
+            [[2, 3, 4, 5, 6], [1, 4, 1, 3, 2], [4, 3, 2, 1, 1], [1, 1, 1, 1, 1]]
+        ),
+        paddings=st.sampled_from(
+            [
+                [0, 0, 0, 0, 0, 0],
+                [1, 2, 0, 1, 2, 1],
+                [2, 5, 11, 3, 4, 3],
+                [0, 5, 0, 1, 0, 2],
+            ]
+        ),
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test(self, *args, **kwargs):
         self.run_test(quant=False, *args, **kwargs)
 

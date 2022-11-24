@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import paddle.fluid as fluid
 import numpy as np
@@ -31,26 +29,35 @@ class TestFunctionalL1Loss(unittest.TestCase):
         label = paddle.to_tensor(self.label_np)
         dy_result = paddle.nn.functional.l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='sum')
         expected = np.sum(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         dy_result = paddle.nn.functional.l1_loss(input, label, reduction='none')
         expected = np.abs(self.input_np - self.label_np)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
+<<<<<<< HEAD
         input = paddle.fluid.data(name='input',
                                   shape=[10, 10, 5],
                                   dtype='float32')
         label = paddle.fluid.data(name='label',
                                   shape=[10, 10, 5],
                                   dtype='float32')
+=======
+        input = paddle.fluid.data(
+            name='input', shape=[10, 10, 5], dtype='float32'
+        )
+        label = paddle.fluid.data(
+            name='label', shape=[10, 10, 5], dtype='float32'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         result0 = paddle.nn.functional.l1_loss(input, label)
         result1 = paddle.nn.functional.l1_loss(input, label, reduction='sum')
         result2 = paddle.nn.functional.l1_loss(input, label, reduction='none')
@@ -59,18 +66,25 @@ class TestFunctionalL1Loss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         static_result = exe.run(feed={
             "input": self.input_np,
             "label": self.label_np
         },
                                 fetch_list=[result0, result1, result2])
+=======
+        static_result = exe.run(
+            feed={"input": self.input_np, "label": self.label_np},
+            fetch_list=[result0, result1, result2],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         expected = np.mean(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(static_result[0], expected))
+        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
         expected = np.sum(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(static_result[1], expected))
+        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
         expected = np.abs(self.input_np - self.label_np)
-        self.assertTrue(np.allclose(static_result[2], expected))
+        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
 
         self.assertTrue('aaa' in y.name)
 
@@ -97,6 +111,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
     def test_errors(self):
 
         def test_value_error():
+<<<<<<< HEAD
             input = paddle.fluid.data(name='input',
                                       shape=[10, 10, 5],
                                       dtype='float32')
@@ -106,6 +121,17 @@ class TestFunctionalL1Loss(unittest.TestCase):
             loss = paddle.nn.functional.l1_loss(input,
                                                 label,
                                                 reduction='reduce_mean')
+=======
+            input = paddle.fluid.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            label = paddle.fluid.data(
+                name='label', shape=[10, 10, 5], dtype='float32'
+            )
+            loss = paddle.nn.functional.l1_loss(
+                input, label, reduction='reduce_mean'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, test_value_error)
 
@@ -122,28 +148,37 @@ class TestClassL1Loss(unittest.TestCase):
         l1_loss = paddle.nn.loss.L1Loss()
         dy_result = l1_loss(input, label)
         expected = np.mean(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
         dy_result = l1_loss(input, label)
         expected = np.sum(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [1])
 
         l1_loss = paddle.nn.loss.L1Loss(reduction='none')
         dy_result = l1_loss(input, label)
         expected = np.abs(self.input_np - self.label_np)
-        self.assertTrue(np.allclose(dy_result.numpy(), expected))
+        np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertTrue(dy_result.shape, [10, 10, 5])
 
     def run_static(self, use_gpu=False):
+<<<<<<< HEAD
         input = paddle.fluid.data(name='input',
                                   shape=[10, 10, 5],
                                   dtype='float32')
         label = paddle.fluid.data(name='label',
                                   shape=[10, 10, 5],
                                   dtype='float32')
+=======
+        input = paddle.fluid.data(
+            name='input', shape=[10, 10, 5], dtype='float32'
+        )
+        label = paddle.fluid.data(
+            name='label', shape=[10, 10, 5], dtype='float32'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         l1_loss = paddle.nn.loss.L1Loss()
         result0 = l1_loss(input, label)
         l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
@@ -156,18 +191,25 @@ class TestClassL1Loss(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         static_result = exe.run(feed={
             "input": self.input_np,
             "label": self.label_np
         },
                                 fetch_list=[result0, result1, result2])
+=======
+        static_result = exe.run(
+            feed={"input": self.input_np, "label": self.label_np},
+            fetch_list=[result0, result1, result2],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         expected = np.mean(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(static_result[0], expected))
+        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
         expected = np.sum(np.abs(self.input_np - self.label_np))
-        self.assertTrue(np.allclose(static_result[1], expected))
+        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
         expected = np.abs(self.input_np - self.label_np)
-        self.assertTrue(np.allclose(static_result[2], expected))
+        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
         self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
@@ -199,4 +241,5 @@ class TestClassL1Loss(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

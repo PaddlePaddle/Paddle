@@ -68,7 +68,7 @@ class TestFCOp(OpTest):
             self.inputs = {
                 'Input': self.matrix.input,
                 'W': self.matrix.weights,
-                'Bias': self.matrix.bias
+                'Bias': self.matrix.bias,
             }
         else:
             self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
@@ -155,6 +155,7 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
             with program_guard(main_program, startup_program):
                 input = np.random.random([2, 2, 25]).astype("float32")
+<<<<<<< HEAD
                 x = fluid.layers.data(name="x",
                                       shape=[2, 2, 25],
                                       append_batch_size=False,
@@ -166,6 +167,24 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
             place = fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0)
+=======
+                x = fluid.layers.data(
+                    name="x",
+                    shape=[2, 2, 25],
+                    append_batch_size=False,
+                    dtype="float32",
+                )
+
+                out = paddle.static.nn.fc(
+                    x=x, size=1, num_flatten_dims=num_flatten_dims
+                )
+
+            place = (
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             exe = fluid.Executor(place=place)
             exe.run(startup_program)
             out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
@@ -173,7 +192,7 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
 
         res_1 = run_program(-1)
         res_2 = run_program(2)
-        self.assertTrue(np.array_equal(res_1, res_2))
+        np.testing.assert_array_equal(res_1, res_2)
 
 
 class TestFCOpError(unittest.TestCase):

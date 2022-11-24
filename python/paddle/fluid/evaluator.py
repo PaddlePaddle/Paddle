@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import warnings
 import numpy as np
 
@@ -25,23 +23,32 @@ from .initializer import Constant
 from .layers import detection
 
 __all__ = [
-    'ChunkEvaluator',
-    'EditDistance',
     'DetectionMAP',
 ]
 
 
 def _clone_var_(block, var):
     assert isinstance(var, Variable)
+<<<<<<< HEAD
     return block.create_var(name=var.name,
                             shape=var.shape,
                             dtype=var.dtype,
                             type=var.type,
                             lod_level=var.lod_level,
                             persistable=True)
+=======
+    return block.create_var(
+        name=var.name,
+        shape=var.shape,
+        dtype=var.dtype,
+        type=var.type,
+        lod_level=var.lod_level,
+        persistable=True,
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
-class Evaluator(object):
+class Evaluator:
     """
     Warning: better to use the fluid.metrics.* things, more
     flexible support via pure Python and Operator, and decoupled
@@ -68,7 +75,9 @@ class Evaluator(object):
     def __init__(self, name, **kwargs):
         warnings.warn(
             "The %s is deprecated, because maintain a modified program inside evaluator cause bug easily, please use fluid.metrics.%s instead."
-            % (self.__class__.__name__, self.__class__.__name__), Warning)
+            % (self.__class__.__name__, self.__class__.__name__),
+            Warning,
+        )
         self.states = []
         self.metrics = []
         self.helper = LayerHelper(name, **kwargs)
@@ -88,10 +97,16 @@ class Evaluator(object):
             for var in self.states:
                 assert isinstance(var, Variable)
                 g_var = _clone_var_(reset_program.current_block(), var)
+<<<<<<< HEAD
                 layers.fill_constant(shape=g_var.shape,
                                      value=0.0,
                                      dtype=g_var.dtype,
                                      out=g_var)
+=======
+                layers.fill_constant(
+                    shape=g_var.shape, value=0.0, dtype=g_var.dtype, out=g_var
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         executor.run(reset_program)
 
@@ -116,15 +131,25 @@ class Evaluator(object):
         Returns: State variable
 
         """
+<<<<<<< HEAD
         state = self.helper.create_variable(name="_".join(
             [unique_name.generate(self.helper.name), suffix]),
                                             persistable=True,
                                             dtype=dtype,
                                             shape=shape)
+=======
+        state = self.helper.create_variable(
+            name="_".join([unique_name.generate(self.helper.name), suffix]),
+            persistable=True,
+            dtype=dtype,
+            shape=shape,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.states.append(state)
         return state
 
 
+<<<<<<< HEAD
 class ChunkEvaluator(Evaluator):
     """
     Warning: This would be deprecated in the future. Please use fluid.metrics.ChunkEvaluator 
@@ -298,6 +323,8 @@ class EditDistance(Evaluator):
         return np.array(result[0]), np.array(result[1])
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 class DetectionMAP(Evaluator):
     """
     Warning: This would be deprecated in the future. Please use fluid.metrics.DetectionMAP
@@ -357,17 +384,19 @@ class DetectionMAP(Evaluator):
         'accum_map_v' is the accumulative mAP of one pass.
     """
 
-    def __init__(self,
-                 input,
-                 gt_label,
-                 gt_box,
-                 gt_difficult=None,
-                 class_num=None,
-                 background_label=0,
-                 overlap_threshold=0.5,
-                 evaluate_difficult=True,
-                 ap_version='integral'):
-        super(DetectionMAP, self).__init__("map_eval")
+    def __init__(
+        self,
+        input,
+        gt_label,
+        gt_box,
+        gt_difficult=None,
+        class_num=None,
+        background_label=0,
+        overlap_threshold=0.5,
+        evaluate_difficult=True,
+        ap_version='integral',
+    ):
+        super().__init__("map_eval")
 
         gt_label = layers.cast(x=gt_label, dtype=gt_box.dtype)
         if gt_difficult:
@@ -377,6 +406,7 @@ class DetectionMAP(Evaluator):
             label = layers.concat([gt_label, gt_box], axis=1)
 
         # calculate mean average precision (mAP) of current mini-batch
+<<<<<<< HEAD
         map = detection.detection_map(input,
                                       label,
                                       class_num,
@@ -397,6 +427,31 @@ class DetectionMAP(Evaluator):
                                           shape=[1])
         self.helper.set_variable_initializer(var,
                                              initializer=Constant(value=int(0)))
+=======
+        map = detection.detection_map(
+            input,
+            label,
+            class_num,
+            background_label,
+            overlap_threshold=overlap_threshold,
+            evaluate_difficult=evaluate_difficult,
+            ap_version=ap_version,
+        )
+
+        self._create_state(dtype='int32', shape=None, suffix='accum_pos_count')
+        self._create_state(dtype='float32', shape=None, suffix='accum_true_pos')
+        self._create_state(
+            dtype='float32', shape=None, suffix='accum_false_pos'
+        )
+
+        self.has_state = None
+        var = self.helper.create_variable(
+            persistable=True, dtype='int32', shape=[1]
+        )
+        self.helper.set_variable_initializer(
+            var, initializer=Constant(value=int(0))
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.has_state = var
 
         # calculate accumulative mAP
@@ -410,12 +465,22 @@ class DetectionMAP(Evaluator):
             has_state=self.has_state,
             input_states=self.states,
             out_states=self.states,
-            ap_version=ap_version)
+            ap_version=ap_version,
+        )
 
+<<<<<<< HEAD
         layers.fill_constant(shape=self.has_state.shape,
                              value=1,
                              dtype=self.has_state.dtype,
                              out=self.has_state)
+=======
+        layers.fill_constant(
+            shape=self.has_state.shape,
+            value=1,
+            dtype=self.has_state.dtype,
+            out=self.has_state,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.cur_map = map
         self.accum_map = accum_map
@@ -428,8 +493,14 @@ class DetectionMAP(Evaluator):
             reset_program = Program()
         with program_guard(main_program=reset_program):
             var = _clone_var_(reset_program.current_block(), self.has_state)
+<<<<<<< HEAD
             layers.fill_constant(shape=var.shape,
                                  value=0,
                                  dtype=var.dtype,
                                  out=var)
+=======
+            layers.fill_constant(
+                shape=var.shape, value=0, dtype=var.dtype, out=var
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         executor.run(reset_program)

@@ -27,7 +27,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-typedef std::vector<std::vector<std::pair<std::string, const LoDTensor *>>>
+typedef std::vector<
+    std::vector<std::pair<std::string, const phi::DenseTensor *>>>
     GradientAndLoDTensor;
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -238,10 +239,16 @@ void FusedAllReduceOpHandle::FusedAllReduceFunc(
     std::sort(
         g_tensor.begin(),
         g_tensor.end(),
+<<<<<<< HEAD
         [](const std::pair<std::string, const LoDTensor *> &grad1,
            const std::pair<std::string, const LoDTensor *> &grad2) -> bool {
           return grad1.second->data() < grad2.second->data();
         });
+=======
+        [](const std::pair<std::string, const phi::DenseTensor *> &grad1,
+           const std::pair<std::string, const phi::DenseTensor *> &grad2)
+            -> bool { return grad1.second->data() < grad2.second->data(); });
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     size_t size_of_dtype = framework::SizeOfType(dtype);
     for (size_t k = 1; k < g_tensor.size(); ++k) {
@@ -320,7 +327,11 @@ bool FusedAllReduceOpHandle::InputIsInDifferentPlace(
           var,
           platform::errors::NotFound(
               "The variable '%s' is not found in local scope.", var_name));
+<<<<<<< HEAD
       auto &lod_tensor = var->Get<LoDTensor>();
+=======
+      auto &lod_tensor = var->Get<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       if (!platform::is_same_place(lod_tensor.place(), places_.at(scope_idx))) {
         return true;
       }
@@ -333,7 +344,8 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     const size_t &scope_idx,
     const std::vector<VarHandle *> &in_var_handles,
     const std::vector<VarHandle *> &out_var_handles,
-    std::vector<std::pair<std::string, const LoDTensor *>> *grad_tensor) const {
+    std::vector<std::pair<std::string, const phi::DenseTensor *>> *grad_tensor)
+    const {
   auto *local_scope = local_exec_scopes_[scope_idx];
   size_t place_num = places_.size();
   for (size_t j = 0; j < in_var_handles.size(); j += place_num) {
@@ -352,7 +364,11 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
         var,
         platform::errors::NotFound(
             "The variable '%s' is not found in local scope.", var_name));
+<<<<<<< HEAD
     auto &lod_tensor = var->Get<LoDTensor>();
+=======
+    auto &lod_tensor = var->Get<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     PADDLE_ENFORCE_EQ(
         platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
@@ -366,7 +382,12 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
 }
 
 void FusedAllReduceOpHandle::GetDTypeAndNumel(
+<<<<<<< HEAD
     const std::vector<std::pair<std::string, const LoDTensor *>> &grad_tensor,
+=======
+    const std::vector<std::pair<std::string, const phi::DenseTensor *>>
+        &grad_tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     proto::VarType::Type *dtype,
     int64_t *numel) const {
   *numel = 0;

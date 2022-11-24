@@ -127,6 +127,7 @@ class HashTable {
   template <typename StreamType>
   void insert(const KeyType* d_keys,
               size_t len,
+<<<<<<< HEAD
               uint64_t* global_num,
               StreamType stream);
 
@@ -144,6 +145,19 @@ class HashTable {
            size_t len,
            StreamType stream);
 
+=======
+              char* pool,
+              size_t feature_value_size,
+              size_t start_index,
+              StreamType stream);
+
+  template <typename StreamType>
+  void get(const KeyType* d_keys,
+           ValType* d_vals,
+           size_t len,
+           StreamType stream);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   template <typename StreamType, typename GPUAccessor>
   void get(const KeyType* d_keys,
            char* d_vals,
@@ -203,6 +217,7 @@ class HashTable {
             << " push value size: " << push_grad_value_size_;
   }
 
+<<<<<<< HEAD
   int prefetch(const int dev_id, cudaStream_t stream = 0) {
     return container_->prefetch(dev_id, stream);
   }
@@ -212,6 +227,9 @@ class HashTable {
   void show_collision(int id) { return container_->print_collision(id); }
   // infer mode
   void set_mode(bool infer_mode) { infer_mode_ = infer_mode; }
+=======
+  void show_collision(int id) { return container_->print_collision(id); }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   std::unique_ptr<phi::RWLock> rwlock_{nullptr};
 

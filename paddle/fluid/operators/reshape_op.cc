@@ -41,7 +41,7 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class ReshapeOp : public framework::OperatorWithKernel {
  public:
@@ -379,14 +379,13 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
 class ReshapeKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
-    auto *in = ctx.Input<framework::LoDTensor>("X");
+    auto *out = ctx.Output<phi::DenseTensor>("Out");
+    auto *in = ctx.Input<phi::DenseTensor>("X");
 
     auto list_new_shape_tensor =
-        ctx.MultiInput<framework::Tensor>("ShapeTensor");
-    auto *shape_tensor = ctx.HasInput("Shape")
-                             ? ctx.Input<framework::LoDTensor>("Shape")
-                             : nullptr;
+        ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
+    auto *shape_tensor =
+        ctx.HasInput("Shape") ? ctx.Input<phi::DenseTensor>("Shape") : nullptr;
     phi::IntArray pt_scalar_shape;
     if (list_new_shape_tensor.size() > 0) {
       // have shape tensor
@@ -394,7 +393,11 @@ class ReshapeKernel {
       for (auto &tensor : list_new_shape_tensor) {
         if (platform::is_gpu_place(tensor->place()) ||
             platform::is_xpu_place(tensor->place())) {
+<<<<<<< HEAD
           framework::Tensor temp;
+=======
+          phi::DenseTensor temp;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           paddle::framework::TensorCopySync(
               *tensor, platform::CPUPlace(), &temp);
           pt_vec_shape.push_back(std::move(temp));
@@ -407,7 +410,11 @@ class ReshapeKernel {
       phi::DenseTensor pt_shape;
       if (platform::is_gpu_place(shape_tensor->place()) ||
           platform::is_xpu_place(shape_tensor->place())) {
+<<<<<<< HEAD
         framework::Tensor temp;
+=======
+        phi::DenseTensor temp;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle::framework::TensorCopySync(
             *shape_tensor, platform::CPUPlace(), &temp);
         pt_shape = std::move(temp);
@@ -450,8 +457,8 @@ class ReshapeKernel {
 class ReshapeGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -479,9 +486,9 @@ class ReshapeGradKernel {
 class ReshapeDoubleGradKernel {
  public:
   void operator()(const framework::ExecutionContext &ctx) const {
-    auto *dd_x = ctx.Input<framework::Tensor>("DDX");
-    auto *d_out = ctx.Input<framework::Tensor>("DOut");
-    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
+    auto *dd_x = ctx.Input<phi::DenseTensor>("DDX");
+    auto *d_out = ctx.Input<phi::DenseTensor>("DOut");
+    auto *dd_out = ctx.Output<phi::DenseTensor>("DDOut");
     dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
 
     if (platform::is_cpu_place(ctx.GetPlace())) {
@@ -519,6 +526,7 @@ class Reshape2Op : public ReshapeOp {
              const framework::AttributeMap &attrs)
       : ReshapeOp(type, inputs, outputs, attrs) {}
   void InferShape(framework::InferShapeContext *ctx) const override {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(ctx->HasOutput("XShape"),
                       true,
                       platform::errors::InvalidArgument(
@@ -528,10 +536,18 @@ class Reshape2Op : public ReshapeOp {
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
       xshape_dims[i + 1] = x_dims[i];
+=======
+    if (ctx->HasOutput("XShape")) {
+      const auto &x_dims = ctx->GetInputDim("X");
+      std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+      xshape_dims[0] = 0;
+      for (int i = 0; i < x_dims.size(); ++i) {
+        xshape_dims[i + 1] = x_dims[i];
+      }
+      ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
+      ctx->ShareLoD("X", /*->*/ "XShape");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
-    ctx->SetOutputDim("XShape", phi::make_ddim(xshape_dims));
-    ctx->ShareLoD("X", /*->*/ "XShape");
-
     ReshapeOp::InferShape(ctx);
   }
 };

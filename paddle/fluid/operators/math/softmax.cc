@@ -21,10 +21,15 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+<<<<<<< HEAD
 template class SoftmaxFunctor<phi::CPUContext, float, true>;
 template class SoftmaxFunctor<phi::CPUContext, float, false>;
 template class SoftmaxFunctor<phi::CPUContext, double, true>;
 template class SoftmaxFunctor<phi::CPUContext, double, false>;
+=======
+template class SoftmaxFunctor<phi::CPUContext, float>;
+template class SoftmaxFunctor<phi::CPUContext, double>;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 template class SoftmaxGradFunctor<phi::CPUContext, float>;
 template class SoftmaxGradFunctor<phi::CPUContext, double>;
 

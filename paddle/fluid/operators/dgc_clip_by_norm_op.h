@@ -21,7 +21,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 template <typename DeviceContext, typename T>
 class DGCClipByNormKernel : public framework::OpKernel<T> {
@@ -32,7 +36,11 @@ class DGCClipByNormKernel : public framework::OpKernel<T> {
       return;
     }
 
+<<<<<<< HEAD
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
+=======
+    auto current_step_tensor = ctx.Input<phi::DenseTensor>("current_step");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto* current_step = current_step_tensor->data<T>();
 
     VLOG(10) << "current_step:" << *current_step
@@ -49,9 +57,15 @@ class DGCClipByNormKernel : public framework::OpKernel<T> {
     auto max_norm = ctx.Attr<float>("max_norm");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
+<<<<<<< HEAD
     if (in_var->IsType<framework::LoDTensor>()) {
       auto* x = ctx.Input<Tensor>("X");
       auto* y = ctx.Output<Tensor>("Out");
+=======
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto* x = ctx.Input<phi::DenseTensor>("X");
+      auto* y = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       return phi::ClipByNormKernel<T>(
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),

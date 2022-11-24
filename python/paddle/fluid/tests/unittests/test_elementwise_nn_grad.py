@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -43,11 +41,17 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -75,11 +79,17 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -107,11 +117,17 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -139,11 +155,17 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -174,6 +196,7 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
@@ -184,6 +207,18 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
                                                        out,
                                                        x_init=[x_arr, y_arr],
                                                        place=place)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -211,11 +246,17 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -247,6 +288,7 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
@@ -259,6 +301,19 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
                                                        x_init=[x_arr, y_arr],
                                                        place=place,
                                                        atol=1e-3)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.divide_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+            atol=1e-3,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -287,12 +342,18 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape[1:-1]).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps,
                                            atol=1e-3)
+=======
+        gradient_checker.double_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -320,11 +381,17 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -352,11 +419,17 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()
@@ -388,13 +461,24 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.triple_grad_check(
+<<<<<<< HEAD
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+=======
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
         gradient_checker.triple_grad_check_for_dygraph(
-            self.multiply_wrapper, [x, y],
+            self.multiply_wrapper,
+            [x, y],
             out,
             x_init=[x_arr, y_arr],
+<<<<<<< HEAD
             place=place)
+=======
+            place=place,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
 
     def test_grad(self):
@@ -423,11 +507,17 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.triple_grad_check([x, y],
                                            out,
                                            x_init=[x_arr, y_arr],
                                            place=place,
                                            eps=eps)
+=======
+        gradient_checker.triple_grad_check(
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_grad(self):
         paddle.enable_static()

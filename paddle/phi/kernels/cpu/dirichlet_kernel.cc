@@ -16,9 +16,15 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/cpu/reduce.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+=======
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dirichlet_kernel_impl.h"
 
@@ -83,7 +89,11 @@ struct DirichletSampler<CPUContext, T> {
     gamma_sum.Resize(new_shape);
     dev_ctx.template Alloc<T>(&gamma_sum);
 
+<<<<<<< HEAD
     ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
+=======
+    funcs::ReduceKernelImpl<CPUContext, T, T, funcs::SumFunctor>(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dev_ctx,
         gamma_samples,
         &gamma_sum,

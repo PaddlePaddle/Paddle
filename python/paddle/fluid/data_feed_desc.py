@@ -18,10 +18,10 @@ from google.protobuf import text_format
 __all__ = ['DataFeedDesc']
 
 
-class DataFeedDesc(object):
+class DataFeedDesc:
     """
     :api_attr: Static Graph
-    
+
     Datafeed descriptor, describing input training data format. This class is
     currently only used for AsyncExecutor (See comments for class AsyncExecutor
     for a brief introduction)
@@ -133,7 +133,7 @@ class DataFeedDesc(object):
     def set_dense_slots(self, dense_slots_name):
         """
         Set slots in :attr:`dense_slots_name` as dense slots. **Note: In default, all slots are sparse slots.**
- 
+
         Features for a dense slot will be fed into a Tensor, while those for a
         sparse slot will be fed into a LoDTensor.
 
@@ -175,7 +175,12 @@ class DataFeedDesc(object):
             )
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[
+<<<<<<< HEAD
                 self.__name_to_index[name]].is_dense = True
+=======
+                self.__name_to_index[name]
+            ].is_dense = True
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def set_use_slots(self, use_slots_name):
         """
@@ -220,7 +225,12 @@ class DataFeedDesc(object):
             )
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[
+<<<<<<< HEAD
                 self.__name_to_index[name]].is_used = True
+=======
+                self.__name_to_index[name]
+            ].is_used = True
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def desc(self):
         """

@@ -9,6 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/tensorrt/plugin/group_norm_op_plugin.h"
+
 #include <vector>
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -48,7 +50,7 @@ class GroupNormOpConverter : public OpConverter {
     auto GetWeight = [&](const std::string& var_name,
                          framework::DDim* dims) -> TensorRTEngine::Weight {
       auto* temp_var = scope.FindVar(var_name);
-      auto* temp_tensor = temp_var->GetMutable<framework::LoDTensor>();
+      auto* temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       (*dims) = temp_tensor->dims();
 
       auto weight = engine_->GetTrtWeight(var_name, *temp_tensor);
@@ -59,6 +61,7 @@ class GroupNormOpConverter : public OpConverter {
     framework::DDim bias_dims;
     auto scale_weights = GetWeight(scale_name, &scale_dims);
     auto bias_weights = GetWeight(bias_name, &bias_dims);
+<<<<<<< HEAD
 
     nvinfer1::Dims scale_nv_dims;
     nvinfer1::Dims bias_nv_dims;
@@ -105,6 +108,46 @@ class GroupNormOpConverter : public OpConverter {
     auto output_name = op_desc.Output("Y")[0];
     RreplenishLayerAndOutput(
         group_norm_plugin_layer, "group_norm", {output_name}, test_mode);
+=======
+    if (engine_->with_dynamic_shape()) {
+      int gn_num = groups;
+      std::vector<int64_t> mean_shape({gn_num});
+      std::vector<int64_t> variance_shape({gn_num});
+      plugin::GroupNormPluginDynamic* plugin =
+          new plugin::GroupNormPluginDynamic(
+              static_cast<const float*>(scale_weights.get().values),
+              scale_weights.get().count,
+              static_cast<const float*>(bias_weights.get().values),
+              bias_weights.get().count,
+              epsilon,
+              groups,
+              mean_shape,
+              variance_shape);
+      nvinfer1::ILayer* groupnorm_layer =
+          engine_->AddDynamicPlugin(&input_itensor, 1, plugin);
+      auto output_name = op_desc.Output("Y")[0];
+      RreplenishLayerAndOutput(
+          groupnorm_layer, "group_norm", {output_name}, test_mode);
+    } else {
+      int gn_num = input_itensor->getDimensions().d[0] * groups;
+      std::vector<int64_t> mean_shape({gn_num});
+      std::vector<int64_t> variance_shape({gn_num});
+      plugin::GroupNormPlugin* plugin = new plugin::GroupNormPlugin(
+          static_cast<const float*>(scale_weights.get().values),
+          scale_weights.get().count,
+          static_cast<const float*>(bias_weights.get().values),
+          bias_weights.get().count,
+          epsilon,
+          groups,
+          mean_shape,
+          variance_shape);
+      nvinfer1::ILayer* groupnorm_layer =
+          engine_->AddPlugin(&input_itensor, 1, plugin);
+      auto output_name = op_desc.Output("Y")[0];
+      RreplenishLayerAndOutput(
+          groupnorm_layer, "group_norm", {output_name}, test_mode);
+    }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 

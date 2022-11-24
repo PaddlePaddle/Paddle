@@ -57,7 +57,7 @@ class TestFrameOp(OpTest):
         }
 
     def initTestCase(self):
-        input_shape = (150, )
+        input_shape = (150,)
         input_type = 'float64'
         attrs = {
             'frame_length': 50,
@@ -80,7 +80,7 @@ class TestFrameOp(OpTest):
 class TestCase1(TestFrameOp):
 
     def initTestCase(self):
-        input_shape = (150, )
+        input_shape = (150,)
         input_type = 'float64'
         attrs = {
             'frame_length': 50,

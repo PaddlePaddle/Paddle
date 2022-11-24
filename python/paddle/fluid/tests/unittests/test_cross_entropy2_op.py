@@ -15,7 +15,6 @@
 from op_test import OpTest
 import unittest
 import numpy as np
-import six
 
 
 class CrossEntropy2OpTestBase(OpTest):
@@ -26,7 +25,7 @@ class CrossEntropy2OpTestBase(OpTest):
     def calc_output(self, logits, label, ignore_index):
         ret = np.zeros(shape=label.shape, dtype=logits.dtype)
         match_x = np.zeros(shape=label.shape, dtype=logits.dtype)
-        for idx in six.moves.range(label.shape[0]):
+        for idx in range(label.shape[0]):
             if label[idx] == ignore_index:
                 continue
             match_x[idx] = logits[idx][label[idx]]
@@ -34,26 +33,45 @@ class CrossEntropy2OpTestBase(OpTest):
         return ret, match_x
 
     def setUp(self):
-        self.shape, self.dtype, self.ignore_index, self.drop_last_dim = self.initParameters(
-        )
+        (
+            self.shape,
+            self.dtype,
+            self.ignore_index,
+            self.drop_last_dim,
+        ) = self.initParameters()
         self.op_type = 'cross_entropy2'
         feature_size = int(self.shape[-1])
         batch_size = int(np.prod(self.shape) / feature_size)
         logits = (np.random.random(size=self.shape) + 1).astype(self.dtype)
+<<<<<<< HEAD
         label_shape = self.shape[
             0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
         label = np.random.random_integers(low=0,
                                           high=feature_size - 1,
                                           size=label_shape).astype('int64')
+=======
+        label_shape = (
+            self.shape[0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
+        )
+        label = np.random.random_integers(
+            low=0, high=feature_size - 1, size=label_shape
+        ).astype('int64')
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         outputs, match_x = self.calc_output(
             np.reshape(logits, [batch_size, feature_size]),
-            np.reshape(label, [batch_size, 1]), self.ignore_index)
+            np.reshape(label, [batch_size, 1]),
+            self.ignore_index,
+        )
         self.inputs = {'X': logits, 'Label': label}
         out_shape = label_shape
         self.outputs = {
             'Y': np.reshape(outputs, out_shape),
             'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
+<<<<<<< HEAD
             'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype)
+=======
+            'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'ignore_index': self.ignore_index}
 
@@ -61,9 +79,17 @@ class CrossEntropy2OpTestBase(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(inputs_to_check=['X'],
                         output_names=['Y'],
                         no_grad_set=['XShape', 'MatchX', 'Label'])
+=======
+        self.check_grad(
+            inputs_to_check=['X'],
+            output_names=['Y'],
+            no_grad_set=['XShape', 'MatchX', 'Label'],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):

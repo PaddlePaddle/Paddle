@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import numpy as np
 import unittest
 import sys
@@ -43,9 +41,15 @@ class TestNPUReciprocal(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    max_relative_error=0.01)
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.01
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -66,7 +70,8 @@ class TestNPUReciprocalFp64(TestNPUReciprocal):
 
 
 @skip_check_grad_ci(
-    reason="The backward test is not supported for float16 type on NPU.")
+    reason="The backward test is not supported for float16 type on NPU."
+)
 class TestNPUReciprocalFp16(TestNPUReciprocal):
 
     def set_npu(self):

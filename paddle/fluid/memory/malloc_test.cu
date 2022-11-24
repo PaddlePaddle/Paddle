@@ -67,7 +67,10 @@ void MultiStreamCompute(float **data,
                         float **second_data,
                         const phi::GPUContext &ctx) {
   // multi-streams
-  AllocationPtr allocation_ptr = Alloc(ctx, N * sizeof(float));
+  AllocationPtr allocation_ptr =
+      Alloc(ctx.GetPlace(),
+            N * sizeof(float),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
   *data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
@@ -77,7 +80,10 @@ void MultiStreamCompute(float **data,
 #endif
 
   // allocate and compute on same stream again
-  allocation_ptr = Alloc(ctx, N * sizeof(float));
+  allocation_ptr =
+      Alloc(ctx.GetPlace(),
+            N * sizeof(float),
+            phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
   EXPECT_GE(allocation_ptr->size(), N * sizeof(float));
   *second_data = reinterpret_cast<float *>(allocation_ptr->ptr());
 #ifdef PADDLE_WITH_HIP
@@ -176,6 +182,10 @@ TEST(Malloc, GPUContextMultiThreadMultiStream) {
     ctx->SetZeroAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()
             .GetZeroAllocator(place)
+            .get());
+    ctx->SetHostZeroAllocator(
+        paddle::memory::allocation::AllocatorFacade::Instance()
+            .GetZeroAllocator(paddle::platform::CPUPlace())
             .get());
     ctx->SetPinnedAllocator(
         paddle::memory::allocation::AllocatorFacade::Instance()

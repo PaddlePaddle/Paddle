@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -21,9 +19,12 @@ import sys
 sys.path.append("..")
 
 import paddle
-from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -45,21 +46,27 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': self.reduce_all,
-                'keep_dim': self.keep_dim
+                'keep_dim': self.keep_dim,
             }
             self.inputs = {'X': np.random.random(self.shape).astype("float32")}
             if self.attrs['reduce_all']:
                 self.outputs = {'Out': self.inputs['X'].min()}
             else:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out':
                     self.inputs['X'].min(axis=self.axis,
                                          keepdims=self.attrs['keep_dim'])
+=======
+                    'Out': self.inputs['X'].min(
+                        axis=self.axis, keepdims=self.attrs['keep_dim']
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 }
 
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = False
 
@@ -73,7 +80,7 @@ class XPUTestReduceMinOp(XPUOpTestWrapper):
 
         def init_case(self):
             self.shape = (5, 6, 10)
-            self.axis = (0, )
+            self.axis = (0,)
             self.reduce_all = False
             self.keep_dim = True
 

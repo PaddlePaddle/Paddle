@@ -6,7 +6,11 @@
 # run a container
 # docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --rm -it paddlepaddle/paddle:latest-dev-ipu bash
 
+<<<<<<< HEAD
 FROM graphcore/poplar:2.6.0
+=======
+FROM graphcore/poplar:3.0.0
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables
@@ -25,10 +29,23 @@ RUN apt-get update && apt-get install -y curl wget vim git unzip unrar tar xz-ut
     openssl libffi-dev pciutils libblas-dev gfortran libblas3 liblapack-dev liblapack3 default-jre screen tmux gdb lldb gcc g++
 RUN apt-get update && apt-get install -y rdma-core librdmacm1
 
+<<<<<<< HEAD
 # install g++-8
 RUN apt install g++-8 gcc-8 -y
 RUN ln -sf /usr/bin/gcc-8 /usr/bin/gcc
 RUN ln -sf /usr/bin/g++-8 /usr/bin/g++
+=======
+# Downgrade gcc&&g++
+WORKDIR /usr/bin
+COPY tools/dockerfile/build_scripts /build_scripts 
+RUN bash /build_scripts/install_gcc.sh gcc82 && rm -rf /build_scripts 
+RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++ 
+RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc 
+RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++ 
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH 
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 # install cmake
 WORKDIR /home

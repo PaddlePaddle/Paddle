@@ -15,8 +15,6 @@
 Distribute CTR model for test fleet api
 """
 
-from __future__ import print_function
-
 import shutil
 import tempfile
 import time
@@ -28,8 +26,6 @@ import numpy as np
 
 import ctr_dataset_reader
 from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
-from paddle.distributed.fleet.utils.ps_util import DistributedInfer
-import paddle.distributed.fleet as fleet
 
 paddle.enable_static()
 
@@ -67,6 +63,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         """
         dnn_input_dim, lr_input_dim = int(1e5), int(1e5)
 
+<<<<<<< HEAD
         dnn_data = fluid.layers.data(name="dnn_data",
                                      shape=[-1, 1],
                                      dtype="int64",
@@ -82,11 +79,35 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                   dtype="int64",
                                   lod_level=0,
                                   append_batch_size=False)
+=======
+        dnn_data = fluid.layers.data(
+            name="dnn_data",
+            shape=[-1, 1],
+            dtype="int64",
+            lod_level=1,
+            append_batch_size=False,
+        )
+        lr_data = fluid.layers.data(
+            name="lr_data",
+            shape=[-1, 1],
+            dtype="int64",
+            lod_level=1,
+            append_batch_size=False,
+        )
+        label = fluid.layers.data(
+            name="click",
+            shape=[-1, 1],
+            dtype="int64",
+            lod_level=0,
+            append_batch_size=False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         datas = [dnn_data, lr_data, label]
 
         if args.reader == "pyreader":
             if is_train:
+<<<<<<< HEAD
                 self.reader = fluid.io.PyReader(feed_list=datas,
                                                 capacity=64,
                                                 iterable=False,
@@ -97,8 +118,23 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                                      iterable=False,
                                                      use_double_buffer=False)
 
+=======
+                self.reader = fluid.io.PyReader(
+                    feed_list=datas,
+                    capacity=64,
+                    iterable=False,
+                    use_double_buffer=False,
+                )
+            else:
+                self.test_reader = fluid.io.PyReader(
+                    feed_list=datas,
+                    capacity=64,
+                    iterable=False,
+                    use_double_buffer=False,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-# build dnn model
+        # build dnn model
         dnn_layer_dims = [128, 128, 64, 32, 1]
         dnn_embedding = fluid.layers.embedding(
             is_distributed=False,
@@ -106,11 +142,20 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
+                initializer=fluid.initializer.Constant(value=0.01),
+            ),
             is_sparse=True,
+<<<<<<< HEAD
             padding_idx=0)
         dnn_pool = fluid.layers.sequence_pool(input=dnn_embedding,
                                               pool_type="sum")
+=======
+            padding_idx=0,
+        )
+        dnn_pool = fluid.layers.sequence_pool(
+            input=dnn_embedding, pool_type="sum"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
             fc = fluid.layers.fc(
@@ -118,8 +163,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                 size=dim,
                 act="relu",
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)),
-                name='dnn-fc-%d' % i)
+                    initializer=fluid.initializer.Constant(value=0.01)
+                ),
+                name='dnn-fc-%d' % i,
+            )
             dnn_out = fc
 
         # build lr model
@@ -129,9 +176,11 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
+                initializer=fluid.initializer.Constant(value=0.01),
+            ),
             is_sparse=True,
-            padding_idx=0)
+            padding_idx=0,
+        )
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
         merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
@@ -139,8 +188,9 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
         acc = fluid.layers.accuracy(input=predict, label=label)
 
-        auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
-                                                              label=label)
+        auc_var, batch_auc_var, auc_states = fluid.layers.auc(
+            input=predict, label=label
+        )
 
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = paddle.mean(x=cost)
@@ -180,11 +230,18 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         try:
             while True:
                 batch_idx += 1
-                loss_val = exe.run(program=paddle.static.default_main_program(),
-                                   fetch_list=[self.avg_cost.name])
+                loss_val = exe.run(
+                    program=paddle.static.default_main_program(),
+                    fetch_list=[self.avg_cost.name],
+                )
                 loss_val = np.mean(loss_val)
                 message = "TEST ---> batch_idx: {} loss: {}\n".format(
+<<<<<<< HEAD
                     batch_idx, loss_val)
+=======
+                    batch_idx, loss_val
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 fleet.util.print_on_rank(message, 0)
         except fluid.core.EOFException:
             self.test_reader.reset()
@@ -212,8 +269,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             try:
                 pass_start = time.time()
                 while True:
-                    loss_val = exe.run(program=fluid.default_main_program(),
-                                       fetch_list=[self.avg_cost.name])
+                    loss_val = exe.run(
+                        program=fluid.default_main_program(),
+                        fetch_list=[self.avg_cost.name],
+                    )
                     loss_val = np.mean(loss_val)
                     # TODO(randomly fail)
                     #   reduce_output = fleet.util.all_reduce(
@@ -221,7 +280,12 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     #   loss_all_trainer = fleet.util.all_gather(float(loss_val))
                     #   loss_val = float(reduce_output) / len(loss_all_trainer)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(
+<<<<<<< HEAD
                         epoch_id, loss_val)
+=======
+                        epoch_id, loss_val
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
@@ -233,10 +297,18 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_persistables(exe, dirname=dirname)
 
         model_dir = tempfile.mkdtemp()
+<<<<<<< HEAD
         fleet.save_inference_model(exe, model_dir,
                                    [feed.name for feed in self.feeds],
                                    self.avg_cost)
         self.check_model_right(model_dir)
+=======
+        fleet.save_inference_model(
+            exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost
+        )
+        if fleet.is_first_worker():
+            self.check_model_right(model_dir)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         shutil.rmtree(model_dir)
 
     def do_dataset_training_queuedataset(self, fleet):
@@ -254,30 +326,54 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset = paddle.distributed.QueueDataset()
         pipe_command = 'python ctr_dataset_reader.py'
 
+<<<<<<< HEAD
         dataset.init(batch_size=batch_size,
                      use_var=self.feeds,
                      pipe_command=pipe_command,
                      thread_num=thread_num)
+=======
+        dataset.init(
+            batch_size=batch_size,
+            use_var=self.feeds,
+            pipe_command=pipe_command,
+            thread_num=thread_num,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         dataset.set_filelist(filelist)
 
         for epoch_id in range(1):
             pass_start = time.time()
             dataset.set_filelist(filelist)
+<<<<<<< HEAD
             exe.train_from_dataset(program=fluid.default_main_program(),
                                    dataset=dataset,
                                    fetch_list=[self.avg_cost],
                                    fetch_info=["cost"],
                                    print_period=2,
                                    debug=int(os.getenv("Debug", "0")))
+=======
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                fetch_list=[self.avg_cost],
+                fetch_info=["cost"],
+                print_period=2,
+                debug=int(os.getenv("Debug", "0")),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             pass_time = time.time() - pass_start
 
         if os.getenv("SAVE_MODEL") == "1":
             model_dir = tempfile.mkdtemp()
-            fleet.save_inference_model(exe, model_dir,
-                                       [feed.name for feed in self.feeds],
-                                       self.avg_cost)
-            self.check_model_right(model_dir)
+            fleet.save_inference_model(
+                exe,
+                model_dir,
+                [feed.name for feed in self.feeds],
+                self.avg_cost,
+            )
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
@@ -304,7 +400,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset.set_pipe_command('python ctr_dataset_reader.py')
         dataset.load_into_memory()
 
-        dataset.global_shuffle(fleet, 12)  ##TODO: thread configure
+        dataset.global_shuffle(fleet, 12)  # TODO: thread configure
         shuffle_data_size = dataset.get_shuffle_data_size(fleet)
         local_data_size = dataset.get_shuffle_data_size()
         data_size_list = fleet.util.all_gather(local_data_size)
@@ -313,30 +409,67 @@ class TestDistCTR2x2(FleetDistRunnerBase):
 
         for epoch_id in range(1):
             pass_start = time.time()
+<<<<<<< HEAD
             exe.train_from_dataset(program=fluid.default_main_program(),
                                    dataset=dataset,
                                    fetch_list=[self.avg_cost],
                                    fetch_info=["cost"],
                                    print_period=2,
                                    debug=int(os.getenv("Debug", "0")))
+=======
+            exe.train_from_dataset(
+                program=fluid.default_main_program(),
+                dataset=dataset,
+                fetch_list=[self.avg_cost],
+                fetch_info=["cost"],
+                print_period=2,
+                debug=int(os.getenv("Debug", "0")),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             pass_time = time.time() - pass_start
         dataset.release_memory()
 
         if os.getenv("SAVE_MODEL") == "1":
             model_dir = tempfile.mkdtemp()
-            fleet.save_inference_model(exe, model_dir,
-                                       [feed.name for feed in self.feeds],
-                                       self.avg_cost)
-            self.check_model_right(model_dir)
+            fleet.save_inference_model(
+                exe,
+                model_dir,
+                [feed.name for feed in self.feeds],
+                self.avg_cost,
+            )
+            fleet.load_inference_model(model_dir, mode=0)
+            if fleet.is_first_worker():
+                self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
 
         dirname = os.getenv("SAVE_DIRNAME", None)
         if dirname:
             fleet.save_persistables(exe, dirname=dirname)
+            fleet.load_model(dirname, mode=0)
 
         cache_dirname = os.getenv("SAVE_CACHE_DIRNAME", None)
         if cache_dirname:
             fleet.save_cache_model(cache_dirname)
+
+        dense_param_dirname = os.getenv("SAVE_DENSE_PARAM_DIRNAME", None)
+        if dense_param_dirname:
+            fleet.save_dense_params(
+                exe,
+                dense_param_dirname,
+                fluid.global_scope(),
+                fluid.default_main_program(),
+            )
+
+        save_one_table_dirname = os.getenv("SAVE_ONE_TABLE_DIRNAME", None)
+        if save_one_table_dirname:
+            fleet.save_one_table(0, save_one_table_dirname, 0)
+            fleet.load_one_table(0, save_one_table_dirname, 0)
+
+        patch_dirname = os.getenv("SAVE_PATCH_DIRNAME", None)
+        if patch_dirname:
+            fleet.save_persistables(exe, patch_dirname, None, 5)
+            fleet.check_save_pre_patch_done()
+
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

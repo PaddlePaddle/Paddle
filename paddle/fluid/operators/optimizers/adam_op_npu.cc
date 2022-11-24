@@ -22,15 +22,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -39,7 +43,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       true,
                       platform::errors::InvalidArgument(
                           "The Grad(%s)'s type should be LoDTensor, "
@@ -51,8 +59,8 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* mom2 = ctx.Input<LoDTensor>("Moment2");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
 
-    auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
-    auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
+    auto* beta1_pow = ctx.Input<phi::DenseTensor>("Beta1Pow");
+    auto* beta2_pow = ctx.Input<phi::DenseTensor>("Beta2Pow");
 
     auto* param_out = ctx.Output<LoDTensor>("ParamOut");
     auto* mom1_out = ctx.Output<LoDTensor>("Moment1Out");
@@ -62,7 +70,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -129,16 +141,20 @@ class AdamNPUKernel : public framework::OpKernel<T> {
       beta2_pow = &beta2_pow_tmp;
     }
 
-    const Tensor* beta1_tensor = nullptr;
-    const Tensor* beta2_tensor = nullptr;
-    const Tensor* epsilon_tensor = nullptr;
+    const phi::DenseTensor* beta1_tensor = nullptr;
+    const phi::DenseTensor* beta2_tensor = nullptr;
+    const phi::DenseTensor* epsilon_tensor = nullptr;
 
     Tensor beta1_tmp(experimental::DataType::FLOAT32);
     Tensor beta2_tmp(experimental::DataType::FLOAT32);
     Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
+<<<<<<< HEAD
       beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+=======
+      beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(beta1_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -152,7 +168,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Beta2Tensor")) {
+<<<<<<< HEAD
       beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+=======
+      beta2_tensor = ctx.Input<phi::DenseTensor>("Beta2Tensor");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -166,7 +186,11 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("EpsilonTensor")) {
+<<<<<<< HEAD
       epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+=======
+      epsilon_tensor = ctx.Input<phi::DenseTensor>("EpsilonTensor");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(epsilon_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -264,7 +288,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -312,7 +340,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         param_out->mutable_data<T>(ctx.GetPlace());
 
         const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
         PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+=======
+        PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                           true,
                           platform::errors::InvalidArgument(
                               "The Var(%s)'s type should be LoDTensor, "
@@ -324,7 +356,11 @@ class AdamWNPUKernel : public AdamNPUKernel<platform::NPUDeviceContext, T> {
         const auto& runner =
             NpuOpRunner("Mul",
                         {*param, decay},
+<<<<<<< HEAD
                         {*const_cast<framework::LoDTensor*>(param)},
+=======
+                        {*const_cast<phi::DenseTensor*>(param)},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         {});
         runner.Run(stream);
       }

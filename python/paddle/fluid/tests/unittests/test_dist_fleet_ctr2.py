@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import unittest
 import tempfile
@@ -28,11 +26,9 @@ class TestDistMnistSync2x2(TestFleetBase):
         self._reader = "pyreader"
         self._need_test = 1
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -53,9 +49,15 @@ class TestDistMnistSync2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False)
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 # @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
@@ -65,11 +67,9 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
         self._mode = "async"
         self._reader = "dataset"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -94,9 +94,15 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place("dist_fleet_ctr.py",
                               delta=1e-5,
                               check_error_log=False)
+=======
+        self.check_with_place(
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

@@ -24,7 +24,11 @@ paddle.enable_static()
 
 
 def ref_log_softmax(x):
+<<<<<<< HEAD
     shiftx = (x - np.max(x))
+=======
+    shiftx = x - np.max(x)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out = shiftx - np.log(np.exp(shiftx).sum())
     return out
 
@@ -34,14 +38,24 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
+<<<<<<< HEAD
     dout = np.full_like(x, fill_value=1. / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis)
+=======
+    dout = np.full_like(x, fill_value=1.0 / x.size)
+    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
+        axis_dim, axis=axis
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return dx
 
 
 class TestLogSoftmaxOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
@@ -51,7 +65,11 @@ class TestLogSoftmaxOp(OpTest):
         self.axis = -1
         self.set_attrs()
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -70,24 +88,39 @@ class TestLogSoftmaxOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'], ['Out'],
                                    user_defined_grads=[self.x_grad])
 
 
 class TestLogSoftmaxShape(TestLogSoftmaxOp):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], ['Out'], user_defined_grads=[self.x_grad]
+        )
+
+
+class TestLogSoftmaxShape(TestLogSoftmaxOp):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_attrs(self):
         self.shape = [12, 10]
 
 
 class TestLogSoftmaxAxis(TestLogSoftmaxOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_attrs(self):
         self.axis = 1
 
 
 class TestLogSoftmaxOpFp16(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = 'log_softmax'
         self.set_mlu()
@@ -97,7 +130,11 @@ class TestLogSoftmaxOpFp16(OpTest):
         self.axis = -1
         self.set_attrs()
 
+<<<<<<< HEAD
         x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+=======
+        x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = np.apply_along_axis(ref_log_softmax, self.axis, x)
         self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -116,6 +153,7 @@ class TestLogSoftmaxOpFp16(OpTest):
         self.check_output_with_place(self.place, atol=1e-2)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'], ['Out'],
                                    user_defined_grads=[self.x_grad],
                                    max_relative_error=0.015)
@@ -127,6 +165,22 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]
         self.x = np.random.uniform(-1., 1., self.x_shape).astype(np.float32)
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            ['Out'],
+            user_defined_grads=[self.x_grad],
+            max_relative_error=0.015,
+        )
+
+
+class TestNNLogSoftmaxAPI(unittest.TestCase):
+    def setUp(self):
+        self.set_mlu()
+        self.x_shape = [2, 3, 4, 5]
+        self.x = np.random.uniform(-1.0, 1.0, self.x_shape).astype(np.float32)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def set_mlu(self):
         self.__class__.use_mlu = True
@@ -136,19 +190,31 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
         ref_out = np.apply_along_axis(ref_log_softmax, axis, self.x)
 
         logsoftmax = paddle.nn.LogSoftmax(axis)
+<<<<<<< HEAD
+=======
+        paddle.enable_static()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         # test static api
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data(name='x', shape=self.x_shape)
             y = logsoftmax(x)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
+<<<<<<< HEAD
         self.assertTrue(np.allclose(out[0], ref_out))
+=======
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-6)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # test dygrapg api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = logsoftmax(x)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(y.numpy(), ref_out))
+=======
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-6)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.enable_static()
 
     def test_check_api(self):
@@ -157,7 +223,10 @@ class TestNNLogSoftmaxAPI(unittest.TestCase):
 
 
 class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.set_mlu()
         self.x_shape = [2, 3, 4, 5]
@@ -177,12 +246,20 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
             y = F.log_softmax(x, axis, dtype)
             exe = paddle.static.Executor(self.place)
             out = exe.run(feed={'x': self.x}, fetch_list=[y])
+<<<<<<< HEAD
         self.assertTrue(np.allclose(out[0], ref_out))
+=======
+        np.testing.assert_allclose(out[0], ref_out, rtol=1e-6)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = F.log_softmax(x, axis, dtype)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(y.numpy(), ref_out), True)
+=======
+        np.testing.assert_allclose(y.numpy(), ref_out, rtol=1e-6)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.enable_static()
 
     def test_check_api(self):
@@ -191,12 +268,20 @@ class TestNNFunctionalLogSoftmaxAPI(unittest.TestCase):
         self.check_api(-1, 'float32')
 
     def test_errors(self):
+<<<<<<< HEAD
+=======
+        paddle.enable_static()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data(name='X1', shape=[100], dtype='int32')
             self.assertRaises(TypeError, F.log_softmax, x)
 
             x = paddle.fluid.data(name='X2', shape=[100], dtype='float32')
             self.assertRaises(TypeError, F.log_softmax, x, dtype='int32')
+<<<<<<< HEAD
+=======
+        paddle.disable_static()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

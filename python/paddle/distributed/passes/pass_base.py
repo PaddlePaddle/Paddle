@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
-import sys
 from abc import ABC, abstractmethod
-from paddle.fluid.framework import program_guard, _apply_pass as _apply_cpp_pass
+from paddle.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:
@@ -86,7 +84,8 @@ class PassBase(ABC):
 
     def _check_conflict_including_common_rules(self, other_pass):
         return self._check_conflict(other_pass) and all(
-            [r(other_pass, self) for r in PassBase._COMMON_RULES])
+            [r(other_pass, self) for r in PassBase._COMMON_RULES]
+        )
 
     def apply(self, main_programs, startup_programs, context=None):
         if context is None:
@@ -95,10 +94,12 @@ class PassBase(ABC):
         if not self._check_self():
             return context
 
-        if not all([
+        if not all(
+            [
                 self._check_conflict_including_common_rules(p)
                 for p in context.passes
-        ]):
+            ]
+        ):
             return context
 
         assert isinstance(main_programs, list)
@@ -109,8 +110,9 @@ class PassBase(ABC):
         return context
 
     def _apply_impl(self, main_programs, startup_programs, context):
-        for main_program, startup_program in zip(main_programs,
-                                                 startup_programs):
+        for main_program, startup_program in zip(
+            main_programs, startup_programs
+        ):
             self._apply_single_impl(main_program, startup_program, context)
 
     @abstractmethod
@@ -140,7 +142,7 @@ def new_pass(name, pass_attrs={}):
 class CPPPassWrapper(PassBase):
 
     def __init__(self):
-        super(CPPPassWrapper, self).__init__()
+        super().__init__()
 
     @property
     def cpp_name(self):
@@ -157,21 +159,39 @@ class CPPPassWrapper(PassBase):
         return True
 
     def _apply_single_impl(self, main_program, startup_program, context):
-        _apply_cpp_pass(main_program, startup_program, self.cpp_name,
-                        self._attrs, self.cpp_attr_types)
+        _apply_cpp_pass(
+            main_program,
+            startup_program,
+            self.cpp_name,
+            self._attrs,
+            self.cpp_attr_types,
+        )
 
 
 def _fusion_opt_last_rule(pass_before, pass_after):
+<<<<<<< HEAD
     if pass_before._type(
     ) == PassType.FUSION_OPT and pass_after._type() != PassType.FUSION_OPT:
+=======
+    if (
+        pass_before._type() == PassType.FUSION_OPT
+        and pass_after._type() != PassType.FUSION_OPT
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return False
     else:
         return True
 
 
+<<<<<<< HEAD
 def _make_rule_from_white_lists_dict(before_white_lists_dict,
                                      after_white_lists_dict):
 
+=======
+def _make_rule_from_white_lists_dict(
+    before_white_lists_dict, after_white_lists_dict
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def collect_pass_names(white_lists_dict, result):
         for k, v in white_lists_dict.items():
             result.add(k)
@@ -198,7 +218,10 @@ def _make_rule_from_white_lists_dict(before_white_lists_dict,
 
     def rule(pass_before, pass_after):
         all_passes_after = compatible_pass_dict.get(pass_before.name)
-        if all_passes_after is None or pass_after.name not in compatible_pass_dict:
+        if (
+            all_passes_after is None
+            or pass_after.name not in compatible_pass_dict
+        ):
             return True
         else:
             return pass_after.name in all_passes_after
@@ -222,8 +245,9 @@ PassBase._AFTER_WHITE_LISTS_DICT = {
 PassBase._COMMON_RULES = [
     _fusion_opt_last_rule,
     lambda pass_before, pass_after: type(pass_before) != type(pass_after),
-    _make_rule_from_white_lists_dict(PassBase._BEFORE_WHITE_LISTS_DICT,
-                                     PassBase._AFTER_WHITE_LISTS_DICT),
+    _make_rule_from_white_lists_dict(
+        PassBase._BEFORE_WHITE_LISTS_DICT, PassBase._AFTER_WHITE_LISTS_DICT
+    ),
     # Add more common rules here
 ]
 
@@ -272,10 +296,12 @@ def _solve_pass_conflict(passes, context):
     old_passes = passes
     passes = []
     for p in old_passes:
-        if all([
+        if all(
+            [
                 p._check_conflict_including_common_rules(applied_p)
                 for applied_p in context.passes
-        ]):
+            ]
+        ):
             passes.append(p)
 
     if not passes:
@@ -289,7 +315,8 @@ def _solve_pass_conflict(passes, context):
     for i in range(n):
         for j in range(n):
             adjacent_matrix[i][j] = passes[
-                j]._check_conflict_including_common_rules(passes[i])
+                j
+            ]._check_conflict_including_common_rules(passes[i])
 
     longest_path = _find_longest_path(adjacent_matrix)
     return [passes[idx] for idx in longest_path]

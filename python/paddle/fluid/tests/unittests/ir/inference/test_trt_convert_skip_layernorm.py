@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
+from typing import Any, Dict, List
 import unittest
 
 
@@ -32,13 +32,20 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
-        #The input dimension should be less than or equal to the set axis.
+        # The input dimension should be less than or equal to the set axis.
         if attrs[0]['begin_norm_axis'] >= 0:
+<<<<<<< HEAD
             if len(inputs['skip_layernorm_inputX_data'].shape
                    ) <= attrs[0]['begin_norm_axis']:
+=======
+            if (
+                len(inputs['skip_layernorm_inputX_data'].shape)
+                <= attrs[0]['begin_norm_axis']
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 return False
 
-        #2D input is not supported.
+        # 2D input is not supported.
         if self.dims == 2:
             return False
         return True
@@ -73,28 +80,34 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     for begin_norm_axis in [0, 1, 2, -1]:
                         for enable_int8 in [False, True]:
                             self.dims = dims
-                            dics = [{
-                                "epsilon": epsilon,
-                                "begin_norm_axis": begin_norm_axis,
-                                "enable_int8": enable_int8
-                            }, {}]
-                            ops_config = [{
-                                "op_type": "skip_layernorm",
-                                "op_inputs": {
-                                    "X": ["skip_layernorm_inputX_data"],
-                                    "Y": ["skip_layernorm_inputY_data"],
-                                    "Bias": ["Bias"],
-                                    "Scale": ["Scale"]
+                            dics = [
+                                {
+                                    "epsilon": epsilon,
+                                    "begin_norm_axis": begin_norm_axis,
+                                    "enable_int8": enable_int8,
                                 },
-                                "op_outputs": {
-                                    "Out": ["skip_layernorm_out"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
+                                {},
+                            ]
+                            ops_config = [
+                                {
+                                    "op_type": "skip_layernorm",
+                                    "op_inputs": {
+                                        "X": ["skip_layernorm_inputX_data"],
+                                        "Y": ["skip_layernorm_inputY_data"],
+                                        "Bias": ["Bias"],
+                                        "Scale": ["Scale"],
+                                    },
+                                    "op_outputs": {
+                                        "Out": ["skip_layernorm_out"]
+                                    },
+                                    "op_attrs": dics[0],
+                                }
+                            ]
                             ops = self.generate_op_config(ops_config)
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={
+<<<<<<< HEAD
                                     "Bias":
                                     TensorConfig(data_gen=partial(
                                         generate_weight1, dics)),
@@ -109,71 +122,97 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                                     "skip_layernorm_inputY_data":
                                     TensorConfig(data_gen=partial(
                                         generate_input2, dics, batch))
+=======
+                                    "Bias": TensorConfig(
+                                        data_gen=partial(generate_weight1, dics)
+                                    ),
+                                    "Scale": TensorConfig(
+                                        data_gen=partial(generate_weight2, dics)
+                                    ),
                                 },
-                                outputs=["skip_layernorm_out"])
+                                inputs={
+                                    "skip_layernorm_inputX_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input1, dics, batch
+                                        )
+                                    ),
+                                    "skip_layernorm_inputY_data": TensorConfig(
+                                        data_gen=partial(
+                                            generate_input2, dics, batch
+                                        )
+                                    ),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+                                },
+                                outputs=["skip_layernorm_out"],
+                            )
 
                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "skip_layernorm_inputX_data": [1, 6, 128, 768],
                     "skip_layernorm_inputY_data": [1, 6, 128, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "skip_layernorm_inputX_data": [4, 6, 768, 3072],
                     "skip_layernorm_inputY_data": [4, 6, 768, 3072],
                     "Bias": [3072],
-                    "Scale": [3072]
+                    "Scale": [3072],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "skip_layernorm_inputX_data": [2, 6, 128, 768],
                     "skip_layernorm_inputY_data": [2, 6, 128, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {
                     "skip_layernorm_inputX_data": [1, 128, 768],
                     "skip_layernorm_inputY_data": [1, 128, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "skip_layernorm_inputX_data": [4, 768, 3072],
                     "skip_layernorm_inputY_data": [4, 768, 3072],
                     "Bias": [3072],
-                    "Scale": [3072]
+                    "Scale": [3072],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "skip_layernorm_inputX_data": [2, 128, 768],
                     "skip_layernorm_inputY_data": [2, 128, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "skip_layernorm_inputX_data": [1, 768],
                     "skip_layernorm_inputY_data": [1, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
                 self.dynamic_shape.max_input_shape = {
                     "skip_layernorm_inputX_data": [4, 3072],
                     "skip_layernorm_inputY_data": [4, 3072],
                     "Bias": [3072],
-                    "Scale": [3072]
+                    "Scale": [3072],
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "skip_layernorm_inputX_data": [2, 768],
                     "skip_layernorm_inputY_data": [2, 768],
                     "Bias": [768],
-                    "Scale": [768]
+                    "Scale": [768],
                 }
 
         def clear_dynamic_shape():
@@ -182,7 +221,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if dynamic_shape == True:
+            if dynamic_shape:
                 return 1, 3
             else:
                 return 0, 4
@@ -198,16 +237,29 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         #     attrs, False), 1e-5
         # self.trt_param.precision = paddle_infer.PrecisionType.Half
         # yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
         #     attrs, False), 1e-5
+=======
+        #     attrs, False), (1e-3, 1e-3)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-5
+=======
+            attrs, True
+        ), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), (1e-3, 1e-3)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def add_skip_trt_case(self):
         pass

@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/label_smooth_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 namespace phi {
 template <typename T>
@@ -42,8 +48,7 @@ void LabelSmoothGradKernel(const Context& ctx,
   std::vector<const DenseTensor*> ins = {&out_grad};
   std::vector<DenseTensor*> outs = {label_grad};
   auto functor = LabelSmoothGradFunctor<T>(epsilon);
-  paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
-      ctx, ins, &outs, functor);
+  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
 }
 
 }  // namespace phi

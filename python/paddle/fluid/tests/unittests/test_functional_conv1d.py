@@ -14,9 +14,7 @@
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
 import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
 import numpy as np
 import unittest
 from unittest import TestCase
@@ -38,6 +36,7 @@ class TestFunctionalConv1DError(TestCase):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
+<<<<<<< HEAD
             b = None if self.bias is None else dg.to_variable(
                 self.bias, dtype=paddle.float32)
             y = F.conv1d(x,
@@ -48,6 +47,23 @@ class TestFunctionalConv1DError(TestCase):
                          dilation=self.dilation,
                          groups=self.groups,
                          data_format=self.data_format)
+=======
+            b = (
+                None
+                if self.bias is None
+                else dg.to_variable(self.bias, dtype=paddle.float32)
+            )
+            y = F.conv1d(
+                x,
+                w,
+                b,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                data_format=self.data_format,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_exception(self):
         with self.assertRaises(ValueError):

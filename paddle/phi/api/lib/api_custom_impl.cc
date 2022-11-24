@@ -34,6 +34,7 @@ namespace experimental {
 
 ////////////////// Forward api impls //////////////////////
 
+<<<<<<< HEAD
 std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> adamw_impl(
     const Tensor& param,
     const Tensor& grad,
@@ -209,16 +210,17 @@ Tensor conv2d_impl(const Tensor& input,
                    bool use_addto,
                    int workspace_size_MB,
                    bool exhaustive_search) {
+=======
+Tensor add_n_impl(const std::vector<Tensor>& x) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   Backend kernel_backend = Backend::UNDEFINED;
   DataLayout kernel_layout = DataLayout::UNDEFINED;
   DataType kernel_data_type = DataType::UNDEFINED;
 
-  kernel_data_type = ParseDataType(input);
-
   if (kernel_backend == Backend::UNDEFINED ||
       kernel_layout == DataLayout::UNDEFINED ||
       kernel_data_type == DataType::UNDEFINED) {
-    auto kernel_key_set = ParseKernelKeyByInputArgs(input, filter);
+    auto kernel_key_set = ParseKernelKeyByInputArgs(x);
     auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
     if (kernel_backend == Backend::UNDEFINED) {
       kernel_backend = kernel_key.backend();
@@ -231,6 +233,7 @@ Tensor conv2d_impl(const Tensor& input,
     }
   }
 
+<<<<<<< HEAD
   VLOG(6) << "conv2d API kernel key: [" << kernel_backend << ", "
           << kernel_layout << ", " << kernel_data_type << "]";
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -909,10 +912,68 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
     }
     if (kernel_layout == DataLayout::UNDEFINED) {
       kernel_layout = kernel_key.layout();
+=======
+  bool is_sr_kernel = true;
+  for (auto& input : x) {
+    if (phi::DenseTensor::classof(input.impl().get())) {
+      is_sr_kernel = false;
+      break;
     }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
+  }
+
+  const std::string kernel_name = (is_sr_kernel ? "add_n_sr" : "add_n");
+
+  VLOG(6) << "add_n API kernel key: [" << kernel_backend << ", "
+          << kernel_layout << ", " << kernel_data_type << "]";
+  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+      kernel_name, {kernel_backend, kernel_layout, kernel_data_type});
+  const auto& kernel = kernel_result.kernel;
+  VLOG(6) << kernel_name << " kernel: " << kernel;
+  auto* dev_ctx = GetDeviceContextByBackend(
+      kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+
+  Tensor api_output;
+
+  if (is_sr_kernel) {
+    std::vector<const phi::SelectedRows*> input_x(x.size());
+    for (size_t i = 0; i < input_x.size(); ++i) {
+      input_x[i] = static_cast<phi::SelectedRows*>(x[i].impl().get());
     }
+    auto x_meta_vec = MakeMetaTensor(input_x);
+    std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
+    for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+      x_metas[i] = &x_meta_vec[i];
+    }
+    auto kernel_out = SetSelectedRowsKernelOutput(&api_output);
+    phi::MetaTensor meta_out(kernel_out);
+    phi::AddNInferMeta(x_metas, &meta_out);
+
+    using kernel_signature =
+        void (*)(const platform::DeviceContext&,
+                 const std::vector<const phi::SelectedRows*>&,
+                 phi::SelectedRows*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+
+    (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+  } else {
+    std::vector<const phi::TensorBase*> input_x(x.size());
+    std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
+    temp_dense_tensots.reserve(x.size());
+    for (size_t i = 0; i < input_x.size(); ++i) {
+      if (phi::DenseTensor::classof(x[i].impl().get())) {
+        temp_dense_tensots.push_back(PrepareData(x[i], kernel.InputAt(0), {}));
+        input_x[i] = temp_dense_tensots.back().get();
+      } else {
+        input_x[i] = x[i].impl().get();
+      }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+    }
+    auto x_meta_vec = MakeMetaTensor(input_x);
+    std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
+    for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+      x_metas[i] = &x_meta_vec[i];
+    }
+<<<<<<< HEAD
   }
 
   auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
@@ -923,92 +984,34 @@ std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> batch_norm_impl(
   VLOG(6) << "batch_norm API kernel: " << kernel;
 
   auto* dev_ctx = GetDeviceContextByBackend(kernel_backend);
+=======
+    auto kernel_out = SetKernelOutput(&api_output);
+    phi::MetaTensor meta_out(kernel_out);
+    phi::AddNInferMeta(x_metas, &meta_out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-  auto input_x = PrepareData(x, kernel.InputAt(0), {});
-  auto input_scale = PrepareData(scale, kernel.InputAt(1), {});
-  auto input_bias = PrepareData(bias, kernel.InputAt(2), {});
-  auto input_mean = PrepareData(mean, kernel.InputAt(3), {});
-  auto input_variance = PrepareData(variance, kernel.InputAt(4), {});
+    using kernel_signature =
+        void (*)(const platform::DeviceContext&,
+                 const std::vector<const phi::TensorBase*>&,
+                 phi::DenseTensor*);
+    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
 
-  std::tuple<Tensor, Tensor, Tensor, Tensor, Tensor, Tensor> api_output;
-  auto kernel_out_0 = SetKernelOutput(kernel_backend, &std::get<0>(api_output));
-  std::get<1>(api_output).set_impl(mean.impl());
-  std::get<2>(api_output).set_impl(variance.impl());
-  auto kernel_out_1 = SetKernelOutput(kernel_backend, &std::get<1>(api_output));
-  auto kernel_out_2 = SetKernelOutput(kernel_backend, &std::get<2>(api_output));
-  auto kernel_out_3 = SetKernelOutput(kernel_backend, &std::get<3>(api_output));
-  auto kernel_out_4 = SetKernelOutput(kernel_backend, &std::get<4>(api_output));
-  auto kernel_out_5 = SetKernelOutput(kernel_backend, &std::get<5>(api_output));
-  phi::MetaTensor meta_out_0(kernel_out_0);
-  phi::MetaTensor meta_out_1(kernel_out_1);
-  phi::MetaTensor meta_out_2(kernel_out_2);
-  phi::MetaTensor meta_out_3(kernel_out_3);
-  phi::MetaTensor meta_out_4(kernel_out_4);
-  phi::MetaTensor meta_out_5(kernel_out_5);
-
-  phi::BatchNormInferMeta(MakeMetaTensor(*input_x),
-                          MakeMetaTensor(*input_scale),
-                          MakeMetaTensor(*input_bias),
-                          MakeMetaTensor(*input_mean),
-                          MakeMetaTensor(*input_variance),
-                          momentum,
-                          epsilon,
-                          data_layout,
-                          is_test,
-                          use_global_stats,
-                          trainable_statistics,
-                          fuse_with_relu,
-                          &meta_out_0,
-                          &meta_out_1,
-                          &meta_out_2,
-                          &meta_out_3,
-                          &meta_out_4,
-                          &meta_out_5);
-
-  using kernel_signature = void (*)(const platform::DeviceContext&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    const phi::DenseTensor&,
-                                    float,
-                                    float,
-                                    const std::string&,
-                                    bool,
-                                    bool,
-                                    bool,
-                                    bool,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*,
-                                    phi::DenseTensor*);
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  {
-    (*kernel_fn)(*dev_ctx,
-                 *input_x,
-                 *input_scale,
-                 *input_bias,
-                 *input_mean,
-                 *input_variance,
-                 momentum,
-                 epsilon,
-                 data_layout,
-                 is_test,
-                 use_global_stats,
-                 trainable_statistics,
-                 fuse_with_relu,
-                 kernel_out_0,
-                 kernel_out_1,
-                 kernel_out_2,
-                 kernel_out_3,
-                 kernel_out_4,
-                 kernel_out_5);
+    (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+    if (kernel_result.has_fallback_cpu) {
+      TransDataBackend(kernel_out, kernel_backend, kernel_out);
+    }
   }
 
   return api_output;
 }
+
+Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
+  Tensor out;
+  copy(x, place, blocking, &out);
+  return out;
+}
+
+////////////////// Backward(grad) api impls //////////////////////
 
 void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
   phi::KernelKey kernel_key{ParseBackend(out_grad),
@@ -1025,7 +1028,7 @@ void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
 
   auto dense_out_grad = TensorToDenseTensor(out_grad);
 
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), x_grad);
+  auto kernel_out = SetKernelOutput(x_grad);
   phi::MetaTensor meta_out(kernel_out);
   phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
 
@@ -1065,8 +1068,12 @@ void embedding_grad_impl(const Tensor& x,
     auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
 
     if (sparse) {
+<<<<<<< HEAD
       auto* kernel_out =
           SetSelectedRowsKernelOutput(kernel_key.backend(), weight_grad);
+=======
+      auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->dims());
       meta_out.set_dtype(input_weight->dtype());
@@ -1086,7 +1093,11 @@ void embedding_grad_impl(const Tensor& x,
                    padding_idx,
                    kernel_out);
     } else {
+<<<<<<< HEAD
       auto* kernel_out = SetKernelOutput(kernel_key.backend(), weight_grad);
+=======
+      auto* kernel_out = SetKernelOutput(weight_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
       using kernel_signature = void (*)(const platform::DeviceContext&,
@@ -1118,8 +1129,12 @@ void embedding_grad_impl(const Tensor& x,
     auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
 
     if (sparse) {
+<<<<<<< HEAD
       auto* kernel_out =
           SetSelectedRowsKernelOutput(kernel_key.backend(), weight_grad);
+=======
+      auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
       using kernel_signature = void (*)(const platform::DeviceContext&,
@@ -1136,7 +1151,11 @@ void embedding_grad_impl(const Tensor& x,
                    padding_idx,
                    kernel_out);
     } else {
+<<<<<<< HEAD
       auto* kernel_out = SetKernelOutput(kernel_key.backend(), weight_grad);
+=======
+      auto* kernel_out = SetKernelOutput(weight_grad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->GetCompleteDims());
       meta_out.set_dtype(input_weight->dtype());
@@ -1172,7 +1191,7 @@ void real_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
 
   auto dense_out_grad = TensorToDenseTensor(out_grad);
 
-  auto kernel_out = SetKernelOutput(kernel_key.backend(), x_grad);
+  auto kernel_out = SetKernelOutput(x_grad);
   phi::MetaTensor meta_out(kernel_out);
   phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
 

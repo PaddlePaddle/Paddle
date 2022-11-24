@@ -12,7 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from .base_cost import Cost, register_op_cost, CompOpCost, _g_op_cost_factory
+from .base_cost import CompOpCost, register_op_cost
+
+
+@register_op_cost
+class AdamOpCost(CompOpCost):
+    OP_TYPE = "adam"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class ArgsortOpCost(CompOpCost):
+    OP_TYPE = "argsort"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
 
 
 @register_op_cost
@@ -39,9 +73,13 @@ class AssignOpCost(CompOpCost):
     OP_TYPE = "assign"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(AssignOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -58,9 +96,13 @@ class AssignValueOpCost(CompOpCost):
     OP_TYPE = "assign_value"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(AssignValueOpCost, self).__init__(op=op,
                                                 op_desc=op_desc,
                                                 cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -77,9 +119,13 @@ class BeamSearchOpCost(CompOpCost):
     OP_TYPE = "beam_search"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(BeamSearchOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -96,9 +142,13 @@ class BeamSearchDecodeOpCost(CompOpCost):
     OP_TYPE = "beam_search_decode"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(BeamSearchDecodeOpCost, self).__init__(op=op,
                                                      op_desc=op_desc,
                                                      cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -115,9 +165,13 @@ class CastOpCost(CompOpCost):
     OP_TYPE = "cast"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(CastOpCost, self).__init__(op=op,
                                          op_desc=op_desc,
                                          cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -134,11 +188,51 @@ class ConcatOpCost(CompOpCost):
     OP_TYPE = "concat"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ConcatOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class DropoutOpCost(CompOpCost):
+    OP_TYPE = "dropout"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class DropoutGradOpCost(CompOpCost):
+    OP_TYPE = "dropout_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def calc_flops(self):
         # NOTE: The actual formula will be filled in the future
         return 0
@@ -153,9 +247,13 @@ class ElementwiseAddOpCost(CompOpCost):
     OP_TYPE = "elementwise_add"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseAddOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -172,9 +270,13 @@ class ElementwiseAddGradOpCost(CompOpCost):
     OP_TYPE = "elementwise_add_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseAddGradOpCost, self).__init__(op=op,
                                                        op_desc=op_desc,
                                                        cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -191,9 +293,13 @@ class ElementwiseDivOpCost(CompOpCost):
     OP_TYPE = "elementwise_div"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseDivOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -210,9 +316,13 @@ class ElementwiseDivGradOpCost(CompOpCost):
     OP_TYPE = "elementwise_div_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseDivGradOpCost, self).__init__(op=op,
                                                        op_desc=op_desc,
                                                        cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -229,9 +339,13 @@ class ElementwiseMulOpCost(CompOpCost):
     OP_TYPE = "elementwise_mul"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseMulOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -248,9 +362,13 @@ class ElementwiseMulGradOpCost(CompOpCost):
     OP_TYPE = "elementwise_mul_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseMulGradOpCost, self).__init__(op=op,
                                                        op_desc=op_desc,
                                                        cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -267,9 +385,14 @@ class ElementwiseSubOpCost(CompOpCost):
     OP_TYPE = "elementwise_sub"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseSubOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -286,9 +409,48 @@ class ElementwiseSubGradOpCost(CompOpCost):
     OP_TYPE = "elementwise_sub_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class EqualOpCost(CompOpCost):
+    OP_TYPE = "equal"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+class ElementwiseSubGradOpCost(CompOpCost):
+    OP_TYPE = "elementwise_sub_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ElementwiseSubGradOpCost, self).__init__(op=op,
                                                        op_desc=op_desc,
                                                        cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -305,9 +467,13 @@ class EmbeddingOpCost(CompOpCost):
     OP_TYPE = "c_embedding"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(EmbeddingOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -324,9 +490,13 @@ class EmbeddingGradOpCost(CompOpCost):
     OP_TYPE = "c_embedding_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(EmbeddingGradOpCost, self).__init__(op=op,
                                                   op_desc=op_desc,
                                                   cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -343,9 +513,12 @@ class FillConstantOpCost(CompOpCost):
     OP_TYPE = "fill_constant"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(FillConstantOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -358,6 +531,25 @@ class FillConstantOpCost(CompOpCost):
 
 
 @register_op_cost
+class FusedSoftmaxMaskUpperTriangleOpCost(CompOpCost):
+    OP_TYPE = "fused_softmax_mask_upper_triangle"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+    # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
+    def calc_flops(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+    def calc_time(self):
+        # NOTE: The actual formula will be filled in the future
+        return 0
+
+
+@register_op_cost
+<<<<<<< HEAD
 class FillConstantBatchSizeLikeOpCost(CompOpCost):
     OP_TYPE = "fill_constant_batch_size_like"
 
@@ -365,6 +557,13 @@ class FillConstantBatchSizeLikeOpCost(CompOpCost):
         super(FillConstantBatchSizeLikeOpCost, self).__init__(op=op,
                                                               op_desc=op_desc,
                                                               cluster=cluster)
+=======
+class FusedSoftmaxMaskUpperTriangleGradOpCost(CompOpCost):
+    OP_TYPE = "fused_softmax_mask_upper_triangle_grad"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -381,9 +580,13 @@ class GatherOpCost(CompOpCost):
     OP_TYPE = "gather"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(GatherOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -400,9 +603,13 @@ class GeluOpCost(CompOpCost):
     OP_TYPE = "gelu"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(GeluOpCost, self).__init__(op=op,
                                          op_desc=op_desc,
                                          cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -419,9 +626,13 @@ class GeluGradOpCost(CompOpCost):
     OP_TYPE = "gelu_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(GeluGradOpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -438,9 +649,13 @@ class GreaterEqualOpCost(CompOpCost):
     OP_TYPE = "greater_equal"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(GreaterEqualOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -457,9 +672,13 @@ class IncrementOpCost(CompOpCost):
     OP_TYPE = "increment"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(IncrementOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -472,9 +691,13 @@ class IsEmptyOpCost(CompOpCost):
     OP_TYPE = "is_empty"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(IsEmptyOpCost, self).__init__(op=op,
                                             op_desc=op_desc,
                                             cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -487,9 +710,13 @@ class LayerNormOpCost(CompOpCost):
     OP_TYPE = "layer_norm"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LayerNormOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -506,9 +733,13 @@ class LayerNormGradOpCost(CompOpCost):
     OP_TYPE = "layer_norm_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LayerNormGradOpCost, self).__init__(op=op,
                                                   op_desc=op_desc,
                                                   cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -525,9 +756,13 @@ class LessThanOpCost(CompOpCost):
     OP_TYPE = "less_than"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LessThanOpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -544,9 +779,13 @@ class LogicalNotOpCost(CompOpCost):
     OP_TYPE = "logical_not"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LogicalNotOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -563,9 +802,13 @@ class LogicalAndOpCost(CompOpCost):
     OP_TYPE = "logical_and"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LogicalAndOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -582,9 +825,13 @@ class LodResetOpCost(CompOpCost):
     OP_TYPE = "lod_reset"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LodResetOpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -601,7 +848,7 @@ class LogOpCost(CompOpCost):
     OP_TYPE = "log"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
-        super(LogOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -618,9 +865,13 @@ class LookupTableV2OpCost(CompOpCost):
     OP_TYPE = "lookup_table_v2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LookupTableV2OpCost, self).__init__(op=op,
                                                   op_desc=op_desc,
                                                   cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -637,9 +888,13 @@ class LookupTableV2GradOpCost(CompOpCost):
     OP_TYPE = "lookup_table_v2_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(LookupTableV2GradOpCost, self).__init__(op=op,
                                                       op_desc=op_desc,
                                                       cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -656,9 +911,13 @@ class MatmulOpCost(CompOpCost):
     OP_TYPE = "matmul"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MatmulOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -675,9 +934,13 @@ class MatmulGradOpCost(CompOpCost):
     OP_TYPE = "matmul_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MatmulGradOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -694,9 +957,13 @@ class MatmulV2OpCost(CompOpCost):
     OP_TYPE = "matmul_v2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MatmulV2OpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -713,9 +980,13 @@ class MatmulV2GradOpCost(CompOpCost):
     OP_TYPE = "matmul_v2_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MatmulV2GradOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -732,9 +1003,13 @@ class MemcpyOpCost(CompOpCost):
     OP_TYPE = "memcpy"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MemcpyOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -751,7 +1026,11 @@ class MulOpCost(CompOpCost):
     OP_TYPE = "mul"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MulOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -768,9 +1047,13 @@ class MulGradOpCost(CompOpCost):
     OP_TYPE = "mul_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(MulGradOpCost, self).__init__(op=op,
                                             op_desc=op_desc,
                                             cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -787,9 +1070,13 @@ class OneHotOpCost(CompOpCost):
     OP_TYPE = "one_hot"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(OneHotOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -806,9 +1093,13 @@ class ReadFromArrayOpCost(CompOpCost):
     OP_TYPE = "read_from_array"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ReadFromArrayOpCost, self).__init__(op=op,
                                                   op_desc=op_desc,
                                                   cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -825,9 +1116,13 @@ class ReduceSumOpCost(CompOpCost):
     OP_TYPE = "reduce_sum"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ReduceSumOpCost, self).__init__(op=op,
                                               op_desc=op_desc,
                                               cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -844,9 +1139,13 @@ class ReduceSumGradOpCost(CompOpCost):
     OP_TYPE = "reduce_sum_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ReduceSumGradOpCost, self).__init__(op=op,
                                                   op_desc=op_desc,
                                                   cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -863,9 +1162,13 @@ class Reshape2OpCost(CompOpCost):
     OP_TYPE = "reshape2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Reshape2OpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -882,9 +1185,13 @@ class Reshape2GradOpCost(CompOpCost):
     OP_TYPE = "reshape2_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Reshape2GradOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -901,9 +1208,13 @@ class ReduceMeanOpCost(CompOpCost):
     OP_TYPE = "reduce_mean"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ReduceMeanOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -920,9 +1231,13 @@ class ReduceMeanGradOpCost(CompOpCost):
     OP_TYPE = "reduce_mean_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ReduceMeanGradOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -939,9 +1254,13 @@ class SamplingIdOpCost(CompOpCost):
     OP_TYPE = "sampling_id"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SamplingIdOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -958,9 +1277,13 @@ class ScaleOpCost(CompOpCost):
     OP_TYPE = "scale"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(ScaleOpCost, self).__init__(op=op,
                                           op_desc=op_desc,
                                           cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -977,9 +1300,13 @@ class SliceOpCost(CompOpCost):
     OP_TYPE = "slice"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SliceOpCost, self).__init__(op=op,
                                           op_desc=op_desc,
                                           cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -996,9 +1323,13 @@ class SoftmaxOpCost(CompOpCost):
     OP_TYPE = "softmax"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SoftmaxOpCost, self).__init__(op=op,
                                             op_desc=op_desc,
                                             cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1015,9 +1346,13 @@ class SoftmaxGradOpCost(CompOpCost):
     OP_TYPE = "softmax_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SoftmaxGradOpCost, self).__init__(op=op,
                                                 op_desc=op_desc,
                                                 cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1034,9 +1369,13 @@ class SoftmaxWithCrossEntropyOpCost(CompOpCost):
     OP_TYPE = "softmax_with_cross_entropy"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SoftmaxWithCrossEntropyOpCost, self).__init__(op=op,
                                                             op_desc=op_desc,
                                                             cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1053,9 +1392,13 @@ class SoftmaxWithCrossEntropyGradOpCost(CompOpCost):
     OP_TYPE = "softmax_with_cross_entropy_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SoftmaxWithCrossEntropyGradOpCost, self).__init__(op=op,
                                                                 op_desc=op_desc,
                                                                 cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1072,9 +1415,13 @@ class SplitOpCost(CompOpCost):
     OP_TYPE = "split"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SplitOpCost, self).__init__(op=op,
                                           op_desc=op_desc,
                                           cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1091,9 +1438,13 @@ class Squeeze2OpCost(CompOpCost):
     OP_TYPE = "squeeze2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Squeeze2OpCost, self).__init__(op=op,
                                              op_desc=op_desc,
                                              cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1110,9 +1461,13 @@ class SquareOpCost(CompOpCost):
     OP_TYPE = "square"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SquareOpCost, self).__init__(op=op,
                                            op_desc=op_desc,
                                            cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1129,9 +1484,13 @@ class SquareGradOpCost(CompOpCost):
     OP_TYPE = "square_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SquareGradOpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1148,7 +1507,11 @@ class SumOpCost(CompOpCost):
     OP_TYPE = "sum"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(SumOpCost, self).__init__(op=op, op_desc=op_desc, cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1165,9 +1528,13 @@ class TopKOpCost(CompOpCost):
     OP_TYPE = "top_k"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(TopKOpCost, self).__init__(op=op,
                                          op_desc=op_desc,
                                          cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1184,9 +1551,13 @@ class Transpose2OpCost(CompOpCost):
     OP_TYPE = "transpose2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Transpose2OpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1203,9 +1574,13 @@ class Transpose2GradOpCost(CompOpCost):
     OP_TYPE = "transpose2_grad"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Transpose2GradOpCost, self).__init__(op=op,
                                                    op_desc=op_desc,
                                                    cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1222,9 +1597,13 @@ class Unsqueeze2OpCost(CompOpCost):
     OP_TYPE = "unsqueeze2"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(Unsqueeze2OpCost, self).__init__(op=op,
                                                op_desc=op_desc,
                                                cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):
@@ -1241,9 +1620,13 @@ class WriteToArrayOpCost(CompOpCost):
     OP_TYPE = "write_to_array"
 
     def __init__(self, op=None, op_desc=None, cluster=None):
+<<<<<<< HEAD
         super(WriteToArrayOpCost, self).__init__(op=op,
                                                  op_desc=op_desc,
                                                  cluster=cluster)
+=======
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # For a concrete COMP OP, the calc_time and calc_flops function need to be overrided
     def calc_flops(self):

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #endif
 
 namespace paddle {
@@ -96,7 +96,7 @@ DEVICE void PrRoIPoolingDistributeDiff(T* diff,
                                        const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
-    paddle::platform::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
+    phi::CudaAtomicAdd(diff + h * width + w, top_diff * coeff);
   }
 }
 #else
@@ -166,7 +166,7 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(T* diff,
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 DEVICE void AccumulateRois(T* offset, T data) {
-  paddle::platform::CudaAtomicAdd(offset, data);
+  phi::CudaAtomicAdd(offset, data);
 }
 #else
 template <typename T>
@@ -331,9 +331,9 @@ template <typename DeviceContext, typename T>
 class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -352,12 +352,12 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = in->data<T>();
 
-    framework::Tensor rois_batch_id_list;
+    phi::DenseTensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
     if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-      auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+      auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
       auto* batch_index = batchroinum->data<int64_t>();
       int rois_batch_size = batchroinum->dims()[0];
       size_t c = 0;
@@ -485,15 +485,15 @@ template <typename DeviceContext, typename T>
 class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* out = ctx.Input<framework::Tensor>("Out");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
     auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* input_roi_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("ROIs"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("ROIs"));
 
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
@@ -511,12 +511,12 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int rois_num = rois->dims()[0];
 
       // set roi batch id
-      framework::Tensor rois_batch_id_list;
+      phi::DenseTensor rois_batch_id_list;
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
       if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
-        auto* batchroinum = ctx.Input<framework::Tensor>("BatchRoINums");
+        auto* batchroinum = ctx.Input<phi::DenseTensor>("BatchRoINums");
         auto* batch_index = batchroinum->data<int64_t>();
         int rois_batch_size = batchroinum->dims()[0];
         size_t c = 0;

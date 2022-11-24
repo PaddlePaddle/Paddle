@@ -22,17 +22,28 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+<<<<<<< HEAD
 using FeedType = paddle::variant<LoDTensor, Strings>;
 using FeedList = std::vector<FeedType>;
 
 using FetchType = paddle::variant<LoDTensor, LoDTensorArray, framework::Vocab>;
+=======
+using FeedType =
+    paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
+using FeedList = std::vector<FeedType>;
+
+using FetchType = paddle::variant<phi::DenseTensor,
+                                  LoDTensorArray,
+                                  framework::Vocab,
+                                  phi::SparseCooTensor>;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
 using FetchResultType = paddle::variant<FetchList, FetchUnmergedList>;
 
 inline bool data_is_lod_tensor(const FetchType &data) {
-  if (data.type() == typeid(LoDTensor)) {
+  if (data.type() == typeid(phi::DenseTensor)) {
     return true;
   }
   return false;
@@ -47,6 +58,13 @@ inline bool data_is_lod_tensor_array(const FetchType &data) {
 
 inline bool data_is_string_tensor(const FeedType &data) {
   if (data.type() == typeid(Strings)) {
+    return true;
+  }
+  return false;
+}
+
+inline bool data_is_sparse_coo_tensor(const FetchType &data) {
+  if (data.type() == typeid(phi::SparseCooTensor)) {
     return true;
   }
   return false;

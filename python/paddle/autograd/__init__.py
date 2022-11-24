@@ -18,6 +18,10 @@ from ..framework import is_grad_enabled, set_grad_enabled  # noqa: F401
 from . import backward_mode  # noqa: F401
 from .backward_mode import backward  # noqa: F401
 from ..fluid.framework import _in_eager_mode_
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 if _in_eager_mode_:
     from .py_layer import EagerPyLayer as PyLayer  # noqa: F401
     from .py_layer import EagerPyLayerContext as PyLayerContext  # noqa: F401
@@ -26,9 +30,14 @@ else:
     from .py_layer import LegacyPyLayerContext as PyLayerContext  # noqa: F401
 from ..framework import set_grad_enabled, is_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
+<<<<<<< HEAD
+=======
+from .saved_tensors_hooks import saved_tensors_hooks
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 __all__ = [  # noqa
     'backward',
     'PyLayer',
     'PyLayerContext',
+    'saved_tensors_hooks',
 ]

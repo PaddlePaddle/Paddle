@@ -42,6 +42,7 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
 
         def generate_input():
             if data_format == "NCHW":
+<<<<<<< HEAD
                 return np.random.random([batch_size, 48, 64,
                                          64]).astype(np.float32)
             else:
@@ -51,34 +52,45 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
         def generate_weight():
             return np.random.random([16, int(48 / groups), 3,
                                      3]).astype(np.float32)
+=======
+                return np.random.random([batch_size, 48, 64, 64]).astype(
+                    np.float32
+                )
+            else:
+                return np.random.random([batch_size, 64, 64, 48]).astype(
+                    np.float32
+                )
 
-        ops_config = [{
-            "op_type": "conv2d",
-            "op_inputs": {
-                "Input": ["input_data"],
-                "Filter": ["input_weight"]
+        def generate_weight():
+            return np.random.random([16, int(48 / groups), 3, 3]).astype(
+                np.float32
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+        ops_config = [
+            {
+                "op_type": "conv2d",
+                "op_inputs": {
+                    "Input": ["input_data"],
+                    "Filter": ["input_weight"],
+                },
+                "op_outputs": {"Output": ["conv_output"]},
+                "op_attrs": {
+                    "data_format": data_format,
+                    "dilations": dilations,
+                    "padding_algorithm": padding_algorithm,
+                    "groups": groups,
+                    "paddings": paddings,
+                    "strides": strides,
+                },
             },
-            "op_outputs": {
-                "Output": ["conv_output"]
+            {
+                "op_type": "mish",
+                "op_inputs": {"X": ["conv_output"]},
+                "op_outputs": {"Out": ["mish_output"]},
+                "op_attrs": {},
             },
-            "op_attrs": {
-                "data_format": data_format,
-                "dilations": dilations,
-                "padding_algorithm": padding_algorithm,
-                "groups": groups,
-                "paddings": paddings,
-                "strides": strides
-            }
-        }, {
-            "op_type": "mish",
-            "op_inputs": {
-                "X": ["conv_output"]
-            },
-            "op_outputs": {
-                "Out": ["mish_output"]
-            },
-            "op_attrs": {},
-        }]
+        ]
 
         ops = self.generate_op_config(ops_config)
 
@@ -90,7 +102,8 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
             inputs={
                 "input_data": TensorConfig(data_gen=partial(generate_input)),
             },
-            outputs=["mish_output"])
+            outputs=["mish_output"],
+        )
 
         return program_config
 
@@ -99,8 +112,14 @@ class TestConvMishMkldnnFusePass(PassAutoScanTest):
         yield config, ["conv2d"], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             passes=["conv_activation_mkldnn_fuse_pass"])
+=======
+        self.run_and_statis(
+            quant=False, passes=["conv_activation_mkldnn_fuse_pass"]
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

@@ -17,12 +17,11 @@ import unittest
 import os
 import json
 
-import paddle
 from paddle.distributed.auto_parallel.cluster import Cluster
 from paddle.distributed.auto_parallel.cluster import get_default_cluster
 
 cluster_json = """
-{ 
+{
     "alpha_latency": {"inter": {"ring": "NET", "tree": "NET"},
                     "intra": {"ring": "NVL", "tree": "PHB"},
                     "base": {"ring": 8.4, "tree": 0},
@@ -1969,7 +1968,10 @@ multi_cluster_json = """{
 
 
 class TestCluster(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -1978,8 +1980,14 @@ class TestCluster(unittest.TestCase):
 
     def test_single_machine(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(self.temp_dir.name,
                                          "auto_parallel_cluster_single.json")
+=======
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster_single.json"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
@@ -2004,8 +2012,14 @@ class TestCluster(unittest.TestCase):
 
     def test_multi_machine(self):
         # Build cluster
+<<<<<<< HEAD
         cluster_json_path = os.path.join(self.temp_dir.name,
                                          "auto_parallel_cluster_multi.json")
+=======
+        cluster_json_path = os.path.join(
+            self.temp_dir.name, "auto_parallel_cluster_multi.json"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         cluster_json_object = json.loads(multi_cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)

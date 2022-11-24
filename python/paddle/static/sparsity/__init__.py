@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from ...fluid.contrib.sparsity import calculate_density  #noqa: F401
 from ...fluid.contrib.sparsity import decorate  #noqa: F401
 from ...fluid.contrib.sparsity import prune_model  #noqa: F401
@@ -29,4 +30,27 @@ def set_excluded_layers(main_program, param_names):
 __all__ = [  #noqa
     'calculate_density', 'decorate', 'prune_model', 'set_excluded_layers',
     'reset_excluded_layers', 'add_supported_layer'
+=======
+from ...fluid.contrib.sparsity import calculate_density  # noqa: F401
+from ...fluid.contrib.sparsity import decorate  # noqa: F401
+from ...fluid.contrib.sparsity import prune_model  # noqa: F401
+from ...fluid.contrib.sparsity import reset_excluded_layers  # noqa: F401
+from ...fluid.contrib.sparsity import add_supported_layer  # noqa: F401
+from ...fluid.contrib import sparsity  # noqa: F401
+
+
+def set_excluded_layers(main_program, param_names):
+    sparsity.set_excluded_layers(
+        param_names=param_names, main_program=main_program
+    )
+
+
+__all__ = [  # noqa
+    'calculate_density',
+    'decorate',
+    'prune_model',
+    'set_excluded_layers',
+    'reset_excluded_layers',
+    'add_supported_layer',
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 ]

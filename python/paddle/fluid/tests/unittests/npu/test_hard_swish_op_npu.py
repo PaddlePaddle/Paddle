@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -26,10 +24,13 @@ import paddle.nn.functional as F
 
 
 def ref_hard_swish_grad(x, threshold=6.0, scale=6.0, offset=3.0):
-    dout = np.full_like(x, fill_value=1. / x.size)
+    dout = np.full_like(x, fill_value=1.0 / x.size)
     tmp = ((x + offset) < threshold).astype(x.dtype)
-    dx = dout * (((x + offset) > 0).astype(x.dtype) *
-                 (2 * x + offset) * tmp / scale + 1.0 - tmp)
+    dx = dout * (
+        ((x + offset) > 0).astype(x.dtype) * (2 * x + offset) * tmp / scale
+        + 1.0
+        - tmp
+    )
     return dx
 
 
@@ -47,13 +48,18 @@ class TestHardSwishNPU(OpTest):
         threshold = 6.0
         scale = 6.0
         offset = 3.0
-        #the same with TestAbs
+        # the same with TestAbs
         x[np.abs(x + offset) < 0.005] = 0.02
         x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
         out = (
+<<<<<<< HEAD
             x *
             (np.minimum(np.maximum(x + offset, 0.), threshold) / scale)).astype(
                 self.dtype)
+=======
+            x * (np.minimum(np.maximum(x + offset, 0.0), threshold) / scale)
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.x_grad = ref_hard_swish_grad(x, threshold, scale, offset)
 
         self.inputs = {'X': x}
@@ -74,9 +80,15 @@ class TestHardSwishNPU(OpTest):
         # can't satisfy the default precision requirement
         # when compared with numeric_grads, but the results on
         # NPU and CPU are same (verified in TestHardSwishNPUWithCPU)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    user_defined_grads=[self.x_grad])
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', user_defined_grads=[self.x_grad]
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestHardSwishNPUFp16(TestHardSwishNPU):
@@ -115,16 +127,36 @@ class TestHardSwishNPUWithCPU(unittest.TestCase):
         y = F.hardswish(data)
         y.sum().backward()
 
-        self.assertTrue(
-            np.allclose(self.out_y.numpy(), y.numpy()),
-            "Output of NPU HardSwish forward has diff at " + str(self.place) +
-            "\nExpect " + str(self.out_y) + "\n" + "But Got" + str(y) +
-            " in class " + self.__class__.__name__ + ".")
-        self.assertTrue(
-            np.allclose(self.out_g.numpy(), data.grad.numpy()),
-            "Output of NPU HardSwish backward has diff at " + str(self.place) +
-            "\nExpect " + str(self.out_g) + "\n" + "But Got" + str(data.grad) +
-            " in class " + self.__class__.__name__ + ".")
+        np.testing.assert_allclose(
+            self.out_y.numpy(),
+            y.numpy(),
+            err_msg="Output of NPU HardSwish forward has diff at "
+            + str(self.place)
+            + "\nExpect "
+            + str(self.out_y)
+            + "\n"
+            + "But Got"
+            + str(y)
+            + " in class "
+            + self.__class__.__name__
+            + ".",
+            rtol=1e-5,
+        )
+        np.testing.assert_allclose(
+            self.out_g.numpy(),
+            data.grad.numpy(),
+            err_msg="Output of NPU HardSwish backward has diff at "
+            + str(self.place)
+            + "\nExpect "
+            + str(self.out_g)
+            + "\n"
+            + "But Got"
+            + str(data.grad)
+            + " in class "
+            + self.__class__.__name__
+            + ".",
+            rtol=1e-5,
+        )
 
 
 if __name__ == '__main__':

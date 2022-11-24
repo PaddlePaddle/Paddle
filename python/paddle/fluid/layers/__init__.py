@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from . import ops
-from .ops import *
 from . import nn
 from .nn import *
 from . import io
@@ -45,7 +41,6 @@ __all__ += nn.__all__
 __all__ += io.__all__
 __all__ += tensor.__all__
 __all__ += control_flow.__all__
-__all__ += ops.__all__
 __all__ += device.__all__
 __all__ += detection.__all__
 __all__ += metric_op.__all__

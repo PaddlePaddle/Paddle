@@ -56,15 +56,25 @@ limitations under the License. */
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
+<<<<<<< HEAD
+=======
 #endif
 #ifdef PADDLE_WITH_PSLIB
-#include "afs_api.h"
+#include "afs_api.h"  // NOLINT
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #endif
+#ifdef PADDLE_WITH_PSLIB
+#include "downpour_accessor.h"  // NOLINT
+#endif
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_PSLIB
 #include "downpour_accessor.h"  // NOLINT
 #endif
 #include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
 DECLARE_int32(gpugraph_storage_mode);
+=======
+#include "paddle/fluid/framework/fleet/heter_ps/log_patch.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 namespace paddle {
 namespace framework {
@@ -199,8 +209,11 @@ class PSGPUWrapper {
                 int total_len,
                 int* key2slot);
 
+<<<<<<< HEAD
   void divide_to_device(std::shared_ptr<HeterContext> gpu_task);
   void add_slot_feature(std::shared_ptr<HeterContext> gpu_task);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void BuildGPUTask(std::shared_ptr<HeterContext> gpu_task);
   void PreBuildTask(std::shared_ptr<HeterContext> gpu_task);
   void BuildPull(std::shared_ptr<HeterContext> gpu_task);
@@ -247,10 +260,13 @@ class PSGPUWrapper {
     s_instance_ = nullptr;
     VLOG(3) << "PSGPUWrapper Finalize Finished.";
     HeterPs_->show_table_collisions();
+<<<<<<< HEAD
     if (HeterPs_ != NULL) {
       delete HeterPs_;
       HeterPs_ = NULL;
     }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (device_caches_ != nullptr) {
       delete[] device_caches_;
       device_caches_ = nullptr;
@@ -309,7 +325,10 @@ class PSGPUWrapper {
 
         PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
         for (int i = 0; i < dev_size; ++i) {
+<<<<<<< HEAD
           platform::CUDADeviceGuard guard(dev_ids[i]);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           platform::dynload::ncclCommInitRank(
               &inter_comms_[i], gloo->Size(), inter_ncclids_[i], gloo->Rank());
         }
@@ -436,11 +455,14 @@ class PSGPUWrapper {
       hbm_thread_pool_[i].reset(new ::ThreadPool(1));
     }
 
+<<<<<<< HEAD
     cpu_work_pool_.resize(thread_keys_shard_num_);
     for (size_t i = 0; i < hbm_thread_pool_.size(); i++) {
       cpu_work_pool_[i].reset(new ::ThreadPool(16));
     }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto sparse_table_accessor = sparse_table.accessor();
     auto sparse_table_accessor_parameter =
         sparse_table_accessor.ctr_accessor_param();
@@ -567,7 +589,11 @@ class PSGPUWrapper {
     // set optimizer type(naive,adagrad,std_adagrad,adam,share_adam)
     optimizer_type_ = (config.find("optimizer_type") == config.end())
                           ? 1
+<<<<<<< HEAD
                           : int(config["optimizer_type"]);
+=======
+                          : static_cast<int>(config["optimizer_type"]);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     VLOG(0) << "InitializeGPUServer optimizer_type_:" << optimizer_type_
             << " nodeid_slot:" << nodeid_slot
@@ -620,7 +646,11 @@ class PSGPUWrapper {
     if (slot_info_initialized_) {
       return;
     }
+<<<<<<< HEAD
     SlotRecordDataset* dataset = (SlotRecordDataset*)(dataset_);
+=======
+    SlotRecordDataset* dataset = reinterpret_cast<SlotRecordDataset*>(dataset_);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto slots_vec = dataset->GetSlots();
     slot_offset_vector_.clear();
     for (auto& slot : slot_vector_) {
@@ -688,6 +718,14 @@ class PSGPUWrapper {
     return afs_handler_.open_reader(filename);
   }
 
+<<<<<<< HEAD
+=======
+  std::shared_ptr<paddle::ps::AfsWriter> OpenWriter(
+      const std::string& filename) {
+    return afs_handler_.open_writer(filename);
+  }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void InitAfsApi(const std::string& fs_name,
                   const std::string& fs_user,
                   const std::string& pass_wd,
@@ -711,8 +749,13 @@ class PSGPUWrapper {
       uint64_t,
       std::vector<std::unordered_map<uint64_t, std::vector<float>>>>
       local_tables_;
+<<<<<<< HEAD
   HeterPsBase* HeterPs_ = NULL;
   std::vector<LoDTensor> keys_tensor;  // Cache for pull_sparse
+=======
+  HeterPsBase* HeterPs_;
+  std::vector<phi::DenseTensor> keys_tensor;  // Cache for pull_sparse
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::shared_ptr<HeterPsResource> resource_;
   int32_t sleep_seconds_before_fail_exit_;
   std::vector<int> slot_vector_;
@@ -755,7 +798,10 @@ class PSGPUWrapper {
   int month_;
   int day_;
   bool slot_info_initialized_ = false;
+<<<<<<< HEAD
   bool hbm_sparse_table_initialized_ = false;
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   int use_afs_api_ = 0;
   int optimizer_type_ = 1;
   std::string accessor_class_;
@@ -794,12 +840,16 @@ class PSGPUWrapper {
   bool running_ = false;
   std::vector<std::shared_ptr<ThreadPool>> pull_thread_pool_;
   std::vector<std::shared_ptr<ThreadPool>> hbm_thread_pool_;
+<<<<<<< HEAD
   std::vector<std::shared_ptr<ThreadPool>> cpu_work_pool_;
   OptimizerConfig optimizer_config_;
   // gradient push count
   uint64_t grad_push_count_ = 0;
   // infer mode
   bool infer_mode_ = false;
+=======
+  OptimizerConfig optimizer_config_;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
  protected:
   static bool is_initialized_;

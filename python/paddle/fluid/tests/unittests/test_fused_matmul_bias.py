@@ -64,9 +64,15 @@ def matmul_grad(x, y, bias, dz, trans_x, trans_y):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestFusedMatmulBias(unittest.TestCase):
 
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestFusedMatmulBias(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         paddle.set_device('gpu')
 
@@ -97,12 +103,17 @@ class TestFusedMatmulBias(unittest.TestCase):
 
         z = fused_matmul_bias(x, y, bias, trans_x, trans_y)
         z_np = matmul(x_np, y_np, bias_np, trans_x, trans_y)
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(z.numpy(), z_np))
+=======
+        np.testing.assert_array_equal(z.numpy(), z_np)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         z_grad_np = self.rand_data(z_np.shape, dtype)
         paddle.autograd.backward(z, grad_tensors=[paddle.to_tensor(z_grad_np)])
 
         x_grad_np, y_grad_np, bias_grad_np = matmul_grad(
+<<<<<<< HEAD
             x_np, y_np, bias_np, z_grad_np, trans_x, trans_y)
         self.assertTrue(np.array_equal(x.grad.numpy(), x_grad_np))
         self.assertEqual(y_grad_np.shape, y_np.shape)
@@ -112,14 +123,32 @@ class TestFusedMatmulBias(unittest.TestCase):
             self.assertTrue(np.array_equal(bias.grad.numpy(), bias_grad_np))
         else:
             self.assertTrue(bias_grad_np is None)
+=======
+            x_np, y_np, bias_np, z_grad_np, trans_x, trans_y
+        )
+        np.testing.assert_array_equal(x.grad.numpy(), x_grad_np)
+        self.assertEqual(y_grad_np.shape, y_np.shape)
+        np.testing.assert_array_equal(y.grad.numpy(), y_grad_np)
+
+        if need_bias:
+            np.testing.assert_array_equal(bias.grad.numpy(), bias_grad_np)
+        else:
+            self.assertIsNone(bias_grad_np)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def rand_test(self, m, n, k, dtype):
         seed = int(np.random.randint(low=0, high=1000, size=[1]))
         for trans_x in [False, True]:
             for trans_y in [False, True]:
                 for need_bias in [False, True]:
+<<<<<<< HEAD
                     self.rand_test_base(m, n, k, trans_x, trans_y, need_bias,
                                         dtype, seed)
+=======
+                    self.rand_test_base(
+                        m, n, k, trans_x, trans_y, need_bias, dtype, seed
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_fp32(self):
         self.rand_test(30, 40, 50, np.float32)
@@ -130,15 +159,25 @@ class TestFusedMatmulBias(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestFusedLinear(unittest.TestCase):
 
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestFusedLinear(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def check_fused_linear(self, transpose):
         x = paddle.randn([30, 40])
         linear = FusedLinear(40, 50, transpose_weight=transpose)
         y1 = linear(x)
         y2 = fused_linear(x, linear.weight, linear.bias, transpose)
+<<<<<<< HEAD
         self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+=======
+        np.testing.assert_array_equal(y1.numpy(), y2.numpy())
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_non_transpose(self):
         self.check_fused_linear(False)
@@ -149,9 +188,15 @@ class TestFusedLinear(unittest.TestCase):
 
 @unittest.skipIf(
     not is_fused_matmul_bias_supported(),
+<<<<<<< HEAD
     "fused_gemm_epilogue is only supported when CUDA version >= 11.6")
 class TestStaticGraph(unittest.TestCase):
 
+=======
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestStaticGraph(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_static_graph(self):
         paddle.enable_static()
         x = paddle.static.data(name='x', dtype='float32', shape=[-1, 100])

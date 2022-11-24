@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import numpy as np
 import unittest
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.spawn import _get_subprocess_env_list, _options_valid_check, _get_default_nprocs
+from paddle.distributed.spawn import (
+    _get_subprocess_env_list,
+    _options_valid_check,
+    _get_default_nprocs,
+)
 
 from paddle.fluid import core
 from paddle.fluid.dygraph import parallel_helper
@@ -31,8 +32,9 @@ import multiprocessing
 # executed in the python3 sub-process.
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestInitParallelEnv(unittest.TestCase):
 
     def test_check_env_failed(self):
@@ -54,8 +56,9 @@ class TestInitParallelEnv(unittest.TestCase):
         self.assertFalse(parallel_helper._is_parallel_ctx_initialized())
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSpawnAssistMethod(unittest.TestCase):
 
     def test_nprocs_greater_than_device_num_error(self):

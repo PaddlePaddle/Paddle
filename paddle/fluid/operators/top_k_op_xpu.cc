@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 class TopkXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
@@ -31,6 +31,7 @@ class TopkXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // Get the top k elements of each row of input tensor
+<<<<<<< HEAD
     const auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
@@ -40,6 +41,17 @@ class TopkXPUKernel : public framework::OpKernel<T> {
 
     // get k from input tensor
     auto* k_t = ctx.Input<Tensor>("K");
+=======
+    const auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
+    auto* indices = ctx.Output<phi::DenseTensor>("Indices");
+
+    // get k from attr
+    int k = static_cast<int>(ctx.Attr<int>("k"));
+
+    // get k from input tensor
+    auto* k_t = ctx.Input<phi::DenseTensor>("K");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (k_t) {
       memory::Copy(platform::CPUPlace(),
                    static_cast<void*>(&k),
@@ -79,11 +91,19 @@ class TopkXPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sorted_topk");
 
     // cast to int64 as final result
+<<<<<<< HEAD
     r = xpu::cast_v2<int32_t, int64_t>(dev_ctx.x_context(),
                                        (const int32_t*)indices_int_data,
                                        indices_data,
                                        indices->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast_v2");
+=======
+    r = xpu::cast<int32_t, int64_t>(dev_ctx.x_context(),
+                                    (const int32_t*)indices_int_data,
+                                    indices_data,
+                                    indices->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 

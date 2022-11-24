@@ -15,7 +15,6 @@
 import os
 import site
 from paddle.fluid import core
-from distutils.sysconfig import get_python_lib
 from distutils.core import setup, Extension
 from setuptools.command.build_ext import build_ext
 
@@ -29,7 +28,7 @@ class BuildExt(build_ext):
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
-        super(BuildExt, self).build_extensions()
+        super().build_extensions()
 
 
 # cc flags
@@ -46,12 +45,24 @@ if core.is_compiled_with_npu():
 # include path
 site_packages_path = site.getsitepackages()
 paddle_custom_kernel_include = list(
+<<<<<<< HEAD
     map(lambda path: os.path.join(path, 'paddle', 'include'),
         site_packages_path))
 
 # include path third_party
 compile_third_party_path = os.path.join(os.environ['PADDLE_BINARY_DIR'],
                                         'third_party')
+=======
+    map(
+        lambda path: os.path.join(path, 'paddle', 'include'), site_packages_path
+    )
+)
+
+# include path third_party
+compile_third_party_path = os.path.join(
+    os.environ['PADDLE_BINARY_DIR'], 'third_party'
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 paddle_custom_kernel_include += [
     os.path.join(compile_third_party_path, 'install/gflags/include'),  # gflags
     os.path.join(compile_third_party_path, 'install/glog/include'),  # glog
@@ -59,12 +70,15 @@ paddle_custom_kernel_include += [
 
 # libs path
 paddle_custom_kernel_library_dir = list(
+<<<<<<< HEAD
     map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path))
+=======
+    map(lambda path: os.path.join(path, 'paddle', 'fluid'), site_packages_path)
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 # libs
-libs = [':core_avx.so']
-if not core.has_avx_core and core.has_noavx_core:
-    libs = [':core_noavx.so']
+libs = [':libpaddle.so']
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',
@@ -72,10 +86,21 @@ custom_kernel_dot_module = Extension(
     include_dirs=paddle_custom_kernel_include,
     library_dirs=paddle_custom_kernel_library_dir,
     libraries=libs,
-    extra_compile_args=paddle_extra_compile_args)
+    extra_compile_args=paddle_extra_compile_args,
+)
 
+<<<<<<< HEAD
 setup(name='custom_kernel_dot',
       version='1.0',
       description='custom kernel fot compiling',
       cmdclass={'build_ext': BuildExt},
       ext_modules=[custom_kernel_dot_module])
+=======
+setup(
+    name='custom_kernel_dot',
+    version='1.0',
+    description='custom kernel fot compiling',
+    cmdclass={'build_ext': BuildExt},
+    ext_modules=[custom_kernel_dot_module],
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

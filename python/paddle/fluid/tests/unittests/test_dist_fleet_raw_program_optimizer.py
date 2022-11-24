@@ -34,11 +34,21 @@ class TestFleetMetaOptimizerPrecision(TestDistBase):
 
     def test_dist_train(self):
         import paddle.fluid as fluid
+
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place("dist_fleet_raw_program_optimizer.py",
                                   delta=1e-5,
                                   check_error_log=True,
                                   log_name=flag_name)
+=======
+            self.check_with_place(
+                "dist_fleet_raw_program_optimizer.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

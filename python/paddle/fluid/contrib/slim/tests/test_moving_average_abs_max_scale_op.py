@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -30,9 +28,11 @@ def init_data(batch_size=32, img_shape=[784], label_range=9):
     assert isinstance(img_shape, list)
     input_shape = [batch_size] + img_shape
     img = np.random.random(size=input_shape).astype(np.float32)
-    label = np.array(
-        [np.random.randint(0, label_range) for _ in range(batch_size)]).reshape(
-            (-1, 1)).astype("int64")
+    label = (
+        np.array([np.random.randint(0, label_range) for _ in range(batch_size)])
+        .reshape((-1, 1))
+        .astype("int64")
+    )
     return img, label
 
 
@@ -42,34 +42,48 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             image = fluid.layers.data(name='image',
                                       shape=[784],
                                       dtype='float32')
+=======
+            image = fluid.layers.data(
+                name='image', shape=[784], dtype='float32'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc_tmp = fluid.layers.fc(image, size=10, act='softmax')
             out_scale = quant_layers.MovingAverageAbsMaxScale(
-                name=fc_tmp.name, dtype=fc_tmp.dtype)
+                name=fc_tmp.name, dtype=fc_tmp.dtype
+            )
             fc_tmp_1 = out_scale(fc_tmp)
             cross_entropy = fluid.layers.softmax_with_cross_entropy(
+<<<<<<< HEAD
                 fc_tmp, label)
+=======
+                fc_tmp, label
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             loss = fluid.layers.reduce_mean(cross_entropy)
             sgd = fluid.optimizer.SGD(learning_rate=1e-3)
             sgd.minimize(loss)
 
         moving_average_abs_max_scale_ops = [
-            op for op in main_program.blocks[0].ops
-            if op.type == u'moving_average_abs_max_scale'
+            op
+            for op in main_program.blocks[0].ops
+            if op.type == 'moving_average_abs_max_scale'
         ]
-        assert len(
-            moving_average_abs_max_scale_ops
-        ) == 1, "The number of moving_average_abs_max_scale_ops should be 1."
+        assert (
+            len(moving_average_abs_max_scale_ops) == 1
+        ), "The number of moving_average_abs_max_scale_ops should be 1."
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
 
         binary = fluid.compiler.CompiledProgram(
-            main_program).with_data_parallel(loss_name=loss.name)
+            main_program
+        ).with_data_parallel(loss_name=loss.name)
 
         img, label = init_data()
         feed_dict = {"image": img, "label": label}

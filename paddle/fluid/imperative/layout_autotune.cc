@@ -14,15 +14,19 @@
 
 #include "paddle/fluid/imperative/layout_autotune.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/eager/api/utils/global_utils.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/imperative/layout_transformer.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
-
 namespace paddle {
 namespace imperative {
 
+<<<<<<< HEAD
 bool LayoutAutoTune::UseLayoutAutoTune() const {
 #if defined(PADDLE_WITH_CUDA)
   if (!phi::backends::gpu::TensorCoreAvailable()) {
@@ -36,6 +40,8 @@ bool LayoutAutoTune::UseLayoutAutoTune() const {
 #endif
 }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
   for (auto it = op_info.begin(); it != op_info.end(); it++) {
@@ -145,6 +151,29 @@ paddle::imperative::NameVarMap<VarType> DealLightlyLayoutSensitive(
   return transposer->Apply(ins, outs, attrs, tracer);
 }
 
+<<<<<<< HEAD
+=======
+LayoutAutotuneGuard::LayoutAutotuneGuard(std::shared_ptr<Tracer> tracer,
+                                         bool use_autotune)
+    : tracer_(tracer) {
+  pre_layout_autotune_ = tracer_->UseLayoutAutoTune();
+  if (pre_layout_autotune_ != use_autotune) {
+    tracer_->EnableLayoutAutoTune();
+    if (!use_autotune) {
+      tracer_->DisableLayoutAutoTune();
+    }
+  }
+}
+
+LayoutAutotuneGuard::~LayoutAutotuneGuard() {
+  if (pre_layout_autotune_) {
+    tracer_->EnableLayoutAutoTune();
+  } else {
+    tracer_->DisableLayoutAutoTune();
+  }
+}
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 template <typename VarType>
 paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const std::string& op_type,
@@ -152,7 +181,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const paddle::imperative::NameVarMap<VarType>& outs,
     paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<imperative::Tracer>& tracer) {
-  if (!LayoutAutoTune::Instance().UseLayoutAutoTune()) {
+  if (!tracer->UseLayoutAutoTune()) {
     return ins;
   }
   // When layout autotuning is enabled, the tuner will check the desired layout.
@@ -168,6 +197,15 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     if (op_type != "conv2d") {
       return ins;
     } else {
+<<<<<<< HEAD
+=======
+#if defined(PADDLE_WITH_CUDA)
+      if (!phi::backends::gpu::TensorCoreAvailable()) {
+        tracer->DisableLayoutAutoTune();
+        return ins;
+      }
+#endif
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       auto conv_in_type = framework::proto::VarType::FP32;
       auto& in_vars = ins.at("Input")[0];
       if (GetDataType<VarType>(in_vars) == framework::proto::VarType::FP16) {
@@ -181,16 +219,27 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (conv_in_type == framework::proto::VarType::FP16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
+<<<<<<< HEAD
       } else if (is_tune_fp16) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
+=======
+        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);
+      } else if (is_tune_fp16) {
+        LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
+        LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NCHW);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       } else {
-        LayoutAutoTune::Instance().DisableLayoutAutoTune();
+        tracer->DisableLayoutAutoTune();
         return ins;
       }
       VLOG(3) << "Tune the layout from "
               << PADDLE_GET_CONST(std::string, (*attrs)["data_format"])
               << " to "
+<<<<<<< HEAD
               << paddle::framework::DataLayoutToString(
+=======
+              << phi::DataLayoutToString(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                      LayoutAutoTune::Instance().GetDesiredLayout());
     }
   }
@@ -213,6 +262,7 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     return transposer->Apply(ins, outs, attrs, tracer);
   }
 }
+
 template paddle::imperative::NameVarMap<VarBase> AutoTuneLayout<VarBase>(
     const std::string& op_type,
     const paddle::imperative::NameVarMap<VarBase>& ins,

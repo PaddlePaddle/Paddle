@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import seresnext_net
 from seresnext_test_base import TestResnetBase, DeviceType
@@ -26,6 +25,7 @@ class TestResnetGPU(TestResnetBase):
         # and executor, and the result of drop_out op and batch_norm op in
         # this two executor have diff, so the two ops should be removed
         # from the model.
+<<<<<<< HEAD
         check_func = partial(self.check_network_convergence,
                              optimizer=seresnext_net.optimizer,
                              use_parallel_executor=False)
@@ -33,6 +33,19 @@ class TestResnetGPU(TestResnetBase):
                                                use_device=DeviceType.CUDA,
                                                delta2=1e-5,
                                                compare_separately=False)
+=======
+        check_func = partial(
+            self.check_network_convergence,
+            optimizer=seresnext_net.optimizer,
+            use_parallel_executor=False,
+        )
+        self._compare_result_with_origin_model(
+            check_func,
+            use_device=DeviceType.CUDA,
+            delta2=1e-5,
+            compare_separately=False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

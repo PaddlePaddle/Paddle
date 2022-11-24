@@ -16,6 +16,10 @@
 
 #include <algorithm>
 
+<<<<<<< HEAD
+=======
+#include "paddle/phi/core/enforce.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -35,6 +39,12 @@ __global__ void GatherTree(const T *ids_data,
     out_data[idx] = ids_data[idx];
     auto parent = parents_data[idx];
     for (int step = max_length - 2; step >= 0; step--) {
+      PADDLE_ENFORCE((parent < beam_size),
+                     "The parents must be less than beam size, but recieved"
+                     "parents %ld is greater than or equal to beam size %ld. ",
+                     parent,
+                     beam_size);
+
       idx = step * batch_size * beam_size + batch * beam_size;
       out_data[idx + beam] = ids_data[idx + parent];
       parent = parents_data[idx + parent];

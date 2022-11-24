@@ -18,15 +18,24 @@
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
+=======
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 template <typename T>
 class LabelSmoothMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<LoDTensor>("X");
+<<<<<<< HEAD
     auto* dist_t = ctx.Input<Tensor>("PriorDist");
+=======
+    auto* dist_t = ctx.Input<phi::DenseTensor>("PriorDist");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto* out_t = ctx.Output<LoDTensor>("Out");
     auto epsilon = ctx.Attr<float>("epsilon");
     auto epsilon_gt = 1.0f - epsilon;
@@ -55,7 +64,11 @@ class LabelSmoothMLUKernel : public framework::OpKernel<T> {
                         epsilon);
     } else {
       auto& dev_ctx = ctx.template device_context<MLUDeviceContext>();
+<<<<<<< HEAD
       framework::Tensor dist_tensor =
+=======
+      phi::DenseTensor dist_tensor =
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           ctx.AllocateTmpTensor<T, MLUDeviceContext>({1, label_dim}, dev_ctx);
       MLUCnnlTensorDesc dist_desc(dist_tensor);
       auto value = static_cast<T>(1.0f / label_dim);

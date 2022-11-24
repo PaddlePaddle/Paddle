@@ -21,12 +21,21 @@ template <typename T>
 class RangeMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto* start_t = context.Input<framework::Tensor>("Start");
     auto* end_t = context.Input<framework::Tensor>("End");
     auto* step_t = context.Input<framework::Tensor>("Step");
     auto* out = context.Output<framework::Tensor>("Out");
 
     framework::Tensor n;
+=======
+    auto* start_t = context.Input<phi::DenseTensor>("Start");
+    auto* end_t = context.Input<phi::DenseTensor>("End");
+    auto* step_t = context.Input<phi::DenseTensor>("Step");
+    auto* out = context.Output<phi::DenseTensor>("Out");
+
+    phi::DenseTensor n;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     framework::TensorCopy(
         *start_t,
         platform::CPUPlace(),

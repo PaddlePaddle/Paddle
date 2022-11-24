@@ -14,12 +14,7 @@
 
 from paddle.fluid.framework import _dygraph_guard
 import paddle.fluid as fluid
-from paddle.fluid.framework import Variable
-import paddle.fluid.dygraph.jit as jit
-from paddle.fluid.dygraph.jit import extract_vars
 import numpy as np
-import os
-import time
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -107,8 +102,12 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
         load_dict_to_scope(scope, opti_dict)
 
 
+<<<<<<< HEAD
 class DyGraphProgramDescTracerTestHelper(object):
 
+=======
+class DyGraphProgramDescTracerTestHelper:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self, unittest_obj):
         self.unittest_obj = unittest_obj
 

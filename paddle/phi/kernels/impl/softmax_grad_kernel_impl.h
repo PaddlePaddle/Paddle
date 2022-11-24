@@ -16,6 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 
 namespace phi {
@@ -26,15 +30,21 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        int axis,
                        DenseTensor* x_grad) {
-  const int rank = x_grad->dims().size();
-  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
-  int axis_dim = x_grad->dims()[calc_axis];
-
-  // allocate memory on device.
   dev_ctx.template Alloc<T>(x_grad);
+
+  const int rank = x_grad->dims().size();
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
+    return;
+  }
+  // For zero-sized Tensor
   if (x_grad->numel() == 0) {
     return;
   }
+
+  const int calc_axis = phi::funcs::CanonicalAxis(axis, rank);
+  int axis_dim = x_grad->dims()[calc_axis];
 
   const int n = phi::funcs::SizeToAxis(calc_axis, x_grad->dims());
   const int d = phi::funcs::SizeFromAxis(calc_axis, x_grad->dims());

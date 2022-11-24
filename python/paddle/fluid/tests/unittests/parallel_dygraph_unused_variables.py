@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import paddle
 
@@ -22,6 +20,7 @@ from paddle.nn import Layer, Embedding
 
 
 class SimpleNet(Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  hidden_size,
@@ -31,6 +30,18 @@ class SimpleNet(Layer):
                  is_sparse=False,
                  dtype="float32"):
         super(SimpleNet, self).__init__()
+=======
+    def __init__(
+        self,
+        hidden_size,
+        vocab_size,
+        num_steps=20,
+        init_scale=0.1,
+        is_sparse=False,
+        dtype="float32",
+    ):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -40,27 +51,41 @@ class SimpleNet(Layer):
             self.hidden_size,
             sparse=is_sparse,
             weight_attr=paddle.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Uniform(low=-init_scale,
                                                           high=init_scale)))
+=======
+                initializer=paddle.nn.initializer.Uniform(
+                    low=-init_scale, high=init_scale
+                )
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.softmax_weight = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
         self.softmax_bias = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
         # add tmp var
         self.tmp = self.create_parameter(
             attr=paddle.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
-                low=-self.init_scale, high=self.init_scale))
+                low=-self.init_scale, high=self.init_scale
+            ),
+        )
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
@@ -71,7 +96,8 @@ class SimpleNet(Layer):
         fc = paddle.add(fc, self.softmax_bias)
         projection = paddle.reshape(fc, shape=[-1, self.vocab_size])
         loss = paddle.nn.functional.softmax_with_cross_entropy(
-            logits=projection, label=label, soft_label=False)
+            logits=projection, label=label, soft_label=False
+        )
         loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = paddle.mean(loss, axis=[0])
         loss = paddle.sum(loss)
@@ -102,6 +128,7 @@ def fake_sample_reader():
 class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
 
     def get_model(self):
+<<<<<<< HEAD
         model = SimpleNet(hidden_size=hidden_size,
                           vocab_size=vocab_size,
                           num_steps=num_steps,
@@ -111,9 +138,23 @@ class TestSparseEmbeddingUnusedVars(TestParallelDyGraphRunnerBase):
         train_reader = paddle.batch(fake_sample_reader(),
                                     batch_size=batch_size,
                                     drop_last=True)
+=======
+        model = SimpleNet(
+            hidden_size=hidden_size,
+            vocab_size=vocab_size,
+            num_steps=num_steps,
+            init_scale=init_scale,
+            is_sparse=False,
+        )
 
-        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
-                                         parameters=model.parameters())
+        train_reader = paddle.batch(
+            fake_sample_reader(), batch_size=batch_size, drop_last=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+        optimizer = paddle.optimizer.SGD(
+            learning_rate=0.001, parameters=model.parameters()
+        )
 
         return model, train_reader, optimizer
 

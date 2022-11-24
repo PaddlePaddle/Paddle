@@ -20,6 +20,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 namespace benchmark {
 
 static const char kStartSeparator[] = "{";
@@ -239,5 +240,8 @@ const OpInputConfig* OpTesterConfig::GetInput(const std::string& name) {
 }
 
 }  // namespace benchmark
+=======
+namespace benchmark {}  // namespace benchmark
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace operators
 }  // namespace paddle

@@ -21,9 +21,15 @@ template <typename T>
 class Unpool2dMaxFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -64,11 +70,19 @@ template <class T>
 class Unpool2dMaxGradFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   framework::Tensor* input_grad) {
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const int batch_size = input.dims()[0];
     const int input_height = input.dims()[2];
     const int input_width = input.dims()[3];
@@ -110,9 +124,15 @@ template <typename T>
 class Unpool3dMaxFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   framework::Tensor* output) {
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  phi::DenseTensor* output) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];
@@ -156,11 +176,19 @@ template <class T>
 class Unpool3dMaxGradFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   const framework::Tensor& indices,
                   const framework::Tensor& output,
                   const framework::Tensor& output_grad,
                   framework::Tensor* input_grad) {
+=======
+                  const phi::DenseTensor& input,
+                  const phi::DenseTensor& indices,
+                  const phi::DenseTensor& output,
+                  const phi::DenseTensor& output_grad,
+                  phi::DenseTensor* input_grad) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const int batch_size = input.dims()[0];
     const int input_depth = input.dims()[2];
     const int input_height = input.dims()[3];

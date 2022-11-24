@@ -24,8 +24,10 @@ namespace framework {
 class InterpreterCoreEventGarbageCollector
     : public InterpreterCoreGarbageCollector {
  public:
-  InterpreterCoreEventGarbageCollector();
+  InterpreterCoreEventGarbageCollector(
+      const std::vector<Instruction>& vec_instruction);
   ~InterpreterCoreEventGarbageCollector();
+<<<<<<< HEAD
 
   void Add(Variable* var) override;
 
@@ -40,12 +42,30 @@ class InterpreterCoreEventGarbageCollector
   void Free(GarbageQueue* garbages,
             platform::DeviceEvent* event,
             const platform::DeviceContext* ctx);
+=======
+  void Add(Variable* var, const Instruction& instruction) override;
+
+ private:
+  void Add(Variable* var,
+           platform::DeviceEvent* event,
+           const platform::DeviceContext* ctx);
+  void Add(Garbage garbage,
+           platform::DeviceEvent* event,
+           const platform::DeviceContext* ctx);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   void Free(const Garbage& garbage,
             platform::DeviceEvent* event,
             const platform::DeviceContext* ctx);
 
+  void FreeGarbages();
+
   std::unique_ptr<WorkQueue> queue_;
   paddle::memory::SpinLock spinlock_;
+  std::vector<paddle::platform::DeviceEvent> gc_event_;
+  std::unordered_map<const platform::DeviceContext*,
+                     paddle::platform::DeviceEvent*>
+      events_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -23,8 +23,8 @@ namespace operators {
 
 #define CEIL_DIV(x, y) (((x) + (y)-1) / (y))
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 
 template <class T>
 __global__ void ConcatPartialCUDAKernel(T **in,
@@ -72,8 +72,13 @@ template <typename T>
 class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto in_vars = ctx.MultiInput<Tensor>("X");
     Tensor *out = ctx.Output<Tensor>("Out");
+=======
+    auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
+    Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
@@ -126,7 +131,14 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < in_num; ++i)
       in_data.emplace_back(in_vars[i]->data<T>());
 
+<<<<<<< HEAD
     auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+=======
+    auto tmp_in_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        in_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_in_array->ptr(),
                  platform::CPUPlace(),
@@ -150,7 +162,7 @@ template <typename T>
 class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto *out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<LoDTensor>("X");
     auto outs = ctx.MultiOutput<LoDTensor>(framework::GradVarName("X"));
 
@@ -202,7 +214,14 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < in_num; ++i) {
       out_data.emplace_back(outs[i]->data<T>());
     }
+<<<<<<< HEAD
     auto tmp_out_array = memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
+=======
+    auto tmp_out_array = memory::Alloc(
+        dev_ctx.GetPlace(),
+        out_data.size() * sizeof(T *),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_out_array->ptr(),

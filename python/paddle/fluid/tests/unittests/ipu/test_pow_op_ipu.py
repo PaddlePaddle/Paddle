@@ -44,10 +44,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
         out = paddle.fluid.layers.pow(x, **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        out = paddle.pow(x, **self.attrs)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -69,11 +76,11 @@ class TestCase1(TestBase):
 
         self.feed_fp32 = {
             "x": data1.astype(np.float32),
-            "y": data2.astype(np.float32)
+            "y": data2.astype(np.float32),
         }
         self.feed_fp16 = {
             "x": data1.astype(np.float16),
-            "y": data2.astype(np.float16)
+            "y": data2.astype(np.float16),
         }
 
     def set_op_attrs(self):
@@ -81,6 +88,7 @@ class TestCase1(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -88,6 +96,15 @@ class TestCase1(TestBase):
                                     shape=self.feed_shape[1],
                                     dtype='float32')
         out = paddle.fluid.layers.pow(x, factor=factor, **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        factor = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype='float32'
+        )
+        out = paddle.pow(x, factor, **self.attrs)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fetch_list = [out.name]
 
 

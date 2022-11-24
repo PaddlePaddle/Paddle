@@ -17,6 +17,10 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/full_kernel.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 #include "paddle/phi/kernels/gpu/instance_norm_utils.h"
@@ -143,11 +147,37 @@ void InstanceNormKernel(const Context &dev_ctx,
 
   auto handle = dev_ctx.cudnn_handle();
 
+<<<<<<< HEAD
   phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
   dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
   dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
   functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
   functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+=======
+  DenseTensor saved_mean_tmp, saved_variance_tmp;
+  phi::funcs::SetConstant<GPUContext, BatchNormParamType<T>> functor;
+  if (saved_mean) {
+    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
+    functor(dev_ctx, saved_mean, static_cast<BatchNormParamType<T>>(0));
+  } else {
+    saved_mean_tmp = phi::Full<BatchNormParamType<T>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
+  }
+  if (saved_variance) {
+    dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+    functor(dev_ctx, saved_variance, static_cast<BatchNormParamType<T>>(0));
+  } else {
+    saved_variance_tmp = phi::Full<BatchNormParamType<T>>(
+        dev_ctx, {NxC}, static_cast<BatchNormParamType<T>>(0));
+  }
+
+  auto *saved_mean_data = saved_mean
+                              ? saved_mean->data<BatchNormParamType<T>>()
+                              : saved_mean_tmp.data<BatchNormParamType<T>>();
+  auto *saved_variance_data =
+      saved_variance ? saved_variance->data<BatchNormParamType<T>>()
+                     : saved_variance_tmp.data<BatchNormParamType<T>>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 #ifdef PADDLE_WITH_HIP
   PADDLE_ENFORCE_GPU_SUCCESS(
@@ -171,10 +201,15 @@ void InstanceNormKernel(const Context &dev_ctx,
           nullptr,
           nullptr,
           epsilon,
+<<<<<<< HEAD
           static_cast<void *>(
               saved_mean->template data<BatchNormParamType<T>>()),
           static_cast<void *>(
               saved_variance->template data<BatchNormParamType<T>>())));
+=======
+          static_cast<void *>(saved_mean_data),
+          static_cast<void *>(saved_variance_data)));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   PADDLE_ENFORCE_GPU_SUCCESS(
       paddle::platform::dynload::miopenDestroyTensorDescriptor(data_desc_));
@@ -198,8 +233,13 @@ void InstanceNormKernel(const Context &dev_ctx,
           nullptr,
           nullptr,
           epsilon,
+<<<<<<< HEAD
           saved_mean->template data<BatchNormParamType<T>>(),
           saved_variance->template data<BatchNormParamType<T>>()));
+=======
+          saved_mean_data,
+          saved_variance_data));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   PADDLE_ENFORCE_GPU_SUCCESS(
       paddle::platform::dynload::cudnnDestroyTensorDescriptor(data_desc_));

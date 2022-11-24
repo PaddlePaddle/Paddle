@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest, check_out_dtype
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+from op_test import OpTest
 
 
 class TestPadConstantLikeOp(OpTest):
@@ -28,16 +24,25 @@ class TestPadConstantLikeOp(OpTest):
         self.op_type = "pad_constant_like"
         self.inputs = {
             'X': np.random.random(self.x_shape).astype("float64"),
-            'Y': np.random.random(self.y_shape).astype("float64")
+            'Y': np.random.random(self.y_shape).astype("float64"),
         }
         self.attrs = {}
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.pad(self.inputs['Y'],
                    self.paddings,
                    mode='constant',
                    constant_values=self.pad_value)
+=======
+            'Out': np.pad(
+                self.inputs['Y'],
+                self.paddings,
+                mode='constant',
+                constant_values=self.pad_value,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def test_check_output(self):
@@ -71,6 +76,7 @@ class TestCase2(TestPadConstantLikeOp):
         self.pad_value = 0.5
 
 
+<<<<<<< HEAD
 class TestPadConstantLikeOpError(unittest.TestCase):
 
     def test_errors(self):
@@ -106,5 +112,7 @@ class TestOutDtype(unittest.TestCase):
                         pad_value=0.)
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 if __name__ == '__main__':
     unittest.main()

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -49,7 +47,7 @@ class TestClipByNormOp(OpTest):
         self.check_output(check_eager=True)
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1.0
 
     def init_dtype(self):
@@ -59,7 +57,7 @@ class TestClipByNormOp(OpTest):
 class TestCase1(TestClipByNormOp):
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 
@@ -86,15 +84,21 @@ class TestClipByNormOpFp16(TestClipByNormOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
+<<<<<<< HEAD
                 self.check_output_with_place(place,
                                              atol=0.001,
                                              check_eager=True)
+=======
+                self.check_output_with_place(
+                    place, atol=0.001, check_eager=True
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
 
     def initTestCase(self):
-        self.shape = (100, )
+        self.shape = (100,)
         self.max_norm = 1e20
 
 
@@ -130,10 +134,16 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         out_selected_rows = scope.var('Out').get_selected_rows()
 
         # run clip_by_norm_op
+<<<<<<< HEAD
         clip_by_norm_op = fluid.op.Operator("clip_by_norm",
                                             max_norm=self.max_norm,
                                             X='X',
                                             Out='Out')
+=======
+        clip_by_norm_op = fluid.op.Operator(
+            "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         clip_by_norm_op.run(scope, place)
 
         # check output
@@ -148,11 +158,21 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
             output = self.max_norm * y_np / norm
         else:
             output = y_np
+<<<<<<< HEAD
         self.assertTrue(
             np.allclose(np.array(out_tensor),
                         output,
                         atol=1e-5,
                         equal_nan=False))
+=======
+        np.testing.assert_allclose(
+            np.array(out_tensor),
+            output,
+            rtol=1e-05,
+            atol=1e-05,
+            equal_nan=False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_clip_by_norm_with_selected_ros(self):
         places = [core.CPUPlace()]

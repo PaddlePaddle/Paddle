@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 class DpsgdOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -116,7 +116,7 @@ class DpsgdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Dpsgd Optimizer.
 
-We implement the Dpsgd optimizer according to CCS16 paper - 
+We implement the Dpsgd optimizer according to CCS16 paper -
 Deep Learning with Differential Privacy.
 
 Dpsgd updates:

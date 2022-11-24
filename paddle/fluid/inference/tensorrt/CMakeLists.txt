@@ -13,9 +13,23 @@ else()
     DEPS ${GLOB_OPERATOR_DEPS} framework_proto device_context)
 endif()
 nv_library(
+<<<<<<< HEAD
   tensorrt_op_teller
   SRCS op_teller.cc
   DEPS framework_proto device_context)
+=======
+  tensorrt_dynamic_shape_infermeta_factory
+  SRCS dynamic_shape_infermeta.cc
+  DEPS framework_proto)
+nv_library(
+  tensorrt_plugin_arg_mapping_context
+  SRCS plugin_arg_mapping_context.cc
+  DEPS framework_proto)
+nv_library(
+  tensorrt_op_teller
+  SRCS op_teller.cc
+  DEPS framework_proto device_context tensorrt_dynamic_shape_infermeta_factory)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 nv_test(
   test_tensorrt
   SRCS test_tensorrt.cc
@@ -24,6 +38,13 @@ nv_test(
   test_tensorrt_engine
   SRCS test_engine.cc test_dynamic_engine.cc
   DEPS dynload_cuda tensorrt_engine tensorrt_plugin)
+<<<<<<< HEAD
+=======
+nv_test(
+  test_arg_mapping_context
+  SRCS test_arg_mapping_context.cc
+  DEPS framework_proto tensorrt_plugin_arg_mapping_context)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

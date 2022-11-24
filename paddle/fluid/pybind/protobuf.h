@@ -34,7 +34,10 @@ void BindProgramDesc(pybind11::module* m);
 void BindBlockDesc(pybind11::module* m);
 void BindVarDsec(pybind11::module* m);
 void BindOpDesc(pybind11::module* m);
+<<<<<<< HEAD
 void BindProcessMeshDesc(pybind11::module* m);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 void BindJitProperty(pybind11::module* m);
 
 }  // namespace pybind

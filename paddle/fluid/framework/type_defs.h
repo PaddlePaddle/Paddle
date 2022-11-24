@@ -34,6 +34,7 @@ class OperatorBase;
 class OpDesc;
 class InferShapeContext;
 class InferVarTypeContext;
+class VarDesc;
 class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
@@ -55,7 +56,14 @@ using Attribute = paddle::variant<paddle::blank,
                                   int64_t,
                                   std::vector<BlockDesc*>,
                                   std::vector<int64_t>,
+<<<<<<< HEAD
                                   std::vector<double>>;
+=======
+                                  std::vector<double>,
+                                  VarDesc*,
+                                  std::vector<VarDesc*>,
+                                  double>;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -73,6 +81,11 @@ using NPUAttribute = paddle::variant<paddle::blank,
                                      std::vector<BlockDesc*>,
                                      std::vector<int64_t>,
                                      std::vector<double>,
+<<<<<<< HEAD
+=======
+                                     VarDesc*,
+                                     std::vector<VarDesc*>,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                                      std::vector<std::vector<int64_t>>>;
 
 using NPUAttributeMap = std::unordered_map<std::string, NPUAttribute>;

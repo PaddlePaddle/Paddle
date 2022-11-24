@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-import paddle
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -28,8 +24,9 @@ class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
-        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
-        ) else "float64"
+        self.dtype = (
+            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+        )
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype(self.dtype)}
         self.attrs = {'expand_times': self.expand_times}
@@ -88,13 +85,15 @@ class TestExpandOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
-        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
-        ) else "float64"
+        self.dtype = (
+            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+        )
 
         expand_times_tensor = []
         for index, ele in enumerate(self.expand_times):
-            expand_times_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            expand_times_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype(self.dtype),
@@ -138,8 +137,9 @@ class TestExpandOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "expand"
         self.init_data()
-        self.dtype = "float32" if fluid.core.is_compiled_with_rocm(
-        ) else "float64"
+        self.dtype = (
+            "float32" if fluid.core.is_compiled_with_rocm() else "float64"
+        )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype(self.dtype),
@@ -213,6 +213,7 @@ class TestExpandOpInt64_t(OpTest):
         self.check_output()
 
 
+<<<<<<< HEAD
 class TestExpandError(unittest.TestCase):
 
     def test_errors(self):
@@ -278,5 +279,7 @@ class TestExpandDygraphAPI(unittest.TestCase):
                 np.array_equal(c.numpy(), np.tile(a.numpy(), [2, 3])))
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 if __name__ == "__main__":
     unittest.main()

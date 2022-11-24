@@ -19,11 +19,19 @@ template <typename T>
 class ScatterMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<Tensor>("X");
     auto* indices = ctx.Input<Tensor>("Ids");
     auto* updates = ctx.Input<Tensor>("Updates");
     bool overwrite = ctx.Attr<bool>("overwrite");
     auto* out = ctx.Output<Tensor>("Out");
+=======
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* indices = ctx.Input<phi::DenseTensor>("Ids");
+    auto* updates = ctx.Input<phi::DenseTensor>("Updates");
+    bool overwrite = ctx.Attr<bool>("overwrite");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     MLUCnnlTensorDesc x_desc(*x);

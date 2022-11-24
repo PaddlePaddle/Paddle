@@ -41,6 +41,7 @@ DECLARE_INPLACE_OP_INFERER(AllreduceMaxInplaceInferer, {"X", "Out"});
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(
     c_allreduce_max,
     ops::CAllReduceOp,
@@ -48,6 +49,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::AllreduceMaxInplaceInferer)
+=======
+REGISTER_OP_WITHOUT_GRADIENT(c_allreduce_max,
+                             ops::CAllReduceOp,
+                             ops::CAllReduceMaxOpMaker,
+                             ops::AllreduceMaxInplaceInferer)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 REGISTER_OP_CPU_KERNEL(c_allreduce_max,
                        ops::CAllReduceOpCPUKernel<ops::kRedMax, float>,

@@ -22,8 +22,13 @@ template <typename T>
 class MeshgridMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+=======
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_EQ(
         (ins.size() > 1) && (ins.size() < 7),
         true,

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import unittest
 from functools import partial
 import numpy as np
@@ -27,6 +24,7 @@ paddle.enable_static()
 SEED = 2020
 
 
+<<<<<<< HEAD
 def fake_imdb_reader(word_dict_size,
                      sample_num,
                      lower_seq_len=100,
@@ -44,6 +42,26 @@ def fake_imdb_reader(word_dict_size,
             label = np.random.random_integers(low=0,
                                               high=class_dim - 1,
                                               size=[1]).astype('int64')[0]
+=======
+def fake_imdb_reader(
+    word_dict_size,
+    sample_num,
+    lower_seq_len=100,
+    upper_seq_len=200,
+    class_dim=2,
+):
+    def __reader__():
+        for _ in range(sample_num):
+            length = np.random.random_integers(
+                low=lower_seq_len, high=upper_seq_len, size=[1]
+            )[0]
+            ids = np.random.random_integers(
+                low=0, high=word_dict_size - 1, size=[length]
+            ).astype('int64')
+            label = np.random.random_integers(
+                low=0, high=class_dim - 1, size=[1]
+            ).astype('int64')[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             yield ids, label
 
     return __reader__
@@ -65,24 +83,32 @@ def prog_scope_guard(main_prog, startup_prog):
                 yield
 
 
-def bow_net(data,
-            label,
-            dict_dim,
-            is_sparse=False,
-            emb_dim=128,
-            hid_dim=128,
-            hid_dim2=96,
-            class_dim=2):
+def bow_net(
+    data,
+    label,
+    dict_dim,
+    is_sparse=False,
+    emb_dim=128,
+    hid_dim=128,
+    hid_dim2=96,
+    class_dim=2,
+):
     """
     BOW net
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
+<<<<<<< HEAD
     emb = fluid.layers.embedding(input=data,
                                  is_sparse=is_sparse,
                                  size=[dict_dim, emb_dim])
+=======
+    emb = fluid.layers.embedding(
+        input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-    bow_tanh = fluid.layers.tanh(bow)
+    bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
     fc_2 = fluid.layers.fc(input=fc_1, size=hid_dim2, act="tanh")
     prediction = fluid.layers.fc(input=[fc_2], size=class_dim, act="softmax")
@@ -105,7 +131,7 @@ class TestWeightDecay(unittest.TestCase):
         reader = fake_imdb_reader(self.word_dict_len, batch_size * 100)
         reader = paddle.batch(reader, batch_size=batch_size)()
         self.train_data = [next(reader) for _ in range(3)]
-        self.learning_rate = .5
+        self.learning_rate = 0.5
 
     def run_program(self, place, feed_list):
         exe = fluid.Executor(place)
@@ -117,9 +143,9 @@ class TestWeightDecay(unittest.TestCase):
 
         param_sum = []
         for data in self.train_data:
-            out = exe.run(main_prog,
-                          feed=feeder.feed(data),
-                          fetch_list=param_list)
+            out = exe.run(
+                main_prog, feed=feeder.feed(data), fetch_list=param_list
+            )
             p_sum = 0
             for v in out:
                 p_sum += np.sum(np.abs(v))
@@ -131,17 +157,31 @@ class TestWeightDecay(unittest.TestCase):
         startup_prog = fluid.framework.Program()
 
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
+<<<<<<< HEAD
             data = fluid.layers.data(name="words",
                                      shape=[1],
                                      dtype="int64",
                                      lod_level=1)
+=======
+            data = fluid.layers.data(
+                name="words", shape=[1], dtype="int64", lod_level=1
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
             avg_cost = model(data, label, self.word_dict_len)
             AdamW = fluid.contrib.extend_with_decoupled_weight_decay(
-                fluid.optimizer.Adam)
+                fluid.optimizer.Adam
+            )
 
+<<<<<<< HEAD
             optimizer = AdamW(learning_rate=self.learning_rate,
                               weight_decay=self.learning_rate)
+=======
+            optimizer = AdamW(
+                learning_rate=self.learning_rate,
+                weight_decay=self.learning_rate,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])
@@ -153,10 +193,16 @@ class TestWeightDecay(unittest.TestCase):
         startup_prog = fluid.framework.Program()
 
         with prog_scope_guard(main_prog=main_prog, startup_prog=startup_prog):
+<<<<<<< HEAD
             data = fluid.layers.data(name="words",
                                      shape=[1],
                                      dtype="int64",
                                      lod_level=1)
+=======
+            data = fluid.layers.data(
+                name="words", shape=[1], dtype="int64", lod_level=1
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
             avg_cost = model(data, label, self.word_dict_len)
@@ -165,12 +211,20 @@ class TestWeightDecay(unittest.TestCase):
 
             params_grads = optimizer.backward(avg_cost)
 
-            param_list = [(var, var * self.learning_rate)
-                          for var in main_prog.block(0).all_parameters()]
+            param_list = [
+                (var, var * self.learning_rate)
+                for var in main_prog.block(0).all_parameters()
+            ]
 
             for params in param_list:
+<<<<<<< HEAD
                 updated_p = fluid.layers.elementwise_sub(x=params[0],
                                                          y=params[1])
+=======
+                updated_p = fluid.layers.elementwise_sub(
+                    x=params[0], y=params[1]
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 fluid.layers.assign(input=updated_p, output=params[0])
 
             optimizer.apply_optimize(avg_cost, startup_prog, params_grads)
@@ -185,6 +239,7 @@ class TestWeightDecay(unittest.TestCase):
             param_sum2 = self.check_weight_decay2(place, model)
 
             for i in range(len(param_sum1)):
+<<<<<<< HEAD
                 self.assertTrue(
                     np.allclose(param_sum1[i], param_sum2[i]),
                     "Current place: {}, i: {}, sum1: {}, sum2: {}".format(
@@ -192,6 +247,23 @@ class TestWeightDecay(unittest.TestCase):
                         [~np.isclose(param_sum1[i], param_sum2[i])],
                         param_sum2[i]
                         [~np.isclose(param_sum1[i], param_sum2[i])]))
+=======
+                np.testing.assert_allclose(
+                    param_sum1[i],
+                    param_sum2[i],
+                    rtol=1e-05,
+                    err_msg='Current place: {}, i: {}, sum1: {}, sum2: {}'.format(
+                        place,
+                        i,
+                        param_sum1[i][
+                            ~np.isclose(param_sum1[i], param_sum2[i])
+                        ],
+                        param_sum2[i][
+                            ~np.isclose(param_sum1[i], param_sum2[i])
+                        ],
+                    ),
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

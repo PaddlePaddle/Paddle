@@ -16,8 +16,12 @@
 
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/math/im2col.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -34,9 +38,13 @@ void UnfoldKernel(const Context& ctx,
   const int batch_size = static_cast<int>(x.dims()[0]);
   ctx.template Alloc<T>(out);
 
+<<<<<<< HEAD
   paddle::operators::math::
       Im2ColFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
           im2col;
+=======
+  phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kCFO, Context, T> im2col;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   const auto& x_dims = x.dims();
 
   int out_height = phi::funcs::CalcOutputSize(x_dims[2],

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 
@@ -46,20 +44,23 @@ class TestLookupTableFuseOp(unittest.TestCase):
             persistable=True,
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            dtype="float32")
+            dtype="float32",
+        )
 
         ids = init_program.global_block().create_var(
             name="Ids",
             persistable=True,
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[100],
-            dtype="int64")
+            dtype="int64",
+        )
 
         output = init_program.global_block().create_var(
             name="output",
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[100, 8],
-            dtype="float32")
+            dtype="float32",
+        )
 
         metas = []
         metas.append(
@@ -73,8 +74,10 @@ class TestLookupTableFuseOp(unittest.TestCase):
             type="lookup_sparse_table_init",
             inputs=None,
             outputs=None,
-            attrs={"large_scale_metas": metas})
+            attrs={"large_scale_metas": metas},
+        )
 
+<<<<<<< HEAD
         init_program.global_block().append_op(type="lookup_sparse_table_read",
                                               inputs={"Ids": ids},
                                               outputs={"Out": output},
@@ -94,6 +97,29 @@ class TestLookupTableFuseOp(unittest.TestCase):
                                                   "init": True,
                                                   "value_names": ["Param"],
                                               })
+=======
+        init_program.global_block().append_op(
+            type="lookup_sparse_table_read",
+            inputs={"Ids": ids},
+            outputs={"Out": output},
+            attrs={
+                "tablename": "embedding_1.block0",
+                "init": True,
+                "value_names": ["Param"],
+            },
+        )
+
+        init_program.global_block().append_op(
+            type="lookup_sparse_table_read",
+            inputs={"Ids": ids},
+            outputs={"Out": output},
+            attrs={
+                "tablename": "embedding_2.block0",
+                "init": True,
+                "value_names": ["Param"],
+            },
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         executor = fluid.Executor(place)
         executor.run(init_program)
@@ -101,9 +127,11 @@ class TestLookupTableFuseOp(unittest.TestCase):
         training_program = fluid.Program()
 
         scope.var('Beta1Pow').get_tensor().set(
-            np.array([0]).astype("float32"), place)
+            np.array([0]).astype("float32"), place
+        )
         scope.var('Beta2Pow').get_tensor().set(
-            np.array([0]).astype("float32"), place)
+            np.array([0]).astype("float32"), place
+        )
 
         rows = [0, 1, 2, 3, 4, 5, 6]
         row_numel = 8
@@ -121,28 +149,32 @@ class TestLookupTableFuseOp(unittest.TestCase):
             persistable=True,
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            dtype="float32")
+            dtype="float32",
+        )
 
         grads = training_program.global_block().create_var(
             name="Grad",
             persistable=True,
             type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
             shape=[100, 8],
-            dtype="float32")
+            dtype="float32",
+        )
 
         beta1 = training_program.global_block().create_var(
             name="Beta1Pow",
             persistable=True,
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            dtype="float32")
+            dtype="float32",
+        )
 
         beta2 = training_program.global_block().create_var(
             name="Beta2Pow",
             persistable=True,
             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
             shape=[1],
-            dtype="float32")
+            dtype="float32",
+        )
 
         training_program.global_block().append_op(
             type="lookup_sparse_table_fuse_adam",
@@ -152,27 +184,37 @@ class TestLookupTableFuseOp(unittest.TestCase):
                 "Beta1Pow": beta1,
                 "Beta2Pow": beta2,
             },
+<<<<<<< HEAD
             outputs={
                 "Beta1PowOut": beta1,
                 "Beta2PowOut": beta2
             },
+=======
+            outputs={"Beta1PowOut": beta1, "Beta2PowOut": beta2},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_1.block0",
                 "value_names": ["Param", "Moment1", "Moment2"],
-            })
+            },
+        )
 
         training_program.global_block().append_op(
             type="lookup_sparse_table_fuse_sgd",
+<<<<<<< HEAD
             inputs={
                 "Grad": grads,
                 "LearningRate": lr
             },
+=======
+            inputs={"Grad": grads, "LearningRate": lr},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             attrs={
                 "is_entry": False,
                 "tablename": "embedding_2.block0",
                 "value_names": ["Param"],
-            })
+            },
+        )
 
         executor.run(training_program)
 

@@ -22,7 +22,6 @@ else:
     os.environ['CUDA_VISIBLE_DEVICES'] = cuda_visible_devices.split(',')[0]
 import paddle
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.fluid as fluid
 import unittest
 import paddle.nn as nn
@@ -31,7 +30,7 @@ import paddle.nn as nn
 class LinearNet(nn.Layer):
 
     def __init__(self):
-        super(LinearNet, self).__init__()
+        super().__init__()
         self._linear1 = nn.Linear(10, 10)
         self._linear2 = nn.Linear(10, 1)
 
@@ -53,8 +52,14 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
         layer = LinearNet()
         loss_fn = nn.MSELoss()
+<<<<<<< HEAD
         adam = paddle.optimizer.Adam(learning_rate=0.001,
                                      parameters=layer.parameters())
+=======
+        adam = paddle.optimizer.Adam(
+            learning_rate=0.001, parameters=layer.parameters()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         adam = fleet.distributed_optimizer(adam)
         dp_layer = fleet.distributed_model(layer)
@@ -76,7 +81,11 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64')
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def test_single_run_collective_minimize(self):
@@ -94,8 +103,16 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
         place = fluid.CUDAPlace(
             0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        place = (
+            fluid.CUDAPlace(0)
+            if paddle.fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         exe = fluid.Executor(place)
         exe.run(paddle.static.default_startup_program())
@@ -113,7 +130,11 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64')
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def test_single_run_ps_minimize(self):
@@ -140,11 +161,15 @@ class TestFleetBaseSingleRunPS(unittest.TestCase):
             exe.run(paddle.static.default_startup_program())
             step = 10
             for i in range(step):
-                cost_val = exe.run(program=fluid.default_main_program(),
-                                   feed=self.gen_data(),
-                                   fetch_list=[avg_cost.name])
-                print("worker_index: %d, step%d cost = %f" %
-                      (fleet.worker_index(), i, cost_val[0]))
+                cost_val = exe.run(
+                    program=fluid.default_main_program(),
+                    feed=self.gen_data(),
+                    fetch_list=[avg_cost.name],
+                )
+                print(
+                    "worker_index: %d, step%d cost = %f"
+                    % (fleet.worker_index(), i, cost_val[0])
+                )
 
 
 if __name__ == "__main__":

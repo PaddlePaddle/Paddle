@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.framework import _test_eager_guard
@@ -29,9 +26,17 @@ class TestAdamaxAPI(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
+<<<<<<< HEAD
         adam = paddle.optimizer.Adamax(learning_rate=0.01,
                                        parameters=linear.parameters(),
                                        weight_decay=0.01)
+=======
+        adam = paddle.optimizer.Adamax(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            weight_decay=0.01,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = linear(a)
         out.backward()
         adam.step()
@@ -56,11 +61,21 @@ class TestAdamaxAPI(unittest.TestCase):
                 loss = paddle.mean(conv)
                 beta1 = 0.85
                 beta2 = 0.95
+<<<<<<< HEAD
                 opt = paddle.optimizer.Adamax(learning_rate=1e-5,
                                               beta1=beta1,
                                               beta2=beta2,
                                               weight_decay=0.01,
                                               epsilon=1e-8)
+=======
+                opt = paddle.optimizer.Adamax(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 opt.minimize(loss)
 
         exe.run(startup)
@@ -83,6 +98,7 @@ class TestAdamaxAPIGroup(TestAdamaxAPI):
         linear_1 = paddle.nn.Linear(13, 5)
         linear_2 = paddle.nn.Linear(5, 3)
         # This can be any optimizer supported by dygraph.
+<<<<<<< HEAD
         adam = paddle.optimizer.Adamax(learning_rate=0.01,
                                        parameters=[{
                                            'params':
@@ -98,6 +114,21 @@ class TestAdamaxAPIGroup(TestAdamaxAPI):
                                            0.99
                                        }],
                                        weight_decay=0.1)
+=======
+        adam = paddle.optimizer.Adamax(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'beta1': 0.1,
+                    'beta2': 0.99,
+                },
+            ],
+            weight_decay=0.1,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = linear_1(a)
         out = linear_2(out)
         out.backward()

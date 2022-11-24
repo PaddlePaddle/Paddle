@@ -13,19 +13,18 @@
 # limitations under the License.
 
 from . import core
-from .framework import dygraph_only
-from paddle import _C_ops
+from .framework import dygraph_only, in_dygraph_mode
+from paddle import _C_ops, _legacy_C_ops
 
 
 @dygraph_only
-def _append_activation_in_dygraph(input,
-                                  act=None,
-                                  use_cudnn=None,
-                                  use_mkldnn=None):
+def _append_activation_in_dygraph(
+    input, act=None, use_cudnn=None, use_mkldnn=None
+):
     """Append activation in dygraph mode.
 
         Args:
-            input: the input variable. 
+            input: the input variable.
             act: activation type
             use_mkldnn: if use mkldnn
             use_cudnn: if use cudnn
@@ -41,7 +40,7 @@ def _append_activation_in_dygraph(input,
     if use_mkldnn:
         attrs += ('use_mkldnn', use_mkldnn)
 
-    act_op = getattr(_C_ops, act)
+    act_op = getattr(_legacy_C_ops, act)
     return act_op(input, *attrs)
 
 
@@ -50,7 +49,7 @@ def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     """Append bias operation in dygraph mode.
 
         Args:
-            input: the input variable. 
+            input: the input variable.
             bias:  the bias to be appended
             axis:  the axis to perform operation
             use_mkldnn: whether to use mkldnn
@@ -60,5 +59,6 @@ def _append_bias_in_dygraph(input, bias=None, axis=1, use_mkldnn=False):
     if bias is None:
         return input
 
-    return _C_ops.elementwise_add(input, bias, 'axis', axis, 'use_mkldnn',
-                                  use_mkldnn)
+    return _legacy_C_ops.elementwise_add(
+        input, bias, 'axis', axis, 'use_mkldnn', use_mkldnn
+    )

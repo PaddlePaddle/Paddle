@@ -25,8 +25,13 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void MatmulActivationMkldnnFusePass::ApplyImpl(Graph* graph) const {
+<<<<<<< HEAD
   auto act_types = paddle::platform::GetSupportedActivations();
   std::vector<std::string> matmul_types = {"matmul"};
+=======
+  auto act_types = phi::funcs::GetSupportedActivations();
+  auto matmul_types = {"matmul", "matmul_v2"};
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   for (const auto& matmul_type : matmul_types)
     for (auto& act_type : act_types) {
@@ -64,7 +69,11 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
     OpDesc* matmul_op = matmul->Op();
     OpDesc* act_op = activation->Op();
 
+<<<<<<< HEAD
     auto attr_map = paddle::platform::GetAttributeMap(act_type);
+=======
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     for (const auto& attrs : attr_map) {
       if (act_op->HasAttr(attrs.first)) {
         matmul_op->SetAttr(attrs.second, act_op->GetAttr(attrs.first));
@@ -87,9 +96,17 @@ void MatmulActivationMkldnnFusePass::FuseMatmulAct(
 
   gpd(graph, handler);
   AddStatis(found_matmul_activation_count);
+<<<<<<< HEAD
   if (!Has("disable_logs") || !Get<bool>("disable_logs")) {
     PrettyLogDetail("---    fused %d matmul with %s activation",
                     found_matmul_activation_count,
+=======
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_matmul_activation_count > 0)) {
+    PrettyLogDetail("---    fused %d %s with %s activation",
+                    found_matmul_activation_count,
+                    matmul_type,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     act_type);
   }
 }
@@ -102,6 +119,14 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .AddInput("Y")
       .IsTensor()
       .End()
+<<<<<<< HEAD
+=======
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .IsTensor()
+      .IsOptional()
+      .End()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .AddOutput("Out")
       .IsTensor()
       .End()
@@ -115,6 +140,31 @@ MatmulActivationMkldnnFusePass::MatmulActivationMkldnnFusePass() {
       .IsType<bool>()
       .End();
 
+<<<<<<< HEAD
+=======
+  AddOpCompat(OpCompat("matmul_v2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddInput(
+          "ResidualData")  // Extra tensor used in matmul+elementwise_add fuse
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("trans_x")
+      .IsType<bool>()
+      .End()
+      .AddAttr("trans_y")
+      .IsType<bool>()
+      .End();
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   AddOpCompat(OpCompat("abs"))
       .AddInput("X")
       .IsTensor()
@@ -267,6 +317,10 @@ REGISTER_PASS_CAPABILITY(matmul_activation_mkldnn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("matmul", 1)
+<<<<<<< HEAD
+=======
+            .EQ("matmul_v2", 0)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)

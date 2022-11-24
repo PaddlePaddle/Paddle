@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import math
 import sys
 
 sys.path.append("../")
@@ -102,11 +99,21 @@ class TestSequenceReshapeOpError(unittest.TestCase):
         self.assertRaises(TypeError, test_variable)
 
         def test_dtype():
+<<<<<<< HEAD
             x1 = fluid.layers.data(name='x1',
                                    shape=[2, 6],
                                    append_batch_size=False,
                                    dtype='float16',
                                    lod_level=1)
+=======
+            x1 = fluid.layers.data(
+                name='x1',
+                shape=[2, 6],
+                append_batch_size=False,
+                dtype='float16',
+                lod_level=1,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             fluid.layers.sequence_reshape(x=x1, new_dim=4)
 
         self.assertRaises(TypeError, test_dtype)

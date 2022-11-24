@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import os
 import time
@@ -21,7 +19,12 @@ import copy
 import subprocess
 import paddle.fluid as fluid
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle.distributed.utils.launch_utils import (
+    find_free_ports,
+    watch_local_trainers,
+    get_cluster,
+    TrainerProc,
+)
 
 
 def get_cluster_from_args(selected_gpus):
@@ -49,17 +52,19 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
-def start_local_trainers(cluster,
-                         pod,
-                         training_script,
-                         eager_mode,
-                         training_script_args,
-                         log_dir=None):
+def start_local_trainers(
+    cluster,
+    pod,
+    training_script,
+    eager_mode,
+    training_script_args,
+    log_dir=None,
+):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -70,7 +75,7 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
 
         if not eager_mode:
@@ -114,11 +119,21 @@ class TestMultipleGpus(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_gpus)
 
+<<<<<<< HEAD
         procs = start_local_trainers(cluster,
                                      pod,
                                      eager_mode=eager_mode,
                                      training_script=target_file_name,
                                      training_script_args=[])
+=======
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            eager_mode=eager_mode,
+            training_script=target_file_name,
+            training_script_args=[],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())

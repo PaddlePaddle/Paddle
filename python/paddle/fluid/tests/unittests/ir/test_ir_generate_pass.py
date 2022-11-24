@@ -36,8 +36,14 @@ def generate_fc_fuse():
 
         def replace(x, w, b):
             fc = ir.PassDesc.OP.fc(Input=x, W=w, Bias=b)
+<<<<<<< HEAD
             fc.Attr("in_num_col_dims").MappedPattern(op="mul",
                                                      name="x_num_col_dims")
+=======
+            fc.Attr("in_num_col_dims").MappedPattern(
+                op="mul", name="x_num_col_dims"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if with_relu:
                 fc.SetAttr("activation_type", "relu")
             return fc
@@ -75,11 +81,13 @@ def multi_add_to_sum_v3():
 
 
 # mul(x, y1), mul(x, y2) => slice(mul(x, concat(y1, y2)))
-@ir.RegisterPass(input_specs={
-    'x': InputSpec([16, 32]),
-    'y1': InputSpec([32, 12]),
-    'y2': InputSpec([32, 48])
-})
+@ir.RegisterPass(
+    input_specs={
+        'x': InputSpec([16, 32]),
+        'y1': InputSpec([32, 12]),
+        'y2': InputSpec([32, 48]),
+    }
+)
 def generate_combine_mul_v1():
 
     def pattern(x, y1, y2):
@@ -242,8 +250,14 @@ class TestGeneratePass(unittest.TestCase):
             pattern_op_dicts = self.convert_ops_to_op_dicts(pass_desc.pattern)
             replace_op_dicts = self.convert_ops_to_op_dicts(pass_desc.replace)
             self.assertEqual(len(pattern_op_dicts.get("mul", [])), 1)
+<<<<<<< HEAD
             self.assertEqual(len(pattern_op_dicts.get("elementwise_add", [])),
                              1)
+=======
+            self.assertEqual(
+                len(pattern_op_dicts.get("elementwise_add", [])), 1
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if with_relu:
                 self.assertEqual(len(pattern_op_dicts.get("relu", [])), 1)
                 pattern_op_num = 3  # relu, ewadd, mul
@@ -285,13 +299,13 @@ class TestGeneratePass(unittest.TestCase):
         feed = {
             "x": np.random.random([10, 10, 10]).astype("float32"),
             "y": np.random.random([10, 10, 10]).astype("float32"),
-            "z": np.random.random([10, 10, 10]).astype("float32")
+            "z": np.random.random([10, 10, 10]).astype("float32"),
         }
         before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(after_program,
-                                 feed=feed,
-                                 fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        after_out = executor.run(
+            after_program, feed=feed, fetch_list=[out.name]
+        )
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_multi_add_to_sum(self):
         paddle.enable_static()
@@ -320,15 +334,25 @@ class TestGeneratePass(unittest.TestCase):
         feed = {
             "x": np.random.random([16, 32]).astype("float32"),
             "y": np.random.random([32, 12]).astype("float32"),
-            "z": np.random.random([32, 48]).astype("float32")
+            "z": np.random.random([32, 48]).astype("float32"),
         }
         before_out1, before_out2 = executor.run(
+<<<<<<< HEAD
             program, feed=feed, fetch_list=[out1.name, out2.name])
         after_out1, after_out2 = executor.run(after_program,
                                               feed=feed,
                                               fetch_list=[out1.name, out2.name])
         self.assertTrue(np.allclose(before_out1, after_out1))
         self.assertTrue(np.allclose(before_out2, after_out2))
+=======
+            program, feed=feed, fetch_list=[out1.name, out2.name]
+        )
+        after_out1, after_out2 = executor.run(
+            after_program, feed=feed, fetch_list=[out1.name, out2.name]
+        )
+        np.testing.assert_allclose(before_out1, after_out1, rtol=1e-05)
+        np.testing.assert_allclose(before_out2, after_out2, rtol=1e-05)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_generate_combine_mul_v2(self):
         helper = ir.RegisterPassHelper([generate_combine_mul_v2()])
@@ -366,10 +390,10 @@ class TestGeneratePass(unittest.TestCase):
         executor.run(startup_program)
         feed = {"x": np.random.random([10, 16, 16]).astype("float32")}
         before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(after_program,
-                                 feed=feed,
-                                 fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        after_out = executor.run(
+            after_program, feed=feed, fetch_list=[out.name]
+        )
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)
 
     def test_generate_simplify_inference(self):
         self.check_generate_simplify_inference("generate_simplify_inference_v1")
@@ -381,12 +405,21 @@ class TestGeneratePass(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
             x = paddle.static.data("x", [3, 64, 120], "float32")
+<<<<<<< HEAD
             gamma = paddle.static.create_parameter(shape=[120],
                                                    dtype="float32",
                                                    is_bias=True)
             beta = paddle.static.create_parameter(shape=[120],
                                                   dtype="float32",
                                                   is_bias=True)
+=======
+            gamma = paddle.static.create_parameter(
+                shape=[120], dtype="float32", is_bias=True
+            )
+            beta = paddle.static.create_parameter(
+                shape=[120], dtype="float32", is_bias=True
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             x_sub_mean = x - paddle.mean(x, axis=-1, keepdim=True)
             std_dev = paddle.mean(x_sub_mean.pow(2), axis=-1, keepdim=True)
@@ -402,7 +435,7 @@ class TestGeneratePass(unittest.TestCase):
         executor.run(startup_program)
         feed = {"x": np.random.random([3, 64, 120]).astype("float32")}
         before_out = executor.run(program, feed=feed, fetch_list=[out.name])
-        after_out = executor.run(after_program,
-                                 feed=feed,
-                                 fetch_list=[out.name])
-        self.assertTrue(np.allclose(before_out, after_out))
+        after_out = executor.run(
+            after_program, feed=feed, fetch_list=[out.name]
+        )
+        np.testing.assert_allclose(before_out, after_out, rtol=1e-05)

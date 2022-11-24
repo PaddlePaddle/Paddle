@@ -22,12 +22,12 @@ import tempfile
 class BufferLayers(paddle.nn.Layer):
 
     def __init__(self, out_channel):
-        super(BufferLayers, self).__init__()
+        super().__init__()
         self.out_channel = out_channel
 
     def forward(self, x):
         mean = paddle.mean(x)
-        if mean < 0.:
+        if mean < 0.0:
             x = x * self._mask()
 
         out = x - mean
@@ -40,11 +40,12 @@ class BufferLayers(paddle.nn.Layer):
 class SequentialNet(paddle.nn.Layer):
 
     def __init__(self, sub_layer, in_channel, out_channel):
-        super(SequentialNet, self).__init__()
+        super().__init__()
         self.layer = paddle.nn.Sequential(
             ('l1', paddle.nn.Linear(in_channel, in_channel)),
             ('l2', paddle.nn.Linear(in_channel, out_channel)),
-            ('l3', sub_layer(out_channel)))
+            ('l3', sub_layer(out_channel)),
+        )
 
     def forward(self, x):
         out = self.layer(x)
@@ -96,9 +97,18 @@ class TestSequential(unittest.TestCase):
         out = self.net(x)
         if to_static:
             load_out = self._test_load(self.net, x)
+<<<<<<< HEAD
             self.assertTrue(np.allclose(load_out, out),
                             msg='load_out is {}\st_out is {}'.format(
                                 load_out, out))
+=======
+            np.testing.assert_allclose(
+                load_out,
+                out,
+                rtol=1e-05,
+                err_msg='load_out is {}\\st_out is {}'.format(load_out, out),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         return out
 
@@ -106,9 +116,20 @@ class TestSequential(unittest.TestCase):
         paddle.jit.set_code_level(100)
         dy_out = self._run(to_static=False)
         st_out = self._run(to_static=True)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dy_out, st_out),
                         msg='dygraph_res is {}\nstatic_res is {}'.format(
                             dy_out, st_out))
+=======
+        np.testing.assert_allclose(
+            dy_out,
+            st_out,
+            rtol=1e-05,
+            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
+                dy_out, st_out
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def _test_load(self, net, x):
         paddle.jit.save(net, self.model_path)
@@ -121,8 +142,9 @@ class TestNestSequential(TestSequential):
 
     def _init_config(self):
         self.net = NestSequentialNet()
-        self.model_path = os.path.join(self.temp_dir.name,
-                                       'nested_sequential_net')
+        self.model_path = os.path.join(
+            self.temp_dir.name, 'nested_sequential_net'
+        )
 
 
 if __name__ == '__main__':

@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import copy
 import textwrap
 from collections import defaultdict
@@ -26,6 +23,7 @@ from collections import defaultdict
 from paddle.utils import gast
 from paddle.fluid import unique_name
 
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_funcDef_node, ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_assign_node, FunctionNameLivenessAnalysis
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import StaticAnalysisVisitor
@@ -35,6 +33,49 @@ from paddle.fluid.dygraph.dygraph_to_static.utils import create_nonlocal_stmt_no
 from paddle.fluid.dygraph.dygraph_to_static.utils import create_get_args_node, create_set_args_node
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
 from paddle.fluid.dygraph.dygraph_to_static.utils import FOR_ITER_INDEX_PREFIX, FOR_ITER_TUPLE_PREFIX, FOR_ITER_TUPLE_INDEX_PREFIX, FOR_ITER_VAR_LEN_PREFIX, FOR_ITER_VAR_NAME_PREFIX, FOR_ITER_ZIP_TO_LIST_PREFIX, FOR_ITER_TARGET_PREFIX, FOR_ITER_ITERATOR_PREFIX
+=======
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    create_funcDef_node,
+    ast_to_source_code,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    create_assign_node,
+    FunctionNameLivenessAnalysis,
+)
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    StaticAnalysisVisitor,
+)
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
+    create_undefined_var,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    create_nonlocal_stmt_nodes,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    create_get_args_node,
+    create_set_args_node,
+)
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    FOR_ITER_INDEX_PREFIX,
+    FOR_ITER_TUPLE_PREFIX,
+    FOR_ITER_TUPLE_INDEX_PREFIX,
+    FOR_ITER_VAR_LEN_PREFIX,
+    FOR_ITER_VAR_NAME_PREFIX,
+    FOR_ITER_ZIP_TO_LIST_PREFIX,
+    FOR_ITER_TARGET_PREFIX,
+    FOR_ITER_ITERATOR_PREFIX,
+)
+from paddle.fluid.dygraph.dygraph_to_static.utils import (
+    GetterSetterHelper,
+    create_name_str,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 TRUE_FUNC_PREFIX = 'true_fn'
 FALSE_FUNC_PREFIX = 'false_fn'
@@ -49,13 +90,18 @@ class IfElseTransformer(BaseTransformer):
     """
 
     def __init__(self, wrapper_root):
-        assert isinstance(
-            wrapper_root, AstNodeWrapper
-        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
-            wrapper_root)
+        assert isinstance(wrapper_root, AstNodeWrapper), (
+            "Type of input node should be AstNodeWrapper, but received %s ."
+            % type(wrapper_root)
+        )
         self.root = wrapper_root.node
         FunctionNameLivenessAnalysis(
+<<<<<<< HEAD
             self.root)  # name analysis of current ast tree.
+=======
+            self.root
+        )  # name analysis of current ast tree.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def transform(self):
         """
@@ -65,6 +111,7 @@ class IfElseTransformer(BaseTransformer):
 
     def visit_If(self, node):
         self.generic_visit(node)
+<<<<<<< HEAD
         new_vars_stmts, true_func_node, false_func_node, get_args_node, set_args_node, return_name_ids = transform_if_else(
             node, self.root)
 
@@ -74,6 +121,32 @@ class IfElseTransformer(BaseTransformer):
 
         return new_vars_stmts + [
             get_args_node, set_args_node, true_func_node, false_func_node
+=======
+        (
+            true_func_node,
+            false_func_node,
+            get_args_node,
+            set_args_node,
+            return_name_ids,
+            push_pop_ids,
+        ) = transform_if_else(node, self.root)
+
+        new_node = create_convert_ifelse_node(
+            return_name_ids,
+            push_pop_ids,
+            node.test,
+            true_func_node,
+            false_func_node,
+            get_args_node,
+            set_args_node,
+        )
+
+        return [
+            get_args_node,
+            set_args_node,
+            true_func_node,
+            false_func_node,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         ] + [new_node]
 
     def visit_Call(self, node):
@@ -91,8 +164,14 @@ class IfElseTransformer(BaseTransformer):
         """
         self.generic_visit(node)
 
+<<<<<<< HEAD
         new_node = create_convert_ifelse_node(None, node.test, node.body,
                                               node.orelse, None, None, True)
+=======
+        new_node = create_convert_ifelse_node(
+            None, None, node.test, node.body, node.orelse, None, None, True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         # Note: A blank line will be added separately if transform gast.Expr
         # into source code. Using gast.Expr.value instead to avoid syntax error
         # in python.
@@ -173,7 +252,12 @@ class NameVisitor(gast.NodeVisitor):
                     # Blocks the vars in `if.body` and only inserts the vars both created in 'if/else' branch
                     # into name_ids.
                     new_name_ids = self._find_new_name_ids(
+<<<<<<< HEAD
                         body_name_ids, else_name_ids)
+=======
+                        body_name_ids, else_name_ids
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     for new_name_id in new_name_ids:
                         before_if_name_ids[new_name_id].append(gast.Store())
 
@@ -188,7 +272,8 @@ class NameVisitor(gast.NodeVisitor):
             self.generic_visit(node)
             return
         blacklist = {'True', 'False', 'None'}
-        if node.id in blacklist: return
+        if node.id in blacklist:
+            return
         if node.id in self._def_func_names:
             return
         if not self._is_call_func_name_node(node):
@@ -207,7 +292,14 @@ class NameVisitor(gast.NodeVisitor):
         # NOTE: We skip to visit names of get_args and set_args, because they contains
         # nonlocal statement such as 'nonlocal x, self' where 'self' should not be
         # parsed as returned value in contron flow.
+<<<<<<< HEAD
         if GET_ARGS_FUNC_PREFIX in node.name or SET_ARGS_FUNC_PREFIX in node.name:
+=======
+        if (
+            GET_ARGS_FUNC_PREFIX in node.name
+            or SET_ARGS_FUNC_PREFIX in node.name
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return
 
         if not self._in_range:
@@ -246,13 +338,18 @@ class NameVisitor(gast.NodeVisitor):
             return False
 
         candidate_name_ids = set(body_name_ids.keys()) & set(
+<<<<<<< HEAD
             else_name_ids.keys())
+=======
+            else_name_ids.keys()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         store_ctx = gast.Store
         new_name_ids = set()
         for name_id in candidate_name_ids:
-            if is_required_ctx(body_name_ids[name_id],
-                               store_ctx) and is_required_ctx(
-                                   else_name_ids[name_id], store_ctx):
+            if is_required_ctx(
+                body_name_ids[name_id], store_ctx
+            ) and is_required_ctx(else_name_ids[name_id], store_ctx):
                 new_name_ids.add(name_id)
 
         return new_name_ids
@@ -264,14 +361,16 @@ class NameVisitor(gast.NodeVisitor):
             parent_node = self.ancestor_nodes[-2]
             if isinstance(parent_node, gast.Call) and parent_node.func == node:
                 # e.g: var_list.append(elem), var_list is also a name_id.
-                should_skip = isinstance(
-                    node, gast.Attribute) and node.attr in white_func_names
+                should_skip = (
+                    isinstance(node, gast.Attribute)
+                    and node.attr in white_func_names
+                )
                 if not should_skip:
                     return True
         return False
 
     def _update_name_ids(self, new_name_ids):
-        for name_id, ctxs in six.iteritems(new_name_ids):
+        for name_id, ctxs in new_name_ids.items():
             self.name_ids[name_id] = ctxs + self.name_ids[name_id]
 
 
@@ -279,6 +378,7 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
     """
     All var in return_name_ids should be in nonlocal_names.
     Moreover, we will always put return_name_ids in front of nonlocal_names.
+<<<<<<< HEAD
     
     For Example:
 
@@ -297,8 +397,69 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
         nonlocal_names.remove(name)
 
     return return_name_ids + nonlocal_names
+=======
+
+    For Example:
+
+        return_name_ids: [x, y]
+        nonlocal_names : [a, y, b, x]
+
+    Return:
+        nonlocal_names : [x, y, a, b]
+    """
+    assert isinstance(return_name_ids, list)
+    for name in return_name_ids:
+        if name not in nonlocal_names:
+            raise ValueError(
+                "Required returned var '{}' must be in 'nonlocal' statement '', but not found.".format(
+                    name
+                )
+            )
+        nonlocal_names.remove(name)
+
+    return return_name_ids + nonlocal_names
 
 
+def transform_if_else(node, root):
+    """
+    Transform ast.If into control flow statement of Paddle static graph.
+    """
+
+    # TODO(liym27): Consider variable like `self.a` modified in if/else node.
+    return_name_ids = sorted(list(node.pd_scope.modified_vars()))
+    push_pop_ids = sorted(list(node.pd_scope.variadic_length_vars()))
+    nonlocal_names = list(return_name_ids)
+    nonlocal_names.sort()
+    # NOTE: All var in return_name_ids should be in nonlocal_names.
+    nonlocal_names = _valid_nonlocal_names(return_name_ids, nonlocal_names)
+
+    # TODO(dev): Need a better way to deal this.
+    # LoopTransformer will create some special vars, which is not visiable by users. so we can sure it's safe to remove them.
+    filter_names = [
+        ARGS_NAME,
+        FOR_ITER_INDEX_PREFIX,
+        FOR_ITER_TUPLE_PREFIX,
+        FOR_ITER_TARGET_PREFIX,
+        FOR_ITER_ITERATOR_PREFIX,
+        FOR_ITER_TUPLE_INDEX_PREFIX,
+        FOR_ITER_VAR_LEN_PREFIX,
+        FOR_ITER_VAR_NAME_PREFIX,
+        FOR_ITER_ZIP_TO_LIST_PREFIX,
+    ]
+
+    def remove_if(x):
+        for name in filter_names:
+            if x.startswith(name):
+                return False
+        return True
+
+    nonlocal_names = list(filter(remove_if, nonlocal_names))
+    return_name_ids = nonlocal_names
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+    nonlocal_stmt_node = create_nonlocal_stmt_nodes(nonlocal_names)
+
+<<<<<<< HEAD
 def transform_if_else(node, root):
     """
     Transform ast.If into control flow statement of Paddle static graph.
@@ -347,16 +508,33 @@ def transform_if_else(node, root):
                                     kw_defaults=None,
                                     kwarg=None,
                                     defaults=[])
+=======
+    empty_arg_node = gast.arguments(
+        args=[],
+        posonlyargs=[],
+        vararg=None,
+        kwonlyargs=[],
+        kw_defaults=None,
+        kwarg=None,
+        defaults=[],
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     true_func_node = create_funcDef_node(
         nonlocal_stmt_node + node.body,
         name=unique_name.generate(TRUE_FUNC_PREFIX),
         input_args=empty_arg_node,
+<<<<<<< HEAD
         return_name_ids=[])
+=======
+        return_name_ids=[],
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     false_func_node = create_funcDef_node(
         nonlocal_stmt_node + node.orelse,
         name=unique_name.generate(FALSE_FUNC_PREFIX),
         input_args=empty_arg_node,
+<<<<<<< HEAD
         return_name_ids=[])
 
     get_args_node = create_get_args_node(nonlocal_names)
@@ -372,11 +550,41 @@ def create_convert_ifelse_node(return_name_ids,
                                get_args_func,
                                set_args_func,
                                is_if_expr=False):
+=======
+        return_name_ids=[],
+    )
+
+    helper = GetterSetterHelper(None, None, nonlocal_names, push_pop_ids)
+    get_args_node = create_get_args_node(helper.union())
+    set_args_node = create_set_args_node(helper.union())
+
+    return (
+        true_func_node,
+        false_func_node,
+        get_args_node,
+        set_args_node,
+        return_name_ids,
+        push_pop_ids,
+    )
+
+
+def create_convert_ifelse_node(
+    return_name_ids,
+    push_pop_ids,
+    pred,
+    true_func,
+    false_func,
+    get_args_func,
+    set_args_func,
+    is_if_expr=False,
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     """
     Create `paddle.jit.dy2static.convert_ifelse(
             pred, true_fn, false_fn, get_args, set_args, return_name_ids)`
     to replace original `python if/else` statement.
     """
+<<<<<<< HEAD
 
     def create_name_str(name_ids):
         """
@@ -388,6 +596,8 @@ def create_convert_ifelse_node(return_name_ids,
         names_str = ["'%s'" % name for name in name_ids]
         return "(%s, )" % ','.join(names_str)
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if is_if_expr:
         true_func_source = "lambda : {}".format(ast_to_source_code(true_func))
         false_func_source = "lambda : {}".format(ast_to_source_code(false_func))
@@ -397,6 +607,7 @@ def create_convert_ifelse_node(return_name_ids,
 
     convert_ifelse_layer = gast.parse(
         '_jst.IfElse('
+<<<<<<< HEAD
         '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids})'
         .format(
             pred=ast_to_source_code(pred),
@@ -407,5 +618,21 @@ def create_convert_ifelse_node(return_name_ids,
             set_args=set_args_func.name
             if not is_if_expr else 'lambda args: None',
             return_name_ids=create_name_str(return_name_ids))).body[0]
+=======
+        '{pred}, {true_fn}, {false_fn}, {get_args}, {set_args}, {return_name_ids}, push_pop_names={push_pop_ids})'.format(
+            pred=ast_to_source_code(pred),
+            true_fn=true_func_source,
+            false_fn=false_func_source,
+            get_args=get_args_func.name
+            if not is_if_expr
+            else 'lambda: None',  # TODO: better way to deal with this
+            set_args=set_args_func.name
+            if not is_if_expr
+            else 'lambda args: None',
+            return_name_ids=create_name_str(return_name_ids),
+            push_pop_ids=create_name_str(push_pop_ids),
+        )
+    ).body[0]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     return convert_ifelse_layer

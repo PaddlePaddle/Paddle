@@ -16,9 +16,7 @@ import tempfile
 import unittest
 import os
 import sys
-import shutil
 import subprocess
-from paddle.distributed.fleet.launch_utils import run_with_coverage
 
 
 class TestHighOrderGrad(unittest.TestCase):
@@ -33,10 +31,26 @@ class TestHighOrderGrad(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = [sys.executable, "-u"] + coverage_args + [
             "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
             tmp_dir.name, launch_model_path
         ]
+=======
+        cmd = (
+            [sys.executable, "-u"]
+            + coverage_args
+            + [
+                "-m",
+                "paddle.distributed.launch",
+                "--devices",
+                "0,1",
+                "--log_dir",
+                tmp_dir.name,
+                launch_model_path,
+            ]
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         process = subprocess.Popen(cmd)
         process.wait()

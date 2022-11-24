@@ -12,19 +12,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/affine_grid_op.h"
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include <memory>
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/infershape_utils.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/backward.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
 
 template <typename T>
@@ -46,6 +58,9 @@ struct Linspace<phi::CPUContext, T> {
     }
   }
 };
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
@@ -88,6 +103,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
               output_shape_dims.size(),
               output_shape_dims));
     } else {
+<<<<<<< HEAD
       PADDLE_ENFORCE_EQ(
           output_shape.size(),
           4,
@@ -113,24 +129,78 @@ class AffineGridOp : public framework::OperatorWithKernel {
             "But received third dimesion=[%d], dimesions=[%s]",
             theta_dims[2],
             theta_dims));
+=======
+      PADDLE_ENFORCE_GE(output_shape.size(),
+                        4,
+                        platform::errors::InvalidArgument(
+                            "The size of attribute 'output_shape' in "
+                            "AffineGridOp should be >= "
+                            "4. But received output_shape's size=[%d].",
+                            output_shape.size()));
+      PADDLE_ENFORCE_LE(output_shape.size(),
+                        5,
+                        platform::errors::InvalidArgument(
+                            "The size of attribute 'output_shape' in "
+                            "AffineGridOp should be <= "
+                            "5. But received output_shape's size=[%d].",
+                            output_shape.size()));
+    }
 
-    // N * H * W * 2
-    ctx->SetOutputDim("Output", phi::make_ddim({theta_dims[0], -1, -1, 2}));
+    PADDLE_ENFORCE_GE(theta_dims[1],
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The second dimesion of input 'theta' in "
+                          "AffineGridOp should be >= 2. "
+                          "But received second dimesion=[%d], dimesions=[%s]",
+                          theta_dims[1],
+                          theta_dims));
+    PADDLE_ENFORCE_LE(theta_dims[1],
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The second dimesion of input 'theta' in "
+                          "AffineGridOp should be <= 3. "
+                          "But received second dimesion=[%d], dimesions=[%s]",
+                          theta_dims[1],
+                          theta_dims));
+    PADDLE_ENFORCE_GE(theta_dims[2],
+                      3,
+                      platform::errors::InvalidArgument(
+                          "The third dimesion of input 'theta' in AffineGridOp "
+                          "should be >= 3. "
+                          "But received third dimesion=[%d], dimesions=[%s]",
+                          theta_dims[2],
+                          theta_dims));
+    PADDLE_ENFORCE_LE(theta_dims[2],
+                      4,
+                      platform::errors::InvalidArgument(
+                          "The third dimesion of input 'theta' in AffineGridOp "
+                          "should be <= 4. "
+                          "But received third dimesion=[%d], dimesions=[%s]",
+                          theta_dims[2],
+                          theta_dims));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+    if (output_shape.size() == 4) {
+      // N * H * W * 2
+      ctx->SetOutputDim("Output", phi::make_ddim({theta_dims[0], -1, -1, 2}));
+    } else {
+      // N * D * H * W * 3
+      ctx->SetOutputDim("Output",
+                        phi::make_ddim({theta_dims[0], -1, -1, -1, 3}));
+    }
     ctx->ShareLoD("Theta", "Output");
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::CanCUDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kCUDNN;
-    }
-#endif
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
+<<<<<<< HEAD
     return framework::OpKernelType(
         data_type, ctx.GetPlace(), framework::DataLayout::kAnyLayout, library);
+=======
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 
@@ -146,11 +216,6 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The shape of target image with format [N, C, H, W].")
         .AsDispensable();
     AddOutput("Output", "(Tensor) Output Tensor with shape [N, H, W, 2].");
-    AddAttr<bool>(
-        "use_cudnn",
-        "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(true)
-        .AsExtra();
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
                   "and output.")
@@ -170,7 +235,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
                   [x_14, x_15, x_16]]
                  [[x_21, x_22, x_23]
                   [x_24, x_25, x_26]]]
-    
+
         OutputShape = [2, 3, 5, 5]
 
     Step 1:
@@ -178,12 +243,12 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
         Generate relative coordinates according to OutputShape.
         The values of relative coordinates are in the interval between -1 and 1.
         The shape of the relative coordinates is [2, H, W] as below:
-    
+
         C = [[[-1.  -1.  -1.  -1.  -1. ]
               [-0.5 -0.5 -0.5 -0.5 -0.5]
               [ 0.   0.   0.   0.   0. ]
               [ 0.5  0.5  0.5  0.5  0.5]
-              [ 1.   1.   1.   1.   1. ]] 
+              [ 1.   1.   1.   1.   1. ]]
              [[-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
               [-1.  -0.5  0.   0.5  1. ]
@@ -191,7 +256,7 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
               [-1.  -0.5  0.   0.5  1. ]]]
         C[0] is the coordinates in height axis and  C[1] is the coordinates in
         width axis.
-    
+
     Step2:
         Tanspose and reshape C to shape [H * W, 2] and append ones to last
         dimension. The we get:
@@ -232,14 +297,20 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     if (ctx->HasOutput(framework::GradVarName("Theta"))) {
       auto output_dims = ctx->GetInputDim(framework::GradVarName("Output"));
-      ctx->SetOutputDim(framework::GradVarName("Theta"),
-                        {output_dims[0], 2, 3});
+      if (output_dims.size() == 4) {
+        ctx->SetOutputDim(framework::GradVarName("Theta"),
+                          {output_dims[0], 2, 3});
+      } else {
+        ctx->SetOutputDim(framework::GradVarName("Theta"),
+                          {output_dims[0], 3, 4});
+      }
     }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     framework::LibraryType library_{framework::LibraryType::kPlain};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::CanCUDNNBeUsed(ctx)) {
@@ -251,6 +322,11 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
                                    ctx.GetPlace(),
                                    framework::DataLayout::kAnyLayout,
                                    library_);
+=======
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Output"));
+    return framework::OpKernelType(data_type, ctx.GetPlace());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 };
 
@@ -280,14 +356,17 @@ REGISTER_OPERATOR(affine_grid,
                   ops::AffineGridOpMaker,
                   ops::AffineGridGradMaker<paddle::framework::OpDesc>,
                   ops::AffineGridGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
+<<<<<<< HEAD
 REGISTER_OP_CPU_KERNEL(affine_grid,
                        ops::AffineGridOpKernel<phi::CPUContext, float>,
                        ops::AffineGridOpKernel<phi::CPUContext, double>);
 REGISTER_OP_CPU_KERNEL(affine_grid_grad,
                        ops::AffineGridGradOpKernel<phi::CPUContext, float>,
                        ops::AffineGridGradOpKernel<phi::CPUContext, double>);
+=======
+REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 REGISTER_OP_VERSION(affine_grid)
     .AddCheckpoint(

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
 
 os.environ["WITH_DISTRIBUTE"] = "ON"
@@ -38,6 +37,7 @@ batch_size = 4
 class TestNoamDecay(unittest.TestCase):
 
     def net(self):
+<<<<<<< HEAD
         input_data = paddle.static.data(name="sparse_input",
                                         shape=[None, 1],
                                         dtype="int64")
@@ -48,6 +48,18 @@ class TestNoamDecay(unittest.TestCase):
         embedding = paddle.static.nn.embedding(input_data,
                                                is_sparse=True,
                                                size=[1000, 128])
+=======
+        input_data = paddle.static.data(
+            name="sparse_input", shape=[None, 1], dtype="int64"
+        )
+        input_label = paddle.static.data(
+            name="label", shape=[None, 1], dtype="int64"
+        )
+        label = paddle.cast(input_label, dtype="float32")
+        embedding = paddle.static.nn.embedding(
+            input_data, is_sparse=True, size=[1000, 128]
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         fc1 = paddle.static.nn.fc(embedding, size=1024, activation="relu")
         fc2 = paddle.static.nn.fc(fc1, size=512, activation="relu")
@@ -60,10 +72,13 @@ class TestNoamDecay(unittest.TestCase):
 
     def test(self):
         endpoints = [
-            "127.0.0.1:36004", "127.0.0.1:36005", "127.0.0.1:36006",
-            "127.0.0.1:36007"
+            "127.0.0.1:36004",
+            "127.0.0.1:36005",
+            "127.0.0.1:36006",
+            "127.0.0.1:36007",
         ]
 
+<<<<<<< HEAD
         role = role_maker.UserDefinedRoleMaker(current_id=0,
                                                role=role_maker.Role.SERVER,
                                                worker_num=2,
@@ -74,6 +89,20 @@ class TestNoamDecay(unittest.TestCase):
         scheduler = paddle.optimizer.lr.NoamDecay(d_model=0.01,
                                                   warmup_steps=100,
                                                   verbose=True)
+=======
+        role = role_maker.UserDefinedRoleMaker(
+            current_id=0,
+            role=role_maker.Role.SERVER,
+            worker_num=2,
+            server_endpoints=endpoints,
+        )
+
+        fleet.init(role)
+        loss = self.net()
+        scheduler = paddle.optimizer.lr.NoamDecay(
+            d_model=0.01, warmup_steps=100, verbose=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         optimizer = fluid.optimizer.Adam(scheduler)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()

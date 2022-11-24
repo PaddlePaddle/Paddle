@@ -29,6 +29,7 @@ class TestPyReaderCombination(unittest.TestCase):
 
         def __impl__():
             for _ in range(batch_num):
+<<<<<<< HEAD
                 image = np.random.uniform(low=-1, high=1,
                                           size=[batch_num,
                                                 784]).astype('float32')
@@ -36,6 +37,14 @@ class TestPyReaderCombination(unittest.TestCase):
                                                   high=9,
                                                   size=[batch_num,
                                                         1]).astype('int64')
+=======
+                image = np.random.uniform(
+                    low=-1, high=1, size=[batch_num, 784]
+                ).astype('float32')
+                label = np.random.random_integers(
+                    low=0, high=9, size=[batch_num, 1]
+                ).astype('int64')
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 yield image, label
 
         return __impl__
@@ -46,8 +55,8 @@ class TestPyReaderCombination(unittest.TestCase):
 
         image2 = np.array(py_reader_dict_data[0]['image'])
         label2 = np.array(py_reader_dict_data[0]['label'])
-        self.assertTrue(np.array_equal(image1, image2))
-        self.assertTrue(np.array_equal(label1, label2))
+        np.testing.assert_array_equal(image1, image2)
+        np.testing.assert_array_equal(label1, label2)
 
     # FIXME(zjl): do not know why Python 35 would raise SIGABRT if not reset reader
     # manually.
@@ -57,6 +66,7 @@ class TestPyReaderCombination(unittest.TestCase):
 
     def main_impl(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
             image = fluid.layers.data(name='image',
                                       dtype='float32',
                                       shape=[784])
@@ -68,6 +78,19 @@ class TestPyReaderCombination(unittest.TestCase):
             py_reader2 = fluid.io.PyReader(feed_list=[image, label],
                                            capacity=16,
                                            iterable=True)
+=======
+            image = fluid.layers.data(
+                name='image', dtype='float32', shape=[784]
+            )
+            label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+
+            py_reader1 = fluid.io.PyReader(
+                feed_list=[image, label], capacity=16, iterable=True
+            )
+            py_reader2 = fluid.io.PyReader(
+                feed_list=[image, label], capacity=16, iterable=True
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             reader1 = paddle.reader.cache(self.create_reader(self.n1))
             reader2 = paddle.reader.cache(self.create_reader(self.n2))
@@ -77,8 +100,12 @@ class TestPyReaderCombination(unittest.TestCase):
             for _ in range(10):
                 max_num = min(self.n1, self.n2)
                 batch_num = 0
-                for reader_np1, py_reader_dict1, reader_np2, py_reader_dict2 in zip(
-                        reader1(), py_reader1(), reader2(), py_reader2()):
+                for (
+                    reader_np1,
+                    py_reader_dict1,
+                    reader_np2,
+                    py_reader_dict2,
+                ) in zip(reader1(), py_reader1(), reader2(), py_reader2()):
                     self.assertFeedVarEqual(reader_np1, py_reader_dict1)
                     self.assertFeedVarEqual(reader_np2, py_reader_dict2)
                     batch_num += 1

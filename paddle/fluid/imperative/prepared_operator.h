@@ -38,7 +38,7 @@ DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
-const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
+const phi::DenseTensor* GetTensorFromVar(const framework::Variable& var);
 
 template <typename VarType>
 static void SetForwardDataTypeOfGradVar(const std::shared_ptr<VarType>& var);
@@ -110,7 +110,11 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
+<<<<<<< HEAD
             framework::Tensor out;
+=======
+            phi::DenseTensor out;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
             if (NeedTransformDataType(kernel_type_for_var,
@@ -330,13 +334,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         tensor_in = &(var.template Get<phi::SelectedRows>());
         kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else if (var.template IsType<framework::LoDTensorArray>()) {
-        paddle::small_vector<const phi::TensorBase*> tensor_vector;
-        auto& tensor_array = var.template Get<framework::LoDTensorArray>();
-        for (auto& t : tensor_array) {
-          tensor_vector.emplace_back(&t);
-        }
-        kernel_ctx->EmplaceBackInputsWithoutSetRange(tensor_vector);
-        end_idx += tensor_array.size() - 1;
+        tensor_in = &(var.template Get<framework::LoDTensorArray>());
+        kernel_ctx->EmplaceBackInputWithoutSetRange(tensor_in);
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported input `%s` type when call pt kernel.",
@@ -352,7 +351,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     auto iter = outs.find(output_names[i]);
     if (iter == outs.end()) {
-      kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+      kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
       kernel_ctx->AssignOutputRange(std::make_pair(start_idx, start_idx + 1),
                                     i);
       continue;
@@ -363,7 +362,7 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
 
     for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
       if (outs_vector[offset] == nullptr) {
-        kernel_ctx->EmplaceBackOutputWithoutSetRange({nullptr});
+        kernel_ctx->EmplaceBackOutputWithoutSetRange(nullptr);
         continue;
       }
 
@@ -377,14 +376,8 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
           tensor_out = var->template GetMutable<phi::SelectedRows>();
           kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else if (var->template IsType<framework::LoDTensorArray>()) {
-          paddle::small_vector<phi::TensorBase*> tensor_vector;
-          auto* tensor_array =
-              var->template GetMutable<framework::LoDTensorArray>();
-          for (auto& t : *tensor_array) {
-            tensor_vector.emplace_back(&t);
-          }
-          kernel_ctx->EmplaceBackOutputsWithoutSetRange(tensor_vector);
-          end_idx += tensor_array->size() - 1;
+          tensor_out = var->template GetMutable<framework::LoDTensorArray>();
+          kernel_ctx->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
           PADDLE_THROW(platform::errors::Unimplemented(
               "Unsupported output `%s` type when call pt kernel.",
@@ -411,14 +404,35 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
+<<<<<<< HEAD
+=======
+              break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
+<<<<<<< HEAD
+=======
+              break;
+            case framework::proto::AttrType::LONG:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(int64_t, attr))));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               break;
             case framework::proto::AttrType::STRING:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
+<<<<<<< HEAD
+=======
+              break;
+            case framework::proto::AttrType::BOOLEAN:
+              kernel_ctx->EmplaceBackAttr(
+                  std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -544,6 +558,12 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+<<<<<<< HEAD
+=======
+            break;
+          case phi::AttributeType::FLOAT64:
+            kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(double, attr));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             break;
           case phi::AttributeType::INT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(int, attr));
@@ -652,7 +672,7 @@ void PreparePhiData(const phi::Kernel& phi_kernel,
         VLOG(3) << "Phi Transform Variable " << input_names[i] << " from "
                 << tensor_in->place() << " to " << expected_place;
 
-        framework::Tensor tmp_tensor;
+        phi::DenseTensor tmp_tensor;
         framework::TensorCopySync(*tensor_in, expected_place, &tmp_tensor);
 
         SetTensorToVariable(var->Var(), tmp_tensor, var->MutableVar());

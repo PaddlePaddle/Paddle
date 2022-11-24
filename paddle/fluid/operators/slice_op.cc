@@ -12,19 +12,26 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/slice_op.h"
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class SliceOp : public framework::OperatorWithKernel {
  public:
@@ -138,8 +145,8 @@ class SliceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *in_var = ctx.InputVar("Input");
-    if (in_var->IsType<framework::LoDTensor>()) {
-      auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto &in_tensor = in_var->Get<phi::DenseTensor>();
       PADDLE_ENFORCE_EQ(
           in_tensor.IsInitialized(),
           true,
@@ -155,12 +162,15 @@ class SliceOp : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
       auto input_data_type =
           framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
-
-      if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      auto vec_dims = phi::vectorize(in_tensor.dims());
+      bool all_zero_dims = std::all_of(
+          vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
+      if (!all_zero_dims && this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         // OneDNN uses blocking format, which cannot be always supported with
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
+<<<<<<< HEAD
         auto tmp_md = dnnl::memory::desc(
             phi::vectorize(ctx.Input<Tensor>("Input")->dims()),
             dnnl::memory::data_type::f32,
@@ -169,6 +179,14 @@ class SliceOp : public framework::OperatorWithKernel {
           return framework::OpKernelType(input_data_type,
                                          ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,
+=======
+        if (ctx.Input<phi::DenseTensor>("Input")
+                ->mem_desc()
+                .data.format_desc.blocking.inner_nblks == 0)
+          return framework::OpKernelType(input_data_type,
+                                         ctx.GetPlace(),
+                                         phi::DataLayout::ONEDNN,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                                          framework::LibraryType::kMKLDNN);
       }
 #endif
@@ -260,16 +278,6 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
         .SetDefault({});
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Slice Operator.
 
@@ -346,6 +354,7 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
+<<<<<<< HEAD
       auto tmp_md = dnnl::memory::desc(
           phi::vectorize(
               ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
@@ -355,6 +364,14 @@ class SliceOpGrad : public framework::OperatorWithKernel {
         return framework::OpKernelType(input_data_type,
                                        ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
+=======
+      if (ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"))
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type,
+                                       ctx.GetPlace(),
+                                       phi::DataLayout::ONEDNN,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                                        framework::LibraryType::kMKLDNN);
     }
 #endif
@@ -463,6 +480,7 @@ REGISTER_OPERATOR(slice_grad,
                   ops::SliceDoubleOpGradMaker<paddle::imperative::OpBase>,
                   ops::SliceOpGradNoNeedBufferVarsInferer,
                   ops::SliceOpGradVarTypeInference);
+<<<<<<< HEAD
 
 REGISTER_OP_CPU_KERNEL(
     slice,
@@ -509,3 +527,5 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SliceGradKernel<phi::GPUContext, paddle::platform::bfloat16>,
     ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<float>>,
     ops::SliceGradKernel<phi::GPUContext, paddle::platform::complex<double>>);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

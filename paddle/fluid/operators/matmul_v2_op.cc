@@ -38,8 +38,8 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
                         "shape of Input(%s) = [%s].",
                         dim));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
   if (!shape.empty() && !axis.empty()) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_GE(
         shape.size(),
         2,
@@ -90,6 +90,8 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
       }
     }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -113,12 +115,16 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
+<<<<<<< HEAD
                           " but reviced dims size is 0. "));
+=======
+                          " but received dims size is 0. "));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(Y) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
+                          " but received dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -169,13 +175,11 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     auto ddim_out = phi::make_ddim(new_dims);
 
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul_v2+transpose+reshape fuse activated
-    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
+    auto shape = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
+    auto axis = ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
 
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      ddim_out = ddim_out.transpose(transpose_out).reshape(reshape_out);
+    if (!shape.empty() && !axis.empty()) {
+      ddim_out = ddim_out.transpose(axis).reshape(shape);
     }
 #endif
 
@@ -188,6 +192,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -197,13 +202,20 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
+=======
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -213,18 +225,14 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op
-      // previously)
-      // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
+      // op previously) then we also need to rotate shape NHWC -> NCWH
+      if ((expected_kernel_type.data_layout_ == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
+                  .get_cur_paddle_data_layout() == phi::DataLayout::kNHWC) {
         return framework::OpKernelType(expected_kernel_type.data_type_,
                                        tensor.place(),
-                                       framework::DataLayout::kNHWC);
+                                       phi::DataLayout::kNHWC);
       }
 #endif
       return framework::OpKernelType(
@@ -247,47 +255,9 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
                   "Set true to transpose the last two dimensions of Y before "
                   "doing multiplication")
         .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_X",
-                              R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_Y",
-                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_X",
-                              R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_Y",
-                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
     AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
@@ -303,6 +273,7 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -312,13 +283,20 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
+=======
+      const phi::DenseTensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

@@ -9,7 +9,7 @@ There are several model tests currently:
 - test_resnet50_quant.cc
 - test_yolov3.cc
 
-To build and execute tests on Linux, simply run 
+To build and execute tests on Linux, simply run
 ```
 ./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $DATA_DIR
 ```
@@ -24,7 +24,7 @@ busybox bash ./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $DATA_DIR
 - `$TEST_GPU_CPU`: test both GPU/CPU mode or only CPU mode
 - `$DATA_DIR`: download data path
 
-now only support 4 kinds of tests which controled by `--gtest_filter` argument, test suite name should be same as following. 
+now only support 4 kinds of tests which controled by `--gtest_filter` argument, test suite name should be same as following.
 - `TEST(gpu_tester_*, test_name)`
 - `TEST(cpu_tester_*, test_name)`
 - `TEST(mkldnn_tester_*, test_name)`

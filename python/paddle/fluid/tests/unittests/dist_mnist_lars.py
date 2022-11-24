@@ -12,22 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
-import os
-import signal
-from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 from dist_mnist import cnn_model
 
@@ -53,6 +39,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         # Evaluator
         batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+<<<<<<< HEAD
         batch_acc = fluid.layers.accuracy(input=predict,
                                           label=label,
                                           total=batch_size_tensor)
@@ -67,8 +54,34 @@ class TestDistMnist2x2(TestDistRunnerBase):
                                     batch_size=batch_size)
         test_reader = paddle.batch(paddle.dataset.mnist.test(),
                                    batch_size=batch_size)
+=======
+        batch_acc = fluid.layers.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
+
+        inference_program = fluid.default_main_program().clone()
+        # Optimization
+        opt = fluid.optimizer.LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9
+        )
+
+        # Reader
+        train_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+        test_reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         opt.minimize(avg_cost)
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":

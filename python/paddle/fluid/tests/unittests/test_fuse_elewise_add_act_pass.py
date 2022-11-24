@@ -34,7 +34,8 @@ class TestMNIST(TestParallelExecutorBase):
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6))
+                regularization=fluid.regularizer.L2Decay(1e-6),
+            )
             return optimizer
 
         # NOTE(dzh):
@@ -42,16 +43,27 @@ class TestMNIST(TestParallelExecutorBase):
         # FIXME (liuwei12)
         # the new memory optimize strategy will crash this unittest
         # add enable_inplace=False here to force pass the unittest
+<<<<<<< HEAD
         not_fuse_op_first_loss, not_fuse_op_last_loss, _ = self.check_network_convergence(
             model,
             feed_dict={
                 "image": img,
                 "label": label
             },
+=======
+        (
+            not_fuse_op_first_loss,
+            not_fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
+            model,
+            feed_dict={"image": img, "label": label},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             use_device=use_device,
             fuse_elewise_add_act_ops=False,
             use_ir_memory_optimize=False,
             enable_inplace=False,
+<<<<<<< HEAD
             optimizer=_optimizer)
         fuse_op_first_loss, fuse_op_last_loss, _ = self.check_network_convergence(
             model,
@@ -59,11 +71,23 @@ class TestMNIST(TestParallelExecutorBase):
                 "image": img,
                 "label": label
             },
+=======
+            optimizer=_optimizer,
+        )
+        (
+            fuse_op_first_loss,
+            fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
+            model,
+            feed_dict={"image": img, "label": label},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             use_device=use_device,
             fuse_elewise_add_act_ops=True,
             use_ir_memory_optimize=False,
             enable_inplace=False,
-            optimizer=_optimizer)
+            optimizer=_optimizer,
+        )
 
         for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
@@ -75,13 +99,16 @@ class TestMNIST(TestParallelExecutorBase):
         self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CPU)
 
     def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
-                                               DeviceType.CUDA)
-        self._compare_fuse_elewise_add_act_ops(fc_with_batchnorm,
-                                               DeviceType.CPU)
+        self._compare_fuse_elewise_add_act_ops(
+            fc_with_batchnorm, DeviceType.CUDA
+        )
+        self._compare_fuse_elewise_add_act_ops(
+            fc_with_batchnorm, DeviceType.CPU
+        )
 
 
 if __name__ == '__main__':
     import paddle
+
     paddle.enable_static()
     unittest.main()

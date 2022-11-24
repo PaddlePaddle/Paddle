@@ -17,23 +17,29 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/infershape_utils.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
-#include "paddle/fluid/operators/detection/nms_util.h"
+#include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/kernels/funcs/detection/nms_util.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 class GenerateProposalsV2Op : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(
         ctx->HasInput("Scores"),
@@ -64,6 +70,8 @@ class GenerateProposalsV2Op : public framework::OperatorWithKernel {
     }
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -73,6 +81,7 @@ class GenerateProposalsV2Op : public framework::OperatorWithKernel {
   }
 };
 
+<<<<<<< HEAD
 template <typename T>
 class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
  public:
@@ -273,6 +282,8 @@ class GenerateProposalsV2Kernel : public framework::OpKernel<T> {
   }
 };
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -310,11 +321,15 @@ class GenerateProposalsV2OpMaker : public framework::OpProtoAndCheckerMaker {
                    "than this min_size.");
     AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddAttr<bool>("pixel_offset",
+<<<<<<< HEAD
                   "(bool, default True),",
+=======
+                  "(bool, default True),"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   "If true, im_shape pixel offset is 1.")
         .SetDefault(true);
     AddComment(R"DOC(
-This operator is the second version of generate_proposals op to generate 
+This operator is the second version of generate_proposals op to generate
 bounding box proposals for Faster RCNN.
 The proposals are generated for a list of images based on image
 score 'Scores', bounding box regression result 'BboxDeltas' as
@@ -324,9 +339,9 @@ boxes.
 
 The difference between this version and the first version is that the image
  scale is no long needed now, so the input requires im_shape instead of im_info.
-The change aims to unify the input for all kinds of objective detection 
-such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the 
-size on input image instead of original image which is slightly different 
+The change aims to unify the input for all kinds of objective detection
+such as YOLO-v3 and Faster R-CNN. As a result, the min_size represents the
+size on input image instead of original image which is slightly different
 to before and will not effect the result.
 
 )DOC");
@@ -336,16 +351,19 @@ to before and will not effect the result.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(generate_proposals_v2,
+                            GenerateProposalsV2InferShapeFunctor,
+                            PD_INFER_META(phi::GenerateProposalsV2InferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     generate_proposals_v2,
     ops::GenerateProposalsV2Op,
     ops::GenerateProposalsV2OpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(generate_proposals_v2,
-                       ops::GenerateProposalsV2Kernel<float>,
-                       ops::GenerateProposalsV2Kernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    GenerateProposalsV2InferShapeFunctor);
+
 REGISTER_OP_VERSION(generate_proposals_v2)
     .AddCheckpoint(
         R"ROC(Registe generate_proposals_v2 for adding the attribute of pixel_offset)ROC",

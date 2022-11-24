@@ -23,12 +23,9 @@ template <typename T, typename Context>
 void ShapeKernel(const Context& ctx,
                  const DenseTensor& input,
                  DenseTensor* out) {
-  auto in_var = &input;
-  phi::DDim in_dims;
-  in_dims = in_var->dims();
-  auto out_t = out;
-  out_t->Resize({in_dims.size()});
-  auto out_data = ctx.template HostAlloc<int32_t>(out_t);
+  auto& in_dims = input.dims();
+  out->Resize({in_dims.size()});
+  auto out_data = ctx.template HostAlloc<int32_t>(out);
   for (int i = 0; i < in_dims.size(); ++i) {
     out_data[i] = in_dims[i];
   }
@@ -48,7 +45,9 @@ PD_REGISTER_KERNEL(shape,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(shape,
@@ -65,6 +64,20 @@ PD_REGISTER_KERNEL(shape,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    phi::dtype::float16) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+PD_REGISTER_KERNEL(shape,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ShapeKernel,
+                   bool,
+                   int,
+                   int64_t,
+                   float,
+                   double) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

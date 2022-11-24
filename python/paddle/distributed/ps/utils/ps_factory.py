@@ -12,26 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from .ps_program_builder import *
-from .public import *
+from .ps_program_builder import *  # noqa: F403
+from .public import *  # noqa: F403
 
 __all__ = [
-    'PsProgramBuilder', 'GeoPsProgramBuilder', 'CpuSyncPsProgramBuilder',
-    'CpuAsyncPsProgramBuilder', 'GpuPsProgramBuilder',
-    'HeterAsyncPsProgramBuilder', 'FlPsProgramBuilder'
+    'PsProgramBuilder',
+    'GeoPsProgramBuilder',
+    'CpuSyncPsProgramBuilder',
+    'CpuAsyncPsProgramBuilder',
+    'GpuPsProgramBuilder',
+    'HeterAsyncPsProgramBuilder',
+    'FlPsProgramBuilder',
+    'NuPsProgramBuilder',
 ]
 
 
+<<<<<<< HEAD
 class PsProgramBuilderFactory(object):
 
+=======
+class PsProgramBuilderFactory:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         pass
 
     def _create_ps_program_builder(self, pass_ctx):
         attrs = pass_ctx._attrs
         if attrs['ps_mode'] == DistributedMode.GEO:
-            return globals()['GeoPsProgramBuilder'](pass_ctx)
+            if len(attrs['local_sparse']) != 0:
+                return globals()['NuPsProgramBuilder'](pass_ctx)
+            else:
+                return globals()['GeoPsProgramBuilder'](pass_ctx)
         elif attrs['use_ps_gpu']:
             return globals()['GpuPsProgramBuilder'](pass_ctx)
         elif attrs['is_heter_ps_mode'] and not attrs['is_fl_ps_mode']:

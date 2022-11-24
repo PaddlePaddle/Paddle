@@ -42,7 +42,12 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
                                        "fusion_gru",
                                        "fusion_lstm",
                                        "multi_gru",
+<<<<<<< HEAD
                                        "slice"});
+=======
+                                       "slice",
+                                       "split"});
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   const auto& excluded_ids_list =
       Get<std::unordered_set<int>>("quantize_excluded_op_ids");
   const auto& op_types_list =

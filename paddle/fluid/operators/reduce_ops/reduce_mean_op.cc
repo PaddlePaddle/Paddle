@@ -79,6 +79,7 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetType("reduce_mean");
         op.SetInput("X", x_gg);
         op.SetAttrMap(Attrs());
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
         op.SetOutput("Out", out_grads);
       }
       return node;
@@ -97,9 +98,16 @@ class __reduce_meanMaker__ : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean,
                             ReduceMeanInferShapeFunctor,
                             PD_INFER_META(phi::ReduceInferMetaBase));
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(
+    reduce_mean,
+    ReduceMeanInferShapeFunctor,
+    PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 REGISTER_OPERATOR(reduce_mean,
                   ops::ReduceOp,

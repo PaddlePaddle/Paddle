@@ -27,7 +27,11 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = paddle::platform::GetSupportedActivations();
+=======
+  auto act_types = phi::funcs::GetSupportedActivations();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<std::string> elt_types = {
       "elementwise_add", "elementwise_sub", "elementwise_mul"};
 
@@ -76,7 +80,11 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     }
 
     auto *activation_op = activation->Op();
+<<<<<<< HEAD
     auto attr_map = paddle::platform::GetAttributeMap(act_type);
+=======
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         elementwise_op->SetAttr(attr.second,
@@ -99,7 +107,12 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 
   gpd(graph, handler);
   AddStatis(found_elementwise_activation_count);
+<<<<<<< HEAD
   if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+=======
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_elementwise_activation_count > 0))
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PrettyLogDetail("---    fused %d %s with %s activation",
                     found_elementwise_activation_count,
                     elt_type,

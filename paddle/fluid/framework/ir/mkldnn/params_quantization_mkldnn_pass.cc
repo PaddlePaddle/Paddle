@@ -25,7 +25,12 @@ namespace ir {
 namespace {
 
 template <typename T_out>
+<<<<<<< HEAD
 void QuantizeParams(LoDTensor* param_tensor, const std::vector<float>& scales) {
+=======
+void QuantizeParams(phi::DenseTensor* param_tensor,
+                    const std::vector<float>& scales) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<T_out> tmp_data;
   tmp_data.reserve(param_tensor->numel());
 
@@ -52,6 +57,7 @@ bool HasBias(ir::Node* conv_op) {
          conv_op->Op()->Input("Bias").size() > 0;
 }
 
+<<<<<<< HEAD
 bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   if (!platform::HasOpINT8DataType(conv_op->Op())) {
     VLOG(4) << "Skipping non-int8 convolution (id: " << conv_op->id() << ").";
@@ -69,12 +75,15 @@ bool ShouldSkipConv(ir::Node* conv_op, Scope* scope, ir::Node* conv_filter) {
   return false;
 }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 template <typename T>
 void QuantizeConvInput(Scope* scope,
                        ir::Graph* g,
                        ir::Node* conv_op,
                        const std::string& input_name,
                        const std::string& scales_attr_name) {
+<<<<<<< HEAD
   const auto scales =
       conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
 
@@ -82,6 +91,21 @@ void QuantizeConvInput(Scope* scope,
   QuantizeParams<T>(tensor, scales);
 
   conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+=======
+  auto var = scope->GetVar(input_name);
+  if (var->Get<phi::DenseTensor>().dtype() != phi::DataType::FLOAT32) {
+    VLOG(0) << "Skipping convolution filter: " << input_name
+            << " because it is detected again.";
+    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+  } else {
+    const auto scales =
+        conv_op->Op()->GetAttrIfExists<std::vector<float>>(scales_attr_name);
+
+    auto* tensor = scope->GetVar(input_name)->GetMutable<phi::DenseTensor>();
+    QuantizeParams<T>(tensor, scales);
+    conv_op->Op()->SetAttr(scales_attr_name, std::vector<float>(1, 1));
+  }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 }  // namespace
@@ -151,7 +175,12 @@ void ParamsQuantizationMkldnnPass::QuantizeConv(ir::Graph* graph,
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
+<<<<<<< HEAD
     if (ShouldSkipConv(conv_op, scope, conv_filter)) {
+=======
+    // If not a quantized OP
+    if (!platform::HasOpINT8DataType(conv_op->Op())) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       return;
     }
 

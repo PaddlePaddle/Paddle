@@ -14,10 +14,8 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -33,6 +31,7 @@ class TestDiffOp(unittest.TestCase):
 
     def get_output(self):
         if self.prepend is not None and self.append is not None:
+<<<<<<< HEAD
             self.output = np.diff(self.input,
                                   n=self.n,
                                   axis=self.axis,
@@ -48,6 +47,23 @@ class TestDiffOp(unittest.TestCase):
                                   n=self.n,
                                   axis=self.axis,
                                   append=self.append)
+=======
+            self.output = np.diff(
+                self.input,
+                n=self.n,
+                axis=self.axis,
+                prepend=self.prepend,
+                append=self.append,
+            )
+        elif self.prepend is not None:
+            self.output = np.diff(
+                self.input, n=self.n, axis=self.axis, prepend=self.prepend
+            )
+        elif self.append is not None:
+            self.output = np.diff(
+                self.input, n=self.n, axis=self.axis, append=self.append
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             self.output = np.diff(self.input, n=self.n, axis=self.axis)
 
@@ -66,11 +82,21 @@ class TestDiffOp(unittest.TestCase):
                 self.prepend = paddle.to_tensor(self.prepend, place=place)
             if self.append is not None:
                 self.append = paddle.to_tensor(self.append, place=place)
+<<<<<<< HEAD
             out = paddle.diff(x,
                               n=self.n,
                               axis=self.axis,
                               prepend=self.prepend,
                               append=self.append)
+=======
+            out = paddle.diff(
+                x,
+                n=self.n,
+                axis=self.axis,
+                prepend=self.prepend,
+                append=self.append,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertTrue((out.numpy() == self.output).all(), True)
 
     def test_dygraph(self):
@@ -87,14 +113,21 @@ class TestDiffOp(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
                 x = paddle.fluid.data(name="input",
                                       shape=self.input.shape,
                                       dtype=self.input.dtype)
+=======
+                x = paddle.fluid.data(
+                    name="input", shape=self.input.shape, dtype=self.input.dtype
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 has_pend = False
                 prepend = None
                 append = None
                 if self.prepend is not None:
                     has_pend = True
+<<<<<<< HEAD
                     prepend = paddle.fluid.data(name="prepend",
                                                 shape=self.prepend.shape,
                                                 dtype=self.prepend.dtype)
@@ -117,6 +150,34 @@ class TestDiffOp(unittest.TestCase):
                                       "append": self.append
                                   },
                                   fetch_list=[out])
+=======
+                    prepend = paddle.fluid.data(
+                        name="prepend",
+                        shape=self.prepend.shape,
+                        dtype=self.prepend.dtype,
+                    )
+                if self.append is not None:
+                    has_pend = True
+                    append = paddle.fluid.data(
+                        name="append",
+                        shape=self.append.shape,
+                        dtype=self.append.dtype,
+                    )
+
+                exe = fluid.Executor(place)
+                out = paddle.diff(
+                    x, n=self.n, axis=self.axis, prepend=prepend, append=append
+                )
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={
+                        "input": self.input,
+                        "prepend": self.prepend,
+                        "append": self.append,
+                    },
+                    fetch_list=[out],
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.assertTrue((fetches[0] == self.output).all(), True)
 
     def func_grad(self):
@@ -126,11 +187,21 @@ class TestDiffOp(unittest.TestCase):
                 self.prepend = paddle.to_tensor(self.prepend, place=place)
             if self.append is not None:
                 self.append = paddle.to_tensor(self.append, place=place)
+<<<<<<< HEAD
             out = paddle.diff(x,
                               n=self.n,
                               axis=self.axis,
                               prepend=self.prepend,
                               append=self.append)
+=======
+            out = paddle.diff(
+                x,
+                n=self.n,
+                axis=self.axis,
+                prepend=self.prepend,
+                append=self.append,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             try:
                 out.backward()
                 x_grad = x.grad
@@ -191,8 +262,14 @@ class TestDiffOpPrependAxis(TestDiffOp):
         self.input = np.array([[1, 4, 5, 2], [1, 5, 4, 2]]).astype('float32')
         self.n = 1
         self.axis = 0
+<<<<<<< HEAD
         self.prepend = np.array([[0, 2, 3, 4], [1, 3, 5, 7],
                                  [2, 5, 8, 0]]).astype('float32')
+=======
+        self.prepend = np.array(
+            [[0, 2, 3, 4], [1, 3, 5, 7], [2, 5, 8, 0]]
+        ).astype('float32')
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.append = None
 
 

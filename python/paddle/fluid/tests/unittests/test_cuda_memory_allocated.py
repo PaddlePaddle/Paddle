@@ -14,7 +14,6 @@
 
 import paddle
 import unittest
-import numpy as np
 from paddle.fluid import core
 from paddle.device.cuda import device_count, memory_allocated
 
@@ -41,7 +40,15 @@ class TestMemoryAllocated(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
+<<<<<<< HEAD
                 device_count() + 1, -2, 0.5, "gpu1", "npu"
+=======
+                device_count() + 1,
+                -2,
+                0.5,
+                "gpu1",
+                "npu",
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

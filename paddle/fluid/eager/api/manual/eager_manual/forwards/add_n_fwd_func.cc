@@ -20,10 +20,16 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+<<<<<<< HEAD
 #pragma GCC diagnostic ignored "-Wunused-variable"
 DECLARE_bool(check_nan_inf);
 
 paddle::experimental::Tensor add_n_final_state_dygraph_function(
+=======
+DECLARE_bool(check_nan_inf);
+
+paddle::experimental::Tensor add_n_ad_func(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const std::vector<paddle::experimental::Tensor>& x) {
   // Dygraph Record Event
   paddle::platform::RecordEvent dygraph_entrance_record_event(
@@ -46,7 +52,11 @@ paddle::experimental::Tensor add_n_final_state_dygraph_function(
       paddle::imperative::AutoCastGuard guard(
           egr::Controller::Instance().GetCurrentTracer(),
           paddle::imperative::AmpLevel::O0);
+<<<<<<< HEAD
       return add_n_final_state_dygraph_function(NEW_x);
+=======
+      return add_n_ad_func(NEW_x);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
   }
 
@@ -56,7 +66,11 @@ paddle::experimental::Tensor add_n_final_state_dygraph_function(
   std::vector<egr::AutogradMeta*>* x_autograd_meta = &x_autograd_meta_vec;
   // Forward API Call
   VLOG(3) << "Final State Running: "
+<<<<<<< HEAD
           << "add_n_final_state_dygraph_function";
+=======
+          << "add_n_ad_func";
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto api_result = paddle::experimental::add_n(x);
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {

@@ -40,10 +40,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="bool")
         out = paddle.fluid.layers.logical_not(x)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="bool"
+        )
+        out = paddle.logical_not(x)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):

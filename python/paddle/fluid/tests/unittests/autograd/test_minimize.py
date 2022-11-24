@@ -17,14 +17,25 @@ import unittest
 import numpy as np
 import paddle
 from paddle.incubate.autograd.primx import prim2orig
+<<<<<<< HEAD
 from paddle.incubate.autograd.utils import (disable_prim, enable_prim,
                                             prim_enabled)
+=======
+from paddle.incubate.autograd.utils import (
+    disable_prim,
+    enable_prim,
+    prim_enabled,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 paddle.enable_static()
 
 
 class TestMinimize(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def model(self, x, w, bias, opt):
         paddle.seed(0)
         place = paddle.CPUPlace()
@@ -36,12 +47,21 @@ class TestMinimize(unittest.TestCase):
         with paddle.static.program_guard(main, startup):
             input_x = paddle.static.data('x', x.shape, dtype=x.dtype)
             input_x.stop_gradient = False
+<<<<<<< HEAD
             params_w = paddle.static.create_parameter(shape=w.shape,
                                                       dtype=w.dtype,
                                                       is_bias=False)
             params_bias = paddle.static.create_parameter(shape=bias.shape,
                                                          dtype=bias.dtype,
                                                          is_bias=True)
+=======
+            params_w = paddle.static.create_parameter(
+                shape=w.shape, dtype=w.dtype, is_bias=False
+            )
+            params_bias = paddle.static.create_parameter(
+                shape=bias.shape, dtype=bias.dtype, is_bias=True
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             y = paddle.tanh(paddle.matmul(input_x, params_w) + params_bias)
             loss = paddle.norm(y, p=2)
             opt = opt
@@ -49,6 +69,7 @@ class TestMinimize(unittest.TestCase):
             if prim_enabled():
                 prim2orig(main.block(0))
         exe.run(startup)
+<<<<<<< HEAD
         grads = exe.run(main,
                         feed={
                             'x': x,
@@ -56,6 +77,11 @@ class TestMinimize(unittest.TestCase):
                             'bias': bias
                         },
                         fetch_list=grads)
+=======
+        grads = exe.run(
+            main, feed={'x': x, 'w': w, 'bias': bias}, fetch_list=grads
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return grads
 
     def test_adam(self):

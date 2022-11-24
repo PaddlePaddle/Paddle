@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 from ...fluid.dygraph.dygraph_to_static.utils import saw  # noqa: F401
 from ...fluid.dygraph.dygraph_to_static.utils import UndefinedVar  # noqa: F401

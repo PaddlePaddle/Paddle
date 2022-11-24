@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -24,7 +22,11 @@ import paddle
 
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -76,6 +78,10 @@ class XPUTestExpOP(XPUOpTestWrapper):
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
 
+    class XPUTestExp_ZeroDIm(TestActivationOPBase):
+        def set_shape(self):
+            self.shape = []
+
 
 support_types = get_xpu_op_support_types('exp')
 for stype in support_types:
@@ -103,6 +109,10 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
+    class XPUTestSigmoid_ZeroDIm(XPUTestSigmoid):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
     class XPUTestSigmoid2(XPUTestSigmoid):
 
         def init_config(self):
@@ -121,8 +131,9 @@ class XPUTestSigmoidOP(XPUOpTestWrapper):
     class XPUTestSigmoid5(XPUTestSigmoid):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [10, 20, 30, 40]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [10, 20, 30, 40]).astype(
+                self.dtype
+            )
 
 
 support_types = get_xpu_op_support_types('sigmoid')
@@ -264,9 +275,21 @@ for stype in support_types:
 
 def gelu(x, approximate):
     from scipy.special import erf
+
     if approximate:
+<<<<<<< HEAD
         y_ref = 0.5 * x * (
             1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+=======
+        y_ref = (
+            0.5
+            * x
+            * (
+                1.0
+                + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     else:
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
     return y_ref.astype(x.dtype)
@@ -323,23 +346,40 @@ class XPUTestLogOP(XPUOpTestWrapper):
             self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
             self.outputs = {'Out': out}
 
+<<<<<<< HEAD
     class TestLogCase1(XPUTestLog):
 
+=======
+    class TestLogCase_ZeroDim(XPUTestLog):
+        def set_shape(self):
+            self.shape = []
+
+    class TestLogCase1(XPUTestLog):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_shape(self):
             self.shape = [1, 11, 17]
 
     class TestLogCase2(XPUTestLog):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_shape(self):
             self.shape = [2, 2, 2]
 
     class TestLogCase3(XPUTestLog):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_shape(self):
             self.shape = [2]
 
     class TestLogCase4(XPUTestLog):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_shape(self):
             self.shape = [1, 2, 3, 4]
 
@@ -369,6 +409,10 @@ class XPUTestSquareOP(XPUOpTestWrapper):
 
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestSquare_ZeroDim(XPUTestSquare):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
 
     class XPUTestSquare2(XPUTestSquare):
 
@@ -434,22 +478,25 @@ class XPUTestPowOP(XPUOpTestWrapper):
     class XPUTestPow3(XPUTestPowBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 512, 15, 15]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
             self.factor = 3
 
     class XPUTestPow4(XPUTestPowBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 256, 22, 22]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
             self.factor = 4
 
     class XPUTestPow5(XPUTestPowBase):
 
         def init_config(self):
-            self.x = np.random.uniform(0, 1,
-                                       [4, 256, 22, 22]).astype(self.dtype)
+            self.x = np.random.uniform(0, 1, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
             self.factor = 1.2
 
     class XPUTestPow6(XPUTestPowBase):
@@ -494,7 +541,7 @@ for stype in support_types:
 
 
 def leaky_relu(x, alpha):
-    if (alpha < 1):
+    if alpha < 1:
         y_ref = np.maximum(x, alpha * x)
     else:
         y_ref = np.minimum(x, alpha * x)
@@ -551,6 +598,10 @@ class XPUTestSoftPlusOP(XPUOpTestWrapper):
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
+    class XPUTestSoftPlus_ZeroDim(XPUTestSoftPlusBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
     class XPUTestSoftPlus2(XPUTestSoftPlusBase):
 
         def init_config(self):
@@ -559,14 +610,16 @@ class XPUTestSoftPlusOP(XPUOpTestWrapper):
     class XPUTestSoftPlus3(XPUTestSoftPlusBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 512, 15, 15]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
 
     class XPUTestSoftPlus4(XPUTestSoftPlusBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 256, 22, 22]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
 
 
 support_types = get_xpu_op_support_types('softplus')
@@ -576,8 +629,10 @@ for stype in support_types:
 
 def ref_softplus(x, beta=1, threshold=20):
     x_beta = beta * x
-    out = np.select([x_beta <= threshold, x_beta > threshold],
-                    [np.log(1 + np.exp(x_beta)) / beta, x])
+    out = np.select(
+        [x_beta <= threshold, x_beta > threshold],
+        [np.log(1 + np.exp(x_beta)) / beta, x],
+    )
     return out
 
 
@@ -684,7 +739,7 @@ class XPUTestEluOP(XPUOpTestWrapper):
             self.op_type = "elu"
             self.dtype = self.in_type
 
-            alpha = 1.
+            alpha = 1.0
             x = np.random.uniform(-3, 3, [10, 12]).astype(self.dtype)
             out = ref_elu(x, alpha)
 
@@ -779,7 +834,7 @@ class XPUTestHardSigmoidOP(XPUOpTestWrapper):
 
             x = np.random.uniform(-5, 5, [10, 12]).astype(self.dtype)
             lower_threshold = -self.offset / self.slope
-            upper_threshold = (1. - self.offset) / self.slope
+            upper_threshold = (1.0 - self.offset) / self.slope
 
             # Same reason as TestAbs
             delta = 0.005
@@ -791,7 +846,7 @@ class XPUTestHardSigmoidOP(XPUOpTestWrapper):
             self.attrs = {
                 'use_xpu': True,
                 'slope': self.slope,
-                'offset': self.offset
+                'offset': self.offset,
             }
             self.inputs = {'X': x}
             self.outputs = {'Out': out}
@@ -803,7 +858,7 @@ for stype in support_types:
 
 
 def ref_hardsigmoid(x, slope=0.166666666666667, offset=0.5):
-    return np.maximum(np.minimum(x * slope + offset, 1.), 0.).astype(x.dtype)
+    return np.maximum(np.minimum(x * slope + offset, 1.0), 0.0).astype(x.dtype)
 
 
 class XPUTestLog1pOP(XPUOpTestWrapper):
@@ -1012,7 +1067,8 @@ for stype in support_types:
 def ref_softshrink(x, threshold=0.5):
     out = np.copy(x)
     out = (out < -threshold) * (out + threshold) + (out > threshold) * (
-        out - threshold)
+        out - threshold
+    )
     return out
 
 
@@ -1038,6 +1094,10 @@ class XPUTestSwishOP(XPUOpTestWrapper):
         def init_config(self):
             self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
 
+    class XPUTestSwish_ZeroDim(XPUTestSwishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
     class XPUTestSwish2(XPUTestSwishBase):
 
         def init_config(self):
@@ -1046,14 +1106,16 @@ class XPUTestSwishOP(XPUOpTestWrapper):
     class XPUTestSwish3(XPUTestSwishBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 512, 15, 15]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
 
     class XPUTestSwish4(XPUTestSwishBase):
 
         def init_config(self):
-            self.x = np.random.uniform(-2, 2,
-                                       [4, 256, 22, 22]).astype(self.dtype)
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
 
 
 support_types = get_xpu_op_support_types('swish')
@@ -1063,6 +1125,7 @@ for stype in support_types:
 
 def ref_swish(x):
     from scipy.special import expit
+
     out = x * expit(x)
     return out
 
@@ -1097,6 +1160,59 @@ for stype in support_types:
 
 def ref_thresholded_relu(x, threshold=1.0):
     out = (x > threshold) * x
+    return out
+
+
+class XPUTestMishOP(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'mish'
+        self.use_dynamic_create_class = False
+
+    class XPUTestMishBase(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "mish"
+            self.dtype = self.in_type
+
+            self.init_config()
+            threshold = np.random.uniform(0, 1)
+            out = ref_mish(self.x, threshold)
+
+            self.inputs = {'X': self.x}
+            self.outputs = {'Out': out}
+            self.attrs = {'use_xpu': True, 'threshold': threshold}
+
+        def init_config(self):
+            self.x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+
+    class XPUTestMish_ZeroDim(XPUTestMishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, []).astype(self.dtype)
+
+    class XPUTestMish2(XPUTestMishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [1024, 8]).astype(self.dtype)
+
+    class XPUTestMish3(XPUTestMishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [4, 512, 15, 15]).astype(
+                self.dtype
+            )
+
+    class XPUTestMish4(XPUTestMishBase):
+        def init_config(self):
+            self.x = np.random.uniform(-2, 2, [4, 256, 22, 22]).astype(
+                self.dtype
+            )
+
+
+support_types = get_xpu_op_support_types('mish')
+for stype in support_types:
+    create_test_class(globals(), XPUTestMishOP, stype)
+
+
+def ref_mish(x, threshold=20):
+    sp = np.select([x <= threshold, x > threshold], [np.log(1 + np.exp(x)), x])
+    out = x * np.tanh(sp)
     return out
 
 

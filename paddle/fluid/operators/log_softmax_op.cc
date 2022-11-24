@@ -33,6 +33,7 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -42,6 +43,8 @@ class LogSoftmaxOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -57,10 +60,6 @@ class LogSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
                  "The dimension index of Input(x) to perform log_softmax,"
                  "default -1 for last dimension")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 LogSoftmax Operator.
 

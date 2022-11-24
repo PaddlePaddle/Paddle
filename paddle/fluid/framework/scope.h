@@ -38,6 +38,7 @@ class Variable;
 
 namespace paddle {
 namespace framework {
+<<<<<<< HEAD
 
 // TODO(zhiqiu): add more function in base class
 class ScopeBase {
@@ -51,6 +52,8 @@ class ScopeBase {
 
 class Scope;
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 /**
  * @brief Scope that manage all variables.
  *
@@ -59,7 +62,7 @@ class Scope;
  * One net can run in different scopes and update different variable in the
  * scope.
  */
-class Scope : public ScopeBase {
+class Scope {
  public:
   Scope() {}
   ~Scope();
@@ -118,10 +121,10 @@ class Scope : public ScopeBase {
 
   const std::list<Scope*>& kids() const { return kids_; }
 
-  // enumerate all the variable names current contains.
+  // enumerate all the variable names which current scope contains.
   std::vector<std::string> LocalVarNames() const;
 
-  // enumerate all the variables current contains.
+  // enumerate all the variables which current scope contains.
   std::vector<Variable*> LocalVars();
 
   // Rename variable to a new name
@@ -134,6 +137,14 @@ class Scope : public ScopeBase {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+<<<<<<< HEAD
+=======
+  // only for dygraph_to_static
+  bool CanReuesd() const { return can_reused_; }
+
+  void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {
@@ -171,14 +182,14 @@ class Scope : public ScopeBase {
   mutable std::list<Scope*> kids_;
   const Scope* parent_{nullptr};
 
-  DISABLE_COPY_AND_ASSIGN(Scope);
+  // only for dygraph_to_static
+  bool can_reused_{false};
 
-#ifndef PADDLE_ON_INFERENCE
+  DISABLE_COPY_AND_ASSIGN(Scope);
 
  private:
   mutable phi::RWLock kids_lock_;
   mutable phi::RWLock vars_lock_;
-#endif
 };
 
 // Generate some debug string about the inherience structure of scope, quite

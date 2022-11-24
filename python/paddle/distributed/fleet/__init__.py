@@ -17,7 +17,6 @@ from .base.role_maker import Role  # noqa: F401
 from .base.role_maker import UserDefinedRoleMaker  # noqa: F401
 from .base.role_maker import PaddleCloudRoleMaker  # noqa: F401
 from .base.distributed_strategy import DistributedStrategy  # noqa: F401
-from .base.fleet_base import Fleet  # noqa: F401
 from .base.util_factory import UtilBase  # noqa: F401
 from .dataset import DatasetBase  # noqa: F401
 from .dataset import InMemoryDataset  # noqa: F401
@@ -25,16 +24,37 @@ from .dataset import QueueDataset  # noqa: F401
 from .dataset import FileInstantDataset  # noqa: F401
 from .dataset import BoxPSDataset  # noqa: F401
 from .data_generator.data_generator import MultiSlotDataGenerator  # noqa: F401
-from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa: F401
+from .data_generator.data_generator import (
+    MultiSlotStringDataGenerator,
+)  # noqa: F401
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .fleet import Fleet
+from .model import distributed_model
+from .optimizer import distributed_optimizer
+from .scaler import distributed_scaler
+from .utils import log_util
 
+<<<<<<< HEAD
 __all__ = [  #noqa
     "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
     "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
     "DistributedStrategy", "Role", "MultiSlotDataGenerator",
     "PaddleCloudRoleMaker", "Fleet"
+=======
+__all__ = [  # noqa
+    "CommunicateTopology",
+    "UtilBase",
+    "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator",
+    "UserDefinedRoleMaker",
+    "DistributedStrategy",
+    "Role",
+    "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker",
+    "Fleet",
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 ]
 
 fleet = Fleet()
@@ -72,20 +92,27 @@ init_worker = fleet.init_worker
 init_server = fleet.init_server
 run_server = fleet.run_server
 stop_worker = fleet.stop_worker
-distributed_optimizer = fleet.distributed_optimizer
+distributed_optimizer = distributed_optimizer
 save_inference_model = fleet.save_inference_model
 save_persistables = fleet.save_persistables
 save_cache_model = fleet.save_cache_model
+check_save_pre_patch_done = fleet.check_save_pre_patch_done
+save_one_table = fleet.save_one_table
+save_dense_params = fleet.save_dense_params
 load_model = fleet.load_model
+load_inference_model = fleet.load_inference_model
+load_one_table = fleet.load_one_table
 minimize = fleet.minimize
-distributed_model = fleet.distributed_model
-step = fleet.step
-clear_grad = fleet.clear_grad
-set_lr = fleet.set_lr
-get_lr = fleet.get_lr
-state_dict = fleet.state_dict
-set_state_dict = fleet.set_state_dict
+distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
+<<<<<<< HEAD
 distributed_scaler = fleet.distributed_scaler
 save_cache_table = fleet.save_cache_table
+=======
+distributed_scaler = distributed_scaler
+set_log_level = log_util.set_log_level
+get_log_level_code = log_util.get_log_level_code
+get_log_level_name = log_util.get_log_level_name
+from .. import auto_parallel as auto
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

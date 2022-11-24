@@ -26,10 +26,12 @@ class TestBuildCINNPass(DistPassTestBase):
         self.rtol = 0.0
 
     def apply_passes(self, main_prog, startup_prog):
-        pass_manager = PassManager([
-            new_pass("build_cinn"),
-            new_pass("fuse_elewise_add_act"),
-        ])
+        pass_manager = PassManager(
+            [
+                new_pass("build_cinn"),
+                new_pass("fuse_elewise_add_act"),
+            ]
+        )
         pass_manager.apply([main_prog], [startup_prog])
         op_types = [op.type for op in main_prog.global_block().ops]
         self.assertTrue('cinn_launch' in op_types)

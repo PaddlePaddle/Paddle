@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
 import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import functools
 import paddle
 
 
@@ -32,6 +28,10 @@ class TestNumelOp(OpTest):
         self.inputs = {
             'Input': x,
         }
+<<<<<<< HEAD
+=======
+        # TODO(zhouwei): will change shape [1] to [] to support zero-dim
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.outputs = {'Out': np.array([np.size(x)])}
 
     def test_check_output(self):
@@ -50,7 +50,7 @@ class TestNumelOp1(TestNumelOp):
 class TestNumelOp2(TestNumelOp):
 
     def init(self):
-        self.shape = (0, )
+        self.shape = (0,)
 
 
 class TestNumelAPI(unittest.TestCase):
@@ -68,6 +68,7 @@ class TestNumelAPI(unittest.TestCase):
             out_1 = paddle.numel(x_1)
             out_2 = paddle.numel(x_2)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
+<<<<<<< HEAD
             res_1, res_2 = exe.run(feed={
                 "x_1": input_1,
                 "x_2": input_2,
@@ -79,6 +80,22 @@ class TestNumelAPI(unittest.TestCase):
             assert (np.array_equal(res_2,
                                    np.array([np.size(input_2)
                                              ]).astype("int64")))
+=======
+            res_1, res_2 = exe.run(
+                feed={
+                    "x_1": input_1,
+                    "x_2": input_2,
+                },
+                fetch_list=[out_1, out_2],
+            )
+            # TODO(zhouwei): will change shape [1] to [] to support zero-dim
+            assert np.array_equal(
+                res_1, np.array([np.size(input_1)]).astype("int64")
+            )
+            assert np.array_equal(
+                res_2, np.array([np.size(input_2)]).astype("int64")
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_numel_imperative(self):
         paddle.disable_static(paddle.CPUPlace())
@@ -88,8 +105,8 @@ class TestNumelAPI(unittest.TestCase):
         x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
-        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
-        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
+        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
+        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):

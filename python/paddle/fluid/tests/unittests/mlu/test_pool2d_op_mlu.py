@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-from __future__ import division
-
 import unittest
 import numpy as np
 
@@ -26,30 +23,44 @@ import sys
 
 sys.path.append('..')
 from op_test import OpTest
-from test_pool2d_op import pool2D_forward_naive, avg_pool2D_forward_naive, max_pool2D_forward_naive, adaptive_start_index, adaptive_end_index
+from test_pool2d_op import (
+    pool2D_forward_naive,
+    avg_pool2D_forward_naive,
+    max_pool2D_forward_naive,
+    adaptive_start_index,
+    adaptive_end_index,
+)
 
 paddle.enable_static()
 
 
-def pool2d_backward_navie(x,
-                          ksize,
-                          strides,
-                          paddings,
-                          global_pool=0,
-                          ceil_mode=False,
-                          exclusive=True,
-                          adaptive=False,
-                          data_format='NCHW',
-                          pool_type="max",
-                          padding_algorithm="EXPLICIT"):
+def pool2d_backward_navie(
+    x,
+    ksize,
+    strides,
+    paddings,
+    global_pool=0,
+    ceil_mode=False,
+    exclusive=True,
+    adaptive=False,
+    data_format='NCHW',
+    pool_type="max",
+    padding_algorithm="EXPLICIT",
+):
     # update paddings
     def _get_padding_with_SAME(input_shape, pool_size, pool_stride):
         padding = []
-        for input_size, filter_size, stride_size in zip(input_shape, pool_size,
-                                                        pool_stride):
+        for input_size, filter_size, stride_size in zip(
+            input_shape, pool_size, pool_stride
+        ):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
+<<<<<<< HEAD
                 ((out_size - 1) * stride_size + filter_size - input_size, 0))
+=======
+                ((out_size - 1) * stride_size + filter_size - input_size, 0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -59,9 +70,10 @@ def pool2d_backward_navie(x,
     if isinstance(padding_algorithm, str):
         padding_algorithm = padding_algorithm.upper()
         if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
-            raise ValueError("Unknown Attr(padding_algorithm): '%s'. "
-                             "It can only be 'SAME' or 'VALID'." %
-                             str(padding_algorithm))
+            raise ValueError(
+                "Unknown Attr(padding_algorithm): '%s'. "
+                "It can only be 'SAME' or 'VALID'." % str(padding_algorithm)
+            )
 
         if padding_algorithm == "VALID":
             paddings = [0, 0, 0, 0]
@@ -69,7 +81,8 @@ def pool2d_backward_navie(x,
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode)"
                     " must be False. "
-                    "Received ceil_mode: True.")
+                    "Received ceil_mode: True."
+                )
         elif padding_algorithm == "SAME":
             input_data_shape = []
             if data_format == "NCHW":
@@ -98,10 +111,20 @@ def pool2d_backward_navie(x,
     if adaptive:
         H_out, W_out = ksize
     else:
-        H_out = (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1) // strides[0] + 1 \
-            if ceil_mode else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
-        W_out = (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1) // strides[1] + 1 \
-            if ceil_mode else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        H_out = (
+            (H - ksize[0] + pad_h_up + pad_h_down + strides[0] - 1)
+            // strides[0]
+            + 1
+            if ceil_mode
+            else (H - ksize[0] + pad_h_up + pad_h_down) // strides[0] + 1
+        )
+        W_out = (
+            (W - ksize[1] + pad_w_left + pad_w_right + strides[1] - 1)
+            // strides[1]
+            + 1
+            if ceil_mode
+            else (W - ksize[1] + pad_w_left + pad_w_right) // strides[1] + 1
+        )
 
     x_grad = np.zeros_like(x)
     for i in range(H_out):
@@ -129,6 +152,7 @@ def pool2d_backward_navie(x,
                 in_w_end = np.min((in_w_end, W))
 
             if pool_type == 'avg':
+<<<<<<< HEAD
                 if (exclusive or adaptive):
                     field_size = (in_h_end - in_h_start) * (in_w_end -
                                                             in_w_start)
@@ -143,14 +167,40 @@ def pool2d_backward_navie(x,
                         idx_w = idx % (in_w_end - in_w_start)
                         x_grad[n, c, in_h_start + idx_h,
                                in_w_start + idx_w] += 1
+=======
+                if exclusive or adaptive:
+                    field_size = (in_h_end - in_h_start) * (
+                        in_w_end - in_w_start
+                    )
+                x_grad[:, :, in_h_start:in_h_end, in_w_start:in_w_end] += (
+                    1 / field_size
+                )
+            elif pool_type == 'max':
+                for n in range(N):
+                    for c in range(C):
+                        idx = np.argmax(
+                            x[
+                                n, c, in_h_start:in_h_end, in_w_start:in_w_end
+                            ].flatten()
+                        )
+                        idx_h = idx // (in_w_end - in_w_start)
+                        idx_w = idx % (in_w_end - in_w_start)
+                        x_grad[
+                            n, c, in_h_start + idx_h, in_w_start + idx_w
+                        ] += 1
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if data_format == "NHWC":
         x_grad = x_grad.transpose([0, 2, 3, 1])
     return x_grad
 
 
+<<<<<<< HEAD
 class TestPool2D_Op_Mixin(object):
 
+=======
+class TestPool2D_Op_Mixin:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -168,12 +218,28 @@ class TestPool2D_Op_Mixin(object):
         self.init_shape()
 
         input = np.random.random(self.shape).astype(self.dtype)
+<<<<<<< HEAD
         output = pool2D_forward_naive(input, self.ksize, self.strides,
                                       self.paddings, self.global_pool,
                                       self.ceil_mode, self.exclusive,
                                       self.adaptive, self.data_format,
                                       self.pool_type,
                                       self.padding_algorithm).astype(self.dtype)
+=======
+        output = pool2D_forward_naive(
+            input,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            self.data_format,
+            self.pool_type,
+            self.padding_algorithm,
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
         self.attrs = {
@@ -195,6 +261,7 @@ class TestPool2D_Op_Mixin(object):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         x_grad = pool2d_backward_navie(self.inputs["X"],
                                        ksize=self.ksize,
                                        strides=self.strides,
@@ -212,6 +279,29 @@ class TestPool2D_Op_Mixin(object):
                                    'Out',
                                    max_relative_error=0.06,
                                    user_defined_grads=[x_grad])
+=======
+        x_grad = pool2d_backward_navie(
+            self.inputs["X"],
+            ksize=self.ksize,
+            strides=self.strides,
+            paddings=self.paddings,
+            global_pool=self.global_pool,
+            ceil_mode=False,
+            exclusive=self.exclusive,
+            adaptive=self.adaptive,
+            data_format=self.data_format,
+            pool_type=self.pool_type,
+            padding_algorithm=self.padding_algorithm,
+        )
+        x_grad = x_grad / np.prod(self.outputs['Out'].shape)
+        self.check_grad_with_place(
+            self.place,
+            set(['X']),
+            'Out',
+            max_relative_error=0.06,
+            user_defined_grads=[x_grad],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -335,7 +425,7 @@ create_test_fp16_class(TestCase3)
 create_test_fp16_class(TestCase4)
 create_test_fp16_class(TestCase5)
 
-#--------------------test pool2d use ceil mode--------------------
+# --------------------test pool2d use ceil mode--------------------
 
 
 def create_test_use_ceil_class(parent):
@@ -380,7 +470,7 @@ class TestAvgPoolAdaptiveAsyOutSize(TestCase1):
         self.paddings = [0, 0, 0, 0]
 
 
-#-------test pool2d with asymmetric padding-----
+# -------test pool2d with asymmetric padding-----
 
 
 class TestPool2D_AsyPadding(TestPool2D_Op):
@@ -481,7 +571,7 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
         self.shape = [2, 3, 7, 7]
 
 
-#----------- test channel_last --------------
+# ----------- test channel_last --------------
 class TestPool2D_channel_last(TestPool2D_Op):
 
     def init_data_format(self):
@@ -713,6 +803,7 @@ class TestPool2DAPI(unittest.TestCase):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
 
+<<<<<<< HEAD
         input_NHWC = fluid.layers.data(name="input_NHWC",
                                        shape=[2, 5, 5, 3],
                                        append_batch_size=False,
@@ -798,6 +889,119 @@ class TestPool2DAPI(unittest.TestCase):
                                      pool_type="avg",
                                      pool_padding=[0, 0],
                                      data_format="NCHW")
+=======
+        input_NHWC = fluid.layers.data(
+            name="input_NHWC",
+            shape=[2, 5, 5, 3],
+            append_batch_size=False,
+            dtype="float32",
+        )
+
+        input_NCHW = fluid.layers.data(
+            name="input_NCHW",
+            shape=[2, 3, 5, 5],
+            append_batch_size=False,
+            dtype="float32",
+        )
+
+        input_NHWC_negetive = fluid.layers.data(
+            name="input_NHWC_negetive",
+            shape=[2, -1, 5, 3],
+            append_batch_size=False,
+            dtype="float32",
+        )
+
+        input_NCHW_negetive = fluid.layers.data(
+            name="input_NCHW_negetive",
+            shape=[2, 3, -1, -1],
+            append_batch_size=False,
+            dtype="float32",
+        )
+
+        ksize = [3, 3]
+        out_1 = fluid.layers.pool2d(
+            input=input_NHWC,
+            pool_size=ksize,
+            pool_type="max",
+            pool_padding=[1, 1],
+            data_format="NHWC",
+        )
+
+        out_2 = fluid.layers.pool2d(
+            input=input_NHWC,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[[0, 0], [1, 1], [1, 1], [0, 0]],
+            data_format="NHWC",
+        )
+
+        out_3 = fluid.layers.pool2d(
+            input=input_NCHW,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[[0, 0], [0, 0], [1, 1], [1, 1]],
+            data_format="NCHW",
+        )
+
+        out_4 = fluid.layers.pool2d(
+            input=input_NCHW,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[1, 2, 1, 0],
+            data_format="NCHW",
+        )
+        # test VALID
+        out_5 = fluid.layers.pool2d(
+            input=input_NCHW,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding="VALID",
+            data_format="NCHW",
+        )
+
+        out_6 = fluid.layers.pool2d(
+            input=input_NHWC,
+            pool_size=ksize,
+            pool_type="max",
+            pool_padding="VALID",
+            data_format="NHWC",
+        )
+
+        # test SAME
+        out_7 = fluid.layers.pool2d(
+            input=input_NCHW,
+            pool_size=[4, 4],
+            pool_type="avg",
+            pool_padding="SAME",
+            data_format="NCHW",
+        )
+
+        out_8 = fluid.layers.pool2d(
+            input=input_NHWC,
+            pool_size=[4, 4],
+            pool_type="max",
+            pool_padding="SAME",
+            data_format="NHWC",
+        )
+
+        # test negetive
+        out_9 = fluid.layers.pool2d(
+            input=input_NHWC_negetive,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[0, 0],
+            data_format="NHWC",
+        )
+        assert out_9.shape == (2, -1, 3, 3)
+
+        out_10 = fluid.layers.pool2d(
+            input=input_NCHW_negetive,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[0, 0],
+            data_format="NCHW",
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         assert out_10.shape == (2, 3, -1, -1)
 
         exe = fluid.Executor(place=fluid.MLUPlace(0))
@@ -807,8 +1011,9 @@ class TestPool2DAPI(unittest.TestCase):
                 "input_NHWC": x_NHWC,
                 "input_NCHW": x_NCHW,
                 "input_NHWC_negetive": x_NHWC,
-                "input_NCHW_negetive": x_NCHW
+                "input_NCHW_negetive": x_NCHW,
             },
+<<<<<<< HEAD
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8])
 
         assert np.allclose(
@@ -847,6 +1052,61 @@ class TestPool2DAPI(unittest.TestCase):
                                                 data_format="NCHW"),
                            rtol=0.07,
                            atol=1e-05)
+=======
+            fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8],
+        )
+
+        assert np.allclose(
+            res_1,
+            pool2D_forward_naive(
+                x=x_NHWC,
+                ksize=ksize,
+                pool_type="max",
+                strides=[1, 1],
+                paddings=[1, 1],
+                data_format="NHWC",
+            ),
+        )
+
+        assert np.allclose(
+            res_2,
+            pool2D_forward_naive(
+                x=x_NHWC,
+                ksize=ksize,
+                pool_type="avg",
+                strides=[1, 1],
+                paddings=[1, 1, 1, 1],
+                data_format="NHWC",
+            ),
+        )
+        assert np.allclose(
+            res_3,
+            pool2D_forward_naive(
+                x=x_NCHW,
+                ksize=ksize,
+                pool_type="avg",
+                strides=[1, 1],
+                paddings=[1, 1, 1, 1],
+                data_format="NCHW",
+            ),
+            rtol=0.07,
+            atol=1e-05,
+        )
+
+        assert np.allclose(
+            res_4,
+            pool2D_forward_naive(
+                x=x_NCHW,
+                ksize=ksize,
+                pool_type="avg",
+                strides=[1, 1],
+                paddings=[1, 2, 1, 0],
+                data_format="NCHW",
+            ),
+            rtol=0.07,
+            atol=1e-05,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # VALID
         assert np.allclose(
@@ -858,11 +1118,14 @@ class TestPool2DAPI(unittest.TestCase):
                 strides=[1, 1],
                 paddings=[10, 20],  # any ele is ok
                 padding_algorithm="VALID",
-                data_format="NCHW"),
+                data_format="NCHW",
+            ),
             rtol=0.07,
-            atol=1e-05)
+            atol=1e-05,
+        )
         assert np.allclose(
             res_6,
+<<<<<<< HEAD
             pool2D_forward_naive(x=x_NHWC,
                                  ksize=ksize,
                                  pool_type="max",
@@ -891,56 +1154,146 @@ class TestPool2DAPI(unittest.TestCase):
                                  paddings=[10, 20],
                                  padding_algorithm="SAME",
                                  data_format="NHWC"))
+=======
+            pool2D_forward_naive(
+                x=x_NHWC,
+                ksize=ksize,
+                pool_type="max",
+                strides=[1, 1],
+                paddings=[10, 20],
+                padding_algorithm="VALID",
+                data_format="NHWC",
+            ),
+        )
+        # SAME
+        assert np.allclose(
+            res_7,
+            pool2D_forward_naive(
+                x=x_NCHW,
+                ksize=[4, 4],
+                pool_type="avg",
+                strides=[1, 1],
+                paddings=[10, 20],
+                padding_algorithm="SAME",
+                data_format="NCHW",
+            ),
+            rtol=0.07,
+            atol=1e-05,
+        )
+
+        assert np.allclose(
+            res_8,
+            pool2D_forward_naive(
+                x=x_NHWC,
+                ksize=[4, 4],
+                pool_type="max",
+                strides=[1, 1],
+                paddings=[10, 20],
+                padding_algorithm="SAME",
+                data_format="NHWC",
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestPool2DAPI_Error(unittest.TestCase):
 
     def test_api(self):
+<<<<<<< HEAD
         input_NHWC = fluid.layers.data(name="input_NHWC",
                                        shape=[2, 5, 5, 3],
                                        append_batch_size=False,
                                        dtype="float32")
+=======
+        input_NHWC = fluid.layers.data(
+            name="input_NHWC",
+            shape=[2, 5, 5, 3],
+            append_batch_size=False,
+            dtype="float32",
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         ksize = [3, 3]
 
         # data_format value error
         def run_2():
+<<<<<<< HEAD
             out_2 = fluid.layers.pool2d(input=input_NHWC,
                                         pool_size=ksize,
                                         pool_type="max",
                                         pool_padding=[1, 1],
                                         data_format="NHWCC")
+=======
+            out_2 = fluid.layers.pool2d(
+                input=input_NHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding=[1, 1],
+                data_format="NHWCC",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, run_2)
 
         # padding str value error
         def run_3():
+<<<<<<< HEAD
             out_3 = fluid.layers.pool2d(input=input_NHWC,
                                         pool_size=ksize,
                                         pool_type="max",
                                         pool_padding="VALIDSAME",
                                         data_format="NHWC")
+=======
+            out_3 = fluid.layers.pool2d(
+                input=input_NHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding="VALIDSAME",
+                data_format="NHWC",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, run_3)
 
         # padding str valid and ceil_mode value error
         def run_4():
+<<<<<<< HEAD
             out_4 = fluid.layers.pool2d(input=input_NHWC,
                                         pool_size=ksize,
                                         pool_type="max",
                                         pool_padding="VALID",
                                         ceil_mode=True,
                                         data_format="NHWC")
+=======
+            out_4 = fluid.layers.pool2d(
+                input=input_NHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding="VALID",
+                ceil_mode=True,
+                data_format="NHWC",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, run_4)
 
         # padding with 8 ele. value error
         def run_5():
+<<<<<<< HEAD
             out_5 = fluid.layers.pool2d(input=input_NHWC,
                                         pool_size=ksize,
                                         pool_type="max",
                                         pool_padding=[[1, 1], [0, 0], [0, 0],
                                                       [1, 1]],
                                         data_format="NHWC")
+=======
+            out_5 = fluid.layers.pool2d(
+                input=input_NHWC,
+                pool_size=ksize,
+                pool_type="max",
+                pool_padding=[[1, 1], [0, 0], [0, 0], [1, 1]],
+                data_format="NHWC",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, run_5)
 
@@ -951,6 +1304,7 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # the input of Pool2D must be Variable.
             data1 = np.random.random((3, 32, 32, 5)).astype('float32')
+<<<<<<< HEAD
             pool2d = fluid.dygraph.Pool2D(pool_size=2,
                                           pool_type='max',
                                           pool_stride=1,
@@ -961,12 +1315,27 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
             data2 = fluid.layers.data(name='x1',
                                       shape=[3, 32, 32, 5],
                                       dtype="int32")
+=======
+            pool2d = fluid.dygraph.Pool2D(
+                pool_size=2,
+                pool_type='max',
+                pool_stride=1,
+                global_pooling=False,
+            )
+            self.assertRaises(TypeError, pool2d, data1)
+
+            # the input dtype of mlu Pool2D must be float16 or float32
+            data2 = fluid.layers.data(
+                name='x1', shape=[3, 32, 32, 5], dtype="int32"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertRaises(TypeError, pool2d, data2)
 
     def test_data_format_error(self):
         with program_guard(Program(), Program()):
             # the data_format must be 'NCHW' or 'NHWC'
             data1 = np.random.random((3, 32, 32, 5)).astype('float32')
+<<<<<<< HEAD
             self.assertRaises(ValueError,
                               fluid.dygraph.Pool2D,
                               pool_size=2,
@@ -974,6 +1343,17 @@ class TestDygraphPool2DAPIError(unittest.TestCase):
                               pool_stride=1,
                               global_pooling=False,
                               data_format='NWHC')
+=======
+            self.assertRaises(
+                ValueError,
+                fluid.dygraph.Pool2D,
+                pool_size=2,
+                pool_type='max',
+                pool_stride=1,
+                global_pooling=False,
+                data_format='NWHC',
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestDygraphPool2DAPI(unittest.TestCase):
@@ -982,6 +1362,7 @@ class TestDygraphPool2DAPI(unittest.TestCase):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             pool2d = fluid.dygraph.Pool2D(pool_size=2,
                                           pool_type='max',
                                           pool_stride=1,
@@ -994,11 +1375,32 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         pool_type='max',
                                         data_format='NHWC')
             self.assertTrue(np.allclose(out1.numpy(), out2))
+=======
+            pool2d = fluid.dygraph.Pool2D(
+                pool_size=2,
+                pool_type='max',
+                pool_stride=1,
+                pool_padding=[0, 0],
+                global_pooling=False,
+                data_format='NHWC',
+            )
+            out1 = pool2d(x)
+            out2 = pool2D_forward_naive(
+                data,
+                [2, 2],
+                [1, 1],
+                paddings=[0, 0],
+                pool_type='max',
+                data_format='NHWC',
+            )
+            np.testing.assert_allclose(out1.numpy(), out2)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_lower_case(self):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             pool2d = fluid.dygraph.Pool2D(pool_size=2,
                                           pool_type='max',
                                           pool_stride=1,
@@ -1011,11 +1413,32 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         pool_type='max',
                                         data_format='NHWC')
             self.assertTrue(np.allclose(out1.numpy(), out2))
+=======
+            pool2d = fluid.dygraph.Pool2D(
+                pool_size=2,
+                pool_type='max',
+                pool_stride=1,
+                pool_padding=[0, 0],
+                global_pooling=False,
+                data_format='nhwc',
+            )
+            out1 = pool2d(x)
+            out2 = pool2D_forward_naive(
+                data,
+                [2, 2],
+                [1, 1],
+                paddings=[0, 0],
+                pool_type='max',
+                data_format='NHWC',
+            )
+            np.testing.assert_allclose(out1.numpy(), out2)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_upper_case(self):
         with fluid.dygraph.guard():
             data = np.random.random((3, 32, 32, 5)).astype('float32')
             x = fluid.dygraph.to_variable(data)
+<<<<<<< HEAD
             pool2d = fluid.dygraph.Pool2D(pool_size=2,
                                           pool_type='MAX',
                                           pool_stride=1,
@@ -1028,6 +1451,26 @@ class TestDygraphPool2DAPI(unittest.TestCase):
                                         pool_type='max',
                                         data_format='NHWC')
             self.assertTrue(np.allclose(out1.numpy(), out2))
+=======
+            pool2d = fluid.dygraph.Pool2D(
+                pool_size=2,
+                pool_type='MAX',
+                pool_stride=1,
+                pool_padding=[0, 0],
+                global_pooling=False,
+                data_format='nhwc',
+            )
+            out1 = pool2d(x)
+            out2 = pool2D_forward_naive(
+                data,
+                [2, 2],
+                [1, 1],
+                paddings=[0, 0],
+                pool_type='max',
+                data_format='NHWC',
+            )
+            np.testing.assert_allclose(out1.numpy(), out2)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

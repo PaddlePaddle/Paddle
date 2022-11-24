@@ -17,7 +17,6 @@ from paddle.vision.models import resnet18 as resnet
 import paddle
 import paddle.nn as nn
 import unittest
-import json
 import numpy as np
 
 
@@ -32,12 +31,21 @@ class TestSplitProgram(unittest.TestCase):
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
+<<<<<<< HEAD
             image = paddle.static.data(shape=[batch_size, 3, 224, 224],
                                        dtype='float32',
                                        name='image')
             label = paddle.static.data(shape=[batch_size, 1],
                                        dtype='int64',
                                        name='label')
+=======
+            image = paddle.static.data(
+                shape=[batch_size, 3, 224, 224], dtype='float32', name='image'
+            )
+            label = paddle.static.data(
+                shape=[batch_size, 1], dtype='int64', name='label'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             model = resnet(pretrained=False)
             loss_fn = nn.loss.CrossEntropyLoss()
@@ -66,8 +74,16 @@ class TestSplitProgram(unittest.TestCase):
             self.assertEqual(len(vars_actual), len(vars_expected))
             for actual, expected in zip(vars_actual, vars_expected):
                 self.assertEqual(actual.shape, expected.shape)
+<<<<<<< HEAD
                 self.assertTrue(np.array_equal(actual, expected),
                                 '{}\n{}\n'.format(actual, expected))
+=======
+                np.testing.assert_array_equal(
+                    actual,
+                    expected,
+                    err_msg='{}\n{}\n'.format(actual, expected),
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def get_places(self):
         places = [paddle.CPUPlace()]
@@ -92,27 +108,45 @@ class TestSplitProgram(unittest.TestCase):
         exe = paddle.static.Executor(place)
 
         image_np = np.random.random(size=image.shape).astype('float32')
+<<<<<<< HEAD
         label_np = np.random.randint(low=0,
                                      high=1000,
                                      dtype='int64',
                                      size=label.shape)
+=======
+        label_np = np.random.randint(
+            low=0, high=1000, dtype='int64', size=label.shape
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         scope = paddle.static.Scope()
         if not use_split:
             with paddle.static.scope_guard(scope):
                 exe.run(startup_prog)
                 for _ in range(batch_num):
+<<<<<<< HEAD
                     exe.run(main_prog,
                             feed={
                                 image.name: image_np,
                                 label.name: label_np
                             })
+=======
+                    exe.run(
+                        main_prog,
+                        feed={image.name: image_np, label.name: label_np},
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return self.get_var_values(scope, startup_vars)
 
         op_num = len(main_prog.global_block().ops)
         split_op_indices = [int(op_num / 3.0), int(op_num * 3 / 4.0)]
         programs, input_vars, output_vars = split_program(
+<<<<<<< HEAD
             main_prog, split_op_indices)
+=======
+            main_prog, split_op_indices
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         op_nums = [0] + split_op_indices + [op_num]
         op_nums = [op_nums[i + 1] - op_nums[i] for i in range(len(op_nums) - 1)]
         num_split = len(split_op_indices) + 1
@@ -136,15 +170,23 @@ class TestSplitProgram(unittest.TestCase):
                         if tmp_vars[in_name] is not None:
                             feed_dict[in_name] = tmp_vars[in_name]
 
-                    output_var_values = exe.run(program,
-                                                feed=feed_dict,
-                                                fetch_list=output_vars[i],
-                                                return_numpy=False)
-                    for out_name, out_value in zip(output_vars[i],
-                                                   output_var_values):
+                    output_var_values = exe.run(
+                        program,
+                        feed=feed_dict,
+                        fetch_list=output_vars[i],
+                        return_numpy=False,
+                    )
+                    for out_name, out_value in zip(
+                        output_vars[i], output_var_values
+                    ):
                         if not out_value._is_initialized():
                             tmp_vars[out_name] = np.ndarray(
+<<<<<<< HEAD
                                 out_value._get_dims()).astype('float32')
+=======
+                                out_value._get_dims()
+                            ).astype('float32')
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         else:
                             tmp_vars[out_name] = np.array(out_value)
 

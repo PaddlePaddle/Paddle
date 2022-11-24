@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import ast
 import astor
 import atexit
@@ -22,7 +20,8 @@ import collections
 from paddle.utils import gast
 import inspect
 import os
-import six
+import sys
+import shutil
 import tempfile
 import textwrap
 import numpy as np
@@ -33,6 +32,12 @@ from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import assign
+<<<<<<< HEAD
+=======
+import collections
+from functools import reduce
+import warnings
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 # Note(Aurelius): Do not forget the dot `.` to distinguish other
 # module such as paddlenlp.
@@ -41,6 +46,10 @@ DYGRAPH_MODULE_PREFIX = 'paddle.fluid.dygraph'
 DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 GET_ARGS_FUNC_PREFIX = 'get_args'
 SET_ARGS_FUNC_PREFIX = 'set_args'
+<<<<<<< HEAD
+=======
+ALREADY_D2S = '__already_d2s'
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 ARGS_NAME = '__args'
 # NOTE(liym27): Please use `getattr(ast_node, ORIGI_INFO)` instead of . operation to get the original information of ast node.
 ORIGI_INFO = "Original information of source code for ast node."
@@ -48,7 +57,7 @@ ORIGI_INFO = "Original information of source code for ast node."
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Implement customized NodeVisitor inherited from gast.NodeVisitor.
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
     """
@@ -80,6 +89,7 @@ dygraph_class_to_static_api = {
     "PolynomialDecay": "polynomial_decay",
 }
 
+DEL_TEMP_DIR = True  # A flag to avoid atexit.register more than once
 FOR_ITER_INDEX_PREFIX = '__for_loop_var_index'
 FOR_ITER_TUPLE_PREFIX = '__for_loop_iter_tuple'
 FOR_ITER_TARGET_PREFIX = '__for_loop_iter_target'
@@ -89,14 +99,90 @@ FOR_ITER_VAR_LEN_PREFIX = '__for_loop_var_len'
 FOR_ITER_VAR_NAME_PREFIX = '__for_loop_iter_var'
 FOR_ITER_ZIP_TO_LIST_PREFIX = '__for_loop_iter_zip'
 
-# FullArgSpec is valid from Python3. Defined a Namedtuple to
-# to make it available in Python2.
-FullArgSpec = collections.namedtuple('FullArgSpec', [
-    'args', 'varargs', 'varkw', 'defaults', 'kwonlyargs', 'kwonlydefaults',
-    'annotations'
-])
+RE_PYNAME = '[a-zA-Z0-9_]+'
+RE_PYMODULE = r'[a-zA-Z0-9_]+\.'
 
 
+def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
+    """
+    This function creates a Tensor on the global block. The created Tensor
+    doesn't check the dtype and the shape of feed data because dygraph input
+    data can be various-length. This API is used in translating dygraph into
+    static graph.
+
+     Note:
+        The default :code:`stop_gradient` attribute of the Tensor created by
+        this API is true, which means the gradient won't be passed backward
+        through the data Tensor. Set :code:`var.stop_gradient = False` If
+        user would like to pass backward gradient.
+
+    Args:
+       name (str): The name/alias of the Tensor, see :ref:`api_guide_Name`
+           for more details.
+       shape (list|tuple): List|Tuple of integers declaring the shape. You can
+           set "None" at a dimension to indicate the dimension can be of any
+           size. For example, it is useful to set changeable batch size as "None"
+       dtype (np.dtype|VarType|str, optional): The type of the data. Supported
+           dtype: bool, float16, float32, float64, int8, int16, int32, int64,
+           uint8. Default: float32
+       lod_level (int, optional): The LoD level of the LoDTensor. Usually users
+           don't have to set this value. For more details about when and how to
+           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+
+    Returns:
+        Tensor: The global Tensor that gives access to the data.
+    """
+    helper = LayerHelper('data', **locals())
+    shape = list(shape)
+    for i in range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
+    return helper.create_global_variable(
+        name=name,
+        shape=shape,
+        dtype=dtype,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        stop_gradient=True,
+        lod_level=lod_level,
+        is_data=True,
+        need_check_feed=False,
+    )
+
+
+def create_undefined_variable():
+    from paddle.fluid.dygraph.dygraph_to_static.return_transformer import (
+        RETURN_NO_VALUE_MAGIC_NUM,
+    )
+
+    var = data_layer_not_check(
+        unique_name.generate("undefined_var"), [1], "float64"
+    )
+    var.stop_gradient = False
+    # the variable is created in block(0), we append assign in block(0) either.
+    helper = LayerHelper('create_undefined_variable', **locals())
+    saved_block_ids = helper.main_program.current_block_idx
+    helper.main_program.current_block_idx = 0
+    assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    helper.main_program.current_block_idx = saved_block_ids
+    return var
+
+
+class UndefinedVar:
+    def __init__(self, name):
+        self.name = name
+
+    def check(self):
+        raise UnboundLocalError(
+            "local variable '{}' should be created before using it."
+        )
+
+
+class Dygraph2StaticException(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
+<<<<<<< HEAD
 def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     """
     This function creates a Tensor on the global block. The created Tensor
@@ -175,10 +261,13 @@ class Dygraph2StaticException(Exception):
     def __init__(self, message):
         super().__init__(message)
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 def saw(x):
     if isinstance(x, UndefinedVar):
         return x.check()
+<<<<<<< HEAD
     else:
         return x
 
@@ -195,13 +284,17 @@ def getfullargspec(target):
                            kwonlyargs=[],
                            kwonlydefaults=None,
                            annotations={})
+=======
+    else:
+        return x
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def parse_arg_and_kwargs(function):
     """
     Returns full argument names as list. e.g ['x', 'y', 'z']
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     arg_names = fullargspec.args
     if arg_names and 'self' == arg_names[0]:
         arg_names = fullargspec.args[1:]
@@ -211,7 +304,7 @@ def parse_arg_and_kwargs(function):
     default_values = fullargspec.defaults
     if default_values:
         assert len(default_values) <= len(arg_names)
-        default_kwarg_names = arg_names[-len(default_values):]
+        default_kwarg_names = arg_names[-len(default_values) :]
         default_kwargs = dict(zip(default_kwarg_names, default_values))
 
     return arg_names, default_kwargs
@@ -221,7 +314,7 @@ def parse_varargs_name(function):
     """
     Returns varargs name string of function. e.g: 'input' from `foo(x, *input)`
     """
-    fullargspec = getfullargspec(function)
+    fullargspec = inspect.getfullargspec(function)
     varargs = fullargspec.varargs
     return varargs
 
@@ -285,8 +378,14 @@ def is_api_in_module(node, module_prefix):
         from paddle.fluid.dygraph import to_variable
         from paddle import to_tensor
 
+<<<<<<< HEAD
         return eval("_is_api_in_module_helper({}, '{}')".format(
             func_str, module_prefix))
+=======
+        return eval(
+            "_is_api_in_module_helper({}, '{}')".format(func_str, module_prefix)
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     except Exception:
         return False
 
@@ -317,16 +416,20 @@ def is_numpy_api(node):
     func_str = astor.to_source(gast.gast_to_ast(node.func))
     try:
         import numpy as np
-        module_result = eval("_is_api_in_module_helper({}, '{}')".format(
-            func_str, "numpy"))
+
+        module_result = eval(
+            "_is_api_in_module_helper({}, '{}')".format(func_str, "numpy")
+        )
         # BUG: np.random.uniform doesn't have module and cannot be analyzed
         # TODO: find a better way
-        if not module_result:
-            return func_str.startswith("numpy.") or func_str.startswith("np.")
+        return module_result or (
+            func_str.startswith("numpy.") or func_str.startswith("np.")
+        )
     except Exception:
         return False
 
 
+<<<<<<< HEAD
 def is_control_flow_to_transform(node,
                                  static_analysis_visitor=None,
                                  var_name_to_type=None):
@@ -343,11 +446,14 @@ def is_control_flow_to_transform(node,
     return need_to_transform
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 def _delete_keywords_from(node):
     assert isinstance(node, gast.Call)
     func_src = astor.to_source(gast.gast_to_ast(node.func))
     import paddle.fluid as fluid
-    full_args = eval("inspect.getargspec({})".format(func_src))
+
+    full_args = eval(f"inspect.getfullargspec({func_src})")
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
@@ -360,7 +466,12 @@ def to_static_api(dygraph_class):
     else:
         raise NotImplementedError(
             "Paddle dygraph API {} cannot be converted "
+<<<<<<< HEAD
             "to static graph at present.".format(dygraph_class))
+=======
+            "to static graph at present.".format(dygraph_class)
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def _add_keywords_to(node, dygraph_api_name):
@@ -371,8 +482,15 @@ def _add_keywords_to(node, dygraph_api_name):
                 ast_keyword.arg = "size"
 
         node.keywords.append(
+<<<<<<< HEAD
             gast.keyword(arg="num_flatten_dims",
                          value=gast.Constant(value=-1, kind=None)))
+=======
+            gast.keyword(
+                arg="num_flatten_dims", value=gast.Constant(value=-1, kind=None)
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if dygraph_api_name == "BilinearTensorProduct":
         for ast_keyword in node.keywords:
@@ -391,6 +509,7 @@ def to_static_ast(node, class_node):
     assert isinstance(class_node, gast.Call)
     static_api = to_static_api(class_node.func.attr)
 
+<<<<<<< HEAD
     node.func = gast.Attribute(attr=static_api,
                                ctx=gast.Load(),
                                value=gast.Attribute(attr='layers',
@@ -400,6 +519,19 @@ def to_static_ast(node, class_node):
                                                         id='fluid',
                                                         annotation=None,
                                                         type_comment=None)))
+=======
+    node.func = gast.Attribute(
+        attr=static_api,
+        ctx=gast.Load(),
+        value=gast.Attribute(
+            attr='layers',
+            ctx=gast.Load(),
+            value=gast.Name(
+                ctx=gast.Load(), id='fluid', annotation=None, type_comment=None
+            ),
+        ),
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     update_args_of_func(node, class_node, 'forward')
 
@@ -422,10 +554,17 @@ def update_args_of_func(node, dygraph_node, method_name):
 
     class_src = astor.to_source(gast.gast_to_ast(dygraph_node.func))
     import paddle.fluid as fluid
+
     if method_name == "__init__" or eval(
+<<<<<<< HEAD
             "issubclass({}, fluid.dygraph.Layer)".format(class_src)):
         full_args = eval("inspect.getargspec({}.{})".format(
             class_src, method_name))
+=======
+        "issubclass({}, fluid.dygraph.Layer)".format(class_src)
+    ):
+        full_args = eval(f"inspect.getfullargspec({class_src}.{method_name})")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         full_args_name = [
             arg_name for arg_name in full_args[0] if arg_name != "self"
         ]
@@ -440,21 +579,24 @@ def update_args_of_func(node, dygraph_node, method_name):
 
 
 def create_api_shape_node(tensor_shape_node):
-    assert isinstance(tensor_shape_node,
-                      (gast.Name, gast.Attribute, gast.Subscript))
+    assert isinstance(
+        tensor_shape_node, (gast.Name, gast.Attribute, gast.Subscript)
+    )
 
     if isinstance(tensor_shape_node, gast.Name):
         api_shape_node = gast.Call(
             func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node],
-            keywords=[])
+            keywords=[],
+        )
         return api_shape_node
 
     if isinstance(tensor_shape_node, gast.Attribute):
         api_shape_node = gast.Call(
             func=gast.parse('paddle.shape').body[0].value,
             args=[tensor_shape_node.value],
-            keywords=[])
+            keywords=[],
+        )
         return api_shape_node
 
     if isinstance(tensor_shape_node, gast.Subscript):
@@ -464,14 +606,20 @@ def create_api_shape_node(tensor_shape_node):
 
 
 def get_constant_variable_node(name, value, shape=[1], dtype='int64'):
+<<<<<<< HEAD
     return gast.parse('%s = paddle.full(%s, "%s", %s)' %
                       (name, str(shape), str(value), dtype))
+=======
+    return gast.parse(
+        '%s = paddle.full(%s, "%s", %s)' % (name, str(shape), str(value), dtype)
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def get_attribute_full_name(node):
     assert isinstance(
-        node,
-        gast.Attribute), "Input non-Attribute node to get attribute full name"
+        node, gast.Attribute
+    ), "Input non-Attribute node to get attribute full name"
     return astor.to_source(gast.gast_to_ast(node)).strip()
 
 
@@ -485,10 +633,11 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
 
     This function is used at several gast.Return statements.
     """
-    if isinstance(name_ids, six.string_types):
+    if isinstance(name_ids, str):
         name_ids = [name_ids]
     if not isinstance(name_ids, (list, tuple, set)):
         raise TypeError(
+<<<<<<< HEAD
             'name_ids must be list or tuple or set, but received %s' %
             type(type(name_ids)))
 
@@ -498,6 +647,17 @@ def generate_name_node(name_ids, ctx=gast.Load(), gen_tuple_if_single=False):
                              ctx=ctx,
                              annotation=None,
                              type_comment=None)
+=======
+            'name_ids must be list or tuple or set, but received %s'
+            % type(type(name_ids))
+        )
+
+    def create_node_for_name(name):
+        if '.' not in name:
+            return gast.Name(
+                id=name, ctx=ctx, annotation=None, type_comment=None
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return gast.parse(name).body[0].value
 
     gast_names = [create_node_for_name(name_id) for name_id in name_ids]
@@ -519,12 +679,23 @@ def create_funcDef_node(nodes, name, input_args, return_name_ids):
         nodes.append(gast.Return(value=generate_name_node(return_name_ids)))
     else:
         nodes.append(gast.Return(value=None))
+<<<<<<< HEAD
     func_def_node = gast.FunctionDef(name=name,
                                      args=input_args,
                                      body=nodes,
                                      decorator_list=[],
                                      returns=None,
                                      type_comment=None)
+=======
+    func_def_node = gast.FunctionDef(
+        name=name,
+        args=input_args,
+        body=nodes,
+        decorator_list=[],
+        returns=None,
+        type_comment=None,
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return func_def_node
 
 
@@ -545,6 +716,25 @@ def create_assign_node(name, node):
     return targets, assign_node
 
 
+<<<<<<< HEAD
+=======
+def get_temp_dir():
+    """
+    Return @to_static temp directory.
+    """
+    dir_name = "paddle/to_static_tmp/{pid}".format(pid=os.getpid())
+    temp_dir = os.path.join(os.path.expanduser('~/.cache'), dir_name)
+    is_windows = sys.platform.startswith('win')
+    if is_windows:
+        temp_dir = os.path.normpath(temp_dir)
+
+    if not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
+
+    return temp_dir
+
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     """
     Transform modified AST of decorated function into python callable object.
@@ -552,27 +742,50 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
     function, the other inner functions are invisible for the decorated function.
     """
 
-    def remove_if_exit(filepath):
-        if os.path.exists(filepath):
-            os.remove(filepath)
+    def remove_if_exit(dir_path):
+        if os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
+
+    def func_prefix(func):
+        pre_fix = func.__name__
+        if hasattr(func, '__self__'):
+            try:
+                pre_fix = func.__self__.__class__.__name__ + '_' + func.__name__
+            except:
+                pass
+        return pre_fix
 
     source = ast_to_source_code(ast_root)
     source = _inject_import_statements() + source
+<<<<<<< HEAD
 
     f = tempfile.NamedTemporaryFile(mode='w',
                                     suffix='.py',
                                     delete=False,
                                     encoding='utf-8')
+=======
+    temp_dir = get_temp_dir()
+    f = tempfile.NamedTemporaryFile(
+        mode='w',
+        prefix=func_prefix(dyfunc),
+        suffix='.py',
+        delete=False,
+        dir=temp_dir,
+        encoding='utf-8',
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     with f:
         module_name = os.path.basename(f.name[:-3])
         f.write(source)
 
-    if delete_on_exit:
-        atexit.register(lambda: remove_if_exit(f.name))
-        atexit.register(lambda: remove_if_exit(f.name[:-3] + ".pyc"))
+    global DEL_TEMP_DIR
+    if delete_on_exit and DEL_TEMP_DIR:
+        # Clear temporary files in TEMP_DIR while exitting Python process
+        atexit.register(remove_if_exit, dir_path=temp_dir)
+        DEL_TEMP_DIR = False
 
-    module = SourceFileLoader(module_name, f.name).load_module()
     func_name = dyfunc.__name__
+    module = SourceFileLoader(module_name, f.name).load_module()
     # The 'forward' or 'another_forward' of 'TranslatedLayer' cannot be obtained
     # through 'func_name'. So set the special function name '__i_m_p_l__'.
     if hasattr(module, '__i_m_p_l__'):
@@ -582,8 +795,9 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
         callable_func = getattr(module, func_name)
     else:
         raise ValueError(
-            'Function: %s doesn\'t exist in the Module transformed from AST.' %
-            func_name)
+            'Function: %s doesn\'t exist in the Module transformed from AST.'
+            % func_name
+        )
     # After transform dygraph function into callable_func saved in tmp file,
     # it lost the global variables from imported statements or defined in source file.
     # Recovers the necessary variables by `__globals__`.
@@ -594,9 +808,20 @@ def ast_to_func(ast_root, dyfunc, delete_on_exit=True):
 
 def _inject_import_statements():
     import_statements = [
+<<<<<<< HEAD
         "import paddle", "from paddle import Tensor",
         "import paddle.fluid as fluid", "import paddle.jit.dy2static as _jst",
         "from typing import *", "import numpy as np"
+=======
+        "import paddle",
+        "from paddle import Tensor",
+        "import paddle.fluid as fluid",
+        "import paddle.jit.dy2static as _jst",
+        "from typing import *",
+        "import numpy as np",
+        "import warnings",
+        "warnings.filterwarnings('ignore', category=DeprecationWarning)",
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ]
     return '\n'.join(import_statements) + '\n'
 
@@ -607,7 +832,7 @@ def recover_globals_attribute(src_obj, dst_obj):
     src_globals = getattr(src_obj, attr_name, {})
     dst_globals = getattr(dst_obj, attr_name, {})
 
-    for k, v in six.iteritems(src_globals):
+    for k, v in src_globals.items():
         # ignore builtin attribute.
         if not (k.startswith('__') and k.endswith('__')):
             dst_globals[k] = v
@@ -619,8 +844,15 @@ def func_to_source_code(function, dedent=True):
     """
     if not (inspect.isfunction(function) or inspect.ismethod(function)):
         raise TypeError(
+<<<<<<< HEAD
             "The type of 'function' should be a function or method, but received {}."
             .format(type(function).__name__))
+=======
+            "The type of 'function' should be a function or method, but received {}.".format(
+                type(function).__name__
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     source_code_list, _ = inspect.getsourcelines(function)
     # Replace comments with blank lines so that error messages are not misplaced
     source_code_list = [
@@ -640,8 +872,9 @@ def ast_to_source_code(ast_node):
     """
     if not isinstance(ast_node, (gast.AST, ast.AST)):
         raise TypeError(
-            "Type of ast_root should be gast.AST or ast.AST, but received %s." %
-            type(ast_node))
+            "Type of ast_root should be gast.AST or ast.AST, but received %s."
+            % type(ast_node)
+        )
     if isinstance(ast_node, gast.AST):
         ast_node = gast.gast_to_ast(ast_node)
 
@@ -657,8 +890,17 @@ def is_candidate_node(node):
     """
     Nodes with specified type will be dependent on tensor.
     """
-    is_compare_node = isinstance(node, (gast.Compare, gast.BoolOp, gast.UnaryOp,
-                                        gast.For, gast.If, gast.While))
+    is_compare_node = isinstance(
+        node,
+        (
+            gast.Compare,
+            gast.BoolOp,
+            gast.UnaryOp,
+            gast.For,
+            gast.If,
+            gast.While,
+        ),
+    )
     # TODO(Aurelius84): `.numpy()` may be an customized function,
     # and should consider a more elegant way to solve this problem.
     has_numpy_attr = ".numpy()" in ast_to_source_code(node)
@@ -674,9 +916,15 @@ def compare_with_none(node):
             # node.comparators is a list.
             if isinstance(child, list):
                 child = child[0]
+<<<<<<< HEAD
             if (isinstance(child, gast.Constant)
                     and child.value is None) or (isinstance(child, gast.Name)
                                                  and child.id == 'None'):
+=======
+            if (isinstance(child, gast.Constant) and child.value is None) or (
+                isinstance(child, gast.Name) and child.id == 'None'
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 return True
     return False
 
@@ -711,20 +959,22 @@ class IsControlFlowVisitor(gast.NodeVisitor):
              because reshape_op may be called before this statement.
     """
 
-    def __init__(self,
-                 ast_node,
-                 static_analysis_visitor=None,
-                 node_var_type_map=None):
+    def __init__(
+        self, ast_node, static_analysis_visitor=None, node_var_type_map=None
+    ):
         assert isinstance(
             ast_node, gast.AST
         ), "Type of input node should be gast.AST, but received %s." % type(
-            ast_node)
+            ast_node
+        )
         self.ast_root = ast_node
         if static_analysis_visitor is None:
             from .static_analysis import StaticAnalysisVisitor
+
             static_analysis_visitor = StaticAnalysisVisitor(ast_node)
         self.static_analysis_visitor = static_analysis_visitor
-        self.node_to_wrapper_map = self.static_analysis_visitor.get_node_to_wrapper_map(
+        self.node_to_wrapper_map = (
+            self.static_analysis_visitor.get_node_to_wrapper_map()
         )
         self.node_var_type_map = node_var_type_map
 
@@ -753,7 +1003,10 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         if isinstance(node.iter, gast.Call):
             # for in range(var[0]|var.numpy()[0]) or for in enumerate(var|var.numpy())
             if isinstance(node.iter.func, gast.Name):
-                if node.iter.func.id == "range" or node.iter.func.id == "enumerate":
+                if (
+                    node.iter.func.id == "range"
+                    or node.iter.func.id == "enumerate"
+                ):
                     for arg in node.iter.args:
                         self.visit(arg)
                 else:
@@ -852,11 +1105,13 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         return node
 
     def _is_node_with_tensor(self, node, name_id):
-        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import NodeVarType
+        from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+            NodeVarType,
+        )
 
         # Look up the node_var_type_map by name_id.
         if self.node_var_type_map:
-            if name_id and isinstance(name_id, six.string_types):
+            if name_id and isinstance(name_id, str):
                 var_type = self.node_var_type_map.get(name_id, None)
                 if var_type and var_type & NodeVarType.TENSOR_TYPES:
                     return True
@@ -882,7 +1137,7 @@ def unwrap(func):
         return hasattr(f, '__wrapped__')
 
     unwrapped_f = func
-    while (_is_wrapped(unwrapped_f)):
+    while _is_wrapped(unwrapped_f):
         unwrapped_f = unwrapped_f.__wrapped__
 
     return unwrapped_f
@@ -906,10 +1161,12 @@ def input_specs_compatible(src_input_specs, desired_input_specs):
             if spec not in desired_input_specs:
                 return False
     else:
-        for (src_spec, desired_spec) in zip(src_input_specs,
-                                            desired_input_specs):
+        for (src_spec, desired_spec) in zip(
+            src_input_specs, desired_input_specs
+        ):
             if isinstance(src_spec, paddle.static.InputSpec) or isinstance(
-                    desired_spec, paddle.static.InputSpec):
+                desired_spec, paddle.static.InputSpec
+            ):
                 if not _compatible_tensor_spec(src_spec, desired_spec):
                     return False
             else:
@@ -968,28 +1225,77 @@ def _compatible_non_tensor_spec(src_spec, desired_spec):
         return True
 
 
-def slice_is_num(slice_node):
-    # A slice_node.slice can be a:
-    # (1) ast.Index, which is a simple number such as [1], [-2]
-    # (2) ast.Slice, which is represented by bounds such as [2:-1]
-    # (3) ast.Tuple, which includes the above two cases such as [2:-1, 1]
-    # If slice node is case (1), return True, Otherwise, return False.
-    #
-    # NOTE: In (1) case, when gast>=0.4.0, gast.Index is not used, which is replaced
-    # other gast node such as gast.Constant, gast.Name, gast.UnaryOp and so on.
-    # Considering the compatibility of gast, here use ast note to check whether the
-    # node is a num. For more details, please visit https://github.com/serge-sans-paille/gast
+class NameScope:
+    def __init__(self):
+        """
+        A NameScope is a object which manager all the variable names.
+        only FunctionDef and Controlflow node will have a namescope property.
 
-    assert isinstance(slice_node, gast.Subscript)
-    slice_node_str = ast_to_source_code(slice_node).strip()
-    ast_node = ast.parse(slice_node_str).body[0].value
+        type can be "function" and "controlflow"
 
-    if isinstance(ast_node.slice, (ast.Tuple, ast.Slice)):
-        return False
+        we don't analyze the read only variable because they don't affect the analysis.
+        """
+        self.globals = set()
+        self.nonlocals = set()
+        self.args = set()
+        self.father = None  # point to the nearest function name scope.
+        self.w_vars = set()  # all qualified + normal names been stored
+        self.created = set()  # useful for control flow compatibility
+        # only valid in control_flow nodes
+        # may be remove later.
+        self.push_pop_vars = set()  # we call push and pop in the vars
 
-    if isinstance(ast_node.slice, ast.Index):
+    def set_father(self, father):
+        self.father = father
+
+    def existed_vars(self):
+        """vars existing in current scope.
+        they must not contain qualified names.
+        """
+        local_vars = self.w_vars - self.globals - self.nonlocals - self.args
+        return set(filter(lambda x: '.' not in x, local_vars))
+
+    def created_vars(self):
+        return self.created
+
+    def modified_vars(self):
+        # may be globals / non-locals / args / qualified names and created_vars
+        return self.w_vars
+
+    def variadic_length_vars(self):
+        """
+        At present, we do not support global append, such as
+
+        import numpy as np
+        a = []
+        def func():
+            a.append() # global names `a`, we will raise a warning.
+            p.append(a, 1) # global names `np`, we will raise a warning.
+        """
+        non_global_push_pop_names = []
+        for var in self.push_pop_vars:
+            if self._is_simple_name(var) and self.is_global_var(var):
+                warnings.warn(
+                    f"Find variable `{var}` defined in global scope"
+                    f" and call `{var}.append() or {var}.pop()`"
+                    f", which will be ignored and never be transfered into"
+                    f" tensor array."
+                )
+            else:
+                non_global_push_pop_names.append(var)
+        return set(non_global_push_pop_names)
+
+    def control_flow_vars(self):
+        valid_names = self.w_vars
+        tmp = (self.father.global_vars & valid_names,)
+        return {"global": tmp, "nonlocal": self.w_vars - tmp}
+
+    def _is_simple_name(self, name):
+        if '.' in name or '[' in name:
+            return False
         return True
 
+<<<<<<< HEAD
     return False
 
 
@@ -1036,12 +1342,36 @@ class NameScope:
 
     def global_vars(self):
         return self.globals
+=======
+    def is_global_var(self, name):
+        """
+        Return whether the name is a var created in global scope.
+        Search from bottom to top. If it is not created or modified,
+        it means global vars; otherwise, it means local vars.
+        Only valid after FunctionNameLivenessAnalysis visitor.
+        """
+        assert self._is_simple_name(
+            name
+        ), "is_global_var accept a simple name, but get `{name}`."
+        ancestor = self
+        while ancestor is not None:
+            if name in ancestor.globals:
+                return True
+            if name in (ancestor.nonlocals | ancestor.w_vars):
+                return False
+            ancestor = ancestor.father
+        return True
+
+    def is_local_var(self, name):
+        return not self.is_global_var(name)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def merge_from(self, name_scope):
         self.globals |= name_scope.globals
         self.nonlocals |= name_scope.nonlocals
         self.args |= name_scope.args
         self.w_vars |= name_scope.w_vars
+<<<<<<< HEAD
 
 
 class FunctionNameLivenessAnalysis(gast.NodeVisitor):
@@ -1073,6 +1403,52 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             args = ['args', 'kargs'], 
             wr_vars = ['a', 'i', 'q', 'm']
         )
+=======
+        self.push_pop_vars |= name_scope.push_pop_vars
+
+
+class FunctionNameLivenessAnalysis(gast.NodeVisitor):
+    """analyze the liveness of a function.
+
+    every variables stored in this scope will be collected,
+    in addition with global/nonlocal information and
+    push_pop information.
+
+    1. global variable is stored in node.var_globals.
+    2. nonlocal variable is stored in node.var_nonlocals.
+    3. arguments is stored in node.var_args.
+    4. if a variable's push and pop attribute is called,
+       it will be collected in push_pop_vars. They are
+       used for transformation to tensor_array.
+       NOTE: push_pop_vars **may not** in w_vars.
+       a.push(0) don't modify the variable a, but the content
+       of a.
+
+    For example:
+
+    def func(*args, **kargs):
+        a = 12
+        global i,j
+        nonlocal x,y
+        print(a)
+        i = k
+        b = []
+        c = [1,2,3]
+        for m in range(10):
+            q = 12
+            b.push(1)
+            c.pop()
+
+    After this visitor we have:
+    # node is the FunctionDef node with name: "func"
+    node.pd_scope = NameScope(
+        globals = ['i', 'j'],
+        nonlocals = ['x', 'y'],
+        args = ['args', 'kargs'],
+        wr_vars = ['a', 'i', 'q', 'm', 'c', 'b']
+        push_pop_vars = ['b', 'c']
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     """
 
     def __init__(self, root_node):
@@ -1092,25 +1468,45 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         return self._get_name_scope(self.scope_node_stack[-1])
 
     def _father_name_scope(self):
+<<<<<<< HEAD
         if len(self.scope_node_stack) == 1: return None
         return self._get_name_scope(self.scope_node_stack[-2])
 
     def _nearest_function_scope(self):
         if len(self.scope_node_stack) == 1: return None
+=======
+        if len(self.scope_node_stack) == 1:
+            return None
+        return self._get_name_scope(self.scope_node_stack[-2])
+
+    def _nearest_function_scope(self):
+        if len(self.scope_node_stack) == 1:
+            return None
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         for node in self.scope_node_stack[-2::-1]:
             if isinstance(node, gast.FunctionDef):
                 return self._get_name_scope(node)
 
     def visit_ListComp(self, node):
+<<<<<<< HEAD
         """ [ i for i in range(10) ]
             In this case, `i` will not created in FunctionScope. 
             We don't collect `i` by not calling generic_visit.
+=======
+        """[ i for i in range(10) ]
+        In this case, `i` will not created in FunctionScope.
+        We don't collect `i` by not calling generic_visit.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         """
         pass
 
     def visit_DictComp(self, node):
+<<<<<<< HEAD
         """ the same as ListComp.
         """
+=======
+        """the same as ListComp."""
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         pass
 
     def visit_Name(self, node):
@@ -1120,6 +1516,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             self._current_name_scope().w_vars.add(node.id)
 
     def visit_FunctionDef(self, node):
+<<<<<<< HEAD
 
         def pre_func():
             self._current_name_scope().args |= set(
@@ -1134,20 +1531,64 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             control_flow_function_def = [
                 WHILE_BODY_PREFIX, WHILE_BODY_PREFIX, FOR_CONDITION_PREFIX,
                 FOR_BODY_PREFIX, TRUE_FUNC_PREFIX, FALSE_FUNC_PREFIX
+=======
+        def pre_func():
+            self._current_name_scope().args |= set(
+                self._get_argument_names(node)
+            )
+
+        def post_func():
+            """NOTE: why we need merge w_vars and push_pop_vars here ?
+            because we do ifelse_transformer after loop_transformer. Loops will changed into functioons. but we know this function will be called in if. so we add w_vars to father function scope.
+            """
+            from paddle.fluid.dygraph.dygraph_to_static.loop_transformer import (
+                WHILE_CONDITION_PREFIX,
+                WHILE_BODY_PREFIX,
+                FOR_CONDITION_PREFIX,
+                FOR_BODY_PREFIX,
+            )
+            from paddle.fluid.dygraph.dygraph_to_static.ifelse_transformer import (
+                TRUE_FUNC_PREFIX,
+                FALSE_FUNC_PREFIX,
+            )
+
+            control_flow_function_def = [
+                WHILE_BODY_PREFIX,
+                WHILE_BODY_PREFIX,
+                FOR_CONDITION_PREFIX,
+                FOR_BODY_PREFIX,
+                TRUE_FUNC_PREFIX,
+                FALSE_FUNC_PREFIX,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             ]
 
             def is_control_flow_def_node():
                 for prefix in control_flow_function_def:
+<<<<<<< HEAD
                     if node.name.startswith(prefix): return True
                 return False
 
             if self._father_name_scope() and is_control_flow_def_node():
                 self._father_name_scope().w_vars |= self._current_name_scope(
                 ).w_vars
+=======
+                    if node.name.startswith(prefix):
+                        return True
+                return False
+
+            if self._father_name_scope() and is_control_flow_def_node():
+                self._father_name_scope().w_vars |= (
+                    self._current_name_scope().w_vars
+                )
+                self._father_name_scope().push_pop_vars |= (
+                    self._current_name_scope().push_pop_vars
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self._visit_scope_node(node, pre_func, post_func)
 
     def _visit_scope_node(self, node, pre_func, post_func):
+<<<<<<< HEAD
         """ scope node main visit logic.
             pre_func and post_func is callbacks
         """
@@ -1174,6 +1615,42 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         def pre_func():
             setattr(node, "before_created",
                     self._nearest_function_scope().existed_vars())
+=======
+        """scope node main visit logic.
+        pre_func and post_func is callbacks
+        """
+        self._reset_name_scope(node)
+        self.scope_node_stack.append(node)
+        self._current_name_scope().set_father(self._nearest_function_scope())
+        if pre_func:
+            pre_func()
+        self.generic_visit(node)
+        if post_func:
+            post_func()
+        self.scope_node_stack.pop()
+
+    def _visit_controlflow_node(self, node):
+        def post_func():
+            self._father_name_scope().merge_from(self._current_name_scope())
+            self._nearest_function_scope().merge_from(
+                self._current_name_scope()
+            )
+            self._current_name_scope().created = (
+                self._nearest_function_scope().existed_vars()
+                - node.before_created
+            )
+            # gather created vars into father and used in CreateUndefinedVarTransform
+            self._nearest_function_scope().created |= (
+                self._current_name_scope().created
+            )
+
+        def pre_func():
+            setattr(
+                node,
+                "before_created",
+                self._nearest_function_scope().existed_vars(),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self._visit_scope_node(node, pre_func, post_func)
 
@@ -1199,6 +1676,7 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
             name = ast_to_source_code(node).strip()
             self._current_name_scope().w_vars.add(name)
 
+<<<<<<< HEAD
     def _get_argument_names(self, node):
         """ get all arguments name in the functiondef node.
             this node is local to the function and shouldn't 
@@ -1206,6 +1684,27 @@ class FunctionNameLivenessAnalysis(gast.NodeVisitor):
         """
         assert isinstance(
             node, gast.FunctionDef), "Input node is not function define node"
+=======
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if not isinstance(node.func, gast.Attribute):
+            return
+        variadic_length_method = ['append', 'pop']
+        if node.func.attr not in variadic_length_method:
+            return
+        # we don't treat push and pop as a write operator. such as a[i]=10 is not modify a.
+        name = ast_to_source_code(node.func.value).strip()
+        self._current_name_scope().push_pop_vars.add(name)
+
+    def _get_argument_names(self, node):
+        """get all arguments name in the functiondef node.
+        this node is local to the function and shouldn't
+        be created.
+        """
+        assert isinstance(
+            node, gast.FunctionDef
+        ), "Input node is not function define node"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         names = [a for a in node.args.args]
         names.append(node.args.vararg)
         names.append(node.args.kwarg)
@@ -1226,6 +1725,7 @@ def create_get_args_node(names):
         func_def = """
         def {func_name}():
             return
+<<<<<<< HEAD
         """.format(func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX))
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
@@ -1240,6 +1740,21 @@ def create_get_args_node(names):
         nonlocal_vars = "\n"
     else:
         nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+=======
+        """.format(
+            func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX)
+        )
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    node = create_nonlocal_stmt_nodes(names)
+    if not names:
+        return empty_node()
+    if node == []:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = ast_to_source_code(node[0])
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     template = """
     def {func_name}():
         {nonlocal_vars}
@@ -1248,7 +1763,12 @@ def create_get_args_node(names):
     func_def = template.format(
         func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX),
         nonlocal_vars=nonlocal_vars,
+<<<<<<< HEAD
         vars=",".join(names))
+=======
+        vars=",".join(names),
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
@@ -1265,6 +1785,7 @@ def create_set_args_node(names):
         func_def = """
         def {func_name}({args}):
             pass
+<<<<<<< HEAD
         """.format(func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
                    args=ARGS_NAME)
         return gast.parse(textwrap.dedent(func_def)).body[0]
@@ -1280,6 +1801,21 @@ def create_set_args_node(names):
         nonlocal_vars = "\n"
     else:
         nonlocal_vars = "nonlocal " + ",".join(nonlocal_names)
+=======
+        """.format(
+            func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX), args=ARGS_NAME
+        )
+        return gast.parse(textwrap.dedent(func_def)).body[0]
+
+    assert isinstance(names, (list, tuple))
+    node = create_nonlocal_stmt_nodes(names)
+    if not names:
+        return empty_node()
+    if node == []:
+        nonlocal_vars = "\n"
+    else:
+        nonlocal_vars = ast_to_source_code(node[0])
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     template = """
     def {func_name}({args}):
         {nonlocal_vars}
@@ -1289,7 +1825,12 @@ def create_set_args_node(names):
         func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX),
         args=ARGS_NAME,
         nonlocal_vars=nonlocal_vars,
+<<<<<<< HEAD
         vars=",".join(names))
+=======
+        vars=",".join(names),
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return gast.parse(textwrap.dedent(func_def)).body[0]
 
 
@@ -1297,10 +1838,85 @@ def create_nonlocal_stmt_nodes(names):
     assert isinstance(names, (list, tuple))
 
     mapped = list(filter(lambda n: '.' not in n, names))
+<<<<<<< HEAD
     names = sorted(
         mapped,
         key=mapped.index)  # to keep the order, we can't use set() to unique
+=======
+    mapped = list(filter(lambda n: '[' not in n, mapped))
+    names = sorted(
+        mapped, key=mapped.index
+    )  # to keep the order, we can't use set() to unique
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if not names:
         return []
     func_code = "nonlocal {}".format(','.join(names))
     return [gast.parse(func_code).body[0]]
+<<<<<<< HEAD
+=======
+
+
+class GetterSetterHelper:
+    """we have two classes of names in setter and getter function:
+    w_vars(loop_vars) + push_pop_vars
+    To simplify the setter logic in convert_while and convert_cond,
+    we extract the helper class here.
+    """
+
+    def __init__(self, getter_func, setter_func, *name_lists):
+        name_lists = map(lambda x: [] if x is None else x, name_lists)
+        name_sets = map(lambda x: set(x), name_lists)
+        self._union = list(reduce(lambda x, y: x | y, name_sets, set()))
+        self._union.sort()
+        self.getter = getter_func
+        self.setter = setter_func
+        self.name2id = {name: idx for idx, name in enumerate(self._union)}
+
+    def union(self):
+        return self._union
+
+    def get(self, names):
+        if names is None:
+            names = []
+        vars = self.getter()
+        if vars is None:
+            return tuple()
+        for n in names:
+            assert (
+                n in self.name2id
+            ), "the name `{}` not in name union set`{}`.".format(
+                n, self.name2id.keys()
+            )
+        return tuple(map(lambda n: vars[self.name2id[n]], names))
+
+    def set(self, names, values):
+        if names is None:
+            names = []
+        if values is None:
+            values = []
+        vars = self.getter()
+        if vars is None:
+            return
+        for n in names:
+            assert (
+                n in self.name2id
+            ), "the name `{}` not in name union set`{}`.".format(
+                n, self.name2id.keys()
+            )
+        vars = list(vars)
+        indices = list(map(lambda n: self.name2id[n], names))
+        for i, v in zip(indices, values):
+            vars[i] = v
+        self.setter(vars)
+
+
+def create_name_str(name_ids):
+    """
+    Return "('x', 'y')" for [x, y]
+    """
+    if not name_ids:
+        return 'None'
+
+    names_str = ["'%s'" % (name.replace("'", "\\'")) for name in name_ids]
+    return "(%s, )" % ','.join(names_str)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

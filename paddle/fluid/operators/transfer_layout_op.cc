@@ -16,7 +16,11 @@
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace framework {
@@ -37,6 +41,7 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "TransferLayout");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "TransferLayout");
@@ -65,6 +70,8 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -73,7 +80,11 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
+<<<<<<< HEAD
     if (in_tensor->layout() != DataLayout::kMKLDNN) {
+=======
+    if (in_tensor->layout() != DataLayout::ONEDNN) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -88,11 +99,13 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
+=======
+      const phi::DenseTensor &tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   expected_kernel_type.data_layout_);
+    return expected_kernel_type;
   }
 };
 
@@ -142,18 +155,25 @@ class TransferLayoutOpProtoMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+DECLARE_INFER_SHAPE_FUNCTOR(transfer_layout,
+                            TransferLayoutInferShapeFunctor,
+                            PD_INFER_META(phi::TransferLayoutInferMeta));
 REGISTER_OPERATOR(
     transfer_layout,
     ops::TransferLayoutOp,
     ops::TransferLayoutOpProtoMaker,
     ops::TransferLayoutInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    TransferLayoutInferShapeFunctor);
 
+<<<<<<< HEAD
 // dtype is not important
 REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_layout,
                                float,
                                ops::TransferLayoutKernel);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 REGISTER_OP_VERSION(transfer_layout)
     .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",
                    paddle::framework::compatible::OpVersionDesc().NewAttr(

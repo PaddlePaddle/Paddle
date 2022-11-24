@@ -12,11 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fill_constant_op.h"
 
 #include <string>
 
+=======
+#include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/op_version_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -58,7 +65,11 @@ class FillConstantOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
+=======
+      const phi::DenseTensor &tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
       return expected_kernel_type;
@@ -70,11 +81,12 @@ class FillConstantOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = framework::OpKernelType(
-        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
-        ctx.GetPlace());
-    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's a issue
-    // lefted before, and we may merge them in the future.
+    auto input_data_type =
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
+    framework::OpKernelType kt =
+        framework::OpKernelType(input_data_type, ctx.GetPlace());
+    // TODO(zyfncg) The force_cpu and place_type are conflicted, it's an issue
+    // left before, and we may merge them in the future.
     // In order to invoke new fill_constant kernel, the place of OpKernelType
     // will be setted by force_cpu and place_type here.
     if (ctx.Attr<bool>("force_cpu")) {
@@ -103,6 +115,7 @@ class FillConstantOp : public framework::OperatorWithKernel {
       }
     }
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
     auto input_data_type =
         framework::proto::VarType::Type(ctx.Attr<int>("dtype"));
@@ -115,6 +128,8 @@ class FillConstantOp : public framework::OperatorWithKernel {
     }
 #endif
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return kt;
   }
 };
@@ -174,10 +189,6 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "3: XPUPlace. "
                  "4: NPUPlace. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddOutput("Out",
               "(Tensor) Tensor of specified shape will be filled "
               "with the specified value");

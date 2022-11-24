@@ -20,6 +20,11 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_auto_parallel_sharding_pass")
   list(REMOVE_ITEM TEST_OPS "test_auto_parallel_fp16_pass")
   list(REMOVE_ITEM TEST_OPS "test_auto_parallel_gradient_merge_pass")
+<<<<<<< HEAD
+=======
+  list(REMOVE_ITEM TEST_OPS
+       "test_auto_parallel_data_parallel_optimization_pass")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 foreach(TEST_OP ${TEST_OPS})

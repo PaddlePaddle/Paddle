@@ -26,9 +26,11 @@ def random_reader(sample_num):
 
     def __impl__():
         for _ in range(sample_num):
-            yield np.random.random(
-                size=[784]).astype('float32'), np.random.random_integers(
-                    low=0, high=9, size=[1]).astype('int64')
+            yield np.random.random(size=[784]).astype(
+                'float32'
+            ), np.random.random_integers(low=0, high=9, size=[1]).astype(
+                'int64'
+            )
 
     return paddle.reader.cache(__impl__)
 
@@ -54,15 +56,25 @@ class TestCaseBase(unittest.TestCase):
     def run_main(self, reader, use_sample_generator, iterable, drop_last):
         image = fluid.layers.data(name='image', dtype='float32', shape=[784])
         label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+<<<<<<< HEAD
         py_reader = fluid.io.PyReader(feed_list=[image, label],
                                       capacity=16,
                                       iterable=iterable,
                                       use_double_buffer=False)
+=======
+        py_reader = fluid.io.PyReader(
+            feed_list=[image, label],
+            capacity=16,
+            iterable=iterable,
+            use_double_buffer=False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         batch_reader = paddle.batch(reader, self.batch_size, drop_last)
         all_datas = self.generate_all_data(batch_reader)
 
         if not use_sample_generator:
+<<<<<<< HEAD
             py_reader.decorate_sample_list_generator(batch_reader,
                                                      places=fluid.cpu_places())
         else:
@@ -70,6 +82,15 @@ class TestCaseBase(unittest.TestCase):
                                                 self.batch_size,
                                                 drop_last,
                                                 places=fluid.cpu_places())
+=======
+            py_reader.decorate_sample_list_generator(
+                batch_reader, places=fluid.cpu_places()
+            )
+        else:
+            py_reader.decorate_sample_generator(
+                reader, self.batch_size, drop_last, places=fluid.cpu_places()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if drop_last:
             batch_num = int(self.sample_num / self.batch_size)
@@ -111,8 +132,9 @@ class TestCaseBase(unittest.TestCase):
             for iterable in [False, True]:
                 for drop_last in [False, True]:
                     with fluid.program_guard(fluid.Program(), fluid.Program()):
-                        self.run_main(reader, use_sample_generator, iterable,
-                                      drop_last)
+                        self.run_main(
+                            reader, use_sample_generator, iterable, drop_last
+                        )
 
 
 class TestCase1(TestCaseBase):

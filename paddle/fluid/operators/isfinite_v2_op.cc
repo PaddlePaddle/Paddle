@@ -54,9 +54,9 @@ class OverflowV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     int dtype = -1;
     auto *x_var = ctx.InputVar("X");
-    if (x_var->IsType<framework::LoDTensor>()) {
+    if (x_var->IsType<phi::DenseTensor>()) {
       dtype = framework::TransToProtoVarType(
-          x_var->Get<framework::LoDTensor>().dtype());
+          x_var->Get<phi::DenseTensor>().dtype());
     } else if (x_var->IsType<phi::SelectedRows>()) {
       dtype = framework::TransToProtoVarType(
           x_var->Get<phi::SelectedRows>().value().dtype());

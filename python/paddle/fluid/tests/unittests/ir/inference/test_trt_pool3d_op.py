@@ -44,10 +44,16 @@ class TensorRTPool3dTest(InferencePassTest):
         self.serialize = False
         self.precision = AnalysisConfig.Precision.Float32
         self.feeds = {
+<<<<<<< HEAD
             'data':
             np.random.random(
                 [self.bs, self.channel, self.depth, self.height,
                  self.width]).astype('float32'),
+=======
+            'data': np.random.random(
+                [self.bs, self.channel, self.depth, self.height, self.width]
+            ).astype('float32'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def set_extra_config(self):
@@ -56,12 +62,14 @@ class TensorRTPool3dTest(InferencePassTest):
     def build_network(self):
         self.set_extra_config()
         self.trt_parameters = TensorRTPool3dTest.TensorRTParam(
-            1 << 30, self.bs, 0, self.precision, self.serialize, False)
+            1 << 30, self.bs, 0, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
+<<<<<<< HEAD
                 dtype='float32')
             pool_out = fluid.layers.pool3d(input=data,
                                            pool_size=self.pool_size,
@@ -72,6 +80,21 @@ class TensorRTPool3dTest(InferencePassTest):
                                            ceil_mode=self.ceil_mode,
                                            exclusive=self.exclusive)
             #out = fluid.layers.batch_norm(pool_out, is_test=True)
+=======
+                dtype='float32',
+            )
+            pool_out = fluid.layers.pool3d(
+                input=data,
+                pool_size=self.pool_size,
+                pool_type=self.pool_type,
+                pool_stride=self.pool_stride,
+                pool_padding=self.pool_padding,
+                global_pooling=self.global_pooling,
+                ceil_mode=self.ceil_mode,
+                exclusive=self.exclusive,
+            )
+            # out = fluid.layers.batch_norm(pool_out, is_test=True)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -79,9 +102,18 @@ class TensorRTPool3dTest(InferencePassTest):
             shutil.rmtree(self.path + "_opt_cache")
         if core.is_compiled_with_cuda():
             use_gpu = True
-            self.check_output_with_option(use_gpu)
+            if self.precision == AnalysisConfig.Precision.Float32:
+                atol, rtol = (1e-5, 1e-5)
+            elif self.precision == AnalysisConfig.Precision.Half:
+                atol, rtol = (1e-3, 1e-3)
+            else:
+                raise ValueError(
+                    "Unsupported precision {}".format(self.precision)
+                )
+            self.check_output_with_option(use_gpu, atol=atol, rtol=rtol)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self):
         self.build_network()
@@ -89,12 +121,14 @@ class TensorRTPool3dTest(InferencePassTest):
 
     def test(self):
         precision_options = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_options = [False, True]
         dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
             {
                 'data': [
+<<<<<<< HEAD
                     self.bs, self.channel, self.depth // 2, self.height // 2,
                     self.width // 2
                 ]
@@ -105,14 +139,51 @@ class TensorRTPool3dTest(InferencePassTest):
                 'data':
                 [self.bs, self.channel, self.depth, self.height, self.width]
             }, False)
+=======
+                    self.bs,
+                    self.channel,
+                    self.depth // 2,
+                    self.height // 2,
+                    self.width // 2,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dynamic_shape_options = [None, dynamic_shape_profile]
 
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_options, serialize_options, dynamic_shape_options):
+            precision_options, serialize_options, dynamic_shape_options
+        ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
+<<<<<<< HEAD
                     'Precision: {}, Serialize: {}, Dynamic: {}'.format(
                         precision, serialize, is_dynamic)):
+=======
+                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
+                    precision, serialize, is_dynamic
+                )
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.precision = precision
                 self.serialize = serialize
                 self.dynamic_shape_params = dynamic_shape
@@ -203,24 +274,33 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
         self.serialize = False
         self.precision = AnalysisConfig.Precision.Float32
         self.feeds = {
+<<<<<<< HEAD
             'data':
             np.random.random(
                 [self.bs, self.channel, self.depth, self.height,
                  self.width]).astype('float32'),
+=======
+            'data': np.random.random(
+                [self.bs, self.channel, self.depth, self.height, self.width]
+            ).astype('float32'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def build_network(self):
         self.trt_parameters = TensorRTPool3dTest.TensorRTParam(
-            1 << 30, self.bs, 0, self.precision, self.serialize, False)
+            1 << 30, self.bs, 0, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
-                dtype='float32')
+                dtype='float32',
+            )
             pool_out = paddle.nn.functional.adaptive_avg_pool3d(
-                x=data, output_size=[3, 3, 3])
-            #out = fluid.layers.batch_norm(pool_out, is_test=True)
+                x=data, output_size=[3, 3, 3]
+            )
+            # out = fluid.layers.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -230,7 +310,8 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self):
         self.build_network()
@@ -238,12 +319,14 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
 
     def test(self):
         precision_options = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_options = [False, True]
         dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
             {
                 'data': [
+<<<<<<< HEAD
                     self.bs, self.channel, self.depth // 2, self.height // 2,
                     self.width // 2
                 ]
@@ -254,14 +337,51 @@ class TensorRTAdaptiveAvgPool3DTest(InferencePassTest):
                 'data':
                 [self.bs, self.channel, self.depth, self.height, self.width]
             }, False)
+=======
+                    self.bs,
+                    self.channel,
+                    self.depth // 2,
+                    self.height // 2,
+                    self.width // 2,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dynamic_shape_options = [None, dynamic_shape_profile]
 
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_options, serialize_options, dynamic_shape_options):
+            precision_options, serialize_options, dynamic_shape_options
+        ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
+<<<<<<< HEAD
                     'Precision: {}, Serialize: {}, Dynamic: {}'.format(
                         precision, serialize, is_dynamic)):
+=======
+                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
+                    precision, serialize, is_dynamic
+                )
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.precision = precision
                 self.serialize = serialize
                 self.dynamic_shape_params = dynamic_shape
@@ -280,24 +400,33 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
         self.serialize = False
         self.precision = AnalysisConfig.Precision.Float32
         self.feeds = {
+<<<<<<< HEAD
             'data':
             np.random.random(
                 [self.bs, self.channel, self.depth, self.height,
                  self.width]).astype('float32'),
+=======
+            'data': np.random.random(
+                [self.bs, self.channel, self.depth, self.height, self.width]
+            ).astype('float32'),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def build_network(self):
         self.trt_parameters = TensorRTPool3dTest.TensorRTParam(
-            1 << 30, self.bs, 0, self.precision, self.serialize, False)
+            1 << 30, self.bs, 0, self.precision, self.serialize, False
+        )
 
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
                 name='data',
                 shape=[-1, self.channel, self.depth, self.height, self.width],
-                dtype='float32')
+                dtype='float32',
+            )
             pool_out = paddle.nn.functional.adaptive_max_pool3d(
-                x=data, output_size=[3, 3, 3])
-            #out = fluid.layers.batch_norm(pool_out, is_test=True)
+                x=data, output_size=[3, 3, 3]
+            )
+            # out = fluid.layers.batch_norm(pool_out, is_test=True)
             self.fetch_list = [pool_out]
 
     def check_output(self):
@@ -307,7 +436,8 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
             use_gpu = True
             self.check_output_with_option(use_gpu)
             self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass')
+            )
 
     def run_test(self):
         self.build_network()
@@ -315,12 +445,14 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
 
     def test(self):
         precision_options = [
-            AnalysisConfig.Precision.Float32, AnalysisConfig.Precision.Half
+            AnalysisConfig.Precision.Float32,
+            AnalysisConfig.Precision.Half,
         ]
         serialize_options = [False, True]
         dynamic_shape_profile = InferencePassTest.DynamicShapeParam(
             {
                 'data': [
+<<<<<<< HEAD
                     self.bs, self.channel, self.depth // 2, self.height // 2,
                     self.width // 2
                 ]
@@ -331,14 +463,51 @@ class TensorRTAdaptiveMaxPool3DTest(InferencePassTest):
                 'data':
                 [self.bs, self.channel, self.depth, self.height, self.width]
             }, False)
+=======
+                    self.bs,
+                    self.channel,
+                    self.depth // 2,
+                    self.height // 2,
+                    self.width // 2,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            {
+                'data': [
+                    self.bs,
+                    self.channel,
+                    self.depth,
+                    self.height,
+                    self.width,
+                ]
+            },
+            False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dynamic_shape_options = [None, dynamic_shape_profile]
 
         for precision, serialize, dynamic_shape in itertools.product(
-                precision_options, serialize_options, dynamic_shape_options):
+            precision_options, serialize_options, dynamic_shape_options
+        ):
             is_dynamic = True if dynamic_shape_options is not None else False
             with self.subTest(
+<<<<<<< HEAD
                     'Precision: {}, Serialize: {}, Dynamic: {}'.format(
                         precision, serialize, is_dynamic)):
+=======
+                'Precision: {}, Serialize: {}, Dynamic: {}'.format(
+                    precision, serialize, is_dynamic
+                )
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.precision = precision
                 self.serialize = serialize
                 self.dynamic_shape_params = dynamic_shape

@@ -9,29 +9,27 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sum_op.h"
-
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/var_type_inference.h"
-
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 class SumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "sum");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "sum");
@@ -120,15 +118,20 @@ class SumOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
     auto x_vars_name = ctx.InputNames("X");
 
+<<<<<<< HEAD
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_GT(
         x_vars.size(),
         0,
@@ -139,7 +142,7 @@ class SumOp : public framework::OperatorWithKernel {
         platform::errors::NotFound("Input var[%s] should not be nullptr",
                                    x_vars_name[0]));
 
-    if (x_vars[0]->IsType<framework::LoDTensor>()) {
+    if (x_vars[0]->IsType<phi::DenseTensor>()) {
       int dtype = -1;
       for (size_t idx = 0; idx < x_vars.size(); ++idx) {
         PADDLE_ENFORCE_NOT_NULL(
@@ -166,6 +169,7 @@ class SumOp : public framework::OperatorWithKernel {
                             "Sum operator should have at least one tensor"));
 
       auto data_type = static_cast<framework::proto::VarType::Type>(dtype);
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
       if (library == framework::LibraryType::kPlain &&
           this->CanMKLDNNBeUsed(ctx, data_type) &&
@@ -181,27 +185,53 @@ class SumOp : public framework::OperatorWithKernel {
                                          framework::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
         }
-      }
-#endif
+=======
 
+      // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+      if (!((data_type == framework::proto::VarType::FP32 ||
+             data_type == framework::proto::VarType::BF16) &&
+            ctx.OutputVar("Out")->IsType<phi::DenseTensor>())) {
+        this->SetDnnFallback(true);
+      } else if (!std::all_of(x_vars.begin(),
+                              x_vars.end(),
+                              [](const framework::Variable* v) {
+                                return v->IsType<phi::DenseTensor>();
+                              })) {
+        this->SetDnnFallback(true);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+      }
+      // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+<<<<<<< HEAD
       return framework::OpKernelType(
           data_type, ctx.GetPlace(), layout, library);
+=======
+      return framework::OpKernelType(data_type, ctx.GetPlace());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     } else if (x_vars[0]->IsType<phi::SelectedRows>()) {
       for (auto& var : x_vars) {
         auto& value = var->Get<phi::SelectedRows>().value();
         if (value.IsInitialized()) {
           return framework::OpKernelType(
               framework::TransToProtoVarType(value.dtype()),
+<<<<<<< HEAD
               ctx.device_context(),
               layout,
               library);
+=======
+              ctx.device_context());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
       }
       // if input sparse vars are not initialized, use an default kernel type.
       return framework::OpKernelType(framework::proto::VarType::FP32,
+<<<<<<< HEAD
                                      ctx.device_context(),
                                      layout,
                                      library);
+=======
+                                     ctx.device_context());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     } else if (x_vars[0]->IsType<framework::LoDTensorArray>()) {
       for (auto& x_var : x_vars) {
         auto& array = x_var->Get<framework::LoDTensorArray>();
@@ -209,9 +239,13 @@ class SumOp : public framework::OperatorWithKernel {
           if (each.numel() != 0 && each.IsInitialized()) {
             return framework::OpKernelType(
                 framework::TransToProtoVarType(each.dtype()),
+<<<<<<< HEAD
                 ctx.device_context(),
                 layout,
                 library);
+=======
+                ctx.device_context());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           }
         }
       }
@@ -334,6 +368,7 @@ class SumGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetInput("X", og);
         op.SetOutput("Out", InputGradsType{x_grad});
         op.SetAttr("scale", 1.0f);
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
       }
       return node;
     } else {
@@ -349,12 +384,21 @@ DECLARE_INPLACE_OP_INFERER(SumInplaceInferer, {"X", "Out"});
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
+=======
+namespace ops = paddle::operators;
+DECLARE_INFER_SHAPE_FUNCTOR(sum,
+                            AddNInferShapeFunctor,
+                            PD_INFER_META(phi::AddNTensorArrayInferMeta));
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 REGISTER_OPERATOR(sum,
                   ops::SumOp,
                   ops::SumOpMaker,
                   ops::SumGradDescMaker,
                   ops::SumGradOpBaseMaker,
                   ops::SumOpVarTypeInference,
+<<<<<<< HEAD
                   ops::SumInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
@@ -364,3 +408,7 @@ REGISTER_OP_CPU_KERNEL(
     ops::SumKernel<phi::CPUContext, int>,
     ops::SumKernel<phi::CPUContext, paddle::platform::bfloat16>,
     ops::SumKernel<phi::CPUContext, int64_t>);
+=======
+                  ops::SumInplaceInferer,
+                  AddNInferShapeFunctor);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

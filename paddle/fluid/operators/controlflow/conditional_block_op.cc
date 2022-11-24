@@ -14,13 +14,20 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+<<<<<<< HEAD
+=======
+DECLARE_bool(use_mkldnn);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 namespace paddle {
 namespace operators {
 
@@ -29,6 +36,48 @@ const char ConditionalOp::kOutputs[] = "Out";
 const char ConditionalOp::kCondition[] = "Cond";
 const char ConditionalOp::kScope[] = "Scope";
 const char ConditionalOp::kSkipEagerDeletionVars[] = "skip_eager_deletion_vars";
+
+using Executor = framework::Executor;
+using ExecutorPrepareContext = framework::ExecutorPrepareContext;
+
+using InterpreterCore = framework::InterpreterCore;
+
+namespace details {
+static void BuildScopeForConditionalBlockOp(
+    const paddle::framework::InterpreterCore &interpreter_core,
+    const paddle::framework::BlockDesc &block,
+    paddle::framework::Scope *scope) {
+  for (auto &var_desc : block.AllVars()) {
+    auto var_name = var_desc->Name();
+    if (var_name == framework::kEmptyVarName) {
+      continue;
+    }
+    VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+            << "start:" << var_name;
+    if (var_desc->Persistable()) {
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Don't process persistent: " << var_name;
+    } else {
+      auto *ptr = scope->Var(var_name);
+      InitializeVariable(ptr, var_desc->GetType());
+      VLOG(5) << "[BuildScopeForConditionalBlockOp]"
+              << "Not Found locally and created: " << var_name;
+    }
+  }
+
+  auto &data_transfer_added_vars =
+      interpreter_core.GetVariableScope()->DataTransferAddedVars();
+  for (size_t i = 0; i < data_transfer_added_vars.size(); i++) {
+    auto *ptr = scope->Var(data_transfer_added_vars[i].first);
+    InitializeVariable(ptr,
+                       static_cast<paddle::framework::proto::VarType::Type>(
+                           data_transfer_added_vars[i].second));
+    VLOG(10) << "[BuildScopeForConditionalBlockOp]"
+             << "Initialize Transfer Added Variable "
+             << data_transfer_added_vars[i].first;
+  }
+}
+}  // namespace details
 
 class ConditionalBlockOp : public ConditionalOp {
  public:
@@ -54,7 +103,11 @@ class ConditionalBlockOp : public ConditionalOp {
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, ConditionalOp::kInputs);
       need_run =
+<<<<<<< HEAD
           std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+=======
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return t->numel() != 0;
           });
     }
@@ -66,9 +119,20 @@ class ConditionalBlockOp : public ConditionalOp {
           platform::errors::PreconditionNotMet(
               "Expect Scope variable to be set in conditional_block_op, but "
               "got a null Scope variable. Please set the Scope variable."));
+
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
-      scopes->resize(1);
-      scopes->front() = &scope.NewScope();
+
+      if (scopes->size() == 0 || !FLAGS_control_flow_use_new_executor) {
+        scopes->resize(1);
+        scopes->front() = &scope.NewScope();
+      }
+
+      // We need to know whether the scope we cached is still valid.
+      // If not, we need to create a new one.
+      if (scope.kids().size() == 0) {
+        scopes->front() = &scope.NewScope();
+      }
+
       auto &cur_scope = *scopes->front();
 #ifdef PADDLE_WITH_MKLDNN
       // (jczaja) Executor on being destroyed clears oneDNN cache and
@@ -76,12 +140,17 @@ class ConditionalBlockOp : public ConditionalOp {
       // Executors (executors declared inside control ops)
       platform::DontClearMKLDNNCache(dev_place);
 #endif
+<<<<<<< HEAD
       framework::Executor exec(dev_place);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
+
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
+<<<<<<< HEAD
       exec.Run(*block->Program(),
                &cur_scope,
                block->ID(),
@@ -90,8 +159,55 @@ class ConditionalBlockOp : public ConditionalOp {
                skip_vars,
                /* force_disable_gc */ false,
                /* keep_kid_scopes */ true);
+=======
+
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(skip_vars.begin(), skip_vars.end());
+
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+          VLOG(10) << "[interpreterCore cache]" << core.get();
+          VLOG_IF(10, core)
+              << platform::is_same_place(core->GetPlace(), dev_place);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
+          VLOG(10) << "[interpreterCore cache]"
+                   << "new created:" << core;
+        } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          core->reset_scope(&cur_scope);
+        }
+
+        core->Run({}, false);
+
+      } else {
+        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+          auto &pdesc = *block->Program();
+          exec.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+          ctx = exec->Prepare(pdesc, block->ID(), skip_vars, false);
+#ifdef PADDLE_WITH_MKLDNN
+          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+          platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
+        }
+        exec->RunPreparedContext(ctx.get(),
+                                 &cur_scope,
+                                 /* create_local_scope */ false,
+                                 /* create_vars */ true,
+                                 /* keep_kids */ true);
+      }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
   }
+
+ private:
+  mutable std::shared_ptr<Executor> exec{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core{nullptr};
 };
 
 class ConditionalBlockInferShape : public framework::InferShapeBase {
@@ -122,7 +238,11 @@ class ConditionalBlockGradOp : public ConditionalOp {
     } else {
       auto xs = this->InputTensors(scope, ConditionalOp::kInputs);
       need_run =
+<<<<<<< HEAD
           std::all_of(xs.begin(), xs.end(), [](const framework::LoDTensor *t) {
+=======
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return t->numel() != 0;
           });
     }
@@ -150,13 +270,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
           platform::errors::InvalidArgument(
               "Expect Scope variable contains at least 1 scope, but got: %d",
               scopes.size()));
-      framework::Scope &cur_scope = *scopes[0];
+      framework::Scope &cur_scope = *(scopes[0]);
 
-      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
+<<<<<<< HEAD
       exec.Run(*block->Program(),
                &cur_scope,
                block->ID(),
@@ -166,6 +285,49 @@ class ConditionalBlockGradOp : public ConditionalOp {
                /* force_disable_gc */ false,
                /* keep_kid_scopes */ false);
 
+=======
+
+      if (FLAGS_control_flow_use_new_executor) {
+        std::set<std::string> skip_gc_vars(inside_grads.begin(),
+                                           inside_grads.end());
+
+        if (!core || !platform::is_same_place(core->GetPlace(), dev_place)) {
+          VLOG(10) << "[interpreterCore cache]" << core.get();
+          VLOG_IF(10, core)
+              << platform::is_same_place(core->GetPlace(), dev_place);
+          core.reset(new InterpreterCore(dev_place,
+                                         *block,
+                                         skip_gc_vars,
+                                         &cur_scope,
+                                         /* used_for_jit */ false,
+                                         /* used_for_control_flow_op */ true));
+          VLOG(10) << "[interpreterCore cache]"
+                   << "new created:" << core;
+        } else {
+          details::BuildScopeForConditionalBlockOp(*core, *block, &cur_scope);
+          core->reset_scope(&cur_scope);
+        }
+        core->Run({}, false);
+
+      } else {
+        if (!exec || !platform::is_same_place(exec->GetPlace(), dev_place)) {
+          auto &pdesc = *block->Program();
+          exec.reset(new Executor(dev_place));
+          if (FLAGS_use_mkldnn) exec->EnableMKLDNN(pdesc);
+          ctx = exec->Prepare(pdesc, block->ID(), inside_grads, false);
+#ifdef PADDLE_WITH_MKLDNN
+          platform::AttachPointerHashToMKLDNNKey(exec.get(), dev_place);
+          platform::RegisterModelLayout(ctx->ops_, dev_place);
+#endif
+        }
+        exec->RunPreparedContext(ctx.get(),
+                                 &cur_scope,
+                                 /* create_local_scope */ false,
+                                 /* create_vars */ true,
+                                 /* keep_kids */ true);
+      }
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
       return;
@@ -173,6 +335,11 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
     AssignZeroToParentScope(dev_place, scope, inputs, outside_grads);
   }
+
+ private:
+  mutable std::shared_ptr<Executor> exec{nullptr};
+  mutable std::unique_ptr<ExecutorPrepareContext> ctx{nullptr};
+  mutable std::shared_ptr<InterpreterCore> core{nullptr};
 
  private:
   void AssignLocalGradientToParentScope(
@@ -187,7 +354,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "inside_grad_name = " << inside_grad_name
+      VLOG(4) << "[assign local]"
+              << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *outside_var =
           parent_scope.FindVar(outside_grad_name);
@@ -220,7 +388,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &input_name = inputs[i];
-      VLOG(4) << "input_name = " << input_name
+      VLOG(4) << "[assign zero]"
+              << "input_name = " << input_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *input_var = scope.FindVar(input_name);
       if (input_var == nullptr) {
@@ -231,19 +400,31 @@ class ConditionalBlockGradOp : public ConditionalOp {
         continue;
       }
 
+<<<<<<< HEAD
       if (input_var->IsType<framework::LoDTensor>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(),
+=======
+      if (input_var->IsType<phi::DenseTensor>()) {
+        PADDLE_ENFORCE_EQ(outside_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                           true,
                           platform::errors::InvalidArgument(
                               "Type of outside_var %s is NOT LoDTensor, which "
                               "doesn't match input_var %s.",
                               outside_grad_name,
                               input_name));
+<<<<<<< HEAD
         AssignZeroToOutsideTensor(
             place,
             scope,
             input_var->Get<framework::LoDTensor>(),
             outside_var->GetMutable<framework::LoDTensor>());
+=======
+        AssignZeroToOutsideTensor(place,
+                                  scope,
+                                  input_var->Get<phi::DenseTensor>(),
+                                  outside_var->GetMutable<phi::DenseTensor>());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
@@ -255,6 +436,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
         const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
         auto *outside_tensors =
             outside_var->GetMutable<framework::LoDTensorArray>();
+<<<<<<< HEAD
+=======
+        if (outside_tensors->size() == 0U) {
+          outside_tensors->resize(input_tensors.size());
+        }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         PADDLE_ENFORCE_EQ(input_tensors.size(),
                           outside_tensors->size(),
                           platform::errors::InvalidArgument(
@@ -277,8 +464,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
   void AssignZeroToOutsideTensor(const platform::Place &place,
                                  const framework::Scope &cur_scope,
-                                 const framework::LoDTensor &input_tensor,
-                                 framework::LoDTensor *outside_tensor) const {
+                                 const phi::DenseTensor &input_tensor,
+                                 phi::DenseTensor *outside_tensor) const {
     if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
       return;
     }
@@ -289,6 +476,37 @@ class ConditionalBlockGradOp : public ConditionalOp {
         platform::DeviceContextPool::Instance().Get(place);
     phi::funcs::set_constant(*dev_ctx, outside_tensor, 0.0f);
     outside_tensor->set_lod(input_tensor.lod());
+  }
+};
+
+template <class T>
+struct FilterNoGradInput {};
+
+template <>
+struct FilterNoGradInput<framework::OpDesc> {
+  static void filter(const framework::BlockDesc *desc,
+                     std::vector<std::string> *vec) {
+    auto f = [desc](const std::string &name) -> std::string {
+      if (name == framework::kEmptyVarName) {
+        // don't drop empty var name, you can use Input(name, true) to drop it.
+        return framework::kEmptyVarName;
+      }
+      auto var_desc =
+          desc->FindVarRecursive(framework::GradOriginalVarName(name));
+      std::set<framework::proto::VarType::Type> not_support_backward_dtype = {
+          framework::proto::VarType::BOOL,
+          framework::proto::VarType::INT8,
+          framework::proto::VarType::UINT8,
+          framework::proto::VarType::INT16,
+          framework::proto::VarType::INT32,
+          framework::proto::VarType::INT64,
+      };
+      if (!var_desc ||
+          not_support_backward_dtype.count(var_desc->GetDataType()))
+        return framework::kEmptyVarName;
+      return name;
+    };
+    std::transform(vec->begin(), vec->end(), vec->begin(), f);
   }
 };
 
@@ -349,8 +567,11 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
                       this->OutputGrad(ConditionalOp::kOutputs));
     grad_op->SetInput(ConditionalOp::kScope,
                       this->Output(ConditionalOp::kScope));
+
+    auto fwd_inputs = this->InputGrad(ConditionalOp::kInputs, false);
+    FilterNoGradInput<T>::filter(this->GetForwardOpBlock(), &fwd_inputs);
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
-                       this->InputGrad(ConditionalOp::kInputs, false));
+                       fwd_inputs);
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition",
                      this->GetAttr("is_scalar_condition"));

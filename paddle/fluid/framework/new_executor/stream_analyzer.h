@@ -29,7 +29,11 @@ class StreamAnalyzer {
   using Place = platform::Place;
   using DeviceContext = platform::DeviceContext;
 
+<<<<<<< HEAD
   explicit StreamAnalyzer(const Place& place);
+=======
+  explicit StreamAnalyzer(const Place& place) : place_(place) {}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   ~StreamAnalyzer() {}
 
@@ -54,8 +58,11 @@ class StreamAnalyzer {
   platform::DeviceType GetWaiterType(const Instruction& instr);
 
   const Place place_;
+<<<<<<< HEAD
   std::shared_future<std::unique_ptr<platform::DeviceContext>> d2h_ctx_;
   std::shared_future<std::unique_ptr<platform::DeviceContext>> h2d_ctx_;
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 };
 

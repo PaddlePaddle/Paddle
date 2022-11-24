@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -27,13 +25,14 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
         x = np.transpose(x, (0, 3, 1, 2))
     shape = x.shape
     reshape_x = x.reshape((-1, seg_num, shape[1], shape[2], shape[3]))
-    pad_x = np.pad(reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)),
-                   'constant')
+    pad_x = np.pad(
+        reshape_x, ((0, 0), (1, 1), (0, 0), (0, 0), (0, 0)), 'constant'
+    )
     c1 = int(shape[1] * shift_ratio)
     c2 = int(shape[1] * 2 * shift_ratio)
     slice1 = pad_x[:, :seg_num, :c1, :, :]
-    slice2 = pad_x[:, 2:seg_num + 2, c1:c2, :, :]
-    slice3 = pad_x[:, 1:seg_num + 1, c2:, :, :]
+    slice2 = pad_x[:, 2 : seg_num + 2, c1:c2, :, :]
+    slice3 = pad_x[:, 1 : seg_num + 1, c2:, :, :]
     concat_x = np.concatenate([slice1, slice2, slice3], axis=2)
     out = concat_x.reshape(shape)
     if data_format == "NHWC":
@@ -52,15 +51,16 @@ class TestTemporalShift(OpTest):
         self.attrs = {
             "seg_num": self.seg_num,
             "shift_ratio": self.shift_ratio,
-            "data_format": self.data_format
+            "data_format": self.data_format,
         }
 
         self.inputs = {
             "X": x,
         }
 
-        output = temporal_shift(x, self.seg_num, self.shift_ratio,
-                                self.data_format)
+        output = temporal_shift(
+            x, self.seg_num, self.shift_ratio, self.data_format
+        )
         self.outputs = {"Out": output}
         self.python_out_sig = ["Out"]
 
@@ -105,8 +105,9 @@ class TestTemporalShift4(TestTemporalShift):
         self.data_format = 'NHWC'
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestTemporalShiftFP16(TestTemporalShift):
 
     def initTestCase(self):
@@ -131,6 +132,7 @@ class TestTemporalShiftAPI(unittest.TestCase):
 
     def test_api(self):
         input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
         out = paddle.fluid.layers.temporal_shift(x=input,
                                                  seg_num=2,
                                                  shift_ratio=0.2)
@@ -138,22 +140,43 @@ class TestTemporalShiftAPI(unittest.TestCase):
         out_from_function = paddle.nn.functional.temporal_shift(x=input,
                                                                 seg_num=2,
                                                                 shift_ratio=0.2)
+=======
+        out = paddle.fluid.layers.temporal_shift(
+            x=input, seg_num=2, shift_ratio=0.2
+        )
+
+        out_from_function = paddle.nn.functional.temporal_shift(
+            x=input, seg_num=2, shift_ratio=0.2
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # dygraph
         with paddle.fluid.dygraph.guard():
             input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
             out = paddle.nn.functional.temporal_shift(x=input,
                                                       seg_num=2,
                                                       shift_ratio=0.2)
+=======
+            out = paddle.nn.functional.temporal_shift(
+                x=input, seg_num=2, shift_ratio=0.2
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_error(self):
 
         def attr_data_format():
             input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
             out = paddle.nn.functional.temporal_shift(x=input,
                                                       seg_num=2,
                                                       shift_ratio=0.2,
                                                       data_format="HWC")
+=======
+            out = paddle.nn.functional.temporal_shift(
+                x=input, seg_num=2, shift_ratio=0.2, data_format="HWC"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, attr_data_format)
 

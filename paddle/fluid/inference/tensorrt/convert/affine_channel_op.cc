@@ -49,12 +49,20 @@ class AffineChannelOpConverter : public OpConverter {
     auto idim = input_tensor->getDimensions();
 
     auto* scale_v = scope.FindVar(scale_name);
+<<<<<<< HEAD
     auto* scale_t = scale_v->GetMutable<framework::LoDTensor>();
+=======
+    auto* scale_t = scale_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     float* scale_ptr = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(scale_name, *scale_t).get().values));
 
     auto* bias_v = scope.FindVar(bias_name);
+<<<<<<< HEAD
     auto* bias_t = bias_v->GetMutable<framework::LoDTensor>();
+=======
+    auto* bias_t = bias_v->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     float* bias_ptr = const_cast<float*>(static_cast<const float*>(
         engine_->GetFp32TrtWeight(bias_name, *bias_t).get().values));
 

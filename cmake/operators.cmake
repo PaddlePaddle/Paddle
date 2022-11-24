@@ -129,6 +129,7 @@ function(op_library TARGET)
       if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MIOPEN_FILE}.cu)
         list(APPEND miopen_cu_srcs ${MIOPEN_FILE}.cu)
       endif()
+<<<<<<< HEAD
     endif()
     if(WITH_MKLDNN)
       string(REPLACE "_op" "_mkldnn_op" MKLDNN_FILE "${TARGET}")
@@ -162,6 +163,41 @@ function(op_library TARGET)
         list(APPEND mlu_cc_srcs ${MLU_FILE}.cc)
       endif()
     endif()
+=======
+    endif()
+    if(WITH_MKLDNN)
+      string(REPLACE "_op" "_mkldnn_op" MKLDNN_FILE "${TARGET}")
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mkldnn/${MKLDNN_FILE}.cc)
+        list(APPEND mkldnn_cc_srcs mkldnn/${MKLDNN_FILE}.cc)
+      endif()
+    endif()
+    if(WITH_XPU)
+      string(REPLACE "_op" "_op_xpu" XPU_FILE "${TARGET}")
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${XPU_FILE}.cc)
+        list(APPEND xpu_cc_srcs ${XPU_FILE}.cc)
+      endif()
+    endif()
+    if(WITH_XPU_KP)
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.xpu)
+        list(APPEND xpu_kp_cc_srcs ${TARGET}.xpu)
+      endif()
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${TARGET}.kps)
+        list(APPEND xpu_kp_cc_srcs ${TARGET}.kps)
+      endif()
+    endif()
+    if(WITH_ASCEND_CL)
+      string(REPLACE "_op" "_op_npu" NPU_FILE "${TARGET}")
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${NPU_FILE}.cc)
+        list(APPEND npu_cc_srcs ${NPU_FILE}.cc)
+      endif()
+    endif()
+    if(WITH_MLU)
+      string(REPLACE "_op" "_op_mlu" MLU_FILE "${TARGET}")
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${MLU_FILE}.cc)
+        list(APPEND mlu_cc_srcs ${MLU_FILE}.cc)
+      endif()
+    endif()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   else()
     foreach(src ${op_library_SRCS})
       if(WITH_ROCM AND ${src} MATCHES ".*_cudnn_op.cu$")
@@ -218,6 +254,7 @@ function(op_library TARGET)
       endif()
     endforeach()
   endif()
+<<<<<<< HEAD
 
   # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
   if(WITH_UNITY_BUILD AND op_library_UNITY)
@@ -237,6 +274,27 @@ function(op_library TARGET)
         CACHE INTERNAL "op libs")
   endif()
 
+=======
+
+  # Unity Build relies on global option `WITH_UNITY_BUILD` and local option `UNITY`.
+  if(WITH_UNITY_BUILD AND op_library_UNITY)
+    # Generate the unity target name by the directory where source files located.
+    string(REPLACE "${PADDLE_SOURCE_DIR}/paddle/fluid/" "" UNITY_TARGET
+                   ${CMAKE_CURRENT_SOURCE_DIR})
+    string(REPLACE "/" "_" UNITY_TARGET ${UNITY_TARGET})
+    set(UNITY_TARGET "paddle_${UNITY_TARGET}_unity")
+    if(NOT ${UNITY_TARGET} IN_LIST OP_LIBRARY)
+      set(OP_LIBRARY
+          ${UNITY_TARGET} ${OP_LIBRARY}
+          CACHE INTERNAL "op libs")
+    endif()
+  else()
+    set(OP_LIBRARY
+        ${TARGET} ${OP_LIBRARY}
+        CACHE INTERNAL "op libs")
+  endif()
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(LENGTH op_library_DEPS op_library_DEPS_len)
   if(${op_library_DEPS_len} GREATER 0)
     set(DEPS_OPS
@@ -344,6 +402,7 @@ function(op_library TARGET)
   list(LENGTH miopen_cu_cc_srcs miopen_cu_cc_srcs_len)
   list(LENGTH npu_cc_srcs npu_cc_srcs_len)
   list(LENGTH mlu_cc_srcs mlu_cc_srcs_len)
+<<<<<<< HEAD
 
   # Define operators that don't need pybind here.
   foreach(
@@ -415,6 +474,79 @@ function(op_library TARGET)
     endif()
   endforeach()
 
+=======
+
+  # Define operators that don't need pybind here.
+  foreach(
+    manual_pybind_op
+    "compare_all_op"
+    "compare_op"
+    "logical_op"
+    "bitwise_op"
+    "nccl_op"
+    "tensor_array_read_write_op"
+    "tensorrt_engine_op"
+    "conv_fusion_op")
+
+    if("${TARGET}" STREQUAL "${manual_pybind_op}")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
+
+  # The registration of USE_OP, please refer to paddle/fluid/framework/op_registry.h.
+  # Note that it's enough to just adding one operator to pybind in a *_op.cc file.
+  # And for detail pybind information, please see generated paddle/pybind/pybind.h.
+  set(ORIGINAL_TARGET ${TARGET})
+  string(REGEX REPLACE "_op" "" TARGET "${TARGET}")
+
+  foreach(cc_src ${cc_srcs})
+    # pybind USE_OP_ITSELF
+    set(op_name "")
+    find_register(${cc_src} "REGISTER_OPERATOR" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
+    set(op_name "")
+    find_register(${cc_src} "REGISTER_OP_WITHOUT_GRADIENT" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(${op_name});\n")
+      # hack: for example, the target in conv_transpose_op.cc is conv2d_transpose, used in mkldnn
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+
+    # pybind USE_OP_DEVICE_KERNEL for CPU
+    set(op_name "")
+    find_register(${cc_src} "REGISTER_OP_CPU_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CPU);\n")
+      # why change TARGET here?
+      # when building padle with on_infer, the REGISTER_OPERATOR(*_grad) will be removed before compiling (see details in remove_grad_op_and_kernel.py)
+      # in elementwise_op.cc, it will find REGISTER_OPERATOR(grad_add) and set TARGET to grad_add
+      # and, in the following "mkldnn" part, it will add USE_OP_DEVICE_KERNEL(grad_add, MKLDNN) to pybind.h
+      # however, grad_add has no mkldnn kernel.
+      set(TARGET ${op_name})
+      set(pybind_flag 1)
+    endif()
+  endforeach()
+
+  # pybind USE_OP_DEVICE_KERNEL for CUDA
+  list(APPEND cu_srcs ${cu_cc_srcs})
+  # message("cu_srcs ${cu_srcs}")
+  foreach(cu_src ${cu_srcs})
+    set(op_name "")
+    find_register(${cu_src} "REGISTER_OP_CUDA_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, CUDA);\n")
+      set(pybind_flag 1)
+    endif()
+  endforeach()
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   # pybind USE_OP_DEVICE_KERNEL for ROCm
   list(APPEND hip_srcs ${hip_cc_srcs})
   # message("hip_srcs ${hip_srcs}")
@@ -510,6 +642,7 @@ function(op_library TARGET)
   if(WITH_MKLDNN AND ${mkldnn_cc_srcs_len} GREATER 0)
     # Append first implemented MKLDNN activation operator
     if(${MKLDNN_FILE} STREQUAL "activation_mkldnn_op")
+<<<<<<< HEAD
       file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, MKLDNN);\n")
     elseif(${MKLDNN_FILE} STREQUAL "conv_mkldnn_op")
       file(APPEND ${pybind_file}
@@ -532,6 +665,9 @@ function(op_library TARGET)
            "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, S8);\n")
       file(APPEND ${pybind_file}
            "USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(fc, MKLDNN, U8);\n")
+=======
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(softplus, MKLDNN);\n")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     else()
       foreach(mkldnn_src ${mkldnn_cc_srcs})
         set(op_name "")
@@ -553,6 +689,7 @@ function(op_library TARGET)
     file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
     set(pybind_flag 1)
   endif()
+<<<<<<< HEAD
 
   # pybind USE_OP
   if(${pybind_flag} EQUAL 0)
@@ -610,4 +747,118 @@ function(register_operators)
       finish_unity_target(cu)
     endif()
   endif()
+=======
+
+  # pybind USE_OP
+  if(${pybind_flag} EQUAL 0)
+    # NOTE(*): activation use macro to regist the kernels, set use_op manually.
+    if(${TARGET} STREQUAL "activation")
+      file(APPEND ${pybind_file} "USE_OP_ITSELF(relu);\n")
+    elseif(${TARGET} STREQUAL "fake_dequantize")
+      file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
+    elseif(${TARGET} STREQUAL "fake_quantize")
+      file(APPEND ${pybind_file} "USE_OP(fake_quantize_abs_max);\n")
+    elseif(${TARGET} STREQUAL "tensorrt_engine_op")
+      message(
+        STATUS
+          "Pybind skips [tensorrt_engine_op], for this OP is only used in inference"
+      )
+    else()
+      file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
+    endif()
+  endif()
+endfunction()
+
+function(register_operators)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs EXCLUDES DEPS)
+  cmake_parse_arguments(register_operators "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+  file(
+    GLOB OPS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "*_op.cc")
+  string(REPLACE "_mkldnn" "" OPS "${OPS}")
+  string(REPLACE "_xpu" "" OPS "${OPS}")
+  string(REPLACE "_npu" "" OPS "${OPS}")
+  string(REPLACE "_mlu" "" OPS "${OPS}")
+  string(REPLACE ".cc" "" OPS "${OPS}")
+  list(REMOVE_DUPLICATES OPS)
+  list(LENGTH register_operators_DEPS register_operators_DEPS_len)
+
+  foreach(src ${OPS})
+    list(FIND register_operators_EXCLUDES ${src} _index)
+    if(${_index} EQUAL -1)
+      if(${register_operators_DEPS_len} GREATER 0)
+        op_library(${src} UNITY DEPS ${register_operators_DEPS})
+      else()
+        op_library(${src} UNITY)
+      endif()
+    endif()
+  endforeach()
+
+  # Complete the processing of `UNITY_TARGET`.
+  if(WITH_UNITY_BUILD)
+    finish_unity_target(cc)
+    if(WITH_GPU)
+      finish_unity_target(cu)
+    endif()
+  endif()
+endfunction()
+
+function(prune_pybind_h)
+  set(op_list ${OP_LIST})
+
+  list(APPEND op_list "load_combine")
+  list(APPEND op_list "tensorrt_engine")
+
+  # add fused_op in op_list
+  list(APPEND op_list "fc")
+  list(APPEND op_list "conv2d_fusion")
+  list(APPEND op_list "fusion_seqconv_eltadd_relu")
+  list(APPEND op_list "fusion_seqpool_cvm_concat")
+  list(APPEND op_list "fusion_gru")
+  list(APPEND op_list "fusion_seqexpand_concat_fc")
+  list(APPEND op_list "fusion_repeated_fc_relu")
+  list(APPEND op_list "fusion_squared_mat_sub")
+
+  # add plugin_op in op_list
+  list(APPEND op_list "anchor_generator")
+
+  file(STRINGS ${pybind_file} op_registry_list)
+
+  file(WRITE ${pybind_file_prune} "")
+  file(
+    APPEND ${pybind_file_prune}
+    "// Generated by the paddle/fluid/operators/CMakeLists.txt.  DO NOT EDIT!\n"
+  )
+
+  # add USE_OP_ITSELF for all op in op_list
+  foreach(op_name IN LISTS op_list)
+    file(APPEND ${pybind_file_prune} "USE_OP_ITSELF(${op_name});\n")
+  endforeach()
+
+  foreach(op_registry IN LISTS op_registry_list)
+    if(NOT ${op_registry} EQUAL "")
+      foreach(op_name IN LISTS op_list)
+        string(FIND ${op_registry} "(${op_name})" index1)
+        string(FIND ${op_registry} "(${op_name}," index2)
+        string(FIND ${op_registry} "USE_OP_ITSELF" index3)
+        if(((NOT ${index1} EQUAL "-1") OR (NOT ${index2} EQUAL "-1"))
+           AND (${index3} EQUAL "-1"))
+          file(APPEND ${pybind_file_prune} "${op_registry}\n")
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+
+  file(WRITE ${pybind_file} "")
+  file(STRINGS ${pybind_file_prune} op_registry_list_tmp)
+  foreach(op_name IN LISTS op_registry_list_tmp)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "${op_name}\n")
+    endif()
+  endforeach()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endfunction()

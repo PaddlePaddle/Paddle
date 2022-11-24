@@ -21,7 +21,7 @@ from ..utils import deprecated
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
-class DatasetFactory(object):
+class DatasetFactory:
     """
     DatasetFactory is a factory which create dataset by its name,
     you can create "QueueDataset" or "InMemoryDataset", or "FileInstantDataset",
@@ -36,7 +36,7 @@ class DatasetFactory(object):
     """
 
     def __init__(self):
-        """ Init. """
+        """Init."""
         pass
 
     def create_dataset(self, datafeed_class="QueueDataset"):
@@ -59,15 +59,16 @@ class DatasetFactory(object):
             dataset = globals()[datafeed_class]()
             return dataset
         except:
-            raise ValueError("datafeed class %s does not exist" %
-                             datafeed_class)
+            raise ValueError(
+                "datafeed class %s does not exist" % datafeed_class
+            )
 
 
-class DatasetBase(object):
-    """ Base dataset class. """
+class DatasetBase:
+    """Base dataset class."""
 
     def __init__(self):
-        """ Init. """
+        """Init."""
         # define class name here
         # to decide whether we need create in memory instance
         self.proto_desc = data_feed_pb2.DataFeedDesc()
@@ -134,13 +135,13 @@ class DatasetBase(object):
         """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
-        
+
         Args:
-            record_candidate_size(int): size of instances candidate to shuffle 
+            record_candidate_size(int): size of instances candidate to shuffle
                                         one slot
             fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
-            
+
         Examples:
             .. code-block:: python
 
@@ -155,12 +156,12 @@ class DatasetBase(object):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
@@ -374,8 +375,8 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(since="2.0.0", update_to="paddle.distributed.InMemoryDataset")
     def __init__(self):
-        """ Init. """
-        super(InMemoryDataset, self).__init__()
+        """Init."""
+        super().__init__()
         self.proto_desc.name = "MultiSlotInMemoryDataFeed"
         self.fleet_send_batch_size = None
         self.is_user_set_queue_num = False
@@ -390,18 +391,32 @@ class InMemoryDataset(DatasetBase):
         self.trainer_num = -1
         self.pass_id = 0
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._set_feed_type")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset._set_feed_type",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_feed_type(self, data_feed_type):
         """
         Set data_feed_desc
         """
         self.proto_desc.name = data_feed_type
-        if (self.proto_desc.name == "SlotRecordInMemoryDataFeed"):
+        if self.proto_desc.name == "SlotRecordInMemoryDataFeed":
             self.dataset = core.Dataset("SlotRecordDataset")
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._prepare_to_run")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset._prepare_to_run",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def _prepare_to_run(self):
         """
         Set data_feed_desc before load or shuffle,
@@ -424,8 +439,13 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
+<<<<<<< HEAD
         update_to=
         "paddle.distributed.InMemoryDataset._dynamic_adjust_before_train")
+=======
+        update_to="paddle.distributed.InMemoryDataset._dynamic_adjust_before_train",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def _dynamic_adjust_before_train(self, thread_num):
         if not self.is_user_set_queue_num:
             if self.use_ps_gpu:
@@ -436,7 +456,7 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset._dynamic_adjust_after_train"
+        update_to="paddle.distributed.InMemoryDataset._dynamic_adjust_after_train",
     )
     def _dynamic_adjust_after_train(self):
         if not self.is_user_set_queue_num:
@@ -446,8 +466,15 @@ class InMemoryDataset(DatasetBase):
                 self.dataset.dynamic_adjust_channel_num(self.thread_num, False)
         self.dataset.dynamic_adjust_readers_num(self.thread_num)
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._set_queue_num")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset._set_queue_num",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_queue_num(self, queue_num):
         """
         Set Dataset output queue num, training threads get data from queues
@@ -466,9 +493,16 @@ class InMemoryDataset(DatasetBase):
         self.is_user_set_queue_num = True
         self.queue_num = queue_num
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._set_parse_ins_id"
                 )
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset._set_parse_ins_id",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_parse_ins_id(self, parse_ins_id):
         """
         Set id Dataset need to parse insid
@@ -488,7 +522,8 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset._set_parse_content")
+        update_to="paddle.distributed.InMemoryDataset._set_parse_content",
+    )
     def set_parse_content(self, parse_content):
         """
         Set if Dataset need to parse content
@@ -540,9 +575,16 @@ class InMemoryDataset(DatasetBase):
         """
         self.trainer_num = trainer_num
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset._set_merge_by_sid"
                 )
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset._set_merge_by_sid",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_merge_by_sid(self, merge_by_sid):
         """
         Set if Dataset need to merge sid. If not, one ins means one Pv.
@@ -579,7 +621,7 @@ class InMemoryDataset(DatasetBase):
 
     def preprocess_instance(self):
         """
-        Merge pv instance and convey it from input_channel to input_pv_channel. 
+        Merge pv instance and convey it from input_channel to input_pv_channel.
         It will be effective when enable_pv_merge_ is True.
 
         Examples:
@@ -634,7 +676,7 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset._set_fleet_send_batch_size"
+        update_to="paddle.distributed.InMemoryDataset._set_fleet_send_batch_size",
     )
     def set_fleet_send_batch_size(self, fleet_send_batch_size=1024):
         """
@@ -655,8 +697,13 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
+<<<<<<< HEAD
         update_to=
         "paddle.distributed.InMemoryDataset._set_fleet_send_sleep_seconds")
+=======
+        update_to="paddle.distributed.InMemoryDataset._set_fleet_send_sleep_seconds",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_fleet_send_sleep_seconds(self, fleet_send_sleep_seconds=0):
         """
         Set fleet send sleep time, default is 0
@@ -676,7 +723,8 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset._set_merge_by_lineid")
+        update_to="paddle.distributed.InMemoryDataset._set_merge_by_lineid",
+    )
     def set_merge_by_lineid(self, merge_size=2):
         """
         Set merge by line id, instances of same line id will be merged after
@@ -699,8 +747,13 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
+<<<<<<< HEAD
         update_to=
         "paddle.distributed.InMemoryDataset._set_generate_unique_feasigns")
+=======
+        update_to="paddle.distributed.InMemoryDataset._set_generate_unique_feasigns",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
@@ -708,6 +761,7 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
+<<<<<<< HEAD
         update_to=
         "paddle.distributed.InMemoryDataset._generate_local_tables_unlock")
     def generate_local_tables_unlock(self, table_id, fea_dim, read_thread_num,
@@ -715,6 +769,16 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(table_id, fea_dim,
                                                   read_thread_num,
                                                   consume_thread_num, shard_num)
+=======
+        update_to="paddle.distributed.InMemoryDataset._generate_local_tables_unlock",
+    )
+    def generate_local_tables_unlock(
+        self, table_id, fea_dim, read_thread_num, consume_thread_num, shard_num
+    ):
+        self.dataset.generate_local_tables_unlock(
+            table_id, fea_dim, read_thread_num, consume_thread_num, shard_num
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def set_date(self, date):
         """
@@ -739,8 +803,15 @@ class InMemoryDataset(DatasetBase):
         if self.use_ps_gpu and core._is_compiled_with_heterps():
             self.psgpu.set_date(year, month, day)
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset.load_into_memory")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.load_into_memory",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def load_into_memory(self, is_shuffle=False):
         """
         Load data into memory
@@ -767,7 +838,8 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset.preload_into_memory")
+        update_to="paddle.distributed.InMemoryDataset.preload_into_memory",
+    )
     def preload_into_memory(self, thread_num=None):
         """
         Load data into memory in async mode
@@ -793,9 +865,16 @@ class InMemoryDataset(DatasetBase):
         self.dataset.create_preload_readers()
         self.dataset.preload_into_memory()
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset.wait_preload_done"
                 )
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.wait_preload_done",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def wait_preload_done(self):
         """
         Wait preload_into_memory done
@@ -814,8 +893,15 @@ class InMemoryDataset(DatasetBase):
         self.dataset.wait_preload_done()
         self.dataset.destroy_preload_readers()
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset.local_shuffle")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.local_shuffle",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def local_shuffle(self):
         """
         Local shuffle
@@ -833,8 +919,15 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.local_shuffle()
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset.global_shuffle")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.global_shuffle",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def global_shuffle(self, fleet=None, thread_num=12):
         """
         Global shuffle.
@@ -894,12 +987,19 @@ class InMemoryDataset(DatasetBase):
             else:
                 fleet._role_maker.barrier_worker()
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.InMemoryDataset.release_memory")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.InMemoryDataset.release_memory",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def release_memory(self):
         """
         :api_attr: Static Graph
-        
+
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
@@ -947,7 +1047,8 @@ class InMemoryDataset(DatasetBase):
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset.get_memory_data_size")
+        update_to="paddle.distributed.InMemoryDataset.get_memory_data_size",
+    )
     def get_memory_data_size(self, fleet=None):
         """
         Get memory data size, user can call this function to know the num
@@ -976,18 +1077,21 @@ class InMemoryDataset(DatasetBase):
 
         """
         import numpy as np
+
         local_data_size = self.dataset.get_memory_data_size()
         local_data_size = np.array([local_data_size])
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
-                                                global_data_size)
+            fleet._role_maker.all_reduce_worker(
+                local_data_size, global_data_size
+            )
             return global_data_size[0]
         return local_data_size[0]
 
     @deprecated(
         since="2.0.0",
-        update_to="paddle.distributed.InMemoryDataset.get_shuffle_data_size")
+        update_to="paddle.distributed.InMemoryDataset.get_shuffle_data_size",
+    )
     def get_shuffle_data_size(self, fleet=None):
         """
         Get shuffle data size, user can call this function to know the num
@@ -1018,6 +1122,7 @@ class InMemoryDataset(DatasetBase):
 
         """
         import numpy as np
+
         local_data_size = self.dataset.get_shuffle_data_size()
         local_data_size = np.array([local_data_size])
         print('global shuffle local_data_size: ', local_data_size)
@@ -1026,8 +1131,9 @@ class InMemoryDataset(DatasetBase):
             if hasattr(fleet, "util"):
                 global_data_size = fleet.util.all_reduce(local_data_size)
             else:
-                fleet._role_maker.all_reduce_worker(local_data_size,
-                                                    global_data_size)
+                fleet._role_maker.all_reduce_worker(
+                    local_data_size, global_data_size
+                )
             return global_data_size[0]
         return local_data_size[0]
 
@@ -1040,7 +1146,11 @@ class InMemoryDataset(DatasetBase):
 
     def set_graph_config(self, config):
         """
+<<<<<<< HEAD
         Set graph config, user can set graph config in gpu graph mode. 
+=======
+        Set graph config, user can set graph config in gpu graph mode.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         Args:
             config(dict): config dict.
@@ -1071,6 +1181,7 @@ class InMemoryDataset(DatasetBase):
         self.proto_desc.graph_config.walk_len = config.get("walk_len", 20)
         self.proto_desc.graph_config.window = config.get("window", 5)
         self.proto_desc.graph_config.once_sample_startid_len = config.get(
+<<<<<<< HEAD
             "once_sample_startid_len", 8000)
         self.proto_desc.graph_config.sample_times_one_chunk = config.get(
             "sample_times_one_chunk", 10)
@@ -1102,6 +1213,24 @@ class InMemoryDataset(DatasetBase):
         """
         return self.pass_id
 
+=======
+            "once_sample_startid_len", 8000
+        )
+        self.proto_desc.graph_config.sample_times_one_chunk = config.get(
+            "sample_times_one_chunk", 10
+        )
+        self.proto_desc.graph_config.batch_size = config.get("batch_size", 1)
+        self.proto_desc.graph_config.debug_mode = config.get("debug_mode", 0)
+        self.proto_desc.graph_config.first_node_type = config.get(
+            "first_node_type", ""
+        )
+        self.proto_desc.graph_config.meta_path = config.get("meta_path", "")
+        self.proto_desc.graph_config.gpu_graph_training = config.get(
+            "gpu_graph_training", True
+        )
+        self.dataset.set_gpu_graph_mode(True)
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 class QueueDataset(DatasetBase):
     """
@@ -1120,11 +1249,18 @@ class QueueDataset(DatasetBase):
         Initialize QueueDataset
         This class should be created by DatasetFactory
         """
-        super(QueueDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotDataFeed"
 
+<<<<<<< HEAD
     @deprecated(since="2.0.0",
                 update_to="paddle.distributed.QueueDataset._prepare_to_run")
+=======
+    @deprecated(
+        since="2.0.0",
+        update_to="paddle.distributed.QueueDataset._prepare_to_run",
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def _prepare_to_run(self):
         """
         Set data_feed_desc/thread num/filelist before run,
@@ -1159,7 +1295,8 @@ class QueueDataset(DatasetBase):
         """
         raise NotImplementedError(
             "QueueDataset does not support local shuffle, "
-            "please use InMemoryDataset for local_shuffle")
+            "please use InMemoryDataset for local_shuffle"
+        )
 
     def global_shuffle(self, fleet=None):
         """
@@ -1185,7 +1322,8 @@ class QueueDataset(DatasetBase):
         """
         raise NotImplementedError(
             "QueueDataset does not support global shuffle, "
-            "please use InMemoryDataset for global_shuffle")
+            "please use InMemoryDataset for global_shuffle"
+        )
 
 
 class FileInstantDataset(DatasetBase):
@@ -1204,7 +1342,7 @@ class FileInstantDataset(DatasetBase):
         Initialize FileInstantDataset
         This class should be created by DatasetFactory
         """
-        super(FileInstantDataset, self).__init__()
+        super().__init__()
         self.proto_desc.name = "MultiSlotFileInstantDataFeed"
 
     def local_shuffle(self):
@@ -1214,7 +1352,8 @@ class FileInstantDataset(DatasetBase):
         """
         raise NotImplementedError(
             "FileInstantDataset does not support local shuffle, "
-            "please use InMemoryDataset for local_shuffle")
+            "please use InMemoryDataset for local_shuffle"
+        )
 
     def global_shuffle(self, fleet=None):
         """
@@ -1223,7 +1362,8 @@ class FileInstantDataset(DatasetBase):
         """
         raise NotImplementedError(
             "FileInstantDataset does not support global shuffle, "
-            "please use InMemoryDataset for global_shuffle")
+            "please use InMemoryDataset for global_shuffle"
+        )
 
 
 class BoxPSDataset(InMemoryDataset):
@@ -1242,7 +1382,7 @@ class BoxPSDataset(InMemoryDataset):
         Initialize BoxPSDataset
         This class should be created by DatasetFactory
         """
-        super(BoxPSDataset, self).__init__()
+        super().__init__()
         self.boxps = core.BoxPS(self.dataset)
         self.proto_desc.name = "PaddleBoxDataFeed"
 
@@ -1258,7 +1398,7 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory
 
         Examples:
             .. code-block:: python
@@ -1272,7 +1412,7 @@ class BoxPSDataset(InMemoryDataset):
     def end_pass(self, need_save_delta):
         """
         End Pass
-        Notify BoxPS that current pass ended 
+        Notify BoxPS that current pass ended
         Examples:
             .. code-block:: python
 
@@ -1309,7 +1449,7 @@ class BoxPSDataset(InMemoryDataset):
               filelist = ["a.txt", "b.txt"]
               dataset.set_filelist(filelist)
               dataset.load_into_memory()
-	    """
+        """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 
@@ -1338,12 +1478,12 @@ class BoxPSDataset(InMemoryDataset):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 

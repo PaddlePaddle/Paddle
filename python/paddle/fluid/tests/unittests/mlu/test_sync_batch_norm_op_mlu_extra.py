@@ -16,13 +16,19 @@ test for sync bachnorm op.
 for both FP32 and FP16 input.
 """
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import numpy as np
 import os
 import sys
+<<<<<<< HEAD
 import six
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -37,15 +43,24 @@ paddle.enable_static()
 
 
 class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_errors(self):
         if not core.is_compiled_with_mlu():
             return
 
         with program_guard(Program(), Program()):
             my_sync_batch_norm = paddle.nn.SyncBatchNorm(10)
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.MLUPlace(0))
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.MLUPlace(0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertRaises(TypeError, my_sync_batch_norm, x1)
 
             # the input dtype of SyncBatchNorm must be float16 or float32
@@ -54,12 +69,16 @@ class TestDygraphSyncBatchNormAPIError(unittest.TestCase):
 
 
 class TestConvertSyncBatchNorm(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_convert(self):
         if not core.is_compiled_with_mlu():
             return
 
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             compare_model = paddle.nn.Sequential(paddle.nn.Conv2D(3, 5, 3),
                                                  paddle.nn.BatchNorm2D(5),
                                                  paddle.nn.BatchNorm2D(5))
@@ -69,23 +88,52 @@ class TestConvertSyncBatchNorm(unittest.TestCase):
                     5,
                     weight_attr=fluid.ParamAttr(name='bn.scale'),
                     bias_attr=fluid.ParamAttr(name='bn.bias')))
+=======
+            compare_model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3),
+                paddle.nn.BatchNorm2D(5),
+                paddle.nn.BatchNorm2D(5),
+            )
+            model = paddle.nn.Sequential(
+                paddle.nn.Conv2D(3, 5, 3),
+                paddle.nn.BatchNorm2D(5),
+                paddle.nn.BatchNorm2D(
+                    5,
+                    weight_attr=fluid.ParamAttr(name='bn.scale'),
+                    bias_attr=fluid.ParamAttr(name='bn.bias'),
+                ),
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             for idx, sublayer in enumerate(compare_model.sublayers()):
                 if isinstance(sublayer, paddle.nn.BatchNorm2D):
                     self.assertEqual(
+<<<<<<< HEAD
                         isinstance(model[idx], paddle.nn.SyncBatchNorm), True)
 
 
 class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
+=======
+                        isinstance(model[idx], paddle.nn.SyncBatchNorm), True
+                    )
+
+
+class TestConvertSyncBatchNormCast1(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_convert(self):
         if not core.is_compiled_with_mlu():
             return
 
         class Net(nn.Layer):
+<<<<<<< HEAD
 
             def __init__(self):
                 super(Net, self).__init__()
+=======
+            def __init__(self):
+                super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.conv1 = nn.Conv2D(3, 5, 3)
                 self.bn = []
                 bn = self.add_sublayer('bn', nn.BatchNorm2D(5))
@@ -108,7 +156,10 @@ class TestConvertSyncBatchNormCast1(unittest.TestCase):
 
 
 class TestConvertSyncBatchNormCase2(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_convert(self):
         if not core.is_compiled_with_mlu():
             return
@@ -116,16 +167,31 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
         with fluid.dygraph.guard(fluid.MLUPlace(0)):
 
             class SyBNNet(paddle.nn.Layer):
+<<<<<<< HEAD
 
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
                     super(SyBNNet, self).__init__()
+=======
+                def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                    super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     self.bn_s1 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                         paddle.nn.BatchNorm3D(
                             out_ch,
                             weight_attr=paddle.ParamAttr(
+<<<<<<< HEAD
                                 regularizer=paddle.regularizer.L2Decay(0.))))
                     self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                         paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC'))
+=======
+                                regularizer=paddle.regularizer.L2Decay(0.0)
+                            ),
+                        )
+                    )
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC')
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 def forward(self, x):
                     x = self.bn_s1(x)
@@ -133,6 +199,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
                     return out
 
             class BNNet(paddle.nn.Layer):
+<<<<<<< HEAD
 
                 def __init__(self, in_ch=3, out_ch=3, dirate=1):
                     super(BNNet, self).__init__()
@@ -142,6 +209,19 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
                             regularizer=paddle.regularizer.L2Decay(0.)))
                     self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                         paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC'))
+=======
+                def __init__(self, in_ch=3, out_ch=3, dirate=1):
+                    super().__init__()
+                    self.bn_s1 = paddle.nn.BatchNorm3D(
+                        out_ch,
+                        weight_attr=paddle.ParamAttr(
+                            regularizer=paddle.regularizer.L2Decay(0.0)
+                        ),
+                    )
+                    self.bn_s2 = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                        paddle.nn.BatchNorm3D(out_ch, data_format='NDHWC')
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 def forward(self, x):
                     x = self.bn_s1(x)
@@ -155,6 +235,7 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
             x = paddle.to_tensor(data)
             bn_out = bn_model(x)
             sybn_out = sybn_model(x)
+<<<<<<< HEAD
             self.assertTrue(
                 np.allclose(bn_out.numpy(), sybn_out.numpy()),
                 "Output has diff. \n" + "\nBN     " + str(bn_out.numpy()) +
@@ -163,6 +244,22 @@ class TestConvertSyncBatchNormCase2(unittest.TestCase):
 
 class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
 
+=======
+            np.testing.assert_allclose(
+                bn_out.numpy(),
+                sybn_out.numpy(),
+                rtol=1e-05,
+                err_msg='Output has diff. \n'
+                + '\nBN     '
+                + str(bn_out.numpy())
+                + '\n'
+                + 'Sync BN '
+                + str(sybn_out.numpy()),
+            )
+
+
+class TestDygraphSyncBatchNormDataFormatError(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_errors(self):
         if not core.is_compiled_with_mlu():
             return

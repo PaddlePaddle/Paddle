@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
+using LoDTensor = phi::DenseTensor;
 
 inline void CheckTableValid() {}
 
@@ -128,7 +128,7 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
 
     size_t table_t_mem_size =
-        table_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+        table_t->numel() * phi::SizeOf(table_grad_t->dtype());
     size_t table_grad_t_mem_size =
         table_grad_t->numel() *
         framework::SizeOfType(

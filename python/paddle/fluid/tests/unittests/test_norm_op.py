@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -73,8 +71,10 @@ class TestNormOp3(TestNormOp):
         self.epsilon = 1e-8
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp4(TestNormOp):
 
     def init_test_case(self):
@@ -86,8 +86,10 @@ class TestNormOp4(TestNormOp):
         pass
 
 
-@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
-                    "however it is desirable to cover the forward pass")
+@skip_check_grad_ci(
+    reason="'check_grad' on large inputs is too slow, "
+    + "however it is desirable to cover the forward pass"
+)
 class TestNormOp5(TestNormOp):
 
     def init_test_case(self):
@@ -108,8 +110,9 @@ class TestNormOp6(TestNormOp):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
-@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestNormOp7(TestNormOp):
 
     def init_dtype(self):
@@ -119,9 +122,15 @@ class TestNormOp7(TestNormOp):
         self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(fluid.core.CUDAPlace(0), ['X'],
                                    'Out',
                                    max_relative_error=0.05)
+=======
+        self.check_grad_with_place(
+            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 @skip_check_grad_ci(reason="skip check grad for test mode.")
@@ -136,7 +145,7 @@ class TestNormTestOp(OpTest):
         self.attrs = {
             'epsilon': self.epsilon,
             'axis': self.axis,
-            'is_test': True
+            'is_test': True,
         }
         self.outputs = {'Out': y}
 
@@ -166,5 +175,6 @@ class API_NormTest(unittest.TestCase):
 
 if __name__ == '__main__':
     import paddle
+
     paddle.enable_static()
     unittest.main()

@@ -22,9 +22,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
+=======
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
+using DataLayout = phi::DataLayout;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 class InstanceNormOp : public framework::OperatorWithKernel {
  public:

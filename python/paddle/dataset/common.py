@@ -12,24 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import requests
 import hashlib
 import os
 import errno
 import shutil
-import six
 import sys
 import importlib
 import paddle.dataset
-import six.moves.cPickle as pickle
+import pickle
+import tempfile
 import glob
 import paddle
 
 __all__ = []
 
 HOME = os.path.expanduser('~')
+
+# If the default HOME dir does not support writing, we
+# will create a temporary folder to store the cache files.
+if not os.access(HOME, os.W_OK):
+    r"""
+    gettempdir() return the name of the directory used for temporary files.
+    On Windows, the directories C:\TEMP, C:\TMP, \TEMP, and \TMP, in that order.
+    On all other platforms, the directories /tmp, /var/tmp, and /usr/tmp, in that order.
+    For more details, please refer to https://docs.python.org/3/library/tempfile.html
+    """
+    HOME = tempfile.gettempdir()
+
 DATA_HOME = os.path.join(HOME, '.cache', 'paddle', 'dataset')
 
 
@@ -44,7 +54,6 @@ def must_mkdirs(path):
     except OSError as exc:
         if exc.errno != errno.EEXIST:
             raise
-        pass
 
 
 must_mkdirs(DATA_HOME)
@@ -65,8 +74,13 @@ def download(url, module_name, md5sum, save_name=None):
         os.makedirs(dirname)
 
     filename = os.path.join(
+<<<<<<< HEAD
         dirname,
         url.split('/')[-1] if save_name is None else save_name)
+=======
+        dirname, url.split('/')[-1] if save_name is None else save_name
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if os.path.exists(filename) and md5file(filename) == md5sum:
         return filename
@@ -81,9 +95,18 @@ def download(url, module_name, md5sum, save_name=None):
         else:
             raise RuntimeError(
                 "Cannot download {0} within retry limit {1}".format(
+<<<<<<< HEAD
                     url, retry_limit))
         sys.stderr.write("Cache file %s not found, downloading %s \n" %
                          (filename, url))
+=======
+                    url, retry_limit
+                )
+            )
+        sys.stderr.write(
+            "Cache file %s not found, downloading %s \n" % (filename, url)
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         sys.stderr.write("Begin to download\n")
         try:
             r = requests.get(url, stream=True)
@@ -99,8 +122,14 @@ def download(url, module_name, md5sum, save_name=None):
                     total_iter = total_length / chunk_size + 1
                     log_interval = total_iter // 20 if total_iter > 20 else 1
                     log_index = 0
+<<<<<<< HEAD
                     bar = paddle.hapi.progressbar.ProgressBar(total_iter,
                                                               name='item')
+=======
+                    bar = paddle.hapi.progressbar.ProgressBar(
+                        total_iter, name='item'
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     for data in r.iter_content(chunk_size=chunk_size):
                         f.write(data)
                         log_index += 1
@@ -118,12 +147,21 @@ def download(url, module_name, md5sum, save_name=None):
 
 def fetch_all():
     for module_name in [
-            x for x in dir(paddle.dataset) if not x.startswith("__")
+        x for x in dir(paddle.dataset) if not x.startswith("__")
     ]:
         if "fetch" in dir(
+<<<<<<< HEAD
                 importlib.import_module("paddle.dataset.%s" % module_name)):
             getattr(importlib.import_module("paddle.dataset.%s" % module_name),
                     "fetch")()
+=======
+            importlib.import_module("paddle.dataset.%s" % module_name)
+        ):
+            getattr(
+                importlib.import_module("paddle.dataset.%s" % module_name),
+                "fetch",
+            )()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
@@ -164,10 +202,9 @@ def split(reader, line_count, suffix="%05d.pickle", dumper=pickle.dump):
             dumper(lines, f)
 
 
-def cluster_files_reader(files_pattern,
-                         trainer_count,
-                         trainer_id,
-                         loader=pickle.load):
+def cluster_files_reader(
+    files_pattern, trainer_count, trainer_id, loader=pickle.load
+):
     """
     Create a reader that yield element from the given files, select
     a file set according trainer count and trainer_id
@@ -207,4 +244,9 @@ def _check_exists_and_download(path, url, md5, module_name, download=True):
         return paddle.dataset.common.download(url, module_name, md5)
     else:
         raise ValueError(
+<<<<<<< HEAD
             '{} not exists and auto download disabled'.format(path))
+=======
+            '{} not exists and auto download disabled'.format(path)
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

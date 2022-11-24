@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import sys
 import unittest
 import numpy as np
@@ -41,7 +39,7 @@ class TestNPUGaussianRandomOp(OpTest):
             "mean": self.mean,
             "std": self.std,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn
+            "use_mkldnn": self.use_mkldnn,
         }
         paddle.seed(10)
 
@@ -49,7 +47,7 @@ class TestNPUGaussianRandomOp(OpTest):
 
     def set_attrs(self):
         self.mean = 1.0
-        self.std = 2.
+        self.std = 2.0
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -70,8 +68,18 @@ class TestNPUGaussianRandomOp(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(hist, hist2, rtol=0, atol=0.01),
                         "hist: " + str(hist) + " hist2: " + str(hist2))
+=======
+        np.testing.assert_allclose(
+            hist,
+            hist2,
+            rtol=0,
+            atol=0.01,
+            err_msg="hist: " + str(hist) + " hist2: " + str(hist2),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

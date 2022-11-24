@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import paddle
 import os
 import warnings
 
@@ -74,7 +73,8 @@ class TestCheckCompiler(TestABIBase):
                 # check Compiler Compatibility WARNING
                 self.assertTrue(len(error) == 1)
                 self.assertTrue(
-                    "Compiler Compatibility WARNING" in str(error[0].message))
+                    "Compiler Compatibility WARNING" in str(error[0].message)
+                )
 
     def test_exception_windows(self):
         # clear environ
@@ -87,8 +87,15 @@ class TestCheckCompiler(TestABIBase):
                 self.assertFalse(flag)
                 # check ABI Compatibility WARNING
                 self.assertTrue(len(error) == 1)
+<<<<<<< HEAD
                 self.assertTrue("Failed to check compiler version for" in str(
                     error[0].message))
+=======
+                self.assertTrue(
+                    "Failed to check compiler version for"
+                    in str(error[0].message)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_exception_linux(self):
         # clear environ
@@ -108,8 +115,15 @@ class TestCheckCompiler(TestABIBase):
                 self.assertFalse(flag)
                 # check ABI Compatibility WARNING
                 self.assertTrue(len(error) == 1)
+<<<<<<< HEAD
                 self.assertTrue("Failed to check compiler version for" in str(
                     error[0].message))
+=======
+                self.assertTrue(
+                    "Failed to check compiler version for"
+                    in str(error[0].message)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             # restore
             utils._expected_compiler_current_platform = raw_func

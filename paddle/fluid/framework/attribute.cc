@@ -42,6 +42,13 @@ paddle::any GetAttrValue(const Attribute& attr) {
       return PADDLE_GET_CONST(std::vector<int64_t>, attr);
     case proto::AttrType::FLOAT64S:
       return PADDLE_GET_CONST(std::vector<double>, attr);
+<<<<<<< HEAD
+=======
+    case proto::AttrType::VAR:
+      return PADDLE_GET_CONST(VarDesc*, attr);
+    case proto::AttrType::VARS:
+      return PADDLE_GET_CONST(std::vector<VarDesc*>, attr);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     case proto::AttrType::BLOCK:
       return PADDLE_GET_CONST(BlockDesc*, attr);
     case proto::AttrType::BLOCKS:
@@ -115,10 +122,35 @@ Attribute GetAttrValue(const proto::OpDesc::Attr& attr_desc) {
     }
 
     default:
-      PADDLE_THROW(platform::errors::Unavailable("Unsupport attribute type %d.",
-                                                 attr_desc.type()));
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported attribute type %d.", attr_desc.type()));
   }
   return paddle::blank();
+<<<<<<< HEAD
+=======
+}
+
+Attribute GetAttrValue(const proto::VarDesc::Attr& attr_desc) {
+  switch (attr_desc.type()) {
+    case proto::AttrType::INT: {
+      return attr_desc.i();
+    }
+    case proto::AttrType::STRING: {
+      return attr_desc.s();
+    }
+    case proto::AttrType::INTS: {
+      std::vector<int> val(attr_desc.ints_size());
+      for (int i = 0; i < attr_desc.ints_size(); ++i) {
+        val[i] = attr_desc.ints(i);
+      }
+      return val;
+    }
+    default:
+      PADDLE_THROW(platform::errors::Unavailable(
+          "Unsupported attribute type %d.", attr_desc.type()));
+  }
+  return paddle::blank();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 }  // namespace framework

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -53,8 +51,10 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.initParams()
 
         logits = getattr(
-            self, "logits",
-            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
+            self,
+            "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype),
+        )
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         if self.soft_label:
@@ -65,8 +65,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
             self.shape[self.axis] = 1
             labels = np.random.randint(0, axis_dim, self.shape, dtype="int64")
 
-        loss = cross_entropy(softmax, labels, self.soft_label, self.axis,
-                             self.ignore_index)
+        loss = cross_entropy(
+            softmax, labels, self.soft_label, self.axis, self.ignore_index
+        )
 
         one_hot_label = np.eye(axis_dim)[labels.reshape(-1)]
 
@@ -74,7 +75,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.outputs = {
             "Backprop": (softmax - one_hot_label).astype(self.dtype),
             "Softmax": softmax.astype(self.dtype),
-            "Loss": loss.astype(self.dtype)
+            "Loss": loss.astype(self.dtype),
         }
         self.attrs = {
             "numeric_stable_mode": self.numeric_stable_mode,
@@ -92,10 +93,20 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         if self.dtype == np.float16:
             return
         # fp32 has low precision, cpu and mlu both need to relax the max_relative_error if using fp32
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['Logits'],
                                    'Loss',
                                    numeric_grad_delta=0.001,
                                    max_relative_error=0.5)
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['Logits'],
+            'Loss',
+            numeric_grad_delta=0.001,
+            max_relative_error=0.5,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestPowNet(unittest.TestCase):
@@ -114,9 +125,15 @@ class TestPowNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -140,6 +157,7 @@ class TestPowNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -147,9 +165,19 @@ class TestPowNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -157,8 +185,8 @@ class TestPowNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         mlu_pred, mlu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(mlu_pred, cpu_pred))
-        self.assertTrue(np.allclose(mlu_loss, cpu_loss))
+        np.testing.assert_allclose(mlu_pred, cpu_pred, rtol=1e-5)
+        np.testing.assert_allclose(mlu_loss, cpu_loss)
 
 
 if __name__ == '__main__':

@@ -26,6 +26,7 @@ paddle.enable_static()
 
 def parse_args():
     parser = argparse.ArgumentParser()
+<<<<<<< HEAD
     parser.add_argument('--model_path',
                         type=str,
                         default='',
@@ -34,12 +35,28 @@ def parse_args():
                         type=str,
                         default='',
                         help='A path to save the graph.')
+=======
+    parser.add_argument(
+        '--model_path', type=str, default='', help='A path to a model.'
+    )
+    parser.add_argument(
+        '--save_graph_dir',
+        type=str,
+        default='',
+        help='A path to save the graph.',
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     parser.add_argument(
         '--save_graph_name',
         type=str,
         default='',
+<<<<<<< HEAD
         help=
         'A name to save the graph. Default - name from model path will be used')
+=======
+        help='A name to save the graph. Default - name from model path will be used',
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
@@ -51,12 +68,25 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
     inference_scope = fluid.executor.global_scope()
     with fluid.scope_guard(inference_scope):
         if os.path.exists(os.path.join(model_path, '__model__')):
-            [inference_program, feed_target_names,
-             fetch_targets] = fluid.io.load_inference_model(model_path, exe)
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = fluid.io.load_inference_model(model_path, exe)
         else:
+<<<<<<< HEAD
             [inference_program, feed_target_names, fetch_targets
              ] = fluid.io.load_inference_model(model_path, exe, 'model',
                                                'params')
+=======
+            [
+                inference_program,
+                feed_target_names,
+                fetch_targets,
+            ] = fluid.io.load_inference_model(
+                model_path, exe, 'model', 'params'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         if not os.path.exists(save_graph_dir):
             os.makedirs(save_graph_dir)
@@ -65,12 +95,22 @@ def generate_dot_for_model(model_path, save_graph_dir, save_graph_name):
             save_graph_name = model_name
         graph.draw(save_graph_dir, save_graph_name, graph.all_op_nodes())
         print(
+<<<<<<< HEAD
             "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n"
             .format(model_name, save_graph_dir, save_graph_name))
+=======
+            "Success! Generated dot and pdf files for {0} model, that can be found at {1} named {2}.\n".format(
+                model_name, save_graph_dir, save_graph_name
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':
     global test_args
     test_args, remaining_args = parse_args()
-    generate_dot_for_model(test_args.model_path, test_args.save_graph_dir,
-                           test_args.save_graph_name)
+    generate_dot_for_model(
+        test_args.model_path,
+        test_args.save_graph_dir,
+        test_args.save_graph_name,
+    )

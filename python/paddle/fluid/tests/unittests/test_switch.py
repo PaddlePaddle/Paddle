@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle.fluid.core as core
@@ -32,10 +30,16 @@ class TestSwitch(unittest.TestCase):
         two_var = layers.fill_constant(shape=[1], dtype='float32', value=2.0)
         three_var = layers.fill_constant(shape=[1], dtype='float32', value=3.0)
 
+<<<<<<< HEAD
         result = layers.create_global_var(shape=[1],
                                           value=-1.0,
                                           dtype='float32',
                                           persistable=True)
+=======
+        result = layers.create_global_var(
+            shape=[1], value=-1.0, dtype='float32', persistable=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         with layers.Switch() as switch:
             with switch.case(layers.less_than(x, zero_var)):
@@ -71,6 +75,7 @@ class TestSwitchCaseError(unittest.TestCase):
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
             cond = layers.fill_constant(shape=[1], dtype='float32', value=0.0)
+<<<<<<< HEAD
             zero_var = layers.fill_constant(shape=[1],
                                             dtype='float32',
                                             value=0.0)
@@ -79,6 +84,15 @@ class TestSwitchCaseError(unittest.TestCase):
                                               value=-1.0,
                                               dtype='float32',
                                               persistable=True)
+=======
+            zero_var = layers.fill_constant(
+                shape=[1], dtype='float32', value=0.0
+            )
+
+            result = layers.create_global_var(
+                shape=[1], value=-1.0, dtype='float32', persistable=True
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             # 1. The type of 'condition' in case must be Variable.
             def test_condition_type():

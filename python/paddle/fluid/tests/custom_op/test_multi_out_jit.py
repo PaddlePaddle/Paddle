@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import subprocess
 import unittest
 import numpy as np
 
@@ -23,6 +22,10 @@ from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args
 from paddle.fluid.framework import _test_eager_guard
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\multi_out_jit\\multi_out_jit.pyd'.format(get_build_directory())
@@ -35,8 +38,9 @@ multi_out_module = load(
     name='multi_out_jit',
     sources=['multi_out_test_op.cc'],
     extra_include_paths=paddle_includes,  # add for Coverage CI
-    extra_cxx_cflags=extra_cc_args,  # test for cflags 
-    verbose=True)
+    extra_cxx_cflags=extra_cc_args,  # test for cflags
+    verbose=True,
+)
 
 
 class TestMultiOutputDtypes(unittest.TestCase):
@@ -57,9 +61,11 @@ class TestMultiOutputDtypes(unittest.TestCase):
 
                 exe = paddle.static.Executor()
                 exe.run(paddle.static.default_startup_program())
-                res = exe.run(paddle.static.default_main_program(),
-                              feed={'X': x_data},
-                              fetch_list=outs)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={'X': x_data},
+                    fetch_list=outs,
+                )
 
                 return res
 
@@ -70,6 +76,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
             one_int32 = one_int32.numpy()
         # Fake_float64
         self.assertTrue('float64' in str(zero_float64.dtype))
+<<<<<<< HEAD
         self.assertTrue(
             np.array_equal(zero_float64,
                            np.zeros([4, 8]).astype('float64')))
@@ -78,6 +85,16 @@ class TestMultiOutputDtypes(unittest.TestCase):
         self.assertTrue(
             np.array_equal(one_int32,
                            np.ones([4, 8]).astype('int32')))
+=======
+        np.testing.assert_array_equal(
+            zero_float64, np.zeros([4, 8]).astype('float64')
+        )
+        # ZFake_int32
+        self.assertTrue('int32' in str(one_int32.dtype))
+        np.testing.assert_array_equal(
+            one_int32, np.ones([4, 8]).astype('int32')
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_static(self):
         paddle.enable_static()

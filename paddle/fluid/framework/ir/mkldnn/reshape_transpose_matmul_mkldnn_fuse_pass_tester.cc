@@ -15,7 +15,10 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_mkldnn_fuse_pass.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/mkldnn/reshape_transpose_matmul_v2_mkldnn_fuse_pass.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -25,7 +28,7 @@ namespace ir {
 void AddVarToScope(Scope* param_scope,
                    const std::string& name,
                    const DDim& dims) {
-  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  auto* tensor = param_scope->Var(name)->GetMutable<phi::DenseTensor>();
   tensor->Resize(dims);
   tensor->mutable_data<float>(platform::CPUPlace());
 }
@@ -82,8 +85,8 @@ void TestMain(const std::string& op_name, bool with_xshapes) {
   int total_nodes_before = graph->Nodes().size();
   VLOG(3) << DebugString(graph);
 
-  auto pass = PassRegistry::Instance().Get("reshape_transpose_" + op_name +
-                                           "_mkldnn_fuse_pass");
+  auto pass =
+      PassRegistry::Instance().Get("reshape_transpose_matmul_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int num_reshape_nodes_after = GetNumOpNodes(graph, "reshape2");
@@ -137,4 +140,3 @@ TEST(ReshapeTransposeMatmulV2MkldnnFusePass,
 }  // namespace paddle
 
 USE_PASS(reshape_transpose_matmul_mkldnn_fuse_pass);
-USE_PASS(reshape_transpose_matmul_v2_mkldnn_fuse_pass);

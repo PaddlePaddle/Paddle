@@ -57,14 +57,21 @@ class TestConvertCall(unittest.TestCase):
 class TestConvertShapeCompare(unittest.TestCase):
 
     def test_non_variable(self):
+<<<<<<< HEAD
         self.assertEqual(paddle.jit.dy2static.convert_shape_compare(1, "<", 2),
                          True)
+=======
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "<=", 3),
-            True)
+            paddle.jit.dy2static.convert_shape_compare(1, "<", 2), True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+        self.assertEqual(
+            paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "<=", 3), True
+        )
         self.assertEqual(
             paddle.jit.dy2static.convert_shape_compare(1, ">", 2, "<=", 3),
-            False)
+            False,
+        )
 
         def error_func():
             """
@@ -73,49 +80,89 @@ class TestConvertShapeCompare(unittest.TestCase):
             raise ValueError("Used for test")
 
         self.assertEqual(
+<<<<<<< HEAD
             paddle.jit.dy2static.convert_shape_compare(1, ">", 2, "<=",
                                                        lambda: error_func()),
             False)
+=======
+            paddle.jit.dy2static.convert_shape_compare(
+                1, ">", 2, "<=", lambda: error_func()
+            ),
+            False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "in",
-                                                       [1, 2, 3]), True)
+            paddle.jit.dy2static.convert_shape_compare(
+                1, "<", 2, "in", [1, 2, 3]
+            ),
+            True,
+        )
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "not in",
-                                                       [1, 2, 3]), False)
+            paddle.jit.dy2static.convert_shape_compare(
+                1, "<", 2, "not in", [1, 2, 3]
+            ),
+            False,
+        )
         self.assertEqual(
             paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "is", 3),
-            False)
+            False,
+        )
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare(1, "<", 2, "is not",
-                                                       [1, 2, 3]), True)
+            paddle.jit.dy2static.convert_shape_compare(
+                1, "<", 2, "is not", [1, 2, 3]
+            ),
+            True,
+        )
 
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare([1, 2], "==", [1, 2],
-                                                       "!=", [1, 2, 3]), True)
+            paddle.jit.dy2static.convert_shape_compare(
+                [1, 2], "==", [1, 2], "!=", [1, 2, 3]
+            ),
+            True,
+        )
         self.assertEqual(
-            paddle.jit.dy2static.convert_shape_compare([1, 2], "!=", [1, 2, 3],
-                                                       "==", [1, 2]), False)
+            paddle.jit.dy2static.convert_shape_compare(
+                [1, 2], "!=", [1, 2, 3], "==", [1, 2]
+            ),
+            False,
+        )
 
     def test_variable(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = paddle.static.data(name='x', shape=[3, 2], dtype='float32')
             y = paddle.static.data(name='y', shape=[3, 2], dtype='float32')
             self.assertEqual(
                 paddle.jit.dy2static.convert_shape_compare(
+<<<<<<< HEAD
                     x, "is", x, "is not", y), True)
             self.assertEqual(
                 paddle.jit.dy2static.convert_shape_compare(
                     x, "is not", x, "is not", y), False)
+=======
+                    x, "is", x, "is not", y
+                ),
+                True,
+            )
+            self.assertEqual(
+                paddle.jit.dy2static.convert_shape_compare(
+                    x, "is not", x, "is not", y
+                ),
+                False,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertEqual(
                 paddle.jit.dy2static.convert_shape_compare(x, "is", x, "is", y),
-                False)
+                False,
+            )
 
             eq_out = paddle.jit.dy2static.convert_shape_compare(x, "==", y)
             not_eq_out = paddle.jit.dy2static.convert_shape_compare(x, "!=", y)
             long_eq_out = paddle.jit.dy2static.convert_shape_compare(
+<<<<<<< HEAD
                 x, "==", x, "!=", y)
 
             place = paddle.CUDAPlace(
@@ -128,10 +175,32 @@ class TestConvertShapeCompare(unittest.TestCase):
                                  fetch_list=[eq_out, not_eq_out, long_eq_out])
             np.testing.assert_array_equal(np.array(x_y_eq_out),
                                           np.array([[True], [False], [False]]))
+=======
+                x, "==", x, "!=", y
+            )
+
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+            exe = paddle.static.Executor(place)
+            x_y_eq_out = exe.run(
+                feed={
+                    "x": np.ones([3, 2]).astype(np.float32),
+                    "y": np.ones([3, 2]).astype(np.float32),
+                },
+                fetch_list=[eq_out, not_eq_out, long_eq_out],
+            )
+            np.testing.assert_array_equal(
+                np.array(x_y_eq_out), np.array([[True], [False], [False]])
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             set_a_zero = np.ones([3, 2]).astype(np.float32)
             set_a_zero[0][0] = 0.0
             x_y_not_eq_out = exe.run(
+<<<<<<< HEAD
                 feed={
                     "x": np.ones([3, 2]).astype(np.float32),
                     "y": set_a_zero
@@ -139,13 +208,21 @@ class TestConvertShapeCompare(unittest.TestCase):
                 fetch_list=[eq_out, not_eq_out, long_eq_out])
             np.testing.assert_array_equal(np.array(x_y_not_eq_out),
                                           np.array([[False], [True], [True]]))
+=======
+                feed={"x": np.ones([3, 2]).astype(np.float32), "y": set_a_zero},
+                fetch_list=[eq_out, not_eq_out, long_eq_out],
+            )
+            np.testing.assert_array_equal(
+                np.array(x_y_not_eq_out), np.array([[False], [True], [True]])
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.disable_static()
 
 
 class ShapeLayer(paddle.nn.Layer):
 
     def __init__(self):
-        super(ShapeLayer, self).__init__()
+        super().__init__()
 
     @paddle.jit.to_static(input_spec=[paddle.static.InputSpec(shape=[None, 1])])
     def forward(self, x):
@@ -164,7 +241,7 @@ class TestChooseShapeAttrOrApiWithLayer(unittest.TestCase):
         net = ShapeLayer()
         out = net(x)
 
-        self.assertTrue(np.array_equal(out.numpy(), x.numpy()))
+        np.testing.assert_array_equal(out.numpy(), x.numpy())
 
 
 class TestIfElseNoValue(unittest.TestCase):

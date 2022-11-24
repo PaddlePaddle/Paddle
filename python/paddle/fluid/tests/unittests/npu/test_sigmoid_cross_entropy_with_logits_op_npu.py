@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
 from scipy.special import logit
@@ -27,11 +25,11 @@ import paddle
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
 class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
-    """Test sigmoid_cross_entropy_with_logit_op with binary label
-    """
+    """Test sigmoid_cross_entropy_with_logit_op with binary label"""
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -41,6 +39,7 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         batch_size = 64
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X':
             logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
@@ -48,6 +47,16 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
             'Label':
             np.random.randint(0, 2,
                               (batch_size, num_classes)).astype(self.dtype)
+=======
+            'X': logit(
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    self.dtype
+                )
+            ),
+            'Label': np.random.randint(0, 2, (batch_size, num_classes)).astype(
+                self.dtype
+            ),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -72,12 +81,22 @@ class TestSigmoidCrossEntropyWithLogitsOp1(OpTest):
         self.dtype = np.float32
 
 
+<<<<<<< HEAD
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestSigmoidCrossEntropyWithLogitsOp3(TestSigmoidCrossEntropyWithLogitsOp1
                                            ):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
+=======
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
+class TestSigmoidCrossEntropyWithLogitsOp3(
+    TestSigmoidCrossEntropyWithLogitsOp1
+):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -87,6 +106,7 @@ class TestSigmoidCrossEntropyWithLogitsOp3(TestSigmoidCrossEntropyWithLogitsOp1
         batch_size = 64
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X':
             logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
@@ -94,6 +114,16 @@ class TestSigmoidCrossEntropyWithLogitsOp3(TestSigmoidCrossEntropyWithLogitsOp1
             'Label':
             np.random.uniform(0, 1,
                               (batch_size, num_classes)).astype(self.dtype)
+=======
+            'X': logit(
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    self.dtype
+                )
+            ),
+            'Label': np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                self.dtype
+            ),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -105,12 +135,22 @@ class TestSigmoidCrossEntropyWithLogitsOp3(TestSigmoidCrossEntropyWithLogitsOp1
         self.outputs = {'Out': -term1 - term2}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestSigmoidCrossEntropyWithLogitsOp5(TestSigmoidCrossEntropyWithLogitsOp1
                                            ):
     """Test sigmoid_cross_entropy_with_logit_op with probabalistic label
     """
+=======
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
+class TestSigmoidCrossEntropyWithLogitsOp5(
+    TestSigmoidCrossEntropyWithLogitsOp1
+):
+    """Test sigmoid_cross_entropy_with_logit_op with probabalistic label"""
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -120,6 +160,7 @@ class TestSigmoidCrossEntropyWithLogitsOp5(TestSigmoidCrossEntropyWithLogitsOp1
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X':
             logit(
                 np.random.uniform(0, 1,
@@ -128,6 +169,16 @@ class TestSigmoidCrossEntropyWithLogitsOp5(TestSigmoidCrossEntropyWithLogitsOp1
             'Label':
             np.random.uniform(0, 1, tuple(batch_size + [num_classes])).astype(
                 self.dtype)
+=======
+            'X': logit(
+                np.random.uniform(
+                    0, 1, tuple(batch_size + [num_classes])
+                ).astype(self.dtype)
+            ),
+            'Label': np.random.uniform(
+                0, 1, tuple(batch_size + [num_classes])
+            ).astype(self.dtype),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by
@@ -139,12 +190,22 @@ class TestSigmoidCrossEntropyWithLogitsOp5(TestSigmoidCrossEntropyWithLogitsOp1
         self.outputs = {'Out': -term1 - term2}
 
 
+<<<<<<< HEAD
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
 class TestSigmoidCrossEntropyWithLogitsOp6(TestSigmoidCrossEntropyWithLogitsOp1
                                            ):
     """Test sigmoid_cross_entropy_with_logit_op with binary label
     """
+=======
+@unittest.skipIf(
+    not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
+)
+class TestSigmoidCrossEntropyWithLogitsOp6(
+    TestSigmoidCrossEntropyWithLogitsOp1
+):
+    """Test sigmoid_cross_entropy_with_logit_op with binary label"""
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def setUp(self):
         self.op_type = "sigmoid_cross_entropy_with_logits"
@@ -154,6 +215,7 @@ class TestSigmoidCrossEntropyWithLogitsOp6(TestSigmoidCrossEntropyWithLogitsOp1
         batch_size = [10, 10]
         num_classes = 20
         self.inputs = {
+<<<<<<< HEAD
             'X':
             logit(
                 np.random.uniform(0, 1,
@@ -162,6 +224,16 @@ class TestSigmoidCrossEntropyWithLogitsOp6(TestSigmoidCrossEntropyWithLogitsOp1
             'Label':
             np.random.randint(0, 2, tuple(batch_size + [num_classes])).astype(
                 self.dtype)
+=======
+            'X': logit(
+                np.random.uniform(
+                    0, 1, tuple(batch_size + [num_classes])
+                ).astype(self.dtype)
+            ),
+            'Label': np.random.randint(
+                0, 2, tuple(batch_size + [num_classes])
+            ).astype(self.dtype),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
         # Fw Pass is implemented as elementwise sigmoid followed by

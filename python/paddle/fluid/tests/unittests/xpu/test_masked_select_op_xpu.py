@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -21,9 +19,12 @@ import sys
 sys.path.append("..")
 
 import paddle
-import paddle.fluid as fluid
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -59,6 +60,9 @@ class XPUTestMaskedSelectOp(XPUOpTestWrapper):
         def test_check_output(self):
             self.check_output_with_place(self.place)
 
+        def test_check_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Y')
+
         def init(self):
             self.shape = (50, 3)
 
@@ -70,7 +74,7 @@ class XPUTestMaskedSelectOp(XPUOpTestWrapper):
     class TestMaskedSelectOp2(TestMaskedSelectOp):
 
         def init(self):
-            self.shape = (168, )
+            self.shape = (168,)
 
 
 support_types = get_xpu_op_support_types('masked_select')
@@ -104,27 +108,42 @@ class TestMaskedSelectAPI(unittest.TestCase):
 
         exe = paddle.static.Executor(place=paddle.XPUPlace(0))
 
+<<<<<<< HEAD
         res = exe.run(paddle.static.default_main_program(),
                       feed={
                           "x": np_x,
                           "mask": np_mask
                       },
                       fetch_list=[out])
+=======
+        res = exe.run(
+            paddle.static.default_main_program(),
+            feed={"x": np_x, "mask": np_mask},
+            fetch_list=[out],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.assertEqual(np.allclose(res, np_out), True)
 
 
 class TestMaskedSelectError(unittest.TestCase):
 
     def test_error(self):
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
 
             shape = [8, 9, 6]
             x = paddle.fluid.data(shape=shape, dtype='float32', name='x')
             mask = paddle.fluid.data(shape=shape, dtype='bool', name='mask')
+<<<<<<< HEAD
             mask_float = paddle.fluid.data(shape=shape,
                                            dtype='float32',
                                            name='mask_float')
+=======
+            mask_float = paddle.fluid.data(
+                shape=shape, dtype='float32', name='mask_float'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             np_x = np.random.random(shape).astype('float32')
             np_mask = np.array(np.random.randint(2, size=shape, dtype=bool))
 

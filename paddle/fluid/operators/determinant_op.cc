@@ -23,57 +23,6 @@
 namespace paddle {
 namespace operators {
 
-class DeterminantOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-};
-
-class DeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Input", "(Tensor) The input tensor of determinant.");
-    AddOutput("Out",
-              "(Tensor) The output Tensor containing the determinant"
-              "value of a square matrix or batches of square matrices ");
-
-    AddComment(R"DOC(
-Determinant Operator.)DOC");
-  }
-};
-
-class DeterminantGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
-  }
-};
-
-template <typename T>
-class DeterminantGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("determinant_grad");
-    grad_op->SetInput("Input", this->Input("Input"));
-    grad_op->SetInput("Out", this->Output("Out"));
-    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("Input"),
-                       this->InputGrad("Input"));
-    grad_op->SetAttrMap(this->Attrs());
-  }
-};
-
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(DeterminantGradNoNeedBufferVarsInferer,
-                                    "Input");
-
 class SlogDeterminantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -154,6 +103,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SlogDeterminantGradNoNeedBufferVarsInferer,
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(determinant,
                             DeterminantInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));
@@ -171,6 +121,9 @@ REGISTER_OPERATOR(determinant_grad,
                   ops::DeterminantGradOp,
                   DeterminantGradInferShapeFunctor);
 
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 DECLARE_INFER_SHAPE_FUNCTOR(slogdeterminant,
                             SlogDeterminantInferShapeFunctor,
                             PD_INFER_META(phi::UnchangedInferMeta));

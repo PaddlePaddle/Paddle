@@ -12,17 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
+<<<<<<< HEAD
 from typing import Optional, List, Callable, Dict, Any, Set
+=======
+from typing import Any, Dict, List
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 
 
 class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -32,14 +43,21 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         #The input dimension should be less than or equal to the set axis.
+=======
+        # The input dimension should be less than or equal to the set axis.
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if 'begin_norm_axis' in attrs[0] and attrs[0]['begin_norm_axis'] >= 0:
             if len(inputs['inputX_data'].shape) <= attrs[0]['begin_norm_axis']:
                 return False
         return True
 
     def sample_program_configs(self):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             return np.ones([batch, 128, 768]).astype(np.float32)
 
@@ -56,6 +74,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             for epsilon in [1e-5]:
                 for begin_norm_axis in [2]:
                     for enable_int8 in [False, True]:
+<<<<<<< HEAD
                         dics = [{
                             "epsilon": epsilon,
                             "begin_norm_axis": begin_norm_axis,
@@ -99,10 +118,55 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                             },
                             "op_attrs": dics[0]
                         }]
+=======
+                        dics = [
+                            {
+                                "epsilon": epsilon,
+                                "begin_norm_axis": begin_norm_axis,
+                            },
+                            {},
+                        ]
+
+                        ops_config = [
+                            {
+                                "op_type": "elementwise_add",
+                                "op_inputs": {
+                                    "X": ["inputX_data"],
+                                    "Y": ["EleBias"],
+                                },
+                                "op_outputs": {"Out": ["bias_out"]},
+                                "op_attrs": {"axis": -1},
+                            },
+                            {
+                                "op_type": "elementwise_add",
+                                "op_inputs": {
+                                    "X": ["bias_out"],
+                                    "Y": ["inputY_data"],
+                                },
+                                "op_outputs": {"Out": ["ele_out"]},
+                                "op_attrs": {"axis": -1},
+                            },
+                            {
+                                "op_type": "layer_norm",
+                                "op_inputs": {
+                                    "X": ["ele_out"],
+                                    "Bias": ["Bias"],
+                                    "Scale": ["Scale"],
+                                },
+                                "op_outputs": {
+                                    "Y": ["layernorm_out"],
+                                    "Mean": ["Mean"],
+                                    "Variance": ["Variance"],
+                                },
+                                "op_attrs": dics[0],
+                            },
+                        ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         ops = self.generate_op_config(ops_config)
                         program_config = ProgramConfig(
                             ops=ops,
                             weights={
+<<<<<<< HEAD
                                 "Bias":
                                 TensorConfig(
                                     data_gen=partial(generate_weight1, dics)),
@@ -122,30 +186,73 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                                     generate_input2, dics, batch))
                             },
                             outputs=["ele_out", "layernorm_out"])
+=======
+                                "Bias": TensorConfig(
+                                    data_gen=partial(generate_weight1, dics)
+                                ),
+                                "Scale": TensorConfig(
+                                    data_gen=partial(generate_weight2, dics)
+                                ),
+                                "EleBias": TensorConfig(
+                                    data_gen=partial(generate_weight2, dics)
+                                ),
+                            },
+                            inputs={
+                                "inputX_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input1, dics, batch
+                                    )
+                                ),
+                                "inputY_data": TensorConfig(
+                                    data_gen=partial(
+                                        generate_input2, dics, batch
+                                    )
+                                ),
+                            },
+                            outputs=["ele_out", "layernorm_out"],
+                        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
             self, program_config) -> (paddle_infer.Config, List[int], float):
 
+=======
+        self, program_config
+    ) -> (paddle_infer.Config, List[int], float):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "inputX_data": [4, 128, 768],
                 "inputY_data": [4, 128, 768],
                 "Bias": [768],
+<<<<<<< HEAD
                 "Scale": [768]
+=======
+                "Scale": [768],
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.dynamic_shape.max_input_shape = {
                 "inputX_data": [4, 128, 768],
                 "inputY_data": [4, 128, 768],
                 "Bias": [768],
+<<<<<<< HEAD
                 "Scale": [768]
+=======
+                "Scale": [768],
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.dynamic_shape.opt_input_shape = {
                 "inputX_data": [4, 128, 768],
                 "inputY_data": [4, 128, 768],
                 "Bias": [768],
+<<<<<<< HEAD
                 "Scale": [768]
+=======
+                "Scale": [768],
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
         def clear_dynamic_shape():
@@ -164,10 +271,19 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True), 1e-2  # atol=1e-2 while rtol is 1e-8
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True), 1e-2  # atol=1e-2 while rtol is 1e-8
+=======
+            attrs, True
+        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True
+        ), 1e-2  # atol=1e-2 while rtol is 1e-8
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def add_skip_trt_case(self):
         pass

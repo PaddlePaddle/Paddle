@@ -84,21 +84,13 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
              "An input with type int64 "
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
-    AddAttr<bool>("is_sparse",
-                  "(boolean, default false) "
-                  "Sparse update.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<bool>("is_distributed",
-                  "(boolean, default false) distributed lookup table.")
-        .SetDefault(false)
-        .AsExtra();
     AddAttr<int64_t>("padding_idx",
                      "(int64, default -1) "
                      "If the value is -1, it makes no effect to lookup. "
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
+<<<<<<< HEAD
 
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false).AsExtra();
@@ -124,6 +116,8 @@ class LookupTableV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({})
         .AsExtra();
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     AddComment(R"DOC(
 Lookup Table V2 Operator.
 

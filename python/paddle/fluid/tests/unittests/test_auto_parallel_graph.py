@@ -12,13 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import os
-import json
-from paddle.distributed.auto_parallel.graph import Node
-from paddle.distributed.auto_parallel.graph import Edge
 from paddle.distributed.auto_parallel.graph import Graph
 
 

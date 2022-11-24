@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
 
-@OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
-                    "GPU is not supported")
+@OpTestTool.skip_if(
+    not (isinstance(_current_expected_place(), core.CPUPlace)),
+    "GPU is not supported",
+)
 class TestMKLDNNElementwiseDivOp(OpTest):
 
     def setUp(self):
@@ -33,7 +38,7 @@ class TestMKLDNNElementwiseDivOp(OpTest):
         self.init_axis()
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
@@ -140,6 +145,7 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
                                    "Out",
                                    user_defined_grads=[
@@ -157,13 +163,42 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
                                                  np.multiply(self.y, self.y))
                                    ],
                                    user_defined_grad_outputs=[self.y_bf16])
+=======
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["X", "Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide(self.x, self.y),
+                np.divide(
+                    (np.multiply(-self.x, self.x)), np.multiply(self.y, self.y)
+                ),
+            ],
+            user_defined_grad_outputs=[self.x_bf16],
+        )
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(),
+            ["Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide(
+                    (np.multiply(-self.x, self.y)), np.multiply(self.y, self.y)
+                )
+            ],
+            user_defined_grad_outputs=[self.y_bf16],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_ignore_y(self):
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
+            core.CPUPlace(),
+            ["X"],
             "Out",
             user_defined_grads=[np.divide(self.x, self.y)],
-            user_defined_grad_outputs=[self.x_bf16])
+            user_defined_grad_outputs=[self.x_bf16],
+        )
 
 
 class TestBf16Broadcasting(TestBf16):

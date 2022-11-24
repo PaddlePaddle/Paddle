@@ -18,12 +18,17 @@
 namespace phi {
 
 KernelSignature SqueezeOpArgumentMapping(const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   if (ctx.HasOutput("XShape")) {
     return KernelSignature(
         "squeeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
   } else {
     return KernelSignature("squeeze", {"X"}, {"axes"}, {"Out"});
   }
+=======
+  return KernelSignature(
+      "squeeze_with_xshape", {"X"}, {"axes"}, {"Out", "XShape"});
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 KernelSignature SqueezeGradOpArgumentMapping(

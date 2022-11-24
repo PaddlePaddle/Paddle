@@ -19,7 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+// NOTE: T must be the same as OutType in ComputeBackward
+template <typename T, typename InType = T, typename OutType = T>
 class AttnLayerNorm {
  public:
   AttnLayerNorm(const phi::GPUContext& dev_ctx,
@@ -33,17 +34,39 @@ class AttnLayerNorm {
 
   ~AttnLayerNorm() {}
 
+<<<<<<< HEAD
   void ComputeForward(const T* x_data,
                       const LayerNormParamType<T>* scale_data,
                       const LayerNormParamType<T>* bias_data,
                       T* y_data,
+=======
+  void ComputeForward(const InType* x_data,
+                      const LayerNormParamType<T>* scale_data,
+                      const LayerNormParamType<T>* bias_data,
+                      OutType* y_data,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       LayerNormParamType<T>* mean_data,
-                      LayerNormParamType<T>* var_data) {
+                      LayerNormParamType<T>* var_data,
+                      const float* dequant_out_scale_data = nullptr,
+                      const int quant_out_scale_offset = 0,
+                      const float quant_in_scale = 1.0,
+                      const int quant_round_type = 1,
+                      const float quant_max_bound = 127.0,
+                      const float quant_min_bound = -127.0) {
     auto stream = dev_ctx_.stream();
 
     switch (GetDesiredBlockDim(feature_size_)) {
       FIXED_BLOCK_DIM_CASE(
+<<<<<<< HEAD
           LayerNormForward<T, LayerNormParamType<T>, kBlockDim>
+=======
+          LayerNormForward<T,
+                           LayerNormParamType<T>,
+                           kBlockDim,
+                           false,
+                           InType,
+                           OutType>
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           <<<batch_size_, kBlockDim, 0, stream>>>(x_data,
                                                   scale_data,
                                                   bias_data,
@@ -51,7 +74,17 @@ class AttnLayerNorm {
                                                   mean_data,
                                                   var_data,
                                                   epsilon_,
+<<<<<<< HEAD
                                                   feature_size_));
+=======
+                                                  feature_size_,
+                                                  dequant_out_scale_data,
+                                                  quant_out_scale_offset,
+                                                  quant_in_scale,
+                                                  quant_round_type,
+                                                  quant_max_bound,
+                                                  quant_min_bound));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Feature_size must be larger than 1"));

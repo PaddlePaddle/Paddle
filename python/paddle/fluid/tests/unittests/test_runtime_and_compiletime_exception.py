@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 
 
 class TestRunTimeException(unittest.TestCase):
@@ -50,10 +46,16 @@ class TestCompileTimeException(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
+<<<<<<< HEAD
             label = fluid.layers.data(name="label",
                                       shape=[1],
                                       dtype="int64",
                                       append_batch_size=False)
+=======
+            label = fluid.layers.data(
+                name="label", shape=[1], dtype="int64", append_batch_size=False
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             fluid.layers.one_hot(input=label, depth=100)
 
 

@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from op_test import OpTest
 import unittest
 import itertools
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import scipy
 import scipy.linalg
@@ -50,9 +48,11 @@ def scipy_lu_unpack(A):
             Llst.append(L)
             Ulst.append(U)
 
-        return np.array(Plst).reshape(preshape + pshape), np.array(
-            Llst).reshape(preshape + lshape), np.array(Ulst).reshape(preshape +
-                                                                     ushape)
+        return (
+            np.array(Plst).reshape(preshape + pshape),
+            np.array(Llst).reshape(preshape + lshape),
+            np.array(Ulst).reshape(preshape + ushape),
+        )
 
 
 def Pmat_to_perm(Pmat_org, cut):
@@ -74,9 +74,21 @@ def Pmat_to_perm(Pmat_org, cut):
             sP[idx, :] = tmp
 
         permmat.append(permlst)
+<<<<<<< HEAD
     Pivot = np.array(permmat).reshape(list(shape[:-2]) + [
         rows,
     ]) + 1
+=======
+    Pivot = (
+        np.array(permmat).reshape(
+            list(shape[:-2])
+            + [
+                rows,
+            ]
+        )
+        + 1
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     return Pivot[..., :cut]
 
@@ -134,21 +146,29 @@ class TestLU_UnpackOp(OpTest):
                 place = fluid.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = fluid.CUDAPlace(0)
+<<<<<<< HEAD
                 xv = paddle.fluid.data(name="input",
                                        shape=self.x_shape,
                                        dtype=self.dtype)
+=======
+                xv = paddle.fluid.data(
+                    name="input", shape=self.x_shape, dtype=self.dtype
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 lu, p = paddle.linalg.lu(xv)
                 exe = fluid.Executor(place)
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"input": x},
-                                  fetch_list=[lu, p])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": x},
+                    fetch_list=[lu, p],
+                )
                 lu, pivots = fetches[0], fetches[1]
 
         self.inputs = {'X': lu, 'Pivots': pivots}
 
         self.attrs = {
             'unpack_ludata': self.unpack_ludata,
-            'unpack_pivots': self.unpack_pivots
+            'unpack_pivots': self.unpack_pivots,
         }
         self.set_output(x)
         self.outputs = {
@@ -191,7 +211,10 @@ class TestLU_UnpackOp3(TestLU_UnpackOp):
 
 
 class TestLU_UnpackAPI(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         np.random.seed(2022)
 
@@ -218,20 +241,20 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 LU, P = paddle.linalg.lu(x)
                 pP, pL, pU = paddle.linalg.lu_unpack(LU, P)
 
-                self.assertTrue(np.allclose(sU, pU, atol=1e-5))
-                self.assertTrue(np.allclose(sL, pL, atol=1e-5))
-                self.assertTrue(np.allclose(sP, pP, atol=1e-5))
+                np.testing.assert_allclose(sU, pU, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sL, pL, rtol=1e-05, atol=1e-05)
+                np.testing.assert_allclose(sP, pP, rtol=1e-05, atol=1e-05)
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
-            (4, 5, 5, 3)  # 4-dim Tensors
+            (4, 5, 5, 3),  # 4-dim Tensors
         ]
         dtypes = ["float32", "float64"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
@@ -257,29 +280,43 @@ class TestLU_UnpackAPI(unittest.TestCase):
                 with fluid.program_guard(fluid.Program(), fluid.Program()):
                     sP, sL, sU = scipy_lu_unpack(a)
 
+<<<<<<< HEAD
                     x = paddle.fluid.data(name="input",
                                           shape=shape,
                                           dtype=dtype)
+=======
+                    x = paddle.fluid.data(
+                        name="input", shape=shape, dtype=dtype
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     lu, p = paddle.linalg.lu(x)
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = fluid.Executor(place)
-                    fetches = exe.run(fluid.default_main_program(),
-                                      feed={"input": a},
-                                      fetch_list=[pP, pL, pU])
-                    self.assertTrue(np.allclose(fetches[0], sP, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[1], sL, atol=1e-5))
-                    self.assertTrue(np.allclose(fetches[2], sU, atol=1e-5))
+                    fetches = exe.run(
+                        fluid.default_main_program(),
+                        feed={"input": a},
+                        fetch_list=[pP, pL, pU],
+                    )
+                    np.testing.assert_allclose(
+                        fetches[0], sP, rtol=1e-05, atol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        fetches[1], sL, rtol=1e-05, atol=1e-05
+                    )
+                    np.testing.assert_allclose(
+                        fetches[2], sU, rtol=1e-05, atol=1e-05
+                    )
 
         tensor_shapes = [
             (3, 5),
             (5, 5),
-            (5, 3),  # 2-dim Tensors 
+            (5, 3),  # 2-dim Tensors
             (2, 3, 5),
             (3, 5, 5),
             (4, 5, 3),  # 3-dim Tensors
             (2, 5, 3, 5),
             (3, 5, 5, 5),
-            (4, 5, 5, 3)  # 4-dim Tensors
+            (4, 5, 5, 3),  # 4-dim Tensors
         ]
         dtypes = ["float32", "float64"]
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):

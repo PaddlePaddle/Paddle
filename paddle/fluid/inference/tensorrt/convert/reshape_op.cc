@@ -70,6 +70,19 @@ class ReshapeOpConverter : public OpConverter {
       layer->setReshapeDimensions(reshape_dim);
     else
       layer->setInput(1, *real_shape_tensor);
+<<<<<<< HEAD
+=======
+
+    PADDLE_ENFORCE_GE(
+        layer->getOutput(0)->getDimensions().nbDims,
+        0,
+        platform::errors::InvalidArgument(
+            "Errors occures in Paddle-TRT reshape2 op, try to use C++ Api "
+            "config.Exp_DisableTensorRtOPs({\"reshape2\"})\n; or Python Api "
+            "config.exp_disable_tensorrt_ops([\"reshape2\"]) to forbid "
+            "reshape2 op into "
+            "Paddle-TRT."));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "reshape", {output_name}, test_mode);
   }

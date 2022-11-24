@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import os
 import tempfile
 import unittest
@@ -22,10 +25,13 @@ import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
 import paddle.fluid.core as core
-import paddle.compat as cpt
 import numpy as np
 from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard, convert_np_dtype_to_dtype_
+from paddle.fluid.framework import (
+    Program,
+    program_guard,
+    convert_np_dtype_to_dtype_,
+)
 from paddle.fluid.framework import _test_eager_guard
 import paddle
 from paddle.io import Dataset
@@ -40,6 +46,7 @@ class TestOptimizer(unittest.TestCase):
             init_program = framework.Program()
             program = framework.Program()
             block = program.global_block()
+<<<<<<< HEAD
             mul_x = block.create_parameter(dtype="float32",
                                            shape=[5, 10],
                                            lod_level=0,
@@ -67,6 +74,33 @@ class TestOptimizer(unittest.TestCase):
             block.append_op(type="mean",
                             inputs={"X": mul_out},
                             outputs={"Out": mean_out})
+=======
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr,
+            )
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+            )
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            )
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+            )
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x, "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1},
+            )
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
             opts, _ = sgd_optimizer.minimize(mean_out, init_program)
             return opts
@@ -88,6 +122,7 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             init_program = framework.Program()
             program = framework.Program()
             block = program.global_block()
+<<<<<<< HEAD
             mul_x = block.create_parameter(dtype="float32",
                                            shape=[5, 10],
                                            lod_level=0,
@@ -115,6 +150,33 @@ class TestOptimizerBackwardApplygrad(unittest.TestCase):
             block.append_op(type="mean",
                             inputs={"X": mul_out},
                             outputs={"Out": mean_out})
+=======
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr,
+            )
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+            )
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            )
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+            )
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x, "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1},
+            )
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             sgd_optimizer = optimizer.SGDOptimizer(learning_rate=0.01)
             with framework.program_guard(program, init_program):
                 p_g = sgd_optimizer.backward(mean_out)
@@ -144,6 +206,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -174,6 +237,37 @@ class TestMomentumOptimizer(unittest.TestCase):
         block.append_op(type="mean",
                         inputs={"X": mul_out},
                         outputs={"Out": mean_out})
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        learning_rate = 0.01
+        momentum_optimizer = self.MockMomentum(
+            learning_rate=learning_rate, momentum=0.2
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
@@ -204,6 +298,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -235,6 +330,37 @@ class TestMomentumOptimizer(unittest.TestCase):
         momentum_optimizer = self.MockMomentum(learning_rate=learning_rate,
                                                momentum=0.2,
                                                use_nesterov=True)
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+        learning_rate = 0.01
+        momentum_optimizer = self.MockMomentum(
+            learning_rate=learning_rate, momentum=0.2, use_nesterov=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
@@ -276,6 +402,7 @@ class TestAdagradOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -306,6 +433,37 @@ class TestAdagradOptimizer(unittest.TestCase):
         learning_rate = 0.01
         adagrad_optimizer = self.MockAdagrad(learning_rate=learning_rate,
                                              epsilon=1.0e-6)
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+        learning_rate = 0.01
+        adagrad_optimizer = self.MockAdagrad(
+            learning_rate=learning_rate, epsilon=1.0e-6
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
@@ -348,6 +506,7 @@ class TestAdamOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -379,6 +538,37 @@ class TestAdamOptimizer(unittest.TestCase):
         adam_optimizer = self.MockAdam(learning_rate=learning_rate,
                                        beta1=0.9,
                                        beta2=0.999)
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+        learning_rate = 0.01
+        adam_optimizer = self.MockAdam(
+            learning_rate=learning_rate, beta1=0.9, beta2=0.999
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
@@ -423,6 +613,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -454,6 +645,37 @@ class TestAdamaxOptimizer(unittest.TestCase):
         adamax_optimizer = self.MockAdamax(learning_rate=learning_rate,
                                            beta1=0.9,
                                            beta2=0.999)
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+        learning_rate = 0.01
+        adamax_optimizer = self.MockAdamax(
+            learning_rate=learning_rate, beta1=0.9, beta2=0.999
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
@@ -489,6 +711,7 @@ class TestDpsgdOptimizer(unittest.TestCase):
             init_program = framework.Program()
             program = framework.Program()
             block = program.global_block()
+<<<<<<< HEAD
             mul_x = block.create_parameter(dtype="float32",
                                            shape=[5, 10],
                                            lod_level=0,
@@ -520,15 +743,47 @@ class TestDpsgdOptimizer(unittest.TestCase):
                                                        clip=100.0,
                                                        batch_size=16.0,
                                                        sigma=0.0)
+=======
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                optimize_attr=optimizer_attr,
+            )
+            mul_y = block.create_var(
+                dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+            )
+            mul_out = block.create_var(
+                dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+            )
+            block.append_op(
+                type="mul",
+                inputs={"X": mul_x, "Y": mul_y},
+                outputs={"Out": mul_out},
+                attrs={"x_num_col_dims": 1},
+            )
+            mean_out = block.create_var(
+                dtype="float32", shape=[1], lod_level=0, name="mean.out"
+            )
+            block.append_op(
+                type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+            )
+            dpsgd_optimizer = optimizer.DpsgdOptimizer(
+                learning_rate=0.01, clip=100.0, batch_size=16.0, sigma=0.0
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             opts, _ = dpsgd_optimizer.minimize(mean_out, init_program)
             return opts
 
-        opts = check_dpsgd_optimizer({
-            'learning_rate': 1.1,
-            'clip': 100.0,
-            'batch_size': 16.0,
-            'sigma': 4.0
-        })
+        opts = check_dpsgd_optimizer(
+            {
+                'learning_rate': 1.1,
+                'clip': 100.0,
+                'batch_size': 16.0,
+                'sigma': 4.0,
+            }
+        )
         self.assertEqual(len(opts), 2)
         self.assertEqual([op.type for op in opts], ["scale", "dpsgd"])
 
@@ -547,6 +802,7 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -574,9 +830,37 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         block.append_op(type="mean",
                         inputs={"X": mul_out},
                         outputs={"Out": mean_out})
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         learning_rate = 0.01
         decayed_adagrad_optimizer = self.MockDecayedAdagrad(
-            learning_rate=learning_rate, decay=0.95, epsilon=1.0e-6)
+            learning_rate=learning_rate, decay=0.95, epsilon=1.0e-6
+        )
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
@@ -589,7 +873,8 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         accumulators = decayed_adagrad_optimizer.get_accumulators()
         self.assertEqual(len(accumulators), 1)
         self.assertTrue(
-            decayed_adagrad_optimizer.get_moment_str() in accumulators)
+            decayed_adagrad_optimizer.get_moment_str() in accumulators
+        )
         moment_acc = accumulators[decayed_adagrad_optimizer.get_moment_str()]
         self.assertEqual(len(moment_acc), 1)
         self.assertTrue(mul_x.name in moment_acc)
@@ -620,6 +905,7 @@ class TestFtrlOptimizer(unittest.TestCase):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -652,6 +938,37 @@ class TestFtrlOptimizer(unittest.TestCase):
                                        l1=0.0,
                                        l2=0.0,
                                        lr_power=-0.5)
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+        learning_rate = 0.01
+        ftrl_optimizer = self.MockFtrl(
+            learning_rate=learning_rate, l1=0.0, l2=0.0, lr_power=-0.5
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(ftrl_optimizer.get_accumulators()), 0)
@@ -686,6 +1003,7 @@ class TestLookaheadOptimizer(unittest.TestCase):
         program = framework.Program()
         block = program.global_block()
         init_block = init_program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -718,6 +1036,37 @@ class TestLookaheadOptimizer(unittest.TestCase):
         block.append_op(type="mean",
                         inputs={"X": mul_out},
                         outputs={"Out": mean_out})
+=======
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1},
+        )
+        init_mul_x = init_block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         sgd = optimizer.SGD(learning_rate=0.01)
         lookahead = optimizer.LookaheadOptimizer(sgd, alpha=0.5, k=5)
@@ -732,6 +1081,7 @@ class TestRecomputeOptimizer(unittest.TestCase):
     def net(self, return_input=False, with_dropout=False, with_seed=False):
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -786,10 +1136,59 @@ class TestRecomputeOptimizer(unittest.TestCase):
                         },
                         outputs={"Out": mul_out},
                         attrs={"x_num_col_dims": 1})
+=======
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+
+        if with_dropout is True:
+            mul_out_drop = block.create_var(
+                dtype="float32",
+                shape=[5, 8],
+                lod_level=0,
+                name="mul.out.dropout",
+            )
+            mul_out_mask = block.create_var(
+                dtype="uint8", shape=[5, 8], lod_level=0, name="mul.out.mask"
+            )
+            if with_seed is True:
+                seed_out = block.create_var(
+                    dtype="int32", shape=[1], name="seed.out"
+                )
+
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1"
+        )
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out"
+        )
+        b2 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b2"
+        )
+        b2_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b2_out"
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if with_dropout is True:
             dropout_inputs = {'X': [mul_out]}
             if with_seed is True:
+<<<<<<< HEAD
                 block.append_op(type='seed',
                                 outputs={'Out': seed_out},
                                 attrs={
@@ -831,132 +1230,274 @@ class TestRecomputeOptimizer(unittest.TestCase):
         block.append_op(type="mean",
                         inputs={"X": b2_out},
                         outputs={"Out": mean_out})
+=======
+                block.append_op(
+                    type='seed',
+                    outputs={'Out': seed_out},
+                    attrs={
+                        'deterministic': True,
+                        'rng_name': 'rng0',
+                        'force_cpu': True,
+                    },
+                )
+                dropout_inputs = {'X': [mul_out], 'Seed': [seed_out]}
 
-        if return_input == True:
+            block.append_op(
+                type='dropout',
+                inputs=dropout_inputs,
+                outputs={'Out': [mul_out_drop], 'Mask': [mul_out_mask]},
+                attrs={
+                    'dropout_prob': 0.5,
+                },
+            )
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": mul_out_drop, "Y": b1},
+                outputs={"Out": b1_out},
+            )
+        else:
+            block.append_op(
+                type="elementwise_add",
+                inputs={"X": mul_out, "Y": b1},
+                outputs={"Out": b1_out},
+            )
+
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": b1_out, "Y": b2},
+            outputs={"Out": b2_out},
+        )
+        block.append_op(
+            type="mean", inputs={"X": b2_out}, outputs={"Out": mean_out}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+        if return_input:
             return mul_x, mul_out, b1_out, b2_out, mean_out
         return mul_out, b1_out, b2_out, mean_out
 
     def test_no_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 12)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add_grad",
-            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_one_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 13)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "mul",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_str_checkpoints(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out.name])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 13)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "mul",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_multi_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_out, b2_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 13)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add",
-            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
-            "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add",
+                "elementwise_add_grad",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_adjacent_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_out, b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 12)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add_grad",
-            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_out_of_order_checkpoint(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b2_out, mul_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 13)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add",
-            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
-            "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add",
+                "elementwise_add_grad",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_input_as_checkpoints(self):
         mul_x, mul_out, b1_out, b2_out, mean_out = self.net(return_input=True)
         self.assertEqual(len(mean_out.block.ops), 4)
-        self.assertEqual([op.type for op in mean_out.block.ops],
-                         ["mul", "elementwise_add", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            ["mul", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([mul_x, b2_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 14)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "mul", "elementwise_add",
-            "elementwise_add_grad", "elementwise_add_grad", "mul_grad", "sgd",
-            "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "mul",
+                "elementwise_add",
+                "elementwise_add_grad",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_apply_gradients(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
@@ -964,10 +1505,19 @@ class TestRecomputeOptimizer(unittest.TestCase):
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         # apply backward
+<<<<<<< HEAD
         params_grads = recompute_optimizer.backward(mean_out,
                                                     startup_program=None,
                                                     parameter_list=None,
                                                     no_grad_set=None)
+=======
+        params_grads = recompute_optimizer.backward(
+            mean_out,
+            startup_program=None,
+            parameter_list=None,
+            no_grad_set=None,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # apply gradient
         program = mean_out.block.program
@@ -975,11 +1525,24 @@ class TestRecomputeOptimizer(unittest.TestCase):
             optimize_ops = recompute_optimizer.apply_gradients(params_grads)
 
         self.assertEqual(len(mean_out.block.ops), 13)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "elementwise_add", "elementwise_add", "mean",
-            "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "elementwise_add_grad", "mul_grad", "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "mul",
+                "elementwise_add_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_load(self):
         mul_out, b1_out, b2_out, mean_out = self.net()
@@ -992,7 +1555,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
         except NotImplementedError as e:
             self.assertEqual(
                 "load function is not supported by Recompute Optimizer for now",
-                cpt.get_exception_message(e))
+                str(e),
+            )
 
     def test_dropout(self):
         """
@@ -1003,50 +1567,92 @@ class TestRecomputeOptimizer(unittest.TestCase):
         self.assertEqual(len(mean_out.block.ops), 5)
         self.assertEqual(
             [op.type for op in mean_out.block.ops],
-            ["mul", "dropout", "elementwise_add", "elementwise_add", "mean"])
+            ["mul", "dropout", "elementwise_add", "elementwise_add", "mean"],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 17)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
-            "mean", "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
-            "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "seed",
+                "dropout",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "mul",
+                "dropout",
+                "elementwise_add_grad",
+                "dropout_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_dropout_with_determinate_seed(self):
-        mul_out, b1_out, b2_out, mean_out = self.net(with_dropout=True,
-                                                     with_seed=True)
+        mul_out, b1_out, b2_out, mean_out = self.net(
+            with_dropout=True, with_seed=True
+        )
         self.assertEqual(len(mean_out.block.ops), 6)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
-            "mean"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "seed",
+                "dropout",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+            ],
+        )
         sgd_optimizer = optimizer.SGD(learning_rate=1.0)
         recompute_optimizer = optimizer.RecomputeOptimizer(sgd_optimizer)
         recompute_optimizer._set_checkpoints([b1_out])
         opts, params_grads = recompute_optimizer.minimize(mean_out)
 
         self.assertEqual(len(mean_out.block.ops), 17)
-        self.assertEqual([op.type for op in mean_out.block.ops], [
-            "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
-            "mean", "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
-            "sgd", "sgd", "sgd"
-        ])
+        self.assertEqual(
+            [op.type for op in mean_out.block.ops],
+            [
+                "mul",
+                "seed",
+                "dropout",
+                "elementwise_add",
+                "elementwise_add",
+                "mean",
+                "fill_constant",
+                "mean_grad",
+                "elementwise_add_grad",
+                "mul",
+                "dropout",
+                "elementwise_add_grad",
+                "dropout_grad",
+                "mul_grad",
+                "sgd",
+                "sgd",
+                "sgd",
+            ],
+        )
 
     def test_dropout_with_seed(self):
         """
         when we recompute a dropout op, make sure that the recomputed one
-	    is the same as the original var.
-	    """
+        is the same as the original var.
+        """
 
         def gen_data():
             return {
                 "x": np.random.random(size=(100, 3)).astype('float32'),
+<<<<<<< HEAD
                 "y": np.random.randint(2, size=(100, 1)).astype('int64')
             }
 
@@ -1057,6 +1663,18 @@ class TestRecomputeOptimizer(unittest.TestCase):
             prediction = fluid.layers.fc(input=[drop_res],
                                          size=2,
                                          act='softmax')
+=======
+                "y": np.random.randint(2, size=(100, 1)).astype('int64'),
+            }
+
+        def mlp(input_x, input_y):
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_cpu"
+            )
+            prediction = fluid.layers.fc(
+                input=[drop_res], size=2, act='softmax'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
             sum_cost = fluid.layers.reduce_mean(cost)
             return drop_res, prediction, sum_cost
@@ -1066,9 +1684,15 @@ class TestRecomputeOptimizer(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with program_guard(main_program, startup_program):
+<<<<<<< HEAD
                 input_x = fluid.layers.data(name="x",
                                             shape=[3],
                                             dtype='float32')
+=======
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
                 drop_res, prediction, cost = mlp(input_x, input_y)
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
@@ -1080,17 +1704,20 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
                 feed_data = gen_data()
-                drop_vec = exe.run(feed=feed_data,
-                                   program=fluid.default_main_program(),
-                                   fetch_list=[
-                                       "dropout_with_seed_cpu.tmp_1",
-                                       "dropout_with_seed_cpu.tmp_1.subprog_0"
-                                   ])
+                drop_vec = exe.run(
+                    feed=feed_data,
+                    program=fluid.default_main_program(),
+                    fetch_list=[
+                        "dropout_with_seed_cpu.tmp_1",
+                        "dropout_with_seed_cpu.tmp_1.subprog_0",
+                    ],
+                )
                 self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestRecomputeOptimizerCUDA(unittest.TestCase):
 
     def test_dropout_with_seed(self):
@@ -1102,6 +1729,7 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
         def gen_data():
             return {
                 "x": np.random.random(size=(100, 3)).astype('float32'),
+<<<<<<< HEAD
                 "y": np.random.randint(2, size=(100, 1)).astype('int64')
             }
 
@@ -1112,6 +1740,18 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
             prediction = fluid.layers.fc(input=[drop_res],
                                          size=2,
                                          act='softmax')
+=======
+                "y": np.random.randint(2, size=(100, 1)).astype('int64'),
+            }
+
+        def mlp(input_x, input_y):
+            drop_res = fluid.layers.dropout(
+                input_x, dropout_prob=0.5, name="dropout_with_seed_gpu"
+            )
+            prediction = fluid.layers.fc(
+                input=[drop_res], size=2, act='softmax'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
             sum_cost = fluid.layers.reduce_mean(cost)
             return drop_res, prediction, sum_cost
@@ -1121,9 +1761,15 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             with program_guard(main_program, startup_program):
+<<<<<<< HEAD
                 input_x = fluid.layers.data(name="x",
                                             shape=[3],
                                             dtype='float32')
+=======
+                input_x = fluid.layers.data(
+                    name="x", shape=[3], dtype='float32'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 input_y = fluid.layers.data(name="y", shape=[1], dtype='int64')
                 drop_res, prediction, cost = mlp(input_x, input_y)
                 sgd = fluid.optimizer.Adam(learning_rate=0.01)
@@ -1135,12 +1781,14 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                 exe = fluid.Executor(place)
                 exe.run(fluid.default_startup_program())
                 feed_data = gen_data()
-                drop_vec = exe.run(feed=feed_data,
-                                   program=fluid.default_main_program(),
-                                   fetch_list=[
-                                       "dropout_with_seed_gpu.tmp_1",
-                                       "dropout_with_seed_gpu.tmp_1.subprog_0"
-                                   ])
+                drop_vec = exe.run(
+                    feed=feed_data,
+                    program=fluid.default_main_program(),
+                    fetch_list=[
+                        "dropout_with_seed_gpu.tmp_1",
+                        "dropout_with_seed_gpu.tmp_1.subprog_0",
+                    ],
+                )
                 self.assertEqual(drop_vec[0].tolist(), drop_vec[1].tolist())
 
 
@@ -1149,6 +1797,7 @@ class TestGradientMergeOptimizer(unittest.TestCase):
     def net(self):
         program = framework.Program()
         block = program.global_block()
+<<<<<<< HEAD
         mul_x = block.create_parameter(dtype="float32",
                                        shape=[5, 10],
                                        lod_level=0,
@@ -1189,16 +1838,54 @@ class TestGradientMergeOptimizer(unittest.TestCase):
         block.append_op(type="mean",
                         inputs={"X": b1_out},
                         outputs={"Out": mean_out})
+=======
+        mul_x = block.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+        )
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        b1 = block.create_parameter(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1"
+        )
+        b1_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="b1_out"
+        )
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out"
+        )
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": mul_out, "Y": b1},
+            outputs={"Out": b1_out},
+        )
+        block.append_op(
+            type="mean", inputs={"X": b1_out}, outputs={"Out": mean_out}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return mean_out
 
-    def test_program_desc(self, ):
+    def test_program_desc(
+        self,
+    ):
         cost = self.net()
         main_program = cost.block.program
         init_program = framework.Program()
         self.assertEqual(main_program.num_blocks, 1)
         self.assertEqual(len(cost.block.ops), 3)
-        self.assertEqual([op.type for op in cost.block.ops],
-                         ["mul", "elementwise_add", "mean"])
+        self.assertEqual(
+            [op.type for op in cost.block.ops],
+            ["mul", "elementwise_add", "mean"],
+        )
 
         opt = optimizer.SGD(learning_rate=1.0)
         opt = optimizer.GradientMergeOptimizer(opt, k_steps=4)
@@ -1225,13 +1912,19 @@ class TestGradientMergeOptimizer(unittest.TestCase):
                 'elementwise_add',
                 'elementwise_add',
                 'conditional_block',
-            ])
+            ],
+        )
 
         # optimize block
         self.assertEqual(len(main_program.block(1).ops), 6)
         self.assertEqual(
             [op.type for op in main_program.block(1).ops],
+<<<<<<< HEAD
             ['scale', 'scale', 'sgd', 'sgd', 'fill_constant', 'fill_constant'])
+=======
+            ['scale', 'scale', 'sgd', 'sgd', 'fill_constant', 'fill_constant'],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestOptimizerDtype(unittest.TestCase):
@@ -1245,7 +1938,7 @@ class TestOptimizerDtype(unittest.TestCase):
         class MyLayer(paddle.nn.Layer):
 
             def __init__(self, dtype):
-                super(MyLayer, self).__init__()
+                super().__init__()
                 self._w = self.create_parameter([2, 3], dtype=dtype)
                 self._b = self.create_parameter([2, 3], dtype=dtype)
 
@@ -1292,10 +1985,13 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         class SimpleNet(paddle.nn.Layer):
 
             def __init__(self, input_size, output_size):
-                super(SimpleNet, self).__init__()
-                self.linears = paddle.nn.LayerList([
-                    paddle.nn.Linear(input_size, output_size) for i in range(1)
-                ])
+                super().__init__()
+                self.linears = paddle.nn.LayerList(
+                    [
+                        paddle.nn.Linear(input_size, output_size)
+                        for i in range(1)
+                    ]
+                )
 
             def forward(self, x):
                 for i, l in enumerate(self.linears):
@@ -1321,6 +2017,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
                 return self.num_samples
 
         dataset = RandomDataset(nums_batch * batch_size)
+<<<<<<< HEAD
         loader = paddle.io.DataLoader(dataset,
                                       batch_size=batch_size,
                                       shuffle=False,
@@ -1332,6 +2029,23 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         optimizer = paddle.optimizer.Momentum(learning_rate=0.0001,
                                               parameters=model.parameters(),
                                               multi_precision=True)  # 定义优化器
+=======
+        loader = paddle.io.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            drop_last=True,
+            num_workers=0,
+        )
+
+        mse = paddle.nn.MSELoss()
+        model = SimpleNet(input_size, output_size)  # 定义模型
+        optimizer = paddle.optimizer.Momentum(
+            learning_rate=0.0001,
+            parameters=model.parameters(),
+            multi_precision=True,
+        )  # 定义优化器
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
         model = paddle.amp.decorate(models=model, level='O2')
 
@@ -1359,11 +2073,12 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
         if core.is_compiled_with_cuda():
             with fluid.dygraph.guard():
                 out_use_state_dict = self.check_with_opt_state_dict(
-                    use_save_load=True)
+                    use_save_load=True
+                )
                 out_no_state_dict = self.check_with_opt_state_dict(
-                    use_save_load=False)
-            self.assertTrue(
-                np.array_equal(out_use_state_dict, out_no_state_dict))
+                    use_save_load=False
+                )
+            np.testing.assert_array_equal(out_use_state_dict, out_no_state_dict)
 
 
 if __name__ == '__main__':

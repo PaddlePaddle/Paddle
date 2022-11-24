@@ -14,8 +14,12 @@
 
 #include "paddle/phi/kernels/dropout_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/generator.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -25,7 +29,11 @@ namespace phi {
 template <typename T, typename Context>
 void ComputeDropoutInference(const Context& ctx,
                              const DenseTensor& x,
+<<<<<<< HEAD
                              float dropout_prob,
+=======
+                             const Scalar& dropout_prob,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                              bool upscale_in_train,
                              DenseTensor* y) {
   if (upscale_in_train) {
@@ -41,7 +49,11 @@ void ComputeDropoutInference(const Context& ctx,
     auto X = EigenMatrix<T>::Reshape(x, 1);
     auto Y = EigenMatrix<T>::Reshape(*y, 1);
     auto& place = *ctx.eigen_device();
+<<<<<<< HEAD
     Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
+=======
+    Y.device(place) = X * static_cast<T>(1.0f - dropout_prob.to<float>());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 }
 
@@ -49,7 +61,11 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                       float p,
+=======
+                      const Scalar& p,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -59,11 +75,19 @@ void DropoutRawKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
+<<<<<<< HEAD
   float dropout_prob = p;
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
   if (!is_test) {
+=======
+  float dropout_prob = p.to<float>();
+
+  auto& dropout_implementation = mode;
+  bool upscale_in_train = (dropout_implementation == "upscale_in_train");
+  if (!is_test && mask) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto* mask_data = dev_ctx.template Alloc<uint8_t>(mask);
     size_t size = phi::product(mask->dims());
 
@@ -82,7 +106,13 @@ void DropoutRawKernel(const Context& dev_ctx,
     } else {
       seed_data = fix_seed ? seed : 0;
     }
-    auto engine = paddle::framework::GetCPURandomEngine(seed_data);
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
 
     std::uniform_real_distribution<float> dist(0, 1);
 
@@ -109,7 +139,11 @@ template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                      float p,
+=======
+                     const Scalar& p,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                      bool is_test,
                      const std::string& mode,
                      int seed,
@@ -120,11 +154,19 @@ void DropoutNdKernel(const Context& dev_ctx,
   auto* y = out;
   const auto* x_data = x.data<T>();
   T* y_data = dev_ctx.template Alloc<T>(y);
+<<<<<<< HEAD
   float dropout_prob = p;
 
   auto& dropout_implementation = mode;
   bool upscale_in_train = (dropout_implementation == "upscale_in_train");
   if (!is_test) {
+=======
+  float dropout_prob = p.to<float>();
+
+  auto& dropout_implementation = mode;
+  bool upscale_in_train = (dropout_implementation == "upscale_in_train");
+  if (!is_test && mask) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     DenseTensor t_mask;
     t_mask.Resize(mask->dims());
     T* t_mask_data = dev_ctx.template Alloc<T>(&t_mask);
@@ -144,6 +186,7 @@ void DropoutNdKernel(const Context& dev_ctx,
     int seed_data = 0;
     if (seed_tensor.get_ptr() != nullptr) {
       seed_data = *(seed_tensor->data<int>());
+<<<<<<< HEAD
     } else {
       seed_data = fix_seed ? seed : 0;
     }
@@ -183,6 +226,53 @@ void DropoutNdKernel(const Context& dev_ctx,
         y_data[i] = 0;
       }
     }
+=======
+    } else {
+      seed_data = fix_seed ? seed : 0;
+    }
+    std::shared_ptr<std::mt19937_64> engine;
+    if (seed_data) {
+      engine = std::make_shared<std::mt19937_64>();
+      engine->seed(seed_data);
+    } else {
+      engine = dev_ctx.GetGenerator()->GetCPUEngine();
+    }
+
+    std::uniform_real_distribution<float> dist(0, 1);
+
+    for (size_t i = 0; i < size; ++i) {
+      if (dist(*engine) < dropout_prob) {
+        t_mask_data[i] = 0;
+        mask_data[i] = 0;
+      } else {
+        t_mask_data[i] = 1;
+        mask_data[i] = 1;
+      }
+    }
+    auto& x_dims = x.dims();
+    DenseTensor broadcast_mask;
+    broadcast_mask.Resize(x_dims);
+    T* broadcast_mask_data = dev_ctx.template Alloc<T>(&broadcast_mask);
+
+    std::vector<int64_t> mask_bst_dims_vec;
+    for (int i = 0; i < x_dims.size(); i++) {
+      mask_bst_dims_vec.emplace_back(x_dims[i]);
+    }
+    IntArray mask_bst_dims(mask_bst_dims_vec);
+    ExpandKernel<T, Context>(dev_ctx, t_mask, mask_bst_dims, &broadcast_mask);
+
+    for (auto i = 0; i < x.numel(); i++) {
+      if (broadcast_mask_data[i] == static_cast<T>(1)) {
+        if (upscale_in_train) {
+          y_data[i] = x_data[i] / static_cast<T>(1.0f - dropout_prob);
+        } else {
+          y_data[i] = x_data[i];
+        }
+      } else {
+        y_data[i] = 0;
+      }
+    }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   } else {
     ComputeDropoutInference<T, Context>(
         dev_ctx, x, dropout_prob, upscale_in_train, y);

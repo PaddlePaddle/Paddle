@@ -78,13 +78,14 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
-        int tensor_dim =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>()->numel();
+        int tensor_dim = root_scope_->FindVar(var->Name())
+                             ->GetMutable<phi::DenseTensor>()
+                             ->numel();
         auto *ptr1 = thread_scope_->Var(var->Name());
         InitializeVariable(ptr1, var->GetType());
-        LoDTensor *thread_tensor = ptr1->GetMutable<LoDTensor>();
-        LoDTensor *root_tensor =
-            root_scope_->FindVar(var->Name())->GetMutable<LoDTensor>();
+        phi::DenseTensor *thread_tensor = ptr1->GetMutable<phi::DenseTensor>();
+        phi::DenseTensor *root_tensor =
+            root_scope_->FindVar(var->Name())->GetMutable<phi::DenseTensor>();
 #define MemsetCallback(cpp_type, proto_type)                                  \
   do {                                                                        \
     if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) { \
@@ -101,8 +102,13 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 void HogwildWorker::SetZero(LoDTensor *tensor,
                             LoDTensor *root_tensor,
+=======
+void HogwildWorker::SetZero(phi::DenseTensor *tensor,
+                            phi::DenseTensor *root_tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                             int tensor_dim) {
   T *ptr = tensor->mutable_data<T>(root_tensor->dims(), platform::CPUPlace());
   memset(ptr, 0, sizeof(T) * tensor_dim);
@@ -259,6 +265,7 @@ void HogwildWorker::TrainFiles() {
   device_reader_->Start();
   int cur_batch;
   int batch_cnt = 0;
+<<<<<<< HEAD
   if (thread_id_ == 0) {
     worker_num_stat_.store(0);
   }
@@ -284,6 +291,10 @@ void HogwildWorker::TrainFiles() {
     if (cur_batch <= 0) {
       break;
     }
+=======
+
+  while ((cur_batch = device_reader_->Next()) > 0) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     for (auto &op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {

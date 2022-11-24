@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -41,16 +39,22 @@ class TestReduceSum(OpTest):
         self.attrs = {
             'dim': self.axis,
             'keep_dim': self.keep_dim,
-            'reduce_all': self.reduce_all
+            'reduce_all': self.reduce_all,
         }
         self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         if self.attrs['reduce_all']:
             self.outputs = {'Out': self.inputs['X'].sum()}
         else:
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 self.inputs['X'].sum(axis=self.axis,
                                      keepdims=self.attrs['keep_dim'])
+=======
+                'Out': self.inputs['X'].sum(
+                    axis=self.axis, keepdims=self.attrs['keep_dim']
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
     def set_npu(self):
@@ -67,7 +71,7 @@ class TestReduceSum(OpTest):
 
     def initTestCase(self):
         self.shape = (5, 6)
-        self.axis = (0)
+        self.axis = 0
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -106,9 +110,15 @@ class TestReduceSumNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[2, 3, 4], dtype='float32')
             b = paddle.static.data(name="b", shape=[2, 3, 4], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[2, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[2, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             a_1 = fluid.layers.fc(input=a, size=4, num_flatten_dims=2, act=None)
             b_1 = fluid.layers.fc(input=b, size=4, num_flatten_dims=2, act=None)
@@ -133,6 +143,7 @@ class TestReduceSumNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -140,9 +151,19 @@ class TestReduceSumNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -150,8 +171,8 @@ class TestReduceSumNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
+        np.testing.assert_allclose(npu_pred, cpu_pred)
+        np.testing.assert_allclose(npu_loss, cpu_loss)
 
 
 class TestReduceSumNet2(TestReduceSumNet):
@@ -193,12 +214,18 @@ class TestReduceSumNet3(TestReduceSumNet):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             loss_res = exe.run(main_prog,
                                feed={
                                    "a": a_np,
                                    "b": b_np
                                },
                                fetch_list=[loss])
+=======
+            loss_res = exe.run(
+                main_prog, feed={"a": a_np, "b": b_np}, fetch_list=[loss]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
                 print("Epoch {} | Loss: {}".format(epoch, loss_res))
 

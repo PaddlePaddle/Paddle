@@ -155,6 +155,10 @@ class Table {
   virtual void Revert() {}
   virtual void CheckSavePrePatchDone() {}
 
+  // for patch model
+  virtual void Revert() {}
+  virtual void CheckSavePrePatchDone() {}
+
  protected:
   virtual int32_t Initialize() = 0;
   virtual int32_t InitializeAccessor();

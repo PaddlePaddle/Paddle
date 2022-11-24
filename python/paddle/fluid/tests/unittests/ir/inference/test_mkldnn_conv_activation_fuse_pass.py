@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
@@ -26,6 +24,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[-1, 3, 100, 100],
                               dtype="float32")
@@ -34,6 +33,18 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
                                            filter_size=self.conv_filter_size,
                                            bias_attr=self.conv_bias_attr,
                                            act=self.act)
+=======
+            data = fluid.data(
+                name="data", shape=[-1, 3, 100, 100], dtype="float32"
+            )
+            conv_out = fluid.layers.conv2d(
+                data,
+                num_filters=self.conv_num_filters,
+                filter_size=self.conv_filter_size,
+                bias_attr=self.conv_bias_attr,
+                act=self.act,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32")

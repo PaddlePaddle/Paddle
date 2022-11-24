@@ -30,8 +30,16 @@ class TestFixOpRunOrder(unittest.TestCase):
             fluid.set_flags({'FLAGS_cudnn_deterministic': 1})
 
     def get_place(self):
+<<<<<<< HEAD
         return paddle.CUDAPlace(
             0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace()
+=======
+        return (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def get_feed(self):
         batch_size = 4
@@ -44,12 +52,21 @@ class TestFixOpRunOrder(unittest.TestCase):
         startup_prog = paddle.static.Program()
         scope = paddle.static.Scope()
         with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
             image = paddle.static.data(name="image",
                                        shape=[None, 3, 224, 224],
                                        dtype="float32")
             label = paddle.static.data(name="label",
                                        shape=[None, 1],
                                        dtype="int64")
+=======
+            image = paddle.static.data(
+                name="image", shape=[None, 3, 224, 224], dtype="float32"
+            )
+            label = paddle.static.data(
+                name="label", shape=[None, 1], dtype="int64"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             model = resnet18()
             pred = model(image)
             loss_fn = CrossEntropyLoss()
@@ -64,7 +81,8 @@ class TestFixOpRunOrder(unittest.TestCase):
         main_prog = paddle.static.CompiledProgram(main_prog).with_data_parallel(
             loss_name=loss.name,
             build_strategy=build_strategy,
-            places=[self.get_place()])
+            places=[self.get_place()],
+        )
 
         exe = paddle.static.Executor(self.get_place())
         with paddle.static.scope_guard(scope):

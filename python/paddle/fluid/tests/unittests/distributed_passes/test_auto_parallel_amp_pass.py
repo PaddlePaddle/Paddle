@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import random
 import numpy as np
 
@@ -52,14 +51,21 @@ class TestAMPPass(AutoPallelPassTestBase):
         fleet.init(is_collective=True, strategy=dist_strategy)
 
     def test_bs_8(self):
+<<<<<<< HEAD
         self.check_main(gpus=[0, 1],
                         batch_size=8,
                         sequence_len=512,
                         vocab_size=1000)
+=======
+        self.check_main(
+            gpus=[0, 1], batch_size=8, sequence_len=512, vocab_size=1000
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def get_model(self, place, batch_size, sequence_len, vocab_size):
-        return self.get_gpt_model("mp", place, batch_size, sequence_len,
-                                  vocab_size)
+        return self.get_gpt_model(
+            "mp", place, batch_size, sequence_len, vocab_size
+        )
 
 
 if __name__ == "__main__":

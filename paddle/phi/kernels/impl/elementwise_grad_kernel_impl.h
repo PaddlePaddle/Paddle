@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
@@ -753,6 +754,20 @@ struct PowGradDX {
   }
 };
 
+template <>
+struct PowGradDX<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    float tmp_y = static_cast<float>(y);
+    float tmp_dout = static_cast<float>(dout);
+    float tmp_x = static_cast<float>(x);
+    float result = tmp_dout * tmp_y * std::pow(tmp_x, tmp_y - 1.0f);
+    return static_cast<dtype::float16>(result);
+  }
+};
+
 template <typename T, typename Enable = void>
 struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
@@ -763,6 +778,21 @@ struct PowGradDY {
     }
 #endif
     return dout * std::log(x) * std::pow(x, y);
+  }
+};
+
+template <>
+struct PowGradDY<dtype::float16, void> {
+  HOSTDEVICE dtype::float16 operator()(dtype::float16 x,
+                                       dtype::float16 y,
+                                       dtype::float16 out,
+                                       dtype::float16 dout) const {
+    float tmp_y = static_cast<float>(y);
+    float tmp_dout = static_cast<float>(dout);
+    float tmp_x = static_cast<float>(x);
+    float tmp_pow = std::pow(tmp_x, tmp_y);
+    float result = tmp_pow * tmp_dout * std::log(tmp_x);
+    return static_cast<dtype::float16>(result);
   }
 };
 

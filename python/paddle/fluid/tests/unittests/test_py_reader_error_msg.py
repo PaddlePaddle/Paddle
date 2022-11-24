@@ -21,6 +21,7 @@ import paddle
 class TestPyReaderErrorMsg(unittest.TestCase):
 
     def test_check_input_array(self):
+<<<<<<< HEAD
         fluid.reader.GeneratorLoader._check_input_array([
             np.random.randint(100, size=[2]),
             np.random.randint(100, size=[2]),
@@ -32,6 +33,24 @@ class TestPyReaderErrorMsg(unittest.TestCase):
                               np.random.randint(100, size=[1]),
                               np.random.randint(100, size=[3])
                           ])
+=======
+        fluid.reader.GeneratorLoader._check_input_array(
+            [
+                np.random.randint(100, size=[2]),
+                np.random.randint(100, size=[2]),
+                np.random.randint(100, size=[2]),
+            ]
+        )
+        self.assertRaises(
+            TypeError,
+            fluid.reader.GeneratorLoader._check_input_array,
+            [
+                np.random.randint(100, size=[2]),
+                np.random.randint(100, size=[1]),
+                np.random.randint(100, size=[3]),
+            ],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestDoubleBufferAPI(unittest.TestCase):
@@ -39,12 +58,24 @@ class TestDoubleBufferAPI(unittest.TestCase):
     def test_double_buffer(self):
         paddle.enable_static()
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             reader = fluid.layers.py_reader(capacity=64,
                                             shapes=[(-1, 1, 28, 28), (-1, 1)],
                                             dtypes=['float32', 'int64'],
                                             use_double_buffer=False)
             reader = fluid.layers.double_buffer(reader,
                                                 place=fluid.core.CUDAPlace(0))
+=======
+            reader = fluid.layers.py_reader(
+                capacity=64,
+                shapes=[(-1, 1, 28, 28), (-1, 1)],
+                dtypes=['float32', 'int64'],
+                use_double_buffer=False,
+            )
+            reader = fluid.layers.double_buffer(
+                reader, place=fluid.core.CUDAPlace(0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             image, label = fluid.layers.read_file(reader)
 
 

@@ -124,6 +124,26 @@ struct OperatorSupplementOriginEvent {
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
   }
+<<<<<<< HEAD
+=======
+  OperatorSupplementOriginEvent(
+      std::function<void *(size_t)> arena_allocator,
+      uint64_t timestamp_ns,
+      const std::string &type_name,
+      const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
+          &shapes,
+      const std::map<std::string, std::vector<framework::proto::VarType::Type>>
+          &dtypes,
+      const std::vector<std::string> callstack)
+      : timestamp_ns(timestamp_ns), dtypes(dtypes), callstack(callstack) {
+    auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
+    strncpy(buf, type_name.c_str(), type_name.length() + 1);
+    op_type = buf;
+    for (auto it = shapes.begin(); it != shapes.end(); it++) {
+      input_shapes[std::string((*it).first)] = (*it).second;
+    }
+  }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   uint64_t timestamp_ns;
   const char *op_type = nullptr;  // not owned, designed for performance
   // input shapes

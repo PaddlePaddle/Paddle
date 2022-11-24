@@ -24,6 +24,7 @@ class FCFusePassTest(PassTest):
 
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(name="data",
                               shape=[32, 128],
                               dtype="float32",
@@ -32,6 +33,14 @@ class FCFusePassTest(PassTest):
                                     size=128,
                                     num_flatten_dims=1,
                                     act="relu")
+=======
+            data = fluid.data(
+                name="data", shape=[32, 128], dtype="float32", lod_level=0
+            )
+            tmp_0 = fluid.layers.fc(
+                input=data, size=128, num_flatten_dims=1, act="relu"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             tmp_1 = fluid.layers.fc(input=tmp_0, size=32, num_flatten_dims=1)
             tmp_2 = fluid.layers.softmax(input=tmp_1)
 

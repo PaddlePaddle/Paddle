@@ -59,6 +59,13 @@ class CompatMetaTensor : public phi::MetaTensor {
 
   bool initialized() const override { return initialized_; };
 
+<<<<<<< HEAD
+=======
+  bool is_selected_rows() const override;
+  bool is_tensor_array() const override;
+  bool is_dense() const override;
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   operator unspecified_bool_type() const override {
     return initialized_ ? unspecified_bool_true : 0;
   }
@@ -68,7 +75,11 @@ class CompatMetaTensor : public phi::MetaTensor {
  private:
   const LoD& GetRuntimeLoD() const {
     auto* var = PADDLE_GET_CONST(Variable*, var_);
+<<<<<<< HEAD
     return var->Get<LoDTensor>().lod();
+=======
+    return var->Get<phi::DenseTensor>().lod();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 
   int32_t GetCompileTimeLoD() const {
@@ -77,6 +88,7 @@ class CompatMetaTensor : public phi::MetaTensor {
   }
 
   const phi::SelectedRows& GetSelectedRows() const {
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(is_runtime_,
                       true,
                       platform::errors::Unavailable(
@@ -86,6 +98,19 @@ class CompatMetaTensor : public phi::MetaTensor {
                       true,
                       platform::errors::Unavailable(
                           "The Tensor in MetaTensor is not SelectedRows."));
+=======
+    PADDLE_ENFORCE_EQ(
+        is_runtime_,
+        true,
+        platform::errors::Unavailable(
+            "Only can get phi::DenseTensor from MetaTensor in rumtime."));
+    auto* var = PADDLE_GET_CONST(Variable*, var_);
+    PADDLE_ENFORCE_EQ(
+        var->IsType<phi::SelectedRows>(),
+        true,
+        platform::errors::Unavailable(
+            "The phi::DenseTensor in MetaTensor is not SelectedRows."));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return var->Get<phi::SelectedRows>();
   }
 

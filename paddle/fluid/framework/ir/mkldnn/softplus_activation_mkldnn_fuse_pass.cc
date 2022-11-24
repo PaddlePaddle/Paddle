@@ -27,7 +27,16 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = paddle::platform::GetSupportedActivations();
+=======
+  auto act_types = phi::funcs::GetSupportedActivations();
+
+  // Currently softplus can't be fused with hard_sigmoid
+  act_types.erase(
+      std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
+      act_types.end());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
@@ -70,7 +79,11 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     auto *activation_op = activation->Op();
+<<<<<<< HEAD
     auto attr_map = paddle::platform::GetAttributeMap(act_type);
+=======
+    auto attr_map = phi::funcs::GetAttributeMap(act_type);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
@@ -94,7 +107,8 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
 
   gpd(graph, handler);
   AddStatis(found_softplus_activation_count);
-  if (!Has("disable_logs") || !Get<bool>("disable_logs"))
+  if ((!Has("disable_logs") || !Get<bool>("disable_logs")) &&
+      (found_softplus_activation_count > 0))
     PrettyLogDetail("---    fused %d softplus with %s activation",
                     found_softplus_activation_count,
                     act_type);
@@ -112,7 +126,10 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
+<<<<<<< HEAD
             .EQ("hard_sigmoid", 0)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
             .LE("mish", 1)

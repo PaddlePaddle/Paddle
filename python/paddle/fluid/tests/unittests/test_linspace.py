@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import Program, program_guard
 from paddle.fluid import core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -33,7 +31,7 @@ class TestLinspaceOpCommonCase(OpTest):
         self.inputs = {
             'Start': np.array([0]).astype(dtype),
             'Stop': np.array([10]).astype(dtype),
-            'Num': np.array([11]).astype('int32')
+            'Num': np.array([11]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -52,7 +50,7 @@ class TestLinspaceOpReverseCase(OpTest):
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
-            'Num': np.array([11]).astype('int32')
+            'Num': np.array([11]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -71,7 +69,7 @@ class TestLinspaceOpNumOneCase(OpTest):
         self.inputs = {
             'Start': np.array([10]).astype(dtype),
             'Stop': np.array([0]).astype(dtype),
-            'Num': np.array([1]).astype('int32')
+            'Num': np.array([1]).astype('int32'),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32)}
 
@@ -108,17 +106,24 @@ class TestLinspaceAPI(unittest.TestCase):
         out_2 = paddle.linspace(0, 10, 5, dtype=np.float32)
         out_3 = paddle.linspace(0, 10, 5, dtype=core.VarDesc.VarType.FP32)
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
-                                      fetch_list=[out_1, out_2, out_3])
+        res_1, res_2, res_3 = exe.run(
+            fluid.default_main_program(), fetch_list=[out_1, out_2, out_3]
+        )
         assert np.array_equal(res_1, res_2)
 
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
+<<<<<<< HEAD
             out = paddle.linspace(0,
                                   10,
                                   5,
                                   dtype='float32',
                                   name='linspace_res')
+=======
+            out = paddle.linspace(
+                0, 10, 5, dtype='float32', name='linspace_res'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             assert 'linspace_res' in out.name
 
     def test_imperative(self):

@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
-
 import paddle
+<<<<<<< HEAD
 from paddle.fluid import core
 from paddle import _C_ops
 from paddle.autograd import PyLayer
@@ -22,6 +21,9 @@ from paddle.fluid import framework
 from ...utils.recompute import check_recompute_necessary, detach_variable, swith_rng_state_tracker
 from ..parallel_layers.random import get_rng_state_tracker
 from paddle.fluid.framework import in_dygraph_mode
+=======
+from paddle import _legacy_C_ops
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 __all__ = []
 
@@ -36,7 +38,7 @@ PADDLE_TO_NUMBER = {
     paddle.float32: 1,
     paddle.float64: 2,
     paddle.int32: 3,
-    paddle.int64: 4
+    paddle.int64: 4,
 }
 
 NUMBER_TO_DTYPE = {
@@ -44,7 +46,7 @@ NUMBER_TO_DTYPE = {
     1: "float32",
     2: "float64",
     3: "int32",
-    4: "int64"
+    4: "int64",
 }
 
 
@@ -88,31 +90,15 @@ def get_tensor_bytes(tensor):
     return tensor.numel() * elem_size
 
 
-_hcg = None
-_recompute_offload = False
-_recompute_partition = False
-
-
-def _initialize_recompute_setting(is_offload, is_partition):
-    global _recompute_offload, _recompute_partition
-
-    _recompute_offload = is_offload
-    _recompute_partition = is_partition
-
-
-def _initialize_recompute_hcg(hcg):
-    global _hcg
-    _hcg = hcg
-
-
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
     if group is not None and not group.is_member():
         return
     ring_id = 0 if group is None else group.id
+<<<<<<< HEAD
     nranks = paddle.distributed.collective._get_global_group(
     ).nranks if group is None else group.nranks
     return _C_ops.c_allgather(tensor, 'use_calc_stream', use_calc_stream,
@@ -301,3 +287,19 @@ def _hp_recompute(function, *args):
                 output.stop_gradient = True
 
         return tuple(all_outputs)
+=======
+    nranks = (
+        paddle.distributed.collective._get_global_group().nranks
+        if group is None
+        else group.nranks
+    )
+    return _legacy_C_ops.c_allgather(
+        tensor,
+        'use_calc_stream',
+        use_calc_stream,
+        'ring_id',
+        ring_id,
+        'nranks',
+        nranks,
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

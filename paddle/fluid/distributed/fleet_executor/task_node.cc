@@ -41,6 +41,20 @@ TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
   task_id_ = task_node_cnt++;
 }
 
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times,
+                   int64_t max_slot_nums)
+    : program_(program),
+      rank_(rank),
+      task_id_(task_id),
+      max_run_times_(max_run_times),
+      max_slot_nums_(max_slot_nums) {
+  // TODO(liyurui): Will be removed when execute program is supported.
+  Init();
+}
+
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
     : program_(program), rank_(rank), task_id_(rank) {
   max_run_times_ = 1;

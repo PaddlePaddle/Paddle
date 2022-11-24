@@ -18,24 +18,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class SequenceMaskNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     int maxlen = ctx.Attr<int>("maxlen");
 
     if (ctx.HasInput("MaxLenTensor")) {
-      auto max_len_tensor = ctx.Input<Tensor>("MaxLenTensor");
+      auto max_len_tensor = ctx.Input<phi::DenseTensor>("MaxLenTensor");
       PADDLE_ENFORCE_NOT_NULL(max_len_tensor,
                               platform::errors::InvalidArgument(
                                   "Input(MaxLenTensor) should not be NULL."
                                   "But received Input(MaxLenTensor) is NULL"));
+<<<<<<< HEAD
       framework::Tensor temp;
+=======
+      phi::DenseTensor temp;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       paddle::framework::TensorCopySync(
           *max_len_tensor, platform::CPUPlace(), &temp);
       maxlen = *temp.data<int32_t>();

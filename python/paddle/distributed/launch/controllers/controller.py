@@ -23,17 +23,22 @@ from paddle.distributed.launch.job.container import Container
 from .master import Master
 from .watcher import Watcher
 
-import time
-
 
 class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
+<<<<<<< HEAD
 
 
 class ControllerBase(object):
 
+=======
+    RPC = "rpc"
+
+
+class ControllerBase:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -44,9 +49,11 @@ class ControllerBase(object):
 
         self.watcher = Watcher(self.ctx)
 
-        self.job = Job(nnodes=self.ctx.args.nnodes,
-                       mode=self.ctx.args.run_mode,
-                       jid=self.ctx.args.job_id)
+        self.job = Job(
+            nnodes=self.ctx.args.nnodes,
+            mode=self.ctx.args.run_mode,
+            jid=self.ctx.args.job_id,
+        )
         self.pod = Pod()
 
         self.ctx.set_envs({"POD_NAME": self.pod.name})
@@ -75,14 +82,14 @@ class ControllerBase(object):
         '''
         watch self and peer status, return true to exit
         '''
-        #TODO(kuizhiqing) unify ctx.status and master status
+        # TODO(kuizhiqing) unify ctx.status and master status
 
         self.ctx.logger.info("Watching {}".format(self.pod))
 
         while not self.ctx.status.is_done():
             status = self.pod.watch(timeout=2)
 
-            #if self.ctx.continous_log():
+            # if self.ctx.continous_log():
             # default to print log
             self.pod.logs()
 
@@ -91,6 +98,9 @@ class ControllerBase(object):
                 self.ctx.status.complete()
 
                 self.master.set_status(status)
+
+                while self.pod.logs():
+                    pass
 
                 self.ctx.logger.info("Pod {}".format(status))
                 return True
@@ -105,6 +115,9 @@ class ControllerBase(object):
                 fc = self.pod.failed_container()
                 self.ctx.logger.info("Pod {}".format(status))
                 self.ctx.logger.error("Container failed !!!\n{}".format(fc[0]))
+                self.ctx.logger.info(
+                    "------------------------- ERROR LOG DETAIL -------------------------"
+                )
                 fc[0].tail()
 
                 if self.ctx.args.elastic_level <= 0:
@@ -115,8 +128,15 @@ class ControllerBase(object):
                     return False
 
             # peer failure
+<<<<<<< HEAD
             if self.ctx.status.is_restarting(
             ) and self.master.get_status() != self.ctx.status.COMPLETED:
+=======
+            if (
+                self.ctx.status.is_restarting()
+                and self.master.get_status() != self.ctx.status.COMPLETED
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 self.pod.stop(timeout=30)
                 return False
 
@@ -170,7 +190,11 @@ class Controller(ControllerBase):
         raise NotImplementedError
 
     def _get_entrypoint(self):
-        entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+        if self.ctx.args.training_script.endswith('.py'):
+            entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+        else:
+            entrypoint = [self.ctx.args.training_script]
+
         entrypoint.extend(self.ctx.args.training_script_args)
         return entrypoint
 
@@ -181,12 +205,9 @@ class Controller(ControllerBase):
             err = os.path.join(self.ctx.args.log_dir, err)
         return out, (err or out)
 
-    def new_container(self,
-                      entrypoint=None,
-                      envs={},
-                      use_ctx_env=True,
-                      out=None,
-                      err=None):
+    def new_container(
+        self, entrypoint=None, envs={}, use_ctx_env=True, out=None, err=None
+    ):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
@@ -195,23 +216,26 @@ class Controller(ControllerBase):
         c.update_env(envs)
         return c
 
-    def add_container(self,
-                      container=None,
-                      entrypoint=None,
-                      envs={},
-                      log_tag=None,
-                      is_init=False):
-        if not is_init and log_tag is not None:
-            log_file = "{}.{}.{}.log".format(self.job.id, self.pod.name,
-                                             log_tag)
-        else:
-            log_file = None
+    def add_container(
+        self,
+        container=None,
+        entrypoint=None,
+        envs={},
+        log_file=None,
+        is_init=False,
+    ):
 
         if not container:
+<<<<<<< HEAD
             container = self.new_container(entrypoint=entrypoint,
                                            envs=envs,
                                            out=log_file,
                                            err=log_file)
+=======
+            container = self.new_container(
+                entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if is_init:
             self.pod.add_init_container(container)
@@ -237,8 +261,10 @@ class Controller(ControllerBase):
         if not self.ctx.args.log_dir:
             return
 
-        f = os.path.join(self.ctx.args.log_dir,
-                         '{}.{}.log'.format(self.job.id, self.pod.name))
+        f = os.path.join(
+            self.ctx.args.log_dir,
+            '{}.{}.log'.format(self.job.id, self.pod.name),
+        )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
             with open(f, 'a+') as fd:

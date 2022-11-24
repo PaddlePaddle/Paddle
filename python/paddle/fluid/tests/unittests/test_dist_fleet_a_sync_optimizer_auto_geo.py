@@ -17,7 +17,6 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 import paddle
 import paddle.distributed.fleet.base.role_maker as role_maker
-import time
 
 paddle.enable_static()
 
@@ -31,8 +30,9 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["PADDLE_PORT"] = "36001"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36001"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_a_sync_optimizer2(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
@@ -49,15 +49,27 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         input_x = paddle.fluid.layers.data(name="x", shape=[1], dtype='int64')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
+<<<<<<< HEAD
         emb = paddle.fluid.layers.embedding(input=input_x,
                                             size=[100, 10],
                                             is_sparse=True)
+=======
+        emb = paddle.fluid.layers.embedding(
+            input=input_x, size=[100, 10], is_sparse=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         fc_1 = paddle.fluid.layers.fc(input=emb, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
+<<<<<<< HEAD
         cost = paddle.fluid.layers.cross_entropy(input=prediction,
                                                  label=input_y)
+=======
+        cost = paddle.fluid.layers.cross_entropy(
+            input=prediction, label=input_y
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         avg_cost = paddle.mean(x=cost)
         os.environ["FLAGS_LAUNCH_BARRIER"] = "0"
         strategy = paddle.distributed.fleet.DistributedStrategy()

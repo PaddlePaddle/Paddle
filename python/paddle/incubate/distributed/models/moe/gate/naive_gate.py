@@ -23,7 +23,6 @@ from .base_gate import BaseGate
 
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
 
 
 class NaiveGate(BaseGate):
@@ -37,11 +36,17 @@ class NaiveGate(BaseGate):
 
     def forward(self, inp, return_all_scores=False):
         gate = self.gate(inp)
+<<<<<<< HEAD
         gate_top_k_val, gate_top_k_idx = paddle.topk(gate,
                                                      k=self.top_k,
                                                      axis=-1,
                                                      largest=True,
                                                      sorted=False)
+=======
+        gate_top_k_val, gate_top_k_idx = paddle.topk(
+            gate, k=self.top_k, axis=-1, largest=True, sorted=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if return_all_scores:
             return gate_top_k_val, gate_top_k_idx, gate

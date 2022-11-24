@@ -25,7 +25,10 @@
 #include <iostream>
 #include <vector>
 
+<<<<<<< HEAD
 #include "cub/cub.cuh"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/tensor_util.h"  // TensorToVector()
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -343,9 +346,11 @@ static void ComputeUniqueDims(const Context& context,
   // 3. counts: 'counts'
   counts->Resize(phi::make_ddim({num_out}));
   auto* count_data = context.template Alloc<IndexT>(counts);
-  thrust::fill(thrust::device, count_data, count_data + row, 0);
-  thrust::adjacent_difference(
-      thrust::device, range_data_ptr + 1, range_data_ptr + row + 1, count_data);
+  thrust::fill(thrust::device, count_data, count_data + num_out, 0);
+  thrust::adjacent_difference(thrust::device,
+                              range_data_ptr + 1,
+                              range_data_ptr + num_out + 1,
+                              count_data);
 }
 
 // Calculate unique when 'axis' is set

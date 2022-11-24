@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
+from __future__ import annotations
+
 from .container import Container
 
 from .status import Status
@@ -21,18 +22,23 @@ import random
 import time
 
 
+<<<<<<< HEAD
 class PodSepc(object):
 
+=======
+class PodSepc:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         self._name = ''.join(
-            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
+        )
 
         # by controller
-        self._init_containers: List[Container] = []
-        self._containers: List[Container] = []
+        self._init_containers: list[Container] = []
+        self._containers: list[Container] = []
 
-        #self.resource: Resource = None
-        #self.status: Status = None
+        # self.resource: Resource = None
+        # self.status: Status = None
 
         self._rank = -1
         self._init_timeout = None
@@ -47,9 +53,15 @@ class Pod(PodSepc):
         super().__init__()
 
     def __str__(self):
+<<<<<<< HEAD
         return "Pod: {}, replicas {}, status {}".format(self.name,
                                                         self.replicas,
                                                         self.status)
+=======
+        return "Pod: {}, replicas {}, status {}".format(
+            self.name, self.replicas, self.status
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def failed_container(self):
         cs = []
@@ -184,11 +196,13 @@ class Pod(PodSepc):
         else:
             self._containers[idx].tail()
 
-    def watch(self,
-              all_list=[Status.COMPLETED],
-              any_list=[Status.FAILED],
-              interval=1,
-              timeout=-1):
+    def watch(
+        self,
+        all_list=[Status.COMPLETED],
+        any_list=[Status.FAILED],
+        interval=1,
+        timeout=-1,
+    ):
         '''
         watch return if any container status in any_list
         or all container status in all_list

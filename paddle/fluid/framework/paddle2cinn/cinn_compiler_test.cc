@@ -254,13 +254,17 @@ TEST(CinnCompilerTest, Compile) {
   EXPECT_THROW(cinn_compiler->FindGraph(0), paddle::platform::EnforceNotMet);
 
   auto inputs_info = GetInputsInfo(compilation_key, *graph);
-  std::unordered_map<std::string, LoDTensor> create_inputs;
+  std::unordered_map<std::string, phi::DenseTensor> create_inputs;
   for (const auto& pair : inputs_info) {
     auto& tensor = create_inputs[pair.first];
     tensor.Resize(phi::make_ddim(pair.second));
     tensor.mutable_data<float>(platform::CPUPlace());
   }
+<<<<<<< HEAD
   std::map<std::string, const LoDTensor*> input_tensors;
+=======
+  std::map<std::string, const phi::DenseTensor*> input_tensors;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::for_each(create_inputs.begin(),
                 create_inputs.end(),
                 [&input_tensors](const auto& val) {

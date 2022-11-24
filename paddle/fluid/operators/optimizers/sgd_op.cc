@@ -15,9 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 
 #include <string>
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -35,6 +38,7 @@ class SGDOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_MKLDNN
     using dnnl::memory;
     if (this->CanMKLDNNBeUsed(ctx, data_type)) {
@@ -53,15 +57,34 @@ class SGDOp : public framework::OperatorWithKernel {
                                        ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
+=======
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    const auto *param_var = ctx.InputVar("Param");
+    const auto *grad_var = ctx.InputVar("Grad");
+
+    // supported cases
+    bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                   grad_var->IsType<phi::SelectedRows>();
+    bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                                grad_var->IsType<phi::DenseTensor>();
+    if (!(dense_param_sparse_grad || dense_param_and_grad)) {
+      this->SetDnnFallback(true);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const framework::Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const {
+=======
+      const phi::DenseTensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor.dtype()),

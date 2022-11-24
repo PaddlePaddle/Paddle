@@ -27,8 +27,13 @@ template <typename DeviceContext, typename T>
 class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* y = ctx.Output<Tensor>("Y");
     auto* x = ctx.Input<Tensor>("X");
+=======
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_EQ(x,
                       y,
                       platform::errors::InvalidArgument(
@@ -37,10 +42,17 @@ class InplaceABNKernel : public framework::OpKernel<T> {
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
+<<<<<<< HEAD
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* bias = ctx.Input<Tensor>("Bias");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* variance = ctx.Input<Tensor>("Variance");
+=======
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* mean = ctx.Input<phi::DenseTensor>("Mean");
+    auto* variance = ctx.Input<phi::DenseTensor>("Variance");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     auto momentum = ctx.Attr<float>("momentum");
     auto epsilon = ctx.Attr<float>("epsilon");
@@ -48,6 +60,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
     auto is_test = ctx.Attr<bool>("is_test");
     auto use_global_stats = ctx.Attr<bool>("use_global_stats");
     auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
+<<<<<<< HEAD
     auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     auto* mean_out = ctx.Output<Tensor>("MeanOut");
@@ -55,6 +68,14 @@ class InplaceABNKernel : public framework::OpKernel<T> {
     auto* saved_mean = ctx.Output<Tensor>("SavedMean");
     auto* saved_variance = ctx.Output<Tensor>("SavedVariance");
     auto* reserve_space = ctx.Output<Tensor>("ReserveSpace");
+=======
+
+    auto* mean_out = ctx.Output<phi::DenseTensor>("MeanOut");
+    auto* variance_out = ctx.Output<phi::DenseTensor>("VarianceOut");
+    auto* saved_mean = ctx.Output<phi::DenseTensor>("SavedMean");
+    auto* saved_variance = ctx.Output<phi::DenseTensor>("SavedVariance");
+    auto* reserve_space = ctx.Output<phi::DenseTensor>("ReserveSpace");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if (ctx.Attr<bool>("use_sync_bn")) {
       auto& dev_ctx = ctx.device_context<DeviceContext>();
@@ -62,6 +83,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *x,
+<<<<<<< HEAD
           *scale,
           *bias,
           *mean,
@@ -73,6 +95,18 @@ class InplaceABNKernel : public framework::OpKernel<T> {
           use_global_stats,
           trainable_statistics,
           fuse_with_relu,
+=======
+          *mean,
+          *variance,
+          *scale,
+          *bias,
+          is_test,
+          momentum,
+          epsilon,
+          data_layout,
+          use_global_stats,
+          trainable_statistics,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           y,
           mean_out,
           variance_out,
@@ -85,6 +119,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
           static_cast<const typename framework::ConvertToPhiContext<
               DeviceContext>::TYPE&>(dev_ctx),
           *x,
+<<<<<<< HEAD
           *scale,
           *bias,
           *mean,
@@ -96,6 +131,18 @@ class InplaceABNKernel : public framework::OpKernel<T> {
           use_global_stats,
           trainable_statistics,
           fuse_with_relu,
+=======
+          *mean,
+          *variance,
+          *scale,
+          *bias,
+          is_test,
+          momentum,
+          epsilon,
+          data_layout,
+          use_global_stats,
+          trainable_statistics,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           y,
           mean_out,
           variance_out,
@@ -116,9 +163,15 @@ template <typename DeviceContext, typename T>
 class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const auto* y = ctx.Input<Tensor>("Y");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+=======
+    const auto* y = ctx.Input<phi::DenseTensor>("Y");
+    auto* d_y = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_EQ(d_x,
                       d_y,
                       platform::errors::InvalidArgument(
@@ -135,10 +188,17 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
+<<<<<<< HEAD
     auto* scale = ctx.Input<Tensor>("Scale");
     auto* bias = ctx.Input<Tensor>("Bias");
     auto* saved_mean = ctx.Input<Tensor>("SavedMean");
     auto* saved_variance = ctx.Input<Tensor>("SavedVariance");
+=======
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* saved_mean = ctx.Input<phi::DenseTensor>("SavedMean");
+    auto* saved_variance = ctx.Input<phi::DenseTensor>("SavedVariance");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     auto momentum = ctx.Attr<float>("momentum");
     auto epsilon = ctx.Attr<float>("epsilon");
@@ -146,6 +206,7 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto is_test = ctx.Attr<bool>("is_test");
     auto use_global_stats = ctx.Attr<bool>("use_global_stats");
     auto trainable_statistics = ctx.Attr<bool>("trainable_statistics");
+<<<<<<< HEAD
     auto fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     auto* scale_grad = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -154,6 +215,17 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
     auto* reserve_space = ctx.Input<Tensor>("ReserveSpace");
     auto* mean = ctx.Input<Tensor>("ReserveSpace");
     auto* variance = ctx.Input<Tensor>("ReserveSpace");
+=======
+
+    auto* scale_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* bias_grad =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
+
+    auto* reserve_space = ctx.Input<phi::DenseTensor>("ReserveSpace");
+    auto* mean = ctx.Input<phi::DenseTensor>("ReserveSpace");
+    auto* variance = ctx.Input<phi::DenseTensor>("ReserveSpace");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     if (ctx.Attr<bool>("use_sync_bn")) {
       auto& dev_ctx = ctx.device_context<DeviceContext>();
@@ -208,7 +280,10 @@ class InplaceABNGradKernel : public framework::OpKernel<T> {
           is_test,
           use_global_stats,
           trainable_statistics,
+<<<<<<< HEAD
           fuse_with_relu,
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           true,
           d_x,
           scale_grad,

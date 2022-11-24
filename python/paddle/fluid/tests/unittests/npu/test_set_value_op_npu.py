@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -82,11 +80,25 @@ class TestSetValueApi(TestSetValueBase):
         dynamic_out = self._run_dynamic()
         self._get_answer()
 
+<<<<<<< HEAD
         error_msg = "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
         self.assertTrue((self.data == static_out).all(),
                         msg=error_msg.format("static", self.data, static_out))
         self.assertTrue((self.data == dynamic_out).all(),
                         msg=error_msg.format("dynamic", self.data, dynamic_out))
+=======
+        error_msg = (
+            "\nIn {} mode: \nExpected res = \n{}, \n\nbut received : \n{}"
+        )
+        self.assertTrue(
+            (self.data == static_out).all(),
+            msg=error_msg.format("static", self.data, static_out),
+        )
+        self.assertTrue(
+            (self.data == dynamic_out).all(),
+            msg=error_msg.format("dynamic", self.data, dynamic_out),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 # 1. Test different type of item: int, Python slice, Paddle Tensor
@@ -489,12 +501,19 @@ class TestSetValueItemBool5(TestSetValueApi):
 
     def _call_setitem(self, x):
         idx = paddle.assign(
-            np.array([[False, True, False], [True, True, False]]))
+            np.array([[False, True, False], [True, True, False]])
+        )
         x[idx] = self.value
 
     def _get_answer(self):
+<<<<<<< HEAD
         self.data[np.array([[False, True, False], [True, True,
                                                    False]])] = self.value
+=======
+        self.data[
+            np.array([[False, True, False], [True, True, False]])
+        ] = self.value
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestSetValueItemBool6(TestSetValueApi):
@@ -606,8 +625,14 @@ class TestSetValueValueShape2(TestSetValueApi):
 class TestSetValueValueShape3(TestSetValueApi):
 
     def set_value(self):
+<<<<<<< HEAD
         self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
                                [3, 3, 3, 3]])  # shape is (3,4)
+=======
+        self.value = np.array(
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        )  # shape is (3,4)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def _call_setitem(self, x):
         x[0] = self.value
@@ -619,9 +644,17 @@ class TestSetValueValueShape3(TestSetValueApi):
 class TestSetValueValueShape4(TestSetValueApi):
 
     def set_value(self):
+<<<<<<< HEAD
         self.value = np.array([[1, 1, 1, 1], [2, 2, 2, 2],
                                [3, 3, 3,
                                 3]]).astype(self.dtype)  # shape is (3,4)
+=======
+        self.value = np.array(
+            [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        ).astype(
+            self.dtype
+        )  # shape is (3,4)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def _call_setitem(self, x):
         x[0] = paddle.assign(self.value)  # x is Paddle.Tensor

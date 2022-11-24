@@ -53,6 +53,9 @@ void ScaleKernel(const Context& dev_ctx,
   inputs.emplace_back(&x);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
+  if (x.numel() <= 0 || (!x.IsInitialized())) {
+    return;
+  }
   phi::funcs::ElementwiseKernel<T>(
       dev_ctx,
       inputs,
@@ -74,4 +77,6 @@ PD_REGISTER_KERNEL(scale,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -25,13 +23,13 @@ class TestSquaredL2DistanceOp_f0(OpTest):
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (5, 20)).astype("float32"),
-            'Y': np.random.uniform(0.1, 0.6, (5, 20)).astype("float32")
+            'Y': np.random.uniform(0.1, 0.6, (5, 20)).astype("float32"),
         }
         sub_res = self.inputs['X'] - self.inputs['Y']
         output = sub_res * sub_res
         self.outputs = {
             'sub_result': sub_res,
-            'Out': np.expand_dims(output.sum(1), 1)
+            'Out': np.expand_dims(output.sum(1), 1),
         }
 
     def test_check_output(self):
@@ -47,13 +45,13 @@ class TestSquaredL2DistanceOp_f1(OpTest):
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (2, 3)).astype("float32"),
-            'Y': np.random.uniform(0.1, 0.6, (1, 3)).astype("float32")
+            'Y': np.random.uniform(0.1, 0.6, (1, 3)).astype("float32"),
         }
         sub_res = self.inputs['X'] - self.inputs['Y']
         output = sub_res * sub_res
         self.outputs = {
             'sub_result': sub_res,
-            'Out': np.expand_dims(output.sum(1), 1)
+            'Out': np.expand_dims(output.sum(1), 1),
         }
 
     def test_check_output(self):
@@ -69,14 +67,14 @@ class TestSquaredL2DistanceOp_f2(OpTest):
         self.op_type = "squared_l2_distance"
         self.inputs = {
             'X': np.random.uniform(0.1, 0.6, (2, 3, 4)).astype("float32"),
-            'Y': np.random.uniform(0.1, 0.6, (1, 3, 4)).astype("float32")
+            'Y': np.random.uniform(0.1, 0.6, (1, 3, 4)).astype("float32"),
         }
         sub_res = self.inputs['X'] - self.inputs['Y']
         sub_res = sub_res.reshape((2, 3 * 4))
         output = sub_res * sub_res
         self.outputs = {
             'sub_result': sub_res,
-            'Out': np.expand_dims(output.sum(1), 1)
+            'Out': np.expand_dims(output.sum(1), 1),
         }
 
     def test_check_output(self):

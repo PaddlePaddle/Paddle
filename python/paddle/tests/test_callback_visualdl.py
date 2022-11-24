@@ -12,24 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-import time
-import random
 import tempfile
 import shutil
-import numpy as np
 
 import paddle
-from paddle import Model
 from paddle.static import InputSpec
-from paddle.vision.models import LeNet
-from paddle.hapi.callbacks import config_callbacks
 import paddle.vision.transforms as T
 from paddle.vision.datasets import MNIST
-from paddle.metric import Accuracy
-from paddle.nn.layer.loss import CrossEntropyLoss
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
@@ -47,10 +38,6 @@ class TestCallbacks(unittest.TestCase):
         shutil.rmtree(self.save_dir)
 
     def func_visualdl_callback(self):
-        # visualdl not support python2
-        if sys.version_info < (3, ):
-            return
-
         inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
 
@@ -62,15 +49,22 @@ class TestCallbacks(unittest.TestCase):
         model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+<<<<<<< HEAD
         model.prepare(optimizer=optim,
                       loss=paddle.nn.CrossEntropyLoss(),
                       metrics=paddle.metric.Accuracy())
+=======
+        model.prepare(
+            optimizer=optim,
+            loss=paddle.nn.CrossEntropyLoss(),
+            metrics=paddle.metric.Accuracy(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
-        model.fit(train_dataset,
-                  eval_dataset,
-                  batch_size=64,
-                  callbacks=callback)
+        model.fit(
+            train_dataset, eval_dataset, batch_size=64, callbacks=callback
+        )
 
     def test_visualdl_callback(self):
         with _test_eager_guard():

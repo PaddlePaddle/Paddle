@@ -96,7 +96,11 @@ if(NOT APPLE AND NOT WIN32)
   link_libraries(${CMAKE_THREAD_LIBS_INIT})
   if(WITH_PSLIB OR WITH_DISTRIBUTE)
     set(CMAKE_CXX_LINK_EXECUTABLE
+<<<<<<< HEAD
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl")
+=======
+        "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt -lz -lssl -lcrypto")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   else()
     set(CMAKE_CXX_LINK_EXECUTABLE
         "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
@@ -485,6 +489,7 @@ endfunction()
 
 function(cc_test_run TARGET_NAME)
   if(WITH_TESTING)
+<<<<<<< HEAD
     set(oneValueArgs "")
     set(multiValueArgs COMMAND ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
@@ -493,6 +498,19 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+=======
+    set(oneValueArgs DIR)
+    set(multiValueArgs COMMAND ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    if(cc_test_DIR STREQUAL "")
+      set(cc_test_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+    add_test(
+      NAME ${TARGET_NAME}
+      COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
+      WORKING_DIRECTORY ${cc_test_DIR})
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
                                               FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
@@ -512,12 +530,65 @@ function(cc_test_run TARGET_NAME)
   endif()
 endfunction()
 
+set_property(GLOBAL PROPERTY TEST_SRCS "")
+set_property(GLOBAL PROPERTY TEST_NAMES "")
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
                           "${multiValueArgs}" ${ARGN})
+<<<<<<< HEAD
+=======
+    if(WIN32)
+      # NOTE(zhiqiu): on windows platform, the symbols should be exported
+      # explicitly by __declspec(dllexport), however, there are serveral
+      # symbols not exported, and link error occurs.
+      # so, the tests are not built against dynamic libraries now.
+      cc_test_old(
+        ${TARGET_NAME}
+        SRCS
+        ${cc_test_SRCS}
+        DEPS
+        ${cc_test_DEPS}
+        ARGS
+        ${cc_test_ARGS})
+    else()
+      list(LENGTH cc_test_SRCS len)
+      # message("cc_test_SRCS ${cc_test_SRCS}")
+      # message("cc_test_ARGS ${cc_test_ARGS}")
+
+      if(${len} GREATER 1)
+        message(
+          SEND_ERROR
+            "The number source file of cc_test should be 1, but got ${len}, the source files are: ${cc_test_SRCS}"
+        )
+      endif()
+
+      list(LENGTH cc_test_ARGS len_arg)
+      if(len_arg GREATER_EQUAL 1)
+        set_property(GLOBAL PROPERTY "${TARGET_NAME}_ARGS" "${cc_test_ARGS}")
+        #message("${TARGET_NAME}_ARGS arg ${arg}")
+      endif()
+
+      get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
+      set(test_srcs ${test_srcs} "${CMAKE_CURRENT_SOURCE_DIR}/${cc_test_SRCS}")
+      set_property(GLOBAL PROPERTY TEST_SRCS "${test_srcs}")
+
+      get_property(test_names GLOBAL PROPERTY TEST_NAMES)
+      set(test_names ${test_names} ${TARGET_NAME})
+      set_property(GLOBAL PROPERTY TEST_NAMES "${test_names}")
+    endif()
+  endif()
+endfunction()
+
+function(cc_test_old TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     cc_test_build(${TARGET_NAME} SRCS ${cc_test_SRCS} DEPS ${cc_test_DEPS})
     # we dont test hcom op, because it need complex configuration
     # with more than one machine
@@ -625,6 +696,7 @@ function(nv_test TARGET_NAME)
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+<<<<<<< HEAD
     target_link_libraries(
       ${TARGET_NAME}
       ${nv_test_DEPS}
@@ -644,6 +716,11 @@ function(nv_test TARGET_NAME)
       gtest
       gflags
       glog)
+=======
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main)
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT

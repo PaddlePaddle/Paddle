@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import argparse
 import os
@@ -22,7 +20,6 @@ import signal
 import time
 import socket
 from contextlib import closing
-from six import string_types
 import math
 import paddle
 import paddle.fluid as fluid
@@ -33,7 +30,10 @@ import unittest
 from multiprocessing import Process
 import paddle.fluid.layers as layers
 from functools import reduce
-from test_collective_api_base_mlu import TestCollectiveAPIRunnerBase, runtime_main
+from test_collective_api_base_mlu import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 
 paddle.enable_static()
 
@@ -45,9 +45,15 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(name="tindata",
                                   shape=[10, 1000],
                                   dtype="float32")
+=======
+            tindata = layers.data(
+                name="tindata", shape=[10, 1000], dtype="float32"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             paddle.distributed.broadcast(tindata, src=1)
             return [tindata]
 

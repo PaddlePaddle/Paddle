@@ -135,7 +135,11 @@ void ScanKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
+<<<<<<< HEAD
                   int axis,
+=======
+                  const Scalar& axis,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   bool flatten,
                   bool exclusive,
                   bool reverse,
@@ -143,7 +147,11 @@ void CumsumKernel(const Context& dev_ctx,
   using Reducer = Eigen::internal::SumReducer<T>;
   auto reducer = Reducer();
   ScanKernel<T, Context, Reducer>(
+<<<<<<< HEAD
       dev_ctx, x, axis, flatten, exclusive, reverse, reducer, out);
+=======
+      dev_ctx, x, axis.to<int>(), flatten, exclusive, reverse, reducer, out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 template <typename T>

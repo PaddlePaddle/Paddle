@@ -166,7 +166,10 @@ struct NeighborSampleQuery {
   }
 };
 struct NeighborSampleResult {
+<<<<<<< HEAD
   // Used in deepwalk.
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   uint64_t *val;
   uint64_t *actual_val;
   int *actual_sample_size, sample_size, key_size;
@@ -187,6 +190,7 @@ struct NeighborSampleResult {
     key_size = _key_size;
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+<<<<<<< HEAD
     if (stream != 0) {
       val_mem = memory::AllocShared(
           place,
@@ -203,6 +207,13 @@ struct NeighborSampleResult {
           memory::AllocShared(place, _key_size * sizeof(int));
     }
     val = (uint64_t *)val_mem->ptr();
+=======
+    val_mem =
+        memory::AllocShared(place, _sample_size * _key_size * sizeof(uint64_t));
+    val = (uint64_t *)val_mem->ptr();
+    actual_sample_size_mem =
+        memory::AllocShared(place, _key_size * sizeof(int));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
   }
 
@@ -247,6 +258,7 @@ struct NeighborSampleResult {
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }
+<<<<<<< HEAD
   void display2() {
     VLOG(0) << "in node sample result display -----";
     uint64_t *res = new uint64_t[total_sample_size];
@@ -263,6 +275,8 @@ struct NeighborSampleResult {
     delete[] res;
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   std::vector<uint64_t> get_sampled_graph(NeighborSampleQuery q) {
     std::vector<uint64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];
@@ -383,7 +397,11 @@ struct GpuPsCommGraphFea {
   uint8_t *slot_id_list;   // locate on both side
   GpuPsFeaInfo
       *fea_info_list;  // only locate on host side, the list of fea_info
+<<<<<<< HEAD
   uint64_t feature_size, node_size, feature_capacity;
+=======
+  uint64_t feature_size, node_size;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   // the size of feature array and graph_node_list array
   GpuPsCommGraphFea()
       : node_list(NULL),
@@ -391,8 +409,12 @@ struct GpuPsCommGraphFea {
         slot_id_list(NULL),
         fea_info_list(NULL),
         feature_size(0),
+<<<<<<< HEAD
         node_size(0),
         feature_capacity(0) {}
+=======
+        node_size(0) {}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   GpuPsCommGraphFea(uint64_t *node_list_,
                     uint64_t *feature_list_,
                     uint8_t *slot_id_list_,

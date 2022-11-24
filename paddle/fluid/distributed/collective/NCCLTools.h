@@ -47,7 +47,11 @@
 namespace paddle {
 namespace distributed {
 
+<<<<<<< HEAD
 #define NCCLCHECK(cmd)                                  \
+=======
+#define NCCL_CHECK(cmd)                                 \
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   do {                                                  \
     ncclResult_t r = cmd;                               \
     if (r != ncclSuccess) {                             \
@@ -59,6 +63,7 @@ namespace distributed {
     }                                                   \
   } while (0)
 
+<<<<<<< HEAD
 // NOTE(shenliang03): EventManager are movable not copyable CudaEvent wrapper.
 // EventManage is different from paddle::platform::CudaEvent.
 // It uses lazy initialization and is only created when the
@@ -257,8 +262,38 @@ class NCCLCommManager {
   mutable std::mutex mutex_;
 };
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
+// static check for p2p
+void StaticCheckTensor(const phi::DenseTensor& tensor,
+                       int rank,
+                       int world_size);
+
+// static check for collective
+void StaticCheckTensors(const phi::DenseTensor& out_tensor,
+                        const phi::DenseTensor& in_tensor,
+                        int rank,
+                        int world_size,
+                        int out_size_factor,
+                        int in_size_factor);
+
+void StaticCheckTensorsSameShape(const phi::DenseTensor& out_tensor,
+                                 const phi::DenseTensor& in_tensor,
+                                 int rank,
+                                 int world_size);
+
+void StaticCheckTensorsScatterLikeShape(const phi::DenseTensor& out_tensor,
+                                        const phi::DenseTensor& in_tensor,
+                                        int rank,
+                                        int world_size);
+
+void StaticCheckTensorsGatherLikeShape(const phi::DenseTensor& out_tensor,
+                                       const phi::DenseTensor& in_tensor,
+                                       int rank,
+                                       int world_size);
 }  // namespace distributed
 }  // namespace paddle

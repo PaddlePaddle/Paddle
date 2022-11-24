@@ -21,17 +21,8 @@
 
 #include "paddle/phi/core/utils/rw_lock.h"
 
-// When in inference scenario, the scopes will not be written by two threads in
-// a mean time, but a scope may be read by multiple threads concurrently, and
-// the mutex will cause serious performance issue.
-// So the mutex is disabled when `ON_INFER`.
-#ifdef PADDLE_ON_INFERENCE
-#define SCOPE_VARS_READER_LOCK
-#define SCOPE_VARS_WRITER_LOCK
-#else
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -103,21 +94,16 @@ bool InterpretercoreInferShapeContext::HasOutputs(const std::string& name,
   if (it == outs.end() || it->second.empty()) {
     return false;
   }
-  if (allow_null) {
-    for (auto& output : it->second) {
-      if (output != nullptr) return true;
-    }
-    return false;
-  } else {
+  if (!allow_null) {
     for (auto& output : it->second) {
       if (output == nullptr) return false;
     }
-    return true;
   }
+  return true;
 }
 
 AttrReader InterpretercoreInferShapeContext::Attrs() const {
-  return AttrReader(op_.Attrs());
+  return AttrReader(op_.Attrs(), op_.RuntimeAttrs());
 }
 
 std::vector<std::string> InterpretercoreInferShapeContext::Inputs(
@@ -203,13 +189,13 @@ void InterpretercoreInferShapeContext::ShareDim(const std::string& in,
     out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
     out_sele_rows->set_rows(in_sele_rows.rows());
     out_sele_rows->set_height(in_sele_rows.height());
-  } else if (in_var->IsType<framework::LoDTensor>()) {
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+  } else if (in_var->IsType<phi::DenseTensor>()) {
+    auto& in_lod_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_lod_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_lod_tensor->Resize(in_lod_tensor.dims());
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Currently, the input type of ShareDim only can be LoDTensor "
+        "Currently, the input type of ShareDim only can be phi::DenseTensor "
         "or SelectedRows."));
   }
 }
@@ -245,8 +231,9 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
     }
 
     Variable* in_var = in_var_list[i];
-    if (!in_var->IsType<LoDTensor>()) return;
+    if (!in_var->IsType<phi::DenseTensor>()) return;
     Variable* out_var = out_var_list[i];
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(),
                       true,
                       platform::errors::PreconditionNotMet(
@@ -255,9 +242,20 @@ void InterpretercoreInferShapeContext::ShareAllLoD(
                           out_var_names[i]));
     auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
+=======
+    PADDLE_ENFORCE_EQ(
+        out_var->IsType<phi::DenseTensor>(),
+        true,
+        platform::errors::PreconditionNotMet(
+            "The %d-th output of Output(%s) must be phi::DenseTensor.",
+            i,
+            out_var_names[i]));
+    auto& in_tensor = in_var->Get<phi::DenseTensor>();
+    auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out_tensor->set_lod(in_tensor.lod());
 #ifdef PADDLE_WITH_MKLDNN
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+    if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
   }
@@ -295,20 +293,24 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
                         j));
 
   Variable* in_var = in_it->second.at(i);
-  if (!in_var->IsType<LoDTensor>()) return;
+  if (!in_var->IsType<phi::DenseTensor>()) return;
   Variable* out_var = out_it->second.at(j);
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       out_var->IsType<LoDTensor>(),
+=======
+      out_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       true,
       platform::errors::InvalidArgument(
-          "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
-  auto& in_tensor = in_var->Get<LoDTensor>();
-  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+          "The %zu-th output of Output(%s) must be phi::DenseTensor.", j, out));
+  auto& in_tensor = in_var->Get<phi::DenseTensor>();
+  auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
   out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
-// Shall we have a better method to shared info between in/out Tensor?
+// Shall we have a better method to shared info between in/out phi::DenseTensor?
 #ifdef PADDLE_WITH_MKLDNN
   // Fix me: ugly workaround below
   // Correct solution:
@@ -322,7 +324,7 @@ void InterpretercoreInferShapeContext::ShareLoD(const std::string& in,
   //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
   //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
   //    in Compute()
-  if (in_tensor.layout() != DataLayout::kMKLDNN)
+  if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
     out_tensor->set_layout(in_tensor.layout());
 }
@@ -351,7 +353,7 @@ bool InterpretercoreInferShapeContext::IsRunMKLDNNKernel() const {
     auto& op_with_kernel = dynamic_cast<const OperatorWithKernel&>(op_);
     return ((op_with_kernel.kernel_type()) &&
             (op_with_kernel.kernel_type()->data_layout_ ==
-             framework::DataLayout::kMKLDNN));
+             phi::DataLayout::ONEDNN));
   } catch (std::bad_cast& exp) {
     return false;
   }
@@ -450,13 +452,13 @@ void InterpretercoreInferShapeContext::SetSkipLoD(bool skip) {
 DDim InterpretercoreInferShapeContext::GetDim(Variable* var) const {
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::InvalidArgument("Input variable is nullptr."));
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+  if (var->IsType<phi::DenseTensor>()) {
+    return var->Get<phi::DenseTensor>().dims();
   } else if (var->IsType<phi::SelectedRows>()) {
     return var->Get<phi::SelectedRows>().GetCompleteDims();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Only LoDTensor or SelectedRows support 'GetDim', but input "
+        "Only phi::DenseTensor or SelectedRows support 'GetDim', but input "
         "Variable's type is %s.",
         ToTypeName(var->Type())));
   }
@@ -480,13 +482,14 @@ std::vector<DDim> InterpretercoreInferShapeContext::GetRepeatedDims(
 }
 
 void InterpretercoreInferShapeContext::SetDim(Variable* var, const DDim& dim) {
-  if (var->IsType<LoDTensor>()) {
-    var->GetMutable<LoDTensor>()->Resize(dim);
+  if (var->IsType<phi::DenseTensor>()) {
+    var->GetMutable<phi::DenseTensor>()->Resize(dim);
   } else if (var->IsType<phi::SelectedRows>()) {
     var->GetMutable<phi::SelectedRows>()->set_height(dim[0]);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
-        "Variable type error, expect LoDTensor or SelectedRows, but received "
+        "Variable type error, expect phi::DenseTensor or SelectedRows, but "
+        "received "
         "(%s).",
         ToTypeName(var->Type())));
   }
@@ -577,6 +580,8 @@ Scope* VariableScope::GetMutableScope() const { return scope_; }
 
 Scope* VariableScope::GetMutableLocalScope() const { return local_scope_; }
 
+void VariableScope::SetScope(Scope* scope) { scope_ = scope; }
+
 void VariableScope::SetLocalScope(Scope* local_scope) {
   VLOG(4) << "Set local scope: " << local_scope;
   local_scope_ = local_scope;
@@ -626,7 +631,15 @@ void VariableScope::AddVar(const std::string& name,
     auto id = VarSize();
     name2id_[name] = id;
     vec_meta_info_.emplace_back(0, var_desc);
+<<<<<<< HEAD
     var_list_.push_back(local_scope_->FindVar(name));
+=======
+    if (local_scope_ != nullptr) {
+      var_list_.push_back(local_scope_->FindVar(name));
+    } else {
+      var_list_.push_back(scope_->FindVar(name));
+    }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_EQ(
         var_list_.size(),
         name2id_.size(),
@@ -679,8 +692,18 @@ void VariableScope::CheckExist(const std::string& name) const {
 
 Instruction::Instruction(size_t id,
                          OpFuncNode&& op_func_node,
+<<<<<<< HEAD
                          const platform::DeviceContext& dev_ctx)
     : id_(id), op_func_node_(op_func_node), dev_ctx_(dev_ctx) {
+=======
+                         const platform::DeviceContext& dev_ctx,
+                         const Priority priority)
+    : is_artificial_(op_func_node.operator_base_->Type() == "depend"),
+      id_(id),
+      op_func_node_(op_func_node),
+      dev_ctx_(dev_ctx),
+      priority_(priority) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   PADDLE_ENFORCE_GE(id,
                     0,
                     platform::errors::PreconditionNotMet(
@@ -705,7 +728,9 @@ OpKernelComputeFunc Instruction::KernelFunc() const {
   return op_func_node_.kernel_func_;
 }
 
-phi::Kernel* Instruction::PhiKernel() const { return op_func_node_.pt_kernel_; }
+phi::Kernel* Instruction::PhiKernel() const {
+  return op_func_node_.phi_kernel_;
+}
 
 OpFuncType Instruction::KernelType() const { return op_func_node_.type_; }
 
@@ -721,16 +746,18 @@ OperatorBase* Instruction::OpBase() const {
   return op_base.get();
 }
 
-NextInstruction& Instruction::NextInstructions() { return next_instruction_; }
-
-const NextInstruction& Instruction::NextInstructions() const {
+NextInstructionList& Instruction::NextInstructions() {
   return next_instruction_;
 }
 
-void Instruction::AddGCCheckVar(size_t id) { gc_check_var_list_.push_back(id); }
+const NextInstructionList& Instruction::NextInstructions() const {
+  return next_instruction_;
+}
+
+void Instruction::AddGCCheckVar(size_t id) { gc_check_vars_.push_back(id); }
 
 const std::vector<size_t>& Instruction::GCCheckVars() const {
-  return gc_check_var_list_;
+  return gc_check_vars_;
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
@@ -780,6 +807,8 @@ const std::vector<std::pair<Variable*, Variable*>>& Instruction::InplaceInfo()
 void Instruction::AddInplace(Variable* in, Variable* out) {
   vec_inplace_in_to_out_.emplace_back(in, out);
 }
+
+void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 const std::vector<EventInter>& Instruction::InputEvents() const {
   return intput_events_;

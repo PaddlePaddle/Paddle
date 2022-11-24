@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class AssertTransformer(BaseTransformer):
@@ -37,8 +43,21 @@ class AssertTransformer(BaseTransformer):
         self.visit(self.root)
 
     def visit_Assert(self, node):
+<<<<<<< HEAD
         convert_assert_node = gast.parse('_jst.Assert({test}, {msg})'.format(
             test=ast_to_source_code(node.test),
             msg=ast_to_source_code(node.msg) if node.msg else "")).body[0].value
+=======
+        convert_assert_node = (
+            gast.parse(
+                '_jst.Assert({test}, {msg})'.format(
+                    test=ast_to_source_code(node.test),
+                    msg=ast_to_source_code(node.msg) if node.msg else "",
+                )
+            )
+            .body[0]
+            .value
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         return gast.Expr(value=convert_assert_node)

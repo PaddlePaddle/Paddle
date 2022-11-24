@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
@@ -42,7 +41,7 @@ class TestElementwiseAddOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.out}
@@ -53,25 +52,51 @@ class TestElementwiseAddOp(OpTest):
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    max_relative_error=0.01)
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', max_relative_error=0.01
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['Y'],
                                    'Out',
                                    no_grad_set=set("X"),
                                    max_relative_error=0.01)
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            max_relative_error=0.01,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
             return
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    no_grad_set=set('Y'),
                                    max_relative_error=0.01)
+=======
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            max_relative_error=0.01,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -95,7 +120,8 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -105,7 +131,8 @@ class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -115,7 +142,8 @@ class TestFP16ElementwiseAddOp_scalar(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast."
+)
 class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -125,7 +153,8 @@ class TestElementwiseAddOp_scalar2(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1,1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -137,16 +166,16 @@ class TestFP16ElementwiseAddOp_scalar2(TestFP16ElementwiseAddOp):
 class TestElementwiseAddOp_Vector(TestElementwiseAddOp):
 
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
 class TestFP16ElementwiseAddOp_Vector(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.random((100,)).astype(self.dtype)
+        self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
@@ -317,7 +346,8 @@ class TestFP16ElementwiseAddOp_rowwise_add_0(TestFP16ElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 
     def init_input_output(self):
@@ -330,7 +360,8 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
 
 
 @skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    reason="[skip shape check] Use y_shape(1) to test broadcast."
+)
 class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
     def init_input_output(self):
@@ -424,10 +455,19 @@ class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.MLUPlace(0))
             y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
                                          [[1, 1, 1, 1]], fluid.MLUPlace(0))
+=======
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.MLUPlace(0)
+            )
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.MLUPlace(0)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32
@@ -455,7 +495,7 @@ class TestAddApi(unittest.TestCase):
             def gen_data():
                 return {
                     "x": np.array([2, 3, 4]).astype('float32'),
-                    "y": np.array([1, 5, 2]).astype('float32')
+                    "y": np.array([1, 5, 2]).astype('float32'),
                 }
 
             x = fluid.data(name="x", shape=[3], dtype='float32')
@@ -465,7 +505,7 @@ class TestAddApi(unittest.TestCase):
             place = fluid.MLUPlace(0)
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -476,7 +516,7 @@ class TestAddApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([3.0, 8.0, 6.0])
             self.assertEqual((np_z == z_expected).all(), True)
 
 

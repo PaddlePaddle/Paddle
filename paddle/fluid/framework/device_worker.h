@@ -61,11 +61,16 @@ class Scope;
 namespace paddle {
 namespace framework {
 
+<<<<<<< HEAD
 std::string PrintLodTensor(Tensor* tensor,
+=======
+std::string PrintLodTensor(phi::DenseTensor* tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                            int64_t start,
                            int64_t end,
                            char separator = ',',
                            bool need_leading_separator = false);
+<<<<<<< HEAD
 void PrintLodTensor(Tensor* tensor,
                     int64_t start,
                     int64_t end,
@@ -74,6 +79,16 @@ void PrintLodTensor(Tensor* tensor,
                     bool need_leading_separator = false);
 std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index);
 bool CheckValidOutput(LoDTensor* tensor, size_t batch_size);
+=======
+void PrintLodTensor(phi::DenseTensor* tensor,
+                    int64_t start,
+                    int64_t end,
+                    std::string& output_str,  // NOLINT
+                    char separator = ',',
+                    bool need_leading_separator = false);
+std::pair<int64_t, int64_t> GetTensorBound(phi::DenseTensor* tensor, int index);
+bool CheckValidOutput(phi::DenseTensor* tensor, size_t batch_size);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 class FleetWrapper;
 
@@ -278,7 +293,9 @@ class HogwildWorker : public CPUWorkerBase {
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
   template <typename T>
-  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
+  void SetZero(phi::DenseTensor* tensor,
+               phi::DenseTensor* root_tensor,
+               int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);

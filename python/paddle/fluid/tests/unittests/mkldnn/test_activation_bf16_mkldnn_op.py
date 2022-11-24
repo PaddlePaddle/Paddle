@@ -12,23 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import six
 import abc
 import unittest
 import numpy as np
-from scipy.special import expit, erf
+from scipy.special import erf
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTestTool,
+    convert_float_to_uint16,
+)
 from paddle.fluid.tests.unittests.test_activation_op import TestActivation
 from paddle.fluid.tests.unittests.test_gelu_op import gelu
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
+<<<<<<< HEAD
 @six.add_metaclass(abc.ABCMeta)
 class MKLDNNBF16ActivationOp(object):
 
+=======
+class MKLDNNBF16ActivationOp(metaclass=abc.ABCMeta):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     @abc.abstractmethod
     def config(self):
         pass
@@ -66,10 +70,12 @@ class MKLDNNBF16ActivationOp(object):
     def test_check_grad(self):
         self.calculate_grads()
         self.check_grad_with_place(
-            core.CPUPlace(), ["X"],
+            core.CPUPlace(),
+            ["X"],
             "Out",
             user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.out)])
+            user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
+        )
 
 
 class TestMKLDNNSigmoidBF16Op(MKLDNNBF16ActivationOp, TestActivation):
@@ -108,9 +114,11 @@ class TestMKLDNNGeluErfBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return gelu(x, False)
 
     def op_grad(self, dout, x):
-        return (dout *
-                (0.5 + 0.5 * erf(x / np.sqrt(2)) +
-                 (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))))
+        return dout * (
+            0.5
+            + 0.5 * erf(x / np.sqrt(2))
+            + (x / np.sqrt(2 * np.pi) * np.exp(-0.5 * np.power(x, 2)))
+        )
 
 
 class TestMKLDNNGeluErfDim2BF16Op(TestMKLDNNGeluErfBF16Op):
@@ -129,10 +137,19 @@ class TestMKLDNNGeluTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
 
     def op_grad(self, dout, x):
         grad_part = np.tanh(
-            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
-        return dout * 0.5 * (1 + grad_part) * (1 + np.sqrt(2 / np.pi) *
-                                               (x + 0.134145 * np.power(x, 3)) *
-                                               (1 - grad_part))
+            np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))
+        )
+        return (
+            dout
+            * 0.5
+            * (1 + grad_part)
+            * (
+                1
+                + np.sqrt(2 / np.pi)
+                * (x + 0.134145 * np.power(x, 3))
+                * (1 - grad_part)
+            )
+        )
 
     def set_attrs(self):
         self.attrs = {"use_mkldnn": True, "approximate": True}
@@ -165,8 +182,17 @@ class TestMKLDNNMishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return x * np.tanh(np.log(1 + np.exp(x)))
 
     def op_grad(self, dout, x):
+<<<<<<< HEAD
         omega = np.exp(
             3 * x) + 4 * np.exp(2 * x) + np.exp(x) * (4 * x + 6) + 4 * (x + 1)
+=======
+        omega = (
+            np.exp(3 * x)
+            + 4 * np.exp(2 * x)
+            + np.exp(x) * (4 * x + 6)
+            + 4 * (x + 1)
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         delta = np.exp(2 * x) + 2 * np.exp(x) + 2
         return dout * ((np.exp(x) * omega) / delta**2)
 
@@ -241,7 +267,7 @@ class TestMKLDNNTanhBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         return np.tanh(x)
 
     def op_grad(self, dout, x):
-        return dout * (1 - np.tanh(x)**2)
+        return dout * (1 - np.tanh(x) ** 2)
 
 
 class TestMKLDNNAbsBF16Op(MKLDNNBF16ActivationOp, TestActivation):

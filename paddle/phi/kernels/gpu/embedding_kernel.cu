@@ -13,13 +13,20 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 namespace phi {
 
 template <typename T, typename IdT, bool PaddingFlag>
@@ -35,6 +42,16 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
+    if (PaddingFlag == false || id != padding_idx) {
+      PADDLE_ENFORCE(id >= 0,
+                     "Id should no less than 0 but received an id value: %lld.",
+                     id);
+      PADDLE_ENFORCE(
+          id < N,
+          "Id should smaller than %lld but received an id value: %lld.",
+          N,
+          id);
+    }
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
@@ -125,4 +142,5 @@ PD_REGISTER_KERNEL(embedding,
                    phi::EmbeddingKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

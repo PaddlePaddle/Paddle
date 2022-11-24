@@ -12,19 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from __future__ import division
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
-import paddle
 
 
-def compute_mean_iou(predictions, labels, num_classes, in_wrongs, in_corrects,
-                     in_mean_ious):
+def compute_mean_iou(
+    predictions, labels, num_classes, in_wrongs, in_corrects, in_mean_ious
+):
     assert predictions.shape == labels.shape
     predictions = predictions.flatten()
     labels = labels.flatten()
@@ -45,8 +40,9 @@ def compute_mean_iou(predictions, labels, num_classes, in_wrongs, in_corrects,
 
     denominator = out_wrong + out_correct
     valid_count = (denominator != 0).sum()
-    denominator = np.where(denominator > 0, denominator,
-                           np.ones(denominator.shape))
+    denominator = np.where(
+        denominator > 0, denominator, np.ones(denominator.shape)
+    )
     mean_iou = (out_correct / denominator).sum() / valid_count
 
     for _, in_mean_iou in in_mean_ious:
@@ -59,20 +55,33 @@ class TestMeanIOUOp(OpTest):
     def setUp(self):
         self.config()
         self.op_type = "mean_iou"
-        predictions = np.random.randint(0, self.num_classes,
-                                        self.image_size).astype("int32")
-        labels = np.random.randint(0, self.num_classes,
-                                   self.image_size).astype("int32")
+        predictions = np.random.randint(
+            0, self.num_classes, self.image_size
+        ).astype("int32")
+        labels = np.random.randint(0, self.num_classes, self.image_size).astype(
+            "int32"
+        )
 
         in_wrongs = []
         for i in range(self.in_wrong_num):
             in_wrongs.append(
+<<<<<<< HEAD
                 ("in_wrong_%d" % i,
                  np.random.randint(0, 10, [self.num_classes]).astype("int32")))
+=======
+                (
+                    "in_wrong_%d" % i,
+                    np.random.randint(0, 10, [self.num_classes]).astype(
+                        "int32"
+                    ),
+                )
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         in_corrects = []
         for i in range(self.in_correct_num):
             in_corrects.append(
+<<<<<<< HEAD
                 ("in_correct_%d" % i,
                  np.random.randint(0, 10, [self.num_classes]).astype("int32")))
 
@@ -81,22 +90,45 @@ class TestMeanIOUOp(OpTest):
             in_mean_ious.append(("in_mean_iou_%d" % i,
                                  np.random.uniform(0, 1,
                                                    [1]).astype("float32")))
+=======
+                (
+                    "in_correct_%d" % i,
+                    np.random.randint(0, 10, [self.num_classes]).astype(
+                        "int32"
+                    ),
+                )
+            )
+
+        in_mean_ious = []
+        for i in range(self.in_mean_iou_num):
+            in_mean_ious.append(
+                (
+                    "in_mean_iou_%d" % i,
+                    np.random.uniform(0, 1, [1]).astype("float32"),
+                )
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.inputs = {
             'Predictions': predictions,
             'Labels': labels,
             'InWrongs': in_wrongs,
             'InCorrects': in_corrects,
-            'InMeanIou': in_mean_ious
+            'InMeanIou': in_mean_ious,
         }
         self.attrs = {'num_classes': int(self.num_classes)}
         mean_iou, out_wrong, out_correct = compute_mean_iou(
-            predictions, labels, self.num_classes, in_wrongs, in_corrects,
-            in_mean_ious)
+            predictions,
+            labels,
+            self.num_classes,
+            in_wrongs,
+            in_corrects,
+            in_mean_ious,
+        )
         self.outputs = {
             'OutMeanIou': mean_iou,
             'OutWrong': out_wrong,
-            'OutCorrect': out_correct
+            'OutCorrect': out_correct,
         }
 
     def config(self):
@@ -125,6 +157,7 @@ class TestCase1(TestMeanIOUOp):
         self.check_output(check_dygraph=False, check_eager=False)
 
 
+<<<<<<< HEAD
 class TestMeanIOUOpError(unittest.TestCase):
 
     def test_errors(self):
@@ -141,5 +174,7 @@ class TestMeanIOUOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.mean_iou, x2, y2)
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 if __name__ == '__main__':
     unittest.main()

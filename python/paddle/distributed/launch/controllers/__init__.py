@@ -18,12 +18,17 @@ from .collective import CollectiveController
 from .collective import CollectiveElasticController
 from .ps import PSController
 from .ipu_controller import IPUController
+<<<<<<< HEAD
+=======
+from .rpc import RpcController
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 # the order is extremely important
 _controllers = [
     IPUController,
     CollectiveElasticController,
     PSController,
+    RpcController,
     CollectiveController,
 ]
 

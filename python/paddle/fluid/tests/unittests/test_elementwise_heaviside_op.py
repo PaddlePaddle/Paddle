@@ -18,6 +18,13 @@ from op_test import OpTest
 import paddle
 
 
+def Heaviside_grad(x, y, dout):
+    tmp = np.zeros(x.shape).astype("float16")
+    dx = np.multiply(tmp, dout)
+    dy = np.multiply(np.equal(x, 0), dout).astype("float16")
+    return dx, dy
+
+
 class TestElementwiseOp(OpTest):
 
     def setUp(self):
@@ -64,19 +71,19 @@ class TestHeavisideBroadcast(unittest.TestCase):
 
         res = paddle.heaviside(self.tensor_1, self.tensor_2)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_2, self.tensor_3)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_2, self.tensor_4)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.heaviside(self.tensor_4, self.tensor_5)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
 
 
 class TestHeavisideAPI_float64(unittest.TestCase):
@@ -88,41 +95,60 @@ class TestHeavisideAPI_float64(unittest.TestCase):
         self.dtype = "float64"
 
     def test_static(self):
-        for use_cuda in ([False, True]
-                         if paddle.device.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if paddle.device.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
             prog = paddle.static.Program()
             with paddle.static.program_guard(prog):
+<<<<<<< HEAD
                 x = paddle.static.data(name=f"x_{self.dtype}",
                                        shape=[13, 17],
                                        dtype=self.dtype)
                 y = paddle.static.data(name=f"y_{self.dtype}",
                                        shape=[13, 17],
                                        dtype=self.dtype)
+=======
+                x = paddle.static.data(
+                    name=f"x_{self.dtype}", shape=[13, 17], dtype=self.dtype
+                )
+                y = paddle.static.data(
+                    name=f"y_{self.dtype}", shape=[13, 17], dtype=self.dtype
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 out = paddle.heaviside(x, y)
 
             exe = paddle.static.Executor(place=place)
-            res = exe.run(prog,
-                          feed={
-                              f"x_{self.dtype}": self.x_np,
-                              f"y_{self.dtype}": self.y_np
-                          },
-                          fetch_list=out,
-                          use_prune=True)
+            (res,) = exe.run(
+                prog,
+                feed={
+                    f"x_{self.dtype}": self.x_np,
+                    f"y_{self.dtype}": self.y_np,
+                },
+                fetch_list=out,
+                use_prune=True,
+            )
 
-            self.assertTrue(np.allclose(res, self.out_np))
+            np.testing.assert_allclose(res, self.out_np, rtol=1e-05)
 
     def test_dygraph(self):
-        for use_cuda in ([False, True]
-                         if paddle.device.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if paddle.device.is_compiled_with_cuda() else [False]
+        ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.disable_static(place=place)
+<<<<<<< HEAD
             result = paddle.heaviside(paddle.to_tensor(self.x_np),
                                       paddle.to_tensor(self.y_np))
+=======
+            result = paddle.heaviside(
+                paddle.to_tensor(self.x_np), paddle.to_tensor(self.y_np)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-            self.assertTrue(np.allclose(result.numpy(), self.out_np))
+            np.testing.assert_allclose(result.numpy(), self.out_np, rtol=1e-05)
 
 
 class TestHeavisideAPI_float32(TestHeavisideAPI_float64):
@@ -152,6 +178,31 @@ class TestHeavisideAPI_int32(TestHeavisideAPI_float64):
         self.dtype = "int32"
 
 
+class TestHeavisideAPI_float16(OpTest):
+    def setUp(self):
+        self.dtype = np.float16
+        self.op_type = "elementwise_heaviside"
+        self.python_api = paddle.heaviside
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype("float16"),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype("float16"),
+        }
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=Heaviside_grad(
+                self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
+            ),
+            check_eager=True,
+        )
+
+
 class TestHeavisideError(unittest.TestCase):
 
     def test_input(self):
@@ -168,8 +219,14 @@ class TestHeavisideError(unittest.TestCase):
         self.assertRaises(ValueError, test_input_y)
 
         def test_input_xy():
+<<<<<<< HEAD
             paddle.heaviside(paddle.randn([100], 'float32'),
                              paddle.randn([100], 'float64'))
+=======
+            paddle.heaviside(
+                paddle.randn([100], 'float32'), paddle.randn([100], 'float64')
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(ValueError, test_input_xy)
 

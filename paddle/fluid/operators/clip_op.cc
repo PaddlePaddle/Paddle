@@ -30,6 +30,7 @@ class ClipOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -39,6 +40,8 @@ class ClipOp : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -64,16 +67,6 @@ class ClipOpMaker : public framework::OpProtoAndCheckerMaker {
         "input(x)");
     AddAttr<AttrType>("min", "float number, the minimum value to clip by.");
     AddAttr<AttrType>("max", "float number, the maximum value to clip by.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
     AddComment(R"DOC(
 Clip Operator.
 
@@ -108,6 +101,7 @@ class ClipOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
@@ -117,6 +111,8 @@ class ClipOpGrad : public framework::OperatorWithKernel {
                                      framework::LibraryType::kMKLDNN);
     }
 #endif
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };

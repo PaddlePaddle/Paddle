@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/edit_distance_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -21,6 +23,7 @@ class EditDistanceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Hyps"), "Input", "Hyps", "EditDistance");
     OP_INOUT_CHECK(ctx->HasInput("Refs"), "Input", "Refs", "EditDistance");
@@ -87,6 +90,8 @@ class EditDistanceOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SequenceNum", {1});
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -129,7 +134,7 @@ strings and their references.
 
 Edit distance, also called Levenshtein distance, measures how dissimilar two strings
 are by counting the minimum number of operations to transform one string into another.
-The operations include insertion, deletion, and substitution. 
+The operations include insertion, deletion, and substitution.
 
 For example, given hypothesis string A = "kitten" and reference B = "sitting",
 A will be transformed into B at least after two substitutions and one
@@ -153,6 +158,10 @@ will be divided by the length of reference string.
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(edit_distance,
+                            EditDistanceShapeFunctor,
+                            PD_INFER_META(phi::EditDistanceInferMeta));
+
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
@@ -160,6 +169,5 @@ REGISTER_OPERATOR(
     ops::EditDistanceOp,
     ops::EditDistanceOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(
-    edit_distance, ops::EditDistanceKernel<paddle::platform::CPUPlace, float>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    EditDistanceShapeFunctor);

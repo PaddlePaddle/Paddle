@@ -12,19 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import sys
 
 sys.path.append("..")
-import op_test
-import numpy as np
 import unittest
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
-from paddle.fluid.backward import append_backward
+
 '''
 class TestAssignOp(op_test.OpTest):
     def setUp(self):
@@ -70,8 +63,8 @@ class TestAssignOpWithLoDTensorArray(unittest.TestCase):
         res = exe.run(main_program,
                       feed={'x': feed_x},
                       fetch_list=[sums.name, x.grad_name])
-        self.assertTrue(np.allclose(res[0], feed_add))
-        self.assertTrue(np.allclose(res[1], ones / 1000.0))
+        np.testing.assert_allclose(res[0], feed_add)
+        np.testing.assert_allclose(res[1], ones / 1000.0)
 
 
 class TestAssignOpError(unittest.TestCase):

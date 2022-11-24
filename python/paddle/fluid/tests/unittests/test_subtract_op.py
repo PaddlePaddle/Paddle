@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -42,12 +40,14 @@ class ApiSubtractTest(unittest.TestCase):
 
     def test_static_api(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_y = paddle.static.data("y", shape=[10, 15], dtype="float32")
             result_max = paddle.subtract(data_x, data_y)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res, = exe.run(feed={
                 "x": self.input_x,
                 "y": self.input_y
@@ -57,10 +57,22 @@ class ApiSubtractTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
+=======
+            (res,) = exe.run(
+                feed={"x": self.input_x, "y": self.input_y},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             data_x = paddle.static.data("x", shape=[10, 15], dtype="float32")
             data_z = paddle.static.data("z", shape=[15], dtype="float32")
             result_max = paddle.subtract(data_x, data_z)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res, = exe.run(feed={
                 "x": self.input_x,
                 "z": self.input_z
@@ -70,10 +82,22 @@ class ApiSubtractTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
+=======
+            (res,) = exe.run(
+                feed={"x": self.input_x, "z": self.input_z},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             data_a = paddle.static.data("a", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.subtract(data_a, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res, = exe.run(feed={
                 "a": self.input_a,
                 "c": self.input_c
@@ -83,16 +107,35 @@ class ApiSubtractTest(unittest.TestCase):
 
         with paddle.static.program_guard(paddle.static.Program(),
                                          paddle.static.Program()):
+=======
+            (res,) = exe.run(
+                feed={"a": self.input_a, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             data_b = paddle.static.data("b", shape=[3], dtype="int64")
             data_c = paddle.static.data("c", shape=[3], dtype="int64")
             result_max = paddle.subtract(data_b, data_c)
             exe = paddle.static.Executor(self.place)
+<<<<<<< HEAD
             res, = exe.run(feed={
                 "b": self.input_b,
                 "c": self.input_c
             },
                            fetch_list=[result_max])
         self.assertTrue(np.allclose(res, self.np_expected4))
+=======
+            (res,) = exe.run(
+                feed={"b": self.input_b, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_dynamic_api(self):
         paddle.disable_static()
@@ -106,17 +149,17 @@ class ApiSubtractTest(unittest.TestCase):
 
         res = paddle.subtract(x, y)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected1))
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
 
         # test broadcast
         res = paddle.subtract(x, z)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected2))
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
 
         res = paddle.subtract(a, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected3))
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
 
         res = paddle.subtract(b, c)
         res = res.numpy()
-        self.assertTrue(np.allclose(res, self.np_expected4))
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)

@@ -22,7 +22,7 @@
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 using DDim = framework::DDim;
 template <typename DeviceContext, typename T>
 class TreeConvKernel : public framework::OpKernel<T> {
@@ -31,10 +31,10 @@ class TreeConvKernel : public framework::OpKernel<T> {
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
     phi::funcs::SetConstant<DeviceContext, T> constant;
 
-    auto *Edges = ctx.Input<Tensor>("EdgeSet");
-    auto *Embeddings = ctx.Input<Tensor>("NodesVector");
-    auto *Filter = ctx.Input<Tensor>("Filter");
-    auto *output_emb = ctx.Output<Tensor>("Out");
+    auto *Edges = ctx.Input<phi::DenseTensor>("EdgeSet");
+    auto *Embeddings = ctx.Input<phi::DenseTensor>("NodesVector");
+    auto *Filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto *output_emb = ctx.Output<phi::DenseTensor>("Out");
     int max_depth = ctx.Attr<int>("max_depth");
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
@@ -78,13 +78,15 @@ template <typename DeviceContext, typename T>
 class TreeConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *in_g = ctx.Output<Tensor>(framework::GradVarName("NodesVector"));
-    auto *filter_g = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto *out_g = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *in_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("NodesVector"));
+    auto *filter_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     int max_depth = ctx.Attr<int>("max_depth");
-    auto *Embeddings = ctx.Input<Tensor>("NodesVector");
-    auto *edges = ctx.Input<Tensor>("EdgeSet");
-    auto *Filter = ctx.Input<Tensor>("Filter");
+    auto *Embeddings = ctx.Input<phi::DenseTensor>("NodesVector");
+    auto *edges = ctx.Input<phi::DenseTensor>("EdgeSet");
+    auto *Filter = ctx.Input<phi::DenseTensor>("Filter");
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
     math::Col2TreeFunctor<DeviceContext, T> col2tree;
     phi::funcs::SetConstant<DeviceContext, T> constant;

@@ -11,14 +11,19 @@ limitations under the License. */
 #pragma once
 
 #ifdef PADDLE_WITH_XPU
+<<<<<<< HEAD
 #include <vector>
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+=======
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 namespace paddle {
 namespace operators {
 
 using float16 = typename XPUTypeTrait<paddle::platform::float16>::Type;
+<<<<<<< HEAD
 
 enum XPUFCCalcType {
   FC_INT16 = 0,
@@ -604,6 +609,8 @@ MatmulGradFcInfo(xpu::Context* xpu_ctx,
 
   return result;
 }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 }  // namespace operators
 }  // namespace paddle

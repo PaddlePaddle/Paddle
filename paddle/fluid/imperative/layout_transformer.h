@@ -19,8 +19,26 @@
 #include "paddle/fluid/imperative/var_helper.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/core/tensor_utils.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 namespace paddle {
 namespace imperative {
+template <typename VarType>
+void SetOutDataLayout(std::shared_ptr<VarType> var,
+                      const phi::DataLayout layout) {
+  if (var != nullptr && var->Var().IsInitialized()) {
+    paddle::imperative::SetDataLayout(var, layout);
+    // set out_tensor's layout
+    if (var->MutableVar()->IsInitialized()) {
+      paddle::framework::Variable* tmp_var = var->MutableVar();
+      auto* out = tmp_var->GetMutable<phi::DenseTensor>();
+      phi::DenseTensorUtils::GetMutableMeta(static_cast<phi::DenseTensor*>(out))
+          ->layout = layout;
+    }
+  }
+}
 
 template <typename VarType>
 std::shared_ptr<VarType> TraceTransposeOp(
@@ -46,12 +64,10 @@ std::shared_ptr<VarType> TraceTransposeOp(
   tracer->TraceOp("transpose2", ins, outs, std::move(attrs));
   paddle::imperative::SetDataLayout(out, layout);
   VLOG(4) << "Transpose " << paddle::imperative::GetNameFromVar(var) << "["
-          << paddle::framework::DataLayoutToString(
-                 paddle::imperative::GetDataLayout(var))
+          << phi::DataLayoutToString(paddle::imperative::GetDataLayout(var))
           << "]"
           << " to " << paddle::imperative::GetNameFromVar(out) << "["
-          << paddle::framework::DataLayoutToString(
-                 paddle::imperative::GetDataLayout(out))
+          << phi::DataLayoutToString(paddle::imperative::GetDataLayout(out))
           << "]";
   return out;
 }
@@ -77,6 +93,12 @@ class LayoutTransformer {
       for (auto& var : pair.second) {
         // Once the any input is desired layout, we set in_layout is desired
         // layout.
+<<<<<<< HEAD
+=======
+        if (in_layout == DataLayout::UNDEFINED) {
+          in_layout = paddle::imperative::GetDataLayout(var);
+        }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if (var != nullptr && (paddle::imperative::GetDataLayout(var) ==
                                LayoutAutoTune::Instance().GetDesiredLayout())) {
           in_layout = LayoutAutoTune::Instance().GetDesiredLayout();
@@ -84,7 +106,11 @@ class LayoutTransformer {
         }
       }
     }
-    SetVarsLayout(outs, in_layout);
+    VLOG(3) << "Optimze Layout agnostic op: " << type_ << " "
+            << phi::DataLayoutToString(in_layout);
+    if (in_layout != DataLayout::UNDEFINED) {
+      SetVarsLayout(outs, in_layout);
+    }
     return ins;
   }
 
@@ -111,7 +137,11 @@ class LayoutTransformer {
           auto out_vars = outs.at(name);
           for (auto& var : out_vars) {
             if (var != nullptr) {
+<<<<<<< HEAD
               paddle::imperative::SetDataLayout(var, layout);
+=======
+              paddle::imperative::SetOutDataLayout(var, layout);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
           }
           not_in_out = false;
@@ -123,7 +153,11 @@ class LayoutTransformer {
       for (auto& pair : outs) {
         for (auto& var : pair.second) {
           if (var != nullptr) {
+<<<<<<< HEAD
             paddle::imperative::SetDataLayout(var, layout);
+=======
+            paddle::imperative::SetOutDataLayout(var, layout);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
           }
         }
       }
@@ -163,8 +197,8 @@ class HeavilyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
 
     // Step 1: Adjust the data_layout attr to the desired layout
     auto desired_layout = LayoutAutoTune::Instance().GetDesiredLayout();
-    std::string desired_layout_str = paddle::framework::DataLayoutToString(
-        LayoutAutoTune::Instance().GetDesiredLayout());
+    std::string desired_layout_str =
+        phi::DataLayoutToString(LayoutAutoTune::Instance().GetDesiredLayout());
     if (attrs->find("data_format") != attrs->end() &&
         PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) !=
             desired_layout_str) {
@@ -230,10 +264,17 @@ class LightlyLayoutSensitiveOpTransformer : public LayoutTransformer<VarType> {
       for (auto& var : pair.second) {
         if (var != nullptr) {
           VLOG(3) << "Tune the layout from "
+<<<<<<< HEAD
                   << paddle::framework::DataLayoutToString(
                          paddle::imperative::GetDataLayout(var))
                   << " to "
                   << paddle::framework::DataLayoutToString(
+=======
+                  << phi::DataLayoutToString(
+                         paddle::imperative::GetDataLayout(var))
+                  << " to "
+                  << phi::DataLayoutToString(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                          LayoutAutoTune::Instance().GetDesiredLayout());
         }
         if (var != nullptr &&
@@ -352,7 +393,101 @@ class FlattenOpTransformer
     } else {
       return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
           ins, outs, attrs, tracer);
+<<<<<<< HEAD
     }
+  }
+};
+
+template <typename VarType>
+class ArgmaxOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
+ public:
+  explicit ArgmaxOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Apply(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    auto& in_var = ins.at("X")[0];
+    auto var_layout = paddle::imperative::GetDataLayout(in_var);
+    bool keep_dims = PADDLE_GET_CONST(bool, (*attrs)["keepdims"]);
+    if (keep_dims) {
+      if (var_layout != DataLayout::UNDEFINED) {
+        std::vector<int> perm_nhwc = {0, 3, 1, 2};
+        std::vector<int> perm_nchw = {0, 2, 3, 1};
+
+        auto perm = var_layout == DataLayout::NHWC ? perm_nhwc : perm_nchw;
+        switch (AttrTypeID((*attrs)["axis"])) {
+          case paddle::framework::proto::AttrType::INT: {
+            auto axis = PADDLE_GET_CONST(int, (*attrs)["axis"]);
+            (*attrs)["axis"] = static_cast<int>(perm[axis]);
+          }
+          case paddle::framework::proto::AttrType::LONG: {
+            auto axis = PADDLE_GET_CONST(int64_t, (*attrs)["axis"]);
+            (*attrs)["axis"] = static_cast<int64_t>(perm[axis]);
+          }
+          default:
+            VLOG(4) << "The data_type of axis is Error, axis must be int or "
+                       "int64, bug got "
+                    << (AttrTypeID((*attrs)["axis"]));
+        }
+      }
+      this->SetVarsLayout(outs, var_layout);
+      return ins;
+    }
+    return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
+        ins, outs, attrs, tracer);
+  }
+};
+
+template <typename VarType>
+class ConcatOpTransformer
+    : public LightlyLayoutSensitiveOpTransformer<VarType> {
+ public:
+  explicit ConcatOpTransformer(const std::string& type)
+      : LightlyLayoutSensitiveOpTransformer<VarType>(type) {}
+
+  paddle::imperative::NameVarMap<VarType> Apply(
+      const paddle::imperative::NameVarMap<VarType>& ins,
+      const paddle::imperative::NameVarMap<VarType>& outs,
+      paddle::framework::AttributeMap* attrs,
+      const std::shared_ptr<paddle::imperative::Tracer>& tracer) {
+    VLOG(3) << "Optimze lightly layout sensitive op " << this->Type();
+    auto& in_var = ins.at("X")[0];
+    auto var_layout = paddle::imperative::GetDataLayout(in_var);
+    bool need_tranppose = false;
+    for (auto& pair : ins) {
+      for (auto& var : pair.second) {
+        if (var != nullptr &&
+            (paddle::imperative::GetDataLayout(var) != var_layout)) {
+          need_tranppose = true;
+          break;
+        }
+      }
+    }
+
+    if (need_tranppose) {
+      return LightlyLayoutSensitiveOpTransformer<VarType>::Apply(
+          ins, outs, attrs, tracer);
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+    }
+
+    if (var_layout != DataLayout::UNDEFINED) {
+      std::vector<int> perm_nhwc = {0, 3, 1, 2};
+      std::vector<int> perm_nchw = {0, 2, 3, 1};
+      auto perm = var_layout == DataLayout::NHWC ? perm_nhwc : perm_nchw;
+      auto axis = PADDLE_GET_CONST(int, (*attrs)["axis"]);
+      (*attrs)["axis"] = static_cast<int>(perm[axis]);
+    }
+    auto axis = PADDLE_GET_CONST(int, (*attrs)["axis"]);
+    VLOG(3) << "Optimze lightly layout sensitive op asdfasdfasdf axis" << axis;
+
+    this->SetVarsLayout(outs, var_layout);
+    return ins;
   }
 };
 

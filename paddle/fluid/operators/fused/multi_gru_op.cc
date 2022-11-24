@@ -22,9 +22,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/fc_functor.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -143,14 +140,16 @@ void MultiGRUOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType MultiGRUOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout = framework::DataLayout::kMKLDNN;
-
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "X"),
       ctx.GetPlace(),
+<<<<<<< HEAD
       layout,
       library);
+=======
+      phi::DataLayout::ONEDNN,
+      framework::LibraryType::kMKLDNN);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 void MultiGRUOpMaker::Make() {
@@ -219,7 +218,7 @@ void MultiGRUOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 The Fusion complete GRU Operator.
-This operator fuse the fully-connected operator into GRU, 
+This operator fuse the fully-connected operator into GRU,
 more details can refer to GRU op.
 )DOC");
 }

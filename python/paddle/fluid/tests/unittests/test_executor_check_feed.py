@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
+<<<<<<< HEAD
 import numpy
 import paddle
 import paddle.fluid.core as core
+=======
+import paddle
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle.fluid as fluid
 
 
@@ -52,6 +54,7 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(feed={
                         'x': train_data,
                         'lr': a
@@ -59,6 +62,14 @@ class TestExecutor(unittest.TestCase):
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)
+=======
+                    exe.run(
+                        feed={'x': train_data, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                        use_prune=True,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_compiled_program_check_feed(self):
         main_program = fluid.Program()
@@ -71,11 +82,13 @@ class TestExecutor(unittest.TestCase):
                 lr, cost = self.net()
                 exe.run(startup_program)
                 compiled_prog = fluid.CompiledProgram(
-                    main_program).with_data_parallel(loss_name=cost.name)
+                    main_program
+                ).with_data_parallel(loss_name=cost.name)
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(compiled_prog,
                             feed={
                                 'x': train_data,
@@ -84,6 +97,15 @@ class TestExecutor(unittest.TestCase):
                             fetch_list=[lr, cost],
                             return_numpy=False,
                             use_prune=True)
+=======
+                    exe.run(
+                        compiled_prog,
+                        feed={'x': train_data, 'lr': a},
+                        fetch_list=[lr, cost],
+                        return_numpy=False,
+                        use_prune=True,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

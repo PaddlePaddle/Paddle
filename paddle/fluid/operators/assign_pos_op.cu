@@ -23,8 +23,12 @@ We retain the following license from the original files:
 
 #include "paddle/fluid/operators/assign_pos_op.h"
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 DECLARE_bool(avoid_op_randomness);
 
@@ -47,7 +51,7 @@ __global__ void AssignPos(T* cum_count,
   CUDA_KERNEL_LOOP(i, limit) {
     int number_idx = numbers[i];
     if (number_idx > -1) {
-      int p = platform::CudaAtomicAdd(cum_count + number_idx, -1);
+      int p = phi::CudaAtomicAdd(cum_count + number_idx, -1);
       out[p - 1] = i;
     }
   }
@@ -73,7 +77,7 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     T* cum_data = const_cast<T*>(cum_count->data<T>());
     auto cum_size = cum_count->numel();
 
-    framework::Tensor cpu_eff_num_len;
+    phi::DenseTensor cpu_eff_num_len;
     int64_t cpu_eff_num_len_data = 0;
     if (platform::is_cpu_place(eff_num_len->place())) {
       cpu_eff_num_len_data = eff_num_len->data<T>()[0];

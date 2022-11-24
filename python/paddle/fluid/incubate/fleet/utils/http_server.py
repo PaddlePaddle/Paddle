@@ -14,6 +14,7 @@
 """Http Server."""
 
 import logging
+
 # NOTE: HTTPServer has a different name in python2 and python3
 from http.server import HTTPServer
 import http.server as SimpleHTTPServer
@@ -32,9 +33,15 @@ def get_logger(name, level, fmt):
     return logger
 
 
+<<<<<<< HEAD
 _http_server_logger = get_logger(__name__,
                                  logging.INFO,
                                  fmt='%(asctime)s-%(levelname)s: %(message)s')
+=======
+_http_server_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
@@ -125,14 +132,14 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
-class KVHTTPServer(HTTPServer, object):
+class KVHTTPServer(HTTPServer):
     """
     it is a http server storing kv pairs.
     """
 
     def __init__(self, port, handler):
         """Init."""
-        super(KVHTTPServer, self).__init__(('', port), handler)
+        super().__init__(('', port), handler)
         self.delete_kv_lock = threading.Lock()
         self.delete_kv = {}
         self.kv_lock = threading.Lock()
@@ -164,7 +171,8 @@ class KVServer:
         start server until user calls stop to let it quit.
         """
         self.listen_thread = threading.Thread(
-            target=lambda: self.http_server.serve_forever())
+            target=lambda: self.http_server.serve_forever()
+        )
         self.listen_thread.start()
 
     def stop(self):

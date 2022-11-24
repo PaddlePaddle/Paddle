@@ -73,7 +73,12 @@ cc_library(
        denormal
        garbage_collector
        var_helper
+<<<<<<< HEAD
        layout_autotune)
+=======
+       layout_autotune
+       ops_extra_info)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 cc_library(
   basic_engine
   SRCS basic_engine.cc

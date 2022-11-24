@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import paddle
 from paddle import fluid, nn
 import paddle.fluid.dygraph as dg
 import paddle.nn.functional as F
@@ -21,6 +22,7 @@ import unittest
 
 
 class Conv2DTransposeTestCase(unittest.TestCase):
+<<<<<<< HEAD
 
     def __init__(self,
                  methodName='runTest',
@@ -39,6 +41,27 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                  data_format="NCHW",
                  dtype="float32"):
         super(Conv2DTransposeTestCase, self).__init__(methodName)
+=======
+    def __init__(
+        self,
+        methodName='runTest',
+        batch_size=4,
+        spartial_shape=(16, 16),
+        num_channels=6,
+        num_filters=8,
+        filter_size=3,
+        output_size=None,
+        output_padding=0,
+        padding=0,
+        stride=1,
+        dilation=1,
+        groups=1,
+        no_bias=False,
+        data_format="NCHW",
+        dtype="float32",
+    ):
+        super().__init__(methodName)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -58,24 +81,43 @@ class Conv2DTransposeTestCase(unittest.TestCase):
     def setUp(self):
         self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
-            input_shape = (self.batch_size, ) + self.spartial_shape + (
-                self.num_channels, )
+            input_shape = (
+                (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+            )
         else:
+<<<<<<< HEAD
             input_shape = (self.batch_size,
                            self.num_channels) + self.spartial_shape
+=======
+            input_shape = (
+                self.batch_size,
+                self.num_channels,
+            ) + self.spartial_shape
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
             filter_size = [self.filter_size] * 2
         else:
             filter_size = self.filter_size
+<<<<<<< HEAD
         self.weight_shape = weight_shape = (self.num_channels, self.num_filters
                                             // self.groups) + tuple(filter_size)
         self.weight = np.random.uniform(-1, 1,
                                         size=weight_shape).astype(self.dtype)
+=======
+        self.weight_shape = weight_shape = (
+            self.num_channels,
+            self.num_filters // self.groups,
+        ) + tuple(filter_size)
+        self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if not self.no_bias:
             self.bias = np.random.uniform(
-                -1, 1, size=(self.num_filters, )).astype(self.dtype)
+                -1, 1, size=(self.num_filters,)
+            ).astype(self.dtype)
         else:
             self.bias = None
 
@@ -84,8 +126,11 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, -1, -1,self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1, -1)
+                input_shape = (
+                    (-1, -1, -1, self.num_channels)
+                    if self.channel_last
+                    else (-1, self.num_channels, -1, -1)
+                )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
                 weight_attr = I.NumpyArrayInitializer(self.weight)
                 if self.bias is None:
@@ -93,7 +138,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
 
-                y_var = fluid.layers.conv2d_transpose(
+                y_var = paddle.static.nn.conv2d_transpose(
                     x_var,
                     self.num_filters,
                     filter_size=self.filter_size,
@@ -104,11 +149,12 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                     groups=self.groups,
                     param_attr=weight_attr,
                     bias_attr=bias_attr,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
         exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
@@ -116,20 +162,33 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, -1, -1,self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1, -1)
+                input_shape = (
+                    (-1, -1, -1, self.num_channels)
+                    if self.channel_last
+                    else (-1, self.num_channels, -1, -1)
+                )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 w_var = fluid.data("weight",
                                    self.weight_shape,
                                    dtype=self.dtype)
                 b_var = fluid.data("bias", (self.num_filters, ),
                                    dtype=self.dtype)
+=======
+                w_var = fluid.data(
+                    "weight", self.weight_shape, dtype=self.dtype
+                )
+                b_var = fluid.data(
+                    "bias", (self.num_filters,), dtype=self.dtype
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 if self.output_padding != 0:
                     output_size = None
                 else:
                     output_size = self.output_size
 
+<<<<<<< HEAD
                 y_var = F.conv2d_transpose(x_var,
                                            w_var,
                                            None if self.no_bias else b_var,
@@ -140,12 +199,26 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                                            dilation=self.dilation,
                                            groups=self.groups,
                                            data_format=self.data_format)
+=======
+                y_var = F.conv2d_transpose(
+                    x_var,
+                    w_var,
+                    None if self.no_bias else b_var,
+                    output_size=output_size,
+                    padding=self.padding,
+                    output_padding=self.output_padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
         exe = fluid.Executor(place)
         exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def paddle_nn_layer(self):
@@ -156,6 +229,7 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         else:
             output_size = self.output_size
 
+<<<<<<< HEAD
         conv = nn.Conv2DTranspose(self.num_channels,
                                   self.num_filters,
                                   self.filter_size,
@@ -165,6 +239,19 @@ class Conv2DTransposeTestCase(unittest.TestCase):
                                   dilation=self.dilation,
                                   groups=self.groups,
                                   data_format=self.data_format)
+=======
+        conv = nn.Conv2DTranspose(
+            self.num_channels,
+            self.num_filters,
+            self.filter_size,
+            padding=self.padding,
+            output_padding=self.output_padding,
+            stride=self.stride,
+            dilation=self.dilation,
+            groups=self.groups,
+            data_format=self.data_format,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -205,6 +292,7 @@ class Conv2DTransposeErrorTestCase(Conv2DTransposeTestCase):
 def add_cases(suite):
     suite.addTest(Conv2DTransposeTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         Conv2DTransposeTestCase(methodName='runTest',
                                 stride=[1, 2],
                                 no_bias=True,
@@ -245,6 +333,63 @@ def add_cases(suite):
                                 num_channels=3,
                                 groups=3,
                                 padding="valid"))
+=======
+        Conv2DTransposeTestCase(
+            methodName='runTest', stride=[1, 2], no_bias=True, dilation=2
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest',
+            filter_size=(3, 3),
+            output_size=[20, 36],
+            stride=[1, 2],
+            dilation=2,
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(methodName='runTest', stride=2, dilation=(2, 1))
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(methodName='runTest', padding="valid")
+    )
+    suite.addTest(Conv2DTransposeTestCase(methodName='runTest', padding="same"))
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest', filter_size=1, padding=(2, 3)
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(methodName='runTest', padding=[1, 2, 2, 1])
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest', padding=[[0, 0], [0, 0], [1, 2], [2, 1]]
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(methodName='runTest', data_format="NHWC")
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest',
+            data_format="NHWC",
+            padding=[[0, 0], [1, 1], [2, 2], [0, 0]],
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(methodName='runTest', groups=2, padding="valid")
+    )
+    suite.addTest(
+        Conv2DTransposeTestCase(
+            methodName='runTest',
+            num_filters=6,
+            num_channels=3,
+            groups=3,
+            padding="valid",
+        )
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     suite.addTest(
         Conv2DTransposeTestCase(
             methodName='runTest',
@@ -257,17 +402,34 @@ def add_cases(suite):
             stride=2,
             output_size=[14, 14],
             output_padding=[1, 1],
+<<<<<<< HEAD
         ))
+=======
+        )
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         Conv2DTransposeErrorTestCase(methodName='runTest',
                                      num_channels=5,
                                      groups=2))
     suite.addTest(
         Conv2DTransposeErrorTestCase(methodName='runTest',
                                      output_size="not_valid"))
+=======
+        Conv2DTransposeErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2
+        )
+    )
+    suite.addTest(
+        Conv2DTransposeErrorTestCase(
+            methodName='runTest', output_size="not_valid"
+        )
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def load_tests(loader, standard_tests, pattern):

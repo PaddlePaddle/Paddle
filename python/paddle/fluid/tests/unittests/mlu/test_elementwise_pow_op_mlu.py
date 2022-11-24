@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle.fluid as fluid
 import paddle
 
@@ -43,7 +46,12 @@ def ComputeGrad(x, y, out, axis):
 
         for ax in range(len(shape_out)):
             if (ax < src_axis or ax >= src_axis + len(shape_x)) or (
+<<<<<<< HEAD
                     shape_out[ax] > 1 and shape_x[ax - src_axis] == 1):
+=======
+                shape_out[ax] > 1 and shape_x[ax - src_axis] == 1
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 reduce_axes_x.append(ax)
 
     if shape_y != shape_out:
@@ -54,7 +62,12 @@ def ComputeGrad(x, y, out, axis):
 
         for ax in range(len(shape_out)):
             if (ax < src_axis or ax >= src_axis + len(shape_y)) or (
+<<<<<<< HEAD
                     shape_out[ax] > 1 and shape_y[ax - src_axis] == 1):
+=======
+                shape_out[ax] > 1 and shape_y[ax - src_axis] == 1
+            ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 reduce_axes_y.append(ax)
 
     if len(reduce_axes_x) > 0:
@@ -80,7 +93,10 @@ def ComputeGrad(x, y, out, axis):
 
 
 class TestElementwisePow(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_pow"
@@ -91,7 +107,11 @@ class TestElementwisePow(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+<<<<<<< HEAD
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+=======
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'axis': self.axis}
         self.outputs = {'Out': self.out}
@@ -117,6 +137,7 @@ class TestElementwisePow(OpTest):
 
     def test_check_grad_normal(self):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    user_defined_grads=[dx, dy])
@@ -138,6 +159,34 @@ class TestElementwisePow(OpTest):
 
 class TestElementwisePowFp16(TestElementwisePow):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy]
+        )
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+
+
+class TestElementwisePowFp16(TestElementwisePow):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_input_output(self):
         np.random.seed(SEED)
         self.x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
@@ -157,7 +206,10 @@ class TestElementwisePowFp16(TestElementwisePow):
 
 
 class TestElementwisePowOp_broadcast_0(TestElementwisePow):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_axis(self):
         self.axis = 1
 
@@ -169,6 +221,7 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePow):
 
     def test_check_grad_normal(self):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    user_defined_grads=[dx, dy])
@@ -190,6 +243,34 @@ class TestElementwisePowOp_broadcast_0(TestElementwisePow):
 
 class TestElementwisePowOp_broadcast_1(TestElementwisePow):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy]
+        )
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+
+
+class TestElementwisePowOp_broadcast_1(TestElementwisePow):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_axis(self):
         self.axis = 1
 
@@ -201,6 +282,7 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePow):
 
     def test_check_grad_normal(self):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    user_defined_grads=[dx, dy])
@@ -222,6 +304,34 @@ class TestElementwisePowOp_broadcast_1(TestElementwisePow):
 
 class TestElementwisePowOp_broadcast_2(TestElementwisePow):
 
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy]
+        )
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+
+
+class TestElementwisePowOp_broadcast_2(TestElementwisePow):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def init_axis(self):
         self.axis = 0
 
@@ -233,6 +343,7 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePow):
 
     def test_check_grad_normal(self):
         dx, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X', 'Y'],
                                    'Out',
                                    user_defined_grads=[dx, dy])
@@ -250,6 +361,31 @@ class TestElementwisePowOp_broadcast_2(TestElementwisePow):
                                    'Out',
                                    no_grad_set=set("Y"),
                                    user_defined_grads=[dx])
+=======
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', user_defined_grads=[dx, dy]
+        )
+
+    def test_check_grad_ingore_x(self):
+        _, dy = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[dy],
+        )
+
+    def test_check_grad_ingore_y(self):
+        dx, _ = ComputeGrad(self.x, self.y, self.out, self.axis)
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set("Y"),
+            user_defined_grads=[dx],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

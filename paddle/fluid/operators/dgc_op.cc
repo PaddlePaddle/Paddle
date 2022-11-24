@@ -47,7 +47,11 @@ class DGCOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
@@ -126,10 +130,10 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     DGC also uses momentum factor masking and warmup training to overcome the staleness problem caused by reduced communication.
 
     This optimizer will do two things:
-        
+
         1. Compress the gradient by get TopK import value from tensor \
             and use it for allreduce to reduce network bandwidth.
-    
+
         2. Call momentum to optimize on the cost.
 
 )DOC");

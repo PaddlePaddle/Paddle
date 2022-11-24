@@ -14,8 +14,12 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 

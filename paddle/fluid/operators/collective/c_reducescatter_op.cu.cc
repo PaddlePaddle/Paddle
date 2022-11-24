@@ -27,8 +27,8 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-    auto in = ctx.Input<framework::Tensor>("X");
-    auto out = ctx.Output<framework::Tensor>("Out");
+    auto in = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
@@ -84,7 +84,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_reducescatter,
                         ops::CReduceScatterOpCUDAKernel<float>,
                         ops::CReduceScatterOpCUDAKernel<double>,
+<<<<<<< HEAD
 #if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+=======
+#if NCCL_VERSION_CODE >= 21000
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         ops::CReduceScatterOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CReduceScatterOpCUDAKernel<int>,

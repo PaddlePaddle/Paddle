@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import six
 import paddle
 from paddle import fluid
 from paddle import static
@@ -71,8 +69,14 @@ class GraphToProgramPassTest(unittest.TestCase):
             o_attr = o_attrs[attr_idx]
             c_attr = c_attrs[attr_idx]
             self.assertEqual(o_attr, c_attr)
+<<<<<<< HEAD
             self.assertEqual(o_op.desc.attr_type(o_attr),
                              c_op.desc.attr_type(c_attr))
+=======
+            self.assertEqual(
+                o_op.desc.attr_type(o_attr), c_op.desc.attr_type(c_attr)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class SingleGraphToProgramPass(GraphToProgramPassTest):
@@ -93,10 +97,19 @@ class SingleGraphToProgramPass(GraphToProgramPassTest):
         return program
 
     def test_check_parameter(self):
+<<<<<<< HEAD
         origin_parameter = sorted(self.origin_program.all_parameters(),
                                   key=lambda p: p.name)
         converted_parameter = sorted(self.converted_program.all_parameters(),
                                      key=lambda p: p.name)
+=======
+        origin_parameter = sorted(
+            self.origin_program.all_parameters(), key=lambda p: p.name
+        )
+        converted_parameter = sorted(
+            self.converted_program.all_parameters(), key=lambda p: p.name
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertEqual(len(origin_parameter), len(converted_parameter))
 

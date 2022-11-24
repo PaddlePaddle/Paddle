@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools as it
 import numpy as np
 import unittest
 
@@ -27,7 +26,7 @@ def tensordot_np(x, y, axes):
     # np.tensordot does not support empty axes
     if not axes:
         axes = 0
-    if (isinstance(axes, (tuple, list))):
+    if isinstance(axes, (tuple, list)):
         if all(np.issubdtype(type(i), np.integer) for i in axes):
             axes = [axes, axes]
         else:
@@ -44,7 +43,7 @@ def tensordot_np(x, y, axes):
             axes = [axes_x, axes_y]
 
     # np.tensordot does not support broadcast
-    if (isinstance(axes, (tuple, list))):
+    if isinstance(axes, (tuple, list)):
         axes_x, axes_y = axes
     else:
         axes_x = list(range(x.ndim - axes, x.ndim))
@@ -91,6 +90,7 @@ class TestTensordotAPI(unittest.TestCase):
         self.y = np.random.random(self.y_shape).astype(self.dtype)
 
     def set_test_axes(self):
+<<<<<<< HEAD
         self.all_axes = [[[3, 2], [3]], [[2, 1, 0], [2, 1]],
                          [[1, 2, 0], [1, 3, 2]], [3, 0], [[], [0, 3, 1]],
                          [[2, 1, 0, 3], [2, 0, 1, 3]], [[3, 1, 2], [1, 3, 2,
@@ -145,6 +145,110 @@ class TestTensordotAPI(unittest.TestCase):
                          [[2, 0, 3], [2, 0]], [[3, 1, 0, 2], [3, 1, 0, 2]],
                          [[0, 1, 2], [2, 0, 1]], [[1, 0, 3], [2, 3, 0]],
                          [[2, 0, 1], [0, 1, 3]], [[2, 1], [0, 1, 3]]]
+=======
+        self.all_axes = [
+            [[3, 2], [3]],
+            [[2, 1, 0], [2, 1]],
+            [[1, 2, 0], [1, 3, 2]],
+            [3, 0],
+            [[], [0, 3, 1]],
+            [[2, 1, 0, 3], [2, 0, 1, 3]],
+            [[3, 1, 2], [1, 3, 2, 0]],
+            [[2, 1], [0, 2]],
+            [[2, 0, 1, 3], [2]],
+            [[1, 2, 0, 3], [0, 2, 1]],
+            [[2, 1, 3, 0], [1, 2, 3]],
+            [[2, 0, 1, 3], [3, 1, 0, 2]],
+            [[0, 3], [0, 3, 2, 1]],
+            [[1, 3, 2, 0], [2, 1, 0, 3]],
+            [[1, 3, 2, 0], [1, 3, 2, 0]],
+            [[1, 0, 2], [0, 1]],
+            [[2, 3, 0], [3, 1]],
+            [[1, 3, 2, 0], [3, 0, 1, 2]],
+            [[3, 2, 1], [2, 0, 1]],
+            [[0], []],
+            [[2, 3, 0], [1, 2, 0]],
+            [[3, 0, 2, 1], [2, 1, 0, 3]],
+            [[3, 1, 2], [2, 3, 1]],
+            [[1, 0, 2, 3], []],
+            [[1, 2], [1, 2, 3]],
+            [[2, 0, 1, 3], [2, 0, 1]],
+            [[3, 1, 2], [1, 3, 2]],
+            [[3, 1, 2, 0], [1, 2, 3, 0]],
+            [[0, 2, 3], [0, 1, 2]],
+            [[3, 2, 0], [2, 0, 3, 1]],
+            [[2, 1, 0, 3], [3, 1, 2, 0]],
+            [[1, 2, 3, 0], [1, 3, 0, 2]],
+            [[3, 0], [2, 1]],
+            [[0, 1, 3, 2], [0, 2, 1, 3]],
+            [[1, 0], [2, 1, 3]],
+            [[1, 0, 3, 2], [2, 3, 0, 1]],
+            [[1, 2], [3]],
+            [[1, 2, 3, 0], [3, 2, 1, 0]],
+            [[0, 3, 2, 1], [2, 1, 3, 0]],
+            [0],
+            [[0, 2, 3], [3, 2, 0, 1]],
+            [[1, 2, 3, 0], [3, 2, 1, 0]],
+            [[3, 1], [3]],
+            [[3, 2, 0, 1], [3, 2, 0]],
+            [[2, 3, 0, 1], [0, 3, 2]],
+            [[1], [1, 3]],
+            [[1, 2], [2, 1, 0]],
+            [[3, 1, 2], [3, 1, 0]],
+            [[1, 3], [3, 1, 2]],
+            [[2, 0, 1, 3], [3, 1, 0, 2]],
+            [[1, 3, 0], [1, 3]],
+            [[2, 3, 1], [1, 0, 2]],
+            [[1, 2, 0, 3], [0, 2, 1, 3]],
+            [[2], [0, 1, 3]],
+            [[1], [1, 2]],
+            [[1, 0, 2, 3], [3, 0, 1, 2]],
+            [[0, 1, 3, 2], [1, 3, 0, 2]],
+            [[3, 0, 2, 1], [0, 2, 3]],
+            [[1, 2, 0], [1, 2, 3]],
+            [[1, 0, 3], [2, 3, 0]],
+            [[2, 3, 0], [3, 1, 0]],
+            [[1, 3], [1, 0]],
+            [[2, 1, 0, 3], [2, 0, 3, 1]],
+            [[3, 2, 0], [2, 1, 0]],
+            [[0, 1, 3], [0, 3, 1]],
+            [[3, 1, 0], [3, 2, 1]],
+            [[3, 2], [3, 1]],
+            [[3], [2, 1, 0]],
+            [[1, 2, 3, 0], []],
+            [[1, 3, 2, 0], [3, 1, 2]],
+            [[1], [0, 2]],
+            [[3, 2, 0], [3, 2, 0]],
+            [[3], []],
+            [[1, 0, 3], [2, 1]],
+            [[3, 1, 0, 2], [2, 3, 1, 0]],
+            [[0, 1], [0, 3, 2]],
+            [[0, 2, 3], [0, 2, 1]],
+            [[1, 3, 0], [3, 0, 2]],
+            [[3, 1, 2], [1, 2, 3]],
+            [[3, 1, 2], [3, 1, 0]],
+            [[0, 3, 1, 2], [3, 2, 1, 0]],
+            [[0, 3], [3, 2, 1]],
+            [[2, 3], [1, 3, 0]],
+            [[0, 3, 2], [2, 0, 3, 1]],
+            [[2, 3], [1, 3]],
+            [[3, 1, 2, 0], [2, 3, 1, 0]],
+            [[1, 0, 3, 2], [3, 0, 1, 2]],
+            [[3, 2, 1, 0], [0, 1, 3, 2]],
+            [[3, 1, 2], [3]],
+            [[0, 1, 3, 2], [2, 3, 0, 1]],
+            [[1, 2, 3, 0], [1, 3, 0, 2]],
+            [3, 1, 2],
+            [[3, 1, 2], [0, 3, 2]],
+            [[2, 3, 0], [1, 2, 0]],
+            [[2, 0, 3], [2, 0]],
+            [[3, 1, 0, 2], [3, 1, 0, 2]],
+            [[0, 1, 2], [2, 0, 1]],
+            [[1, 0, 3], [2, 3, 0]],
+            [[2, 0, 1], [0, 1, 3]],
+            [[2, 1], [0, 1, 3]],
+        ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_dygraph(self):
         paddle.disable_static()
@@ -160,6 +264,7 @@ class TestTensordotAPI(unittest.TestCase):
         paddle.enable_static()
         for axes in self.all_axes:
             for place in self.places:
+<<<<<<< HEAD
                 with paddle.static.program_guard(paddle.static.Program(),
                                                  paddle.static.Program()):
                     x = paddle.static.data(name='x',
@@ -175,12 +280,31 @@ class TestTensordotAPI(unittest.TestCase):
                         'y': self.y
                     },
                                          fetch_list=[z])
+=======
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype=self.dtype
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=self.y_shape, dtype=self.dtype
+                    )
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
+                    paddle_res = exe.run(
+                        feed={'x': self.x, 'y': self.y}, fetch_list=[z]
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     np_res = tensordot_np(self.x, self.y, axes)
                     np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
 
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_dtype(self):
         self.dtype = np.float64
 
@@ -228,20 +352,41 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
 
     def set_test_axes(self):
         self.all_axes = [
+<<<<<<< HEAD
             0, 1, 2, (1, ), [1], ((1, ), ), ([1], ), ((2, 1), (0, )),
             ((1, 2), (0, 1)), ([1, 2], [0, 1]), ([1, 2], [0, 1]),
             [[1, 2], [0, 1]]
+=======
+            0,
+            1,
+            2,
+            (1,),
+            [1],
+            ((1,),),
+            ([1],),
+            ((2, 1), (0,)),
+            ((1, 2), (0, 1)),
+            ([1, 2], [0, 1]),
+            ([1, 2], [0, 1]),
+            [[1, 2], [0, 1]],
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         ]
 
     def test_tensor_axes(self):
         # The 'axes' with type 'Tensor' in tensordot is not available in static mode
         paddle.disable_static()
         tensor_axes = [
-            paddle.to_tensor([1]), (paddle.to_tensor([1])),
+            paddle.to_tensor([1]),
+            (paddle.to_tensor([1])),
             (paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])),
+<<<<<<< HEAD
             [paddle.to_tensor([1, 2]),
              paddle.to_tensor([0, 1])],
             paddle.to_tensor([[1, 2], [0, 1]])
+=======
+            [paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])],
+            paddle.to_tensor([[1, 2], [0, 1]]),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         ]
 
         for place in self.places:
@@ -253,8 +398,15 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
                 np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
     def test_error(self):
-        self.all_axes = [[[[0], [1]]], 0.1, -1, 100, [[1, 2], [0, 0]],
-                         [[1, 2], [0, -1]], [0, 1, 2, 3]]
+        self.all_axes = [
+            [[[0], [1]]],
+            0.1,
+            -1,
+            100,
+            [[1, 2], [0, 0]],
+            [[1, 2], [0, -1]],
+            [0, 1, 2, 3],
+        ]
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)

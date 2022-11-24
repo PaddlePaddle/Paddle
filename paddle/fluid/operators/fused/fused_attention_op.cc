@@ -21,7 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 class FusedAttentionOp : public framework::OperatorWithKernel {
  public:
@@ -257,7 +257,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -432,8 +432,13 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   The fused_attention operator is the same as following pseudo codes:
 
+<<<<<<< HEAD
   // @input: [batch_size, seq_len, embed_dim] 
   // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+=======
+  // @input: [batch_size, seq_len, embed_dim]
+  // @final_out: [batch_size, seq_len, num_heads, head_dim]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   residual = input
   if (pre_layernorm)
     query = layer_norm(input);
@@ -447,7 +452,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     out = dropout(out);
     out = out * v;
     out = transpose(out, perm=[0, 2, 1, 3]);
-                
+
   }
   // out linear
   out = linear(out);
@@ -567,7 +572,7 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
+    auto input = ctx.Input<phi::DenseTensor>("X");
     auto input_data_type = framework::TransToProtoVarType(input->dtype());
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -704,6 +709,13 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(FusedAttentionGradNoNeedBufferInferer,
+                                    "QKVBiasOut",
+                                    "QKVOut",
+                                    "QKOut",
+                                    "QKTVOut",
+                                    "OutLinearOut");
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -713,7 +725,13 @@ REGISTER_OPERATOR(fused_attention,
                   ops::FusedAttentionOpMaker,
                   ops::FusedAttentionGradOpMaker<paddle::framework::OpDesc>,
                   ops::FusedAttentionGradOpMaker<paddle::imperative::OpBase>);
+<<<<<<< HEAD
 REGISTER_OPERATOR(fused_attention_grad, ops::FusedAttentionGradOp);
+=======
+REGISTER_OPERATOR(fused_attention_grad,
+                  ops::FusedAttentionGradOp,
+                  ops::FusedAttentionGradNoNeedBufferInferer);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 REGISTER_OP_VERSION(fused_attention)
     .AddCheckpoint(

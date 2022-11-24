@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 template <typename T>
 __global__ void KeCMRNormFillScale(int img_size,
@@ -110,9 +110,15 @@ void CrossMapNormal(const framework::ExecutionContext& ctx,
 template <typename T>
 struct LRNFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const framework::Tensor& input,
                   framework::Tensor* out,
                   framework::Tensor* mid,
+=======
+                  const phi::DenseTensor& input,
+                  phi::DenseTensor* out,
+                  phi::DenseTensor* mid,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   int N,
                   int C,
                   int H,
@@ -238,11 +244,19 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx,
 template <typename T>
 struct LRNGradFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const framework::Tensor& x,
                   const framework::Tensor& out,
                   const framework::Tensor& mid,
                   framework::Tensor* x_g,
                   const framework::Tensor& out_g,
+=======
+                  const phi::DenseTensor& x,
+                  const phi::DenseTensor& out,
+                  const phi::DenseTensor& mid,
+                  phi::DenseTensor* x_g,
+                  const phi::DenseTensor& out_g,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   int N,
                   int C,
                   int H,

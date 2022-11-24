@@ -155,14 +155,24 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                         PD_Bool autotune,
                         const char* autotune_file,
                         const char* precision,
+<<<<<<< HEAD
                         PD_Bool adaptive_seqlen) {
+=======
+                        PD_Bool adaptive_seqlen,
+                        PD_Bool enable_multi_stream) {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   CHECK_AND_CONVERT_PD_CONFIG;
   config->EnableXpu(l3_workspace_size,
                     locked,
                     autotune,
                     autotune_file,
                     precision,
+<<<<<<< HEAD
                     adaptive_seqlen);
+=======
+                    adaptive_seqlen,
+                    enable_multi_stream);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
@@ -219,7 +229,7 @@ PD_Bool PD_ConfigIrOptim(__pd_keep PD_Config* pd_config) {
 }
 
 void PD_ConfigEnableTensorRtEngine(__pd_keep PD_Config* pd_config,
-                                   int32_t workspace_size,
+                                   int64_t workspace_size,
                                    int32_t max_batch_size,
                                    int32_t min_subgraph_size,
                                    PD_PrecisionType precision,

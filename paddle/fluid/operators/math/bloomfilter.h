@@ -20,12 +20,13 @@ limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <cinttypes>
 
 namespace paddle {
 namespace operators {
 namespace math {
 
-#pragma pack(4)
+#pragma pack(push, 4)
 struct bloomfilter {
   uint64_t magic_num;
   uint64_t m;
@@ -33,6 +34,11 @@ struct bloomfilter {
   uint64_t count;
   unsigned char bit_vector[1];
 };
+<<<<<<< HEAD
+=======
+#pragma pack(pop)
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 int bloomfilter_get(const struct bloomfilter *bloomfilter,
                     const void *key,
                     size_t len);
@@ -151,7 +157,7 @@ int bloomfilter_check(struct bloomfilter *filter) {
   if (filter->magic_num == BLOOMFILTER_MAGIC_NUM_NEW) {
     return 1;
   } else {
-    fprintf(stderr, "error magic_num %ld\n", filter->magic_num);
+    fprintf(stderr, "error magic_num, %" PRIu64 "\n", filter->magic_num);
     return 0;
   }
 }

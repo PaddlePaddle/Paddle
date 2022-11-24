@@ -13,13 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 namespace {
 
@@ -127,9 +125,9 @@ template <typename T>
 class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    Tensor *Out = context.Output<Tensor>("Out");
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
+    phi::DenseTensor *Out = context.Output<phi::DenseTensor>("Out");
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     T *out_data = Out->mutable_data<T>(context.GetPlace());
@@ -156,15 +154,18 @@ template <typename T>
 class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const Tensor *X = context.Input<Tensor>("X");
-    const Tensor *Y = context.Input<Tensor>("Y");
-    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
+    const phi::DenseTensor *Y = context.Input<phi::DenseTensor>("Y");
+    const phi::DenseTensor *dOut =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     const T *x_data = X->data<T>();
     const T *y_data = Y->data<T>();
     const T *dout_data = dOut->data<T>();
 
-    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    Tensor *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+    phi::DenseTensor *dX =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    phi::DenseTensor *dY =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     int batch_size = X->dims()[0];
     int x_width = X->dims()[1];

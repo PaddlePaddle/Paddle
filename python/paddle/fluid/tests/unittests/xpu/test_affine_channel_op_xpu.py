@@ -15,8 +15,6 @@
 Unit testing for affine_channel_op
 """
 
-from __future__ import print_function
-
 import sys
 
 sys.path.append("..")
@@ -72,17 +70,29 @@ class TestAffineChannelOp(XPUOpTest):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['Scale', 'Bias'],
                                        'Out',
                                        no_grad_set=set('X'))
+=======
+            self.check_grad_with_place(
+                place, ['Scale', 'Bias'], 'Out', no_grad_set=set('X')
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_grad_stopgrad_dscale_dbias(self):
         if core.is_compiled_with_xpu():
             paddle.enable_static()
             place = paddle.XPUPlace(0)
+<<<<<<< HEAD
             self.check_grad_with_place(place, ['X'],
                                        'Out',
                                        no_grad_set=set(['Scale', 'Bias']))
+=======
+            self.check_grad_with_place(
+                place, ['X'], 'Out', no_grad_set=set(['Scale', 'Bias'])
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def init_test_case(self):
         self.shape = [2, 100, 3, 3]
@@ -102,25 +112,43 @@ class TestAffineChannelOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
+<<<<<<< HEAD
                 x2 = fluid.layers.data(name='x2',
                                        shape=[None, 1, 2, 2],
                                        dtype='int32')
+=======
+                x2 = fluid.layers.data(
+                    name='x2', shape=[None, 1, 2, 2], dtype='int32'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 fluid.layers.affine_channel(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_scale_type():
+<<<<<<< HEAD
                 x3 = fluid.layers.data(name='x3',
                                        shape=[None, 1, 2, 2],
                                        dtype='float32')
+=======
+                x3 = fluid.layers.data(
+                    name='x3', shape=[None, 1, 2, 2], dtype='float32'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 fluid.layers.affine_channel(x3, scale=1)
 
             self.assertRaises(TypeError, test_scale_type)
 
             def test_bias_type():
+<<<<<<< HEAD
                 x4 = fluid.layers.data(name='x4',
                                        shape=[None, 1, 2, 2],
                                        dtype='float32')
+=======
+                x4 = fluid.layers.data(
+                    name='x4', shape=[None, 1, 2, 2], dtype='float32'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 fluid.layers.affine_channel(x4, bias=1)
 
             self.assertRaises(TypeError, test_bias_type)

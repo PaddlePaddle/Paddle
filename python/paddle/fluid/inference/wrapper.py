@@ -34,8 +34,14 @@ def tensor_copy_from_cpu(self, data):
     '''
     Support input type check based on tensor.copy_from_cpu.
     '''
+<<<<<<< HEAD
     if isinstance(data, np.ndarray) or (isinstance(data, list) and len(data) > 0
                                         and isinstance(data[0], str)):
+=======
+    if isinstance(data, np.ndarray) or (
+        isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.copy_from_cpu_bind(data)
     else:
         raise TypeError(
@@ -51,7 +57,49 @@ def tensor_share_external_data(self, data):
         self.share_external_data_bind(data)
     else:
         raise TypeError(
-            "In share_external_data, we only support LoDTensor data type.")
+            "In share_external_data, we only support LoDTensor data type."
+        )
+
+
+def convert_to_mixed_precision(
+    model_file: str,
+    params_file: str,
+    mixed_model_file: str,
+    mixed_params_file: str,
+    mixed_precision: PrecisionType,
+    backend: PlaceType,
+    keep_io_types: bool = True,
+    black_list: Set = set(),
+):
+    '''
+    Convert a fp32 model to mixed precision model.
+
+    Args:
+        model_file: fp32 model file, e.g. inference.pdmodel.
+        params_file: fp32 params file, e.g. inference.pdiparams.
+        mixed_model_file: The storage path of the converted mixed-precision model.
+        mixed_params_file: The storage path of the converted mixed-precision params.
+        mixed_precision: The precision, e.g. PrecisionType.Half.
+        backend: The backend, e.g. PlaceType.GPU.
+        keep_io_types: Whether the model input and output dtype remains unchanged.
+        black_list: Operators that do not convert precision.
+    '''
+    mixed_model_dirname = os.path.dirname(mixed_model_file)
+    mixed_params_dirname = os.path.dirname(mixed_params_file)
+    if not os.path.exists(mixed_model_dirname):
+        os.makedirs(mixed_model_dirname)
+    if not os.path.exists(mixed_params_dirname):
+        os.makedirs(mixed_params_dirname)
+    convert_to_mixed_precision_bind(
+        model_file,
+        params_file,
+        mixed_model_file,
+        mixed_params_file,
+        mixed_precision,
+        backend,
+        keep_io_types,
+        black_list,
+    )
 
 
 def convert_to_mixed_precision(model_file: str,

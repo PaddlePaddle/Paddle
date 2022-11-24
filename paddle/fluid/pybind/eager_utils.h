@@ -19,8 +19,14 @@ typedef SSIZE_T ssize_t;
 
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/jit/base_function.h"
+=======
+#include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/jit/function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/backend.h"
 #include "paddle/phi/common/data_type.h"
@@ -63,10 +69,11 @@ std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
 std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     PyObject* obj, ssize_t arg_pos);
 platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos);
-framework::Tensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
-std::vector<framework::LoDTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
-                                                               ssize_t arg_pos);
+phi::DenseTensor CastPyArg2FrameworkTensor(PyObject* obj, ssize_t arg_pos);
+std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
+                                                           ssize_t arg_pos);
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
@@ -74,9 +81,16 @@ framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
                                                     ssize_t arg_pos);
 std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
                                                       ssize_t arg_pos);
+<<<<<<< HEAD
 std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos);
 std::shared_ptr<jit::BaseFunction> CastPyArg2BaseFunction(PyObject* obj,
                                                           ssize_t arg_pos);
+=======
+std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
+                                                  ssize_t arg_pos);
+std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
+                                                     ssize_t arg_pos);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -102,8 +116,11 @@ PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::experimental::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
+PyObject* ToPyObject(
+    const std::vector<std::vector<paddle::experimental::Tensor>>& value,
+    bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const platform::Place& value);
-PyObject* ToPyObject(const framework::LoDTensor* value);
+PyObject* ToPyObject(const phi::DenseTensor* value);
 PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
@@ -254,6 +271,13 @@ paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 PyObject* args,
                                                 ssize_t arg_idx,
                                                 bool dispensable = false);
+
+paddle::optional<std::vector<paddle::experimental::Tensor>>
+GetOptionalTensorListFromArgs(const std::string& op_type,
+                              const std::string& arg_name,
+                              PyObject* args,
+                              ssize_t arg_idx,
+                              bool dispensable = false);
 
 std::vector<paddle::experimental::Tensor> GetTensorListFromArgs(
     const std::string& op_type,

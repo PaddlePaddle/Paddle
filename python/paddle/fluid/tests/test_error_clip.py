@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
 import paddle
 import paddle.fluid as fluid
 
@@ -39,12 +36,23 @@ with fluid.program_guard(main_program=prog):
 
 prog_clip = prog.clone()
 prog_clip.block(0).var(hidden1.name)._set_error_clip(
+<<<<<<< HEAD
     fluid.clip.ErrorClipByValue(max=CLIP_MAX, min=CLIP_MIN))
 
 avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
 fluid.backward.append_backward(loss=avg_cost)
 fluid.backward.append_backward(loss=avg_cost_clip,
                                callbacks=[fluid.clip.error_clip_callback])
+=======
+    fluid.clip.ErrorClipByValue(max=CLIP_MAX, min=CLIP_MIN)
+)
+
+avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
+fluid.backward.append_backward(loss=avg_cost)
+fluid.backward.append_backward(
+    loss=avg_cost_clip, callbacks=[fluid.clip.error_clip_callback]
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 hidden1_grad = prog.block(0).var(hidden1.name + "@GRAD")
 hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")
@@ -52,9 +60,16 @@ hidden1_grad_clip = prog_clip.block(0).var(hidden1.name + "@GRAD")
 hidden2_grad = prog.block(0).var(hidden2.name + "@GRAD")
 hidden2_grad_clip = prog_clip.block(0).var(hidden2.name + "@GRAD")
 
+<<<<<<< HEAD
 train_reader = paddle.batch(paddle.reader.shuffle(paddle.dataset.mnist.train(),
                                                   buf_size=8192),
                             batch_size=BATCH_SIZE)
+=======
+train_reader = paddle.batch(
+    paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=8192),
+    batch_size=BATCH_SIZE,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 place = fluid.CPUPlace()
 exe = fluid.Executor(place)
@@ -66,15 +81,24 @@ for data in train_reader():
     count += 1
     if count > 5:
         break
-    out1, out2 = exe.run(prog,
-                         feed=feeder.feed(data),
-                         fetch_list=[hidden1_grad, hidden2_grad])
+    out1, out2 = exe.run(
+        prog, feed=feeder.feed(data), fetch_list=[hidden1_grad, hidden2_grad]
+    )
     out1_clip, out2_clip = exe.run(
         prog_clip,
         feed=feeder.feed(data),
+<<<<<<< HEAD
         fetch_list=[hidden1_grad_clip, hidden2_grad_clip])
     if not ((out1.clip(min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all() and
             (out2 == out2_clip).all()):
+=======
+        fetch_list=[hidden1_grad_clip, hidden2_grad_clip],
+    )
+    if not (
+        (out1.clip(min=CLIP_MIN, max=CLIP_MAX) == out1_clip).all()
+        and (out2 == out2_clip).all()
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         exit(1)
 
 exit(0)

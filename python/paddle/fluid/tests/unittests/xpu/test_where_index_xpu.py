@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -25,7 +23,11 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 from op_test_xpu import XPUOpTest
-from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
 
 paddle.enable_static()
 
@@ -68,8 +70,9 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.inputs = {
-                'Condition':
-                np.array([[True, False], [False, True]]).astype(self.dtype),
+                'Condition': np.array([[True, False], [False, True]]).astype(
+                    self.dtype
+                ),
             }
             self.outputs = {'Out': np.array([[0, 0], [1, 1]], dtype='int64')}
 
@@ -77,17 +80,21 @@ class XPUTestWhereIndexOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.inputs = {
-                'Condition':
-                np.array([[[True, False], [False, True]],
-                          [[False, True], [True, False]],
-                          [[False, False], [False, True]]]).astype(self.dtype),
+                'Condition': np.array(
+                    [
+                        [[True, False], [False, True]],
+                        [[False, True], [True, False]],
+                        [[False, False], [False, True]],
+                    ]
+                ).astype(self.dtype),
             }
 
             self.outputs = {
                 'Out':
                 np.array(
                     [[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 0], [2, 1, 1]],
-                    dtype='int64')
+                    dtype='int64',
+                )
             }
 
 

@@ -16,10 +16,18 @@ import sys
 sys.path.append("..")
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 import paddle
+<<<<<<< HEAD
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+=======
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 paddle.enable_static()
 
@@ -63,21 +71,42 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def test_check_grad_ingore_x(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(place, ['Y'],
                                            'Out',
                                            max_relative_error=0.006,
                                            no_grad_set=set("X"))
+=======
+                self.check_grad_with_place(
+                    place,
+                    ['Y'],
+                    'Out',
+                    max_relative_error=0.006,
+                    no_grad_set=set("X"),
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def test_check_grad_ingore_y(self):
             if paddle.is_compiled_with_xpu():
                 place = paddle.XPUPlace(0)
+<<<<<<< HEAD
                 self.check_grad_with_place(place, ['X'],
                                            'Out',
                                            max_relative_error=0.006,
                                            no_grad_set=set('Y'))
+=======
+                self.check_grad_with_place(
+                    place,
+                    ['X'],
+                    'Out',
+                    max_relative_error=0.006,
+                    no_grad_set=set('Y'),
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     @skip_check_grad_ci(
-        reason="[skip shape check] Use y_shape(1) to test broadcast.")
+        reason="[skip shape check] Use y_shape(1) to test broadcast."
+    )
     class TestElementwiseMaxOp_scalar(TestElementwiseOp):
 
         def init_input_output(self):
@@ -91,9 +120,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
     class TestElementwiseMaxOp_Vector(TestElementwiseOp):
 
         def init_input_output(self):
-            x = np.random.random((100, )).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-            y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype(self.dtype)
+            x = np.random.random((100,)).astype(self.dtype)
+            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+            y = x + sgn * np.random.uniform(0.1, 1, (100,)).astype(self.dtype)
             self.inputs = {'X': x, 'Y': y}
             self.outputs = {
                 'Out': np.maximum(self.inputs['X'], self.inputs['Y'])
@@ -103,47 +132,68 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
 
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (100, 5, 2)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-            y = x[:, 0, 0] + sgn * \
-                np.random.uniform(1, 2, (100, )).astype(self.dtype)
+            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+            y = x[:, 0, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
+                self.dtype
+            )
             self.inputs = {'X': x, 'Y': y}
 
             self.attrs = {'axis': 0}
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 np.maximum(self.inputs['X'],
                            self.inputs['Y'].reshape(100, 1, 1))
+=======
+                'Out': np.maximum(
+                    self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
     class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
 
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 100, 3)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-            y = x[0, :, 0] + sgn * \
-                np.random.uniform(1, 2, (100, )).astype(self.dtype)
+            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+            y = x[0, :, 0] + sgn * np.random.uniform(1, 2, (100,)).astype(
+                self.dtype
+            )
             self.inputs = {'X': x, 'Y': y}
 
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 np.maximum(self.inputs['X'],
                            self.inputs['Y'].reshape(1, 100, 1))
+=======
+                'Out': np.maximum(
+                    self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
     class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
 
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (1, 3, 100)).astype(self.dtype)
-            sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
-            y = x[0, 0, :] + sgn * \
-                np.random.uniform(1, 2, (100, )).astype(self.dtype)
+            sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
+            y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
+                self.dtype
+            )
             self.inputs = {'X': x, 'Y': y}
 
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 np.maximum(self.inputs['X'],
                            self.inputs['Y'].reshape(1, 1, 100))
+=======
+                'Out': np.maximum(
+                    self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
     class TestElementwiseMaxOp_broadcast_3(TestElementwiseOp):
@@ -151,15 +201,22 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 50, 2, 1)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (50, 2)).astype(self.dtype)
-            y = x[0, :, :, 0] + sgn * \
-                np.random.uniform(1, 2, (50, 2)).astype(self.dtype)
+            y = x[0, :, :, 0] + sgn * np.random.uniform(1, 2, (50, 2)).astype(
+                self.dtype
+            )
             self.inputs = {'X': x, 'Y': y}
 
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out':
                 np.maximum(self.inputs['X'],
                            self.inputs['Y'].reshape(1, 50, 2, 1))
+=======
+                'Out': np.maximum(
+                    self.inputs['X'], self.inputs['Y'].reshape(1, 50, 2, 1)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
 
     class TestElementwiseMaxOp_broadcast_4(TestElementwiseOp):
@@ -167,8 +224,9 @@ class XPUTestElementwiseMaxOp(XPUOpTestWrapper):
         def init_input_output(self):
             x = np.random.uniform(0.5, 1, (2, 3, 4, 5)).astype(self.dtype)
             sgn = np.random.choice([-1, 1], (2, 3, 1, 5)).astype(self.dtype)
-            y = x + sgn * \
-                np.random.uniform(1, 2, (2, 3, 1, 5)).astype(self.dtype)
+            y = x + sgn * np.random.uniform(1, 2, (2, 3, 1, 5)).astype(
+                self.dtype
+            )
             self.inputs = {'X': x, 'Y': y}
 
             self.outputs = {

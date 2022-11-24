@@ -21,7 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -33,11 +36,19 @@ class TestBase(IPUOpTest):
         data_y = np.random.uniform(size=[2, 2, 3])
         self.feed_fp32 = {
             'x': data_x.astype(np.float32),
+<<<<<<< HEAD
             'y': data_y.astype(np.float32)
         }
         self.feed_fp16 = {
             'x': data_x.astype(np.float16),
             'y': data_y.astype(np.float16)
+=======
+            'y': data_y.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            'x': data_x.astype(np.float16),
+            'y': data_y.astype(np.float16),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def set_feed_attr(self):
@@ -47,12 +58,21 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
         y = paddle.static.data(name=self.feed_list[1],
                                shape=self.feed_shape[1],
                                dtype="float32")
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        y = paddle.static.data(
+            name=self.feed_list[1], shape=self.feed_shape[1], dtype="float32"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = paddle.expand_as(x, y)
         self.fetch_list = [out.name]
 
@@ -68,33 +88,55 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_data_feed(self):
         data_x = np.random.uniform(size=[2, 3])
         data_y = np.random.uniform(size=[2, 4, 2, 3])
         self.feed_fp32 = {
             'x': data_x.astype(np.float32),
+<<<<<<< HEAD
             'y': data_y.astype(np.float32)
         }
         self.feed_fp16 = {
             'x': data_x.astype(np.float16),
             'y': data_y.astype(np.float16)
+=======
+            'y': data_y.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            'x': data_x.astype(np.float16),
+            'y': data_y.astype(np.float16),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
 @unittest.skip("corresponding dimensions must have the same value.")
 class TestCase2(TestBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_data_feed(self):
         data_x = np.random.uniform(size=[2, 3])
         data_y = np.random.uniform(size=[2, 4, 3, 3])
         self.feed_fp32 = {
             'x': data_x.astype(np.float32),
+<<<<<<< HEAD
             'y': data_y.astype(np.float32)
         }
         self.feed_fp16 = {
             'x': data_x.astype(np.float16),
             'y': data_y.astype(np.float16)
+=======
+            'y': data_y.astype(np.float32),
+        }
+        self.feed_fp16 = {
+            'x': data_x.astype(np.float16),
+            'y': data_y.astype(np.float16),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 

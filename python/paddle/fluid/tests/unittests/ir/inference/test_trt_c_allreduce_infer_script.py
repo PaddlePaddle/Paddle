@@ -18,8 +18,11 @@ import numpy as np
 import tempfile
 import paddle
 import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 from paddle.distributed import ReduceOp
 from paddle.distributed import init_parallel_env
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from paddle.inference import Config
 from paddle.inference import create_predictor
 from paddle.inference import PrecisionType
@@ -41,6 +44,7 @@ def run(op_type, precision):
             lod_level=data.lod_level,
             persistable=False,
             is_data=False,
+<<<<<<< HEAD
             initializer=paddle.nn.initializer.Constant(value=1.0))
         block.append_op(type=op_type,
                         inputs={'X': data},
@@ -50,11 +54,31 @@ def run(op_type, precision):
                             'use_calc_stream': True,
                             'use_model_parallel': True
                         })
+=======
+            initializer=paddle.nn.initializer.Constant(value=1.0),
+        )
+        block.append_op(
+            type=op_type,
+            inputs={'X': data},
+            outputs={'Out': c_data},
+            attrs={
+                'ring_id': 0,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+            },
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = paddle.static.nn.fc(
             x=c_data,
             size=1,
             weight_attr=paddle.ParamAttr(
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Constant(value=0.5)))
+=======
+                initializer=paddle.nn.initializer.Constant(value=0.5)
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         mean = paddle.mean(out)
     exe = paddle.static.Executor(paddle.CPUPlace())
     exe.run(startup_program)
@@ -70,12 +94,26 @@ def run(op_type, precision):
     dist_config.enable_dist_model(True)
 
     with tempfile.TemporaryDirectory(prefix="allreduce_") as tmpdir:
+<<<<<<< HEAD
         paddle.static.save_inference_model(os.path.join(tmpdir, "model"),
                                            [data], [mean],
                                            exe,
                                            program=main_program)
         config = Config(os.path.join(tmpdir, "model.pdmodel"),
                         os.path.join(tmpdir, "model.pdiparams"))
+=======
+        paddle.static.save_inference_model(
+            os.path.join(tmpdir, "model"),
+            [data],
+            [mean],
+            exe,
+            program=main_program,
+        )
+        config = Config(
+            os.path.join(tmpdir, "model.pdmodel"),
+            os.path.join(tmpdir, "model.pdiparams"),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         config.enable_memory_optim()
         config.enable_use_gpu(1000, fleet.worker_index())
         config.set_dist_config(dist_config)
@@ -84,11 +122,22 @@ def run(op_type, precision):
             max_batch_size=1,
             min_subgraph_size=1,
             precision_mode=PrecisionType.Half
+<<<<<<< HEAD
             if precision == "fp16" else PrecisionType.Int8,
             use_static=False,
             use_calib_mode=False)
         config.set_trt_dynamic_shape_info({"data": [3, 4]}, {"data": [3, 4]},
                                           {"data": [3, 4]})
+=======
+            if precision == "fp16"
+            else PrecisionType.Int8,
+            use_static=False,
+            use_calib_mode=False,
+        )
+        config.set_trt_dynamic_shape_info(
+            {"data": [3, 4]}, {"data": [3, 4]}, {"data": [3, 4]}
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         predictor = create_predictor(config)
         input_names = predictor.get_input_names()
         input_tensor = predictor.get_input_handle("data")

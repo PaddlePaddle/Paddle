@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest, randomize_probability
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import os
 import tempfile
+<<<<<<< HEAD
+=======
+import paddle
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestLoadOp(unittest.TestCase):
-    """ Test load operator.
-    """
+    """Test load operator."""
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -40,13 +40,24 @@ class TestLoadOp(unittest.TestCase):
                 param_attr=fluid.ParamAttr(
                     name='w',
                     initializer=fluid.initializer.NumpyArrayInitializer(
-                        self.ones)))
+                        self.ones
+                    ),
+                ),
+            )
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
+<<<<<<< HEAD
         fluid.io.save_persistables(exe,
                                    dirname=os.path.join(self.temp_dir.name,
                                                         "./model"),
                                    main_program=main_prog)
+=======
+        paddle.distributed.io.save_persistables(
+            exe,
+            dirname=os.path.join(self.temp_dir.name, "./model"),
+            main_program=main_prog,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def tearDown(self):
         self.temp_dir.cleanup()
@@ -56,13 +67,19 @@ class TestLoadOp(unittest.TestCase):
         start_prog = fluid.Program()
         with fluid.program_guard(main_prog, start_prog):
             var = layers.create_tensor(dtype='float32')
+<<<<<<< HEAD
             layers.load(var,
                         file_path=os.path.join(self.temp_dir.name, './model/w'))
+=======
+            layers.load(
+                var, file_path=os.path.join(self.temp_dir.name, './model/w')
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(start_prog)
         ret = exe.run(main_prog, fetch_list=[var.name])
-        self.assertTrue(np.array_equal(self.ones, ret[0]))
+        np.testing.assert_array_equal(self.ones, ret[0])
 
 
 if __name__ == "__main__":

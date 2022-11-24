@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import sys
 
@@ -27,11 +30,19 @@ paddle.enable_static()
 
 def gather_nd_grad(x, index):
     # for TestGatherNdOpWithLowIndex
+<<<<<<< HEAD
     dout_shape = index.shape[:-1] + x.shape[index.shape[-1]:]
     numel = 1
     for i in dout_shape:
         numel = numel * i
     dout = np.full(dout_shape, 1. / numel)
+=======
+    dout_shape = index.shape[:-1] + x.shape[index.shape[-1] :]
+    numel = 1
+    for i in dout_shape:
+        numel = numel * i
+    dout = np.full(dout_shape, 1.0 / numel)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     dx = np.full_like(x, 0)
 
     index = tuple(index.reshape(-1, index.shape[-1]).T)
@@ -41,7 +52,10 @@ def gather_nd_grad(x, index):
 
 
 def test_class1(op_type, typename):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     class TestGatherNdOpWithEmptyIndex(OpTest):
         # Index has empty element, which means copy entire tensor
 
@@ -52,7 +66,11 @@ def test_class1(op_type, typename):
             xnp = np.random.random((5, 20)).astype(typename)
             self.inputs = {
                 'X': xnp,
+<<<<<<< HEAD
                 'Index': np.array([[], []]).astype("int32")
+=======
+                'Index': np.array([[], []]).astype("int32"),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.outputs = {
                 'Out': np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
@@ -77,9 +95,13 @@ def test_class1(op_type, typename):
 
 
 def test_class2(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpWithIndex1(OpTest):
 
+=======
+    class TestGatherNdOpWithIndex1(OpTest):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def setUp(self):
             self.set_mlu()
             self.op_type = "gather_nd"
@@ -107,9 +129,14 @@ def test_class2(op_type, typename):
 
 
 def test_class3(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpWithLowIndex(OpTest):
         #Index has low rank, X has high rank
+=======
+    class TestGatherNdOpWithLowIndex(OpTest):
+        # Index has low rank, X has high rank
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def setUp(self):
             self.set_mlu()
@@ -133,9 +160,15 @@ def test_class3(op_type, typename):
             if typename == "float16":
                 self.__class__.no_need_check_grad = True
             else:
+<<<<<<< HEAD
                 self.check_grad_with_place(self.place, ['X'],
                                            'Out',
                                            user_defined_grads=[self.x_grad])
+=======
+                self.check_grad_with_place(
+                    self.place, ['X'], 'Out', user_defined_grads=[self.x_grad]
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     cls_name = "{0}_{1}_3".format(op_type, typename)
     TestGatherNdOpWithLowIndex.__name__ = cls_name
@@ -143,9 +176,14 @@ def test_class3(op_type, typename):
 
 
 def test_class4(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpIndex1(OpTest):
         #Index has low rank, X has high rank
+=======
+    class TestGatherNdOpIndex1(OpTest):
+        # Index has low rank, X has high rank
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def setUp(self):
             self.set_mlu()
@@ -177,9 +215,14 @@ def test_class4(op_type, typename):
 
 
 def test_class5(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpWithSameIndexAsX(OpTest):
         #Index has same rank as X's rank
+=======
+    class TestGatherNdOpWithSameIndexAsX(OpTest):
+        # Index has same rank as X's rank
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def setUp(self):
             self.set_mlu()
@@ -189,7 +232,11 @@ def test_class5(op_type, typename):
             index = np.array([[1, 1], [2, 1]]).astype("int64")
 
             self.inputs = {'X': xnp, 'Index': index}
+<<<<<<< HEAD
             self.outputs = {'Out': xnp[tuple(index.T)]}  #[25, 22]
+=======
+            self.outputs = {'Out': xnp[tuple(index.T)]}  # [25, 22]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def set_mlu(self):
             self.__class__.use_mlu = True
@@ -210,9 +257,14 @@ def test_class5(op_type, typename):
 
 
 def test_class6(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpWithHighRankSame(OpTest):
         #Both Index and X have high rank, and Rank(Index) = Rank(X)
+=======
+    class TestGatherNdOpWithHighRankSame(OpTest):
+        # Both Index and X have high rank, and Rank(Index) = Rank(X)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def setUp(self):
             self.set_mlu()
@@ -220,8 +272,14 @@ def test_class6(op_type, typename):
             self.python_api = paddle.gather_nd
             shape = (5, 2, 3, 1, 10)
             xnp = np.random.rand(*shape).astype(typename)
+<<<<<<< HEAD
             index = np.vstack([np.random.randint(0, s, size=2)
                                for s in shape]).T
+=======
+            index = np.vstack(
+                [np.random.randint(0, s, size=2) for s in shape]
+            ).T
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             self.inputs = {'X': xnp, 'Index': index.astype("int32")}
             self.outputs = {'Out': xnp[tuple(index.T)]}
@@ -245,9 +303,14 @@ def test_class6(op_type, typename):
 
 
 def test_class7(op_type, typename):
+<<<<<<< HEAD
 
     class TestGatherNdOpWithHighRankDiff(OpTest):
         #Both Index and X have high rank, and Rank(Index) < Rank(X)
+=======
+    class TestGatherNdOpWithHighRankDiff(OpTest):
+        # Both Index and X have high rank, and Rank(Index) < Rank(X)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def setUp(self):
             self.set_mlu()
@@ -256,7 +319,12 @@ def test_class7(op_type, typename):
             shape = (2, 3, 4, 1, 10)
             xnp = np.random.rand(*shape).astype(typename)
             index = np.vstack(
+<<<<<<< HEAD
                 [np.random.randint(0, s, size=200) for s in shape]).T
+=======
+                [np.random.randint(0, s, size=200) for s in shape]
+            ).T
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             index_re = index.reshape([20, 5, 2, 5])
 
             self.inputs = {'X': xnp, 'Index': index_re.astype("int32")}
@@ -280,19 +348,31 @@ def test_class7(op_type, typename):
     globals()[cls_name] = TestGatherNdOpWithHighRankDiff
 
 
+<<<<<<< HEAD
 #Test Python API
 class TestGatherNdAPI2(unittest.TestCase):
 
+=======
+# Test Python API
+class TestGatherNdAPI2(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_imperative(self):
         paddle.disable_static()
         input_1 = np.array([[1, 2], [3, 4], [5, 6]]).astype("float32")
         index_1 = np.array([[1]]).astype("int32")
         input = fluid.dygraph.to_variable(input_1)
         index = fluid.dygraph.to_variable(index_1)
+<<<<<<< HEAD
         output = paddle.fluid.layers.gather(input, index)
         output_np = output.numpy()
         expected_output = np.array([3, 4])
         self.assertTrue(np.allclose(output_np, expected_output))
+=======
+        output = paddle.gather(input, index)
+        output_np = output.numpy()
+        expected_output = np.array([3, 4])
+        np.testing.assert_allclose(output_np[0], expected_output, rtol=1e-6)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.enable_static()
 
 

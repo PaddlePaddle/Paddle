@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
-from op_test import OpTest
 import paddle
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 np.random.seed(10)
 
+<<<<<<< HEAD
 import op_test
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
@@ -40,9 +37,23 @@ class XPUTestMeanOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'mean'
         self.use_dynamic_create_class = False
+=======
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+
+paddle.enable_static()
+
+
+class XPUTestMeanOp(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'mean'
+        self.use_dynamic_create_class = False
 
     class TestMeanOp(XPUOpTest):
-
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -69,6 +80,70 @@ class XPUTestMeanOp(XPUOpTestWrapper):
         def test_checkout_grad(self):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
+    class TestMeanOp1(TestMeanOp):
+        def set_shape(self):
+            self.shape = 5
+
+    class TestMeanOp2(TestMeanOp):
+        def set_shape(self):
+            self.shape = (5, 7, 8)
+
+    class TestMeanOp3(TestMeanOp):
+        def set_shape(self):
+            self.shape = (10, 5, 7, 8)
+
+    class TestMeanOp4(TestMeanOp):
+        def set_shape(self):
+            self.shape = (2, 2, 3, 3, 3)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+    class TestMeanOp(XPUOpTest):
+
+<<<<<<< HEAD
+        def setUp(self):
+            self.init_dtype()
+            self.set_xpu()
+            self.op_type = "mean"
+            self.place = paddle.XPUPlace(0)
+            self.set_shape()
+            self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
+            self.outputs = {'Out': np.mean(self.inputs["X"]).astype(np.float16)}
+
+        def init_dtype(self):
+            self.dtype = self.in_type
+
+        def set_shape(self):
+            self.shape = (10, 10)
+
+        def set_xpu(self):
+            self.__class__.use_xpu = True
+            self.__class__.no_need_check_grad = True
+            self.__class__.op_type = self.dtype
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place)
+=======
+class TestMeanOpError(unittest.TestCase):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of mean_op must be Variable.
+            input1 = 12
+            self.assertRaises(TypeError, paddle.mean, input1)
+            # The input dtype of mean_op must be float16, float32, float64.
+            input2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32"
+            )
+            self.assertRaises(TypeError, paddle.mean, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[4], dtype="float16"
+            )
+            fluid.layers.softmax(input3)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+
+        def test_checkout_grad(self):
+            self.check_grad_with_place(self.place, ['X'], 'Out')
+
+<<<<<<< HEAD
     class TestMeanOp1(TestMeanOp):
 
         def set_shape(self):
@@ -108,6 +183,8 @@ class TestMeanOpError(unittest.TestCase):
             fluid.layers.softmax(input3)
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 support_types = get_xpu_op_support_types('mean')
 for stype in support_types:
     create_test_class(globals(), XPUTestMeanOp, stype)

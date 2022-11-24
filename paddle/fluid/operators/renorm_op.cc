@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/renorm_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
@@ -29,15 +28,6 @@ class RenormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   using DDim = paddle::framework::DDim;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "abs");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "abs");
-
-    auto in_dims = ctx->GetInputDim("X");
-
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
 };
 
 class RenormOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -49,15 +39,6 @@ class RenormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("axis",
                  "int,the dimension to slice over to get the sub-tensors");
     AddAttr<float>("max_norm", "(float, the norm upper-bound");
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default false) Only used in cudnn kernel, need "
-                  "install cudnn")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
     AddComment(R"DOC(
 Renorm Operator.
 
@@ -70,6 +51,7 @@ This operator is used to scale tensor sliced by axis if its p-norm execeeds maxn
 class RenormGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
                    "Input",
@@ -90,6 +72,8 @@ class RenormGradOp : public framework::OperatorWithKernel {
     auto dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(dtype, ctx.GetPlace());
   }
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename T>
@@ -110,14 +94,23 @@ class RenormGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(renorm,
                   ops::RenormOp,
                   ops::RenormOpMaker,
                   ops::RenormGradMaker<paddle::framework::OpDesc>,
                   ops::RenormGradMaker<paddle::imperative::OpBase>);
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(renorm,
+                            RenormInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp);
+DECLARE_INFER_SHAPE_FUNCTOR(renorm_grad,
+                            RenormGradInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 
+<<<<<<< HEAD
 REGISTER_OP_CPU_KERNEL(renorm,
                        ops::CPURenormKernel<float>,
                        ops::CPURenormKernel<double>);
@@ -125,3 +118,13 @@ REGISTER_OP_CPU_KERNEL(renorm,
 REGISTER_OP_CPU_KERNEL(renorm_grad,
                        ops::CPURenormGradKernel<float>,
                        ops::CPURenormGradKernel<double>);
+=======
+REGISTER_OPERATOR(renorm,
+                  ops::RenormOp,
+                  ops::RenormOpMaker,
+                  ops::RenormGradMaker<paddle::framework::OpDesc>,
+                  ops::RenormGradMaker<paddle::imperative::OpBase>,
+                  RenormInferShapeFunctor)
+
+REGISTER_OPERATOR(renorm_grad, ops::RenormGradOp, RenormGradInferShapeFunctor);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

@@ -28,11 +28,13 @@ MLUContext::MLUContext(const MLUPlace& place, const int priority) {
   MLUDeviceGuard guard(place_.device);
   stream_.reset(new stream::MLUStream(place_, priority));
   InitCNNLContext();
+  InitMLUOPContext();
 }
 
 MLUContext::~MLUContext() {
   MLUDeviceGuard guard(place_.device);
   DestoryCNNLContext();
+  DestoryMLUOPContext();
 }
 
 MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
@@ -41,6 +43,10 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
   driver_version_ = GetMLUDriverVersion(place_.device);
   runtime_version_ = GetMLURuntimeVersion(place_.device);
   cnnl_version_ = GetMLUCnnlVersion(place_.device);
+<<<<<<< HEAD
+=======
+  mluOp_version_ = GetMLUOpVersion(place_.device);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   LOG_FIRST_N(WARNING, 1)
       << "Please NOTE: device: " << static_cast<int>(place_.device)
@@ -51,7 +57,13 @@ MLUDeviceContext::MLUDeviceContext(MLUPlace place) : place_(place) {
       << ", Runtime API Version: " << runtime_version_ / 10000 << "."
       << (runtime_version_ / 100) % 100 << "." << runtime_version_ % 100
       << ", Cnnl API Version: " << cnnl_version_ / 10000 << "."
+<<<<<<< HEAD
       << (cnnl_version_ / 100) % 100 << "." << cnnl_version_ % 100;
+=======
+      << (cnnl_version_ / 100) % 100 << "." << cnnl_version_ % 100
+      << ", MluOp API Version: " << mluOp_version_ / 10000 << "."
+      << (mluOp_version_ / 100) % 100 << "." << mluOp_version_ % 100;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   default_ctx_.reset(new MLUContext(place_));
 }
@@ -68,6 +80,10 @@ int MLUDeviceContext::GetComputeCapability() const {
 
 mluCnnlHandle MLUDeviceContext::cnnl_handle() const {
   return context()->CnnlHandle();
+}
+
+mluOpHandle MLUDeviceContext::mluOp_handle() const {
+  return context()->MluOpHandle();
 }
 
 mluStream MLUDeviceContext::stream() const { return context()->RawStream(); }

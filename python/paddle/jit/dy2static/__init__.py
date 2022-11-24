@@ -27,6 +27,10 @@ from .convert_operators import convert_print as Print  # noqa: F401
 from .convert_operators import convert_shape as Shape  # noqa: F401
 from .convert_operators import convert_while_loop as While  # noqa: F401
 from .convert_operators import unpack_by_structure as Unpack  # noqa: F401
+<<<<<<< HEAD
+=======
+from .convert_operators import convert_attr as Attr  # noqa: F401
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from .convert_operators import indexable as Indexable  # noqa: F401
 from .variable_trans_func import create_bool_as_type  # noqa: F401
 from .variable_trans_func import to_static_variable  # noqa: F401

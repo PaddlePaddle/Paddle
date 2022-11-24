@@ -14,6 +14,12 @@
 
 include(python_module)
 
+<<<<<<< HEAD
+=======
+check_py_version(${PY_VERSION})
+
+# Find Python with mnimum PY_VERSION specified or will raise error!
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 find_package(PythonInterp ${PY_VERSION} REQUIRED)
 find_package(PythonLibs ${PY_VERSION} REQUIRED)
 
@@ -79,5 +85,9 @@ if(PYTHONINTERP_FOUND)
         "please use pip to upgrade protobuf. pip install -U protobuf")
   endif()
 endif(PYTHONINTERP_FOUND)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 include_directories(${PYTHON_INCLUDE_DIR})
 include_directories(${PYTHON_NUMPY_INCLUDE_DIR})

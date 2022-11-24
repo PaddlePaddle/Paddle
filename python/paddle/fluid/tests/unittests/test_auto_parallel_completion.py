@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import unittest.mock
-from io import StringIO
 
 import paddle
 import paddle.nn as nn
@@ -25,14 +22,13 @@ import paddle.nn.functional as F
 import paddle.utils as utils
 import paddle.tensor as tensor
 from paddle.fluid import layers
-from paddle.nn.layer.transformer import _convert_param_attr_to_list
-import paddle.distributed.auto_parallel as auto
+from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.utils import check_distributed_attr_for_program
-from paddle.distributed.auto_parallel.utils import print_program_with_dist_attr
-from paddle.distributed.auto_parallel.utils import append_distributed_attr_suffix
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
+<<<<<<< HEAD
 from paddle.distributed.auto_parallel.dist_context import set_default_distributed_context
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -41,6 +37,7 @@ _global_process_mesh2 = None
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  hidden_size=1024,
@@ -62,10 +59,34 @@ class MLPLayer(nn.Layer):
                                  d_model,
                                  weight_attr,
                                  bias_attr=bias_attr)
+=======
+    def __init__(
+        self,
+        hidden_size=1024,
+        intermediate_size=4 * 1024,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
+        super().__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
+        )
+        bias_attr = None
+
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr
+        )
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input):
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.linear0.weight,
                               dist_attr={
@@ -99,6 +120,19 @@ class MLPLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh2,
                                   "dims_mapping": [1, -1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.linear0.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.linear1.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=["mp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -110,11 +144,13 @@ class MLPLayer(nn.Layer):
 
 
 def mlp_pretrain_forward(train_program, start_program):
-    with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+    with static.program_guard(
+        train_program, start_program
+    ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
+<<<<<<< HEAD
         input = static.data(name="input",
                             shape=[batch_size, sequence_len, hidden_size],
                             dtype='float32')
@@ -136,6 +172,27 @@ def mlp_pretrain_forward(train_program, start_program):
                        intermediate_size=4 * hidden_size,
                        dropout_ratio=0.1,
                        initializer_range=0.02)
+=======
+        input = static.data(
+            name="input",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32',
+        )
+
+        if _global_parallel_strategy in ["dp", "dp_mp"]:
+            auto.shard_tensor(
+                input,
+                process_mesh=_global_process_mesh,
+                shard_spec=["dp", None, None],
+            )
+
+        mlp = MLPLayer(
+            hidden_size=hidden_size,
+            intermediate_size=4 * hidden_size,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = mlp(input)
     return train_program, start_program
 
@@ -146,31 +203,47 @@ class TestMLPAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["dp"]
+        )
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_mlp_dp_mp(self):
@@ -178,16 +251,23 @@ class TestMLPAutoCompletion(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = mlp_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     # def test_mlp_misc(self):
@@ -242,6 +322,7 @@ class TestMLPAutoCompletion(unittest.TestCase):
 
 
 class AttentionLayer(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  hidden_size=1024,
@@ -251,6 +332,18 @@ class AttentionLayer(nn.Layer):
                  dropout_ratio=0.1,
                  initializer_range=0.02):
         super(AttentionLayer, self).__init__()
+=======
+    def __init__(
+        self,
+        hidden_size=1024,
+        sequence_len=512,
+        intermediate_size=4 * 1024,
+        num_heads=16,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.hidden_size = hidden_size
         self.sequence_len = sequence_len
         self.embed_dim = self.hidden_size
@@ -258,13 +351,15 @@ class AttentionLayer(nn.Layer):
         self.vdim = self.embed_dim
         self.num_heads = num_heads
         self.head_dim = self.embed_dim // self.num_heads
-        assert self.head_dim * self.num_heads == self.embed_dim, \
-            "embed_dim must be divisible by num_heads"
+        assert (
+            self.head_dim * self.num_heads == self.embed_dim
+        ), "embed_dim must be divisible by num_heads"
         self.dropout_ratio = dropout_ratio
         self.initializer_range = initializer_range
         self.training = True
         self.attn_mask = None
         weight_attr = paddle.ParamAttr(
+<<<<<<< HEAD
             initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
         bias_attr = None
 
@@ -298,6 +393,32 @@ class AttentionLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [0, -1, -1]
                               })
+=======
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range)
+        )
+        bias_attr = None
+
+        self.q_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.k_proj = nn.Linear(
+            self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.v_proj = nn.Linear(
+            self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.out_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+
+    def forward(self, input):
+        if _global_parallel_strategy in ["dp", "dp_mp"]:
+            auto.shard_tensor(
+                input,
+                process_mesh=_global_process_mesh,
+                shard_spec=["dp", None, None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         q = self.q_proj(input)
         q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
@@ -306,6 +427,7 @@ class AttentionLayer(nn.Layer):
         k = self.k_proj(input)
         v = self.v_proj(input)
 
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.q_proj.weight,
                               dist_attr={
@@ -338,6 +460,24 @@ class AttentionLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [-1, 1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.q_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.k_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.v_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -345,10 +485,16 @@ class AttentionLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
+<<<<<<< HEAD
         product = layers.matmul(x=q,
                                 y=k,
                                 transpose_y=True,
                                 alpha=self.head_dim**-0.5)
+=======
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -356,10 +502,19 @@ class AttentionLayer(nn.Layer):
         weights = F.softmax(product)
 
         if self.dropout_ratio:
+<<<<<<< HEAD
             weights = F.dropout(weights,
                                 self.dropout_ratio,
                                 training=self.training,
                                 mode="upscale_in_train")
+=======
+            weights = F.dropout(
+                weights,
+                self.dropout_ratio,
+                training=self.training,
+                mode="upscale_in_train",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         out = tensor.matmul(weights, v)
 
@@ -369,6 +524,7 @@ class AttentionLayer(nn.Layer):
 
         # project to output
         out = self.out_proj(out)
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.out_proj.weight,
                               dist_attr={
@@ -381,16 +537,26 @@ class AttentionLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [1, -1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.out_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=["mp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         return out
 
 
 def attn_pretrain_forward(train_program, start_program):
-    with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+    with static.program_guard(
+        train_program, start_program
+    ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
+<<<<<<< HEAD
         input = static.data(name="query",
                             shape=[batch_size, sequence_len, hidden_size],
                             dtype='float32')
@@ -400,6 +566,21 @@ def attn_pretrain_forward(train_program, start_program):
                               num_heads=16,
                               dropout_ratio=0.1,
                               initializer_range=0.02)
+=======
+        input = static.data(
+            name="query",
+            shape=[batch_size, sequence_len, hidden_size],
+            dtype='float32',
+        )
+        attn = AttentionLayer(
+            hidden_size=hidden_size,
+            sequence_len=sequence_len,
+            intermediate_size=4 * hidden_size,
+            num_heads=16,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = attn(input)
 
     return train_program, start_program
@@ -411,33 +592,47 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["dp"]
+        )
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
-        # print_program_with_dist_attr(complete_train_program,
-        #                                     dist_context)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_attn_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_attn_dp_mp(self):
@@ -445,20 +640,28 @@ class TestAttentionAutoCompletion(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = attn_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 
 class DecoderLayer(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  vocab_size=32768,
@@ -470,6 +673,20 @@ class DecoderLayer(nn.Layer):
                  dropout_ratio=0.1,
                  initializer_range=0.02):
         super(DecoderLayer, self).__init__()
+=======
+    def __init__(
+        self,
+        vocab_size=32768,
+        hidden_size=1024,
+        sequence_len=512,
+        max_position_embeddings=512,
+        intermediate_size=4 * 1024,
+        num_heads=16,
+        dropout_ratio=0.1,
+        initializer_range=0.02,
+    ):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
         self.max_position_embeddings = max_position_embeddings
@@ -484,11 +701,13 @@ class DecoderLayer(nn.Layer):
         self.attn_mask = None
 
         self.head_dim = self.embed_dim // self.num_heads
-        assert self.head_dim * self.num_heads == self.embed_dim, \
-            "embed_dim must be divisible by num_heads"
+        assert (
+            self.head_dim * self.num_heads == self.embed_dim
+        ), "embed_dim must be divisible by num_heads"
         self.word_embeddings = nn.Embedding(
             self.vocab_size,
             self.hidden_size,
+<<<<<<< HEAD
             weight_attr=paddle.ParamAttr(name="word_embeddings",
                                          initializer=nn.initializer.Normal(
                                              mean=0.0,
@@ -520,13 +739,55 @@ class DecoderLayer(nn.Layer):
                                   self.embed_dim,
                                   weight_attr,
                                   bias_attr=bias_attr)
+=======
+            weight_attr=paddle.ParamAttr(
+                name="word_embeddings",
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range
+                ),
+            ),
+        )
+        self.position_embeddings = nn.Embedding(
+            self.max_position_embeddings,
+            self.hidden_size,
+            weight_attr=paddle.ParamAttr(
+                name="pos_embeddings",
+                initializer=nn.initializer.Normal(
+                    mean=0.0, std=self.initializer_range
+                ),
+            ),
+        )
+
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(
+                mean=0.0, std=self.initializer_range
+            )
+        )
+        bias_attr = None
+        self.q_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.k_proj = nn.Linear(
+            self.kdim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.v_proj = nn.Linear(
+            self.vdim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+        self.out_proj = nn.Linear(
+            self.embed_dim, self.embed_dim, weight_attr, bias_attr=bias_attr
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         intermediate_size = 4 * self.hidden_size
         d_model = self.hidden_size
         dim_feedforward = intermediate_size
-        weight_attr = paddle.ParamAttr(initializer=nn.initializer.Normal(
-            mean=0.0, std=self.initializer_range))
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(
+                mean=0.0, std=self.initializer_range
+            )
+        )
         bias_attr = None
+<<<<<<< HEAD
         self.linear0 = nn.Linear(d_model,
                                  dim_feedforward,
                                  weight_attr,
@@ -535,6 +796,14 @@ class DecoderLayer(nn.Layer):
                                  d_model,
                                  weight_attr,
                                  bias_attr=bias_attr)
+=======
+        self.linear0 = nn.Linear(
+            d_model, dim_feedforward, weight_attr, bias_attr=bias_attr
+        )
+        self.linear1 = nn.Linear(
+            dim_feedforward, d_model, weight_attr, bias_attr=bias_attr
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.norm1 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.norm2 = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout1 = nn.Dropout(self.dropout_ratio)
@@ -542,6 +811,7 @@ class DecoderLayer(nn.Layer):
         self.dropout3 = nn.Dropout(self.dropout_ratio, mode="upscale_in_train")
 
     def forward(self, input_ids, position_ids):
+<<<<<<< HEAD
         if _global_parallel_strategy == "dp":
             auto.shard_tensor(input_ids,
                               dist_attr={
@@ -554,10 +824,19 @@ class DecoderLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [0, -1]
                               })
+=======
+        if _global_parallel_strategy in ["dp", "dp_mp"]:
+            auto.shard_tensor(
+                input_ids,
+                process_mesh=_global_process_mesh,
+                shard_spec=["dp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         input_embeddings = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
 
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.word_embeddings.weight,
                               dist_attr={
@@ -570,6 +849,14 @@ class DecoderLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [1, -1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.word_embeddings.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=["mp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         embeddings = input_embeddings + position_embeddings
         embeddings = self.dropout1(embeddings)
@@ -585,6 +872,7 @@ class DecoderLayer(nn.Layer):
         k = self.k_proj(target)
         v = self.v_proj(target)
 
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.q_proj.weight,
                               dist_attr={
@@ -617,6 +905,24 @@ class DecoderLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [-1, 1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.q_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.k_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.v_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
         k = tensor.transpose(x=k, perm=[0, 2, 1, 3])
@@ -624,10 +930,16 @@ class DecoderLayer(nn.Layer):
         v = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
         # scale dot product attention
+<<<<<<< HEAD
         product = layers.matmul(x=q,
                                 y=k,
                                 transpose_y=True,
                                 alpha=self.head_dim**-0.5)
+=======
+        product = layers.matmul(
+            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if self.attn_mask is not None:
             product = product + self.attn_mask
@@ -635,10 +947,19 @@ class DecoderLayer(nn.Layer):
         weights = F.softmax(product)
 
         if self.dropout_ratio:
+<<<<<<< HEAD
             weights = F.dropout(weights,
                                 self.dropout_ratio,
                                 training=self.training,
                                 mode="upscale_in_train")
+=======
+            weights = F.dropout(
+                weights,
+                self.dropout_ratio,
+                training=self.training,
+                mode="upscale_in_train",
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         out = tensor.matmul(weights, v)
 
@@ -649,6 +970,7 @@ class DecoderLayer(nn.Layer):
         # project to output
         out = self.out_proj(out)
 
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.out_proj.weight,
                               dist_attr={
@@ -661,6 +983,14 @@ class DecoderLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [1, -1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.out_proj.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=["mp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # Add residual
         residual = embeddings + self.dropout2(out)
@@ -673,6 +1003,7 @@ class DecoderLayer(nn.Layer):
         out2 = F.gelu(out1, approximate=True)
         out3 = self.linear1(out2)
 
+<<<<<<< HEAD
         if _global_parallel_strategy == "mp":
             auto.shard_tensor(self.linear0.weight,
                               dist_attr={
@@ -695,6 +1026,19 @@ class DecoderLayer(nn.Layer):
                                   "process_mesh": _global_process_mesh,
                                   "dims_mapping": [1, -1]
                               })
+=======
+        if _global_parallel_strategy in ["mp", "dp_mp"]:
+            auto.shard_tensor(
+                self.linear0.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=[None, "mp"],
+            )
+            auto.shard_tensor(
+                self.linear1.weight,
+                process_mesh=_global_process_mesh,
+                shard_spec=["mp", None],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # Add residual
         final = residual + self.dropout3(out3)
@@ -702,11 +1046,13 @@ class DecoderLayer(nn.Layer):
 
 
 def decoder_pretrain_forward(train_program, start_program):
-    with static.program_guard(train_program,
-                              start_program), utils.unique_name.guard():
+    with static.program_guard(
+        train_program, start_program
+    ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 1024
         sequence_len = 512
+<<<<<<< HEAD
         input_ids = static.data(name="input_ids",
                                 shape=[batch_size, sequence_len],
                                 dtype='int64')
@@ -721,6 +1067,24 @@ def decoder_pretrain_forward(train_program, start_program):
                                num_heads=16,
                                dropout_ratio=0.1,
                                initializer_range=0.02)
+=======
+        input_ids = static.data(
+            name="input_ids", shape=[batch_size, sequence_len], dtype='int64'
+        )
+        position_ids = static.data(
+            name="position_ids", shape=[batch_size, sequence_len], dtype='int64'
+        )
+        decoder = DecoderLayer(
+            vocab_size=32768,
+            hidden_size=hidden_size,
+            sequence_len=sequence_len,
+            max_position_embeddings=512,
+            intermediate_size=4 * hidden_size,
+            num_heads=16,
+            dropout_ratio=0.1,
+            initializer_range=0.02,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = decoder(input_ids, position_ids)
 
     return train_program, start_program
@@ -732,31 +1096,47 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         global _global_parallel_strategy
         _global_parallel_strategy = "dp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["dp"]
+        )
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_mp(self):
         global _global_parallel_strategy
         _global_parallel_strategy = "mp"
         global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1, 2, 3])
+        _global_process_mesh = auto.ProcessMesh(
+            mesh=[0, 1, 2, 3], dim_names=["mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
     def test_decoder_dp_mp(self):
@@ -764,16 +1144,23 @@ class TestDecoderLayerAutoCompletion(unittest.TestCase):
         _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
-            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
+            mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["dp", "mp"]
+        )
 
         train_program = static.Program()
         start_program = static.Program()
         dist_context = DistributedContext()
         train_program, start_program = decoder_pretrain_forward(
+<<<<<<< HEAD
             train_program, start_program)
+=======
+            train_program, start_program
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         completer = Completer(dist_context)
         complete_train_program = completer.complete_forward_annotation(
-            train_program)
+            train_program
+        )
         self.assertTrue(dist_context.validate_dist_attr_for_program())
 
 

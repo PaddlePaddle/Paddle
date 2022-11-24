@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUD2STest
 
 
 class SimpleLayer(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self, use_ipu=False):
         super(SimpleLayer, self).__init__()
@@ -29,6 +30,14 @@ class SimpleLayer(paddle.nn.Layer):
                                      out_channels=1,
                                      kernel_size=2,
                                      stride=1)
+=======
+    def __init__(self, use_ipu=False):
+        super().__init__()
+        self.use_ipu = use_ipu
+        self.conv = paddle.nn.Conv2D(
+            in_channels=3, out_channels=1, kernel_size=2, stride=1
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def forward(self, x, target=None):
         x = self.conv(x)
@@ -45,7 +54,10 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestBase(IPUD2STest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         super().setUp()
         self.save_path = tempfile.TemporaryDirectory()
@@ -59,6 +71,7 @@ class TestBase(IPUD2STest):
         np.random.seed(self.SEED)
         model = SimpleLayer(use_ipu)
         specs = [
+<<<<<<< HEAD
             paddle.static.InputSpec(name="x",
                                     shape=[32, 3, 10, 10],
                                     dtype="float32"),
@@ -73,14 +86,42 @@ class TestBase(IPUD2STest):
             self.save_path, 'ipu' if use_ipu else 'cpu')
         optim_path = '{}/optim_state_dict_{}.pdopt'.format(
             self.save_path, 'ipu' if use_ipu else 'cpu')
+=======
+            paddle.static.InputSpec(
+                name="x", shape=[32, 3, 10, 10], dtype="float32"
+            ),
+            paddle.static.InputSpec(name="target", shape=[32], dtype="int64"),
+        ]
+        model = paddle.jit.to_static(model, input_spec=specs)
+        optim = paddle.optimizer.Adam(
+            learning_rate=0.01, parameters=model.parameters()
+        )
+        data = paddle.uniform((32, 3, 10, 10), dtype='float32')
+        label = paddle.randint(0, 10, shape=[32], dtype='int64')
+        model_path = '{}/model_state_dict_{}.pdparams'.format(
+            self.save_path, 'ipu' if use_ipu else 'cpu'
+        )
+        optim_path = '{}/optim_state_dict_{}.pdopt'.format(
+            self.save_path, 'ipu' if use_ipu else 'cpu'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
+<<<<<<< HEAD
             ipu_strategy.set_graph_config(num_ipus=1,
                                           is_training=True,
                                           micro_batch_size=1,
                                           enable_manual_shard=False)
+=======
+            ipu_strategy.set_graph_config(
+                num_ipus=1,
+                is_training=True,
+                micro_batch_size=1,
+                enable_manual_shard=False,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             ipu_strategy.set_precision_config(enable_fp16=True)
             ipu_strategy.set_optimizer(optim)
             data = data.astype(np.float16)
@@ -122,7 +163,11 @@ class TestBase(IPUD2STest):
     def test_training(self):
         cpu_loss = self._test(False).flatten()
         ipu_loss = self._test(True).flatten()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-2))
+=======
+        np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=0.01)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

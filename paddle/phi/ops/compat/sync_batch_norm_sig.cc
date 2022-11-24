@@ -19,6 +19,7 @@ namespace phi {
 KernelSignature SyncBatchNormOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("sync_batch_norm",
+<<<<<<< HEAD
                          {"X", "Scale", "Bias", "Mean", "Variance"},
                          {"momentum",
                           "epsilon",
@@ -27,6 +28,15 @@ KernelSignature SyncBatchNormOpArgumentMapping(
                           "use_global_stats",
                           "trainable_statistics",
                           "fuse_with_relu"},
+=======
+                         {"X", "Mean", "Variance", "Scale", "Bias"},
+                         {"is_test",
+                          "momentum",
+                          "epsilon",
+                          "data_layout",
+                          "use_global_stats",
+                          "trainable_statistics"},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                          {"Y",
                           "MeanOut",
                           "VarianceOut",
@@ -42,8 +52,11 @@ KernelSignature SyncBatchNormGradOpArgumentMapping(
                              "X",
                              "Scale",
                              "Bias",
+<<<<<<< HEAD
                              "Mean",
                              "Variance",
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                              "SavedMean",
                              "SavedVariance",
                              "ReserveSpace",
@@ -54,8 +67,12 @@ KernelSignature SyncBatchNormGradOpArgumentMapping(
                           "data_layout",
                           "is_test",
                           "use_global_stats",
+<<<<<<< HEAD
                           "trainable_statistics",
                           "fuse_with_relu"},
+=======
+                          "trainable_statistics"},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
 

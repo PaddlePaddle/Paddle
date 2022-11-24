@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid as fluid
@@ -34,8 +33,9 @@ class TestSpaceToDepthOp(OpTest):
                         width2 = i * blocksize + offset % blocksize
                         height2 = j * blocksize + offset // blocksize
                         out_index = width2 + width * blocksize * (
-                            height2 + height * blocksize *
-                            (channel2 + channel_out * b))
+                            height2
+                            + height * blocksize * (channel2 + channel_out * b)
+                        )
                         if forward:
                             out_[out_index] = in_[in_index]
                         else:
@@ -46,9 +46,16 @@ class TestSpaceToDepthOp(OpTest):
 
         self.op_type = "space_to_depth"
         self.inputs = {"X": self.x}
-        self.helper(self.x_1d, self.x.shape[3], self.x.shape[2],
-                    self.x.shape[1], self.x.shape[0], self.blocksize,
-                    self.forward, self.out_1d)
+        self.helper(
+            self.x_1d,
+            self.x.shape[3],
+            self.x.shape[2],
+            self.x.shape[1],
+            self.x.shape[0],
+            self.blocksize,
+            self.forward,
+            self.out_1d,
+        )
         self.out = np.reshape(self.out_1d, self.infered_shape)
         self.attrs = {"blocksize": self.blocksize}
         self.outputs = {"Out": self.out}
@@ -66,6 +73,7 @@ class TestSpaceToDepthOp(OpTest):
         self.forward = 1
 
     def test_check_output(self):
+<<<<<<< HEAD
         place = fluid.core.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.core.CPUPlace()
         self.check_output_with_place(place, 1e-5, None, False)
@@ -73,6 +81,21 @@ class TestSpaceToDepthOp(OpTest):
     def test_check_grad(self):
         place = fluid.core.CUDAPlace(
             0) if fluid.core.is_compiled_with_cuda() else fluid.core.CPUPlace()
+=======
+        place = (
+            fluid.core.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.core.CPUPlace()
+        )
+        self.check_output_with_place(place, 1e-5, None, False)
+
+    def test_check_grad(self):
+        place = (
+            fluid.core.CUDAPlace(0)
+            if fluid.core.is_compiled_with_cuda()
+            else fluid.core.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.check_grad_with_place(place, ['X'], 'Out')
 
 

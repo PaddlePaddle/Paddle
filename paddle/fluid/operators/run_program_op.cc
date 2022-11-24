@@ -55,7 +55,11 @@ class RunProgramOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -119,17 +123,31 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+<<<<<<< HEAD
+=======
+    AddAttr<bool>("use_interpretorcore",
+                  "(bool, default false) Set to true for use interpretercore.")
+        .SetDefault(false);
+    AddAttr<BlockDesc*>("forward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed forward program desc.")
+        .SetDefault(nullptr);
+    AddAttr<BlockDesc*>("backward_global_block",
+                        "(BlockDesc *)"
+                        "The global block of executed backward program desc.")
+        .SetDefault(nullptr);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     AddComment(R"DOC(
 RunProgram operator.
 
-The RunProgram operator receives a program's feed targets, fetch targets, 
-and parameters, and receives the forward and backward program desc 
+The RunProgram operator receives a program's feed targets, fetch targets,
+and parameters, and receives the forward and backward program desc
 as attributes, and then executes the program by executor.
 
-NOTE: This operator is added so that the inference model stored by 
-`fluid.io.save_inference_model` under the static graph mode can be loaded 
+NOTE: This operator is added so that the inference model stored by
+`fluid.io.save_inference_model` under the static graph mode can be loaded
 under the dynamic graph mode for fine-tuning or inferencing.
-      
+
 )DOC");
   }
 };
@@ -162,7 +180,11 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const framework::Tensor& tensor,
+=======
+      const phi::DenseTensor& tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }

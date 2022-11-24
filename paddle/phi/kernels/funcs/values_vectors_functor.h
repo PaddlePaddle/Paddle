@@ -223,7 +223,14 @@ struct MatrixEighFunctor<GPUContext, T> {
         has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     ValueType *out_value = dev_ctx.template Alloc<ValueType>(eigen_values);
+<<<<<<< HEAD
     auto info = paddle::memory::Alloc(dev_ctx, sizeof(int) * batch_size);
+=======
+    auto info = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(int) * batch_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 
     DenseTensor input_trans = phi::TransposeLast2Dim<T>(dev_ctx, input);
@@ -260,7 +267,14 @@ struct MatrixEighFunctor<GPUContext, T> {
                 out_value,
                 &workspace_size);
     }
+<<<<<<< HEAD
     auto work = paddle::memory::Alloc(dev_ctx, sizeof(T) * workspace_size);
+=======
+    auto work = paddle::memory::Alloc(
+        dev_ctx.GetPlace(),
+        sizeof(T) * workspace_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
 
     for (auto i = 0; i < batch_size; ++i) {

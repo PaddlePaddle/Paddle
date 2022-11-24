@@ -20,8 +20,11 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+<<<<<<< HEAD
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 std::tuple<paddle::experimental::Tensor,
            paddle::experimental::Tensor,
            paddle::experimental::Tensor,
@@ -531,7 +534,10 @@ fused_attention_dygraph_function(
       egr::EagerUtils::SetHistory(p_autograd_Y, grad_node);
       grad_node->SetGradInMeta(Y, 19);
       egr::EagerUtils::CheckAndRetainGrad(Y);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       auto QKVOut_accumulation_node =
           std::make_shared<egr::GradNodeAccumulation>(p_autograd_QKVOut);
       egr::EagerUtils::SetOutRankWithSlot(p_autograd_QKVOut, 0);

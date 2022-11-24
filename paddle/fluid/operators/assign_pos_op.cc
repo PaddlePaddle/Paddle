@@ -62,7 +62,7 @@ class AssignPosOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 assign_pos_op Operator.
 
-Assign pos decides which tokens should be fetched belong to 
+Assign pos decides which tokens should be fetched belong to
 specially counter orderingly.
 
 )DOC");

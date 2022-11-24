@@ -44,10 +44,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
         out = paddle.fluid.layers.expand(x, **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        out = paddle.expand(x, **self.attrs)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -78,6 +85,7 @@ class TestCase1(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype="float32")
@@ -86,6 +94,15 @@ class TestCase1(TestBase):
         out = paddle.fluid.layers.expand(x,
                                          expand_times=expand_times,
                                          **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
+        )
+        expand_times = paddle.fluid.layers.fill_constant(
+            shape=[len(self.feed_shape[0])], dtype="int32", value=2
+        )
+        out = paddle.expand(x, expand_times, **self.attrs)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.fetch_list = [out.name]
 
 

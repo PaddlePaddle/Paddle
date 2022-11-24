@@ -14,7 +14,11 @@
 
 #include <gtest/gtest.h>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/ir/mkldnn/conv_concat_relu_mkldnn_fuse_pass.h"
+=======
+#include "paddle/fluid/framework/ir/mkldnn/conv_activation_mkldnn_fuse_pass.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 namespace paddle {
@@ -47,6 +51,7 @@ void SetOp(ProgramDesc* prog,
     op->SetOutput("Out", outputs);
   } else if (type == "concat") {
     op->SetAttr("use_mkldnn", use_mkldnn);
+    op->SetAttr("axis", 0);
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
   }
@@ -103,7 +108,7 @@ void MainTest(const ProgramDesc& prog, bool fuse_relu) {
 
   int original_nodes_num = graph->Nodes().size();
 
-  auto pass = PassRegistry::Instance().Get("conv_concat_relu_mkldnn_fuse_pass");
+  auto pass = PassRegistry::Instance().Get("conv_activation_mkldnn_fuse_pass");
   graph.reset(pass->Apply(graph.release()));
 
   int current_nodes_num = graph->Nodes().size();
@@ -167,4 +172,4 @@ TEST(ConvConcatReLUFusePass, convs_and_pool_before_concat) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(conv_concat_relu_mkldnn_fuse_pass);
+USE_PASS(conv_activation_mkldnn_fuse_pass);

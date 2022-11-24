@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
@@ -33,15 +31,15 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data)
         z = np.cumsum(data_np)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=0)
         z = np.cumsum(data_np, axis=0)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, axis=-1)
         z = np.cumsum(data_np, axis=-1)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
         y = paddle.cumsum(data, dtype='float32')
         self.assertTrue(y.dtype == core.VarDesc.VarType.FP32)
@@ -51,7 +49,7 @@ class TestCumsumOp(unittest.TestCase):
 
         y = paddle.cumsum(data, axis=-2)
         z = np.cumsum(data_np, axis=-2)
-        self.assertTrue(np.array_equal(z, y.numpy()))
+        np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_npu=False):
         with fluid.program_guard(fluid.Program()):
@@ -67,22 +65,28 @@ class TestCumsumOp(unittest.TestCase):
             place = fluid.NPUPlace(0) if use_npu else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
-            out = exe.run(feed={'X': data_np},
-                          fetch_list=[
-                              y.name, y2.name, y3.name, y4.name, y5.name,
-                              y6.name
-                          ])
+            out = exe.run(
+                feed={'X': data_np},
+                fetch_list=[
+                    y.name,
+                    y2.name,
+                    y3.name,
+                    y4.name,
+                    y5.name,
+                    y6.name,
+                ],
+            )
 
             z = np.cumsum(data_np)
-            self.assertTrue(np.allclose(z, out[0]))
+            np.testing.assert_allclose(z, out[0])
             z = np.cumsum(data_np, axis=0)
-            self.assertTrue(np.allclose(z, out[1]))
+            np.testing.assert_allclose(z, out[1])
             z = np.cumsum(data_np, axis=-1)
-            self.assertTrue(np.allclose(z, out[2]))
+            np.testing.assert_allclose(z, out[2])
             self.assertTrue(out[3].dtype == np.float32)
             self.assertTrue(out[4].dtype == np.int32)
             z = np.cumsum(data_np, axis=-2)
-            self.assertTrue(np.allclose(z, out[5]))
+            np.testing.assert_allclose(z, out[5])
 
     def test_npu(self):
         # Now, npu tests need setting paddle.enable_static()
@@ -126,8 +130,14 @@ class TestNPUCumSumOp2(TestNPUCumSumOp1):
         self.attrs = {'axis': -1, 'reverse': True}
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.dtype)}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.flip(np.flip(self.inputs['X'], axis=2).cumsum(axis=2),
                            axis=2)
+=======
+            'Out': np.flip(
+                np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -168,10 +178,20 @@ class TestNPUCumSumExclusive1(TestNPUCumSumOp1):
         a = np.random.random((4, 5, 65)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -182,10 +202,20 @@ class TestNPUCumSumExclusive2(TestNPUCumSumOp1):
         a = np.random.random((1, 1, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -196,10 +226,20 @@ class TestNPUCumSumExclusive3(TestNPUCumSumOp1):
         a = np.random.random((4, 5, 888)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -210,10 +250,20 @@ class TestNPUCumSumExclusive4(TestNPUCumSumOp1):
         a = np.random.random((1, 1, 3049)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (1, 1, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((1, 1, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -224,10 +274,20 @@ class TestNPUCumSumExclusive5(TestNPUCumSumOp1):
         a = np.random.random((4, 5, 3096)).astype(self.dtype)
         self.inputs = {'X': a}
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate((np.zeros(
                 (4, 5, 1), dtype=self.dtype), a[:, :, :-1].cumsum(axis=2)),
                            axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                    a[:, :, :-1].cumsum(axis=2),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -239,11 +299,21 @@ class TestNPUCumSumReverseExclusive(TestNPUCumSumOp1):
         self.inputs = {'X': a}
         a = np.flip(a, axis=2)
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             np.concatenate(
                 (np.flip(a[:, :, :-1].cumsum(axis=2),
                          axis=2), np.zeros((4, 5, 1), dtype=self.dtype)),
                 axis=2)
+=======
+            'Out': np.concatenate(
+                (
+                    np.flip(a[:, :, :-1].cumsum(axis=2), axis=2),
+                    np.zeros((4, 5, 1), dtype=self.dtype),
+                ),
+                axis=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 
@@ -263,7 +333,7 @@ class TestNPUCumSumWithFlatten2(TestNPUCumSumOp1):
         self.outputs = {'Out': self.inputs['X'].cumsum()}
 
 
-#----------------Cumsum Int64----------------
+# ----------------Cumsum Int64----------------
 class TestNPUCumSumOpInt64(TestNPUCumSumOp1):
 
     def init_testcase(self):
@@ -272,8 +342,14 @@ class TestNPUCumSumOpInt64(TestNPUCumSumOp1):
             'X': np.random.randint(1, 10000, size=(5, 6, 10)).astype(self.dtype)
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.flip(np.flip(self.inputs['X'], axis=2).cumsum(axis=2),
                            axis=2)
+=======
+            'Out': np.flip(
+                np.flip(self.inputs['X'], axis=2).cumsum(axis=2), axis=2
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
 

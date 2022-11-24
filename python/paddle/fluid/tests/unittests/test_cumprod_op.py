@@ -19,11 +19,7 @@ from op_test import OpTest
 import random
 import paddle
 
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
 
 np.random.seed(0)
 
@@ -51,8 +47,9 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
                     else:
                         elem = dy[pos] * y[index - inner_dim]
                     if pos > index:
-                        for m in range(index + inner_dim, pos + inner_dim,
-                                       inner_dim):
+                        for m in range(
+                            index + inner_dim, pos + inner_dim, inner_dim
+                        ):
                             elem *= x[m]
                     elif pos < index:
                         elem = 0
@@ -102,8 +99,9 @@ class TestCumprod(OpTest):
         if self.dtype == np.complex128 or self.dtype == np.complex64:
             reshape_x = np.conj(reshape_x)
             out_data = np.conj(out_data)
-        cumprod_grad(reshape_x, out_data, self.grad_out, self.grad_x,
-                     self.shape, dim)
+        cumprod_grad(
+            reshape_x, out_data, self.grad_out, self.grad_x, self.shape, dim
+        )
         self.grad_x = self.grad_x.reshape(self.shape)
         self.grad_out = self.grad_out.reshape(self.shape)
 
@@ -123,11 +121,21 @@ class TestCumprod(OpTest):
                 if self.dtype == np.float64:
                     self.check_grad(['X'], 'Out', check_eager=True)
                 else:
+<<<<<<< HEAD
                     self.check_grad(['X'],
                                     'Out',
                                     user_defined_grads=[self.grad_x],
                                     user_defined_grad_outputs=[self.grad_out],
                                     check_eager=True)
+=======
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 # test float32 case.
@@ -179,7 +187,7 @@ class TestCumprodAPI(unittest.TestCase):
             out_ref = np.cumprod(self.x, -2)
 
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -192,7 +200,7 @@ class TestCumprodAPI(unittest.TestCase):
             x = paddle.to_tensor(self.x)
             out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

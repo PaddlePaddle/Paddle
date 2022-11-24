@@ -50,17 +50,29 @@ class TestTopKOp(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if not self.use_k_as_const_variable:
             topk_values, topk_indices = self.op(x, **self.attrs)
         else:
             # !important, popart cannot accept non const tensor
+<<<<<<< HEAD
             K_t = paddle.fluid.layers.fill_constant(shape=[1],
                                                     dtype='int32',
                                                     value=self.k,
                                                     name="in_2")
+=======
+            K_t = paddle.fluid.layers.fill_constant(
+                shape=[1], dtype='int32', value=self.k, name="in_2"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             topk_values, topk_indices = self.op(x, K_t, **self.attrs)
         self.fetch_list = [topk_values.name, topk_indices.name]
 

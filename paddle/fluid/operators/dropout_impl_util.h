@@ -21,7 +21,11 @@ namespace paddle {
 namespace operators {
 
 inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
+<<<<<<< HEAD
                                     const framework::Tensor* seed,
+=======
+                                    const phi::DenseTensor* seed,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                                     const bool is_fix_seed,
                                     const int seed_val,
                                     const int offset,
@@ -31,7 +35,11 @@ inline void GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
   auto gen_cuda = framework::DefaultCUDAGenerator(device_id);
 
   if (seed) {
+<<<<<<< HEAD
     framework::Tensor seed_cpu_tensor;
+=======
+    phi::DenseTensor seed_cpu_tensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     paddle::framework::TensorCopySync(
         *seed, platform::CPUPlace(), &seed_cpu_tensor);
     *seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);

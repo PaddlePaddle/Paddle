@@ -27,8 +27,8 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CNCL)
-    auto x = ctx.Input<framework::LoDTensor>("X");
-    auto out = ctx.Output<framework::LoDTensor>("Out");
+    auto x = ctx.Input<phi::DenseTensor>("X");
+    auto out = ctx.Output<phi::DenseTensor>("Out");
     int numel = x->numel();
     cnclDataType_t dtype =
         platform::ToCNCLDataType(framework::TransToProtoVarType(x->dtype()));
@@ -59,10 +59,14 @@ class CBroadcastOPMLUKernel : public framework::OpKernel<T> {
 
       if (out != x) {
         framework::TensorCopy(
+<<<<<<< HEAD
             *static_cast<const framework::Tensor*>(x),
+=======
+            *static_cast<const phi::DenseTensor*>(x),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             place,
             *platform::DeviceContextPool::Instance().Get(place),
-            static_cast<framework::Tensor*>(out));
+            static_cast<phi::DenseTensor*>(out));
       }
     } else {
       PADDLE_ENFORCE_MLU_SUCCESS(cnclBcast(out->mutable_data<T>(place),

@@ -37,7 +37,11 @@ def seed(seed):
             gen = paddle.seed(102)
 
     """
+<<<<<<< HEAD
     #TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
+=======
+    # TODO(zhiqiu): 1. remove program.random_seed when all random-related op upgrade
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     # 2. support gpu generator by global device
 
     seed = int(seed)
@@ -106,13 +110,13 @@ def set_cuda_rng_state(state_list):
 def _manual_program_seed(seed):
     """
     Sets global seed for generating random numbers.
-  
+
     NOTE(zhiqiu): This is the original implemention of seed. Keeps it temporally
     since CUDA generator is not developed, so we need it in the unittest.
 
     Args:
         seed(int): The random seed to set. It is recommend to set a large int number.
-    
+
     Returns:
         None
     """

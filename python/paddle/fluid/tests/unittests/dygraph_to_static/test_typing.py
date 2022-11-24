@@ -16,13 +16,13 @@ import tempfile
 import paddle
 import unittest
 import numpy as np
-from typing import Tuple, List, Dict, TypeVar
+from typing import Dict, List, Tuple
 
 
 class BaseLayer(paddle.nn.Layer):
 
     def __init__(self, in_size, out_size):
-        super(BaseLayer, self).__init__()
+        super().__init__()
         self._linear = paddle.nn.Linear(in_size, out_size)
 
     def build(self, x):
@@ -34,7 +34,7 @@ class BaseLayer(paddle.nn.Layer):
 class LinearNetWithTuple(BaseLayer):
 
     def __init__(self, in_size, out_size):
-        super(LinearNetWithTuple, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Tuple[paddle.Tensor, str]:
         out1, out2 = self.build(x)
@@ -44,7 +44,7 @@ class LinearNetWithTuple(BaseLayer):
 class LinearNetWithTuple2(BaseLayer):
 
     def __init__(self, in_size, out_size):
-        super(LinearNetWithTuple2, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Tuple[paddle.Tensor, np.array]:
         out1, out2 = self.build(x)
@@ -54,7 +54,7 @@ class LinearNetWithTuple2(BaseLayer):
 class LinearNetWithList(BaseLayer):
 
     def __init__(self, in_size, out_size):
-        super(LinearNetWithList, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> List[paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -64,7 +64,7 @@ class LinearNetWithList(BaseLayer):
 class LinearNetWithDict(BaseLayer):
 
     def __init__(self, in_size, out_size):
-        super(LinearNetWithDict, self).__init__(in_size, out_size)
+        super().__init__(in_size, out_size)
 
     def forward(self, x) -> Dict[str, paddle.Tensor]:
         out1, out2 = self.build(x)
@@ -101,7 +101,7 @@ class TestTyping(unittest.TestCase):
         out = self.run_dy()
         load_net = self.save_and_load('tuple')
         load_out = load_net(self.x)
-        self.assertTrue(np.allclose(out, load_out))
+        np.testing.assert_allclose(out, load_out, rtol=1e-05)
 
 
 class TestTypingTuple(TestTyping):

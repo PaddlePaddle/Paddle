@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
 
@@ -39,4 +40,20 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out);
+<<<<<<< HEAD
+=======
+
+template <typename T, typename Context>
+DenseTensor Diagonal(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     int offset,
+                     int axis1,
+                     int axis2) {
+  DenseTensor dense_out;
+  MetaTensor meta_out(&dense_out);
+  DiagonalInferMeta(x, offset, axis1, axis2, &meta_out);
+  DiagonalKernel<T, Context>(dev_ctx, x, offset, axis1, axis2, &dense_out);
+  return dense_out;
+}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace phi

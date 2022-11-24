@@ -68,8 +68,26 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
   }
   CudaAtomicAddWithWarp(&(d_mean[bid * groups + gid]), d_mean_data);
   CudaAtomicAddWithWarp(&(d_var[bid * groups + gid]), d_var_data);
+<<<<<<< HEAD
   if (flags & kHasScale) CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
   if (flags & kHasBias) CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+=======
+
+  if (flags & kHasScale) {
+#if CUDA_VERSION >= 11070
+    phi::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+#else
+    CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
+#endif
+  }
+  if (flags & kHasBias) {
+#if CUDA_VERSION >= 11070
+    phi::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+#else
+    CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
+#endif
+  }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 template <typename T, int flags>
@@ -251,8 +269,12 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
+<<<<<<< HEAD
   const DataLayout data_layout =
       paddle::framework::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 

@@ -53,20 +53,19 @@ class TestAdam(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def set_npu(self):
@@ -113,15 +112,14 @@ class TestAdamWithEpsilonTensor(OpTest):
 
         self.attrs = {'epsilon': epsilon}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def set_npu(self):
@@ -221,8 +219,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
         attributes = {'epsilon': epsilon}
 
-        param_out, moment1_out, \
-            moment2_out = adam_step(self.inputs, attributes)
+        param_out, moment1_out, moment2_out = adam_step(self.inputs, attributes)
 
         self.attrs = {'use_global_beta_pow': True}
 
@@ -232,7 +229,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([]),
-            'Beta2PowOut': np.array([])
+            'Beta2PowOut': np.array([]),
         }
 
     def set_npu(self):
@@ -261,9 +258,15 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(name="label",
                                        shape=[32, 1],
                                        dtype='int64')
+=======
+            label = paddle.static.data(
+                name="label", shape=[32, 1], dtype='int64'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -287,6 +290,7 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(main_prog,
                                          feed={
                                              "a": a_np,
@@ -294,9 +298,19 @@ class TestNet(unittest.TestCase):
                                              "label": label_np
                                          },
                                          fetch_list=[prediction, loss])
+=======
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np, "b": b_np, "label": label_np},
+                fetch_list=[prediction, loss],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
 
         return pred_res, loss_res
 
@@ -304,11 +318,12 @@ class TestNet(unittest.TestCase):
         cpu_pred, cpu_loss = self._test(False)
         npu_pred, npu_loss = self._test(True)
 
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-3))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-3))
+        np.testing.assert_allclose(npu_pred, cpu_pred, rtol=1e-3)
+        np.testing.assert_allclose(npu_loss, cpu_loss, rtol=1e-3)
 
 
 class TestNetWithEpsilonTensor(unittest.TestCase):
+<<<<<<< HEAD
 
     def _test(self,
               place,
@@ -316,6 +331,16 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
               use_fluid_api=True,
               use_global_beta_pow=False,
               flatten_param_grads=False):
+=======
+    def _test(
+        self,
+        place,
+        use_tensor=True,
+        use_fluid_api=True,
+        use_global_beta_pow=False,
+        flatten_param_grads=False,
+    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.enable_static()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -329,29 +354,36 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         weight_attr1 = paddle.ParamAttr(
             name="weight1",
             initializer=fluid.initializer.Constant(value=1.0),
-            trainable=True)
+            trainable=True,
+        )
         weight_attr2 = paddle.ParamAttr(
             name="weight2",
             initializer=fluid.initializer.Constant(value=2.0),
-            trainable=True)
+            trainable=True,
+        )
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
 
         with paddle.static.program_guard(main_prog, startup_prog):
             with paddle.utils.unique_name.guard():
                 a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
                 b = paddle.static.data(name="b", shape=[2, 2], dtype='float32')
+<<<<<<< HEAD
                 label = paddle.static.data(name="label",
                                            shape=[2, 1],
                                            dtype='int64')
+=======
+                label = paddle.static.data(
+                    name="label", shape=[2, 1], dtype='int64'
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 sum = paddle.add(a, b)
                 z = paddle.pow(sum, 2.0)
 
                 fc_1 = fluid.layers.fc(input=z, size=2, param_attr=weight_attr1)
-                prediction = fluid.layers.fc(input=fc_1,
-                                             size=2,
-                                             param_attr=weight_attr2,
-                                             act='softmax')
+                prediction = fluid.layers.fc(
+                    input=fc_1, size=2, param_attr=weight_attr2, act='softmax'
+                )
 
                 cost = fluid.layers.cross_entropy(input=prediction, label=label)
                 loss = fluid.layers.reduce_mean(cost)
@@ -364,19 +396,22 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         value=float(beta1_init),
                         dtype='float32',
                         persistable=True,
-                        name="beta1")
+                        name="beta1",
+                    )
                     beta2 = fluid.layers.create_global_var(
                         shape=[1],
                         value=float(beta2_init),
                         dtype='float32',
                         persistable=True,
-                        name="beta2")
+                        name="beta2",
+                    )
                     epsilon = fluid.layers.create_global_var(
                         shape=[1],
                         value=float(epsilon_init),
                         dtype='float32',
                         persistable=True,
-                        name="epsilon")
+                        name="epsilon",
+                    )
                     if use_fluid_api:
                         adam = fluid.optimizer.Adam(
                             learning_rate=0.01,
@@ -386,13 +421,24 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             use_global_beta_pow=use_global_beta_pow,
                             flatten_param_grads=flatten_param_grads,
                             align_size=256,
-                            grad_clip=clip)
+                            grad_clip=clip,
+                        )
                     else:
+<<<<<<< HEAD
                         adam = paddle.optimizer.Adam(learning_rate=0.01,
                                                      beta1=beta1,
                                                      beta2=beta2,
                                                      epsilon=epsilon,
                                                      grad_clip=clip)
+=======
+                        adam = paddle.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1,
+                            beta2=beta2,
+                            epsilon=epsilon,
+                            grad_clip=clip,
+                        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 else:
                     if use_fluid_api:
                         adam = fluid.optimizer.Adam(
@@ -403,13 +449,24 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             use_global_beta_pow=use_global_beta_pow,
                             flatten_param_grads=flatten_param_grads,
                             align_size=256,
-                            grad_clip=clip)
+                            grad_clip=clip,
+                        )
                     else:
+<<<<<<< HEAD
                         adam = fluid.optimizer.Adam(learning_rate=0.01,
                                                     beta1=beta1_init,
                                                     beta2=beta2_init,
                                                     epsilon=epsilon_init,
                                                     grad_clip=clip)
+=======
+                        adam = fluid.optimizer.Adam(
+                            learning_rate=0.01,
+                            beta1=beta1_init,
+                            beta2=beta2_init,
+                            epsilon=epsilon_init,
+                            grad_clip=clip,
+                        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 adam.minimize(loss)
 
@@ -420,6 +477,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
 
             print("Start run on {}".format(place))
             for epoch in range(10):
+<<<<<<< HEAD
                 pred_res, loss_res = exe.run(main_prog,
                                              feed={
                                                  "a": a_np,
@@ -429,6 +487,18 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                                              fetch_list=[prediction, loss])
                 print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
                     epoch, pred_res[0], loss_res))
+=======
+                pred_res, loss_res = exe.run(
+                    main_prog,
+                    feed={"a": a_np, "b": b_np, "label": label_np},
+                    fetch_list=[prediction, loss],
+                )
+                print(
+                    "Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                        epoch, pred_res[0], loss_res
+                    )
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             paddle.disable_static()
             return pred_res, loss_res
 
@@ -440,16 +510,26 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
             for use_fluid_api in [True, False]:
                 for use_global_beta_pow in [True, False]:
                     for flatten_param_grads in [True, False]:
+<<<<<<< HEAD
                         pred, loss = self._test(place, use_tensor,
                                                 use_fluid_api,
                                                 use_global_beta_pow,
                                                 flatten_param_grads)
+=======
+                        pred, loss = self._test(
+                            place,
+                            use_tensor,
+                            use_fluid_api,
+                            use_global_beta_pow,
+                            flatten_param_grads,
+                        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         preds.append(pred)
                         losses.append(loss)
         for pred in preds:
-            self.assertTrue(np.allclose(pred, preds[0]))
+            np.testing.assert_allclose(pred, preds[0])
         for loss in losses:
-            self.assertTrue(np.allclose(loss, losses[0]))
+            np.testing.assert_allclose(loss, losses[0])
 
     def test_adam_api(self):
         # NOTE(zhiqiu): cpu and gpu has different seed, so should compare separatly.

@@ -12,28 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+<<<<<<< HEAD
 import numpy as np
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import numpy.random as random
 import sys
 
 sys.path.append("..")
 from op_test_xpu import XPUOpTest
+<<<<<<< HEAD
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+=======
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle
 
 paddle.enable_static()
 
 
 class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         self.op_name = 'iou_similarity'
         self.use_dynamic_create_class = False
 
     class TestXPUIOUSimilarityOp(XPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def init(self):
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
@@ -53,11 +69,21 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
             self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
             self.attrs = {
                 "box_normalized": self.box_normalized,
+<<<<<<< HEAD
                 'use_xpu': True
             }
             self.outputs = {'Out': self.output}
 
         def _compute_iou(self, ):
+=======
+                'use_xpu': True,
+            }
+            self.outputs = {'Out': self.output}
+
+        def _compute_iou(
+            self,
+        ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             for row in range(self.boxes1.shape[0]):
                 for col in range(self.boxes2.shape[0]):
                     xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
@@ -86,7 +112,10 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
                     self.output[row, col] = sim_score
 
     class TestXPUIOUSimilarityOpWithLoD(TestXPUIOUSimilarityOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def test_check_output(self):
             self.check_output_with_place(self.place, check_dygraph=False)
 
@@ -99,13 +128,20 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
             self._compute_iou()
             self.inputs = {
                 'X': (self.boxes1, self.boxes1_lod),
+<<<<<<< HEAD
                 'Y': self.boxes2
+=======
+                'Y': self.boxes2,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.attrs = {"box_normalized": self.box_normalized}
             self.outputs = {'Out': (self.output, self.output_lod)}
 
     class TestXPUIOUSimilarityOpWithBoxNormalized(TestXPUIOUSimilarityOp):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def test_check_output(self):
             self.check_output_with_place(self.place, check_dygraph=False)
 
@@ -118,7 +154,11 @@ class XPUTestIOUSimilarityOp(XPUOpTestWrapper):
             self._compute_iou()
             self.inputs = {
                 'X': (self.boxes1, self.boxes1_lod),
+<<<<<<< HEAD
                 'Y': self.boxes2
+=======
+                'Y': self.boxes2,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.attrs = {"box_normalized": self.box_normalized}
             self.outputs = {'Out': (self.output, self.output_lod)}

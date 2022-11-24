@@ -268,8 +268,11 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       DOWNLOAD_DIR ${PROTOBUF_SOURCE_DIR}
       DOWNLOAD_COMMAND rm -rf arm_protobuf.tar.gz && wget --no-check-certificate
                        ${ARM_PROTOBUF_URL} && tar zxvf arm_protobuf.tar.gz
+<<<<<<< HEAD
       #DOWNLOAD_COMMAND    cp /home/wangbin44/Paddle/build/arm_protobuf.tar.gz .
       #                    && tar zxvf arm_protobuf.tar.gz
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       UPDATE_COMMAND ""
       CMAKE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
                  -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}

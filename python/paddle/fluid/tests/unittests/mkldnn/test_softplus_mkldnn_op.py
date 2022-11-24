@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.framework import _current_expected_place
 
 
 def ref_softplus(x, beta, threshold):
     x_beta = beta * x
-    out = np.select([x_beta <= threshold, x_beta > threshold],
-                    [np.log(1 + np.exp(x_beta)) / beta, x])
+    out = np.select(
+        [x_beta <= threshold, x_beta > threshold],
+        [np.log(1 + np.exp(x_beta)) / beta, x],
+    )
     return out
 
 
@@ -106,8 +107,13 @@ class TestSoftplus6DBF16OneDNNOp(TestSoftplus6DOneDNNOp):
 
 
 class TestSoftplus3DExtendedFunctorBF16OneDNNOp(
+<<<<<<< HEAD
         TestSoftplus3DExtendedFunctorOneDNNOp):
 
+=======
+    TestSoftplus3DExtendedFunctorOneDNNOp
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def set_dtype(self):
         self.dtype = np.uint16
 

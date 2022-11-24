@@ -18,4 +18,15 @@ if(WITH_TESTING)
     paddle_gtest_main
     SRCS paddle_gtest_main.cc
     DEPS ${paddle_gtest_main_deps})
+<<<<<<< HEAD
+=======
+
+  cc_library(
+    paddle_gtest_main_new
+    SRCS paddle_gtest_main.cc
+    DEPS gtest xxhash framework_proto eigen3 dlpack)
+  if(WITH_MKLDNN)
+    add_dependencies(paddle_gtest_main_new mkldnn)
+  endif()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()

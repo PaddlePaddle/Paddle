@@ -20,9 +20,25 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/logcumsumexp_grad_impl.h"
 
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_HIP
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 PD_REGISTER_KERNEL(logcumsumexp_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::LogcumsumexpGradKernel,
                    float,
                    double) {}
+<<<<<<< HEAD
+=======
+#else
+PD_REGISTER_KERNEL(logcumsumexp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogcumsumexpGradKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}
+#endif
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

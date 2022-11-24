@@ -18,17 +18,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
+using Tensor = phi::DenseTensor;
 
 template <typename DeviceContext, typename T>
 class CropNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
 
     std::vector<int> offset_list;
     if (ctx.HasInput("Offsets")) {
+<<<<<<< HEAD
       auto* offsets_tensor = ctx.Input<framework::Tensor>("Offsets");
+=======
+      auto* offsets_tensor = ctx.Input<phi::DenseTensor>("Offsets");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       paddle::framework::TensorToVector(
           *offsets_tensor, ctx.device_context(), &offset_list);
       if (offset_list.empty()) {
@@ -56,11 +60,15 @@ class CropNPUKernel : public framework::OpKernel<T> {
     int axis_int = 0;
     framework::NPUAttributeMap attr_input = {{"offsets", offset_list},
                                              {"axis", axis_int}};
-    auto* out = ctx.Output<framework::Tensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
     if (ctx.HasInput("Y")) {
+<<<<<<< HEAD
       auto* shape = ctx.Input<framework::Tensor>("Y");
+=======
+      auto* shape = ctx.Input<phi::DenseTensor>("Y");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       PADDLE_ENFORCE_EQ(shape->dims().size(),
                         x->dims().size(),
                         platform::errors::InvalidArgument(

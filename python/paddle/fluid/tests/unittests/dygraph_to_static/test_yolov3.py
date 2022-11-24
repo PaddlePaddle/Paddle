@@ -29,7 +29,7 @@ random.seed(0)
 np.random.seed(0)
 
 
-class SmoothedValue(object):
+class SmoothedValue:
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
     """
@@ -46,22 +46,33 @@ class SmoothedValue(object):
         return self.loss_sum / self.iter_cnt
 
 
+<<<<<<< HEAD
 class FakeDataReader(object):
 
+=======
+class FakeDataReader:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         self.generator_out = []
         self.total_iter = cfg.max_iter
         for i in range(self.total_iter):
             batch_out = []
             for j in range(cfg.batch_size):
-                img = np.random.normal(0.485, 0.229,
-                                       [3, cfg.input_size, cfg.input_size])
+                img = np.random.normal(
+                    0.485, 0.229, [3, cfg.input_size, cfg.input_size]
+                )
                 point1 = cfg.input_size / 4
                 point2 = cfg.input_size / 2
                 gt_boxes = np.array([[point1, point1, point2, point2]])
+<<<<<<< HEAD
                 gt_labels = np.random.randint(low=0,
                                               high=cfg.class_num,
                                               size=[1])
+=======
+                gt_labels = np.random.randint(
+                    low=0, high=cfg.class_num, size=[1]
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 gt_scores = np.zeros([1])
                 batch_out.append([img, gt_boxes, gt_labels, gt_scores])
             self.generator_out.append(batch_out)
@@ -97,9 +108,15 @@ def train(to_static):
         learning_rate = cfg.learning_rate
         values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
+<<<<<<< HEAD
         lr = fluid.dygraph.PiecewiseDecay(boundaries=boundaries,
                                           values=values,
                                           begin=0)
+=======
+        lr = fluid.dygraph.PiecewiseDecay(
+            boundaries=boundaries, values=values, begin=0
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         lr = fluid.layers.linear_lr_warmup(
             learning_rate=lr,
@@ -112,7 +129,8 @@ def train(to_static):
             learning_rate=lr,
             regularization=fluid.regularizer.L2Decay(cfg.weight_decay),
             momentum=cfg.momentum,
-            parameter_list=model.parameters())
+            parameter_list=model.parameters(),
+        )
 
         start_time = time.time()
         snapshot_loss = 0
@@ -150,9 +168,19 @@ def train(to_static):
             snapshot_time += start_time - prev_start_time
             total_sample += 1
 
+<<<<<<< HEAD
             print("Iter {:d}, loss {:.6f}, time {:.5f}".format(
                 iter_id, smoothed_loss.get_mean_value(),
                 start_time - prev_start_time))
+=======
+            print(
+                "Iter {:d}, loss {:.6f}, time {:.5f}".format(
+                    iter_id,
+                    smoothed_loss.get_mean_value(),
+                    start_time - prev_start_time,
+                )
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             ret.append(smoothed_loss.get_mean_value())
 
             loss.backward()
@@ -168,12 +196,18 @@ class TestYolov3(unittest.TestCase):
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_loss,
                                     static_loss,
                                     atol=1e-5,
                                     rtol=1e-3),
                         msg="dygraph_loss: {} \nstatic_loss: {}".format(
                             dygraph_loss, static_loss))
+=======
+        np.testing.assert_allclose(
+            dygraph_loss, static_loss, rtol=0.001, atol=1e-05
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

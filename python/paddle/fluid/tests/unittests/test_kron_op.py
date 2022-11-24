@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -106,7 +104,7 @@ class TestKronLayer(unittest.TestCase):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(start)
-        c, = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
+        (c,) = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(c, np.kron(a, b))
 
     def test_api_eager_dygraph(self):
@@ -129,7 +127,7 @@ class TestComplexKronOp(OpTest):
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
@@ -139,14 +137,17 @@ class TestComplexKronOp(OpTest):
 
     def init_input_output(self):
         self.x = np.random.random(self.x_shape).astype(
-            self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(
-            self.dtype) + 1J * np.random.random(self.y_shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
         self.out = np.kron(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.out_shape, self.dtype) + 1J * np.ones(
-            self.out_shape, self.dtype)
+        self.grad_out = np.ones(self.out_shape, self.dtype) + 1j * np.ones(
+            self.out_shape, self.dtype
+        )
         self.grad_x = self.get_grad_x_by_numpy()
         self.grad_y = self.get_grad_y_by_numpy()
 
@@ -159,7 +160,8 @@ class TestComplexKronOp(OpTest):
                         idx_i = x_i * self.y_shape[0] + i
                         idx_j = x_j * self.y_shape[1] + j
                         grad_x[x_i][x_j] += self.grad_out[idx_i][
-                            idx_j] * np.conj(self.y[i][j])
+                            idx_j
+                        ] * np.conj(self.y[i][j])
         return grad_x
 
     def get_grad_y_by_numpy(self):
@@ -171,13 +173,15 @@ class TestComplexKronOp(OpTest):
                         idx_i = x_i * self.y_shape[0] + y_i
                         idx_j = x_j * self.y_shape[1] + y_j
                         grad_y[y_i][y_j] += self.grad_out[idx_i][
-                            idx_j] * np.conj(self.x[x_i][x_j])
+                            idx_j
+                        ] * np.conj(self.x[x_i][x_j])
         return grad_y
 
     def test_check_output(self):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(['X', 'Y'],
                         'Out',
                         user_defined_grads=[self.grad_x, self.grad_y],
@@ -199,6 +203,35 @@ class TestComplexKronOp(OpTest):
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=True)
+=======
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
+            check_eager=True,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestKronOpTypePromotion(TestComplexKronOp):
@@ -206,12 +239,14 @@ class TestKronOpTypePromotion(TestComplexKronOp):
     def init_input_output(self):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(
-            self.dtype) + 1J * np.random.random(self.y_shape).astype(self.dtype)
+            self.dtype
+        ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
         self.out = np.kron(self.x, self.y)
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.out_shape, self.dtype) + 1J * np.ones(
-            self.out_shape, self.dtype)
+        self.grad_out = np.ones(self.out_shape, self.dtype) + 1j * np.ones(
+            self.out_shape, self.dtype
+        )
         self.grad_x = self.get_grad_x_by_numpy().real
         self.grad_y = self.get_grad_y_by_numpy()
 

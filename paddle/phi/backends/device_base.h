@@ -20,6 +20,12 @@
 #include "paddle/phi/backends/event.h"
 #include "paddle/phi/backends/stream.h"
 
+namespace paddle {
+namespace platform {
+class TraceEventCollector;
+}  // namespace platform
+}  // namespace paddle
+
 namespace phi {
 
 class DeviceInterface {  // Driver / Runtime
@@ -90,9 +96,10 @@ class DeviceInterface {  // Driver / Runtime
 
   // Event
   // ! Create an event.
-  virtual void CreateEvent(size_t dev_id,
-                           event::Event* event,
-                           event::Event::Flag flags);
+  virtual void CreateEvent(
+      size_t dev_id,
+      event::Event* event,
+      event::Event::Flag flags = event::Event::Flag::Default);
 
   // ! Destroy an event.
   virtual void DestroyEvent(size_t dev_id, event::Event* event);
@@ -195,6 +202,10 @@ class DeviceInterface {  // Driver / Runtime
                          size_t num,
                          ccl::CCLDataType data_type,
                          ccl::CCLReduceOp reduce_op,
+<<<<<<< HEAD
+=======
+                         size_t root_id,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                          const ccl::CCLComm& ccl_comm,
                          const stream::Stream& stream);
   virtual void CCLAllGather(void* in_data,
@@ -235,6 +246,30 @@ class DeviceInterface {  // Driver / Runtime
                          float beta,
                          void* y);
 
+<<<<<<< HEAD
+=======
+  // profiler
+  virtual void ProfilerInitialize(
+      paddle::platform::TraceEventCollector* collector, void** user_data);
+
+  virtual void ProfilerFinalize(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerPrepareTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStartTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerStopTracing(
+      paddle::platform::TraceEventCollector* collector, void* user_data);
+
+  virtual void ProfilerCollectTraceData(
+      paddle::platform::TraceEventCollector* collector,
+      uint64_t start_ns,
+      void* user_data);
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  private:
   const std::string type_;
   const uint8_t priority_;

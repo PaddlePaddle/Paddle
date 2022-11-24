@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.op_test import OpTest
@@ -45,15 +43,21 @@ class TestFCMKLDNNOp(OpTest):
         self.inputs = {
             'Input': self.matrix.input,
             'W': self.matrix.weights,
-            'Bias': self.bias
+            'Bias': self.bias,
         }
 
         self.attrs = {'use_mkldnn': self.use_mkldnn}
 
         self.outputs = {
+<<<<<<< HEAD
             'Out':
             fully_connected_naive(self.matrix.input, self.matrix.weights,
                                   self.bias)
+=======
+            'Out': fully_connected_naive(
+                self.matrix.input, self.matrix.weights, self.bias
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def test_check_output(self):
@@ -75,4 +79,7 @@ class TestFCMKLDNNOp1(TestFCMKLDNNOp):
 
 
 if __name__ == "__main__":
+    import paddle
+
+    paddle.enable_static()
     unittest.main()

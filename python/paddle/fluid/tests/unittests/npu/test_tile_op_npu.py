@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -29,7 +27,7 @@ paddle.enable_static()
 np.random.seed(10)
 
 
-#Situation 1: repeat_times is a list (without tensor)
+# Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
 
     def setUp(self):
@@ -57,7 +55,7 @@ class TestTileOpRank1(OpTest):
         pass
 
 
-#with dimension expanding
+# with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
 
     def init_data(self):
@@ -110,8 +108,9 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
-            repeat_times_tensor.append(("x" + str(index), np.ones(
-                (1)).astype('int32') * ele))
+            repeat_times_tensor.append(
+                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+            )
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float32"),

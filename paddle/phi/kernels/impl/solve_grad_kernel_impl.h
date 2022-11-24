@@ -16,11 +16,18 @@ limitations under the License. */
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/cpu/reduce.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/expand_as_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/matrix_solve.h"
+<<<<<<< HEAD
+=======
+#include "paddle/phi/kernels/funcs/reduce_function.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/solve_kernel_impl.h"
 #include "paddle/phi/kernels/squeeze_kernel.h"
@@ -50,7 +57,11 @@ struct ReduceSumForSolvelGrad<CPUContext, T> {
                   bool keep_dims) {
     std::vector<int64_t> reduce_dims_tmp(reduce_dims.begin(),
                                          reduce_dims.end());
+<<<<<<< HEAD
     phi::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+=======
+    funcs::ReduceKernelImpl<CPUContext, T, T, phi::funcs::SumFunctor>(
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dev_ctx, input, output, reduce_dims_tmp, keep_dims, false);
   }
 };

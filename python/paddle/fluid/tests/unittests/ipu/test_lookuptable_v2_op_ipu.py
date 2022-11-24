@@ -45,14 +45,20 @@ class TestBase(IPUOpTest):
             "embedding_dim": 16,
             "sparse": False,
             "padding_idx": -1,
-            "weight_attr": None
+            "weight_attr": None,
         }
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='int64')
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='int64'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         embedding = paddle.nn.Embedding(**self.attrs)
         out = embedding(x)
         if self.is_training:

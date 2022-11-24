@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import logging
@@ -22,7 +20,9 @@ import numpy as np
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph import ProgramTranslator
-from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import CONVERSION_OPTIONS
+from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+    CONVERSION_OPTIONS,
+)
 from test_program_translator import get_source_code
 import paddle.jit.dy2static as _jst
 
@@ -65,12 +65,36 @@ def dyfunc_with_third_library_logging(x_v):
     return x_v
 
 
+class A:
+    @staticmethod
+    def add(a, b):
+        """
+        dygraph mode, return a numpy object.
+        static mode, return a variable object.
+        """
+        return paddle.to_tensor(a.numpy() + b.numpy())
+
+
+@paddle.jit.to_static
+def dyfunc_with_staticmethod(x_v):
+    a = A()
+    return a.add(x_v, x_v)
+
+
 class TestRecursiveCall1(unittest.TestCase):
 
     def setUp(self):
         self.input = np.random.random([10, 16]).astype('float32')
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.init_test_func()
 
     def init_test_func(self):
@@ -91,9 +115,20 @@ class TestRecursiveCall1(unittest.TestCase):
     def test_transformed_static_result(self):
         static_res = self.get_static_output()
         dygraph_res = self.get_dygraph_output()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph res is {}\nstatic_res is {}'.format(
                             dygraph_res, static_res))
+=======
+        np.testing.assert_allclose(
+            dygraph_res,
+            static_res,
+            rtol=1e-05,
+            err_msg='dygraph res is {}\nstatic_res is {}'.format(
+                dygraph_res, static_res
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 lambda_fun = lambda x: x
@@ -102,6 +137,7 @@ lambda_fun = lambda x: x
 class MyConvLayer(fluid.dygraph.Layer):
 
     def __init__(self):
+<<<<<<< HEAD
         super(MyConvLayer, self).__init__()
         self._conv = fluid.dygraph.Conv2D(
             num_channels=3,
@@ -111,6 +147,20 @@ class MyConvLayer(fluid.dygraph.Layer):
                 value=0.99)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.5)))
+=======
+        super().__init__()
+        self._conv = paddle.nn.Conv2D(
+            in_channels=3,
+            out_channels=2,
+            kernel_size=3,
+            weight_attr=paddle.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.99)
+            ),
+            bias_attr=paddle.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.5)
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     @paddle.jit.to_static
     def forward(self, inputs):
@@ -128,17 +178,27 @@ class MyConvLayer(fluid.dygraph.Layer):
 class MyLayer(fluid.dygraph.Layer):
 
     def __init__(self):
-        super(MyLayer, self).__init__()
+        super().__init__()
 
         self.conv = MyConvLayer()
         self.fc = fluid.dygraph.Linear(
             input_dim=5,
             output_dim=1,
             act='relu',
+<<<<<<< HEAD
             param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.99)),
             bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
                 value=0.5)))
+=======
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.99)
+            ),
+            bias_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.5)
+            ),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     @paddle.jit.to_static
     def forward(self, inputs):
@@ -151,8 +211,16 @@ class TestRecursiveCall2(unittest.TestCase):
 
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
+<<<<<<< HEAD
         self.place = fluid.CUDAPlace(
             0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+=======
+        self.place = (
+            fluid.CUDAPlace(0)
+            if fluid.is_compiled_with_cuda()
+            else fluid.CPUPlace()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.set_func()
 
     def set_func(self):
@@ -176,15 +244,24 @@ class TestRecursiveCall2(unittest.TestCase):
     def test_transformed_static_result(self):
         dygraph_res = self.get_dygraph_output()
         static_res = self.get_static_output()
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dygraph_res, static_res),
                         msg='dygraph is {}\n static_res is \n{}'.format(
                             dygraph_res, static_res))
+=======
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestThirdPartyLibrary(TestRecursiveCall2):
 
     def set_func(self):
         self.dygraph_func = dyfunc_with_third_library_logging
+
+
+class TestStaticMethod(TestRecursiveCall2):
+    def set_func(self):
+        self.dygraph_func = dyfunc_with_staticmethod
 
 
 # Situation 2 : test not_to_static
@@ -252,9 +329,13 @@ class TestDynamicToStaticCode(unittest.TestCase):
         self.func = func_not_to_static
 
     def set_answer_func(self):
+<<<<<<< HEAD
 
         class StaticCode():
 
+=======
+        class StaticCode:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             @paddle.jit.not_to_static
             def func_not_to_static(x):
                 res = func_sum(x)
@@ -276,7 +357,9 @@ class TestDynamicToStaticCode(unittest.TestCase):
             answer_code,
             transformed_code,
             msg="\ntransformed_code : \n{}\nanswer_code : \n{}".format(
-                transformed_code, answer_code))
+                transformed_code, answer_code
+            ),
+        )
 
 
 class TestDynamicToStaticCode2(TestDynamicToStaticCode):
@@ -285,12 +368,21 @@ class TestDynamicToStaticCode2(TestDynamicToStaticCode):
         self.func = func_convert_then_not_to_static
 
     def set_answer_func(self):
+<<<<<<< HEAD
 
         class StaticCode():
 
             def func_convert_then_not_to_static(x):
                 y = _jst.Call(func_not_to_static)(x)
                 return y
+=======
+        class StaticCode:
+            def func_convert_then_not_to_static(x):
+                __return_value_0 = None
+                y = _jst.Call(func_not_to_static)(x)
+                __return_value_0 = y
+                return __return_value_0
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.answer_func = StaticCode.func_convert_then_not_to_static
 

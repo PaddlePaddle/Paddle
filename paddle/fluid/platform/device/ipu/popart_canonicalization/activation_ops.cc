@@ -138,6 +138,13 @@ Node *brelu_handler(Graph *graph, Node *node) {
 
 Node *gelu_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
+<<<<<<< HEAD
+=======
+  // In case of the Op has no `approximate` attr.
+  if (!op->HasAttr("approximate")) {
+    return activation_op_handler(graph, node, "popart_gelu_v2");
+  }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto approximate_ = PADDLE_GET_CONST(bool, op->GetAttr("approximate"));
   if (approximate_) {
     return activation_op_handler(graph, node, "popart_gelu_v2");

@@ -25,24 +25,25 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(elementwise_mul);
 USE_OP_DEVICE_KERNEL(elementwise_mul, MKLDNN);
 USE_OP_ITSELF(relu);
-USE_OP_DEVICE_KERNEL(relu, MKLDNN);
+PD_DECLARE_KERNEL(relu, OneDNN, ONEDNN);
 USE_OP_ITSELF(softmax);
-USE_OP_DEVICE_KERNEL(softmax, MKLDNN);
+PD_DECLARE_KERNEL(softmax, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d);
-USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(conv2d, MKLDNN, FP32);
+PD_DECLARE_KERNEL(conv2d, OneDNN, ONEDNN);
 
 namespace paddle {
 namespace operators {
 
 struct InputVars {
   std::string name;
-  framework::LoDTensor *tensor;
+  phi::DenseTensor *tensor;
 };
 
 class CacheTester {
@@ -84,6 +85,7 @@ void RunOperator(const platform::Place &place,
   std::string output_name = "output";
 
   std::vector<InputVars> input_names = {
+<<<<<<< HEAD
       {first_input, scope.Var(first_input)->GetMutable<framework::LoDTensor>()},
       {"x1",
        num_inputs[op_type] > 1
@@ -102,6 +104,22 @@ void RunOperator(const platform::Place &place,
            ? scope.Var("x4")->GetMutable<framework::LoDTensor>()
            : nullptr}};
   auto *y = scope.Var(output_name)->GetMutable<framework::LoDTensor>();
+=======
+      {first_input, scope.Var(first_input)->GetMutable<phi::DenseTensor>()},
+      {"x1",
+       num_inputs[op_type] > 1 ? scope.Var("x1")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
+      {"x2",
+       num_inputs[op_type] > 2 ? scope.Var("x2")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
+      {"x3",
+       num_inputs[op_type] > 3 ? scope.Var("x3")->GetMutable<phi::DenseTensor>()
+                               : nullptr},
+      {"x4",
+       num_inputs[op_type] > 4 ? scope.Var("x4")->GetMutable<phi::DenseTensor>()
+                               : nullptr}};
+  auto *y = scope.Var(output_name)->GetMutable<phi::DenseTensor>();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   // Initialize input data
   std::uniform_real_distribution<T> dist(static_cast<T>(10.0),

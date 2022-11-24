@@ -18,8 +18,8 @@
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
+using LoDTensor = phi::DenseTensor;
+using Tensor = phi::DenseTensor;
 template <typename T>
 class ShardIndexNPUKernel : public framework::OpKernel<T> {
  public:

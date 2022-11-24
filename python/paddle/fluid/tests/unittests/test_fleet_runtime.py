@@ -14,13 +14,13 @@
 
 import unittest
 import paddle
-import os
 
 
 class TestFleetRuntime(unittest.TestCase):
 
     def test_fleet_runtime_base(self):
         import paddle.distributed.fleet.runtime
+
         base = paddle.distributed.fleet.runtime.runtime_base.RuntimeBase()
         base._run_worker()
         base._init_server()
@@ -31,7 +31,9 @@ class TestFleetRuntime(unittest.TestCase):
 
     def test_fleet_collective_runtime(self):
         import paddle.distributed.fleet.runtime
-        collective_runtime = paddle.distributed.fleet.runtime.CollectiveRuntime(
+
+        collective_runtime = (
+            paddle.distributed.fleet.runtime.CollectiveRuntime()
         )
         collective_runtime._init_worker()
         collective_runtime._run_worker()
@@ -43,6 +45,7 @@ class TestFleetRuntime(unittest.TestCase):
 
     def test_fleet_ps_runtime(self):
         ps_runtime = paddle.distributed.fleet.runtime.ParameterServerRuntime()
+<<<<<<< HEAD
         self.assertRaises(Exception, ps_runtime._get_optimizer_status,
                           "test_op", None)
         reshaped_names, origin_names = ps_runtime._get_optimizer_status(
@@ -57,6 +60,28 @@ class TestFleetRuntime(unittest.TestCase):
 
         reshaped_names, origin_names = ps_runtime._get_optimizer_status(
             "sgd", "param")
+=======
+        self.assertRaises(
+            Exception, ps_runtime._get_optimizer_status, "test_op", None
+        )
+        reshaped_names, origin_names = ps_runtime._get_optimizer_status(
+            "adam", "param"
+        )
+        self.assertTrue(
+            len(reshaped_names) == 2
+            and reshaped_names[0] == 'param_moment1_0'
+            and reshaped_names[1] == 'param_moment2_0'
+        )
+        self.assertTrue(
+            len(origin_names) == 2
+            and origin_names[0] == 'param_beta1_pow_acc_0'
+            and origin_names[1] == 'param_beta2_pow_acc_0'
+        )
+
+        reshaped_names, origin_names = ps_runtime._get_optimizer_status(
+            "sgd", "param"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.assertTrue(len(reshaped_names) == 0 and len(origin_names) == 0)
 
 

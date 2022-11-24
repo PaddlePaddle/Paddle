@@ -22,6 +22,7 @@
 #include <random>
 
 #define PADDLE_CUDA_FP16
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
 #include "paddle/fluid/platform/device/gpu/gpu_helper.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
@@ -29,12 +30,19 @@
 
 using paddle::platform::float16;
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_helper.h"
+#include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+
+using paddle::platform::float16;
+using phi::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 template <typename T>
 __global__ void AddKernel(const T* data_a, T* data_b, size_t num) {
-  CUDA_KERNEL_LOOP(i, num) {
-    paddle::platform::CudaAtomicAdd(&data_b[i], data_a[i]);
-  }
+  CUDA_KERNEL_LOOP(i, num) { phi::CudaAtomicAdd(&data_b[i], data_a[i]); }
 }
 
 template <typename T>
@@ -216,7 +224,7 @@ static __forceinline__ __device__ T WarpReduceSum(T val) {
   unsigned mask = 0u;
   CREATE_SHFL_MASK(mask, true);
   for (int offset = warpSize / 2; offset > 0; offset /= 2) {
-    val += paddle::platform::CudaShuffleDownSync(mask, val, offset);
+    val += phi::backends::gpu::CudaShuffleDownSync(mask, val, offset);
   }
   return val;
 }

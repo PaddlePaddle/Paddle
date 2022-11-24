@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import struct
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest
 from paddle import enable_static
 
 
@@ -36,11 +33,17 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.attrs = {
             'axis': self.axis,
             'use_mkldnn': True,
-            'mkldnn_data_type': self.mkldnn_data_type
+            'mkldnn_data_type': self.mkldnn_data_type,
         }
 
+<<<<<<< HEAD
         self.output = np.concatenate((self.x0, self.x1, self.x2),
                                      axis=self.axis).astype(self.dtype)
+=======
+        self.output = np.concatenate(
+            (self.x0, self.x1, self.x2), axis=self.axis
+        ).astype(self.dtype)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.outputs = {'Out': self.output}
 

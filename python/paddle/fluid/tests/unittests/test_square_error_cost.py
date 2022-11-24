@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
-import sys
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
@@ -36,19 +33,28 @@ class TestSquareErrorCost(unittest.TestCase):
         label_var = layers.create_tensor(dtype="float32", name="label")
         output = layers.square_error_cost(input=input_var, label=label_var)
 
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
+<<<<<<< HEAD
             result = exe.run(fluid.default_main_program(),
                              feed={
                                  "input": input_val,
                                  "label": label_val
                              },
                              fetch_list=[output])
+=======
+            (result,) = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_val, "label": label_val},
+                fetch_list=[output],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):

@@ -40,7 +40,16 @@ T GetValueFromStream(std::stringstream &ss);
 template <>
 std::string GetValueFromStream<std::string>(std::stringstream &ss);
 
+<<<<<<< HEAD
 TEST(Analyzer_bert, profile) { profile(); }
+=======
+TEST(Analyzer_bert, profile) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+  profile();
+}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, profile_mkldnn) {
@@ -57,6 +66,12 @@ TEST(Analyzer_bert, profile_mkldnn_bf16) {
 
 // Check the fuse status
 TEST(Analyzer_bert, fuse_statis) {
+<<<<<<< HEAD
+=======
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto cfg(SetConfig());
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
@@ -65,7 +80,16 @@ TEST(Analyzer_bert, fuse_statis) {
   LOG(INFO) << "num_ops: " << num_ops;
 }
 
+<<<<<<< HEAD
 TEST(Analyzer_bert, compare) { CompareNativeAndAnalysisWrapper(); }
+=======
+TEST(Analyzer_bert, compare) {
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+  CompareNativeAndAnalysisWrapper();
+}
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #ifdef PADDLE_WITH_MKLDNN
 TEST(Analyzer_bert, compare_mkldnn) {
   auto use_mkldnn = true;
@@ -75,6 +99,12 @@ TEST(Analyzer_bert, compare_mkldnn) {
 
 // Compare Deterministic result
 TEST(Analyzer_bert, compare_determine) {
+<<<<<<< HEAD
+=======
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto cfg(SetConfig());
 
   auto inputs = LoadInputData();
@@ -83,6 +113,12 @@ TEST(Analyzer_bert, compare_determine) {
 }
 
 TEST(Analyzer_bert, transfer_scope_cache) {
+<<<<<<< HEAD
+=======
+#if !defined(_WIN32)
+  setenv("NVIDIA_TF32_OVERRIDE", "0", 1);
+#endif
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto config(SetConfig());
 
   std::vector<PaddleTensor> input, output;
@@ -199,9 +235,12 @@ AnalysisConfig SetConfig(bool use_mkldnn, bool use_bfloat16) {
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
+<<<<<<< HEAD
     config.pass_builder()->AppendPass("fc_mkldnn_pass");
     config.pass_builder()->AppendPass("fc_act_mkldnn_fuse_pass");
     config.pass_builder()->AppendPass("fc_elementwise_add_mkldnn_fuse_pass");
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 
   if (use_bfloat16) config.EnableMkldnnBfloat16();

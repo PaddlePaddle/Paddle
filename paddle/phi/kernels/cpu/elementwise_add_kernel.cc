@@ -26,12 +26,11 @@ namespace phi {
 DEFINE_CPU_ELEMENTWISE_OP(Add)
 
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
-  int axis = -1;
-  AddRawKernel<T>(dev_ctx, x, y, axis, out);
+void GradAddKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -62,10 +61,10 @@ PD_REGISTER_KERNEL(add_raw,
                    complex64,
                    complex128) {}
 
-PD_REGISTER_KERNEL(add,
+PD_REGISTER_KERNEL(grad_add,
                    CPU,
                    ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::GradAddKernel,
                    float,
                    double,
                    int16_t,

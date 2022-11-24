@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy
 import unittest
 
 import paddle
 import paddle.fluid as fluid
-import paddle.compat as cpt
 import paddle.fluid.core as core
 
 
@@ -30,8 +27,7 @@ class TestException(unittest.TestCase):
         try:
             core.__unittest_throw_exception__()
         except RuntimeError as ex:
-            self.assertIn("This is a test of exception",
-                          cpt.get_exception_message(ex))
+            self.assertIn("This is a test of exception", str(ex))
             exception = ex
 
         self.assertIsNotNone(exception)
@@ -61,12 +57,20 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = numpy.random.random(size=(8, 1)).astype('float32')
 
         with self.assertRaises(ValueError):
+<<<<<<< HEAD
             exe.run(fluid.default_main_program(),
                     feed={
                         'X': x,
                         'Y': y
                     },
                     fetch_list=[avg_loss.name])
+=======
+            exe.run(
+                fluid.default_main_program(),
+                feed={'X': x, 'Y': y},
+                fetch_list=[avg_loss.name],
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_exception_in_dynamic_mode(self):
         place = fluid.CPUPlace()

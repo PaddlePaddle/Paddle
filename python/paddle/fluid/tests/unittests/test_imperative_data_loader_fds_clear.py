@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from paddle.fluid import core
 from paddle.io import Dataset, DataLoader
 from paddle.fluid.framework import _test_eager_guard
 
@@ -32,7 +30,8 @@ def batch_generator_creator(batch_size, batch_num):
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
-                [batch_size, 784], [batch_size, 1])
+                [batch_size, 784], [batch_size, 1]
+            )
             yield batch_image, batch_label
 
     return __reader__
@@ -46,7 +45,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([784]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -62,11 +61,21 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
         self.capacity = 50
 
     def prepare_data_loader(self):
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
                                                     use_multiprocess=True)
         loader.set_batch_generator(batch_generator_creator(
             self.batch_size, self.batch_num),
                                    places=fluid.CPUPlace())
+=======
+        loader = fluid.io.DataLoader.from_generator(
+            capacity=self.capacity, use_multiprocess=True
+        )
+        loader.set_batch_generator(
+            batch_generator_creator(self.batch_size, self.batch_num),
+            places=fluid.CPUPlace(),
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return loader
 
     def run_one_epoch_with_break(self, loader):
@@ -109,11 +118,21 @@ class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
+<<<<<<< HEAD
             loader = DataLoader(dataset,
                                 places=place,
                                 batch_size=self.batch_size,
                                 drop_last=True,
                                 num_workers=2)
+=======
+            loader = DataLoader(
+                dataset,
+                places=place,
+                batch_size=self.batch_size,
+                drop_last=True,
+                num_workers=2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return loader
 
 

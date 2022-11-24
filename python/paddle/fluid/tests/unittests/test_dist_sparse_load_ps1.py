@@ -12,16 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import os
 import unittest
 import numpy as np
-import tempfile
 import shutil
-from op_test import OpTest, randomize_probability
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import paddle.distributed.fleet.base.role_maker as role_maker
 from paddle.distributed.fleet import fleet
 from test_dist_sparse_load_ps0 import SparseLoadOp
@@ -68,7 +64,12 @@ class TestSparseLoadOpCase2(SparseLoadOp):
         optimizer.minimize(loss)
         fleet.init_server(model_path)
         emb = np.array(
+<<<<<<< HEAD
             fluid.global_scope().find_var("embedding.block1").get_tensor())
+=======
+            fluid.global_scope().find_var("embedding.block1").get_tensor()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         assert emb.all() == emb_array[1::2].all()
         shutil.rmtree(model_path)
 

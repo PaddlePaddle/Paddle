@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import paddle
@@ -107,6 +105,7 @@ class TestApiErrorWithDynamicMode(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.disable_static()
             self.assertRaises(AssertionError, fluid.data, 'a', [2, 25])
+<<<<<<< HEAD
             self.assertRaises(AssertionError,
                               fluid.layers.data,
                               'b',
@@ -115,6 +114,14 @@ class TestApiErrorWithDynamicMode(unittest.TestCase):
                               paddle.static.data,
                               'c',
                               shape=[2, 25])
+=======
+            self.assertRaises(
+                AssertionError, fluid.layers.data, 'b', shape=[2, 25]
+            )
+            self.assertRaises(
+                AssertionError, paddle.static.data, 'c', shape=[2, 25]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             paddle.enable_static()
 
 

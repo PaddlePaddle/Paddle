@@ -61,9 +61,15 @@ template <typename T>
 class PaddingLoDTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value,
+=======
+                  const phi::DenseTensor& seq_tensor,
+                  phi::DenseTensor* pad_tensor,
+                  const phi::DenseTensor& pad_value,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,
@@ -143,8 +149,13 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor,
+=======
+                  const phi::DenseTensor& pad_tensor,
+                  phi::DenseTensor* seq_tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   int pad_seq_len = -1,
                   int lod_level = 0,
                   bool norm_by_times = false,

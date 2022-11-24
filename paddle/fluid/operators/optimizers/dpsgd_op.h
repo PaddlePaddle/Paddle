@@ -29,7 +29,11 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -38,7 +42,11 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -46,12 +54,12 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
                           ctx.InputNames("Grad").front(),
                           framework::ToTypeName(grad_var->Type())));
 
-    const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
 
-    const auto *param = ctx.Input<framework::Tensor>("Param");
-    const auto *grad = ctx.Input<framework::Tensor>("Grad");
+    const auto *param = ctx.Input<phi::DenseTensor>("Param");
+    const auto *grad = ctx.Input<phi::DenseTensor>("Grad");
 
-    auto *param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto *param_out = ctx.Output<phi::DenseTensor>("ParamOut");
 
     auto sz = param_out->numel();
     PADDLE_ENFORCE_EQ(param->numel(),

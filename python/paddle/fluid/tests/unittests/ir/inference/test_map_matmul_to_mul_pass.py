@@ -14,22 +14,16 @@
 
 from auto_scan_test import PassAutoScanTest, IgnoreReasons
 from program_config import TensorConfig, ProgramConfig, OpConfig
-import numpy as np
-import paddle.inference as paddle_infer
-from functools import partial
-from typing import Optional, List, Callable, Dict, Any, Set
 import unittest
 
-import hypothesis
-from hypothesis import given, settings, seed, example, assume, reproduce_failure
 import hypothesis.strategies as st
 
 
 class TestMapMatmulToMulPass(PassAutoScanTest):
-    """
-     x_var    y_var(persistable)
-       \       /
-         matmul  
+    r"""
+    x_var    y_var(persistable)
+      \       /
+        matmul
     """
 
     def sample_predictor_configs(self, program_config):
@@ -73,12 +67,15 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             return False
 
         self.add_ignore_check_case(
-            teller1, IgnoreReasons.PASS_ACCURACY_ERROR,
-            "The pass error on TRT while shape of mul_x > 5.")
+            teller1,
+            IgnoreReasons.PASS_ACCURACY_ERROR,
+            "The pass error on TRT while shape of mul_x > 5.",
+        )
 
     def sample_program_config(self, draw):
         # 1. Generate shape and attr of matmul
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(st.integers(min_value=1, max_value=8),
                      min_size=2,
                      max_size=5))
@@ -86,6 +83,17 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
             st.lists(st.integers(min_value=1, max_value=8),
                      min_size=2,
                      max_size=2))
+=======
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=5
+            )
+        )
+        y_shape = draw(
+            st.lists(
+                st.integers(min_value=1, max_value=8), min_size=2, max_size=2
+            )
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         y_shape[0] = x_shape[-1]
         alpha = 1.0
         transpose_X = False
@@ -93,10 +101,14 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
 
         matmul_op = OpConfig(
             "matmul",
+<<<<<<< HEAD
             inputs={
                 "X": ["matmul_x"],
                 "Y": ["matmul_y"]
             },
+=======
+            inputs={"X": ["matmul_x"], "Y": ["matmul_y"]},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             outputs={"Out": ["matmul_out"]},
             alpha=alpha,
             transpose_X=transpose_X,
@@ -127,10 +139,19 @@ class TestMapMatmulToMulPass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(quant=False,
                             max_examples=100,
                             passes=["gpu_cpu_map_matmul_to_mul_pass"],
                             max_duration=180)
+=======
+        self.run_and_statis(
+            quant=False,
+            max_examples=100,
+            passes=["gpu_cpu_map_matmul_to_mul_pass"],
+            max_duration=180,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

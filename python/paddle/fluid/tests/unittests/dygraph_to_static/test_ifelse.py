@@ -12,18 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 
 import paddle
 from paddle.fluid.dygraph.jit import declarative
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+=======
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
+    ProgramTranslator,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 import paddle.fluid.core as core
 
-from ifelse_simple_func import *
+from ifelse_simple_func import (
+    NetWithControlFlowIf,
+    add_fn,
+    dyfunc_empty_nonlocal,
+    dyfunc_ifelse_ret_int1,
+    dyfunc_ifelse_ret_int2,
+    dyfunc_ifelse_ret_int3,
+    dyfunc_ifelse_ret_int4,
+    dyfunc_with_if_else,
+    dyfunc_with_if_else2,
+    dyfunc_with_if_else3,
+    dyfunc_with_if_else_with_list_geneator,
+    fluid,
+    if_tensor_case,
+    if_with_and_or,
+    if_with_and_or_1,
+    if_with_and_or_2,
+    if_with_and_or_3,
+    if_with_and_or_4,
+    if_with_class_var,
+    loss_fn,
+    nested_if_else,
+    nested_if_else_2,
+    nested_if_else_3,
+)
 
 np.random.seed(1)
 
@@ -34,7 +62,10 @@ else:
 
 
 class TestDy2staticException(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
@@ -91,7 +122,10 @@ class TestDygraphIfElse3(TestDygraphIfElse):
 
 
 class TestDygraphIfElse4(TestDygraphIfElse):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = dyfunc_empty_nonlocal
@@ -318,7 +352,7 @@ class TestNetWithExternalFunc(TestDygraphIfElseNet):
 class DiffModeNet1(paddle.nn.Layer):
 
     def __init__(self, mode):
-        super(DiffModeNet1, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -335,7 +369,7 @@ class DiffModeNet1(paddle.nn.Layer):
 class DiffModeNet2(paddle.nn.Layer):
 
     def __init__(self, mode):
-        super(DiffModeNet2, self).__init__()
+        super().__init__()
         self.mode = mode
 
     @paddle.jit.to_static
@@ -373,6 +407,7 @@ class TestDiffModeNet(unittest.TestCase):
 
     def test_train_mode(self):
         self.assertTrue(
+<<<<<<< HEAD
             (self._run(mode='train',
                        to_static=True) == self._run(mode='train',
                                                     to_static=False)).all())
@@ -382,6 +417,21 @@ class TestDiffModeNet(unittest.TestCase):
             (self._run(mode='infer',
                        to_static=True) == self._run(mode='infer',
                                                     to_static=False)).all())
+=======
+            (
+                self._run(mode='train', to_static=True)
+                == self._run(mode='train', to_static=False)
+            ).all()
+        )
+
+    def test_infer_mode(self):
+        self.assertTrue(
+            (
+                self._run(mode='infer', to_static=True)
+                == self._run(mode='infer', to_static=False)
+            ).all()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestDiffModeNet2(TestDiffModeNet):
@@ -435,7 +485,10 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
 
 
 class TestDy2StIfElseRetInt2(TestDy2staticException):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.x = np.random.random([5]).astype('float32')
         self.error = "Your if/else have different number of return value."
@@ -474,12 +527,20 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
 
 
 class IfElseNet(paddle.nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self):
         super(IfElseNet, self).__init__()
         self.param = self.create_parameter(shape=[3, 2],
                                            dtype='float32',
                                            is_bias=False)
+=======
+    def __init__(self):
+        super().__init__()
+        self.param = self.create_parameter(
+            shape=[3, 2], dtype='float32', is_bias=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     @paddle.jit.to_static
     def forward(self, a, b, c):
@@ -495,7 +556,10 @@ class IfElseNet(paddle.nn.Layer):
 
 
 class TestDy2StIfElseBackward(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False
@@ -508,7 +572,13 @@ class TestDy2StIfElseBackward(unittest.TestCase):
         net.train()
         out = net(a, b, c)
         out.backward()
+<<<<<<< HEAD
         self.assertTrue(np.allclose((b + net.param).numpy(), out.numpy()))
+=======
+        np.testing.assert_allclose(
+            (b + net.param).numpy(), out.numpy(), rtol=1e-05
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

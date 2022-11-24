@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -38,6 +36,7 @@ class TestMNIST(TestParallelExecutorBase):
             return
 
         img, label = init_data()
+<<<<<<< HEAD
         self.check_network_convergence(simple_fc_net,
                                        feed_dict={
                                            "image": img,
@@ -45,6 +44,14 @@ class TestMNIST(TestParallelExecutorBase):
                                        },
                                        use_device=use_device,
                                        use_reduce=use_reduce)
+=======
+        self.check_network_convergence(
+            simple_fc_net,
+            feed_dict={"image": img, "label": label},
+            use_device=use_device,
+            use_reduce=use_reduce,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_simple_fc(self):
         # use_device
@@ -57,6 +64,7 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = init_data()
         single_first_loss, single_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
+<<<<<<< HEAD
             feed_dict={
                 "image": img,
                 "label": label
@@ -69,17 +77,37 @@ class TestMNIST(TestParallelExecutorBase):
                 "image": img,
                 "label": label
             },
+=======
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
-            use_parallel_executor=True)
+            use_parallel_executor=False,
+        )
+        (
+            parallel_first_loss,
+            parallel_last_loss,
+            _,
+        ) = self.check_network_convergence(
+            method=simple_fc_net,
+            feed_dict={"image": img, "label": label},
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
+            use_device=use_device,
+            use_parallel_executor=True,
+        )
 
         self.assertAlmostEquals(
             np.mean(parallel_first_loss),
             single_first_loss,
             delta=1e-6,
         )
+<<<<<<< HEAD
         self.assertAlmostEquals(np.mean(parallel_last_loss),
                                 single_last_loss,
                                 delta=1e-6)
+=======
+        self.assertAlmostEquals(
+            np.mean(parallel_last_loss), single_last_loss, delta=1e-6
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_simple_fc_parallel_accuracy(self):
         self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)

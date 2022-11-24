@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
 import sys
 import time
-import threading
 import subprocess
 import unittest
 import numpy
@@ -28,7 +25,7 @@ import paddle.fluid as fluid
 import paddle.distributed.fleet.base.role_maker as role_maker
 import paddle.distributed.fleet as fleet
 
-from paddle.distributed.utils import find_free_ports
+from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 
@@ -44,8 +41,10 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+                initializer=fluid.initializer.Constant(value=0.01),
+            ),
+            is_sparse=True,
+        )
 
         pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
         z = fluid.layers.concat(input=[x, pool], axis=1)
@@ -94,9 +93,11 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fluid.default_main_program(),
-                    feed=feeder.feed(data),
-                    fetch_list=[])
+            exe.run(
+                fluid.default_main_program(),
+                feed=feeder.feed(data),
+                fetch_list=[],
+            )
 
         fleet.stop_worker()
 
@@ -123,7 +124,6 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
-from __future__ import print_function
 
 import sys
 import os
@@ -170,9 +170,17 @@ half_run_server.run_ut()
 
         ps_cmd = "{} {}".format(_python, server_file)
 
+<<<<<<< HEAD
         ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE)
+=======
+        ps_proc = subprocess.Popen(
+            ps_cmd.strip().split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         time.sleep(5)
 

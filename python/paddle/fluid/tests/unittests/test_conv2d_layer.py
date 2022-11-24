@@ -27,6 +27,7 @@ def _reverse_repeat_list(t, n):
 
 
 class Conv2DTestCase(unittest.TestCase):
+<<<<<<< HEAD
 
     def __init__(self,
                  methodName='runTest',
@@ -44,6 +45,26 @@ class Conv2DTestCase(unittest.TestCase):
                  data_format="NCHW",
                  dtype="float32"):
         super(Conv2DTestCase, self).__init__(methodName)
+=======
+    def __init__(
+        self,
+        methodName='runTest',
+        batch_size=4,
+        spartial_shape=(16, 16),
+        num_channels=6,
+        num_filters=8,
+        filter_size=3,
+        padding=0,
+        padding_mode='zeros',
+        stride=1,
+        dilation=1,
+        groups=1,
+        no_bias=False,
+        data_format="NCHW",
+        dtype="float32",
+    ):
+        super().__init__(methodName)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.batch_size = batch_size
         self.num_channels = num_channels
         self.num_filters = num_filters
@@ -53,9 +74,15 @@ class Conv2DTestCase(unittest.TestCase):
         self.padding = padding
         if padding_mode in {'reflect', 'replicate', 'circular'}:
             _paired_padding = fluid.layers.utils.convert_to_list(
+<<<<<<< HEAD
                 padding, 2, 'padding')
+=======
+                padding, 2, 'padding'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self._reversed_padding_repeated_twice = _reverse_repeat_list(
-                _paired_padding, 2)
+                _paired_padding, 2
+            )
         self.padding_mode = padding_mode
         self.stride = stride
         self.dilation = dilation
@@ -67,24 +94,43 @@ class Conv2DTestCase(unittest.TestCase):
     def setUp(self):
         self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
-            input_shape = (self.batch_size, ) + self.spartial_shape + (
-                self.num_channels, )
+            input_shape = (
+                (self.batch_size,) + self.spartial_shape + (self.num_channels,)
+            )
         else:
+<<<<<<< HEAD
             input_shape = (self.batch_size,
                            self.num_channels) + self.spartial_shape
+=======
+            input_shape = (
+                self.batch_size,
+                self.num_channels,
+            ) + self.spartial_shape
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
             filter_size = [self.filter_size] * 2
         else:
             filter_size = self.filter_size
+<<<<<<< HEAD
         self.weight_shape = weight_shape = (self.num_filters, self.num_channels
                                             // self.groups) + tuple(filter_size)
         self.weight = np.random.uniform(-1, 1,
                                         size=weight_shape).astype(self.dtype)
+=======
+        self.weight_shape = weight_shape = (
+            self.num_filters,
+            self.num_channels // self.groups,
+        ) + tuple(filter_size)
+        self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
+            self.dtype
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if not self.no_bias:
             self.bias = np.random.uniform(
-                -1, 1, size=(self.num_filters, )).astype(self.dtype)
+                -1, 1, size=(self.num_filters,)
+            ).astype(self.dtype)
         else:
             self.bias = None
 
@@ -93,8 +139,11 @@ class Conv2DTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, -1, -1,self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1, -1)
+                input_shape = (
+                    (-1, -1, -1, self.num_channels)
+                    if self.channel_last
+                    else (-1, self.num_channels, -1, -1)
+                )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
                 weight_attr = I.NumpyArrayInitializer(self.weight)
                 if self.bias is None:
@@ -102,14 +151,17 @@ class Conv2DTestCase(unittest.TestCase):
                 else:
                     bias_attr = I.NumpyArrayInitializer(self.bias)
                 if self.padding_mode != 'zeros':
-                    x_var = F.pad(x_var,
-                                  self._reversed_padding_repeated_twice,
-                                  mode=self.padding_mode,
-                                  data_format=self.data_format)
+                    x_var = F.pad(
+                        x_var,
+                        self._reversed_padding_repeated_twice,
+                        mode=self.padding_mode,
+                        data_format=self.data_format,
+                    )
                     padding = 0
                 else:
                     padding = self.padding
 
+<<<<<<< HEAD
                 y_var = fluid.layers.conv2d(x_var,
                                             self.num_filters,
                                             self.filter_size,
@@ -120,11 +172,25 @@ class Conv2DTestCase(unittest.TestCase):
                                             param_attr=weight_attr,
                                             bias_attr=bias_attr,
                                             data_format=self.data_format)
+=======
+                y_var = fluid.layers.conv2d(
+                    x_var,
+                    self.num_filters,
+                    self.filter_size,
+                    padding=padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    param_attr=weight_attr,
+                    bias_attr=bias_attr,
+                    data_format=self.data_format,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         feed_dict = {"input": self.input}
         exe = fluid.Executor(place)
         exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def functional(self, place):
@@ -132,24 +198,39 @@ class Conv2DTestCase(unittest.TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                input_shape = (-1, -1, -1,self.num_channels) \
-                    if self.channel_last else (-1, self.num_channels, -1, -1)
+                input_shape = (
+                    (-1, -1, -1, self.num_channels)
+                    if self.channel_last
+                    else (-1, self.num_channels, -1, -1)
+                )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 w_var = fluid.data("weight",
                                    self.weight_shape,
                                    dtype=self.dtype)
                 b_var = fluid.data("bias", (self.num_filters, ),
                                    dtype=self.dtype)
+=======
+                w_var = fluid.data(
+                    "weight", self.weight_shape, dtype=self.dtype
+                )
+                b_var = fluid.data(
+                    "bias", (self.num_filters,), dtype=self.dtype
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 if self.padding_mode != 'zeros':
-                    x_var = F.pad(x_var,
-                                  self._reversed_padding_repeated_twice,
-                                  mode=self.padding_mode,
-                                  data_format=self.data_format)
+                    x_var = F.pad(
+                        x_var,
+                        self._reversed_padding_repeated_twice,
+                        mode=self.padding_mode,
+                        data_format=self.data_format,
+                    )
                     padding = 0
                 else:
                     padding = self.padding
 
+<<<<<<< HEAD
                 y_var = F.conv2d(x_var,
                                  w_var,
                                  b_var if not self.no_bias else None,
@@ -158,17 +239,30 @@ class Conv2DTestCase(unittest.TestCase):
                                  dilation=self.dilation,
                                  groups=self.groups,
                                  data_format=self.data_format)
+=======
+                y_var = F.conv2d(
+                    x_var,
+                    w_var,
+                    b_var if not self.no_bias else None,
+                    padding=padding,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
         exe = fluid.Executor(place)
         exe.run(start)
-        y_np, = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
         x_var.stop_gradient = False
+<<<<<<< HEAD
         conv = nn.Conv2D(self.num_channels,
                          self.num_filters,
                          self.filter_size,
@@ -178,6 +272,19 @@ class Conv2DTestCase(unittest.TestCase):
                          dilation=self.dilation,
                          groups=self.groups,
                          data_format=self.data_format)
+=======
+        conv = nn.Conv2D(
+            self.num_channels,
+            self.num_filters,
+            self.filter_size,
+            padding=self.padding,
+            padding_mode=self.padding_mode,
+            stride=self.stride,
+            dilation=self.dilation,
+            groups=self.groups,
+            data_format=self.data_format,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -197,8 +304,8 @@ class Conv2DTestCase(unittest.TestCase):
                 res_eager, g2 = self.paddle_nn_layer()
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-        self.assertTrue(np.allclose(result3, res_eager))
-        self.assertTrue(np.allclose(g1, g2))
+        np.testing.assert_allclose(result3, res_eager, rtol=1e-05)
+        np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def runTest(self):
         place = fluid.CPUPlace()
@@ -221,6 +328,7 @@ class Conv2DErrorTestCase(Conv2DTestCase):
 def add_cases(suite):
     suite.addTest(Conv2DTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         Conv2DTestCase(methodName='runTest', stride=[1, 2], dilation=2))
     suite.addTest(
         Conv2DTestCase(methodName='runTest', stride=2, dilation=(2, 1)))
@@ -263,10 +371,77 @@ def add_cases(suite):
                        filter_size=(3, 3),
                        padding=1,
                        padding_mode='circular'))
+=======
+        Conv2DTestCase(methodName='runTest', stride=[1, 2], dilation=2)
+    )
+    suite.addTest(
+        Conv2DTestCase(methodName='runTest', stride=2, dilation=(2, 1))
+    )
+    suite.addTest(
+        Conv2DTestCase(methodName='runTest', padding="same", no_bias=True)
+    )
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest', filter_size=(3, 3), padding='valid'
+        )
+    )
+    suite.addTest(Conv2DTestCase(methodName='runTest', padding=(2, 3)))
+    suite.addTest(Conv2DTestCase(methodName='runTest', padding=[1, 2, 2, 1]))
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest', padding=[[0, 0], [0, 0], [1, 2], [2, 1]]
+        )
+    )
+    suite.addTest(Conv2DTestCase(methodName='runTest', data_format="NHWC"))
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest',
+            data_format="NHWC",
+            padding=[[0, 0], [1, 1], [2, 2], [0, 0]],
+        )
+    )
+    suite.addTest(
+        Conv2DTestCase(methodName='runTest', groups=2, padding="valid")
+    )
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest',
+            num_filters=6,
+            num_channels=3,
+            groups=3,
+            padding="valid",
+        )
+    )
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest',
+            filter_size=(3, 3),
+            padding=1,
+            padding_mode='reflect',
+        )
+    )
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest',
+            filter_size=(3, 3),
+            padding=1,
+            padding_mode='replicate',
+        )
+    )
+    suite.addTest(
+        Conv2DTestCase(
+            methodName='runTest',
+            filter_size=(3, 3),
+            padding=1,
+            padding_mode='circular',
+        )
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         Conv2DErrorTestCase(methodName='runTest', num_channels=5, groups=2))
     suite.addTest(
         Conv2DErrorTestCase(methodName='runTest',
@@ -278,6 +453,20 @@ def add_error_cases(suite):
                             num_channels=5,
                             groups=2,
                             padding=[-1, -1]))
+=======
+        Conv2DErrorTestCase(methodName='runTest', num_channels=5, groups=2)
+    )
+    suite.addTest(
+        Conv2DErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, stride=0
+        )
+    )
+    suite.addTest(
+        Conv2DErrorTestCase(
+            methodName='runTest', num_channels=5, groups=2, padding=[-1, -1]
+        )
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def load_tests(loader, standard_tests, pattern):

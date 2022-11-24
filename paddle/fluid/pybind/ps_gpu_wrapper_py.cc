@@ -64,9 +64,12 @@ void BindPSGPUWrapper(py::module* m) {
       .def("begin_pass",
            &framework::PSGPUWrapper::BeginPass,
            py::call_guard<py::gil_scoped_release>())
+<<<<<<< HEAD
       .def("dump_to_mem",
            &framework::PSGPUWrapper::DumpToMem,
            py::call_guard<py::gil_scoped_release>())
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       .def("load_into_memory",
            &framework::PSGPUWrapper::LoadIntoMemory,
            py::call_guard<py::gil_scoped_release>())
@@ -77,9 +80,12 @@ void BindPSGPUWrapper(py::module* m) {
 #endif
       .def("finalize",
            &framework::PSGPUWrapper::Finalize,
+<<<<<<< HEAD
            py::call_guard<py::gil_scoped_release>())
       .def("set_mode",
            &framework::PSGPUWrapper::SetMode,
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
            py::call_guard<py::gil_scoped_release>());
 }  // end PSGPUWrapper
 #ifdef PADDLE_WITH_PSLIB

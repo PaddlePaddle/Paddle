@@ -62,4 +62,21 @@ class CppVoidHook : public VoidHook {
   std::function<void()> fn_;
 };
 
+<<<<<<< HEAD
+=======
+class PackHookBase {
+ public:
+  virtual ~PackHookBase() = default;
+  virtual void* operator()(const paddle::experimental::Tensor& tensor) = 0;
+  virtual void* operator()(void* py_tensor) = 0;
+};
+
+class UnPackHookBase {
+ public:
+  virtual ~UnPackHookBase() = default;
+  virtual paddle::experimental::Tensor operator()(void* packed_value) = 0;
+  virtual void* operator()(void* packed_value, void* other) = 0;
+};
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace egr

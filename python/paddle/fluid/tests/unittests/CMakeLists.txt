@@ -8,38 +8,44 @@ set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1
 set(dist_ENVS http_proxy="" https_proxy="")
 
 file(
+<<<<<<< HEAD
   GLOB MULTINODE_DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_multinode_*.py")
 string(REPLACE ".py" "" MULTINODE_DIST_TEST_OPS "${MULTINODE_DIST_TEST_OPS}")
 
 file(
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   GLOB DIST_TEST_OPS
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_dist_*.py")
 list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
+<<<<<<< HEAD
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
 endif()
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
 if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
+<<<<<<< HEAD
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
-
-list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
-list(APPEND DIST_TEST_OPS test_pipeline)
-list(APPEND DIST_TEST_OPS test_ir_pass_pipeline)
-list(APPEND DIST_TEST_OPS test_static_model_parallel)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_feedforward)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_attention)
 list(APPEND DIST_TEST_OPS test_static_model_parallel_fused_multi_transformer)
+<<<<<<< HEAD
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding_over_height)
@@ -92,14 +98,18 @@ endforeach()
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
+=======
+list(APPEND DIST_TEST_OPS test_auto_parallel_data_unshard)
+list(APPEND DIST_TEST_OPS test_auto_parallel_save_load)
+list(APPEND DIST_TEST_OPS test_auto_parallel_autoconvert)
+set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
+#remove distribute unittests.
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
-list(APPEND MIXED_DIST_TEST_OPS test_recv_save_op)
-list(APPEND MIXED_DIST_TEST_OPS test_c_comm_init_op)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_async)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_ps_gpu)
 list(APPEND MIXED_DIST_TEST_OPS test_communicator_geo)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_half_async)
-list(APPEND MIXED_DIST_TEST_OPS test_communicator_sync)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ps)
 list(APPEND MIXED_DIST_TEST_OPS test_launch_coverage)
 list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
@@ -110,10 +120,11 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
 list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_api_input)
-list(APPEND MIXED_DIST_TEST_OPS test_collective_optimizer)
+
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_2)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base_3)
+<<<<<<< HEAD
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_recompute_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_pipeline_meta_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS
@@ -134,8 +145,9 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleet_private_function)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_graph_executor)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_meta_optimizer_base)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_distributed_strategy)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_auto)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_static_mp_layers)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_partitioner_gpt)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_searcher)
@@ -145,7 +157,10 @@ list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_serial)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_mppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_reshard_dpmppp)
 list(APPEND MIXED_DIST_TEST_OPS test_auto_parallel_cost_model)
+<<<<<<< HEAD
 list(APPEND MIXED_DIST_TEST_OPS test_tcp_store)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(APPEND MIXED_DIST_TEST_OPS test_dygraph_hybrid_dp)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -160,6 +175,10 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_op)
+<<<<<<< HEAD
+=======
+  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
@@ -171,6 +190,7 @@ list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_c_concat)
   list(REMOVE_ITEM TEST_OPS test_c_split)
   list(REMOVE_ITEM TEST_OPS test_allgather)
@@ -201,6 +221,10 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_collective_global_scatter)
   list(REMOVE_ITEM TEST_OPS test_collective_sendrecv_api)
   list(REMOVE_ITEM TEST_OPS test_collective_wait)
+=======
+  list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
+  list(REMOVE_ITEM TEST_OPS test_pipeline_parallel)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS test_memcpy_op)
   list(REMOVE_ITEM TEST_OPS test_raw_program_optimizer)
   list(REMOVE_ITEM TEST_OPS test_fleet_gradient_scale)
@@ -215,7 +239,10 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
 endif()
 
+<<<<<<< HEAD
 # Temporally disable test_deprecated_decorator
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
 
 if(WIN32)
@@ -242,19 +269,28 @@ endif()
 if(NOT WITH_DISTRIBUTE OR WIN32)
   # DISTRIBUTE related
   list(REMOVE_ITEM TEST_OPS test_avoid_twice_initialization)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_distributed_strategy)
   list(REMOVE_ITEM TEST_OPS test_fleet_metric)
   list(REMOVE_ITEM TEST_OPS test_fleet_ps)
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
   list(REMOVE_ITEM TEST_OPS test_fleet_utils)
   list(REMOVE_ITEM TEST_OPS test_collective_cpu_barrier_with_gloo)
+=======
+  list(REMOVE_ITEM TEST_OPS test_fleet_metric)
+  list(REMOVE_ITEM TEST_OPS test_fleet_ps)
+  list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_2)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS test_delete_c_identity_op_pass)
   # TODO: Fix these unittests failed on Windows
   list(REMOVE_ITEM TEST_OPS test_fake_init_op)
 endif()
 
 if(NOT WITH_DISTRIBUTE)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_fleet_rolemaker_new)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS test_desc_clone_dist)
 endif()
 
@@ -262,6 +298,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
+<<<<<<< HEAD
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fleet_checkpoint)
@@ -274,6 +311,11 @@ list(REMOVE_ITEM TEST_OPS test_auto_checkpoint_dist_basic)
 list(REMOVE_ITEM TEST_OPS test_hdfs1)
 list(REMOVE_ITEM TEST_OPS test_hdfs2)
 list(REMOVE_ITEM TEST_OPS test_hdfs3)
+=======
+  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
+  list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
+endif()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
 if(APPLE OR WIN32)
@@ -283,8 +325,13 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
+<<<<<<< HEAD
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo
 )# NOTE: @xiongkun03, cpu is too slow, fix it in next PR
+=======
+list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo)
+# NOTE: @xiongkun03, cpu is too slow, fix it in next PR
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 if(NOT WITH_GLOO)
   list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
@@ -299,6 +346,7 @@ endif()
 
 if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_rank_attention_op
   )# TODO(shenliang03): rank_attention_op support CPU device in future
   list(REMOVE_ITEM TEST_OPS test_batch_fc_op
@@ -335,6 +383,15 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_hybrid_parallel_inference_helper)
   list(REMOVE_ITEM TEST_OPS test_parallel_class_center_sample)
   list(REMOVE_ITEM TEST_OPS test_parallel_margin_cross_entropy)
+=======
+  list(REMOVE_ITEM TEST_OPS test_rank_attention_op)
+  # TODO(shenliang03): rank_attention_op support CPU device in future
+  list(REMOVE_ITEM TEST_OPS test_batch_fc_op)
+  # TODO(shenliang03): batch_fc_op support CPU device in future
+  # TODO(Yancey1989): parallel dygraph support CPU device in future
+  list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel)
+  list(REMOVE_ITEM TEST_OPS test_fleet_base_single)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_partitioner_gpt)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_searcher)
@@ -347,6 +404,7 @@ if((NOT WITH_GPU) AND (NOT WITH_ROCM))
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_data_unshard)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_save_load)
   list(REMOVE_ITEM TEST_OPS test_auto_parallel_autoconvert)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_collective_process_group)
   list(REMOVE_ITEM TEST_OPS test_collective_alltoall_single)
   list(REMOVE_ITEM TEST_OPS test_eager_dist_api)
@@ -365,29 +423,54 @@ if(WITH_NCCL)
     list(REMOVE_ITEM DIST_TEST_OPS
          test_parallel_dygraph_sparse_embedding_over_height)
     list(REMOVE_ITEM DIST_TEST_OPS test_parallel_dygraph_transformer)
+=======
+
+elseif(WITH_GPU)
+  if(${CUDNN_VERSION} VERSION_LESS 7100)
+    list(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   endif()
 endif()
 
 if((NOT WITH_NCCL) AND (NOT WITH_RCCL))
   list(REMOVE_ITEM TEST_OPS test_imperative_group)
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS test_new_group_api)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fused_gate_attention_op)
   list(REMOVE_ITEM TEST_OPS test_boxps)
+<<<<<<< HEAD
 endif()
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op
 )# FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op
 )# # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
+=======
+  list(REMOVE_ITEM TEST_OPS test_allgather)
+  list(REMOVE_ITEM TEST_OPS test_reducescatter)
+  list(REMOVE_ITEM TEST_OPS test_reducescatter_api)
+endif()
+list(REMOVE_ITEM TEST_OPS test_seq_concat_op)
+# FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
+list(REMOVE_ITEM TEST_OPS test_lstm_unit_op)
+# # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 list(REMOVE_ITEM TEST_OPS test_cond_op)
 
 # FIXME(qijun): https://github.com/PaddlePaddle/Paddle/issues/5101#issuecomment-339814957
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
+<<<<<<< HEAD
 list(REMOVE_ITEM TEST_OPS decorator_helper
 )# decorator_helper is a helper python file, not a test
+=======
+list(REMOVE_ITEM TEST_OPS decorator_helper)
+# decorator_helper is a helper python file, not a test
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 if(APPLE)
   if(NOT WITH_DISTRIBUTE)
@@ -623,8 +706,6 @@ list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
 list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
-# disable test_cumsum_op temporaily
-# list(REMOVE_ITEM TEST_OPS test_cumsum_op)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -641,7 +722,6 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_base)
-  # list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_process)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_fds_clear)
   list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exit_func)
@@ -700,10 +780,13 @@ if((NOT WITH_GPU)
    AND (NOT WITH_XPU)
    AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
   list(REMOVE_ITEM TEST_OPS "test_fleet_graph_execution_meta_optimizer")
+<<<<<<< HEAD
   list(REMOVE_ITEM TEST_OPS "test_gen_nccl_id_op")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_grad_clip")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_heter_ctr")
   list(REMOVE_ITEM TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -781,10 +864,19 @@ set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+
+if(WITH_RPC)
+  add_subdirectory(rpc)
+endif()
+
 if(WITH_DISTRIBUTE)
   add_subdirectory(distributed_passes)
   add_subdirectory(ps)
   add_subdirectory(auto_parallel)
+<<<<<<< HEAD
+=======
+  add_subdirectory(collective)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
   # FIXME(typhoonzero): add these tests back
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
@@ -813,6 +905,7 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps12")
   endif()
 
+<<<<<<< HEAD
   py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
   py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
                   ${dist_ENVS})
@@ -837,12 +930,19 @@ if(WITH_DISTRIBUTE)
     FLAGS_communicator_send_queue_size=1
     FLAGS_communicator_max_merge_var_num=1)
   py_test_modules(test_collective_optimizer MODULES test_collective_optimizer)
+=======
+  py_test_modules(test_communicator_async MODULES test_communicator_async ENVS
+                  ${dist_ENVS})
+  py_test_modules(test_communicator_geo MODULES test_communicator_geo ENVS
+                  ${dist_ENVS})
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   if(NOT APPLE)
     py_test_modules(test_fleet_base MODULES test_fleet_base ENVS ${dist_ENVS})
     py_test_modules(test_fleet_base_2 MODULES test_fleet_base_2 ENVS
                     ${dist_ENVS})
     py_test_modules(test_fleet_base_3 MODULES test_fleet_base_3 ENVS
                     ${dist_ENVS})
+<<<<<<< HEAD
     py_test_modules(test_fleet_amp_init MODULES test_fleet_amp_init ENVS
                     ${dist_ENVS})
     py_test_modules(test_fleet_fp16_allreduce_meta_optimizer MODULES
@@ -874,6 +974,8 @@ if(WITH_DISTRIBUTE)
       py_test_modules(test_fleet_sharding_meta_optimizer MODULES
                       test_fleet_sharding_meta_optimizer ENVS ${dist_ENVS})
     endif()
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if(NOT WIN32)
       py_test_modules(test_auto_parallel_partitioner MODULES
                       test_auto_parallel_partitioner ENVS ${dist_ENVS})
@@ -894,6 +996,7 @@ if(WITH_DISTRIBUTE)
       py_test_modules(test_auto_parallel_cost_model MODULES
                       test_auto_parallel_cost_model ENVS ${dist_ENVS})
 
+<<<<<<< HEAD
       if(WITH_GPU
          OR WITH_XPU
          OR WITH_ASCEND
@@ -1037,6 +1140,82 @@ if(WITH_DISTRIBUTE)
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
   endif()
+=======
+    endif()
+  endif()
+
+  if(NOT APPLE)
+    if(WITH_GPU OR WITH_ROCM)
+      py_test_modules(test_launch_coverage MODULES test_launch_coverage)
+    endif()
+
+    bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
+                      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    if(WITH_GPU
+       OR WITH_XPU
+       OR WITH_ASCEND
+       OR WITH_ASCEND_CL)
+      bash_test_modules(
+        test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
+        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      bash_test_modules(
+        test_fleet_run_random_port START_BASH test_fleet_run_random_port.sh
+        ENVS PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      bash_test_modules(
+        test_fleet_launch_async START_BASH test_fleet_launch_async.sh ENVS
+        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      bash_test_modules(
+        test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
+        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    endif()
+    if(WITH_ASCEND OR WITH_ASCEND_CL)
+      bash_test_modules(
+        test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
+        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+      bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
+                        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    endif()
+
+    # port range (20000, 21200) is reserved for dist-ops
+    set(dist_ut_port 20001)
+    foreach(TEST_OP ${DIST_TEST_OPS})
+      bash_test_modules(
+        ${TEST_OP}
+        START_BASH
+        dist_test.sh
+        LABELS
+        "RUN_TYPE=EXCLUSIVE"
+        ENVS
+        "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+      math(EXPR dist_ut_port "${dist_ut_port}+10")
+      if(dist_ut_port GREATER_EQUAL 21198)
+        message(
+          FATAL_ERROR "available ports have been exhausted:${dist_ut_port}")
+      endif()
+    endforeach()
+    # solve it later.
+    bash_test_modules(
+      test_fleet_launch_ps
+      START_BASH
+      test_fleet_launch_ps.sh
+      LABELS
+      "RUN_TYPE=EXCLUSIVE"
+      ENVS
+      "PADDLE_DIST_UT_PORT=${dist_ut_port}"
+      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    if(WITH_GLOO)
+      bash_test_modules(
+        test_cpuonly_launch
+        START_BASH
+        test_cpuonly_launch.sh
+        LABELS
+        "RUN_TYPE=EXCLUSIVE"
+        ENVS
+        "PADDLE_DIST_UT_PORT=${dist_ut_port}"
+        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
+    endif()
+  endif()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
@@ -1098,7 +1277,11 @@ py_test_modules(
 # it is found that windows CI will run all the training unittests with the ON_INFER option turned on,
 # which will not appear in other CIs. The calculation behavior of some ops in inference mode is
 # inconsistent with that in non-inference mode.
+<<<<<<< HEAD
 if(NOT ON_INFER)
+=======
+if(WITH_PYTHON)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES
                   test_parallel_executor_seresnext_base_cpu)
   py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES
@@ -1130,6 +1313,7 @@ if(NOT WIN32)
   py_test_modules(test_parallel_executor_fetch_feed MODULES
                   test_parallel_executor_fetch_feed)
   set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
+<<<<<<< HEAD
 endif()
 
 if(WITH_DISTRIBUTE
@@ -1211,6 +1395,8 @@ if(WITH_DISTRIBUTE
     200
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY")
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 add_subdirectory(sequence)
@@ -1229,9 +1415,14 @@ endif()
 
 # dist xpu tests:
 if(WITH_XPU_BKCL)
+<<<<<<< HEAD
   #py_test(test_collective_reduce_api_xpu SRCS "test_collective_reduce_api.py")
   py_test(test_collective_allreduce_api_xpu
           SRCS "test_collective_allreduce_api.py")
+=======
+  py_test(test_collective_allreduce_api_xpu
+          SRCS "collective/test_collective_allreduce_api.py")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 if(WITH_HETERPS)
@@ -1266,7 +1457,7 @@ add_subdirectory(asp)
 
 add_subdirectory(ir)
 
-add_subdirectory(interpreter)
+add_subdirectory(standalone_executor)
 
 if(WITH_TESTING)
   set_property(TEST test_parallel_executor_mnist
@@ -1288,8 +1479,11 @@ set_tests_properties(
   test_fetch_unmerged
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
+<<<<<<< HEAD
 # disable test_parallel_executor_fetch_isolated_var
 # set_tests_properties(test_parallel_executor_fetch_isolated_var PROPERTIES LABELS "RUN_TYPE=DIST")
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 set_tests_properties(
   test_parallel_executor_crf
   test_sync_batch_norm_op
@@ -1310,7 +1504,10 @@ if(NOT WIN32 AND NOT APPLE)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_imperative_data_loader_fds_clear
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+<<<<<<< HEAD
   # set_tests_properties(test_imperative_data_loader_exception PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   set_tests_properties(test_multiprocess_dataloader_static
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   set_tests_properties(test_multiprocess_dataloader_dynamic
@@ -1338,6 +1535,7 @@ if(NOT WIN32)
     set_tests_properties(test_ir_memory_optimize_transformer PROPERTIES TIMEOUT
                                                                         120)
   endif()
+<<<<<<< HEAD
 endif()
 
 if(WITH_DISTRIBUTE AND NOT WIN32)
@@ -1364,6 +1562,18 @@ if(WITH_DISTRIBUTE AND NOT APPLE)
     set_tests_properties(test_c_comm_init_op PROPERTIES TIMEOUT 120)
     set_tests_properties(test_dist_mnist_gradient_merge PROPERTIES TIMEOUT 360)
   endif()
+=======
+endif()
+
+if(WITH_DISTRIBUTE)
+  set_tests_properties(test_dist_fleet_ctr2 PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_dist_fleet_sparse_embedding_ctr PROPERTIES TIMEOUT
+                                                                       200)
+  set_tests_properties(test_dist_fleet_infer PROPERTIES TIMEOUT 200)
+  set_tests_properties(test_dist_fleet_raw_program_optimizer_fuse_allreduce
+                       PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_dist_dygraph_apis PROPERTIES TIMEOUT 120)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 # setting timeout value as 15S
@@ -1442,6 +1652,10 @@ endif()
 set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
+=======
+set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 set_tests_properties(test_parallel_ssa_graph_inference_feed_partial_data
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
@@ -1562,6 +1776,7 @@ set_tests_properties(test_reader_reset PROPERTIES TIMEOUT 120)
 set_tests_properties(test_pool3d_api PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)
@@ -1614,6 +1829,16 @@ if(WITH_DISTRIBUTE
     set_tests_properties(test_parallel_dygraph_sparse_embedding_over_height
                          PROPERTIES TIMEOUT 150)
   endif()
+=======
+set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
+set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL)
+  set_tests_properties(test_auto_parallel_data_unshard PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_save_load PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_auto_parallel_autoconvert PROPERTIES TIMEOUT 120)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 
 if(APPLE)
@@ -1626,6 +1851,7 @@ if(APPLE)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
+<<<<<<< HEAD
   set_tests_properties(test_collective_allgather_api PROPERTIES TIMEOUT 300)
   set_tests_properties(test_collective_allgather_object_api PROPERTIES TIMEOUT
                                                                        120)
@@ -1640,12 +1866,16 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
     set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
+=======
+  if(WITH_DISTRIBUTE)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     set_tests_properties(test_static_model_parallel_fused_feedforward
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel_fused_attention
                          PROPERTIES TIMEOUT 120)
     set_tests_properties(test_static_model_parallel_fused_multi_transformer
                          PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
     set_tests_properties(
       test_collective_split_embedding
       test_collective_split_embedding_none_divisible
@@ -1690,6 +1920,23 @@ if(WITH_GPU OR WITH_ROCM)
   set_tests_properties(test_parallel_dygraph_sync_batch_norm PROPERTIES TIMEOUT
                                                                         120)
   set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
+=======
+    set_tests_properties(test_pipeline_parallel PROPERTIES LABELS
+                                                           "RUN_TYPE=DIST")
+    set_tests_properties(test_reducescatter_api PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_reducescatter PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_allgather PROPERTIES TIMEOUT 120)
+  endif()
+  set_tests_properties(test_paddle_multiprocessing PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_pipeline_parallel PROPERTIES TIMEOUT 120)
+endif()
+if(WITH_GPU OR WITH_ROCM)
+  set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
+endif()
+if(WITH_GPU AND NOT WIN32)
+  set_tests_properties(test_fused_multi_transformer_int8_op PROPERTIES TIMEOUT
+                                                                       60)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
 set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)
@@ -1724,6 +1971,7 @@ if($ENV{USE_STANDALONE_EXECUTOR})
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
   set_tests_properties(test_imperative_mnist_sorted_gradient
                        PROPERTIES ENVIRONMENT FLAGS_USE_STANDALONE_EXECUTOR=0)
+<<<<<<< HEAD
 endif()
 
 if(WITH_CINN AND WITH_TESTING)
@@ -1745,9 +1993,54 @@ if(WITH_CINN AND WITH_TESTING)
   )
 endif()
 
+=======
+endif()
+
+if(WITH_CINN AND WITH_TESTING)
+  set_tests_properties(
+    test_resnet50_with_cinn
+    PROPERTIES
+      LABELS
+      "RUN_TYPE=CINN"
+      ENVIRONMENT
+      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
+  )
+  set_tests_properties(
+    test_parallel_executor_run_cinn
+    PROPERTIES
+      LABELS
+      "RUN_TYPE=CINN"
+      ENVIRONMENT
+      FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
+  )
+endif()
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 py_test_modules(
   test_add_reader_dependency_for_interpretercore MODULES
   test_add_reader_dependency ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
 
 set_tests_properties(test_add_reader_dependency_for_interpretercore
                      PROPERTIES TIMEOUT 120)
+<<<<<<< HEAD
+=======
+
+py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
+                FLAGS_enable_eager_mode=0)
+
+set_tests_properties(test_renorm_op_without_eager PROPERTIES TIMEOUT 120)
+py_test_modules(
+  test_eager_deletion_padding_rnn_for_interpretercore MODULES
+  test_eager_deletion_padding_rnn ENVS FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+set_tests_properties(
+  test_buffer_shared_memory_reuse_pass
+  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+# ExecutionStrategy is deprecated in standalone executor
+set_tests_properties(test_parallel_executor_dry_run
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+set_tests_properties(test_parallel_executor_drop_scope
+                     PROPERTIES ENVIRONMENT "FLAGS_USE_STANDALONE_EXECUTOR=0")
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

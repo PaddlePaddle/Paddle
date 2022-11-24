@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle
@@ -58,8 +56,16 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
+<<<<<<< HEAD
         lis_tests = [[x, axis, keepdims] for axis in [-1, 0, 1, 2, None]
                      for keepdims in [False, True]]
+=======
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
 
@@ -69,8 +75,16 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
+<<<<<<< HEAD
         lis_tests = [[x, axis, keepdims] for axis in [-1, 0, 1, 2, None]
                      for keepdims in [False, True]]
+=======
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 

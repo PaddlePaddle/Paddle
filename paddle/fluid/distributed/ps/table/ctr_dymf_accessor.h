@@ -21,7 +21,10 @@
 #include "paddle/fluid/distributed/common/registerer.h"
 #include "paddle/fluid/distributed/ps/table/accessor.h"
 #include "paddle/fluid/distributed/ps/table/sparse_sgd_rule.h"
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/ps/thirdparty/round_robin.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/fluid/distributed/the_one_ps.pb.h"
 
 namespace paddle {
@@ -84,6 +87,12 @@ class CtrDymfAccessor : public ValueAccessor {
       }
       return 7 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
     }
+<<<<<<< HEAD
+=======
+
+    // 根据mf_dim计算的总byte数
+    int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     // 根据mf_dim计算的总byte数
     int Size(int& mf_dim) { return (Dim(mf_dim)) * sizeof(float); }

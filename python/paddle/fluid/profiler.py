@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 from . import core
 from .wrapped_decorator import signature_safe_contextmanager
 import os
-import six
 import sys
 
 from paddle.utils.deprecated import deprecated
 
 __all__ = [
-    'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
-    'stop_profiler'
+    'cuda_profiler',
+    'reset_profiler',
+    'profiler',
+    'start_profiler',
+    'stop_profiler',
 ]
 
 NVPROF_CONFIG = [
@@ -42,8 +42,13 @@ NVPROF_CONFIG = [
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason=
     "Please use new profiler tool, this profiler tool is no longer maintained.")
+=======
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 @signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
     """
@@ -121,8 +126,13 @@ def npu_profiler(output_file, config=None):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason=
     "Please use new profiler tool, this profiler tool is no longer maintained.")
+=======
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 def reset_profiler():
     """
     Clear the previous time record. It works for
@@ -149,8 +159,13 @@ def reset_profiler():
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason=
     "Please use new profiler tool, this profiler tool is no longer maintained.")
+=======
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 def start_profiler(state, tracer_option='Default'):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -207,7 +222,8 @@ def start_profiler(state, tracer_option='Default'):
 
     if tracer_option not in ['Default', 'OpDetail', 'AllOpDetail']:
         raise ValueError(
-            "tracer option must be 'Default', 'OpDetail', 'AllOpDetail'.")
+            "tracer option must be 'Default', 'OpDetail', 'AllOpDetail'."
+        )
     if tracer_option == "Default":
         prof_tracer_option = core.TracerOption.kDefault
     elif tracer_option == "OpDetail":
@@ -223,8 +239,13 @@ def start_profiler(state, tracer_option='Default'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason=
     "Please use new profiler tool, this profiler tool is no longer maintained.")
+=======
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     """
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -267,8 +288,10 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
         return
     sorted_key = 'default' if sorted_key is None else sorted_key
     if sorted_key not in ['default', 'calls', 'total', 'max', 'min', 'ave']:
-        raise ValueError("The sorted_key must be None or in 'calls', 'total', "
-                         "'max', 'min' and 'ave'")
+        raise ValueError(
+            "The sorted_key must be None or in 'calls', 'total', "
+            "'max', 'min' and 'ave'"
+        )
     key_map = {
         'default': core.EventSortingKey.kDefault,
         'calls': core.EventSortingKey.kCalls,
@@ -286,13 +309,17 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason=
     "Please use new profiler tool, this profiler tool is no longer maintained.")
+=======
+    reason="Please use new profiler tool, this profiler tool is no longer maintained.",
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 @signature_safe_contextmanager
-def profiler(state,
-             sorted_key=None,
-             profile_path='/tmp/profile',
-             tracer_option='Default'):
+def profiler(
+    state, sorted_key=None, profile_path='/tmp/profile', tracer_option='Default'
+):
     """
     The profiler interface. This profiler can be used to profile both CPU and GPU program.
 

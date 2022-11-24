@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
 import unittest
 import numpy as np
@@ -51,10 +49,11 @@ class TestDoubleGrad(unittest.TestCase):
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(3))
-            grad1, = fluid.gradients(net(x), x)  # 2x = 6
+                default_initializer=fluid.initializer.Constant(3),
+            )
+            (grad1,) = fluid.gradients(net(x), x)  # 2x = 6
             z = net(x - grad1)
-            grad2, = fluid.gradients(z, x)  # gradients( (x - 2x)^2) = 2x = 6
+            (grad2,) = fluid.gradients(z, x)  # gradients( (x - 2x)^2) = 2x = 6
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -71,16 +70,17 @@ class TestDoubleGrad(unittest.TestCase):
                 name='x',
                 shape=[1],
                 dtype='float32',
-                default_initializer=fluid.initializer.Constant(1))
+                default_initializer=fluid.initializer.Constant(1),
+            )
             y = x * x
-            dx1, = fluid.gradients(y, x)
+            (dx1,) = fluid.gradients(y, x)
             z = dx1 * dx1 + y * y
-            dx2, = fluid.gradients(z, x)
+            (dx2,) = fluid.gradients(z, x)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup)
-        out, = exe.run(main, fetch_list=[dx2])
+        (out,) = exe.run(main, fetch_list=[dx2])
         self.assertEqual(12, out[0])
 
 
@@ -97,10 +97,12 @@ class TestGradientWithPrune(unittest.TestCase):
             exe = fluid.Executor(fluid.CPUPlace())
             main = fluid.default_main_program()
             exe.run(fluid.default_startup_program())
-            out = exe.run(main,
-                          feed={'x': np.ones([3]).astype('float32')},
-                          fetch_list=[x1_grad])
-            self.assertTrue(np.array_equal(out[0], [2., 0., 0.]))
+            out = exe.run(
+                main,
+                feed={'x': np.ones([3]).astype('float32')},
+                fetch_list=[x1_grad],
+            )
+            np.testing.assert_array_equal(out[0], [2.0, 0.0, 0.0])
 
 
 class TestDoubleGradient(unittest.TestCase):
@@ -130,12 +132,14 @@ class TestDoubleGradient(unittest.TestCase):
             start_prog, main_prog, fetch_list = self.build_program()
             exe = paddle.static.Executor()
             exe.run(start_prog)
-            ans = exe.run(main_prog,
-                          feed={'x': np.ones([2, 2]).astype(np.float32)},
-                          fetch_list=fetch_list)
+            ans = exe.run(
+                main_prog,
+                feed={'x': np.ones([2, 2]).astype(np.float32)},
+                fetch_list=fetch_list,
+            )
             self.assertEqual(len(ans), 2)
-            self.assertListEqual(ans[0].tolist(), [[0., 0.], [0., 0.]])
-            self.assertListEqual(ans[1].tolist(), [[2., 2.], [2., 2.]])
+            self.assertListEqual(ans[0].tolist(), [[0.0, 0.0], [0.0, 0.0]])
+            self.assertListEqual(ans[1].tolist(), [[2.0, 2.0], [2.0, 2.0]])
 
 
 class TestDoubleGradient2(unittest.TestCase):
@@ -158,8 +162,9 @@ class TestDoubleGradient2(unittest.TestCase):
             grad_x = paddle.static.gradients(y, x, grad_y)
             grad_x2 = paddle.static.gradients(y2, x, grad_y)
             # test with multi targets
-            jvp = paddle.static.gradients([grad_x[0], grad_x2[0]], grad_y,
-                                          [v, v])
+            jvp = paddle.static.gradients(
+                [grad_x[0], grad_x2[0]], grad_y, [v, v]
+            )
 
         return start_prog, main_prog, [grad_x, jvp]
 
@@ -168,12 +173,14 @@ class TestDoubleGradient2(unittest.TestCase):
             start_prog, main_prog, fetch_list = self.build_program()
             exe = paddle.static.Executor()
             exe.run(start_prog)
-            ans = exe.run(main_prog,
-                          feed={'x': np.ones([2, 2]).astype(np.float32)},
-                          fetch_list=fetch_list)
+            ans = exe.run(
+                main_prog,
+                feed={'x': np.ones([2, 2]).astype(np.float32)},
+                fetch_list=fetch_list,
+            )
             self.assertEqual(len(ans), 2)
-            self.assertListEqual(ans[0].tolist(), [[0., 0.], [0., 0.]])
-            self.assertListEqual(ans[1].tolist(), [[5., 5.], [5., 5.]])
+            self.assertListEqual(ans[0].tolist(), [[0.0, 0.0], [0.0, 0.0]])
+            self.assertListEqual(ans[1].tolist(), [[5.0, 5.0], [5.0, 5.0]])
 
 
 if __name__ == "__main__":

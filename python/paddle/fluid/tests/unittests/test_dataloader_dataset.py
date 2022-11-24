@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import sys
 import unittest
-import numpy as np
 
 import paddle
 import paddle.vision.transforms as transforms
-import paddle.fluid as fluid
-from paddle.io import *
-from paddle.fluid.framework import _test_eager_guard, _in_legacy_dygraph
+from paddle.io import Dataset
+from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDatasetAbstract(unittest.TestCase):
@@ -52,6 +48,7 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
     def get_dataloader(self, num_workers):
         dataset = paddle.vision.datasets.MNIST(
             mode='test',
+<<<<<<< HEAD
             transform=transforms.Compose([
                 transforms.CenterCrop(20),
                 transforms.RandomResizedCrop(14),
@@ -62,6 +59,20 @@ class TestDatasetWithDiffOutputPlace(unittest.TestCase):
                                       batch_size=32,
                                       num_workers=num_workers,
                                       shuffle=True)
+=======
+            transform=transforms.Compose(
+                [
+                    transforms.CenterCrop(20),
+                    transforms.RandomResizedCrop(14),
+                    transforms.Normalize(),
+                    transforms.ToTensor(),
+                ]
+            ),
+        )
+        loader = paddle.io.DataLoader(
+            dataset, batch_size=32, num_workers=num_workers, shuffle=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         return loader
 
     def run_check_on_cpu(self):

@@ -38,9 +38,9 @@ namespace tensorrt {
  * issues such as op_desc.
  */
 struct Teller {
-  virtual bool operator()(const std::string& op_type,
-                          const framework::OpDesc& desc,
-                          bool use_no_calib_int8) = 0;
+  virtual bool operator()(const framework::OpDesc& desc,
+                          bool use_no_calib_int8 = false,
+                          bool with_dynamic_shape = false) = 0;
 
   virtual ~Teller() = default;
 };
@@ -55,9 +55,15 @@ struct Teller {
  *};
  */
 
+enum class OpConverterType {
+  Default = 0,
+  GenericPluginCreater,
+  CustomPluginCreater
+};
 /*
  * class OpTeller helps to tell whether a fluid
- * operator can be transformed to a TensorRT layer.
+ * operator can be transformed to a TensorRT layer
+ * and use which kind of OpConverter
  */
 class OpTeller {
  public:
@@ -70,11 +76,26 @@ class OpTeller {
             bool use_no_calib_int8 = false,
             bool with_dynamic_shape = false);
 
+  std::unique_ptr<Teller>& GetDefaultTeller() { return tellers_.at(0); }
+
+  std::unique_ptr<Teller>& GetGenericPluginTeller() { return tellers_.at(1); }
+
+  std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
+
+  void SetOpConverterType(std::string name, OpConverterType type) {
+    op_converter_type_map_[name] = type;
+  }
+
+  const std::map<std::string, OpConverterType>& GetOpConverterTypeMap() const {
+    return op_converter_type_map_;
+  }
+
  private:
   OpTeller();
 
  private:
   std::vector<std::unique_ptr<Teller>> tellers_;
+  std::map<std::string, OpConverterType> op_converter_type_map_;
 };
 
 }  // namespace tensorrt

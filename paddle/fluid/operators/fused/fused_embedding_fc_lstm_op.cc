@@ -285,17 +285,17 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     act_cand = act_functor(act_cand_str);                                    \
   }
 
-#define INIT_BASE_INPUT_OUTPUT                        \
-  auto* ids = ctx.Input<LoDTensor>("Ids");            \
-  auto* h0 = ctx.Input<Tensor>("H0");                 \
-  auto* c0 = ctx.Input<Tensor>("C0");                 \
-  auto* embeddings = ctx.Input<Tensor>("Embeddings"); \
-  auto* wh = ctx.Input<Tensor>("WeightH");            \
-  auto* bias = ctx.Input<Tensor>("Bias");             \
-  auto* xx = ctx.Output<LoDTensor>("XX");             \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden"); \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");     \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");     \
+#define INIT_BASE_INPUT_OUTPUT                                  \
+  auto* ids = ctx.Input<LoDTensor>("Ids");                      \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");                 \
+  auto* c0 = ctx.Input<phi::DenseTensor>("C0");                 \
+  auto* embeddings = ctx.Input<phi::DenseTensor>("Embeddings"); \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");            \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");             \
+  auto* xx = ctx.Output<LoDTensor>("XX");                       \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");           \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");               \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");               \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
 #define INIT_BASE_SIZES                                \
@@ -506,8 +506,8 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
-    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
-    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
+    auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");

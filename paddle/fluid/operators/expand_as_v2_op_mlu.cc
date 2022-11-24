@@ -20,13 +20,21 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 template <typename T>
 class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+<<<<<<< HEAD
     auto rank = context.Input<Tensor>("X")->dims().size();
+=======
+    auto rank = context.Input<phi::DenseTensor>("X")->dims().size();
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto target_rank = target_shape.size();
     PADDLE_ENFORCE_GE(target_rank,
@@ -55,7 +63,11 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
 
  protected:
   void ExpandAs(const framework::ExecutionContext& context) const {
+<<<<<<< HEAD
     auto* in0 = context.Input<Tensor>("X");
+=======
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     auto in_dims = in0->dims();
     auto target_shape = context.Attr<std::vector<int>>("target_shape");
     auto vec_in_dims = phi::vectorize<int>(in_dims);
@@ -79,7 +91,11 @@ class ExpandAsV2MLUKernel : public framework::OpKernel<T> {
                 target_shape[i]));
       }
     }
+<<<<<<< HEAD
     auto* out0 = context.Output<Tensor>("Out");
+=======
+    auto* out0 = context.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     framework::DDim out_dims = phi::make_ddim(target_shape);
 

@@ -62,8 +62,7 @@ def adamw_step(inputs, attributes):
 class TestAdamW(OpTest):
 
     def setUp(self):
-        '''Test AdamW Op with supplied attributes
-        '''
+        '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -85,7 +84,7 @@ class TestAdamW(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
         self.attrs = {
@@ -93,31 +92,32 @@ class TestAdamW(OpTest):
             'beta1': beta1,
             'beta2': beta2,
             "coeff": 0.5,
-            "with_decay": True
+            "with_decay": True,
         }
 
-        param_out, moment1_out, \
-            moment2_out = adamw_step(self.inputs, self.attrs)
+        param_out, moment1_out, moment2_out = adamw_step(
+            self.inputs, self.attrs
+        )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def test_check_output(self):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAdamW2(OpTest):
 
     def setUp(self):
-        '''Test AdamW Op with supplied attributes
-        '''
+        '''Test AdamW Op with supplied attributes'''
         self.op_type = "adamw"
         param = np.random.uniform(-1, 1, (2, 2)).astype("float32")
         grad = np.random.uniform(-1, 1, (2, 2)).astype("float32")
@@ -139,7 +139,7 @@ class TestAdamW2(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
         self.attrs = {
@@ -148,18 +148,23 @@ class TestAdamW2(OpTest):
             'beta2': beta2,
             "lr_ratio": 0.1,
             "coeff": 0.5,
-            "with_decay": True
+            "with_decay": True,
         }
 
         param_out, moment1_out, moment2_out = adamw_step(
+<<<<<<< HEAD
             self.inputs, self.attrs)
+=======
+            self.inputs, self.attrs
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
-            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2
+            'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def test_check_output(self):
@@ -173,10 +178,19 @@ class TestAdamWOp(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
+<<<<<<< HEAD
         adam = paddle.optimizer.AdamW(learning_rate=0.01,
                                       parameters=linear.parameters(),
                                       apply_decay_param_fun=lambda name: True,
                                       weight_decay=0.01)
+=======
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         for _ in range(2):
             out = linear(a)
@@ -189,11 +203,21 @@ class TestAdamWOp(unittest.TestCase):
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
         linear = paddle.nn.Linear(13, 5)
+<<<<<<< HEAD
         adam = paddle.optimizer.AdamW(learning_rate=0.0,
                                       parameters=linear.parameters(),
                                       apply_decay_param_fun=lambda name: True,
                                       weight_decay=0.01)
         assert (adam.__str__() is not None)
+=======
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.0,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+        )
+        assert adam.__str__() is not None
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_adamw_op(self):
         paddle.enable_static()
@@ -208,6 +232,7 @@ class TestAdamWOp(unittest.TestCase):
                 conv = fluid.layers.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
+<<<<<<< HEAD
                 beta1 = fluid.layers.create_global_var(shape=[1],
                                                        value=0.85,
                                                        dtype='float32',
@@ -222,6 +247,22 @@ class TestAdamWOp(unittest.TestCase):
                                              beta2=beta2,
                                              weight_decay=0.01,
                                              epsilon=1e-8)
+=======
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True
+                )
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True
+                )
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 opt.minimize(loss)
 
         exe.run(startup)
@@ -234,6 +275,7 @@ class TestAdamWOp(unittest.TestCase):
         paddle.disable_static()
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(ValueError):
+<<<<<<< HEAD
             adam = paddle.optimizer.AdamW(0.1,
                                           beta1=-1,
                                           parameters=linear.parameters())
@@ -245,6 +287,19 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(0.1,
                                           epsilon=-1,
                                           parameters=linear.parameters())
+=======
+            adam = paddle.optimizer.AdamW(
+                0.1, beta1=-1, parameters=linear.parameters()
+            )
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.AdamW(
+                0.1, beta2=-1, parameters=linear.parameters()
+            )
+        with self.assertRaises(ValueError):
+            adam = paddle.optimizer.AdamW(
+                0.1, epsilon=-1, parameters=linear.parameters()
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_api_eager_dygraph(self):
         with _test_eager_guard():
@@ -260,6 +315,7 @@ class TestAdamWOpGroup(TestAdamWOp):
         a = paddle.to_tensor(value)
         linear_1 = paddle.nn.Linear(13, 5)
         linear_2 = paddle.nn.Linear(5, 3)
+<<<<<<< HEAD
         adam = paddle.optimizer.AdamW(learning_rate=0.01,
                                       parameters=[{
                                           'params':
@@ -272,6 +328,17 @@ class TestAdamWOpGroup(TestAdamWOp):
                                       }],
                                       apply_decay_param_fun=lambda name: True,
                                       weight_decay=0.01)
+=======
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=[
+                {'params': linear_1.parameters()},
+                {'params': linear_2.parameters(), 'weight_decay': 0.001},
+            ],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         for _ in range(2):
             out = linear_1(a)
@@ -282,7 +349,10 @@ class TestAdamWOpGroup(TestAdamWOp):
 
 
 class TestAdamWOpMultiPrecison(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def _test_adamw_op_dygraph_place_amp(self, place, use_amp=False):
         paddle.disable_static()
         paddle.seed(10)
@@ -292,6 +362,7 @@ class TestAdamWOpMultiPrecison(unittest.TestCase):
 
         model = paddle.nn.Linear(5, 5)
 
+<<<<<<< HEAD
         optimizer = paddle.optimizer.AdamW(parameters=[{
             'params':
             model.parameters(),
@@ -310,6 +381,26 @@ class TestAdamWOpMultiPrecison(unittest.TestCase):
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
 
             if place == 'gpu' and use_amp == True:
+=======
+        optimizer = paddle.optimizer.AdamW(
+            parameters=[
+                {
+                    'params': model.parameters(),
+                    'weight_decay': 0.001,
+                    'beta1': 0.1,
+                    'beta2': 0.99,
+                }
+            ],
+            multi_precision=use_amp,
+        )
+
+        for idx in range(2):
+            if place == 'gpu' and use_amp:
+                model = paddle.amp.decorate(models=model, level='O2')
+                scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+
+            if place == 'gpu' and use_amp:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 with paddle.amp.auto_cast(level='O2'):
                     output = model(input)
                     loss = paddle.mean(output)
@@ -338,6 +429,7 @@ class TestAdamWOpMultiPrecison(unittest.TestCase):
 
 
 class TestAdamWOpError(unittest.TestCase):
+<<<<<<< HEAD
 
     def test_api_errors(self):
 
@@ -351,24 +443,52 @@ class TestAdamWOpError(unittest.TestCase):
             adam = paddle.optimizer.AdamW(learning_rate=0.01,
                                           parameters=paddle.randn((5, 5)),
                                           weight_decay=0.1)
+=======
+    def test_api_errors(self):
+        def test_weight_decay_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+                weight_decay=1,
+            )
+
+        def test_parameters_dtype1():
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=paddle.randn((5, 5)),
+                weight_decay=0.1,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def test_parameters_dtype2():
             linear = paddle.nn.Linear(13, 5)
             adam = paddle.optimizer.AdamW(
                 learning_rate=0.01,
                 parameters={'params': linear.parameters()},
+<<<<<<< HEAD
                 weight_decay=0.1)
 
         def test_parameters_dtype3():
             adam = paddle.optimizer.AdamW(learning_rate=0.01,
                                           parameters=None,
                                           weight_decay=0.1)
+=======
+                weight_decay=0.1,
+            )
+
+        def test_parameters_dtype3():
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01, parameters=None, weight_decay=0.1
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def test_parameters_dtype4():
             linear = paddle.nn.Linear(13, 5)
             adam = paddle.optimizer.AdamW(
                 learning_rate=0.01,
                 parameters={'params': set(linear.parameters())},
+<<<<<<< HEAD
                 weight_decay=0.1)
 
         def test_learning_rate_dtype():
@@ -383,6 +503,27 @@ class TestAdamWOpError(unittest.TestCase):
                                           parameters=linear.parameters(),
                                           weight_decay=0.1,
                                           grad_clip=0.1)
+=======
+                weight_decay=0.1,
+            )
+
+        def test_learning_rate_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=1,
+                parameters=linear.parameters(),
+                weight_decay=0.1,
+            )
+
+        def test_grad_clip_dtype():
+            linear = paddle.nn.Linear(13, 5)
+            adam = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=linear.parameters(),
+                weight_decay=0.1,
+                grad_clip=0.1,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.assertRaises(TypeError, test_weight_decay_dtype)
         self.assertRaises(TypeError, test_parameters_dtype1)
@@ -403,16 +544,21 @@ class TestAdamWOpGroupWithLR(TestAdamWOp):
         linear_2 = paddle.nn.Linear(5, 3)
         adam = paddle.optimizer.AdamW(
             learning_rate=paddle.optimizer.lr.PiecewiseDecay(
-                boundaries=[3, 6], values=[0.1, 0.2, 0.3]),
-            parameters=[{
-                'params': linear_1.parameters(),
-                'learning_rate': 0.1,
-            }, {
-                'params': linear_2.parameters(),
-                'weight_decay': 0.001,
-            }],
+                boundaries=[3, 6], values=[0.1, 0.2, 0.3]
+            ),
+            parameters=[
+                {
+                    'params': linear_1.parameters(),
+                    'learning_rate': 0.1,
+                },
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                },
+            ],
             apply_decay_param_fun=lambda name: True,
-            weight_decay=0.01)
+            weight_decay=0.01,
+        )
 
         for _ in range(2):
             out = linear_1(a)
@@ -430,11 +576,12 @@ def simple_lr_setting(param, decay_rate, n_layers):
     else:
         depth = 0
 
-    return decay_rate**(n_layers + 2 - depth)
+    return decay_rate ** (n_layers + 2 - depth)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
     def setUp(self):
@@ -445,9 +592,11 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         linear1 = paddle.nn.Linear(
-            13, 8, bias_attr=paddle.nn.initializer.Constant(value=1.0))
+            13, 8, bias_attr=paddle.nn.initializer.Constant(value=1.0)
+        )
         linear2 = paddle.nn.Linear(
-            8, 5, bias_attr=paddle.nn.initializer.Constant(value=1.0))
+            8, 5, bias_attr=paddle.nn.initializer.Constant(value=1.0)
+        )
 
         # fix the linear name, simple_lr_setting function will use the name
         linear1.weight.name = "linear_1.w_0"
@@ -475,6 +624,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         beta1 = 0.9
         beta2 = 0.999
 
+<<<<<<< HEAD
         opt = paddle.optimizer.AdamW(learning_rate=learning_rate,
                                      parameters=[{
                                          'params': linear1.parameters()
@@ -484,6 +634,20 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                      apply_decay_param_fun=lambda name: True,
                                      weight_decay=weight_decay,
                                      lr_ratio=simple_lr_fun)
+=======
+        opt = paddle.optimizer.AdamW(
+            learning_rate=learning_rate,
+            parameters=[
+                {'params': linear1.parameters()},
+                {
+                    'params': linear2.parameters(),
+                },
+            ],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=weight_decay,
+            lr_ratio=simple_lr_fun,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
             np_inputs = {
@@ -493,7 +657,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'Moment2': moment2,
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1**t]).astype("float32"),
-                'Beta2Pow': np.array([beta2**t]).astype("float32")
+                'Beta2Pow': np.array([beta2**t]).astype("float32"),
             }
 
             np_attrs = {
@@ -502,21 +666,28 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'beta2': beta2,
                 "lr_ratio": lr_ratio,
                 "coeff": weight_decay,
-                "with_decay": True
+                "with_decay": True,
             }
             param_out, moment1_out, moment2_out = adamw_step(
+<<<<<<< HEAD
                 np_inputs, np_attrs)
+=======
+                np_inputs, np_attrs
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return param_out, moment1_out, moment2_out
 
         for i in range(5):
             a = paddle.to_tensor(
-                np.random.uniform(-1, 1, (2, 13)).astype("float32"))
+                np.random.uniform(-1, 1, (2, 13)).astype("float32")
+            )
             a1 = linear1(a)
             out = linear2(a1)
             out = paddle.mean(out)
             out.backward()
 
             fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
+<<<<<<< HEAD
                 fc1_w, np.array(linear1.weight.grad), fc1_w_mon1, fc1_w_mon2,
                 simple_lr_fun(linear1.weight), i + 1)
             fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
@@ -528,6 +699,39 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
                 fc2_b, np.array(linear2.bias.grad), fc2_b_mon1, fc2_b_mon2,
                 simple_lr_fun(linear2.bias), i + 1)
+=======
+                fc1_w,
+                np.array(linear1.weight.grad),
+                fc1_w_mon1,
+                fc1_w_mon2,
+                simple_lr_fun(linear1.weight),
+                i + 1,
+            )
+            fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
+                fc1_b,
+                np.array(linear1.bias.grad),
+                fc1_b_mon1,
+                fc1_b_mon2,
+                simple_lr_fun(linear1.bias),
+                i + 1,
+            )
+            fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
+                fc2_w,
+                np.array(linear2.weight.grad),
+                fc2_w_mon1,
+                fc2_w_mon2,
+                simple_lr_fun(linear2.weight),
+                i + 1,
+            )
+            fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
+                fc2_b,
+                np.array(linear2.bias.grad),
+                fc2_b_mon1,
+                fc2_b_mon2,
+                simple_lr_fun(linear2.bias),
+                i + 1,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             opt.step()
             opt.clear_gradients()
@@ -557,10 +761,12 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
                 bias_attr1 = paddle.framework.ParamAttr(
                     name="linear_0.b_0",
-                    initializer=paddle.nn.initializer.Constant(value=1.0))
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
                 weight_attr2 = paddle.framework.ParamAttr(name="linear_1.w_0")
                 bias_attr2 = paddle.framework.ParamAttr(
                     name="linear_1.b_0",
+<<<<<<< HEAD
                     initializer=paddle.nn.initializer.Constant(value=1.0))
                 linear1 = paddle.nn.Linear(10,
                                            32,
@@ -570,6 +776,16 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                            1,
                                            weight_attr=weight_attr2,
                                            bias_attr=bias_attr2)
+=======
+                    initializer=paddle.nn.initializer.Constant(value=1.0),
+                )
+                linear1 = paddle.nn.Linear(
+                    10, 32, weight_attr=weight_attr1, bias_attr=bias_attr1
+                )
+                linear2 = paddle.nn.Linear(
+                    32, 1, weight_attr=weight_attr2, bias_attr=bias_attr2
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
                 out = linear1(x)
                 out = linear2(out)
@@ -586,6 +802,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 cost = fluid.layers.square_error_cost(input=out, label=y)
                 avg_cost = paddle.mean(cost)
 
+<<<<<<< HEAD
                 simple_lr_fun = partial(simple_lr_setting,
                                         decay_rate=0.8,
                                         n_layers=2)
@@ -596,6 +813,20 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                              weight_decay=weight_decay,
                                              epsilon=epsilon,
                                              lr_ratio=simple_lr_fun)
+=======
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2
+                )
+
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=learning_rate,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=weight_decay,
+                    epsilon=epsilon,
+                    lr_ratio=simple_lr_fun,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 opt.minimize(avg_cost)
 
         def get_numpy_output(param, grad, moment1, moment2, lr_ratio, t):
@@ -606,7 +837,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'Moment2': moment2,
                 'LearningRate': np.array([learning_rate]).astype("float32"),
                 'Beta1Pow': np.array([beta1**t]).astype("float32"),
-                'Beta2Pow': np.array([beta2**t]).astype("float32")
+                'Beta2Pow': np.array([beta2**t]).astype("float32"),
             }
 
             np_attrs = {
@@ -615,19 +846,32 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 'beta2': beta2,
                 "lr_ratio": lr_ratio,
                 "coeff": weight_decay,
-                "with_decay": True
+                "with_decay": True,
             }
             param_out, moment1_out, moment2_out = adamw_step(
+<<<<<<< HEAD
                 np_inputs, np_attrs)
+=======
+                np_inputs, np_attrs
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             return param_out, moment1_out, moment2_out
 
         fetch_list1 = [
-            "linear_0.w_0", "linear_0.b_0", "linear_1.w_0", "linear_1.b_0"
+            "linear_0.w_0",
+            "linear_0.b_0",
+            "linear_1.w_0",
+            "linear_1.b_0",
         ]
         fetch_list2 = [
-            "linear_0.w_0", "linear_0.w_0@GRAD", "linear_0.b_0",
-            "linear_0.b_0@GRAD", "linear_1.w_0", "linear_1.w_0@GRAD",
-            "linear_1.b_0", "linear_1.b_0@GRAD"
+            "linear_0.w_0",
+            "linear_0.w_0@GRAD",
+            "linear_0.b_0",
+            "linear_0.b_0@GRAD",
+            "linear_1.w_0",
+            "linear_1.w_0@GRAD",
+            "linear_1.b_0",
+            "linear_1.b_0@GRAD",
         ]
 
         exe = fluid.Executor(place)
@@ -638,6 +882,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
 
+<<<<<<< HEAD
             param = exe.run(test_prog,
                             feed={
                                 "x": inputs,
@@ -650,6 +895,18 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                           "y": outputs
                                       },
                                       fetch_list=fetch_list2)
+=======
+            param = exe.run(
+                test_prog,
+                feed={"x": inputs, "y": outputs},
+                fetch_list=fetch_list1,
+            )
+            params_and_gras = exe.run(
+                train_prog,
+                feed={"x": inputs, "y": outputs},
+                fetch_list=fetch_list2,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             fc1_w = param[0]
             fc1_w_grad = params_and_gras[1]
@@ -661,17 +918,37 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             fc2_b_grad = params_and_gras[7]
 
             fc1_w, fc1_w_mon1, fc1_w_mon2 = get_numpy_output(
-                fc1_w, fc1_w_grad, fc1_w_mon1, fc1_w_mon2,
-                simple_lr_fun(linear1.weight), i + 1)
+                fc1_w,
+                fc1_w_grad,
+                fc1_w_mon1,
+                fc1_w_mon2,
+                simple_lr_fun(linear1.weight),
+                i + 1,
+            )
             fc1_b, fc1_b_mon1, fc1_b_mon2 = get_numpy_output(
-                fc1_b, fc1_b_grad, fc1_b_mon1, fc1_b_mon2,
-                simple_lr_fun(linear1.bias), i + 1)
+                fc1_b,
+                fc1_b_grad,
+                fc1_b_mon1,
+                fc1_b_mon2,
+                simple_lr_fun(linear1.bias),
+                i + 1,
+            )
             fc2_w, fc2_w_mon1, fc2_w_mon2 = get_numpy_output(
-                fc2_w, fc2_w_grad, fc2_w_mon1, fc2_w_mon2,
-                simple_lr_fun(linear2.weight), i + 1)
+                fc2_w,
+                fc2_w_grad,
+                fc2_w_mon1,
+                fc2_w_mon2,
+                simple_lr_fun(linear2.weight),
+                i + 1,
+            )
             fc2_b, fc2_b_mon1, fc2_b_mon2 = get_numpy_output(
-                fc2_b, fc2_b_grad, fc2_b_mon1, fc2_b_mon2,
-                simple_lr_fun(linear2.bias), i + 1)
+                fc2_b,
+                fc2_b_grad,
+                fc2_b_mon1,
+                fc2_b_mon2,
+                simple_lr_fun(linear2.bias),
+                i + 1,
+            )
 
             np.testing.assert_allclose(params_and_gras[0], fc1_w, rtol=1e-6)
             np.testing.assert_allclose(params_and_gras[2], fc1_b, rtol=1e-6)

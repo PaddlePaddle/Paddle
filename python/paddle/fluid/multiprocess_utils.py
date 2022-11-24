@@ -23,7 +23,7 @@ import queue
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
-MP_STATUS_CHECK_INTERVAL = 5.
+MP_STATUS_CHECK_INTERVAL = 5.0
 
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
@@ -56,7 +56,7 @@ def _cleanup_mmap():
 
 
 # NOTE used for register a function to be executed at interpreter exit.
-class CleanupFuncRegistrar():
+class CleanupFuncRegistrar:
     # Record the cleanup functions that have been executed
     _executed_func_set = set()
     # Record the cleanup functions that have been registered
@@ -93,8 +93,15 @@ class CleanupFuncRegistrar():
             for sig in signals:
                 orig_handler = signal.signal(sig, _signal_handler)
                 if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
+<<<<<<< HEAD
                     if (sig == signal.SIGINT
                             and orig_handler is signal.default_int_handler):
+=======
+                    if (
+                        sig == signal.SIGINT
+                        and orig_handler is signal.default_int_handler
+                    ):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         continue
                     if orig_handler not in cls._registered_func_set:
                         atexit.register(orig_handler)

@@ -34,8 +34,13 @@ class Variable;
 namespace paddle {
 namespace imperative {
 
+<<<<<<< HEAD
 static void AllReduce(const framework::Tensor &src,
                       framework::Tensor *dst,
+=======
+static void AllReduce(const phi::DenseTensor &src,
+                      phi::DenseTensor *dst,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                       const mluStream stream,
                       const platform::CNCLComm *comm) {
   const auto &place = src.place();
@@ -156,12 +161,17 @@ void CNCLParallelContext::AllReduceByStream(const framework::Variable &src,
       platform::CNCLCommContext::Instance().Get(ring_id, place_);
   mluStream stream = (use_calc_stream ? dev_ctx->stream() : comm->stream());
 
-  if (src.IsType<framework::LoDTensor>()) {
-    if (!dst->IsType<framework::LoDTensor>()) {
+  if (src.IsType<phi::DenseTensor>()) {
+    if (!dst->IsType<phi::DenseTensor>()) {
       dst->Clear();
     }
+<<<<<<< HEAD
     AllReduce(src.Get<framework::LoDTensor>(),
               dst->GetMutable<framework::LoDTensor>(),
+=======
+    AllReduce(src.Get<phi::DenseTensor>(),
+              dst->GetMutable<phi::DenseTensor>(),
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
               stream,
               comm);
   } else {
@@ -174,7 +184,7 @@ void CNCLParallelContext::AllReduceByStream(const framework::Variable &src,
 
 void CNCLParallelContext::Broadcast(framework::Variable *src, int ring_id) {
   VLOG(3) << "/// DEBUG /// start inter broadcast with ring_id: " << ring_id;
-  framework::Tensor *src_tensor = src->GetMutable<framework::LoDTensor>();
+  phi::DenseTensor *src_tensor = src->GetMutable<phi::DenseTensor>();
   const auto &place = src_tensor->place();
   platform::CNCLComm *comm =
       platform::CNCLCommContext::Instance().Get(ring_id, place);

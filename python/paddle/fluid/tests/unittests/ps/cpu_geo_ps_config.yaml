@@ -30,7 +30,5 @@ runner:
   sync_mode: "geo"
   thread_num: 16
   use_gpu: 0
-  
-  model_path: "../ps_dnn_model.py"
 
-  
+  model_path: "../ps_dnn_model.py"

@@ -26,6 +26,10 @@ void FrobeniusNormKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out) {
+<<<<<<< HEAD
+=======
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   auto out_dtype = x.dtype();
   phi::Reduce<T, kps::AddFunctor, kps::SquareFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);

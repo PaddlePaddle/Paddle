@@ -12,16 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import sys
 import unittest
 
-import paddle.fluid as fluid
 from test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
-from parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -34,10 +28,19 @@ class TestParallelDygraphUnusedVar_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
+<<<<<<< HEAD
         self.check_with_place("parallel_dygraph_unused_variables.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "parallel_dygraph_unused_variables.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestParallelDygraphNoVar_GLOO(TestDistBase):
@@ -48,10 +51,19 @@ class TestParallelDygraphNoVar_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_net(self):
+<<<<<<< HEAD
         self.check_with_place("parallel_dygraph_none_var.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "parallel_dygraph_none_var.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestParallelDygraphSharedUnusedVariables_GLOO(TestDistBase):
@@ -62,10 +74,19 @@ class TestParallelDygraphSharedUnusedVariables_GLOO(TestDistBase):
         self._dygraph = True
 
     def test_mnist(self):
+<<<<<<< HEAD
         self.check_with_place("parallel_dygraph_shared_unused_var.py",
                               delta=1e-5,
                               check_error_log=True,
                               log_name=flag_name)
+=======
+        self.check_with_place(
+            "parallel_dygraph_shared_unused_var.py",
+            delta=1e-5,
+            check_error_log=True,
+            log_name=flag_name,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

@@ -14,8 +14,18 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+=======
+#include "paddle/phi/kernels/elementwise_add_grad_kernel.h"
+#include "paddle/phi/kernels/sparse/empty_kernel.h"
+
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/infermeta/sparse/unary.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/kernels/empty_kernel.h"
 
 namespace phi {
@@ -49,6 +59,12 @@ namespace sparse {
       const Sparse##type##Tensor& dout) {                          \
     Sparse##type##Tensor dx;                                       \
     Sparse##type##Tensor dy;                                       \
+<<<<<<< HEAD
+=======
+    MetaTensor meta_dx(&dx), meta_dy(&dy);                         \
+    phi::UnchangedInferMeta(x, &meta_dx);                          \
+    phi::UnchangedInferMeta(y, &meta_dy);                          \
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ElementWise##name##type##GradKernel<T, Context>(               \
         dev_ctx, x, y, dout, &dx, &dy);                            \
     return std::vector<Sparse##type##Tensor>{dx, dy};              \
@@ -89,6 +105,12 @@ std::vector<SparseCsrTensor> ElementWiseDivideCsrGrad(
     const SparseCsrTensor& dout) {
   SparseCsrTensor dx;
   SparseCsrTensor dy;
+<<<<<<< HEAD
+=======
+  MetaTensor meta_dx(&dx), meta_dy(&dy);
+  phi::UnchangedInferMeta(x, &meta_dx);
+  phi::UnchangedInferMeta(y, &meta_dy);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   ElementWiseDivideCsrGradKernel<T, Context>(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCsrTensor>{dx, dy};
@@ -103,10 +125,41 @@ std::vector<SparseCooTensor> ElementWiseDivideCooGrad(
     const SparseCooTensor& dout) {
   SparseCooTensor dx;
   SparseCooTensor dy;
+<<<<<<< HEAD
+=======
+  MetaTensor meta_dx(&dx), meta_dy(&dy);
+  phi::UnchangedInferMeta(x, &meta_dx);
+  phi::UnchangedInferMeta(y, &meta_dy);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   ElementWiseDivideCooGradKernel<T, Context>(
       dev_ctx, x, y, out, dout, &dx, &dy);
   return std::vector<SparseCooTensor>{dx, dy};
 }
 
+<<<<<<< HEAD
+=======
+template <typename T, typename Context>
+void ElementWiseAddDenseGradKernel(const Context& dev_ctx,
+                                   const SparseCooTensor& x,
+                                   const DenseTensor& y,
+                                   const SparseCooTensor& dout,
+                                   SparseCooTensor* dx,
+                                   DenseTensor* dy) {
+  DenseTensor* x_values_grad = nullptr;
+  DenseTensor* y_grad = nullptr;
+  if (dx) {
+    EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+    x_values_grad = dx->mutable_values();
+  }
+
+  if (dy) {
+    *dy = phi::EmptyLike<T>(dev_ctx, y);
+    y_grad = dy;
+  }
+  phi::AddGradKernel<T, Context>(
+      dev_ctx, x.values(), y, dout.values(), -1, x_values_grad, y_grad);
+}
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace sparse
 }  // namespace phi

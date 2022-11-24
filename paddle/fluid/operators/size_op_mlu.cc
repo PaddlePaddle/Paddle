@@ -22,8 +22,13 @@ template <typename T>
 class SizeMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<framework::Tensor>("Input");
     auto* out = ctx.Output<framework::Tensor>("Out");
+=======
+    auto* x = ctx.Input<phi::DenseTensor>("Input");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out->mutable_data<int64_t>(ctx.GetPlace());
 
     int64_t size = x->numel();

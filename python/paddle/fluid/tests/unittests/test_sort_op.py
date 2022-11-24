@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import numpy as np
-import six
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 
@@ -34,10 +30,21 @@ class TestSortOnCPU(unittest.TestCase):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.sort(x=input)
             exe = fluid.Executor(self.place)
+<<<<<<< HEAD
             data = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
                              [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
                             dtype='float32')
             result, = exe.run(feed={'input': data}, fetch_list=[output])
+=======
+            data = np.array(
+                [
+                    [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                    [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]],
+                ],
+                dtype='float32',
+            )
+            (result,) = exe.run(feed={'input': data}, fetch_list=[output])
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             np_result = np.sort(result)
             self.assertEqual((result == np_result).all(), True)
 
@@ -46,10 +53,21 @@ class TestSortOnCPU(unittest.TestCase):
             input = fluid.data(name="input", shape=[2, 3, 4], dtype="float32")
             output = paddle.sort(x=input, axis=1)
             exe = fluid.Executor(self.place)
+<<<<<<< HEAD
             data = np.array([[[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
                              [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]]],
                             dtype='float32')
             result, = exe.run(feed={'input': data}, fetch_list=[output])
+=======
+            data = np.array(
+                [
+                    [[5, 8, 9, 5], [0, 0, 1, 7], [6, 9, 2, 4]],
+                    [[5, 2, 4, 2], [4, 7, 7, 9], [1, 7, 0, 6]],
+                ],
+                dtype='float32',
+            )
+            (result,) = exe.run(feed={'input': data}, fetch_list=[output])
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             np_result = np.sort(result, axis=1)
             self.assertEqual((result == np_result).all(), True)
 
@@ -88,8 +106,14 @@ class TestSortDygraph(unittest.TestCase):
         paddle.disable_static(self.place)
         var_x = paddle.to_tensor(self.input_data)
         out = paddle.sort(var_x, axis=-1)
+<<<<<<< HEAD
         self.assertEqual((np.sort(self.input_data,
                                   axis=-1) == out.numpy()).all(), True)
+=======
+        self.assertEqual(
+            (np.sort(self.input_data, axis=-1) == out.numpy()).all(), True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.enable_static()
 
     def test_api_1(self):

@@ -14,32 +14,44 @@
 
 # nlp model stack of op operate on lod. It's a classical test case in optimize pass.
 
+<<<<<<< HEAD
 from __future__ import print_function
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import paddle
 import paddle.fluid as fluid
 import unittest
 from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
-def lstm_net(data,
-             label,
-             dict_dim,
-             emb_dim=128,
-             hid_dim=128,
-             hid_dim2=96,
-             class_dim=2,
-             emb_lr=30.0):
+def lstm_net(
+    data,
+    label,
+    dict_dim,
+    emb_dim=128,
+    hid_dim=128,
+    hid_dim2=96,
+    class_dim=2,
+    emb_lr=30.0,
+):
     emb = fluid.layers.embedding(
         input=data,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(learning_rate=emb_lr))
+        param_attr=fluid.ParamAttr(learning_rate=emb_lr),
+    )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
 
+<<<<<<< HEAD
     lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
                                           size=hid_dim * 4,
                                           is_reverse=False)
+=======
+    lstm_h, c = fluid.layers.dynamic_lstm(
+        input=fc0, size=hid_dim * 4, is_reverse=False
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
-    lstm_max_tanh = fluid.layers.tanh(lstm_max)
+    lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
     prediction = fluid.layers.fc(input=fc1, size=class_dim, act='softmax')
     cost = fluid.layers.cross_entropy(input=prediction, label=label)

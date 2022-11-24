@@ -12,8 +12,6 @@
 # see the license for the specific language governing permissions and
 # limitations under the license.
 
-from __future__ import print_function
-
 import os
 import numpy as np
 import random
@@ -31,16 +29,26 @@ from paddle.nn import Linear, Conv2D, Softmax, BatchNorm
 from paddle.fluid.dygraph.nn import Pool2D
 from paddle.fluid.log_helper import get_logger
 
-from imperative_test_utils import fix_model_dict, train_lenet, ImperativeLenetWithSkipQuant
+from imperative_test_utils import (
+    fix_model_dict,
+    train_lenet,
+    ImperativeLenetWithSkipQuant,
+)
 from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 if core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
+<<<<<<< HEAD
 _logger = get_logger(__name__,
                      logging.INFO,
                      fmt='%(asctime)s-%(levelname)s: %(message)s')
+=======
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestImperativeOutSclae(unittest.TestCase):
@@ -53,16 +61,28 @@ class TestImperativeOutSclae(unittest.TestCase):
         qat = ImperativeQuantAware()
 
         np.random.seed(seed)
+<<<<<<< HEAD
         reader = paddle.batch(paddle.dataset.mnist.test(),
                               batch_size=512,
                               drop_last=True)
+=======
+        reader = paddle.batch(
+            paddle.dataset.mnist.test(), batch_size=512, drop_last=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         lenet = ImperativeLenetWithSkipQuant()
         lenet = fix_model_dict(lenet)
         qat.quantize(lenet)
 
+<<<<<<< HEAD
         adam = AdamOptimizer(learning_rate=lr,
                              parameter_list=lenet.parameters())
+=======
+        adam = AdamOptimizer(
+            learning_rate=lr, parameter_list=lenet.parameters()
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         dynamic_loss_rec = []
         lenet.train()
         loss_list = train_lenet(lenet, reader, adam)
@@ -72,6 +92,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         path = "./save_dynamic_quant_infer_model/lenet"
         save_dir = "./save_dynamic_quant_infer_model"
 
+<<<<<<< HEAD
         qat.save_quantized_model(layer=lenet,
                                  path=path,
                                  input_spec=[
@@ -79,6 +100,17 @@ class TestImperativeOutSclae(unittest.TestCase):
                                          shape=[None, 1, 28, 28],
                                          dtype='float32')
                                  ])
+=======
+        qat.save_quantized_model(
+            layer=lenet,
+            path=path,
+            input_spec=[
+                paddle.static.InputSpec(
+                    shape=[None, 1, 28, 28], dtype='float32'
+                )
+            ],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         paddle.enable_static()
 
@@ -88,12 +120,25 @@ class TestImperativeOutSclae(unittest.TestCase):
             place = core.CPUPlace()
         exe = fluid.Executor(place)
 
+<<<<<<< HEAD
         [inference_program, feed_target_names,
          fetch_targets] = (fluid.io.load_inference_model(
              dirname=save_dir,
              executor=exe,
              model_filename="lenet" + INFER_MODEL_SUFFIX,
              params_filename="lenet" + INFER_PARAMS_SUFFIX))
+=======
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = fluid.io.load_inference_model(
+            dirname=save_dir,
+            executor=exe,
+            model_filename="lenet" + INFER_MODEL_SUFFIX,
+            params_filename="lenet" + INFER_PARAMS_SUFFIX,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         model_ops = inference_program.global_block().ops
 
         conv2d_count, matmul_count = 0, 0
@@ -107,10 +152,12 @@ class TestImperativeOutSclae(unittest.TestCase):
                     conv2d_skip_count += 1
                 if conv2d_count > 0:
                     self.assertTrue(
-                        'fake_quantize_dequantize' in model_ops[i - 1].type)
+                        'fake_quantize_dequantize' in model_ops[i - 1].type
+                    )
                 else:
                     self.assertTrue(
-                        'fake_quantize_dequantize' not in model_ops[i - 1].type)
+                        'fake_quantize_dequantize' not in model_ops[i - 1].type
+                    )
                 conv2d_count += 1
 
             if op.type == 'matmul':
@@ -119,10 +166,12 @@ class TestImperativeOutSclae(unittest.TestCase):
                     matmul_skip_count += 1
                 if matmul_count > 0:
                     self.assertTrue(
-                        'fake_quantize_dequantize' in model_ops[i - 1].type)
+                        'fake_quantize_dequantize' in model_ops[i - 1].type
+                    )
                 else:
                     self.assertTrue(
-                        'fake_quantize_dequantize' not in model_ops[i - 1].type)
+                        'fake_quantize_dequantize' not in model_ops[i - 1].type
+                    )
                 matmul_count += 1
 
         if find_conv2d:

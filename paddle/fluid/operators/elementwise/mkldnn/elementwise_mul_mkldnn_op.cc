@@ -25,6 +25,7 @@ REGISTER_OP_KERNEL(
                              dnnl::algorithm::binary_mul>,
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_mul>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_mul>)
+<<<<<<< HEAD
 
 REGISTER_OP_KERNEL(
     elementwise_mul_grad,
@@ -33,3 +34,5 @@ REGISTER_OP_KERNEL(
     ops::EltwiseMKLDNNGradKernel<paddle::platform::bfloat16,
                                  dnnl::algorithm::binary_mul>,
     ops::EltwiseMKLDNNGradKernel<float, dnnl::algorithm::binary_mul>)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

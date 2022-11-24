@@ -54,6 +54,7 @@ class TestBase(IPUOpTest):
     def build_model(self):
         generator = paddle.fluid.unique_name.UniqueNameGenerator()
         with paddle.fluid.unique_name.guard(generator):
+<<<<<<< HEAD
             x = paddle.static.data(name=self.feed_list[0],
                                    shape=self.feed_shape[0],
                                    dtype='float32')
@@ -62,6 +63,16 @@ class TestBase(IPUOpTest):
                                             filter_size=3,
                                             bias_attr=False,
                                             name='conv2d')
+=======
+            x = paddle.static.data(
+                name=self.feed_list[0],
+                shape=self.feed_shape[0],
+                dtype='float32',
+            )
+            conv1 = paddle.static.nn.conv2d(
+                x, num_filters=3, filter_size=3, bias_attr=False, name='conv2d'
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             loss = paddle.mean(conv1)
             # apply optimizer
             self.optimizer().minimize(loss)
@@ -83,7 +94,12 @@ class TestBase(IPUOpTest):
             ipu_strategy.set_precision_config(enable_fp16=True)
             IPUOpTest.cast_model_to_fp16(self.main_prog)
         ipu_compiler = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
             self.main_prog, ipu_strategy=ipu_strategy)
+=======
+            self.main_prog, ipu_strategy=ipu_strategy
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         program = ipu_compiler.compile(self.feed_list, self.fetch_list)
 
         feed = self.feed_fp32
@@ -91,6 +107,7 @@ class TestBase(IPUOpTest):
             feed = self.feed_fp16
 
         result = []
+<<<<<<< HEAD
         run_steps = self.attrs['steps'] if save_otherwise_load \
             else self.attrs['steps'] - self.attrs['save_at_step']
         for i in range(run_steps):
@@ -101,6 +118,21 @@ class TestBase(IPUOpTest):
                 ipu_compiler._backend.weights_to_host()
                 paddle.static.save(self.main_prog,
                                    self.attrs['model_path'].name)
+=======
+        run_steps = (
+            self.attrs['steps']
+            if save_otherwise_load
+            else self.attrs['steps'] - self.attrs['save_at_step']
+        )
+        for i in range(run_steps):
+            tmp = exe.run(program, feed=feed, fetch_list=self.fetch_list)
+
+            if save_otherwise_load and i == self.attrs['save_at_step'] - 1:
+                ipu_compiler._backend.weights_to_host()
+                paddle.static.save(
+                    self.main_prog, self.attrs['model_path'].name
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             if save_otherwise_load and i >= self.attrs['save_at_step']:
                 result.append(tmp)
@@ -112,8 +144,14 @@ class TestBase(IPUOpTest):
     def test_base(self):
         res0 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP32, True)
         res1 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP32, False)
+<<<<<<< HEAD
         self.assertTrue(
             np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+=======
+        np.testing.assert_allclose(
+            res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.attrs['model_path'].cleanup()
 
 
@@ -168,9 +206,15 @@ class TestRMSProp(TestBase):
 class TestCenteredRMSProp(TestBase):
 
     def set_optimizer(self):
+<<<<<<< HEAD
         self.optimizer = partial(paddle.optimizer.RMSProp,
                                  learning_rate=1e-1,
                                  centered=True)
+=======
+        self.optimizer = partial(
+            paddle.optimizer.RMSProp, learning_rate=1e-1, centered=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 @unittest.skipIf(IPUOpTest.use_ipumodel(), "skip for ipumodel")
@@ -188,8 +232,14 @@ class TestSGDFP16(TestBase):
     def test_base(self):
         res0 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP16, True)
         res1 = self.run_model(IPUOpTest.ExecutionMode.IPU_FP16, False)
+<<<<<<< HEAD
         self.assertTrue(
             np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+=======
+        np.testing.assert_allclose(
+            res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         self.attrs['model_path'].cleanup()
 
 
@@ -244,9 +294,15 @@ class TestRMSPropFP16(TestSGDFP16):
 class TestCenteredRMSPropFP16(TestSGDFP16):
 
     def set_optimizer(self):
+<<<<<<< HEAD
         self.optimizer = partial(paddle.optimizer.RMSProp,
                                  learning_rate=1e-1,
                                  centered=True)
+=======
+        self.optimizer = partial(
+            paddle.optimizer.RMSProp, learning_rate=1e-1, centered=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == "__main__":

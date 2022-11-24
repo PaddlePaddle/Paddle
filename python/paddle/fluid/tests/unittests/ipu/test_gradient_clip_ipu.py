@@ -60,6 +60,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         image = paddle.static.data(name=self.feed_list[0],
                                    shape=self.feed_shape[0],
                                    dtype='float32')
@@ -67,6 +68,14 @@ class TestBase(IPUOpTest):
                                         num_filters=3,
                                         filter_size=3,
                                         bias_attr=False)
+=======
+        image = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        conv1 = paddle.static.nn.conv2d(
+            image, num_filters=3, filter_size=3, bias_attr=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         loss = paddle.mean(conv1)
         self.fetch_list = [loss.name]
 
@@ -74,10 +83,11 @@ class TestBase(IPUOpTest):
         # Only support ClipGradByGlobalNorm
         clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
         if self.attrs['optimizer'] == 'sgd':
-            opt = paddle.optimizer.SGD(learning_rate=1e-1,
-                                       weight_decay=weight_decay,
-                                       grad_clip=clip)
+            opt = paddle.optimizer.SGD(
+                learning_rate=1e-1, weight_decay=weight_decay, grad_clip=clip
+            )
         elif self.attrs['optimizer'] == 'adam':
+<<<<<<< HEAD
             opt = paddle.optimizer.Adam(learning_rate=1e-1,
                                         weight_decay=weight_decay,
                                         grad_clip=clip)
@@ -85,9 +95,21 @@ class TestBase(IPUOpTest):
             opt = paddle.optimizer.Lamb(learning_rate=1e-1,
                                         lamb_weight_decay=weight_decay,
                                         grad_clip=clip)
+=======
+            opt = paddle.optimizer.Adam(
+                learning_rate=1e-1, weight_decay=weight_decay, grad_clip=clip
+            )
+        elif self.attrs['optimizer'] == 'lamb':
+            opt = paddle.optimizer.Lamb(
+                learning_rate=1e-1,
+                lamb_weight_decay=weight_decay,
+                grad_clip=clip,
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             raise ValueError(
-                f"Not supported optimizer {self.attrs['optimizer']} for test")
+                f"Not supported optimizer {self.attrs['optimizer']} for test"
+            )
         opt.minimize(loss)
 
     def run_model(self, exec_mode):

@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-from ..framework import Parameter
 from .layers import Layer
-from .base import param_guard
 
 __all__ = [
     'Sequential',
-    'ParameterList',
-    'LayerList',
 ]
 
 
@@ -59,7 +54,7 @@ class Sequential(Layer):
     """
 
     def __init__(self, *layers):
-        super(Sequential, self).__init__()
+        super().__init__()
         if len(layers) > 0 and isinstance(layers[0], (list, tuple)):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
@@ -97,6 +92,7 @@ class Sequential(Layer):
         for layer in self._sub_layers.values():
             input = layer(input)
         return input
+<<<<<<< HEAD
 
 
 class ParameterList(Layer):
@@ -329,3 +325,5 @@ class LayerList(Layer):
             idx = str(offset + i)
             self.add_sublayer(idx, sublayer)
         return self
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

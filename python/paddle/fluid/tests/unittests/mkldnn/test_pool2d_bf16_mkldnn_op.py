@@ -12,14 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
-from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op_Mixin, max_pool2D_forward_naive
-from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import pool2d_backward_navie as pool2d_backward_naive
+from paddle.fluid.tests.unittests.op_test import (
+    OpTest,
+    OpTestTool,
+    convert_float_to_uint16,
+)
+from paddle.fluid.tests.unittests.test_pool2d_op import (
+    TestPool2D_Op_Mixin,
+    max_pool2D_forward_naive,
+)
+from paddle.fluid.tests.unittests.npu.test_pool2d_op_npu import (
+    pool2d_backward_navie as pool2d_backward_naive,
+)
 from paddle import enable_static
 
 
@@ -33,15 +40,29 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         self.dtype = np.uint16
 
     def setUp(self):
-        super(TestPoolBf16MklDNNOpGrad, self).setUp()
+        super().setUp()
         self.attrs['mkldnn_data_type'] = "bfloat16"
         self.x_fp32 = np.random.random(self.shape).astype(np.float32)
 
+<<<<<<< HEAD
         output = self.pool2D_forward_naive(self.x_fp32, self.ksize,
                                            self.strides, self.paddings,
                                            self.global_pool, self.ceil_mode,
                                            self.exclusive, self.adaptive,
                                            "float32").astype(np.float32)
+=======
+        output = self.pool2D_forward_naive(
+            self.x_fp32,
+            self.ksize,
+            self.strides,
+            self.paddings,
+            self.global_pool,
+            self.ceil_mode,
+            self.exclusive,
+            self.adaptive,
+            "float32",
+        ).astype(np.float32)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.inputs = {'X': convert_float_to_uint16(self.x_fp32)}
         self.outputs = {'Out': convert_float_to_uint16(output)}
@@ -50,6 +71,7 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
+<<<<<<< HEAD
         x_grad = pool2d_backward_naive(self.x_fp32,
                                        ksize=self.ksize,
                                        strides=self.strides,
@@ -66,6 +88,25 @@ class TestPoolBf16MklDNNOpGrad(TestPool2D_Op_Mixin, OpTest):
                                    set(['X']),
                                    'Out',
                                    user_defined_grads=[x_grad])
+=======
+        x_grad = pool2d_backward_naive(
+            self.x_fp32,
+            ksize=self.ksize,
+            strides=self.strides,
+            paddings=self.paddings,
+            global_pool=self.global_pool,
+            ceil_mode=False,
+            exclusive=self.exclusive,
+            adaptive=self.adaptive,
+            data_format=self.data_format,
+            pool_type=self.pool_type,
+            padding_algorithm=self.padding_algorithm,
+        )
+        x_grad = x_grad / np.prod(self.outputs['Out'].shape)
+        self.check_grad_with_place(
+            core.CPUPlace(), set(['X']), 'Out', user_defined_grads=[x_grad]
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 @OpTestTool.skip_if_not_cpu_bf16()
@@ -79,11 +120,27 @@ class TestPoolBf16MklDNNOp(TestPool2D_Op_Mixin, OpTest):
         self.dtype = np.uint16
 
         input = np.random.random(self.shape).astype(np.float32)
+<<<<<<< HEAD
         output = (self.pool2D_forward_naive(input, self.ksize, self.strides,
                                             self.paddings, self.global_pool,
                                             self.ceil_mode, self.exclusive,
                                             self.adaptive,
                                             "float32")).astype(np.float32)
+=======
+        output = (
+            self.pool2D_forward_naive(
+                input,
+                self.ksize,
+                self.strides,
+                self.paddings,
+                self.global_pool,
+                self.ceil_mode,
+                self.exclusive,
+                self.adaptive,
+                "float32",
+            )
+        ).astype(np.float32)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self.inputs = {'X': convert_float_to_uint16(input)}
         self.outputs = {'Out': convert_float_to_uint16(output)}

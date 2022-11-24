@@ -15,11 +15,15 @@
 
 #include <iostream>
 
+<<<<<<< HEAD
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace pybind {
+<<<<<<< HEAD
 
 static PyObject *eager_api_run_program(PyObject *self,
                                        PyObject *args,
@@ -42,13 +46,41 @@ static PyObject *eager_api_run_program(PyObject *self,
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
+=======
+
+static PyObject *eager_api_linear(PyObject *self,
+                                  PyObject *args,
+                                  PyObject *kwargs) {
+  PyThreadState *tstate = nullptr;
+  try {
+    auto x = GetTensorFromArgs("linear", "X", args, 0, false);
+    auto weight = GetTensorFromArgs("linear", "weight", args, 1, false);
+    auto bias = GetTensorFromArgs("linear", "Bias", args, 2, true);
+    tstate = PyEval_SaveThread();
+    if (bias.initialized()) {
+      auto mm_out = matmul_ad_func(x, weight, false, false);
+      auto out = add_ad_func(mm_out, bias);
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(out);
+    } else {
+      auto mm_out = matmul_ad_func(x, weight, false, false);
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      return ToPyObject(mm_out);
+    }
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);
     }
     std::ostringstream sout;
     sout << exception.what();
+<<<<<<< HEAD
     sout << "  [operator < run_program > error]";
+=======
+    sout << "  [operator < linear > error]";
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     exception.set_error_str(sout.str());
     ThrowExceptionToPython(std::current_exception());
     return nullptr;
@@ -61,9 +93,15 @@ static PyObject *eager_api_run_program(PyObject *self,
   }
 }
 
+<<<<<<< HEAD
 static PyMethodDef CustomEagerMethods[] = {
     {"run_program",
      (PyCFunction)(void (*)(void))eager_api_run_program,
+=======
+static PyMethodDef CustomEagerFinalStateMethods[] = {
+    {"linear",
+     (PyCFunction)(void (*)(void))eager_api_linear,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};

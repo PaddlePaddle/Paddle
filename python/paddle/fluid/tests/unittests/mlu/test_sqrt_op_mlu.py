@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import numpy as np
 import sys
@@ -31,7 +34,10 @@ np.random.seed(10)
 
 
 class TestSqrt(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = "sqrt"
         self.dtype = 'float32'
@@ -57,7 +63,10 @@ class TestSqrt(OpTest):
 
 
 class TestSqrtHalf(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.op_type = "sqrt"
         self.dtype = 'float16'
@@ -76,10 +85,16 @@ class TestSqrtHalf(OpTest):
         self.place = paddle.device.MLUPlace(0)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(self.place, ['X'],
                                    'Out',
                                    check_eager=False,
                                    max_relative_error=0.85)
+=======
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', check_eager=False, max_relative_error=0.85
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def test_check_output(self):
         self.check_output_with_place(self.place)

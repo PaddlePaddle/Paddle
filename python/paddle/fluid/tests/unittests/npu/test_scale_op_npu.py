@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import numpy as np
 import unittest
 import sys
@@ -36,14 +34,25 @@ class TestScale(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X':
             OpTest.np_dtype_to_fluid_dtype(
                 np.random.random((10, 10)).astype(self.dtype))
+=======
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.random.random((10, 10)).astype(self.dtype)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': True}
         self.outputs = {
             'Out': (self.inputs['X'] * self.dtype(self.attrs['scale'])).astype(
+<<<<<<< HEAD
                 self.dtype)
+=======
+                self.dtype
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
 
     def set_npu(self):
@@ -83,9 +92,15 @@ class TestBiasAfterScale(OpTest):
         self.init_dtype()
 
         self.inputs = {
+<<<<<<< HEAD
             'X':
             OpTest.np_dtype_to_fluid_dtype(
                 np.random.random((10, 10)).astype(self.dtype))
+=======
+            'X': OpTest.np_dtype_to_fluid_dtype(
+                np.random.random((10, 10)).astype(self.dtype)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         }
         self.attrs = {'scale': -2.3, 'bias': 0, 'bias_after_scale': False}
         self.outputs = {

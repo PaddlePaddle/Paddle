@@ -27,10 +27,15 @@
 namespace cub = hipcub;
 #endif
 #include <limits>
+<<<<<<< HEAD
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/phi/core/ddim.h"
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 
 namespace {  // NOLINT
@@ -203,29 +208,28 @@ struct VisitDataCudaArgMinMaxFunctor {
 template <typename Context, typename T, class Reducer>
 void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           int64_t axis,
+                           const Scalar& axis,
                            bool keepdims,
                            bool flatten,
                            int dtype,
                            DenseTensor* out) {
   if (dtype < 0) {
-    paddle::framework::VisitDataTypeTiny(
-        static_cast<paddle::framework::proto::VarType::Type>(
-            paddle::framework::proto::VarType::INT64),
+    phi::VisitDataTypeTiny(
+        phi::DataType::INT64,
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
-            dev_ctx, x, axis, keepdims, flatten, out));
+            dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
     return;
   }
-  paddle::framework::VisitDataTypeTiny(
-      static_cast<paddle::framework::proto::VarType::Type>(dtype),
+  phi::VisitDataTypeTiny(
+      phi::TransToPhiDataType(dtype),
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
-          dev_ctx, x, axis, keepdims, flatten, out));
+          dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
 
 template <typename T, typename Context>
 void ArgMinKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,
@@ -237,7 +241,7 @@ void ArgMinKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void ArgMaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  int64_t axis,
+                  const Scalar& axis,
                   bool keepdims,
                   bool flatten,
                   int dtype,

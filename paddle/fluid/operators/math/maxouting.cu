@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/maxouting.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -107,8 +107,8 @@ __global__ void KernelMaxoutGrad(const int nthreads,
  */
 template <typename DeviceContext, typename T>
 void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
-                                                 const framework::Tensor& input,
-                                                 framework::Tensor* output,
+                                                 const phi::DenseTensor& input,
+                                                 phi::DenseTensor* output,
                                                  const int groups,
                                                  const int axis) {
   const int batch_size = input.dims()[0];
@@ -140,10 +140,17 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const framework::Tensor& input,
     framework::Tensor* input_grad,
     const framework::Tensor& output,
     const framework::Tensor& output_grad,
+=======
+    const phi::DenseTensor& input,
+    phi::DenseTensor* input_grad,
+    const phi::DenseTensor& output,
+    const phi::DenseTensor& output_grad,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     const int groups,
     const int axis) {
   const int batch_size = input.dims()[0];

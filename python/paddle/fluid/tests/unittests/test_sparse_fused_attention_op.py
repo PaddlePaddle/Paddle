@@ -36,11 +36,18 @@ def get_cuda_version():
 
 
 @unittest.skipIf(
+<<<<<<< HEAD
     not core.is_compiled_with_cuda() or get_cuda_version() < 11070,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.7"
 )
 class TestSparseAttentionAPI1(unittest.TestCase):
 
+=======
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11080,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.8",
+)
+class TestSparseAttentionAPI1(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.batch_size = 16
         self.num_heads = 16
@@ -52,7 +59,14 @@ class TestSparseAttentionAPI1(unittest.TestCase):
     def test_dygraph(self):
         with _test_eager_guard():
             self.shape = [
+<<<<<<< HEAD
                 self.batch_size, self.num_heads, self.seq_len, self.head_dim
+=======
+                self.batch_size,
+                self.num_heads,
+                self.seq_len,
+                self.head_dim,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             ]
             query = paddle.rand(self.shape, self.dtype)
             key = paddle.rand(self.shape, self.dtype)
@@ -62,6 +76,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
             key.stop_gradient = False
             value.stop_gradient = False
 
+<<<<<<< HEAD
             mask = paddle.nn.functional.dropout(paddle.ones(
                 [self.seq_len, self.seq_len]),
                                                 mode='downscale_in_infer')
@@ -69,6 +84,18 @@ class TestSparseAttentionAPI1(unittest.TestCase):
                 [self.batch_size, self.num_heads, self.seq_len, self.seq_len])
             sp_mask = mask.reshape([-1, self.seq_len,
                                     self.seq_len]).to_sparse_csr()
+=======
+            mask = paddle.nn.functional.dropout(
+                paddle.ones([self.seq_len, self.seq_len]),
+                mode='downscale_in_infer',
+            )
+            mask = mask.expand(
+                [self.batch_size, self.num_heads, self.seq_len, self.seq_len]
+            )
+            sp_mask = mask.reshape(
+                [-1, self.seq_len, self.seq_len]
+            ).to_sparse_csr()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             query_sp = copy.deepcopy(query)
             key_sp = copy.deepcopy(key)
@@ -80,6 +107,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
 
             if self.use_mask:
                 kp_mask = paddle.randint(
+<<<<<<< HEAD
                     0, 2, [self.batch_size, self.seq_len]).astype(self.dtype)
                 attn_mask = paddle.randint(
                     0, 2, [self.seq_len, self.seq_len]).astype(self.dtype)
@@ -88,21 +116,49 @@ class TestSparseAttentionAPI1(unittest.TestCase):
                     float(self.head_dim))
                 sdd = sdd + (
                     (mask * kp_mask.unsqueeze([1, 2]) * attn_mask) - 1.0) * 1e9
+=======
+                    0, 2, [self.batch_size, self.seq_len]
+                ).astype(self.dtype)
+                attn_mask = paddle.randint(
+                    0, 2, [self.seq_len, self.seq_len]
+                ).astype(self.dtype)
+
+                sdd = paddle.matmul(query, key, False, True) / math.sqrt(
+                    float(self.head_dim)
+                )
+                sdd = (
+                    sdd
+                    + ((mask * kp_mask.unsqueeze([1, 2]) * attn_mask) - 1.0)
+                    * 1e9
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 softmax = paddle.nn.functional.softmax(sdd)
                 output = paddle.matmul(softmax, value)
                 output.backward()
 
+<<<<<<< HEAD
                 output_sp = paddle.incubate.sparse.nn.functional.attention(
                     query_sp, key_sp, value_sp, sp_mask, kp_mask, attn_mask)
                 output_sp.backward()
             else:
                 sdd = paddle.matmul(query, key, False, True) / math.sqrt(
                     float(self.head_dim))
+=======
+                output_sp = paddle.sparse.nn.functional.attention(
+                    query_sp, key_sp, value_sp, sp_mask, kp_mask, attn_mask
+                )
+                output_sp.backward()
+            else:
+                sdd = paddle.matmul(query, key, False, True) / math.sqrt(
+                    float(self.head_dim)
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 sdd = sdd + (mask - 1.0) * 1e9
                 softmax = paddle.nn.functional.softmax(sdd)
                 output = paddle.matmul(softmax, value)
                 output.backward()
 
+<<<<<<< HEAD
                 output_sp = paddle.incubate.sparse.nn.functional.attention(
                     query_sp, key_sp, value_sp, sp_mask)
                 output_sp.backward()
@@ -117,6 +173,28 @@ class TestSparseAttentionAPI1(unittest.TestCase):
 
 class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
 
+=======
+                output_sp = paddle.sparse.nn.functional.attention(
+                    query_sp, key_sp, value_sp, sp_mask
+                )
+                output_sp.backward()
+
+            np.testing.assert_allclose(
+                output_sp.numpy(), output.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                query_sp.grad.numpy(), query.grad.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                key_sp.grad.numpy(), key.grad.numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                value_sp.grad.numpy(), value.grad.numpy(), rtol=1e-05
+            )
+
+
+class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.batch_size = 16
         self.num_heads = 16
@@ -127,7 +205,10 @@ class TestSparseAttentionAPI2(TestSparseAttentionAPI1):
 
 
 class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.batch_size = 16
         self.num_heads = 16
@@ -138,7 +219,10 @@ class TestSparseAttentionAPI3(TestSparseAttentionAPI1):
 
 
 class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.batch_size = 16
         self.num_heads = 16
@@ -149,7 +233,10 @@ class TestSparseAttentionAPI4(TestSparseAttentionAPI1):
 
 
 class TestSparseAttentionAPI5(TestSparseAttentionAPI1):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.batch_size = 16
         self.num_heads = 16

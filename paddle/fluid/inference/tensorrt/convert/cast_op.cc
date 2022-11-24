@@ -42,6 +42,7 @@ class CastOpConverter : public OpConverter {
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input);
 
     switch (out_dtype) {
+<<<<<<< HEAD
       case 2:  // INT32 = 2
         layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
         break;
@@ -49,6 +50,22 @@ class CastOpConverter : public OpConverter {
         layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
         break;
       case 5:  // FP32 = 5
+=======
+      case 0:  // BOOL = 0
+        layer->setOutputType(0, nvinfer1::DataType::kBOOL);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kBOOL);
+        break;
+      case 2:  // INT32 = 2
+        layer->setOutputType(0, nvinfer1::DataType::kINT32);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kINT32);
+        break;
+      case 4:  // FP16 = 4
+        layer->setOutputType(0, nvinfer1::DataType::kHALF);
+        layer->getOutput(0)->setType(nvinfer1::DataType::kHALF);
+        break;
+      case 5:  // FP32 = 5
+        layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         layer->getOutput(0)->setType(nvinfer1::DataType::kFLOAT);
         break;
       default:

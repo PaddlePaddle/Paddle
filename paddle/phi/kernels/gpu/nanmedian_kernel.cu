@@ -15,9 +15,15 @@
 #include "paddle/phi/kernels/nanmedian_kernel.h"
 
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+=======
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/impl/nanmedian_kernel_impl.h"
@@ -25,7 +31,11 @@
 
 namespace phi {
 
+<<<<<<< HEAD
 using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+=======
+using phi::PADDLE_CUDA_NUM_THREADS;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 inline int GET_BLOCKS(const int N) {
   return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
@@ -56,15 +66,25 @@ __global__ void KernelNanCounts(const T* input,
     const T x = input[index];
     if (isnan(static_cast<float>(x))) {
       auto bin = static_cast<int64_t>(index / stride);
+<<<<<<< HEAD
       paddle::platform::CudaAtomicAdd(&buf[bin], 1);
+=======
+      phi::CudaAtomicAdd(&buf[bin], 1);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     }
   }
   __syncthreads();
 
   for (int i = threadIdx.x; i < pre_dim; i += blockDim.x) {
+<<<<<<< HEAD
     paddle::platform::CudaAtomicAdd(&nan_counts[i], buf[i]);
     paddle::platform::CudaAtomicAdd(&nan_total[0], buf[i]);
     paddle::platform::CudaAtomicMax(&nan_total[1], stride - buf[i]);
+=======
+    phi::CudaAtomicAdd(&nan_counts[i], buf[i]);
+    phi::CudaAtomicAdd(&nan_total[0], buf[i]);
+    phi::CudaAtomicMax(&nan_total[1], stride - buf[i]);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   }
 }
 

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from functools import partial
 import numpy
 import unittest
@@ -29,21 +28,37 @@ class TestFeedPersistableVar(unittest.TestCase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
         batch_size = 4
+<<<<<<< HEAD
         cls.img, cls.label = init_data(batch_size,
                                        img_shape=[784],
                                        label_range=9)
+=======
+        cls.img, cls.label = init_data(
+            batch_size, img_shape=[784], label_range=9
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         cls.feed_dict = {
             'image': cls.img,
             'label': cls.label,
-            'learning_rate': numpy.array([1.0]).astype("float32")
+            'learning_rate': numpy.array([1.0]).astype("float32"),
         }
 
     def optimizer(self):
+<<<<<<< HEAD
         learning_rate = fluid.layers.create_global_var(name="learning_rate",
                                                        shape=[1],
                                                        value=1.0,
                                                        dtype='float32',
                                                        persistable=True)
+=======
+        learning_rate = fluid.layers.create_global_var(
+            name="learning_rate",
+            shape=[1],
+            value=1.0,
+            dtype='float32',
+            persistable=True,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         optimizer = fluid.optimizer.SGD(learning_rate=learning_rate)
         return optimizer
 
@@ -63,7 +78,8 @@ class TestFeedPersistableVar(unittest.TestCase):
 
             exe.run(program=startup)
             compiled_prog = fluid.compiler.CompiledProgram(
-                main).with_data_parallel(loss_name=loss.name)
+                main
+            ).with_data_parallel(loss_name=loss.name)
 
             exe.run(program=compiled_prog, feed=feed_dict)
 
@@ -71,12 +87,23 @@ class TestFeedPersistableVar(unittest.TestCase):
         self.check_feed_persistable_var(self.feed_dict)
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
+<<<<<<< HEAD
         self.feed_dict['learning_rate'] = numpy.array([1.0,
                                                        1.0]).astype("float32")
         self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
 
         self.feed_dict['learning_rate'] = numpy.array([1.0,
                                                        1.0]).astype("float32")
+=======
+        self.feed_dict['learning_rate'] = numpy.array([1.0, 1.0]).astype(
+            "float32"
+        )
+        self.check_feed_persistable_var(self.feed_dict, use_cuda=True)
+
+        self.feed_dict['learning_rate'] = numpy.array([1.0, 1.0]).astype(
+            "float32"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         run = partial(self.check_feed_persistable_var, self.feed_dict)
         self.assertRaises(RuntimeError, run)
 

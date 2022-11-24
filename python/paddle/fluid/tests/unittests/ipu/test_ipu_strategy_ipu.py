@@ -27,7 +27,8 @@ class TestIpuStrategy(unittest.TestCase):
         all_option_names = ipu_strategy._ipu_strategy.get_all_option_names()
         skip_options = []
         skip_options.append(
-            'mean_accumulation_and_replication_reduction_strategy')
+            'mean_accumulation_and_replication_reduction_strategy'
+        )
         skip_options.append('random_seed')
 
         for option_name in all_option_names:
@@ -48,7 +49,9 @@ class TestIpuStrategy(unittest.TestCase):
             try:
                 ipu_strategy.set_options({option_name: set_value})
                 new_value = ipu_strategy.get_option(option_name)
-                assert new_value == set_value, f"set {option_name} to {set_value} failed"
+                assert (
+                    new_value == set_value
+                ), f"set {option_name} to {set_value} failed"
             except:
                 raise Exception(f"set {option_name} to {set_value} failed")
 
@@ -57,7 +60,6 @@ class TestIpuStrategy(unittest.TestCase):
         options = {
             'cache_path': 'paddle_cache',
             'log_dir': 'paddle_log',
-            'partials_type_matmuls': 'half',
             'partials_type_matmuls': 'float',
         }
         ipu_strategy.set_options(options)
@@ -71,21 +73,34 @@ class TestIpuStrategy(unittest.TestCase):
         options['engine_options'] = {
             'debug.allowOutOfMemory': 'true',
             'autoReport.directory': 'path',
-            'autoReport.all': 'true'
+            'autoReport.all': 'true',
         }
         options['random_seed'] = 1234
         for k, v in options.items():
             ipu_strategy.set_options({k: v})
+<<<<<<< HEAD
             if (isinstance(v, list)):
                 assert v.sort() == ipu_strategy.get_option(
                     k).sort(), f"set {k} to {v} failed "
+=======
+            if isinstance(v, list):
+                assert (
+                    v.sort() == ipu_strategy.get_option(k).sort()
+                ), f"set {k} to {v} failed "
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             else:
                 assert v == ipu_strategy.get_option(
-                    k), f"set {k} to {v} failed "
+                    k
+                ), f"set {k} to {v} failed "
 
         # The custom logger need 2 int as inputs
         logger = lambda progress, total: print(
+<<<<<<< HEAD
             f"compile progrss: {progress}/{total}")
+=======
+            f"compile progrss: {progress}/{total}"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         ipu_strategy.set_options({'compilation_progress_logger': logger})
 
 

@@ -58,11 +58,9 @@ struct TensorCopyVisitor {
   void apply() const {
     // TODO(Yancey1989): support other place
     phi::CPUPlace cpu;
-    paddle::memory::Copy(cpu,
-                         dst_->mutable_data<T>(cpu) + dst_offset_,
-                         cpu,
-                         src_.data<T>() + src_offset_,
-                         size_ * sizeof(T));
+    std::memcpy(dst_->mutable_data<T>(cpu) + dst_offset_,
+                src_.data<T>() + src_offset_,
+                size_ * sizeof(T));
   }
 
   phi::DenseTensor* dst_;
@@ -176,10 +174,10 @@ void SelectedRowsImpl::Get(const phi::DenseTensor& ids,
                            phi::DenseTensor* value,
                            bool auto_grown,
                            bool is_test) {
-  PADDLE_ENFORCE_EQ(value->IsInitialized(),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "The value tensor is not initialized."));
+  PADDLE_ENFORCE_EQ(
+      value->IsInitialized(),
+      true,
+      phi::errors::InvalidArgument("The value tensor is not initialized."));
   if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {

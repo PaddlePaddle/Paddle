@@ -12,7 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/amp/check_finite_and_unscale_op.h"
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -25,6 +28,7 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
                           const framework::AttributeMap& attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
+<<<<<<< HEAD
   void InferShape(framework::InferShapeContext* ctx) const override {
     if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
       PADDLE_ENFORCE_EQ(
@@ -42,6 +46,8 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("FoundInfinite", {1});
   }
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -83,14 +89,15 @@ Check if input X contains all finite data, if yes, scale it by input Scale.
 $$Out = X / scale$$
 
 If any tensor in X contains Inf or Nan, the Out will generate a indicator.
-FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of 
-Out should not be used, and its data may not be deterministic. 
+FoundInfinite will be 1 (True), and Out will not be scaled. In this case, the data of
+Out should not be used, and its data may not be deterministic.
 Otherwise, FoundInfinite will be 0 (False).
 
 )DOC");
   }
 };
 
+<<<<<<< HEAD
 template <typename T>
 class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
  public:
@@ -132,18 +139,20 @@ class CheckFiniteAndUnscaleCpuKernel : public framework::OpKernel<T> {
   }
 };
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
+DECLARE_INFER_SHAPE_FUNCTOR(check_finite_and_unscale,
+                            CheckFiniteAndUnscaleInferShapeFunctor,
+                            PD_INFER_META(phi::CheckFiniteAndUnscaleInferMeta));
 REGISTER_OPERATOR(
     check_finite_and_unscale,
     ops::CheckFiniteAndUnscaleOp,
     ops::CheckFiniteAndUnscaleOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(check_finite_and_unscale,
-                       ops::CheckFiniteAndUnscaleCpuKernel<float>,
-                       ops::CheckFiniteAndUnscaleCpuKernel<double>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    CheckFiniteAndUnscaleInferShapeFunctor);

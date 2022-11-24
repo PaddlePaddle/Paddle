@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import numpy as np
 import sys
@@ -21,20 +24,35 @@ import sys
 sys.path.append("..")
 
 import paddle
+<<<<<<< HEAD
 from op_test import OpTest
 from op_test_xpu import XPUOpTest
 from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+=======
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import (
+    create_test_class,
+    get_xpu_op_support_types,
+    XPUOpTestWrapper,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 paddle.enable_static()
 
 
 class XPUTestReduceAnyOp(XPUOpTestWrapper):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self):
         self.op_name = 'reduce_any'
 
     class XPUTestReduceAnyBase(XPUOpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.set_case()
@@ -45,11 +63,20 @@ class XPUTestReduceAnyOp(XPUOpTestWrapper):
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': True,
+<<<<<<< HEAD
                 'dim': (3, 5, 4)
             }
             self.inputs = {
                 'X':
                 np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+=======
+                'dim': (3, 5, 4),
+            }
+            self.inputs = {
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
@@ -60,7 +87,10 @@ class XPUTestReduceAnyOp(XPUOpTestWrapper):
             pass
 
     class XPUTestReduceAnyCase1(XPUTestReduceAnyBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_case(self):
             self.op_type = 'reduce_any'
             self.attrs = {
@@ -75,18 +105,30 @@ class XPUTestReduceAnyOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     class XPUTestReduceAnyCase2(XPUTestReduceAnyBase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         def set_case(self):
             self.op_type = 'reduce_any'
             self.attrs = {
                 'use_xpu': True,
                 'reduce_all': True,
                 'keep_dim': False,
+<<<<<<< HEAD
                 'dim': (3, 6)
             }
             self.inputs = {
                 'X':
                 np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype("bool")
+=======
+                'dim': (3, 6),
+            }
+            self.inputs = {
+                'X': np.random.randint(0, 2, (2, 5, 3, 2, 2, 3, 4, 2)).astype(
+                    "bool"
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             }
             self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 

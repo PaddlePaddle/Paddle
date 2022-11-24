@@ -16,7 +16,15 @@ import os
 import paddle
 from paddle.fluid import core
 from paddle.fluid.layers.utils import _hash_with_id
+<<<<<<< HEAD
 from paddle.fluid.core import is_compiled_with_cuda, is_compiled_with_rocm, CUDAPlace
+=======
+from paddle.fluid.core import (
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+    CUDAPlace,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import warnings
 
 if is_compiled_with_cuda() and not is_compiled_with_rocm():
@@ -24,6 +32,10 @@ if is_compiled_with_cuda() and not is_compiled_with_rocm():
 
     def is_cuda_graph_supported():
         return True
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 else:
     CoreCUDAGraph = None
 
@@ -38,7 +50,9 @@ cuda_graph_id = 0
 class CUDAGraph:
 
     def __init__(self, place=None, mode="thread_local"):
-        assert CoreCUDAGraph is not None, "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
+        assert (
+            CoreCUDAGraph is not None
+        ), "CUDA Graph is only supported on PaddlePaddle compiled with NVIDIA GPU."
 
         self._graph = None
         if place is None:
@@ -65,7 +79,8 @@ class CUDAGraph:
             dirname = dirname.name
         os.makedirs(name=dirname, exist_ok=True)
         assert os.path.isdir(
-            dirname), "The dirname {} should be a directory".format(dirname)
+            dirname
+        ), "The dirname {} should be a directory".format(dirname)
         if flags is None:
             flags = 2047  # only all information. It can be any integer inside [1, 2048)
         self._graph.print_to_dot_files(dirname, flags)
@@ -76,6 +91,10 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
     if not paddle.in_dynamic_mode():
         # static mode
         from paddle.fluid.framework import _cuda_graph_guard
+<<<<<<< HEAD
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         global cuda_graph_id
         graph_id = str(cuda_graph_id)
         cuda_graph_id += 1
@@ -86,6 +105,7 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
         else:
             raise ValueError(
                 "memory_pool should be one of default or new under static mode, but got",
+<<<<<<< HEAD
                 memory_pool)
         return _cuda_graph_guard(
             mode + ';' + str(memory_pool_id) + ';' +
@@ -93,6 +113,17 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
 
     from paddle.jit import to_static
     from paddle.nn import Layer
+=======
+                memory_pool,
+            )
+        return _cuda_graph_guard(
+            mode + ';' + str(memory_pool_id) + ';' + graph_id
+        )(lambda *args, **kwargs: function(*args, **kwargs))
+
+    from paddle.jit import to_static
+    from paddle.nn import Layer
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     new_function = to_static(function)
     if isinstance(function, Layer):
         mock_func = new_function.forward
@@ -105,7 +136,13 @@ def wrap_cuda_graph(function, mode="thread_local", memory_pool="default"):
         mock_func._cuda_graph_pool_id = CoreCUDAGraph.gen_new_memory_pool_id()
     else:
         if isinstance(memory_pool, Layer):
+<<<<<<< HEAD
             mock_func._cuda_graph_pool_id = memory_pool.forward._cuda_graph_pool_id
+=======
+            mock_func._cuda_graph_pool_id = (
+                memory_pool.forward._cuda_graph_pool_id
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         else:
             mock_func._cuda_graph_pool_id = memory_pool._cuda_graph_pool_id
     return new_function
@@ -224,16 +261,33 @@ def get_cuda_graph_sections(program):
 
     for idx, op in enumerate(block.ops):
         if op.type == 'conditional_block' or op.type == 'while':
+<<<<<<< HEAD
             assert op._cuda_graph_attr is None, "Cuda graph not support conditional block op and while op."
+=======
+            assert (
+                op._cuda_graph_attr is None
+            ), "Cuda graph not support conditional block op and while op."
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         if op.has_attr('is_test') and op.attr('is_test'):
             is_test = True
         # find cuda graph sections
         if op._cuda_graph_attr is not None:
+<<<<<<< HEAD
             assert isinstance(op._cuda_graph_attr,
                               str), "cuda_graph_attr should be a str"
             cuda_graph_attrs = op._cuda_graph_attr.split(';')
             assert len(cuda_graph_attrs) == 3, "cuda graph attr should have three fields: " \
                                                "cuda graph mode, cuda graph memory pool id, cuda graph id"
+=======
+            assert isinstance(
+                op._cuda_graph_attr, str
+            ), "cuda_graph_attr should be a str"
+            cuda_graph_attrs = op._cuda_graph_attr.split(';')
+            assert len(cuda_graph_attrs) == 3, (
+                "cuda graph attr should have three fields: "
+                "cuda graph mode, cuda graph memory pool id, cuda graph id"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             local_cuda_graph_id = int(cuda_graph_attrs[2])
             if local_cuda_graph_id == current_cuda_graph_id:
                 if len(internal_section) > 0:
@@ -241,12 +295,25 @@ def get_cuda_graph_sections(program):
                         internal_idx
                     ), "len of internal section should be equal with len of internal idx"
                     for internal_op in internal_section:
+<<<<<<< HEAD
                         loss_related = (int(internal_op.attr(op_role_attr_name))
                                         == loss_op_role) or int(
                                             (internal_op.attr(op_role_attr_name)
                                              ) == loss_grad_op_role)
                         sub_block_related = (op.type == 'conditional_block'
                                              or op.type == 'while')
+=======
+                        loss_related = (
+                            int(internal_op.attr(op_role_attr_name))
+                            == loss_op_role
+                        ) or int(
+                            (internal_op.attr(op_role_attr_name))
+                            == loss_grad_op_role
+                        )
+                        sub_block_related = (
+                            op.type == 'conditional_block' or op.type == 'while'
+                        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                         if loss_related or sub_block_related:
                             # If loss_related is True
                             # The internal section contains loss related ops,
@@ -260,8 +327,14 @@ def get_cuda_graph_sections(program):
                             internal_section = []
                             internal_idx = []
                             # Beside clear the internal section, a new cuda graph section should be recorded
+<<<<<<< HEAD
                             assert len(current_section) == len(current_idx), \
                                 "num of section's op is not equal with the idx"
+=======
+                            assert len(current_section) == len(
+                                current_idx
+                            ), "num of section's op is not equal with the idx"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                             if len(current_section) > 0:
                                 # store previous section
                                 cuda_graph_sections.append(current_section)
@@ -282,7 +355,13 @@ def get_cuda_graph_sections(program):
                 # internal ops and idx belong to no section, just clear it
                 internal_section = []
                 internal_idx = []
+<<<<<<< HEAD
                 current_cuda_graph_id = local_cuda_graph_id  # start record a new section
+=======
+                current_cuda_graph_id = (
+                    local_cuda_graph_id  # start record a new section
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 assert len(current_section) == len(
                     current_idx
                 ), "num of section's op is not equal with num of idx"
@@ -299,7 +378,12 @@ def get_cuda_graph_sections(program):
 
     # handle the last section
     assert len(current_section) == len(
+<<<<<<< HEAD
         current_idx), "num of section's op is not equal with num of idx"
+=======
+        current_idx
+    ), "num of section's op is not equal with num of idx"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     if len(current_section) > 0:
         # store previous section
         cuda_graph_sections.append(current_section)
@@ -308,9 +392,21 @@ def get_cuda_graph_sections(program):
     return cuda_graph_sections, sections_idx, is_test
 
 
+<<<<<<< HEAD
 def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
                                origin_program, cuda_graph_section, order,
                                is_test):
+=======
+def replace_cuda_graph_section(
+    ins_and_outs,
+    section_program,
+    section_idx,
+    origin_program,
+    cuda_graph_section,
+    order,
+    is_test,
+):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     """
     Use section_program and ins_and_outs to initialize a run_program_op,
     and replace the section_idx marks ops in the origin program.
@@ -344,8 +440,14 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
             memory_pool_id = int(attrs[1])
             break
 
+<<<<<<< HEAD
     assert mode is not None and memory_pool_id is not None, \
         "mode and memory pool id should be specified in cuda graph attr"
+=======
+    assert (
+        mode is not None and memory_pool_id is not None
+    ), "mode and memory pool id should be specified in cuda graph attr"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     cuda_graph_var = origin_block.create_var(
         name="cuda_graph_" + str(order),
@@ -365,6 +467,7 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
     program_id = _hash_with_id(section_program, ins_and_outs)
 
     # insert the run_program_op into the block
+<<<<<<< HEAD
     origin_block._insert_op(insert_idx,
                             type='run_program',
                             inputs={'X': ins},
@@ -389,6 +492,31 @@ def replace_cuda_graph_section(ins_and_outs, section_program, section_idx,
                                 'cuda_graph_pool_id':
                                 memory_pool_id,
                             })
+=======
+    origin_block._insert_op(
+        insert_idx,
+        type='run_program',
+        inputs={'X': ins},
+        outputs={
+            'Out': outs,
+            'OutScope': out_scope_var,
+            'CUDAGraph': cuda_graph_var,
+        },
+        attrs={
+            'global_block': section_program.global_block(),
+            'start_op_index': 0,
+            'end_op_index': len(section_program.global_block().ops),
+            'is_test': is_test,
+            'program_id': program_id,
+            'cuda_graph_capture_mode': mode,
+            'cuda_graph_pool_id': memory_pool_id,
+            # Todo: now not support use interpretercore
+            'use_interpretorcore': False,
+            'forward_global_block': section_program.global_block(),
+            'backward_global_block': section_program.global_block(),
+        },
+    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 def cuda_graph_transform(program):
@@ -410,9 +538,17 @@ def cuda_graph_transform(program):
     # A cuda graph section contains all ops marked with same cuda graph id and
     # some ops inserted by some optimizers (amp, sharding for example) between ops with same id.
     cuda_graph_sections, sections_idx, is_test = get_cuda_graph_sections(
+<<<<<<< HEAD
         program)
     assert len(cuda_graph_sections) == len(sections_idx), \
         "num of cuda graph sections is not equal with num of idx sections"
+=======
+        program
+    )
+    assert len(cuda_graph_sections) == len(
+        sections_idx
+    ), "num of cuda graph sections is not equal with num of idx sections"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # step 2: construct new program for each section and find inputs and outputs of each section.
     # The inputs are variables generated outside the section but will be used by this section.
@@ -422,16 +558,27 @@ def cuda_graph_transform(program):
     for i in range(len(cuda_graph_sections)):
         # creating new program for current section
         section_program, ins_outs = construct_program_and_find_ins_outs(
+<<<<<<< HEAD
             cuda_graph_sections[i], program, sections_idx[i])
         ins_and_outs.append(ins_outs)
         section_programs.append(section_program)
     assert len(section_programs) == len(cuda_graph_sections), \
         "the num of cuda graph sections should be equal with the num of new program"
+=======
+            cuda_graph_sections[i], program, sections_idx[i]
+        )
+        ins_and_outs.append(ins_outs)
+        section_programs.append(section_program)
+    assert len(section_programs) == len(
+        cuda_graph_sections
+    ), "the num of cuda graph sections should be equal with the num of new program"
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # step 3: replace the ops in original program with run_program_op.
     # Will remove all ops in the section from origin program, and use run_program_op to replace them.
     for i in reversed(range(len(cuda_graph_sections))):
         # carry out the replacement in reversed order, to keep the previous idx intact
+<<<<<<< HEAD
         replace_cuda_graph_section(ins_and_outs[i],
                                    section_programs[i],
                                    sections_idx[i],
@@ -439,6 +586,17 @@ def cuda_graph_transform(program):
                                    cuda_graph_sections[i],
                                    order=i,
                                    is_test=is_test)
+=======
+        replace_cuda_graph_section(
+            ins_and_outs[i],
+            section_programs[i],
+            sections_idx[i],
+            program,
+            cuda_graph_sections[i],
+            order=i,
+            is_test=is_test,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     # NOTE: user should hold these program, for now just return these program back to caller
     return section_programs

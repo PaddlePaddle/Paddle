@@ -23,7 +23,10 @@ paddle.enable_static()
 
 
 class TestDistModelRun(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -34,8 +37,14 @@ class TestDistModelRun(unittest.TestCase):
 
     def test_dist_model_run(self):
         # step 0: declare folder to save the model and params
+<<<<<<< HEAD
         path_prefix = os.path.join(self.temp_dir.name,
                                    "dist_model_run_test/inf")
+=======
+        path_prefix = os.path.join(
+            self.temp_dir.name, "dist_model_run_test/inf"
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         # step 1: saving the inference model and params
         x = paddle.static.data(name='x', shape=[28, 28], dtype='float32')
@@ -47,12 +56,20 @@ class TestDistModelRun(unittest.TestCase):
         exe.run(paddle.static.default_startup_program())
         x_data = np.random.randn(28, 28).astype('float32')
         y_data = np.random.randint(0, 9, size=[28, 1]).astype('int64')
+<<<<<<< HEAD
         exe.run(paddle.static.default_main_program(),
                 feed={
                     'x': x_data,
                     'y': y_data
                 },
                 fetch_list=[avg_loss])
+=======
+        exe.run(
+            paddle.static.default_main_program(),
+            feed={'x': x_data, 'y': y_data},
+            fetch_list=[avg_loss],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle.static.save_inference_model(path_prefix, [x, y], [avg_loss], exe)
         print('save model to', path_prefix)
 
@@ -74,6 +91,7 @@ class TestDistModelRun(unittest.TestCase):
         print("dist model rst:", dist_model_rst)
 
         # step 4: use framework's api to inference with fake data
+<<<<<<< HEAD
         [inference_program, feed_target_names,
          fetch_targets] = (paddle.static.load_inference_model(path_prefix, exe))
         results = exe.run(inference_program,
@@ -82,11 +100,29 @@ class TestDistModelRun(unittest.TestCase):
                               'y': y_tensor
                           },
                           fetch_list=fetch_targets)
+=======
+        [
+            inference_program,
+            feed_target_names,
+            fetch_targets,
+        ] = paddle.static.load_inference_model(path_prefix, exe)
+        results = exe.run(
+            inference_program,
+            feed={'x': x_tensor, 'y': y_tensor},
+            fetch_list=fetch_targets,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         load_inference_model_rst = results[0]
         print("load inference model api rst:", load_inference_model_rst)
 
         # step 5: compare two results
+<<<<<<< HEAD
         self.assertTrue(np.allclose(dist_model_rst, load_inference_model_rst))
+=======
+        np.testing.assert_allclose(
+            dist_model_rst, load_inference_model_rst, rtol=1e-05
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 if __name__ == '__main__':

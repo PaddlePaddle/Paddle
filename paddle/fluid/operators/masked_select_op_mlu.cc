@@ -22,9 +22,15 @@ template <typename T>
 class MaskedSelectedMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto input = ctx.Input<framework::Tensor>("X");
     auto mask = ctx.Input<framework::Tensor>("Mask");
     auto out = ctx.Output<framework::Tensor>("Y");
+=======
+    auto input = ctx.Input<phi::DenseTensor>("X");
+    auto mask = ctx.Input<phi::DenseTensor>("Mask");
+    auto out = ctx.Output<phi::DenseTensor>("Y");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     auto input_dim = input->dims();
     auto mask_dim = mask->dims();
@@ -66,9 +72,15 @@ template <typename T>
 class MaskedSelectedGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto mask = ctx.Input<framework::Tensor>("Mask");
     auto y_grad = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
     auto x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+=======
+    auto mask = ctx.Input<phi::DenseTensor>("Mask");
+    auto y_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto x_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MLUDeviceContext>();

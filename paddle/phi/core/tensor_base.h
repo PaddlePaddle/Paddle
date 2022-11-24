@@ -55,12 +55,12 @@ class TensorBase {
   virtual bool valid() const = 0;
 
   /// \brief Test whether the storage is allocated.
-  /// return Whether the storage is allocated.
+  /// \return Whether the storage is allocated.
   virtual bool initialized() const = 0;
 
   // TODO(Aurelius84): This interface is under intermediate state now.
   // We will remove DataType argument in the future. Please DO NOT
-  // rely on Datatype to much when design and implement other feature.
+  // rely on Datatype too much when designing and implementing other features.
 
   /// \brief Allocate memory with requested size from allocator.
   /// \return The mutable data pointer value of type T.
@@ -70,7 +70,7 @@ class TensorBase {
 
   /// \brief Return the type information of the derived class to support
   /// safely downcast in non-rtti environment.
-  /// return The type information of the derived class.
+  /// \return The type information of the derived class.
   TypeInfo<TensorBase> type_info() const { return type_info_; }
 
  private:

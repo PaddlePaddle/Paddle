@@ -15,7 +15,7 @@
 # limitations under the License.
 
 set -e
-export FLAGS_START_PORT=35789
+export PADDLE_START_PORT=35789
 
 export MLU_VISIBLE_DEVICES=0,1
 
@@ -23,7 +23,7 @@ function test_nproc_0(){
     mlus=$1
     file_0="fleet_nproc_0.check_0.log"
     rm -f ${file_0}
-    distributed_args="--log_dir=testlog --nproc_per_node=1"
+    distributed_args="--log_dir=testlog --nproc_per_node=1 --ips=127.0.0.1"
     python -m paddle.distributed.launch ${distributed_args} nproc_process_mlu.py  fleet_nproc_0
 
     str0="selected_mlus:${mlus} worker_endpoints:127.0.0.1:35789 trainers_num:1 current_endpoint:127.0.0.1:35789 trainer_id:0"
@@ -44,7 +44,7 @@ function test_nproc_1(){
     file_1="fleet_nproc_1.check_1.log"
     rm -f ${file_0} ${file_1}
 
-    distributed_args="--log_dir=testlog --nproc_per_node=2"
+    distributed_args="--log_dir=testlog --nproc_per_node=2 --ips=127.0.0.1"
     python -m paddle.distributed.launch ${distributed_args} nproc_process_mlu.py  fleet_nproc_1
 
     str0="selected_mlus:0 worker_endpoints:127.0.0.1:35789,127.0.0.1:35790 trainers_num:2 current_endpoint:127.0.0.1:35789 trainer_id:0"

@@ -16,12 +16,11 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
-// TODO(phi): remove fluid headers.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;
 static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
-static std::vector<paddle::gpuDeviceProp> g_device_props;
+static std::vector<phi::gpuDeviceProp> g_device_props;
 
 namespace phi {
 namespace backends {
@@ -301,14 +300,10 @@ bool IsGPUManagedMemorySupported(int dev_id) {
                                    "but received id is: %d. GPU count is: %d.",
                                    dev_id,
                                    GetGPUDeviceCount()));
-#if defined(__linux__) || defined(_WIN32)
-  int ManagedMemoryAttr;
-  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
-      &ManagedMemoryAttr, hipDeviceAttributeManagedMemory, dev_id));
-  return ManagedMemoryAttr != 0;
-#else
+  // TODO(qili93): Hygon DTK (21.04 and 22.04) not support
+  // hipDeviceAttributeManagedMemory, temporary disable by default, to be
+  // verified in next DTK release
   return false;
-#endif
 }
 
 bool IsGPUManagedMemoryOversubscriptionSupported(int dev_id) {

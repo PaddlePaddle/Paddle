@@ -56,6 +56,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(name=self.feed_list[0],
                                shape=self.feed_shape[0],
                                dtype='float32')
@@ -71,15 +72,36 @@ class TestBase(IPUOpTest):
                                                     param_attr=scale,
                                                     bias_attr=bias,
                                                     **self.attrs)
+=======
+        x = paddle.static.data(
+            name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
+        )
+        if self.is_training:
+            ch = self.feed_shape[0][1]
+            conv1 = paddle.static.nn.conv2d(
+                x, num_filters=ch, filter_size=3, bias_attr=False
+            )
+            scale = paddle.ParamAttr(trainable=True)
+            bias = paddle.ParamAttr(trainable=True)
+            out = paddle.fluid.layers.nn.layer_norm(
+                conv1, param_attr=scale, bias_attr=bias, **self.attrs
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             loss = paddle.mean(out)
             self.fetch_list = [loss.name]
         else:
             scale = self.attrs['scale']
             bias = self.attrs['shift']
+<<<<<<< HEAD
             out = paddle.fluid.layers.nn.layer_norm(x,
                                                     param_attr=scale,
                                                     bias_attr=bias,
                                                     **self.attrs)
+=======
+            out = paddle.fluid.layers.nn.layer_norm(
+                x, param_attr=scale, bias_attr=bias, **self.attrs
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.fetch_list = [out.name]
 
         if self.is_training:
@@ -89,8 +111,14 @@ class TestBase(IPUOpTest):
             elif self.optimizer == 'adam':
                 optimizer = paddle.optimizer.Adam(learning_rate=1e-2)
             elif self.optimizer == 'lamb':
+<<<<<<< HEAD
                 optimizer = paddle.optimizer.Lamb(learning_rate=1e-2,
                                                   lamb_weight_decay=0.0)
+=======
+                optimizer = paddle.optimizer.Lamb(
+                    learning_rate=1e-2, lamb_weight_decay=0.0
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             if optimizer is not None:
                 optimizer.minimize(loss)
 
@@ -148,7 +176,7 @@ class TestTrainCase1(TestBase):
             "scale": True,
             "shift": True,
             "begin_norm_axis": 1,
-            "epsilon": 1e-05
+            "epsilon": 1e-05,
         }
         self.optimizer = 'sgd'
 
@@ -172,7 +200,7 @@ class TestTrainCase3(TestBase):
             "scale": True,
             "shift": True,
             "begin_norm_axis": 2,
-            "epsilon": 1e-05
+            "epsilon": 1e-05,
         }
         self.optimizer = 'lamb'
 

@@ -26,15 +26,15 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/detection/collect_fpn_proposals_op.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 
 static constexpr int kNumCUDAThreads = 64;
 static constexpr int kNumMaxinumNumBlocks = 4096;
@@ -50,7 +50,7 @@ static __global__ void GetLengthLoD(const int nthreads,
                                     const int* batch_ids,
                                     int* length_lod) {
   CUDA_KERNEL_LOOP(i, nthreads) {
-    platform::CudaAtomicAdd(length_lod + batch_ids[i], 1);
+    phi::CudaAtomicAdd(length_lod + batch_ids[i], 1);
   }
 }
 
@@ -89,12 +89,16 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     int lod_size;
     auto place = dev_ctx.GetPlace();
 
-    auto multi_rois_num = ctx.MultiInput<Tensor>("MultiLevelRoIsNum");
+    auto multi_rois_num = ctx.MultiInput<phi::DenseTensor>("MultiLevelRoIsNum");
     for (size_t i = 0; i < roi_ins.size(); ++i) {
       auto roi_in = roi_ins[i];
       auto score_in = score_ins[i];
       if (multi_rois_num.size() > 0) {
+<<<<<<< HEAD
         framework::Tensor temp;
+=======
+        phi::DenseTensor temp;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         paddle::framework::TensorCopySync(
             *multi_rois_num[i], platform::CPUPlace(), &temp);
         const int* length_in = temp.data<int>();
@@ -250,7 +254,7 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasOutput("RoisNum")) {
-      auto* rois_num = ctx.Output<Tensor>("RoisNum");
+      auto* rois_num = ctx.Output<phi::DenseTensor>("RoisNum");
       int* rois_num_data = rois_num->mutable_data<int>({lod_size}, place);
       memory::Copy(place,
                    rois_num_data,

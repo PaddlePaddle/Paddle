@@ -93,12 +93,12 @@ Then:
     Output.dims = {8, 1}
     Output.LoD = [[0, 6, 8]]
 or Given:
-    Input.data = [[0, 1, 2, 2, 0, 4], 
-                  [0, 4, 5, 0, 6, 0], 
+    Input.data = [[0, 1, 2, 2, 0, 4],
+                  [0, 4, 5, 0, 6, 0],
                   [0, 7, 7, 7, 0, 0]]
     InputLength.data  = [[6],
                          [5],
-                         [4]],   
+                         [4]],
     Input.dims = {3, 6},
     Input.Lod = []
 And:

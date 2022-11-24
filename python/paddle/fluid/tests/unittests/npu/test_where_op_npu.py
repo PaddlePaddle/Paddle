@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
 import numpy as np
 import unittest
 import sys
@@ -95,9 +93,15 @@ class TestNPUWhereAPI(unittest.TestCase):
                 train_prog = fluid.Program()
                 startup = fluid.Program()
                 with fluid.program_guard(train_prog, startup):
+<<<<<<< HEAD
                     cond = fluid.data(name='cond',
                                       shape=self.shape,
                                       dtype='bool')
+=======
+                    cond = fluid.data(
+                        name='cond', shape=self.shape, dtype='bool'
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     x = fluid.data(name='x', shape=self.shape, dtype='float32')
                     y = fluid.data(name='y', shape=self.shape, dtype='float32')
 
@@ -115,6 +119,7 @@ class TestNPUWhereAPI(unittest.TestCase):
                         fetch_list.append(x.grad_name)
                     if y_stop_gradient is False:
                         fetch_list.append(y.grad_name)
+<<<<<<< HEAD
                     out = exe.run(train_prog,
                                   feed={
                                       'cond': self.cond,
@@ -122,17 +127,27 @@ class TestNPUWhereAPI(unittest.TestCase):
                                       'y': self.y
                                   },
                                   fetch_list=fetch_list)
+=======
+                    out = exe.run(
+                        train_prog,
+                        feed={'cond': self.cond, 'x': self.x, 'y': self.y},
+                        fetch_list=fetch_list,
+                    )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                     assert np.array_equal(out[0], self.out)
 
                     if x_stop_gradient is False:
-                        assert np.array_equal(out[2],
-                                              self.ref_x_backward(out[1]))
+                        assert np.array_equal(
+                            out[2], self.ref_x_backward(out[1])
+                        )
                         if y.stop_gradient is False:
-                            assert np.array_equal(out[3],
-                                                  self.ref_y_backward(out[1]))
+                            assert np.array_equal(
+                                out[3], self.ref_y_backward(out[1])
+                            )
                     elif y.stop_gradient is False:
-                        assert np.array_equal(out[2],
-                                              self.ref_y_backward(out[1]))
+                        assert np.array_equal(
+                            out[2], self.ref_y_backward(out[1])
+                        )
 
     def test_api_broadcast(self, use_cuda=False):
         train_prog = fluid.Program()
@@ -141,19 +156,31 @@ class TestNPUWhereAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
+<<<<<<< HEAD
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0,
                                                    1.0]]).astype("float32")
+=======
+            y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
+                "float32"
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             result = paddle.where(x > 1, x=x, y=y)
 
             exe = fluid.Executor(self.place)
             exe.run(startup)
 
+<<<<<<< HEAD
             out = exe.run(train_prog,
                           feed={
                               'x': x_i,
                               'y': y_i
                           },
                           fetch_list=[result])
+=======
+            out = exe.run(
+                train_prog, feed={'x': x_i, 'y': y_i}, fetch_list=[result]
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             assert np.array_equal(out[0], np.where(x_i > 1, x_i, y_i))
 
 

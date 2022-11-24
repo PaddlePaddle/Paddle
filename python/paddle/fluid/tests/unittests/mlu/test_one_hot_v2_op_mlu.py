@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from __future__ import print_function
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 import unittest
 import numpy as np
 import math
@@ -31,7 +34,10 @@ paddle.enable_static()
 
 
 class TestOneHotOp(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -57,7 +63,10 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -68,8 +77,14 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
+<<<<<<< HEAD
         out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
                               depth)).astype('float32')
+=======
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            'float32'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -85,7 +100,10 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -111,7 +129,10 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -122,8 +143,14 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
+<<<<<<< HEAD
         out = np.zeros(shape=(np.product(x.shape[:-1]), 1,
                               depth)).astype('float32')
+=======
+        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            'float32'
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
@@ -137,7 +164,10 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_exception(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -155,6 +185,7 @@ class TestOneHotOp_exception(unittest.TestCase):
     def test_check_output(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             x = fluid.layers.data(name='x',
                                   shape=[self.dimension],
                                   dtype='float32',
@@ -173,12 +204,40 @@ class TestOneHotOp_exception(unittest.TestCase):
                 exe.run(feed={'x': self.x},
                         fetch_list=[one_hot_out],
                         return_numpy=False)
+=======
+            x = fluid.layers.data(
+                name='x', shape=[self.dimension], dtype='float32', lod_level=1
+            )
+            block = program.current_block()
+            one_hot_out = block.create_var(
+                name="one_hot_out",
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                dtype='float32',
+            )
+            block.append_op(
+                type='one_hot',
+                inputs={'X': x},
+                attrs={'depth': self.depth},
+                outputs={'Out': one_hot_out},
+            )
+            exe = fluid.Executor(self.place)
+
+            def run():
+                exe.run(
+                    feed={'x': self.x},
+                    fetch_list=[one_hot_out],
+                    return_numpy=False,
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             self.assertRaises(ValueError, run)
 
 
 class TestOneHotOpApi(unittest.TestCase):
+<<<<<<< HEAD
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -193,6 +252,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def test_api_with_dygraph(self):
         depth = 10
+<<<<<<< HEAD
         label = np.array([np.random.randint(0, depth - 1)
                           for i in range(6)]).reshape([6, 1])
         with fluid.dygraph.guard():
@@ -201,6 +261,19 @@ class TestOneHotOpApi(unittest.TestCase):
 
             one_hot_label = paddle.nn.functional.one_hot(
                 fluid.dygraph.to_variable(label), depth)
+=======
+        label = np.array(
+            [np.random.randint(0, depth - 1) for i in range(6)]
+        ).reshape([6, 1])
+        with fluid.dygraph.guard():
+            one_hot_label = fluid.one_hot(
+                input=fluid.dygraph.to_variable(label), depth=depth
+            )
+
+            one_hot_label = paddle.nn.functional.one_hot(
+                fluid.dygraph.to_variable(label), depth
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             # with _test_eager_guard():
             #     one_hot_label = paddle.nn.functional.one_hot(
             #         paddle.to_tensor(label), depth)
@@ -209,6 +282,7 @@ class TestOneHotOpApi(unittest.TestCase):
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
         one_hot_label = fluid.one_hot(input=label, depth=depth)
 
+<<<<<<< HEAD
         label_data = np.array([np.random.randint(0, 10 - 1)
                                for i in range(6)]).reshape([6, 1])
 
@@ -223,6 +297,24 @@ class TestOneHotOpApi(unittest.TestCase):
 
 class BadInputTestOnehotV2(unittest.TestCase):
 
+=======
+        label_data = np.array(
+            [np.random.randint(0, 10 - 1) for i in range(6)]
+        ).reshape([6, 1])
+
+        exe = fluid.Executor(self.place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(
+            feed={
+                'label': label_data,
+            },
+            fetch_list=[one_hot_label],
+            return_numpy=False,
+        )
+
+
+class BadInputTestOnehotV2(unittest.TestCase):
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -231,10 +323,19 @@ class BadInputTestOnehotV2(unittest.TestCase):
         with fluid.program_guard(fluid.Program()):
 
             def test_bad_x():
+<<<<<<< HEAD
                 label = fluid.layers.data(name="label",
                                           shape=[4],
                                           append_batch_size=False,
                                           dtype="float32")
+=======
+                label = fluid.layers.data(
+                    name="label",
+                    shape=[4],
+                    append_batch_size=False,
+                    dtype="float32",
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 one_hot_label = fluid.one_hot(input=label, depth=4)
 
             self.assertRaises(TypeError, test_bad_x)

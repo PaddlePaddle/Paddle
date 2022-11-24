@@ -82,12 +82,19 @@ set_source_files_properties(
 set_source_files_properties(
   coordinator_client.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
+<<<<<<< HEAD
+=======
+set_source_files_properties(
+  ps_service/graph_py_service.cc PROPERTIES COMPILE_FLAGS
+                                            ${DISTRIBUTE_COMPILE_FLAGS})
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 cc_library(
   brpc_utils
   SRCS brpc_utils.cc
   DEPS tensor device_context ${COMMON_DEPS} ${RPC_DEPS})
 
 cc_library(
+<<<<<<< HEAD
   downpour_server
   SRCS graph_brpc_server.cc brpc_ps_server.cc
   DEPS eigen3 table brpc_utils simple_threadpool ${RPC_DEPS})
@@ -114,6 +121,28 @@ cc_library(
   ps_service
   SRCS ps_service/service.cc
   DEPS communicator client server ${RPC_DEPS})
+=======
+  ps_service
+  SRCS graph_brpc_server.cc
+       brpc_ps_server.cc
+       server.cc
+       graph_brpc_client.cc
+       brpc_ps_client.cc
+       ps_local_client.cc
+       coordinator_client.cc
+       ps_client.cc
+       communicator/communicator.cc
+       ps_service/service.cc
+       ps_service/graph_py_service.cc
+  DEPS eigen3
+       table
+       brpc_utils
+       simple_threadpool
+       scope
+       math_function
+       selected_rows_functor
+       ${RPC_DEPS})
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 cc_library(
   heter_client
@@ -123,6 +152,7 @@ cc_library(
   heter_server
   SRCS heter_server.cc
   DEPS heter_client brpc_utils ${COMMON_DEPS} ${RPC_DEPS})
+<<<<<<< HEAD
 
 set_source_files_properties(
   ps_service/graph_py_service.cc PROPERTIES COMPILE_FLAGS
@@ -133,3 +163,5 @@ cc_library(
   DEPS ps_service)
 
 #add_subdirectory(communicator)
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

@@ -30,11 +30,16 @@ struct CastOpTransformFunctor {
 
 template <typename DeviceContext, typename InT>
 struct CastOpFunctor {
-  const framework::Tensor* in_;
-  framework::Tensor* out_;
+  const phi::DenseTensor* in_;
+  phi::DenseTensor* out_;
   const DeviceContext& ctx_;
+<<<<<<< HEAD
   CastOpFunctor(const framework::Tensor* in,
                 framework::Tensor* out,
+=======
+  CastOpFunctor(const phi::DenseTensor* in,
+                phi::DenseTensor* out,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                 const DeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 
@@ -54,8 +59,8 @@ template <typename DeviceContext, typename InT>
 class CastOpKernel : public framework::OpKernel<InT> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
 
     auto out_dtype = context.Attr<int>("out_dtype");
 

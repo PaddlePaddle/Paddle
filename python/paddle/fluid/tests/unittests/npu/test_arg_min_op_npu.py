@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 import sys
@@ -119,7 +117,7 @@ class TestArgMinFloat16Case8(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (1, )
+        self.dims = (1,)
         self.dtype = 'float16'
         self.axis = 0
 
@@ -128,7 +126,7 @@ class TestArgMinFloat16Case9(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (2, )
+        self.dims = (2,)
         self.dtype = 'float16'
         self.axis = 0
 
@@ -137,7 +135,7 @@ class TestArgMinFloat16Case10(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (3, )
+        self.dims = (3,)
         self.dtype = 'float16'
         self.axis = 0
 
@@ -210,7 +208,7 @@ class TestArgMinFloat32Case8(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (1, )
+        self.dims = (1,)
         self.dtype = 'float32'
         self.axis = 0
 
@@ -219,7 +217,7 @@ class TestArgMinFloat32Case9(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (2, )
+        self.dims = (2,)
         self.dtype = 'float32'
         self.axis = 0
 
@@ -228,7 +226,7 @@ class TestArgMinFloat32Case10(BaseTestCase):
 
     def initTestCase(self):
         self.op_type = 'arg_min'
-        self.dims = (3, )
+        self.dims = (3,)
         self.dtype = 'float32'
         self.axis = 0
 
@@ -254,8 +252,14 @@ class TestArgMinAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmin(numpy_input, axis=self.axis)
             paddle_output = paddle.argmin(tensor_input, axis=self.axis)
+<<<<<<< HEAD
             self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
                              True)
+=======
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             paddle.enable_static()
 
         for place in self.place:
@@ -282,6 +286,7 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.random.seed(2021)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
+<<<<<<< HEAD
             numpy_output = np.argmin(numpy_input,
                                      axis=self.axis).reshape(1, 4, 5)
             paddle_output = paddle.argmin(tensor_input,
@@ -289,6 +294,17 @@ class TestArgMaxAPI_2(unittest.TestCase):
                                           keepdim=self.keep_dims)
             self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
                              True)
+=======
+            numpy_output = np.argmin(numpy_input, axis=self.axis).reshape(
+                1, 4, 5
+            )
+            paddle_output = paddle.argmin(
+                tensor_input, axis=self.axis, keepdim=self.keep_dims
+            )
+            np.testing.assert_allclose(
+                numpy_output, paddle_output.numpy(), rtol=1e-05
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

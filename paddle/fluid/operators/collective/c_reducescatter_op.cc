@@ -66,29 +66,21 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-template <typename T>
-class CReduceScatterOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_allgather");
-    retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetOutput("Out", this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(c_reducescatter,
                   ops::CReduceScatterOp,
                   ops::CReduceScatterOpMaker);
+=======
+REGISTER_OP_WITHOUT_GRADIENT(c_reducescatter,
+                             ops::CReduceScatterOp,
+                             ops::CReduceScatterOpMaker);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 REGISTER_OP_CPU_KERNEL(c_reducescatter,
                        ops::CReduceScatterOpCPUKernel<float>,

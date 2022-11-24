@@ -76,38 +76,67 @@ struct FindAbsMaxFunctor {
 template <typename DeviceContext, typename T>
 struct ClipAndFakeQuantFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   framework::Tensor *out);
+=======
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  phi::DenseTensor *out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 struct ClipAndFakeQuantDequantFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
                   int round_type,
                   framework::Tensor *out);
+=======
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
+                  const int bin_cnt,
+                  int round_type,
+                  phi::DenseTensor *out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 struct FindRangeAbsMaxFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &cur_scale,
                   const framework::Tensor &last_scale,
                   const framework::Tensor &iter,
                   const int window_size,
                   framework::Tensor *scales_arr,
                   framework::Tensor *out_scale);
+=======
+                  const phi::DenseTensor &cur_scale,
+                  const phi::DenseTensor &last_scale,
+                  const phi::DenseTensor &iter,
+                  const int window_size,
+                  phi::DenseTensor *scales_arr,
+                  phi::DenseTensor *out_scale);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 struct FindChannelAbsMaxFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in_tensor,
+=======
+                  const phi::DenseTensor &in_tensor,
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                   const int quant_axis,
                   T *out_abs_max);
 };
@@ -115,43 +144,77 @@ struct FindChannelAbsMaxFunctor {
 template <typename DeviceContext, typename T>
 struct ChannelClipAndFakeQuantFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
                   const int round_type,
                   const int quant_axis,
                   framework::Tensor *out);
+=======
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
+                  const int bin_cnt,
+                  const int round_type,
+                  const int quant_axis,
+                  phi::DenseTensor *out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 struct ChannelClipFakeQuantDequantFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in,
                   const framework::Tensor &scale,
                   const int bin_cnt,
                   int round_type,
                   const int quant_axis,
                   framework::Tensor *out);
+=======
+                  const phi::DenseTensor &in,
+                  const phi::DenseTensor &scale,
+                  const int bin_cnt,
+                  int round_type,
+                  const int quant_axis,
+                  phi::DenseTensor *out);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 struct FindMovingAverageAbsMaxFunctor {
   void operator()(const DeviceContext &ctx,
+<<<<<<< HEAD
                   const framework::Tensor &in_accum,
                   const framework::Tensor &in_state,
                   const framework::Tensor &cur_scale,
                   framework::Tensor *out_state,
                   framework::Tensor *out_accum,
                   framework::Tensor *out_scale);
+=======
+                  const phi::DenseTensor &in_accum,
+                  const phi::DenseTensor &in_state,
+                  const T *cur_scale,
+                  const float rate,
+                  phi::DenseTensor *out_state,
+                  phi::DenseTensor *out_accum,
+                  phi::DenseTensor *out_scale);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
     auto *out = context.Output<framework::Tensor>("Out");
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     T *out_s = out_scale->mutable_data<T>(context.GetPlace());
 
     int bit_length = context.Attr<int>("bit_length");
@@ -168,22 +231,38 @@ class FakeAbsMaxKernelBase : public framework::OpKernel<T> {
 
  protected:
   virtual void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                               const framework::Tensor &in,
                               const framework::Tensor &scale,
                               int bin_cnt,
                               int round_type,
                               framework::Tensor *out) const = 0;
+=======
+                              const phi::DenseTensor &in,
+                              const phi::DenseTensor &scale,
+                              int bin_cnt,
+                              int round_type,
+                              phi::DenseTensor *out) const = 0;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
 class FakeQuantizeAbsMaxKernel : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                       const framework::Tensor &in,
                       const framework::Tensor &scale,
                       int bin_cnt,
                       int round_type,
                       framework::Tensor *out) const override {
+=======
+                      const phi::DenseTensor &in,
+                      const phi::DenseTensor &scale,
+                      int bin_cnt,
+                      int round_type,
+                      phi::DenseTensor *out) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ClipAndFakeQuantFunctor<DeviceContext, T>()(
         dev_ctx, in, scale, bin_cnt, round_type, out);
   }
@@ -194,11 +273,19 @@ class FakeQuantizeDequantizeAbsMaxKernel
     : public FakeAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                       const framework::Tensor &in,
                       const framework::Tensor &scale,
                       int bin_cnt,
                       int round_type,
                       framework::Tensor *out) const override {
+=======
+                      const phi::DenseTensor &in,
+                      const phi::DenseTensor &scale,
+                      int bin_cnt,
+                      int round_type,
+                      phi::DenseTensor *out) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, scale, bin_cnt, round_type, out);
   }
@@ -208,10 +295,17 @@ template <typename DeviceContext, typename T>
 class FakeChannelWiseQuantizeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
 
     auto *out = context.Output<framework::Tensor>("Out");
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out->mutable_data<T>(context.GetPlace());
 
     int bit_length = context.Attr<int>("bit_length");
@@ -236,9 +330,15 @@ class FakeChannelWiseQuantizeDequantizeAbsMaxKernel
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
     auto *out = context.Output<framework::Tensor>("Out");
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     T *out_scale_data = out_scale->mutable_data<T>(context.GetPlace());
     auto &dev_ctx = context.template device_context<DeviceContext>();
     out->mutable_data<T>(dev_ctx.GetPlace());
@@ -260,10 +360,17 @@ template <typename DeviceContext, typename T>
 class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
     auto *in_scale = context.Input<framework::Tensor>("InScale");
 
     auto *out = context.Output<framework::Tensor>("Out");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *in_scale = context.Input<phi::DenseTensor>("InScale");
+
+    auto *out = context.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out->mutable_data<T>(context.GetPlace());
 
     bool is_test = context.Attr<bool>("is_test");
@@ -280,14 +387,24 @@ class FakeQuantizeRangeAbsMaxKernel : public framework::OpKernel<T> {
     }
 
     // training
+<<<<<<< HEAD
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
     auto *out_scales = context.Output<framework::Tensor>("OutScales");
     auto *iter = context.Input<framework::Tensor>("Iter");
+=======
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+    auto *out_scales = context.Output<phi::DenseTensor>("OutScales");
+    auto *iter = context.Input<phi::DenseTensor>("Iter");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     int window_size = context.Attr<int>("window_size");
     out_scale->mutable_data<T>(context.GetPlace());
 
+<<<<<<< HEAD
     framework::Tensor cur_scale;
+=======
+    phi::DenseTensor cur_scale;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     T *cur_scale_data = cur_scale.mutable_data<T>({1}, context.GetPlace());
     FindAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
@@ -307,9 +424,15 @@ template <typename DeviceContext, typename T>
 class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
     auto *in_scale = context.Input<framework::Tensor>("InScale");
     auto *out = context.Output<framework::Tensor>("Out");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *in_scale = context.Input<phi::DenseTensor>("InScale");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out->mutable_data<T>(context.GetPlace());
 
     bool is_test = context.Attr<bool>("is_test");
@@ -325,6 +448,7 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     }
 
     // training
+<<<<<<< HEAD
     auto *in_accum = context.Input<framework::Tensor>("InAccum");
     auto *in_state = context.Input<framework::Tensor>("InState");
     auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
@@ -336,6 +460,21 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
     auto *out_state = context.Output<framework::Tensor>("OutState");
     auto *out_accum = context.Output<framework::Tensor>("OutAccum");
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
+=======
+    auto *in_accum = context.Input<phi::DenseTensor>("InAccum");
+    auto *in_state = context.Input<phi::DenseTensor>("InState");
+
+    phi::DenseTensor tmp_scale;
+    tmp_scale.Resize(phi::make_dim(1));
+    T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+
+    FindAbsMaxFunctor<DeviceContext, T>()(
+        dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
+
+    auto *out_state = context.Output<phi::DenseTensor>("OutState");
+    auto *out_accum = context.Output<phi::DenseTensor>("OutAccum");
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out_state->mutable_data<T>(context.GetPlace());
     out_accum->mutable_data<T>(context.GetPlace());
     out_scale->mutable_data<T>(context.GetPlace());
@@ -357,11 +496,19 @@ class FakeMovingAverageAbsMaxKernelBase : public framework::OpKernel<T> {
 
  protected:
   virtual void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                               const framework::Tensor &in,
                               const framework::Tensor &in_scale,
                               int bin_cnt,
                               int round_type,
                               framework::Tensor *out) const = 0;
+=======
+                              const phi::DenseTensor &in,
+                              const phi::DenseTensor &in_scale,
+                              int bin_cnt,
+                              int round_type,
+                              phi::DenseTensor *out) const = 0;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 };
 
 template <typename DeviceContext, typename T>
@@ -369,11 +516,19 @@ class FakeQuantizeMovingAverageAbsMaxKernel
     : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                       const framework::Tensor &in,
                       const framework::Tensor &in_scale,
                       int bin_cnt,
                       int round_type,
                       framework::Tensor *out) const override {
+=======
+                      const phi::DenseTensor &in,
+                      const phi::DenseTensor &in_scale,
+                      int bin_cnt,
+                      int round_type,
+                      phi::DenseTensor *out) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ClipAndFakeQuantFunctor<DeviceContext, T>()(
         dev_ctx, in, in_scale, bin_cnt, round_type, out);
   }
@@ -384,11 +539,19 @@ class FakeQuantizeDequantizeMovingAverageAbsMaxKernel
     : public FakeMovingAverageAbsMaxKernelBase<DeviceContext, T> {
  protected:
   void RunClipFunctor(const DeviceContext &dev_ctx,
+<<<<<<< HEAD
                       const framework::Tensor &in,
                       const framework::Tensor &in_scale,
                       int bin_cnt,
                       int round_type,
                       framework::Tensor *out) const override {
+=======
+                      const phi::DenseTensor &in,
+                      const phi::DenseTensor &in_scale,
+                      int bin_cnt,
+                      int round_type,
+                      phi::DenseTensor *out) const override {
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     ClipAndFakeQuantDequantFunctor<DeviceContext, T>()(
         dev_ctx, in, in_scale, bin_cnt, round_type, out);
   }
@@ -398,11 +561,19 @@ template <typename DeviceContext, typename T>
 class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+<<<<<<< HEAD
     auto *in = context.Input<framework::Tensor>("X");
     auto &dev_ctx = context.template device_context<DeviceContext>();
 
     if (context.HasOutput("Out")) {
       auto *out = context.Output<framework::Tensor>("Out");
+=======
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+
+    if (context.HasOutput("Out")) {
+      auto *out = context.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
       out->mutable_data<T>(context.GetPlace());
       framework::TensorCopy(*in, context.GetPlace(), dev_ctx, out);
     }
@@ -414,17 +585,31 @@ class MovingAverageAbsMaxScaleKernel : public framework::OpKernel<T> {
     }
 
     // training
+<<<<<<< HEAD
     auto *in_accum = context.Input<framework::Tensor>("InAccum");
     auto *in_state = context.Input<framework::Tensor>("InState");
     auto cur_scale = memory::Alloc(dev_ctx, sizeof(T));
     T *cur_scale_data = static_cast<T *>(cur_scale->ptr());
+=======
+    auto *in_accum = context.Input<phi::DenseTensor>("InAccum");
+    auto *in_state = context.Input<phi::DenseTensor>("InState");
+    phi::DenseTensor tmp_scale;
+    tmp_scale.Resize(phi::make_dim(1));
+    T *cur_scale_data = dev_ctx.template Alloc<T>(&tmp_scale);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     FindAbsMaxFunctor<DeviceContext, T>()(
         dev_ctx, in->data<T>(), in->numel(), cur_scale_data);
 
+<<<<<<< HEAD
     auto *out_state = context.Output<framework::Tensor>("OutState");
     auto *out_accum = context.Output<framework::Tensor>("OutAccum");
     auto *out_scale = context.Output<framework::Tensor>("OutScale");
+=======
+    auto *out_state = context.Output<phi::DenseTensor>("OutState");
+    auto *out_accum = context.Output<phi::DenseTensor>("OutAccum");
+    auto *out_scale = context.Output<phi::DenseTensor>("OutScale");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     out_state->mutable_data<T>(context.GetPlace());
     out_accum->mutable_data<T>(context.GetPlace());
     out_scale->mutable_data<T>(context.GetPlace());
@@ -446,9 +631,15 @@ class StrightThroughEstimatorGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto *d_out =
+<<<<<<< HEAD
         context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
     auto x_grad_name = framework::GradVarName("X");
     auto *d_x = context.Output<framework::LoDTensor>(x_grad_name);
+=======
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto x_grad_name = framework::GradVarName("X");
+    auto *d_x = context.Output<phi::DenseTensor>(x_grad_name);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     PADDLE_ENFORCE_NOT_NULL(d_x,
                             platform::errors::PreconditionNotMet(
                                 "StrightThroughEstimatorGradKernel "

@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
-import paddle.fluid as fluid
 
 
 class TestLRNMKLDNNOp(TestLRNOp):
@@ -29,6 +26,7 @@ class TestLRNMKLDNNOp(TestLRNOp):
     def test_check_output(self):
         # We cannot validate MidOut as LRN REF has diffrent meaning in it
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output(atol=0.002,
                           no_check_set=['MidOut'],
                           check_dygraph=False)
@@ -39,6 +37,17 @@ class TestLRNMKLDNNOp(TestLRNOp):
                         'Out',
                         max_relative_error=0.01,
                         check_dygraph=False)
+=======
+        self.check_output(
+            atol=0.002, no_check_set=['MidOut'], check_dygraph=False
+        )
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.01, check_dygraph=False
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 
 class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
@@ -52,13 +61,18 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
 
         def check_raise_is_test():
             try:
+<<<<<<< HEAD
                 self.check_grad(['X'],
                                 'Out',
                                 max_relative_error=0.01,
                                 check_dygraph=False)
+=======
+                self.check_grad(
+                    ['X'], 'Out', max_relative_error=0.01, check_dygraph=False
+                )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             except Exception as e:
-                t = \
-                "is_test attribute should be set to False in training phase."
+                t = "is_test attribute should be set to False in training phase."
                 if t in str(e):
                     raise AttributeError
 
@@ -73,5 +87,6 @@ class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
 
 if __name__ == "__main__":
     from paddle import enable_static
+
     enable_static()
     unittest.main()

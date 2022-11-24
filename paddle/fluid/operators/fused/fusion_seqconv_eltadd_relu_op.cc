@@ -151,10 +151,10 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using DeviceContext = phi::CPUContext;
     auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("Filter");
-    auto* b = ctx.Input<Tensor>("Bias");
+    auto* w = ctx.Input<phi::DenseTensor>("Filter");
+    auto* b = ctx.Input<phi::DenseTensor>("Bias");
     auto* y = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<Tensor>("ColMat");
+    auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
     auto x_dims = x->dims();

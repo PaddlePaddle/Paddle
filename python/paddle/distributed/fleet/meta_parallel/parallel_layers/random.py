@@ -1,4 +1,4 @@
-#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import contextlib
-import numpy as np
-from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, default_main_program
-from paddle.fluid.layer_helper import LayerHelper
+from ...layers.mpu.random import RNGStatesTracker  # noqa: F401
+from ...layers.mpu.random import get_rng_state_tracker  # noqa: F401
+from ...layers.mpu.random import model_parallel_random_seed  # noqa: F401
+from ...layers.mpu.random import determinate_seed  # noqa: F401
+from ...layers.mpu.random import dropout  # noqa: F401
 
 __all__ = []
+<<<<<<< HEAD
 
 MODEL_PARALLEL_RNG = 'model_parallel_rng'
 
@@ -234,3 +232,5 @@ def dropout(x,
                          'dropout_implementation': mode,
                      })
     return out
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f

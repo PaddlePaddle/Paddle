@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
-import paddle.fluid as fluid
 
 
 def bcast(x, target_tensor):
@@ -106,6 +103,7 @@ class TestExpandAsOpRank4(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+<<<<<<< HEAD
 # Test dygraph API
 class TestExpandAsDygraphAPI(unittest.TestCase):
 
@@ -150,5 +148,7 @@ class TestExpandAsAPI(unittest.TestCase):
         assert np.array_equal(res_1[0], np.tile(input1, (4, 1)))
 
 
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 if __name__ == "__main__":
     unittest.main()

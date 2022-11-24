@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
+<<<<<<< HEAD
 
 namespace phi {
 
@@ -30,6 +31,8 @@ inline void IsfiniteKernelImpl(const Context& dev_ctx,
 }
 
 }  // namespace phi
+=======
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 PD_REGISTER_KERNEL(isinf,
                    GPU,

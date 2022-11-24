@@ -12,13 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 from paddle.utils import gast
 
-from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
+    AstNodeWrapper,
+)
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
+    BaseTransformer,
+)
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 PDB_SET = "pdb.set_trace"
 
@@ -48,7 +55,14 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
+<<<<<<< HEAD
             from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin
+=======
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
+                is_builtin,
+            )
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
             need_convert_builtin_func_list = {
                 'len',
                 'zip',

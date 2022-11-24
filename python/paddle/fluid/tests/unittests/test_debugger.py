@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid import debugger
 from paddle.fluid.framework import Program
@@ -27,6 +24,7 @@ class TestDebugger(unittest.TestCase):
         p = Program()
         b = p.current_block()
 
+<<<<<<< HEAD
         #selected_rows
         b.create_var(name='selected_rows',
                      dtype="float32",
@@ -58,6 +56,39 @@ class TestDebugger(unittest.TestCase):
                     },
                     outputs={"Out": mul_out},
                     attrs={"x_num_col_dims": 1})
+=======
+        # selected_rows
+        b.create_var(
+            name='selected_rows',
+            dtype="float32",
+            shape=[5, 10],
+            type=core.VarDesc.VarType.SELECTED_ROWS,
+        )
+
+        # tensor array
+        b.create_var(
+            name='tensor_array',
+            shape=[5, 10],
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        )
+
+        # operator
+        mul_x = b.create_parameter(
+            dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
+        )
+        mul_y = b.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
+        )
+        mul_out = b.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out"
+        )
+        b.append_op(
+            type="mul",
+            inputs={"X": mul_x, "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1},
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         print(debugger.pprint_program_codes(p))
 

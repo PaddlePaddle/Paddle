@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
 import numpy as np
@@ -35,6 +33,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
         y_data = np.random.random(size=shape).astype(dtype)
         python_out = fn(x_data, y_data)
 
+<<<<<<< HEAD
         x_var = layers.create_global_var(name='x',
                                          shape=shape,
                                          value=0.0,
@@ -45,17 +44,33 @@ class TestPythonOperatorOverride(unittest.TestCase):
                                          value=0.0,
                                          dtype=dtype,
                                          persistable=True)
+=======
+        x_var = layers.create_global_var(
+            name='x', shape=shape, value=0.0, dtype=dtype, persistable=True
+        )
+        y_var = layers.create_global_var(
+            name='y', shape=shape, value=0.0, dtype=dtype, persistable=True
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         out = fn(x_var, y_var)
 
         exe = fluid.Executor(place)
 
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         fluid_out = exe.run(fluid.default_main_program(),
                             feed={
                                 'x': x_data,
                                 'y': y_data
                             },
                             fetch_list=[out])
+=======
+        fluid_out = exe.run(
+            fluid.default_main_program(),
+            feed={'x': x_data, 'y': y_data},
+            fetch_list=[out],
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         np.testing.assert_array_equal(python_out, fluid_out[0])
 
@@ -81,8 +96,9 @@ class TestPythonOperatorOverride(unittest.TestCase):
         for place in places:
             for dtype in dtypes:
                 for compare_fn in compare_fns:
-                    with framework.program_guard(framework.Program(),
-                                                 framework.Program()):
+                    with framework.program_guard(
+                        framework.Program(), framework.Program()
+                    ):
                         self.check_result(compare_fn, place, dtype)
 
 

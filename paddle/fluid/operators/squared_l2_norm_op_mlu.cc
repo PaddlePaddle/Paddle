@@ -19,15 +19,24 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = framework::Tensor;
+=======
+using Tensor = phi::DenseTensor;
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
 template <typename T>
 class SquaredL2NormMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &dev_ctx = context.template device_context<MLUDeviceContext>();
+<<<<<<< HEAD
     auto *x = context.Input<Tensor>("X");
     auto *out = context.Output<Tensor>("Out");
+=======
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     auto place = context.GetPlace();
 
@@ -40,9 +49,15 @@ class SquaredL2NormMLUKernel : public framework::OpKernel<T> {
     MLUCnnl::L2Loss(context, input_desc.get(), GetBasePtr(x), GetBasePtr(out));
 
     // do mul
+<<<<<<< HEAD
     framework::Tensor scale_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     framework::Tensor bias_tensor =
+=======
+    phi::DenseTensor scale_tensor =
+        context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
+    phi::DenseTensor bias_tensor =
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc scale_desc(scale_tensor);
     MLUCnnlTensorDesc bias_desc(bias_tensor);
@@ -67,9 +82,17 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto &dev_ctx = context.template device_context<MLUDeviceContext>();
+<<<<<<< HEAD
     auto *x = context.Input<Tensor>("X");
     auto *x_grad = context.Output<Tensor>(framework::GradVarName("X"));
     auto *out_grad = context.Input<Tensor>(framework::GradVarName("Out"));
+=======
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     PADDLE_ENFORCE_EQ(
         out_grad->numel(),
@@ -108,9 +131,15 @@ class SquaredL2NormGradMLUKernel : public framework::OpKernel<T> {
                       ToCnnlDataType(x->dtype()));
 
     // mul
+<<<<<<< HEAD
     framework::Tensor scale_tensor =
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     framework::Tensor bias_tensor =
+=======
+    phi::DenseTensor scale_tensor =
+        context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
+    phi::DenseTensor bias_tensor =
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
         context.AllocateTmpTensor<T, MLUDeviceContext>({1}, dev_ctx);
     MLUCnnlTensorDesc scale_desc(scale_tensor);
     MLUCnnlTensorDesc bias_desc(bias_tensor);

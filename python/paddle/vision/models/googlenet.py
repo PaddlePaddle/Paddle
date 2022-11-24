@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -28,19 +25,21 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    "googlenet":
-    ("https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/GoogLeNet_pretrained.pdparams",
-     "80c06f038e905c53ab32c40eca6e26ae")
+    "googlenet": (
+        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/GoogLeNet_pretrained.pdparams",
+        "80c06f038e905c53ab32c40eca6e26ae",
+    )
 }
 
 
 def xavier(channels, filter_size):
-    stdv = (3.0 / (filter_size**2 * channels))**0.5
+    stdv = (3.0 / (filter_size**2 * channels)) ** 0.5
     param_attr = ParamAttr(initializer=Uniform(-stdv, stdv))
     return param_attr
 
 
 class ConvLayer(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self,
                  num_channels,
@@ -57,6 +56,22 @@ class ConvLayer(nn.Layer):
                             padding=(filter_size - 1) // 2,
                             groups=groups,
                             bias_attr=False)
+=======
+    def __init__(
+        self, num_channels, num_filters, filter_size, stride=1, groups=1
+    ):
+        super().__init__()
+
+        self._conv = Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
+            stride=stride,
+            padding=(filter_size - 1) // 2,
+            groups=groups,
+            bias_attr=False,
+        )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -64,10 +79,25 @@ class ConvLayer(nn.Layer):
 
 
 class Inception(nn.Layer):
+<<<<<<< HEAD
 
     def __init__(self, input_channels, output_channels, filter1, filter3R,
                  filter3, filter5R, filter5, proj):
         super(Inception, self).__init__()
+=======
+    def __init__(
+        self,
+        input_channels,
+        output_channels,
+        filter1,
+        filter3R,
+        filter3,
+        filter5R,
+        filter5,
+        proj,
+    ):
+        super().__init__()
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
         self._conv1 = ConvLayer(input_channels, filter1, 1)
         self._conv3r = ConvLayer(input_channels, filter3R, 1)
@@ -98,9 +128,15 @@ class Inception(nn.Layer):
 class GoogLeNet(nn.Layer):
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+<<<<<<< HEAD
     
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+=======
+
+    Args:
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -124,7 +160,7 @@ class GoogLeNet(nn.Layer):
     """
 
     def __init__(self, num_classes=1000, with_pool=True):
-        super(GoogLeNet, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
 
@@ -156,9 +192,15 @@ class GoogLeNet(nn.Layer):
         if num_classes > 0:
             # out
             self._drop = Dropout(p=0.4, mode="downscale_in_infer")
+<<<<<<< HEAD
             self._fc_out = Linear(1024,
                                   num_classes,
                                   weight_attr=xavier(1024, 1))
+=======
+            self._fc_out = Linear(
+                1024, num_classes, weight_attr=xavier(1024, 1)
+            )
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 
             # out1
             self._conv_o1 = ConvLayer(512, 128, 1)
@@ -224,7 +266,11 @@ class GoogLeNet(nn.Layer):
 def googlenet(pretrained=False, **kwargs):
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -257,9 +303,11 @@ def googlenet(pretrained=False, **kwargs):
         assert (
             arch in model_urls
         ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.set_dict(param)

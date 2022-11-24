@@ -140,6 +140,10 @@ TEST(SerializationLoggerTest, dump_case0) {
                                            5,
                                            MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case0.pb");
+<<<<<<< HEAD
+=======
+  logger.LogMetaInfo(std::string("1.0.2"), 0);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -169,7 +173,11 @@ TEST(SerializationLoggerTest, dump_case0) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 TEST(SerializationLoggerTest, dump_case1) {
@@ -234,6 +242,10 @@ TEST(SerializationLoggerTest, dump_case1) {
                                            5,
                                            MemsetEventInfo()));
   SerializationLogger logger("test_serialization_logger_case1.pb");
+<<<<<<< HEAD
+=======
+  logger.LogMetaInfo(std::string("1.0.2"), 0);
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
   NodeTrees tree(host_events,
                  runtime_events,
                  device_events,
@@ -257,7 +269,11 @@ TEST(SerializationLoggerTest, dump_case1) {
     }
   }
   tree.LogMe(&logger);
+<<<<<<< HEAD
   logger.LogMetaInfo(std::unordered_map<std::string, std::string>());
+=======
+  logger.LogExtraInfo(std::unordered_map<std::string, std::string>());
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
 }
 
 TEST(DeserializationReaderTest, restore_case0) {

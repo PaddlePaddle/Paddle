@@ -19,8 +19,12 @@ import os
 from threading import Thread
 
 
+<<<<<<< HEAD
 class Watcher(object):
 
+=======
+class Watcher:
+>>>>>>> 43b92b633f5d2db98f45d4b9597e5389f6f9712f
     def __init__(self, ctx):
         self.ctx = ctx
 
@@ -31,8 +35,9 @@ class Watcher(object):
         # gpu log file
         self.gpus = self.ctx.args.devices or self.ctx.node.device.labels
         if len(self.gpus) > 0:
-            fn = os.path.join(self.ctx.args.log_dir,
-                              "{}.gpu.log".format(self.ctx.args.job_id))
+            fn = os.path.join(
+                self.ctx.args.log_dir, "{}.gpu.log".format(self.ctx.args.job_id)
+            )
             os.makedirs(os.path.dirname(fn), exist_ok=True)
             self.gpu_fd = open(fn, 'w')
         else:
