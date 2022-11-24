@@ -173,9 +173,10 @@ std::vector<paddle::experimental::Tensor> RunBackward(
       node_input_buffers_dict[grad_node] =
           std::make_unique<GradTensorHolder>(grad_node->InputMeta());
     }
-    bool copy_from_grad_t =
-        grad_tensors.size() > 0 && grad_tensors[i].initialized();
-    if (copy_from_grad_t) {
+
+    // copy grad tensor since we should totally run grad without affect forward
+    // value
+    if (grad_tensors.size() > 0 && grad_tensors[i].initialized()) {
       PADDLE_ENFORCE(
           grad_tensors.size() == tensors.size(),
           paddle::platform::errors::Fatal(
