@@ -219,7 +219,7 @@ class LazyZerosNPU {
       if (!found_inf_vec[0]) {
         framework::TensorCopy(*x, place, dev_ctx, out);
       } else if (zero_ptr != dst_ptr) {
-        auto size = out->numel() * framework::DataTypeSize(out->dtype());
+        auto size = out->numel() * phi::SizeOf(out->dtype());
         memory::Copy(place, dst_ptr, place, zero_ptr, size, stream);
       }
     }
