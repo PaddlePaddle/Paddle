@@ -526,22 +526,24 @@ void InterpreterCore::BuildOperatorDependences() {
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       auto& inst = vec_instruction_[i];
-      if (inst.Type() == interpreter::kMemcpyD2H) {
-        for (auto& item : next_instr.Inputs()) {
+      if (inst.OpBase()->Type() == interpreter::kMemcpyD2H &&
+          platform::is_gpu_place(place_)) {
+        for (auto& item : inst.Inputs()) {
           for (auto var_id : item.second) {
             auto name = var_scope_.GetNameById(var_id);
             if (JitInputVars().count(name)) {
               auto& events = stream_analyzer_.EventMap();
               if (events.count(var_id) == 0) {
                 auto device_event = std::make_shared<platform::DeviceEvent>(
-                    place, platform::GenerateDeviceEventFlag());
+                    place_, platform::GenerateDeviceEventFlag());
                 events.emplace(var_id, std::move(device_event));
               }
-
               // Add events for next_instr.inputs
-              inst->AddInputEvent(var_id, events.at(var_id), platform::kCPU);
+              inst.AddInputEvent(var_id,
+                                 events.at(var_id),
+                                 stream_analyzer_.GetWaiterType(inst));
               VLOG(4) << "Add input event for input: " << name << " of "
-                      << inst.Type();
+                      << inst.OpBase()->Type();
             }
           }
         }
@@ -859,15 +861,15 @@ void InterpreterCore::ExecuteInstructionList(
       // NOTE(zhiqiu): hot fix for jit input var
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
-      auto* default_dev_ctx = pool.Get(place);
-      if (inst.Type() == interpreter::kMemcpyD2H) {
+      auto* default_dev_ctx = pool.Get(place_);
+      if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
         for (auto& event : vec_instr.at(i).InputEvents()) {
           platform::RecordEvent record(
               "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
           VLOG(3) << "Record event on default stream in jit_input_var: "
                   << event.var_id_ << " "
                   << var_scope_.GetNameById(event.var_id_);
-          event.event_->Record(dev_ctx);
+          event.event_->Record(default_dev_ctx);
         }
       }
       async_work_queue_->AddTask(vec_instr.at(i).KernelType(),

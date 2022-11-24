@@ -39,9 +39,11 @@ class StreamAnalyzer {
 
   DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node);
 
-  std::map<size_t, std::shared_ptr<platform::DeviceEvent>>& EventMap() const {
+  std::map<size_t, std::shared_ptr<platform::DeviceEvent>>& EventMap() {
     return var_id2event_;
   }
+
+  platform::DeviceType GetWaiterType(const Instruction& instr);
 
  private:
   std::vector<size_t> GetNeedEventVarIds(const Instruction& cur_instr,
@@ -55,9 +57,8 @@ class StreamAnalyzer {
   bool IsDirectRun(Instruction& cur_instr,  // NOLINT
                    const Instruction& next_instr);
 
-  platform::DeviceType GetWaiterType(const Instruction& instr);
-
   const Place place_;
+
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 };
 
