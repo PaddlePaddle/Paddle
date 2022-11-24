@@ -151,7 +151,7 @@ class DistributedUpdateLossScalingImpl(DistributedOperatorImpl):
             if (
                 rank_id
                 in ctx.get_tensor_dist_attr_for_program(
-                    main_block.var(varname)
+                    main_block._var_recursive(varname)
                 ).process_mesh.processes
             ):
                 filter_vars.append(varname)

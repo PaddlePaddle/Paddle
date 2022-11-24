@@ -100,7 +100,7 @@ class MNIST(fluid.dygraph.Layer):
     def forward(self, inputs, label):
         x = self._simple_img_conv_pool_1(inputs)
         x = self._simple_img_conv_pool_2(x)
-        x = fluid.layers.reshape(x, shape=[-1, self.pool_2_shape])
+        x = paddle.reshape(x, shape=[-1, self.pool_2_shape])
         cost = self._fc(x)
         loss = fluid.layers.cross_entropy(cost, label)
         avg_loss = paddle.mean(loss)
