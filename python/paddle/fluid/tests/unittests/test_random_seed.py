@@ -383,8 +383,8 @@ class TestGeneratorSeed(unittest.TestCase):
             # example 1:
             # attr shape is a list which doesn't contain tensor Variable.
             x = fluid.layers.uniform_random(shape=[10, 10])
-            result_1 = fluid.layers.sampling_id(x)
-            result_2 = fluid.layers.sampling_id(x)
+            result_1 = paddle.sampling_id(x)
+            result_2 = paddle.sampling_id(x)
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)
