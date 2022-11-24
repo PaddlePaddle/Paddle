@@ -228,12 +228,14 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "The input 1 tensor");
+    AddInput("MaxPtrX", "Saved maxptr of the input 1 tensor").AsDispensable();
     AddInput("FilterX", "Filter tensor of input 1");
     AddInput("ScaleX", "Scale tensor of input 1 used in batchnorm");
     AddInput("BiasX", "Bias tensor of input 1 used in batchnorm");
     AddInput("MeanX", "Mean tensor of input 1 used in batchnorm");
     AddInput("VarX", "Variance tensor of input 1 used in batchnorm");
     AddInput("Z", "The input 2 tensor").AsDispensable();
+    AddInput("MaxPtrZ", "Saved maxptr of the input 2 tensor").AsDispensable();
     AddInput("FilterZ", "Filter tensor of input 2").AsDispensable();
     AddInput("ScaleZ", "Scale tensor of input 2").AsDispensable();
     AddInput("BiasZ", "Bias tensor of input 2").AsDispensable();
@@ -425,6 +427,7 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("resnet_unit_grad");
     op->SetInput("X", this->Input("X"));
+    op->SetInput("MaxPtrX", this->Input("MaxPtrX"));
     op->SetInput("FilterX", this->Input("FilterX"));
     op->SetInput("ConvX", this->Output("ConvX"));
     op->SetInput("ScaleX", this->Input("ScaleX"));
@@ -432,6 +435,7 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SavedMeanX", this->Output("SavedMeanX"));
     op->SetInput("SavedInvstdX", this->Output("SavedInvstdX"));
     op->SetInput("Z", this->Input("Z"));
+    op->SetInput("MaxPtrZ", this->Input("MaxPtrZ"));
     op->SetInput("FilterZ", this->Input("FilterZ"));
     op->SetInput("ConvZ", this->Output("ConvZ"));
     op->SetInput("ScaleZ", this->Input("ScaleZ"));
