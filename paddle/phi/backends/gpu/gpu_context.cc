@@ -21,6 +21,7 @@ limitations under the License. */
 #include <future>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "glog/logging.h"
 #include "paddle/phi/api/ext/exception.h"
@@ -54,8 +55,7 @@ limitations under the License. */
 // without eigen.
 #include "unsupported/Eigen/CXX11/Tensor"
 
-// TODO(phi): remove fluid header.
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 
