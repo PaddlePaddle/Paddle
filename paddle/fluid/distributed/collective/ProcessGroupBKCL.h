@@ -73,14 +73,17 @@ class ProcessGroupBKCL : public ProcessGroupStream {
                    int size,
                    int gid);
 
+  static std::shared_ptr<ProcessGroupBKCL> CreateProcessGroupBKCL(
+      const std::shared_ptr<Store>& store, int rank, int size, int gid);
+
   std::string GetBackendName() const override {
     return std::string(BKCL_BACKEND_NAME);
   }
 
-  const phi::DeviceContext& GetDeviceContext(const Place& place) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place) const override;
 
-  const phi::DeviceContext& GetDeviceContext(
-      const Place& place, bool use_calc_stream) const override;
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       phi::DenseTensor* out_tensor,
@@ -103,6 +106,12 @@ class ProcessGroupBKCL : public ProcessGroupStream {
       int64_t numel,   // for compatibility, no use now
       bool sync_op,
       bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const ReduceOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
 
   std::shared_ptr<ProcessGroup::Task> Barrier(
       const BarrierOptions& = BarrierOptions()) override;
