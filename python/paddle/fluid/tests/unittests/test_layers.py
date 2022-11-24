@@ -3502,23 +3502,15 @@ class TestBook(LayerTest):
             input = self._get_data(
                 name="input", shape=[3, 100, 100], dtype="float32"
             )
-            paddings = layers.fill_constant(shape=[4], dtype='int32', value=1)
-            out = layers.pad2d(
-                input,
-                paddings=[1, 2, 3, 4],
+
+            tmp_pad = paddle.nn.Pad2D(
+                padding=[1, 2, 3, 4],
                 mode='reflect',
                 data_format='NCHW',
                 name="shape",
             )
-            out_1 = layers.pad2d(
-                input,
-                paddings=paddings,
-                mode='reflect',
-                data_format='NCHW',
-                name="shape",
-            )
+            out = tmp_pad(input)
             return out
-            return out_1
 
     def make_prelu(self):
         with program_guard(

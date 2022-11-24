@@ -18,7 +18,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
