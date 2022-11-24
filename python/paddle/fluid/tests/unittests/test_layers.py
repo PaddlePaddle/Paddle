@@ -4506,7 +4506,7 @@ class TestBook(LayerTest):
             predict = paddle.static.data(
                 name='predict', shape=[4, 4, 8], dtype='float32'
             )
-            output = paddle.nn.functional.ctc_los(
+            output = paddle.nn.functional.ctc_loss(
                 log_probs=predict,
                 labels=label,
                 input_lengths=input_length,

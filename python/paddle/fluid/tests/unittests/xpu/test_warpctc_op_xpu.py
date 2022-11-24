@@ -212,25 +212,6 @@ class CTCForward(object):
         return self.loss
 
 
-def python_api(
-    logits,
-    label,
-    logits_length=None,
-    labels_length=None,
-    blank=0,
-    norm_by_times=False,
-):
-    return paddle.nn.functional.ctc_loss(
-        log_probs=logits,
-        labels=label,
-        blank=blank,
-        norm_by_times=norm_by_times,
-        input_lengths=logits_length,
-        label_lengths=labels_length，
-        reduction='none',
-    )
-
-
 class XPUTestWarpCTCOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'warpctc'
@@ -250,7 +231,6 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             self.op_type = "warpctc"
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
-            self.python_api = python_api
             self.python_out_sig = ["Loss"]
             self.config()
 
@@ -331,7 +311,7 @@ class XPUTestWarpCTCOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output(check_eager=True)
+            self.check_output(check_eager=False)
 
         def test_check_grad(self):
             self.outputs['WarpCTCGrad'] = self.gradient
