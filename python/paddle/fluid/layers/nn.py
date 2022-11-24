@@ -132,8 +132,6 @@ __all__ = [
     'clip_by_norm',
     'mean',
     'mul',
-    'space_to_depth',
-    'affine_channel',
     'similarity_focus',
     'hash',
     'grid_sampler',
@@ -8537,84 +8535,6 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         type="mul", inputs={"X": x, "Y": y}, attrs=attrs, outputs={"Out": out}
     )
     return out
-
-
-def affine_channel(
-    x, scale=None, bias=None, data_layout='NCHW', name=None, act=None
-):
-    """
-
-    Applies a separate affine transformation to each channel of the input.
-    Useful for replacing spatial batch norm with its equivalent fixed
-    transformation. The input also can be 2D tensor and applies a affine
-    transformation in second dimension.
-
-    Args:
-        x (Variable): Feature map input can be a 4D tensor with order NCHW
-            or NHWC. It also can be a 2D tensor and the affine transformation
-            is applied in the second dimension.The data type is float32 or float64.
-        scale (Variable): 1D input of shape (C), the c-th element is the scale
-            factor of the affine transformation for the c-th channel of
-            the input.The data type is float32 or float64.
-        bias (Variable): 1D input of shape (C), the c-th element is the bias
-            of the affine transformation for the c-th channel of the input.
-            The data type is float32 or float64.
-        data_layout (str, optional): Specify the data format of the input, and the data format of the output
-            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
-            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. If input is 2D Tensor, you can ignore
-            data_layout.
-        name (str, default None): The name of this layer. For more information,
-            please refer to :ref:`api_guide_Name` .
-        act (str, default None): Activation to be applied to the output of this layer.
-
-    Returns:
-        Variable: A tensor which has the same shape, data layout and data type with x.
-
-    Examples:
-        .. code-block:: python
-
-            import numpy as np
-            import paddle.fluid as fluid
-            import paddle.fluid as fluid
-            import paddle
-
-            paddle.enable_static()
-            use_gpu = False
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-
-            data = fluid.data(name='data', shape=[None, 1, 2, 2], dtype='float32')
-            input_scale = fluid.layers.create_parameter(shape=[1], dtype="float32",
-                                    default_initializer=fluid.initializer.Constant(2.0))
-            input_bias = fluid.layers.create_parameter(shape=[1],dtype="float32",
-                                    default_initializer=fluid.initializer.Constant(0.5))
-            out = fluid.layers.affine_channel(data,scale=input_scale,
-                                    bias=input_bias)
-
-            exe.run(fluid.default_startup_program())
-            test_program = fluid.default_main_program().clone(for_test=True)
-
-            [out_array] = exe.run(test_program,
-                                  fetch_list=out,
-                                  feed={'data': np.ones([1,1,2,2]).astype('float32')})
-            # out_array is [[[[2.5, 2.5],
-            #                [2.5, 2.5]]]] with shape: [1, 1, 2, 2]
-
-    """
-    helper = LayerHelper("affine_channel", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'affine_channel')
-    check_type(scale, 'scale', (Variable, type(None)), 'affine_channel')
-    check_type(bias, 'bias', (Variable, type(None)), 'affine_channel')
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-
-    helper.append_op(
-        type="affine_channel",
-        inputs={"X": x, 'Scale': scale, 'Bias': bias},
-        attrs={"data_layout": data_layout},
-        outputs={"Out": out},
-    )
-    return helper.append_activation(out)
 
 
 def similarity_focus(input, axis, indexes, name=None):
