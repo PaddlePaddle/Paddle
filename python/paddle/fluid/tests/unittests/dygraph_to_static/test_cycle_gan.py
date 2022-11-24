@@ -179,11 +179,12 @@ class build_resnet_block(fluid.dygraph.Layer):
         self.dim = dim
 
     def forward(self, inputs):
-        tmp_pad = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
-        out_res = tmp_pad(inputs)
+        pad1 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad1(inputs)
         out_res = self.conv0(out_res)
 
-        out_res = tmp_pad(out_res)
+        pad2 = paddle.nn.Pad2D([1, 1, 1, 1], mode="reflect")
+        out_res = pad2(out_res)
         out_res = self.conv1(out_res)
         return out_res + inputs
 
@@ -254,8 +255,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
         )
 
     def forward(self, inputs):
-        tmp_pad = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
-        pad_input = tmp_pad(inputs)
+        pad1 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        pad_input = pad1(inputs)
         y = self.conv0(pad_input)
         y = self.conv1(y)
         y = self.conv2(y)
@@ -263,7 +264,8 @@ class build_generator_resnet_9blocks(fluid.dygraph.Layer):
             y = build_resnet_block_i(y)
         y = self.deconv0(y)
         y = self.deconv1(y)
-        y = tmp_pad(y)
+        pad2 = paddle.nn.Pad2D([3, 3, 3, 3], mode="reflect")
+        y = pad2(y)
         y = self.conv3(y)
         y = paddle.tanh(y)
         return y
