@@ -200,13 +200,13 @@ static __global__ void SortPostprocessKernel(const T *in,
 
 template <typename T>
 inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
+                                         const T *const self_ptr,
+                                         T *const values_ptr,
+                                         int64_t *const indices_ptr
                                          const int64_t nsegments,
                                          const int64_t nsort,
                                          const int64_t n,
-                                         const bool descending,
-                                         const T *const self_ptr,
-                                         T *const values_ptr,
-                                         int64_t *const indices_ptr) {
+                                         const bool descending) {
   int64_t segment_bits = std::max<int64_t>(
       1L, static_cast<int64_t>(std::ceil(std::log2(nsegments))));
 
@@ -238,20 +238,19 @@ inline void SegmentedSortPairsByFullSort(const phi::GPUContext &ctx,
   RadixSortPairs<T, int2>(
       ctx, self_ptr, i_s_ptr, nullptr, i_s_ptr2, n, descending);
 
-  RadixSortKeys<int64_t>(reinterpret_cast<int64_t *>(i_s_ptr2),
+  RadixSortKeys<int64_t>(ctx,
+                         reinterpret_cast<int64_t *>(i_s_ptr2),
                          reinterpret_cast<int64_t *>(i_s_ptr),
                          n,
                          false,
                          0,
-                         segment_bits,
-                         ctx);
+                         segment_bits);
 
   SortPostprocessKernel<<<grid, block, 0, cu_stream>>>(
       self_ptr, values_ptr, indices_ptr, i_s_ptr, nsegments, nsort);
 }
 
-// The method is called when # of the rows of the input is less than or equal to
-// 32
+// The method is called when # of the rows of the input is less than or equal to 4
 template <typename T, typename IndexType>
 void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
                             const DenseTensor *input,
@@ -287,14 +286,14 @@ void ArgFullSortForTinyRows(const phi::GPUContext &ctx,
     int64_t n = std::min(remaining, nbatch);
     IndexType nsegments = n / nsort;
 
-    SegmentedSortPairsByFullSort(nsegments,
-                                 nsort,
-                                 n,
-                                 descending,
+    SegmentedSortPairsByFullSort(ctx,
                                  input_data,
                                  sorted_out_ptr,
                                  sorted_indices_ptr,
-                                 ctx);
+                                 nsegments,
+                                 nsort,
+                                 n,
+                                 descending);
 
     remaining -= n;
     input_data += n;
