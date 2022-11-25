@@ -415,15 +415,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << layout_str;
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) return false;
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      auto dtype = x_var_desc->GetDataType();
-      if (dtype != 5) {
-        VLOG(3) << "Group norm trt plugin only support float32";
-        return false;
-      }
     }
     if (op_type == "concat") {
       if (!desc.HasAttr("axis")) {

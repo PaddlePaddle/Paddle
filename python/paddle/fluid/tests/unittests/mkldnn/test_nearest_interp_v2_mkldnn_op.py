@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
+    skip_check_grad_ci,
 )
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 
 
 def nearest_neighbor_interp_mkldnn_np(
