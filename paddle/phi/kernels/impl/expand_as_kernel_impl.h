@@ -125,7 +125,7 @@ void ExpandAsKernel(const Context& ctx,
     if (target_shape[i] == -1) {
       if (y) {
         if (y->IsInitialized()) {
-          real_target_shape = y->dims();
+          real_target_shape = phi::vectorize<int>(y->dims());
         }
       }
       break;
