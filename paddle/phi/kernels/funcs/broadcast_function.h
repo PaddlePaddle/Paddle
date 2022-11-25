@@ -878,7 +878,7 @@ void BroadcastKernelForDifferentVecSize(
   const auto dims_simplifier =
       BroadcastDimsSimplifier(ins, (*outs)[0]->dims(), axis);
   if (VLOG_IS_ON(4)) {
-    for (size_t i = 0; i < dims_simplifier.in_dims.size(); ++i) {
+    for (size_t i = 0; i < ins.size(); ++i) {
       VLOG(4) << "input i=" << i << ": origin_dims={" << ins[i]->dims()
               << "}, simplied_dims={"
               << phi::make_ddim(dims_simplifier.in_dims[i]) << "}";

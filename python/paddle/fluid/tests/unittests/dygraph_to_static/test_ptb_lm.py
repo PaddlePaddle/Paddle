@@ -115,19 +115,19 @@ class SimpleLSTMRNN(fluid.Layer):
                     )
             res.append(step_input)
         real_res = fluid.layers.concat(res, 1)
-        real_res = fluid.layers.reshape(
+        real_res = paddle.reshape(
             real_res, [-1, self._num_steps, self._hidden_size]
         )
         last_hidden = fluid.layers.concat(hidden_array, 1)
-        last_hidden = fluid.layers.reshape(
+        last_hidden = paddle.reshape(
             last_hidden, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_hidden = fluid.layers.transpose(x=last_hidden, perm=[1, 0, 2])
+        last_hidden = paddle.transpose(x=last_hidden, perm=[1, 0, 2])
         last_cell = fluid.layers.concat(cell_array, 1)
-        last_cell = fluid.layers.reshape(
+        last_cell = paddle.reshape(
             last_cell, shape=[-1, self._num_layers, self._hidden_size]
         )
-        last_cell = fluid.layers.transpose(x=last_cell, perm=[1, 0, 2])
+        last_cell = paddle.transpose(x=last_cell, perm=[1, 0, 2])
         return real_res, last_hidden, last_cell
 
 
@@ -189,17 +189,17 @@ class PtbModel(fluid.Layer):
     @declarative
     def forward(self, input, label, init_hidden, init_cell):
 
-        init_h = fluid.layers.reshape(
+        init_h = paddle.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size]
         )
 
-        init_c = fluid.layers.reshape(
+        init_c = paddle.reshape(
             init_cell, shape=[self.num_layers, -1, self.hidden_size]
         )
 
         x_emb = self.embedding(input)
 
-        x_emb = fluid.layers.reshape(
+        x_emb = paddle.reshape(
             x_emb, shape=[-1, self.num_steps, self.hidden_size]
         )
         if self.dropout is not None and self.dropout > 0.0:
@@ -218,7 +218,7 @@ class PtbModel(fluid.Layer):
         loss = fluid.layers.softmax_with_cross_entropy(
             logits=projection, label=label, soft_label=False
         )
-        loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
+        loss = paddle.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
 
