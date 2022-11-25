@@ -35,7 +35,9 @@ python3.7 python/paddle/fluid/tests/unittests/ipu/disabled/test_dist_pod128_ipu.
 '''
 
 import os
+
 import numpy as np
+
 import paddle
 
 

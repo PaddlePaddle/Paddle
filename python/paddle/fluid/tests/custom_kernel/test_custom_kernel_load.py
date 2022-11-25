@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import os
-import sys
 import site
+import sys
 import unittest
+
 import numpy as np
 
 
