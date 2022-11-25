@@ -568,10 +568,10 @@ function build() {
 function cmake_gen_and_build() {
     startTime_s=`date +%s`
     cmake_gen $1
-    print("which python:")
+    echo "which python:"
     which python
     python setup.py install
-    print("which python:")
+    echo "which python:"
     build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
