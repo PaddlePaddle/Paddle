@@ -43,6 +43,10 @@ cc_library(
   lod_utils
   SRCS lod_utils.cc
   DEPS phi_enforce)
+cc_library(
+  threadpool
+  SRCS threadpool.cc
+  DEPS phi_enforce)
 
 cc_library(
   dense_tensor
