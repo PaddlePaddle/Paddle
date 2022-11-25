@@ -78,7 +78,7 @@ class TransferLayoutFunctor {
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (in_layout != DataLayout::ONEDNN && out_layout == DataLayout::ONEDNN) {
-        // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+        // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
         // Just set layout/format. No real transform occur
 
         auto out_format = phi::funcs::OneDNNFormatForSize(
@@ -89,8 +89,7 @@ class TransferLayoutFunctor {
         if (in_layout == DataLayout::kNHWC) {
           VLOG(4) << "kNHWC";
           phi::funcs::MatchShapeToLayout(&out_tensor, in_layout, out_layout);
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .set_cur_paddle_data_layout(in_layout);
+          phi::OneDNNContext::tls().set_cur_paddle_data_layout(in_layout);
         }
 
         auto out_tz = phi::vectorize<int64_t>(out_tensor.dims());
@@ -100,8 +99,8 @@ class TransferLayoutFunctor {
         dnnl::memory::desc out_mem_desc(out_tz, in_type, out_format);
         out_tensor.set_mem_desc(out_mem_desc);
       } else {
-        auto target_layout = paddle::platform::MKLDNNDeviceContext::tls()
-                                 .get_cur_paddle_data_layout();
+        auto target_layout =
+            phi::OneDNNContext::tls().get_cur_paddle_data_layout();
         // NOTE(zhiqiu): hot fix, follow the same logic in DataCopy() in
         // fetch_op.cc
         if (out_layout == DataLayout::kNCHW &&
@@ -110,8 +109,8 @@ class TransferLayoutFunctor {
         }
         VLOG(4) << "TransDataLayoutFromOneDNN: " << in_layout << "->"
                 << target_layout;
-        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
-        // Do transform via MKLDNN lib
+        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Do transform via ONEDNN lib
         phi::funcs::TransDataLayoutFromOneDNN(in_layout,
                                               target_layout,
                                               in_tensor,
@@ -119,11 +118,11 @@ class TransferLayoutFunctor {
                                               dev_ctx_.GetPlace());
       }
     } else {
-      // Case3 - transfrom between Non-MKLDNN OPKernels
+      // Case3 - transfrom between Non-ONEDNN OPKernels
       TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
     }
 #else
-    // Case3 - transfrom between Non-MKLDNN OPKernels
+    // Case3 - transfrom between Non-ONEDNN OPKernels
     TransDataLayout(dev_ctx_, in_tensor, &out_tensor);
 #endif
     framework::SetTensorToVariable(*in_, out_tensor, out_);

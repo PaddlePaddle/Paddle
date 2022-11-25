@@ -380,8 +380,7 @@ void Tensor::CopyToCpuImpl(T *data,
     if (tensor->layout() == phi::DataLayout::ONEDNN)
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .get_cur_paddle_data_layout(),
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           *tensor,
           &out,
           paddle::platform::CPUPlace(),
@@ -661,12 +660,12 @@ std::vector<int> Tensor::shape() const {
       tensor_,
       paddle::platform::errors::PreconditionNotMet(
           "Not found tensor called %s in the scope", name_));
-// mkldnn may does layout transform internally, so need to reorder before
+// oneDNN may does layout transform internally, so need to reorder before
 // return
 #ifdef PADDLE_WITH_MKLDNN
   if (tensor->layout() == phi::DataLayout::ONEDNN) {
-    phi::DataLayout out_layout = paddle::platform::MKLDNNDeviceContext::tls()
-                                     .get_cur_paddle_data_layout();
+    phi::DataLayout out_layout =
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout();
     // Set default as NCHW in case not specified
     out_layout = out_layout == phi::DataLayout::kAnyLayout
                      ? phi::DataLayout::kNCHW
@@ -855,8 +854,7 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
     if (tensor->layout() == phi::DataLayout::ONEDNN)
       phi::funcs::TransDataLayoutFromOneDNN(
           tensor->layout(),
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .get_cur_paddle_data_layout(),
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
           *tensor,
           &out,
           paddle::platform::CPUPlace(),

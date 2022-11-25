@@ -57,7 +57,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
               "No layout transform needed between two oneDNN OPKernels."));
 
       if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
-        // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
+        // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
         // Just set layout/format. No real transform occur
 
         auto out_format = phi::funcs::OneDNNFormatForSize(
@@ -69,8 +69,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
           phi::funcs::MatchShapeToLayout(&out, lin, lout);
           // We register only NHWC assuming that model is consistent e.g. either
           // NHWC or NCHW
-          paddle::platform::MKLDNNDeviceContext::tls()
-              .set_cur_paddle_data_layout(lin);
+          phi::OneDNNContext::tls().set_cur_paddle_data_layout(lin);
         }
         dnnl::memory::desc out_mem_desc(
             vectorize(out.dims()),
@@ -78,8 +77,8 @@ void TransformData(const OpKernelType &expected_kernel_type,
             out_format);
         out.set_mem_desc(out_mem_desc);
       } else {
-        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
-        // Do transform via MKLDNN lib
+        // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
+        // Do transform via ONEDNN lib
         PADDLE_ENFORCE(
             kernel_type_for_var.data_layout_ == DataLayout::ONEDNN &&
                 expected_kernel_type.data_layout_ != DataLayout::ONEDNN,
@@ -89,18 +88,17 @@ void TransformData(const OpKernelType &expected_kernel_type,
 
         phi::funcs::TransDataLayoutFromOneDNN(
             kernel_type_for_var.data_layout_,
-            paddle::platform::MKLDNNDeviceContext::tls()
-                .get_cur_paddle_data_layout(),
+            phi::OneDNNContext::tls().get_cur_paddle_data_layout(),
             in,
             out,
             expected_kernel_type.place_);
       }
     } else {
-      // Case3 - transfrom between Non-MKLDNN OPKernels
+      // Case3 - transfrom between Non-ONEDNN OPKernels
       TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
     }
 #else
-    // Case3 - transfrom between Non-MKLDNN OPKernels
+    // Case3 - transfrom between Non-ONEDNN OPKernels
     TransDataLayout(kernel_type_for_var, expected_kernel_type, in, &out);
 #endif
     transformed = true;

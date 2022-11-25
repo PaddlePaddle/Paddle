@@ -873,8 +873,7 @@ void AnalysisPredictor::MkldnnPreSet(
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
     platform::MKLDNNDeviceContext::tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNDeviceContextThreadLocals::
-            kMKLDNNSessionID_CacheClearing);
+        phi::OneDNNContextThreadLocals::kMKLDNNSessionID_CacheClearing);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
     for (size_t i = 0; i < inputs_shape.size(); ++i) {

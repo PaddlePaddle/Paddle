@@ -29,10 +29,6 @@ class OpKernelType;
 }  // namespace framework
 }  // namespace paddle
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace framework {
 

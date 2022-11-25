@@ -313,7 +313,6 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDeviceContextThreadLocals = phi::OneDNNContextThreadLocals;
 using MKLDNNDeviceContext = phi::OneDNNContext;
 #endif
 
