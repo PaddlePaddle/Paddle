@@ -98,7 +98,8 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-  } else if (type == "add" || type == "multiply" || type == "subtract") {
+  } else if (type == "elementwise_add" || type == "elementwise_mul" ||
+             type == "elementwise_sub") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
@@ -178,8 +179,8 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
               scale);
     scale_names.push_back("Scale_in");
     scale_names.push_back("Scale_out");
-  } else if (type == "matmul" || type == "add" || type == "multiply" ||
-             type == "subtract") {
+  } else if (type == "matmul" || type == "elementwise_add" ||
+             type == "elementwise_mul" || type == "elementwise_sub") {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
@@ -729,9 +730,9 @@ void TestElementwiseUnsignedAndSignedInput(
 }
 
 const std::vector<std::vector<std::string>> elementwises = {
-    {"add", "ElementwiseAdd"},
-    {"multiply", "ElementwiseMul"},
-    {"subtract", "ElementwiseSub"}};
+    {"elementwise_add", "ElementwiseAdd"},
+    {"elementwise_mul", "ElementwiseMul"},
+    {"elementwise_sub", "ElementwiseSub"}};
 
 class TestElementwises
     : public testing::TestWithParam<std::vector<std::string>> {};
