@@ -885,9 +885,7 @@ def binary_cross_entropy_with_logits(
     if reduction == 'none' and pos_weight is None and weight is None:
         sigmoid_name = name
 
-    helper = LayerHelper(
-        "sigmoid_cross_entropy_with_logits", name=sigmoid_name, **locals()
-    )
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
 
     out = helper.create_variable_for_type_inference(dtype=logit.dtype)
 
