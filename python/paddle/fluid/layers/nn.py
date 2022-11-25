@@ -127,7 +127,6 @@ __all__ = [
     'shape',
     'size',
     'logical_and',
-    'logical_or',
     'clip',
     'clip_by_norm',
     'mean',
@@ -8572,48 +8571,6 @@ def logical_and(x, y, out=None, name=None):
 
     return _logical_op(
         op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True
-    )
-
-
-def logical_or(x, y, out=None, name=None):
-    """
-
-    ``logical_or`` operator computes element-wise logical OR on ``x`` and ``y``, and returns ``out``. ``out`` is N-dim boolean ``Tensor``.
-    Each element of ``out`` is calculated by
-
-    .. math::
-
-        out = x || y
-
-    .. note::
-        ``paddle.logical_or`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting`.
-
-    Args:
-        x (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be one of bool, int8, int16, in32, in64, float32, float64.
-        out(Tensor): The ``Variable`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor`` will be created to save the output.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Returns:
-        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x_data = np.array([True, False], dtype=np.bool_).reshape(2, 1)
-            y_data = np.array([True, False, True, False], dtype=np.bool_).reshape(2, 2)
-            x = paddle.to_tensor(x_data)
-            y = paddle.to_tensor(y_data)
-            res = paddle.logical_or(x, y)
-            print(res) # [[ True  True] [ True False]]
-    """
-    if in_dygraph_mode():
-        return _C_ops.logical_or(x, y)
-    return _logical_op(
-        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
     )
 
 
