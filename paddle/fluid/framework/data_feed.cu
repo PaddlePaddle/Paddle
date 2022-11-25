@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 
 DECLARE_bool(enable_opt_get_features);
+DECLARE_bool(graph_metapath_split_opt);
 DECLARE_int32(gpugraph_storage_mode);
 DECLARE_double(gpugraph_hbm_table_load_factor);
 
@@ -1745,7 +1746,13 @@ void GraphDataGenerator::DoWalkandSage() {
   debug_gpu_memory_info(device_id, "DoWalkandSage start");
   platform::CUDADeviceGuard guard(gpuid_);
   if (gpu_graph_training_) {
-    bool train_flag = FillWalkBuf();
+    bool train_flag;
+    if (FLAGS_graph_metapath_split_opt) {
+      train_flag = FillWalkBufMultiPath();
+    } else {
+      train_flag = FillWalkBuf();
+    }
+
     if (sage_mode_) {
       sage_batch_num_ = 0;
       if (train_flag) {
@@ -2168,6 +2175,232 @@ int GraphDataGenerator::FillWalkBuf() {
   return total_row_ != 0;
 }
 
+int GraphDataGenerator::FillWalkBufMultiPath() {
+  platform::CUDADeviceGuard guard(gpuid_);
+  size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
+  ////////
+  uint64_t *h_walk;
+  uint64_t *h_sample_keys;
+  int *h_offset2idx;
+  int *h_len_per_row;
+  uint64_t *h_prefix_sum;
+  if (debug_mode_) {
+    h_walk = new uint64_t[buf_size_];
+    h_sample_keys = new uint64_t[once_max_sample_keynum];
+    h_offset2idx = new int[once_max_sample_keynum];
+    h_len_per_row = new int[once_max_sample_keynum];
+    h_prefix_sum = new uint64_t[once_max_sample_keynum + 1];
+  }
+  ///////
+  auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+  uint64_t *walk = reinterpret_cast<uint64_t *>(d_walk_->ptr());
+  int *len_per_row = reinterpret_cast<int *>(d_len_per_row_->ptr());
+  uint64_t *d_sample_keys = reinterpret_cast<uint64_t *>(d_sample_keys_->ptr());
+  cudaMemsetAsync(walk, 0, buf_size_ * sizeof(uint64_t), sample_stream_);
+  int sample_times = 0;
+  int i = 0;
+  total_row_ = 0;
+
+  // 获取全局采样状态
+  auto &first_node_type = gpu_graph_ptr->first_node_type_;
+  auto &cur_metapath = gpu_graph_ptr->cur_metapath_;
+  auto &meta_path = gpu_graph_ptr->meta_path_;
+  auto &path = gpu_graph_ptr->cur_parse_metapath_;
+  auto &cur_metapath_start = gpu_graph_ptr->cur_metapath_start_[gpuid_];
+  auto &finish_node_type = gpu_graph_ptr->finish_node_type_[gpuid_];
+  auto &type_to_index = gpu_graph_ptr->get_graph_type_to_index();
+  size_t node_type_len = first_node_type.size();
+  std::string first_node = paddle::string::split_string<std::string>(cur_metapath, "2")[0];
+  auto it = gpu_graph_ptr->feature_to_id.find(first_node);
+  auto node_type = it->second;
+
+  int remain_size =
+      buf_size_ - walk_degree_ * once_sample_startid_len_ * walk_len_;
+  int total_samples = 0;
+
+  while (i <= remain_size) {
+    size_t start = cur_metapath_start;
+    size_t device_key_size = h_train_metapath_keys_len_;
+    VLOG(2) << "type: " << node_type << " size: " << device_key_size
+            << " start: " << start;
+    uint64_t *d_type_keys =
+         reinterpret_cast<uint64_t *>(d_train_metapath_keys_->ptr());
+    int tmp_len = start + once_sample_startid_len_ > device_key_size
+                       ? device_key_size - start
+                       : once_sample_startid_len_;
+    bool update = true;
+    if (tmp_len == 0) {
+      break;
+    }
+
+    VLOG(2) << "gpuid = " << gpuid_ << " path[0] = " << path[0];
+    uint64_t *cur_walk = walk + i;
+
+    NeighborSampleQuery q;
+    q.initialize(gpuid_,
+                 path[0],
+                 (uint64_t)(d_type_keys + start),
+                 walk_degree_,
+                 tmp_len);
+    auto sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+
+    int step = 1;
+    VLOG(2) << "sample edge type: " << path[0] << " step: " << 1;
+    jump_rows_ = sample_res.total_sample_size;
+    total_samples += sample_res.total_sample_size;
+    VLOG(2) << "i = " << i << " start = " << start << " tmp_len = " << tmp_len
+            << "jump row: " << jump_rows_;
+    if (jump_rows_ == 0) {
+      cur_metapath_start = tmp_len + start;
+      continue;
+    }
+    
+    if (!sage_mode_) {
+      if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+        if (InsertTable(d_type_keys + start, tmp_len, d_uniq_node_num_) != 0) {
+          VLOG(2) << "in step 0, insert key stage, table is full";
+          update = false;
+          break;
+        }
+        if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
+            0) {
+          VLOG(2) << "in step 0, insert sample res stage, table is full";
+          update = false;
+          break;
+        }
+      }
+    }
+
+    FillOneStep(d_type_keys + start,
+                cur_walk,
+                tmp_len,
+                sample_res,
+                walk_degree_,
+                step,
+                len_per_row);
+    /////////
+    if (debug_mode_) {
+      cudaMemcpy(
+          h_walk, walk, buf_size_ * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+      for (int xx = 0; xx < buf_size_; xx++) {
+        VLOG(2) << "h_walk[" << xx << "]: " << h_walk[xx];
+      }
+    }
+
+    VLOG(2) << "sample, step=" << step << " sample_keys=" << tmp_len
+        << " sample_res_len=" << sample_res.total_sample_size;
+
+    /////////
+    step++;
+    size_t path_len = path.size();
+    for (; step < walk_len_; step++) {
+      if (sample_res.total_sample_size == 0) {
+        VLOG(2) << "sample finish, step=" << step;
+        break;
+      }
+      auto sample_key_mem = sample_res.actual_val_mem;
+      uint64_t *sample_keys_ptr =
+           reinterpret_cast<uint64_t *>(sample_key_mem->ptr());
+      int edge_type_id = path[(step - 1) % path_len];
+      VLOG(2) << "sample edge type: " << edge_type_id << " step: " << step;
+      q.initialize(gpuid_,
+                   edge_type_id,
+                   (uint64_t)sample_keys_ptr,
+                   1,
+                   sample_res.total_sample_size);
+      int sample_key_len = sample_res.total_sample_size;
+      sample_res = gpu_graph_ptr->graph_neighbor_sample_v3(q, false, true);
+      total_samples += sample_res.total_sample_size;
+      if (!sage_mode_) {
+        if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+          if (InsertTable(sample_res.actual_val, sample_res.total_sample_size, d_uniq_node_num_) !=
+               0) {
+            VLOG(2) << "in step: " << step << ", table is full";
+            update = false;
+            break;
+          }
+        }
+      }
+      FillOneStep(d_type_keys + start,
+                  cur_walk,
+                  sample_key_len,
+                  sample_res,
+                  1,
+                  step,
+                  len_per_row);
+      if (debug_mode_) {
+        cudaMemcpy(
+             h_walk, walk, buf_size_ * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+        for (int xx = 0; xx < buf_size_; xx++) {
+          VLOG(2) << "h_walk[" << xx << "]: " << h_walk[xx];
+        }
+      }
+
+      VLOG(2) << "sample, step=" << step << " sample_keys=" << sample_key_len
+           << " sample_res_len=" << sample_res.total_sample_size;
+    }
+    // 此时更新全局采样状态
+    if (update == true) {
+      cur_metapath_start = tmp_len + start;
+      i += jump_rows_ * walk_len_;
+      total_row_ += jump_rows_;
+      sample_times++;
+    } else {
+      VLOG(2) << "table is full, not update stat!";
+      break;
+    }
+  }
+  buf_state_.Reset(total_row_);
+  int *d_random_row = reinterpret_cast<int *>(d_random_row_->ptr());
+
+  thrust::random::default_random_engine engine(shuffle_seed_);
+  const auto &exec_policy = thrust::cuda::par.on(sample_stream_);
+  thrust::counting_iterator<int> cnt_iter(0);
+  thrust::shuffle_copy(exec_policy,
+                       cnt_iter,
+                       cnt_iter + total_row_,
+                       thrust::device_pointer_cast(d_random_row),
+                       engine);
+
+  cudaStreamSynchronize(sample_stream_);
+  shuffle_seed_ = engine();
+
+  if (debug_mode_) {
+    int *h_random_row = new int[total_row_ + 10];
+    cudaMemcpy(h_random_row,
+               d_random_row,
+               total_row_ * sizeof(int),
+               cudaMemcpyDeviceToHost);
+    for (int xx = 0; xx < total_row_; xx++) {
+      VLOG(2) << "h_random_row[" << xx << "]: " << h_random_row[xx];
+    }
+    delete[] h_random_row;
+    delete[] h_walk;
+    delete[] h_sample_keys;
+    delete[] h_offset2idx;
+    delete[] h_len_per_row;
+    delete[] h_prefix_sum;
+  }
+  
+  if (!sage_mode_) {
+    uint64_t h_uniq_node_num = CopyUniqueNodes();
+    VLOG(0) << "sample_times:" << sample_times
+        << ", d_walk_size:" << buf_size_
+        << ", d_walk_offset:" << i
+        << ", total_rows:" << total_row_
+        << ", h_uniq_node_num:" << h_uniq_node_num
+        << ", total_samples:" << total_samples;
+  } else {
+    VLOG(0) << "sample_times:" << sample_times
+          << ", d_walk_size:" << buf_size_
+          << ", d_walk_offset:" << i
+          << ", total_rows:" << total_row_
+          << ", total_samples:" << total_samples;
+  }
+  
+  return total_row_ != 0;
+}
+
 void GraphDataGenerator::SetFeedVec(std::vector<LoDTensor *> feed_vec) {
   feed_vec_ = feed_vec;
 }
@@ -2218,14 +2451,20 @@ void GraphDataGenerator::AllocResource(int thread_id,
   //                              cudaMemcpyHostToDevice,
   //                              stream_));
   // }
-  auto &d_graph_all_type_keys = gpu_graph_ptr->d_graph_all_type_total_keys_;
-  auto &h_graph_all_type_keys_len = gpu_graph_ptr->h_graph_all_type_keys_len_;
+  if (gpu_graph_training_ && FLAGS_graph_metapath_split_opt) {
+    d_train_metapath_keys_ = gpu_graph_ptr->d_graph_train_total_keys_[thread_id];
+    h_train_metapath_keys_len_ = gpu_graph_ptr->h_graph_train_keys_len_[thread_id];
+    VLOG(2) << "h train metapaths key len: " << h_train_metapath_keys_len_;
+  } else {
+    auto &d_graph_all_type_keys = gpu_graph_ptr->d_graph_all_type_total_keys_;
+    auto &h_graph_all_type_keys_len = gpu_graph_ptr->h_graph_all_type_keys_len_;
 
-  for (size_t i = 0; i < d_graph_all_type_keys.size(); i++) {
-    d_device_keys_.push_back(d_graph_all_type_keys[i][thread_id]);
-    h_device_keys_len_.push_back(h_graph_all_type_keys_len[i][thread_id]);
+    for (size_t i = 0; i < d_graph_all_type_keys.size(); i++) {
+      d_device_keys_.push_back(d_graph_all_type_keys[i][thread_id]);
+      h_device_keys_len_.push_back(h_graph_all_type_keys_len[i][thread_id]);
+    }
+    VLOG(2) << "h_device_keys size: " << h_device_keys_len_.size();
   }
-  VLOG(2) << "h_device_keys size: " << h_device_keys_len_.size();
 
   size_t once_max_sample_keynum = walk_degree_ * once_sample_startid_len_;
   d_prefix_sum_ = memory::AllocShared(

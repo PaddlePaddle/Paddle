@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/ps/table/graph/graph_node.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/timer.h"
@@ -489,6 +490,7 @@ void GraphTable::export_partition_files(int idx, std::string file_path) {
 }
 void GraphTable::clear_graph(int idx) {
   for (auto p : edge_shards[idx]) {
+    p->clear();
     delete p;
   }
 
@@ -547,8 +549,12 @@ void GraphTable::clear_edge_shard() {
     }
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get(); 
-  for (auto &shards : edge_shards) shards.clear();
-  edge_shards.clear();
+  for (auto &shards : edge_shards) {
+    shards.clear();
+    for (size_t i = 0; i < shard_num_per_server; i++) {
+      shards.push_back(new GraphShard());
+    }
+  }
   VLOG(0) << "finish clear edge shard"; 
 }
 
@@ -565,8 +571,12 @@ void GraphTable::clear_feature_shard() {
     }
   }
   for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
-  for (auto &shards : feature_shards) shards.clear();
-  feature_shards.clear();
+  for (auto &shards : feature_shards) {
+    shards.clear();
+    for (size_t i = 0; i < shard_num_per_server; i++) {
+      shards.push_back(new GraphShard());
+    }
+  }
   VLOG(0) << "finish clear feature shard";
 }
 
@@ -1277,28 +1287,24 @@ int32_t GraphTable::parse_node_and_load(std::string ntype2files,
   if (res != 0) {
     VLOG(0) << "parse node type and nodedir failed!";
     return -1;
+  } 
+  std::string delim = ";";
+  std::string npath = node_to_nodedir[ntypes[0]];
+  auto npath_list = paddle::framework::localfs_list(npath);
+  std::string npath_str;
+  if (part_num > 0 && part_num < (int)npath_list.size()) {
+    std::vector<std::string> sub_npath_list(
+      npath_list.begin(), npath_list.begin() + part_num);
+    npath_str = paddle::string::join_strings(sub_npath_list, delim);
+  } else {
+    npath_str = paddle::string::join_strings(npath_list, delim);
   }
+
+
   if (ntypes.size() == 0) {
     VLOG(0) << "node_type not specified, nothing will be loaded ";
     return 0;
   }
-
-  std::string delim = ";";
-  std::vector<std::string> type_npath_strs;
-  for (size_t i = 0; i <ntypes.size(); i++) {
-    std::string npath = node_to_nodedir[ntypes[i]];
-    auto npath_list = paddle::framework::localfs_list(npath);
-    std::string type_npath_str;
-    if (part_num > 0 && part_num < (int)npath_list.size()) {
-      std::vector<std::string> sub_npath_list(
-        npath_list.begin(), npath_list.begin() + part_num);
-      type_npath_str = paddle::string::join_strings(sub_npath_list, delim);
-    } else {
-      type_npath_str = paddle::string::join_strings(npath_list, delim);
-    }
-    type_npath_strs.push_back(type_npath_str);
-  }
-  std::string npath_str = paddle::string::join_strings(type_npath_strs, delim);
   if (FLAGS_graph_load_in_parallel) {
     this->load_nodes(npath_str, "");
   } else {
@@ -1699,6 +1705,8 @@ int32_t GraphTable::load_edges(const std::string &path,
   }
   VLOG(0) << valid_count << "/" << count << " edge_type[" << edge_type
           << "] edges are loaded successfully";
+  std::string edge_size = edge_type + ":" + std::to_string(valid_count);
+  edge_type_size.push_back(edge_size);
 
 #ifdef PADDLE_WITH_HETERPS
   if (search_level == 2) {

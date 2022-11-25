@@ -14,10 +14,12 @@
 
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_wrapper.h"
 #include <sstream>
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 DECLARE_int32(gpugraph_storage_mode);
+DECLARE_bool(graph_metapath_split_opt);
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS
@@ -106,6 +108,7 @@ void GraphGpuWrapper::init_type_keys() {
   auto &type_to_index = get_graph_type_to_index();
   std::vector<std::vector<uint64_t>> tmp_keys;
   tmp_keys.resize(thread_num);
+  int first_node_idx;
   d_graph_all_type_total_keys_.resize(graph_all_type_total_keys.size());
   h_graph_all_type_keys_len_.resize(graph_all_type_total_keys.size());
   for (size_t f_idx = 0; f_idx < graph_all_type_total_keys.size(); f_idx++) {
@@ -141,6 +144,113 @@ void GraphGpuWrapper::init_type_keys() {
   for (int i = 0; i < thread_num; i++) {
     auto stream = get_local_stream(i);
     cudaStreamSynchronize(stream);
+  }
+}
+
+void GraphGpuWrapper::init_metapath(std::string cur_metapath,
+                                    int cur_metapath_index,
+                                    int cur_metapath_len) {
+  cur_metapath_ = cur_metapath;
+  cur_metapath_index_ = cur_metapath_index;
+  cur_metapath_len_ = cur_metapath_len;
+
+  auto nodes = paddle::string::split_string<std::string>(cur_metapath_, "-");
+  cur_parse_metapath_.clear();
+  cur_parse_reverse_metapath_.clear();
+  for (auto &node : nodes) {
+    VLOG(2) << "node: " << node << " , in metapath: " << cur_metapath_;
+    auto iter = edge_to_id.find(node);
+    PADDLE_ENFORCE_NE(iter,
+                      edge_to_id.end(),
+                      platform::errors::NotFound(
+                          "(%s) is not found in edge_to_id.", node));
+    cur_parse_metapath_.push_back(iter->second);
+    auto etype_split = paddle::string::split_string<std::string>(node, "2");
+    std::string reverse_type = etype_split[1] + "2" + etype_split[0];
+    iter = edge_to_id.find(reverse_type);
+    PADDLE_ENFORCE_NE(iter,
+                      edge_to_id.end(),
+                      platform::errors::NotFound(
+                             "(%s) is not found in edge_to_id.", reverse_type));
+    cur_parse_reverse_metapath_.push_back(iter->second);
+  }
+
+  size_t thread_num = device_id_mapping.size();
+  cur_metapath_start_.resize(thread_num);
+  for (size_t i = 0; i < thread_num; i++) {
+    cur_metapath_start_[i] = 0;
+  }
+
+  auto &graph_all_type_total_keys = get_graph_type_keys();
+  auto &type_to_index = get_graph_type_to_index();
+  std::vector<std::vector<uint64_t>> tmp_keys;
+  tmp_keys.resize(thread_num);
+  int first_node_idx;
+  std::string first_node = paddle::string::split_string<std::string>(cur_metapath_, "2")[0];
+  auto it = feature_to_id.find(first_node);
+  first_node_idx = it->second;
+  d_graph_train_total_keys_.resize(thread_num);
+  h_graph_train_keys_len_.resize(thread_num);
+
+  for (size_t j = 0; j < tmp_keys.size(); j++) {
+    tmp_keys[j].clear();
+  }
+  size_t f_idx = type_to_index[first_node_idx];
+  auto &type_total_key = graph_all_type_total_keys[f_idx];
+
+  VLOG(2) << "first node type:" << first_node_idx << ", node start size:" << type_total_key.size();
+
+  for (size_t j = 0; j < type_total_key.size(); j++) {
+    uint64_t shard = type_total_key[j] % thread_num;
+    tmp_keys[shard].push_back(type_total_key[j]);
+  }
+  auto fleet_ptr = framework::FleetWrapper::GetInstance();
+  std::shuffle(tmp_keys.begin(), tmp_keys.end(), fleet_ptr->LocalRandomEngine());
+
+  for (size_t j = 0; j < thread_num; j++) {
+    h_graph_train_keys_len_[j] = tmp_keys[j].size();
+    VLOG(2) << j << " th card, graph train keys len: " << tmp_keys[j].size();
+  }
+
+  for (size_t j = 0; j < thread_num; j++) {
+    auto stream = get_local_stream(j);
+    int gpuid = device_id_mapping[j];
+    auto place = platform::CUDAPlace(gpuid);
+    platform::CUDADeviceGuard guard(gpuid);
+    d_graph_train_total_keys_[j] =
+         memory::AllocShared(place, tmp_keys[j].size() * sizeof(uint64_t));
+    cudaMemcpyAsync(d_graph_train_total_keys_[j]->ptr(),
+                    tmp_keys[j].data(),
+                    sizeof(uint64_t) * tmp_keys[j].size(),
+                    cudaMemcpyHostToDevice,
+                    stream);
+  }
+}
+
+void GraphGpuWrapper::clear_metapath_state() {
+  size_t thread_num = device_id_mapping.size();
+  for (size_t j = 0; j < thread_num; j++) {
+    cur_metapath_start_[j] = 0;
+    h_graph_train_keys_len_[j] = 0;
+    d_graph_train_total_keys_[j].reset();
+    for (size_t k = 0; k < cur_parse_metapath_.size(); k++) {
+      ((GpuPsGraphTable *)graph_table)->clear_graph_info(j, cur_parse_metapath_[k]);
+    }
+  }
+  std::vector<int> clear_etype;
+  for (size_t j = 0; j < cur_parse_metapath_.size(); j++) {
+    if (find(clear_etype.begin(), clear_etype.end(), cur_parse_metapath_[j]) == clear_etype.end()) {
+      clear_etype.push_back(cur_parse_metapath_[j]);
+    }
+  }
+  for (size_t j = 0; j < cur_parse_reverse_metapath_.size(); j++) {
+    if (find(clear_etype.begin(), clear_etype.end(), cur_parse_reverse_metapath_[j]) == clear_etype.end()) {
+      clear_etype.push_back(cur_parse_reverse_metapath_[j]);
+    }
+  }
+  for (size_t j = 0; j < clear_etype.size(); j++) {
+    ((GpuPsGraphTable *)graph_table)
+         ->cpu_graph_table_->clear_graph(clear_etype[j]);
   }
 }
 
@@ -382,6 +492,9 @@ void GraphGpuWrapper::upload_batch(int type,
                                    int slice_num,
                                    const std::string &edge_type) {
   VLOG(0) << "begin upload edge, type[" << edge_type << "]";
+  auto iter = edge_to_id.find(edge_type);
+  idx = iter->second;
+  VLOG(2) << "cur edge: " << edge_type << ",idx: " << idx;
   std::vector<std::vector<uint64_t>> ids;
   ((GpuPsGraphTable *)graph_table)
       ->cpu_graph_table_->get_all_id(type, idx, slice_num, &ids);
@@ -622,6 +735,38 @@ std::vector<std::vector<uint64_t>> &GraphGpuWrapper::get_graph_type_keys() {
 
 std::unordered_map<int, int> &GraphGpuWrapper::get_graph_type_to_index() {
   return ((GpuPsGraphTable *)graph_table)->cpu_graph_table_->type_to_index_;
+}
+
+std::string &GraphGpuWrapper::get_node_type_size(std::string first_node_type) {
+  auto node_types =
+         paddle::string::split_string<std::string>(first_node_type, ";");
+  for (auto &type : node_types) {
+    uniq_first_node_.insert(type);
+  } 
+
+  auto &graph_all_type_total_keys = get_graph_type_keys();
+  auto &type_to_index = get_graph_type_to_index();
+  std::vector<std::string> node_type_size;
+  for (auto node: uniq_first_node_) {
+    auto it = feature_to_id.find(node);
+    auto first_node_idx = it->second;
+    size_t f_idx = type_to_index[first_node_idx];
+    int type_total_key_size = graph_all_type_total_keys[f_idx].size();
+    std::string node_type_str = node + ":" + std::to_string(type_total_key_size);
+    node_type_size.push_back(node_type_str);
+  }
+  std::string delim = ";";
+  node_type_size_str_ = paddle::string::join_strings(node_type_size, delim);
+
+  return node_type_size_str_;
+}
+
+std::string &GraphGpuWrapper::get_edge_type_size() {
+  auto edge_type_size = ((GpuPsGraphTable *)graph_table)->cpu_graph_table_->edge_type_size;
+  std::string delim = ";";
+  edge_type_size_str_ = paddle::string::join_strings(edge_type_size, delim);
+  std::cout << "edge_type_size_str: " << edge_type_size_str_ << std::endl;
+  return edge_type_size_str_;
 }
 
 #endif

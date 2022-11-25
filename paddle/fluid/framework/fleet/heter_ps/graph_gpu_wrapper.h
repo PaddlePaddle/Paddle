@@ -16,6 +16,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 #include "paddle/fluid/distributed/ps/table/common_graph_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_node.h"
@@ -140,6 +141,10 @@ class GraphGpuWrapper {
                                 uint32_t * size_list_prefix_sum,
                                 std::shared_ptr<phi::Allocation> & feature_list,
                                 std::shared_ptr<phi::Allocation> & slot_list);
+  void init_metapath(std::string cur_metapath,
+                     int cur_metapath_index,
+                     int cur_metapath_len);
+  void clear_metapath_state();
   void release_graph();
   void release_graph_edge();
   void release_graph_node();
@@ -147,6 +152,8 @@ class GraphGpuWrapper {
   std::vector<uint64_t>& get_graph_total_keys();
   std::vector<std::vector<uint64_t>>& get_graph_type_keys();
   std::unordered_map<int, int>& get_graph_type_to_index();
+  std::string& get_node_type_size(std::string first_node_type);
+  std::string& get_edge_type_size();
 
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
@@ -167,13 +174,26 @@ class GraphGpuWrapper {
 
   std::vector<std::set<int>> finish_node_type_;
   std::vector<std::unordered_map<int, size_t>> node_type_start_;
+  std::vector<size_t> cur_metapath_start_;
   std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
   std::vector<size_t> infer_cursor_;
   std::vector<size_t> cursor_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_graph_train_total_keys_;
+  std::vector<size_t> h_graph_train_keys_len_;
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
       d_graph_all_type_total_keys_;
   std::vector<std::vector<uint64_t>> h_graph_all_type_keys_len_;
   std::string slot_feature_separator_ = std::string(" ");
+
+  std::string cur_metapath_;
+  std::vector<int> cur_parse_metapath_;
+  std::vector<int> cur_parse_reverse_metapath_;
+  int cur_metapath_index_;
+  int cur_metapath_len_;
+  std::set<std::string> uniq_first_node_;
+  std::string node_type_size_str_;
+  std::string edge_type_size_str_;
+
 };
 #endif
 }  // namespace framework

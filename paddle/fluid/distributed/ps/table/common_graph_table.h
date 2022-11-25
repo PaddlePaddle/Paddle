@@ -756,6 +756,7 @@ class GraphTable : public Table {
   std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;
   std::string table_type;
+  std::vector<std::string> edge_type_size;
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<::ThreadPool>> _cpu_worker_pool;
