@@ -17,7 +17,8 @@ from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
-from .common import prior_box
+from .common import multi_box_head  # noqa: F401
+from .common import prior_box  # noqa: F401
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
@@ -30,7 +31,6 @@ from ...fluid.layers import data_norm  # noqa: F401
 from ...fluid.layers import group_norm  # noqa: F401
 from ...fluid.layers import instance_norm  # noqa: F401
 from ...fluid.layers import layer_norm  # noqa: F401
-from ...fluid.layers import multi_box_head  # noqa: F401
 from ...fluid.layers import nce  # noqa: F401
 from ...fluid.layers import prelu  # noqa: F401
 from ...fluid.layers import py_func  # noqa: F401
