@@ -582,6 +582,8 @@ function cmake_gen_and_build() {
     pip3.7 list
     echo "pwd:"
     pwd
+    echo "pwd ls:"
+    ls
     echo "ls 1:"
     ll ${PADDLE_ROOT}/build
     ll ${PADDLE_ROOT}/build/dist
