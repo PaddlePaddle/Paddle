@@ -3230,6 +3230,18 @@ void OperatorWithKernel::BuildPhiKernelContext(
   }
   VLOG(4) << "Done attributes";
 
+// Clear All old attrs before add new attrs,
+// because sometimes old attrs may be misused.
+#if defined(PADDLE_WITH_MKLDNN)
+  phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
+  one_dnn_ctx->ClearDnnAttr();
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+  phi::GPUContext* gpu_dnn_ctx = static_cast<phi::GPUContext*>(dev_ctx);
+  gpu_dnn_ctx->ClearDnnAttr();
+#endif
+
   // For compatible with Op with extra attrs for specific backend
 #if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
