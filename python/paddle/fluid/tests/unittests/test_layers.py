@@ -4289,47 +4289,6 @@ class TestBook(LayerTest):
             out = paddle.addmm(input=input, x=x, y=y)
             return out
 
-    def test_retinanet_detection_output(self):
-        with program_guard(
-            fluid.default_main_program(), fluid.default_startup_program()
-        ):
-            bboxes = layers.data(
-                name='bboxes',
-                shape=[1, 21, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            scores = layers.data(
-                name='scores',
-                shape=[1, 21, 10],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            anchors = layers.data(
-                name='anchors',
-                shape=[21, 4],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            im_info = layers.data(
-                name="im_info",
-                shape=[1, 3],
-                append_batch_size=False,
-                dtype='float32',
-            )
-            nmsed_outs = layers.retinanet_detection_output(
-                bboxes=[bboxes, bboxes],
-                scores=[scores, scores],
-                anchors=[anchors, anchors],
-                im_info=im_info,
-                score_threshold=0.05,
-                nms_top_k=1000,
-                keep_top_k=100,
-                nms_threshold=0.3,
-                nms_eta=1.0,
-            )
-            return nmsed_outs
-
     def test_warpctc_with_padding(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

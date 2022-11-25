@@ -2020,7 +2020,7 @@ def prior_box(
             paddle.enable_static()
             input = fluid.data(name="input", shape=[None,3,6,9])
             image = fluid.data(name="image", shape=[None,3,9,12])
-            box, var = fluid.layers.prior_box(
+            box, var = paddle.static.nn.prior_box(
                  input=input,
                  image=image,
                  min_sizes=[100.],
@@ -2051,7 +2051,7 @@ def prior_box(
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
                 image = dg.to_variable(image_data)
-                box, var = fluid.layers.prior_box(
+                box, var = paddle.static.nn.prior_box(
                     input=input,
                     image=image,
                     min_sizes=[100.],
