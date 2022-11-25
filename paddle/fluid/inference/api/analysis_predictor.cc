@@ -427,6 +427,10 @@ void AnalysisPredictor::InitDeviceContexts() {
               memory::allocation::AllocatorFacade::Instance()
                   .GetZeroAllocator(place_)
                   .get());
+          gpu_context->SetHostZeroAllocator(
+              memory::allocation::AllocatorFacade::Instance()
+                  .GetZeroAllocator(platform::CPUPlace())
+                  .get());
           gpu_context->SetGenerator(
               framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
@@ -1185,6 +1189,8 @@ void AnalysisPredictor::PrepareArgument() {
   argument_.SetIpuAvailableMemoryProportion(
       config_.ipu_available_memory_proportion_);
   argument_.SetIpuEnableHalfPartial(config_.ipu_enable_half_partial_);
+  argument_.SetIpuEnableModelRuntimeExecutor(
+      config_.ipu_enable_model_runtime_executor_);
   argument_.SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_.SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
@@ -2225,6 +2231,7 @@ USE_TRT_CONVERTER(elementwise_div_weight);
 USE_TRT_CONVERTER(elementwise_min_weight);
 USE_TRT_CONVERTER(elementwise_max_weight);
 USE_TRT_CONVERTER(elementwise_pow_weight);
+USE_TRT_CONVERTER(elementwise_floordiv_weight);
 USE_TRT_CONVERTER(elementwise_add_tensor);
 USE_TRT_CONVERTER(elementwise_sub_tensor);
 USE_TRT_CONVERTER(elementwise_div_tensor);
@@ -2232,6 +2239,7 @@ USE_TRT_CONVERTER(elementwise_mul_tensor);
 USE_TRT_CONVERTER(elementwise_max_tensor);
 USE_TRT_CONVERTER(elementwise_min_tensor);
 USE_TRT_CONVERTER(elementwise_pow_tensor);
+USE_TRT_CONVERTER(elementwise_floordiv_tensor);
 USE_TRT_CONVERTER(transpose);
 USE_TRT_CONVERTER(transpose2);
 USE_TRT_CONVERTER(flatten);
@@ -2255,10 +2263,12 @@ USE_TRT_CONVERTER(pad);
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
+USE_TRT_CONVERTER(fill_any_like);
 USE_TRT_CONVERTER(prelu);
 USE_TRT_CONVERTER(conv2d_transpose);
 USE_TRT_CONVERTER(leaky_relu);
 USE_TRT_CONVERTER(shuffle_channel);
+USE_TRT_CONVERTER(where);
 USE_TRT_CONVERTER(swish);
 USE_TRT_CONVERTER(silu);
 USE_TRT_CONVERTER(group_norm);

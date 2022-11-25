@@ -30,6 +30,7 @@ void Reduce(const DeviceContext& dev_ctx,
             bool keep_dim,
             DataType out_dtype,
             DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // If the dims has full dim, set the reduce_all is True
   const int& input_dim_size = x.dims().size();
   std::set<int> dims_set(dims.begin(), dims.end());
@@ -71,6 +72,7 @@ void BoolReduceKernel(const DeviceContext& dev_ctx,
                       bool keep_dim,
                       bool reduce_all,
                       phi::DenseTensor* output) {
+  reduce_all = recompute_reduce_all(input, dims, reduce_all);
   dev_ctx.template Alloc<OutT>(output);
 
   // The dims has full dim, set the reduce_all is True

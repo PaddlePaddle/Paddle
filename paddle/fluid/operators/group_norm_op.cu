@@ -21,8 +21,8 @@ namespace cub = hipcub;
 #endif
 
 #include "paddle/fluid/operators/group_norm_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -51,7 +51,7 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
-  if (cub::LaneId() == 0) platform::CudaAtomicAdd(sum, value);
+  if (cub::LaneId() == 0) phi::CudaAtomicAdd(sum, value);
 }
 
 template <typename T>
@@ -324,7 +324,7 @@ class GroupNormKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
     dim3 grid(group_size, groups, x_dims[0]);
     dim3 threads(block_size, 1, 1);
     if (data_layout == DataLayout::kNCHW) {
-      using AccT = typename details::MPTypeTrait<T>::Type;
+      using AccT = typename phi::dtype::MPTypeTrait<T>::Type;
       constexpr int vec_size = sizeof(float4) / sizeof(T);
       int size = group_size * imsize;
       const int max_num_threads = 1024;
@@ -429,14 +429,14 @@ __global__ void GroupNormBackwardGetMeanAndVar(const T* x,
 
   if (flags & kHasScale) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
+    phi::CudaAtomicAdd(&(d_scale[ccid]), d_scale_data);
 #else
     CudaAtomicAddWithWarp(&(d_scale[ccid]), d_scale_data);
 #endif
   }
   if (flags & kHasBias) {
 #if CUDA_VERSION >= 11070
-    platform::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
+    phi::CudaAtomicAdd(&(d_bias[ccid]), d_bias_data);
 #else
     CudaAtomicAddWithWarp(&(d_bias[ccid]), d_bias_data);
 #endif
