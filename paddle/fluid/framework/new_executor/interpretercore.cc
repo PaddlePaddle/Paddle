@@ -742,7 +742,8 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       platform::RecordOpInfoSupplement(op->Type(),
                                        op->Attrs(),
                                        *(instr_node.InnerInferShapeContext()),
-                                       *(instr_node.InnerRuntimeContext()));
+                                       *(instr_node.InnerRuntimeContext()),
+                                       op->Id());
     }
   }
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
