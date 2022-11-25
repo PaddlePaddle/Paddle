@@ -443,10 +443,10 @@ class TestGenerateProposals(LayerTest):
             variances = fluid.data(
                 name='var', shape=[4, 4, 3, 4], dtype='float32'
             )
-            rois, roi_probs, rois_num = fluid.layers.generate_proposals(
+            rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
                 scores,
                 bbox_deltas,
-                im_info,
+                im_info[:2],
                 anchors,
                 variances,
                 pre_nms_top_n=10,
@@ -475,10 +475,10 @@ class TestGenerateProposals(LayerTest):
             im_info_dy = base.to_variable(im_info_np)
             anchors_dy = base.to_variable(anchors_np)
             variances_dy = base.to_variable(variances_np)
-            rois, roi_probs, rois_num = fluid.layers.generate_proposals(
+            rois, roi_probs, rois_num = paddle.vision.ops.generate_proposals(
                 scores_dy,
                 bbox_deltas_dy,
-                im_info_dy,
+                im_info_dy[:2],
                 anchors_dy,
                 variances_dy,
                 pre_nms_top_n=10,

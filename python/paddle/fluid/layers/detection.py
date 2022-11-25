@@ -48,7 +48,6 @@ __all__ = [
     'rpn_target_assign',
     'retinanet_target_assign',
     'sigmoid_focal_loss',
-    'generate_proposals',
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
@@ -2291,113 +2290,6 @@ def multi_box_head(
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
-
-
-def generate_proposals(
-    scores,
-    bbox_deltas,
-    im_info,
-    anchors,
-    variances,
-    pre_nms_top_n=6000,
-    post_nms_top_n=1000,
-    nms_thresh=0.5,
-    min_size=0.1,
-    eta=1.0,
-    return_rois_num=False,
-    name=None,
-):
-    """
-
-    **Generate proposal Faster-RCNN**
-
-    This operation proposes RoIs according to each box with their
-    probability to be a foreground object and
-    the box can be calculated by anchors. Bbox_deltais and scores
-    to be an object are the output of RPN. Final proposals
-    could be used to train detection net.
-
-    For generating proposals, this operation performs following steps:
-
-    1. Transposes and resizes scores and bbox_deltas in size of
-       (H*W*A, 1) and (H*W*A, 4)
-    2. Calculate box locations as proposals candidates.
-    3. Clip boxes to image
-    4. Remove predicted boxes with small area.
-    5. Apply NMS to get final proposals as output.
-
-    Args:
-        scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents
-            the probability for each box to be an object.
-            N is batch size, A is number of anchors, H and W are height and
-            width of the feature map. The data type must be float32.
-        bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W]
-            represents the difference between predicted box location and
-            anchor location. The data type must be float32.
-        im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin
-            image information for N batch. Height and width are the input sizes
-            and scale is the ratio of network input size and original size.
-            The data type can be float32 or float64.
-        anchors(Variable):   A 4-D Tensor represents the anchors with a layout
-            of [H, W, A, 4]. H and W are height and width of the feature map,
-            num_anchors is the box count of each position. Each anchor is
-            in (xmin, ymin, xmax, ymax) format an unnormalized. The data type must be float32.
-        variances(Variable): A 4-D Tensor. The expanded variances of anchors with a layout of
-            [H, W, num_priors, 4]. Each variance is in
-            (xcenter, ycenter, w, h) format. The data type must be float32.
-        pre_nms_top_n(float): Number of total bboxes to be kept per
-            image before NMS. The data type must be float32. `6000` by default.
-        post_nms_top_n(float): Number of total bboxes to be kept per
-            image after NMS. The data type must be float32. `1000` by default.
-        nms_thresh(float): Threshold in NMS. The data type must be float32. `0.5` by default.
-        min_size(float): Remove predicted boxes with either height or
-            width < min_size. The data type must be float32. `0.1` by default.
-        eta(float): Apply in adaptive NMS, if adaptive `threshold > 0.5`,
-            `adaptive_threshold = adaptive_threshold * eta` in each iteration.
-        return_rois_num(bool): When setting True, it will return a 1D Tensor with shape [N, ] that includes Rois's
-            num of each image in one batch. The N is the image's num. For example, the tensor has values [4,5] that represents
-            the first image has 4 Rois, the second image has 5 Rois. It only used in rcnn model.
-            'False' by default.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
-
-    Returns:
-        tuple:
-        A tuple with format ``(rpn_rois, rpn_roi_probs)``.
-
-        - **rpn_rois**: The generated RoIs. 2-D Tensor with shape ``[N, 4]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
-        - **rpn_roi_probs**: The scores of generated RoIs. 2-D Tensor with shape ``[N, 1]`` while ``N`` is the number of RoIs. The data type is the same as ``scores``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle
-            paddle.enable_static()
-            scores = fluid.data(name='scores', shape=[None, 4, 5, 5], dtype='float32')
-            bbox_deltas = fluid.data(name='bbox_deltas', shape=[None, 16, 5, 5], dtype='float32')
-            im_info = fluid.data(name='im_info', shape=[None, 3], dtype='float32')
-            anchors = fluid.data(name='anchors', shape=[None, 5, 4, 4], dtype='float32')
-            variances = fluid.data(name='variances', shape=[None, 5, 10, 4], dtype='float32')
-            rois, roi_probs = fluid.layers.generate_proposals(scores, bbox_deltas,
-                         im_info, anchors, variances)
-
-    """
-    return paddle.vision.ops.generate_proposals(
-        scores=scores,
-        bbox_deltas=bbox_deltas,
-        img_size=im_info[:2],
-        anchors=anchors,
-        variances=variances,
-        pre_nms_top_n=pre_nms_top_n,
-        post_nms_top_n=post_nms_top_n,
-        nms_thresh=nms_thresh,
-        min_size=min_size,
-        eta=eta,
-        return_rois_num=return_rois_num,
-        name=name,
-    )
 
 
 def box_clip(input, im_info, name=None):
