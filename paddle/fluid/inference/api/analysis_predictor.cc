@@ -1242,6 +1242,8 @@ void AnalysisPredictor::PrepareArgument() {
         pass_builder->AppendPass(pass);
       }
     }
+  }
+  if (config_.ir_debug_) {
     pass_builder->TurnOnDebug();
   }
   if (!config_.ir_optim()) {

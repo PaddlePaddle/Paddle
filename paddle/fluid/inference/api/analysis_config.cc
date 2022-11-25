@@ -976,9 +976,6 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
-  if (ir_debug_) {
-    pass_builder()->TurnOnDebug();
-  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
