@@ -1670,6 +1670,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         .. code-block:: python
 
             import paddle
+            paddle.enable_static()
             x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
             mode = 'channel'
             output = paddle.static.nn.prelu(
