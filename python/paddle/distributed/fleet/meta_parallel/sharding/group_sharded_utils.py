@@ -172,6 +172,8 @@ def device_guard(dev_id=0, device="cpu"):
         paddle.set_device(device)
     elif device == "gpu":
         paddle.set_device("gpu:{}".format(dev_id))
+    elif device == "xpu":
+        paddle.set_device("xpu:{}".format(dev_id))
     try:
         yield
     finally:
