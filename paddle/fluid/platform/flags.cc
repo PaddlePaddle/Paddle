@@ -987,10 +987,9 @@ PADDLE_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size,
     128,
     "segment size with segment gradient merge, default 128");
-PADDLE_DEFINE_EXPORTED_uint64(
-    gpugraph_slot_feasign_max_num,
-    5,
-    "max feasign number in one slot, default 5");
+PADDLE_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
+                              5,
+                              "max feasign number in one slot, default 5");
 PADDLE_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,

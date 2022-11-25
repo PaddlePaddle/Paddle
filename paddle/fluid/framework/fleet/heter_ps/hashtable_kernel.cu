@@ -112,12 +112,13 @@ __global__ void search_kernel(Table* table,
 }
 
 template <typename Table, typename GPUAccessor>
-__global__ void dy_mf_search_kernel_fill(Table* table,
-                                    const typename Table::key_type* const keys,
-                                    char* vals,
-                                    size_t len,
-                                    size_t pull_feature_value_size,
-                                    GPUAccessor gpu_accessor) {
+__global__ void dy_mf_search_kernel_fill(
+    Table* table,
+    const typename Table::key_type* const keys,
+    char* vals,
+    size_t len,
+    size_t pull_feature_value_size,
+    GPUAccessor gpu_accessor) {
   const size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < len) {
     auto it = table->find(keys[i]);
@@ -344,7 +345,6 @@ void HashTable<KeyType, ValType>::get_keys(KeyType* d_out,
       container_, d_out, global_cursor, unuse_key);
 }
 
-
 template <typename KeyType, typename ValType>
 template <typename StreamType>
 void HashTable<KeyType, ValType>::insert(const KeyType* d_keys,
@@ -557,9 +557,7 @@ template void HashTable<long, unsigned int>::insert<cudaStream_t>(
     cudaStream_t stream);
 
 template void HashTable<unsigned long, unsigned long>::get_keys<cudaStream_t>(
-                unsigned long* d_out,
-                unsigned long* global_cursor,
-                cudaStream_t stream);
+    unsigned long* d_out, unsigned long* global_cursor, cudaStream_t stream);
 
 template void HashTable<unsigned long, unsigned long>::insert<cudaStream_t>(
     const unsigned long* d_keys,
