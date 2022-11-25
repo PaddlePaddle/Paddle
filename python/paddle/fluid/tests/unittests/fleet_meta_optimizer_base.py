@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import inspect
-import unittest
-import paddle
-from paddle import fluid
 import os
+import unittest
+
+import paddle
 import paddle.distributed.fleet as fleet
 import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle import fluid
 
 
 class TestFleetMetaOptimizer(unittest.TestCase):

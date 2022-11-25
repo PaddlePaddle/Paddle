@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import random
+import unittest
+
 import numpy as np
 
 import paddle
-from paddle.fluid import core
 import paddle.fluid.core as core
 from paddle.fluid.framework import _test_eager_guard
 from paddle.distributed.parallel_env import ParallelEnv
