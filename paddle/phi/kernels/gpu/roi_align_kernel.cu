@@ -130,7 +130,7 @@ __global__ void GPURoiAlignForward(const int nthreads,
       }
     }
     output_val /= count;
-    output_data[i] = static_cast<T>(output_val);
+    output_data[i] = output_val;
   }
 }
 
