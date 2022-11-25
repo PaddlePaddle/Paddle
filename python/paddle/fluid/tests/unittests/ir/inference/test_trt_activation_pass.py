@@ -15,14 +15,14 @@
 import os
 import shutil
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-import paddle
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassActivationTest(InferencePassTest):
@@ -67,7 +67,7 @@ class TensorRTSubgraphPassActivationTest(InferencePassTest):
 
 class TensorRTSubgraphPassLeakyReluTest(TensorRTSubgraphPassActivationTest):
     def append_act(self, x):
-        return fluid.layers.leaky_relu(x)
+        return paddle.nn.functional.leaky_relu(x)
 
 
 class TensorRTSubgraphPassRelu6Test(TensorRTSubgraphPassActivationTest):

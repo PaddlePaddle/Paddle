@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import time
-import os
 import functools
+import glob
+import os
+import random
+import tarfile
 import time
 from functools import partial
 from os.path import expanduser
-import glob
-import random
-import tarfile
+
+import numpy as np
+from test_dist_base import RUN_STEP, TestDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from test_dist_base import TestDistRunnerBase, runtime_main, RUN_STEP
-import paddle
+import paddle.nn.functional as F
 
 const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
 const_bias_attr = const_para_attr
@@ -1580,7 +1580,7 @@ def transformer(
     # cancel padding index in calculating the loss.
     label, weights = make_all_inputs(label_data_input_fields)
     if label_smooth_eps:
-        label = layers.label_smooth(
+        label = F.label_smooth(
             label=layers.one_hot(input=label, depth=trg_vocab_size),
             epsilon=label_smooth_eps,
         )

@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
-import math
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 
 batch_size = 64
 momentum_rate = 0.9

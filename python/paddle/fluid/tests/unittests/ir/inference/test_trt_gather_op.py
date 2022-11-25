@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
+
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
-import paddle
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTGatherTest1(InferencePassTest):
