@@ -15,10 +15,11 @@
 import os
 import unittest
 
+import numpy as np
+from test_rpc_base import RpcLaunchTestBase, RpcTestBase
+
 import paddle
 import paddle.distributed as dist
-import numpy as np
-from test_rpc_base import RpcTestBase, RpcLaunchTestBase
 
 paddle.device.set_device("cpu")
 

@@ -14,6 +14,7 @@
 
 import paddle
 import paddle.fluid as fluid
+from paddle.tensor import random
 import numpy as np
 import unittest
 from paddle import _legacy_C_ops
@@ -400,7 +401,7 @@ def calc_gradients(outputs, inputs, no_grad_set):
 def gradient_penalty(f, real, fake, no_grad_set, cfg):
     def _interpolate(a, b):
         shape = [a.shape[0]]
-        alpha = fluid.layers.uniform_random_batch_size_like(
+        alpha = random.uniform_random_batch_size_like(
             input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
         )
 

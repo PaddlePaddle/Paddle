@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
+import paddle.fluid as fluid
 
 fluid.disable_dygraph()
 

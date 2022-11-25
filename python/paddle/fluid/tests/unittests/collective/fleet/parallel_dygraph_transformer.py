@@ -13,20 +13,19 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
+import paddle.nn.functional as F
 from paddle.fluid.dygraph import (
     Embedding,
+    Layer,
     LayerNorm,
     Linear,
     to_variable,
-    Layer,
 )
 from paddle.optimizer.lr import NoamDecay
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
-import paddle.nn.functional as F
 
 """
 Note(chenweihang): To compare loss of single-card and multi-card
