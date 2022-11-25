@@ -67,7 +67,6 @@ __all__ = [
     'crf_decoding',
     'cos_sim',
     'conv2d',
-    'conv3d',
     'pool2d',
     'pool3d',
     'batch_norm',
