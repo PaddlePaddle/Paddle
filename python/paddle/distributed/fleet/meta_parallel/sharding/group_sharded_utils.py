@@ -130,7 +130,7 @@ class GroupShardedClipGrad:
         if paddle.device.get_device() == "cpu":
             global_norm_var = global_norm_var.cuda(dev_id)
 
-        with device_guard(dev_id, "gpu"):
+        with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
 
         global_norm_var = paddle.sqrt(global_norm_var)

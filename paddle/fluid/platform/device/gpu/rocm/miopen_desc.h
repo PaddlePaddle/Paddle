@@ -25,6 +25,7 @@
 
 #include "paddle/fluid/platform/device/gpu/rocm/miopen_helper.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
 class DenseTensor;
@@ -36,7 +37,7 @@ namespace platform {
 template <typename T>
 inline miopenDataType_t ToCudnnDataType(const T& t) {
   auto type = framework::ToDataType(t);
-  return ToCudnnDataType(type);
+  return ToCudnnDataType(phi::TransToPhiDataType(type));
 }
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
@@ -63,14 +64,13 @@ inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
 }
 
 template <>
-inline miopenDataType_t ToCudnnDataType(
-    const framework::proto::VarType::Type& t) {
+inline miopenDataType_t ToCudnnDataType(const phi::DataType& t) {
   miopenDataType_t type = miopenFloat;
   switch (t) {
-    case framework::proto::VarType::FP16:
+    case phi::DataType::FLOAT16:
       type = miopenHalf;
       break;
-    case framework::proto::VarType::FP32:
+    case phi::DataType::FLOAT32:
       type = miopenFloat;
       break;
     default:
@@ -142,7 +142,7 @@ class TensorDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -166,7 +166,7 @@ class TensorDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
@@ -214,7 +214,7 @@ class FilterDescriptor {
     }
     PADDLE_ENFORCE_GPU_SUCCESS(dynload::miopenSetTensorDescriptor(
         (miopenTensorDescriptor_t)(desc_.get()),
-        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        ToCudnnDataType(tensor.dtype()),
         static_cast<int>(dims_with_group.size()),
         const_cast<int*>(dims_with_group.data()),
         const_cast<int*>(strides.data())));
