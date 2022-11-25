@@ -2281,7 +2281,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             out = paddle.static.nn.conv3d_transpose(
-                input=img, num_filters=12, filter_size=12, use_cudnn=False
+                input=img, num_filters=12, filter_size=12, use_cudnn=True
             )
             static_rlt = self.get_static_graph_result(
                 feed={'pixel': input_array}, fetch_list=[out]
