@@ -310,7 +310,7 @@ class NetWithExternalFunc(fluid.dygraph.Layer):
 
 # Test to call function behind caller.
 def softmax(x):
-    return fluid.layers.softmax(x)
+    return paddle.nn.functional.softmax(x)
 
 
 class TestNetWithExternalFunc(TestDygraphIfElseNet):

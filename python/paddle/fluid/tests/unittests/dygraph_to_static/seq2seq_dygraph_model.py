@@ -433,7 +433,7 @@ class BaseModel(fluid.dygraph.Layer):
             cell_outputs = self.fc(cell_outputs)
 
             step_log_probs = fluid.layers.log(
-                fluid.layers.softmax(cell_outputs)
+                paddle.nn.functional.softmax(cell_outputs)
             )
             noend_array = [-self.kinf] * self.tar_vocab_size
             noend_array[self.beam_end_token] = 0
@@ -694,7 +694,7 @@ class AttentionModel(fluid.dygraph.Layer):
             attn = paddle.transpose(attn, [1, 0, 2])
             attn = fluid.layers.elementwise_add(attn, mask * 1000000000, -1)
             attn = paddle.transpose(attn, [1, 0, 2])
-        weight = fluid.layers.softmax(attn)
+        weight = paddle.nn.functional.softmax(attn)
         weight_memory = fluid.layers.matmul(weight, memory)
 
         return weight_memory

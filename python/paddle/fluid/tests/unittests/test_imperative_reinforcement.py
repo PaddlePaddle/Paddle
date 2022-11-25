@@ -41,7 +41,7 @@ class Policy(fluid.dygraph.Layer):
         x = fluid.layers.dropout(x, self.dropout_ratio)
         x = fluid.layers.relu(x)
         action_scores = self.affine2(x)
-        return fluid.layers.softmax(action_scores, axis=1)
+        return paddle.nn.functional.softmax(action_scores, axis=1)
 
 
 class TestImperativeMnist(unittest.TestCase):
