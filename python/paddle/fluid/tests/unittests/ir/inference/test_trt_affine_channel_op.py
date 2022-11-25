@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import itertools
+import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTAffineChannelTest(InferencePassTest):
@@ -62,7 +63,7 @@ class TRTAffineChannelTest(InferencePassTest):
             affine_channel_out = fluid.layers.affine_channel(
                 data, scale=scale, bias=bias, data_layout=self.data_layout
             )
-            out = paddle.static.nn.batch_norm(affine_channel_out, is_test=True)
+            out = nn.batch_norm(affine_channel_out, is_test=True)
 
         shape[0] = self.bs
         self.feeds = {

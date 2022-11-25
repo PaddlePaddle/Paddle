@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTReduceSumTest(InferencePassTest):
@@ -31,7 +32,7 @@ class TRTReduceSumTest(InferencePassTest):
             reduce_sum = fluid.layers.reduce_sum(
                 data, dim=[2, -1], keep_dim=True
             )
-            out = paddle.static.nn.batch_norm(reduce_sum, is_test=True)
+            out = nn.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 10, 192]).astype("float32"),
@@ -64,7 +65,7 @@ class TRTReduceSumAllTest(InferencePassTest):
                 name="data", shape=[-1, 3, 10, 192], dtype="float32"
             )
             reduce_sum = fluid.layers.reduce_sum(data, keep_dim=True)
-            out = paddle.static.nn.batch_norm(reduce_sum, is_test=True)
+            out = nn.batch_norm(reduce_sum, is_test=True)
 
         self.feeds = {
             "data": np.random.random([3, 3, 10, 192]).astype("float32"),

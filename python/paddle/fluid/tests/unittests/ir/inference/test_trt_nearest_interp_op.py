@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTNearestInterpTest(InferencePassTest):
@@ -43,7 +44,7 @@ class TRTNearestInterpTest(InferencePassTest):
                 ]
             data = fluid.data(name='data', shape=shape, dtype='float32')
             resize_out = self.append_nearest_interp(data)
-            out = paddle.static.nn.batch_norm(resize_out, is_test=True)
+            out = nn.batch_norm(resize_out, is_test=True)
 
         if self.data_layout == 'NCHW':
             shape = [

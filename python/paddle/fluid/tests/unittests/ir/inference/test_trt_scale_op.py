@@ -13,13 +13,14 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTScaleTest(InferencePassTest):
@@ -27,7 +28,7 @@ class TRTScaleTest(InferencePassTest):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 512], dtype="float32")
             scale_out = self.append_scale(data)
-            out = paddle.static.nn.batch_norm(scale_out, is_test=True)
+            out = nn.batch_norm(scale_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 512]).astype("float32"),
@@ -59,7 +60,7 @@ class TRTScaleShape2Test(InferencePassTest):
                 name="data", shape=[-1, 512, 512], dtype="float32"
             )
             scale_out = self.append_scale(data)
-            out = paddle.static.nn.batch_norm(scale_out, is_test=True)
+            out = nn.batch_norm(scale_out, is_test=True)
 
         self.feeds = {
             "data": np.random.random([1, 512, 512]).astype("float32"),

@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import os
 import shutil
 import unittest
-import itertools
+
 import numpy as np
 from inference_pass_test import InferencePassTest
-import paddle
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.static.nn as nn
+from paddle.fluid.core import AnalysisConfig, PassVersionChecker
 
 
 class TRTInstanceNormTest(InferencePassTest):
@@ -44,7 +45,7 @@ class TRTInstanceNormTest(InferencePassTest):
             shape = [-1, self.channel, self.height, self.width]
             data = fluid.data(name='in', shape=shape, dtype='float32')
             instance_norm_out = fluid.layers.instance_norm(data)
-            out = paddle.static.nn.batch_norm(instance_norm_out, is_test=True)
+            out = nn.batch_norm(instance_norm_out, is_test=True)
 
         shape[0] = self.bs
         self.feeds = {

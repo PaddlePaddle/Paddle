@@ -14,9 +14,10 @@
 
 import math
 
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 import paddle
 import paddle.fluid as fluid
-from test_dist_base import TestDistRunnerBase, runtime_main
 
 paddle.enable_static()
 
@@ -247,13 +248,15 @@ class DistSeResneXt2x2(TestDistRunnerBase):
                 regularization=fluid.regularizer.L2Decay(1e-4),
             )
         else:
-            optimizer = fluid.optimizer.DGCMomentumOptimizer(
-                learning_rate=fluid.layers.piecewise_decay(
-                    boundaries=bd, values=lr
-                ),
-                momentum=0.9,
-                rampup_begin_step=0,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+            optimizer = (
+                paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
+                    learning_rate=fluid.layers.piecewise_decay(
+                        boundaries=bd, values=lr
+                    ),
+                    momentum=0.9,
+                    rampup_begin_step=0,
+                    regularization=fluid.regularizer.L2Decay(1e-4),
+                )
             )
         optimizer.minimize(avg_cost)
 

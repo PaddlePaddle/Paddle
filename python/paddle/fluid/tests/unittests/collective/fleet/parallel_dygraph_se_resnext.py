@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear, Pool2D
 from paddle.fluid.dygraph.base import to_variable
-import math
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 
 batch_size = 64
 momentum_rate = 0.9
@@ -135,7 +136,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
     def forward(self, input):
         y = self._pool(input)
-        y = fluid.layers.reshape(y, shape=[-1, self._num_channels])
+        y = paddle.reshape(y, shape=[-1, self._num_channels])
         y = self._squeeze(y)
         y = self._excitation(y)
         y = fluid.layers.elementwise_mul(x=input, y=y, axis=0)
@@ -326,7 +327,7 @@ class SeResNeXt(fluid.dygraph.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
         return y
 

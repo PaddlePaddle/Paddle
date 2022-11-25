@@ -16,11 +16,13 @@ import paddle.fluid as fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
+import os
+
+from seresnext_test_base import DeviceType
+from simple_nets import init_data
+
 import paddle
 from paddle.fluid.layers.learning_rate_scheduler import cosine_decay
-from simple_nets import init_data
-from seresnext_test_base import DeviceType
-import os
 
 os.environ['CPU_NUM'] = str(4)
 os.environ['FLAGS_cudnn_deterministic'] = str(1)
@@ -48,9 +50,7 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     #    input=input, pool_size=0, pool_type='avg', global_pooling=True)
     conv = input
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
     squeeze = fluid.layers.fc(
@@ -161,9 +161,7 @@ def SE_ResNeXt50Small(use_feed):
             )
 
     shape = conv.shape
-    reshape = fluid.layers.reshape(
-        x=conv, shape=[-1, shape[1], shape[2] * shape[3]]
-    )
+    reshape = paddle.reshape(x=conv, shape=[-1, shape[1], shape[2] * shape[3]])
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
     dropout = (
         pool

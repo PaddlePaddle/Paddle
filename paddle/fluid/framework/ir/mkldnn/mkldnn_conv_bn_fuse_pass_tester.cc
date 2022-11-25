@@ -34,7 +34,7 @@ PD_DECLARE_KERNEL(gelu, CPU, ALL_LAYOUT);
 USE_OP_ITSELF(batch_norm);
 PD_DECLARE_KERNEL(batch_norm, OneDNN, ONEDNN);
 USE_OP_ITSELF(conv2d_transpose);
-USE_OP_DEVICE_KERNEL(conv2d_transpose, MKLDNN);
+PD_DECLARE_KERNEL(conv2d_transpose, OneDNN, ONEDNN);
 USE_OP_ITSELF(elementwise_add);
 USE_OP_DEVICE_KERNEL(elementwise_add, MKLDNN);
 USE_OP_ITSELF(gelu);

@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import unittest
-import paddle
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
 
 paddle.enable_static()
 
