@@ -18,8 +18,9 @@ import contextlib
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _non_static_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.static import Variable
+from paddle.framework import in_dynamic_mode
+from paddle.framework import LayerHelper
 
 __all__ = []
 
@@ -209,7 +210,7 @@ def dropout(
     )  # semantic transfer
 
     # dygraph using tracker, doesn't need determinate seed
-    if _non_static_mode():
+    if in_dynamic_mode():
         out, mask = _legacy_C_ops.dropout(
             x,
             'dropout_prob',

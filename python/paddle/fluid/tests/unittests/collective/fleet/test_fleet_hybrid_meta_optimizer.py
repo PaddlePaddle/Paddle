@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
-import paddle
-import paddle.static as static
 import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+
+import paddle
+import paddle.static as static
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
