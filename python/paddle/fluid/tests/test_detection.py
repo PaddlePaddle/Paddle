@@ -563,50 +563,6 @@ class TestYoloDetection(unittest.TestCase):
             self.assertIsNotNone(scores)
 
 
-class TestMulticlassNMS(unittest.TestCase):
-    def test_multiclass_nms(self):
-        program = Program()
-        with program_guard(program):
-            bboxes = layers.data(
-                name='bboxes', shape=[-1, 10, 4], dtype='float32'
-            )
-            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
-            output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
-            self.assertIsNotNone(output)
-
-    def test_multiclass_nms_error(self):
-        program = Program()
-        with program_guard(program):
-            bboxes1 = fluid.data(
-                name='bboxes1', shape=[10, 10, 4], dtype='int32'
-            )
-            scores1 = fluid.data(
-                name='scores1', shape=[10, 10], dtype='float32'
-            )
-            bboxes2 = fluid.data(
-                name='bboxes2', shape=[10, 10, 4], dtype='float32'
-            )
-            scores2 = fluid.data(name='scores2', shape=[10, 10], dtype='int32')
-            self.assertRaises(
-                TypeError,
-                layers.multiclass_nms,
-                bboxes=bboxes1,
-                scores=scores1,
-                score_threshold=0.5,
-                nms_top_k=400,
-                keep_top_k=200,
-            )
-            self.assertRaises(
-                TypeError,
-                layers.multiclass_nms,
-                bboxes=bboxes2,
-                scores=scores2,
-                score_threshold=0.5,
-                nms_top_k=400,
-                keep_top_k=200,
-            )
-
-
 class TestMulticlassNMS2(unittest.TestCase):
     def test_multiclass_nms2(self):
         program = Program()
