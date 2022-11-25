@@ -463,6 +463,10 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
       std::string new_var_name;
       bool is_transferred = false;
 
+      if (var == nullptr) {
+        continue;
+      }
+
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>()) {
         tensor_in = GetLoDTensorOrSelectedRowsValueFromVar(*var);
       } else if (var->IsType<LoDTensorArray>()) {

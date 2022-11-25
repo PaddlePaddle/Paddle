@@ -91,35 +91,29 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
-  VLOG(0) << "DetectPatterns";
   auto subgraphs = DetectPatterns();
-  VLOG(0) << "UniquePatterns";
   UniquePatterns(&subgraphs);
-  VLOG(0) << "SortSubgraphs";
   SortSubgraphs(&subgraphs);
-  VLOG(0) << "RemoveOverlappedMatch";
   RemoveOverlappedMatch(&subgraphs);
-  VLOG(0) << "ValidateByNodeRole";
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  VLOG(0) << "subgraphs num is: " << subgraphs.size();
   int id = 0;
   for (auto &g : subgraphs) {
-    VLOG(0) << "optimizing #" << id++ << " subgraph";
+    VLOG(3) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
 
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
-  VLOG(0) << "mark pdnodes in graph";
+  VLOG(3) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto &node : GraphTraits::DFS(graph)) {
     if (node.Name().rfind("__control_var") == 0) continue;
     for (const auto &pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
-        VLOG(0) << "Node " << node.Name() << " marked as " << pdnode->name();
+        VLOG(4) << "Node " << node.Name() << " marked as " << pdnode->name();
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
@@ -127,7 +121,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   // Check to early stop if some PDNode can't find matched Node.
   for (auto &pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
-      VLOG(0) << pdnode->name() << " can't find matched Node, early stop";
+      VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
       // return false;
     }
   }
@@ -226,7 +220,7 @@ GraphPatternDetector::DetectPatterns() {
   // Extend a PDNode to subgraphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto &edge : pattern_.edges()) {
-    VLOG(0) << "check " << edge.first->name() << " -> " << edge.second->name();
+    VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
     // TODO(Superjomn) Fix bug here, the groups might be duplicate here.
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
@@ -254,12 +248,12 @@ GraphPatternDetector::DetectPatterns() {
         }
       }
     }
-    VLOG(0) << "step " << step << " get records: " << cur_groups.size();
+    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
     for (auto &group : cur_groups) {
       for (auto &item : group.roles) {
-        VLOG(0) << "node " << item.second->id() << " as " << item.first->name();
+        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
       }
-      VLOG(0) << "=========================================================";
+      VLOG(4) << "=========================================================";
     }
   }
 

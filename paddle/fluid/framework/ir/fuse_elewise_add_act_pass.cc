@@ -228,19 +228,15 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
     ir::Graph *graph, const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
-  VLOG(0) << "Init act_elewise_add_grad";
   FusePassBase::Init("act_elewise_add_grad", graph);
-  VLOG(0) << "Init GraphPatternDetector";
   GraphPatternDetector gpd;
   auto *d_out_var =
       gpd.mutable_pattern()
           ->NewNode("act_elewise_add_grad_inplace/d_out_var")
           ->AsInput()
           ->assert_is_ops_input({"elementwise_add_grad"}, GradVarName("Out"));
-  VLOG(0) << "Init ActElewiseAddInplaceGrad";
   patterns::ActElewiseAddInplaceGrad act_elewise_add_grad_pattern(
       gpd.mutable_pattern(), "act_elewise_add_grad_inplace");
-  VLOG(0) << "act_elewise_add_grad_pattern";
   act_elewise_add_grad_pattern(d_out_var, act_types);
 
   int found_elewise_add_act_count = 0;
@@ -259,48 +255,23 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
         d_intermediate_var, d_intermediate_var, act_elewise_add_grad_pattern);
 
     std::string d_out_var_n = subgraph.at(d_out_var)->Name();
-    VLOG(0) << "d_out_var_n: " << d_out_var_n;
     std::string intermediate_var_n = intermediate_var->Name();
-    VLOG(0) << "intermediate_var_n: " << intermediate_var_n;
     std::string d_intermediate_var_n = d_intermediate_var->Name();
-    VLOG(0) << "d_intermediate_var_n: " << d_intermediate_var_n;
 
     OpDesc desc;
     desc.SetType("fused_elemwise_add_activation_grad");
     desc.SetInput("IntermediateOut",
                   std::vector<std::string>({intermediate_var_n}));
-    VLOG(0) << "Input: IntermediateOut -> ";
-    for (auto name : std::vector<std::string>({intermediate_var_n})) {
-      VLOG(0) << name;
-    }
     desc.SetInput("X", {});
     desc.SetInput("Y", ele_add_grad_op->Op()->Input("X"));
-    VLOG(0) << "Input: Y -> ";
-    for (auto name : ele_add_grad_op->Op()->Input("X")) {
-      VLOG(0) << name;
-    }
-    desc.SetInput("Out", {std::string(framework::kEmptyVarName)});
+    desc.SetInput("Out", {});
     desc.SetInput(GradVarName("Out"), std::vector<std::string>({d_out_var_n}));
-    VLOG(0) << "Input: DOut -> ";
-    for (auto name : std::vector<std::string>({d_out_var_n})) {
-      VLOG(0) << name;
-    }
     desc.SetOutput(GradVarName("X"),
                    act_grad_op->Op()->Output(GradVarName("X")));
-    VLOG(0) << "Input: DX -> ";
-    for (auto name : act_grad_op->Op()->Output(GradVarName("X"))) {
-      VLOG(0) << name;
-    }
     desc.SetOutput(GradVarName("Y"),
                    ele_add_grad_op->Op()->Output(GradVarName("X")));
-    VLOG(0) << "Input: DY -> ";
-    for (auto name : ele_add_grad_op->Op()->Output(GradVarName("X"))) {
-      VLOG(0) << name;
-    }
     desc.SetOutput(GradVarName("IntermediateOut"),
                    std::vector<std::string>({d_intermediate_var_n}));
-    VLOG(0) << "Input: DIntermediateOut -> ";
-    VLOG(0) << d_intermediate_var_n;
 
     desc.SetAttr("save_intermediate_out", false);
     desc.SetAttr("functor_list",
@@ -315,13 +286,9 @@ ir::Graph *FuseElewiseAddActPass::FuseActElewiseAddInplaceGrad(
 
     auto fused_node = g->CreateOpNode(&desc);
 
-    // VLOG(4) << "\n\t " << d_ele_out_n << " and " << intermediate_out_n << "
-    // -> "
-    //         << ele_add_grad->Name() << " -> " << d_ele_x_n  << " and " <<
-    //         d_intermediate_out_n << "\n\t "
-    //         << intermediate_out_n << " and " << d_intermediate_out_n << " ->
-    //         "
-    //         << act_grad->Name() << " -> " << d_x_n;
+    VLOG(4) << "\n\t " << d_out_var_n << " -> " << ele_add_grad_op->Name()
+            << " -> " << d_intermediate_var_n << "\n\t " << intermediate_var_n
+            << " and " << d_intermediate_var_n << " -> " << act_grad_op->Name();
 
     ReLinkNodes2(
         g, d_intermediate_var, ele_add_grad_op, act_grad_op, fused_node);
@@ -387,7 +354,6 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
             cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
             need_removed_nodes.insert(std::move(out));
             cur_node->Op()->SetAttr("save_intermediate_out", false);
-            VLOG(0) << "set save_intermediate_out false";
           }
         }
       }
@@ -431,42 +397,25 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                                         Node *op_1,
                                         Node *op_2,
                                         Node *fused_op) const {  // delete act
-  VLOG(0) << "start relink node ...";
   for (auto &in : op_1->inputs) {
-    VLOG(0) << "op1 input: " << in->Name();
     fused_op->inputs.emplace_back(in);
-    VLOG(0) << "in->outputs include: ";
-    for (auto node : in->outputs) {
-      VLOG(0) << node->Name();
-    }
     in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
-    VLOG(0) << "after replace in->outputs include: ";
-    for (auto node : in->outputs) {
-      VLOG(0) << node->Name();
-    }
-    VLOG(0) << "------------";
   }
 
   std::unordered_set<const Node *> nodes2delete;
   for (auto &out : op_1->outputs) {
-    VLOG(0) << "op1 outputs: " << out->Name();
     if (out->IsCtrlVar()) {
-      VLOG(0) << "out->IsCtrlVar(): " << out->IsCtrlVar();
       auto result_iter = std::find_if(
           op_2->inputs.begin(),
           op_2->inputs.end(),
           [&out](const Node *node) -> bool { return node == out; });
 
       if (result_iter == op_2->inputs.end()) {
-        VLOG(0) << "op1 output " << out->Name() << " is op2 input";
         IR_OP_VAR_LINK(fused_op, out);
       } else {
-        VLOG(0) << "op1 output " << out->Name()
-                << " is not op2 input, so delete";
         nodes2delete.emplace(out);
       }
     } else {
-      VLOG(0) << "out->IsCtrlVar(): " << out->IsCtrlVar();
       PADDLE_ENFORCE_EQ(out,
                         intermediate_out,
                         platform::errors::InvalidArgument(
@@ -476,7 +425,6 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                             out->Name()));
       IR_OP_VAR_LINK(fused_op, out);
     }
-    VLOG(0) << "------------";
   }
 
   for (auto &in : op_2->inputs) {
@@ -502,52 +450,27 @@ void FuseElewiseAddActPass::ReLinkNodes2(Graph *graph,
                                          Node *op_1,
                                          Node *op_2,
                                          Node *fused_op) const {  // delete act
-  VLOG(0) << "start relink node ...";
   for (auto &in : op_1->inputs) {
-    VLOG(0) << "op1 input: " << in->Name();
     fused_op->inputs.emplace_back(in);
-    VLOG(0) << "in->outputs include: ";
-    for (auto node : in->outputs) {
-      VLOG(0) << node->Name();
-    }
     in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
-    VLOG(0) << "after replace in->outputs include: ";
-    for (auto node : in->outputs) {
-      VLOG(0) << node->Name();
-    }
-    VLOG(0) << "------------";
   }
 
   std::unordered_set<const Node *> nodes2delete;
   for (auto &out : op_1->outputs) {
-    VLOG(0) << "op1 outputs: " << out->Name();
     if (out->IsCtrlVar()) {
-      VLOG(0) << "out->IsCtrlVar(): " << out->IsCtrlVar();
       auto result_iter = std::find_if(
           op_2->inputs.begin(),
           op_2->inputs.end(),
           [&out](const Node *node) -> bool { return node == out; });
 
       if (result_iter == op_2->inputs.end()) {
-        VLOG(0) << "op1 output " << out->Name() << " is op2 input";
         IR_OP_VAR_LINK(fused_op, out);
       } else {
-        VLOG(0) << "op1 output " << out->Name()
-                << " is not op2 input, so delete";
         nodes2delete.emplace(out);
       }
     } else {
-      VLOG(0) << "out->IsCtrlVar(): " << out->IsCtrlVar();
-      // PADDLE_ENFORCE_EQ(out,
-      //                   intermediate_out,
-      //                   platform::errors::InvalidArgument(
-      //                       "Output of op(%s) must be %s, but not %s.",
-      //                       op_1->Name(),
-      //                       intermediate_out->Name(),
-      //                       out->Name()));
       IR_OP_VAR_LINK(fused_op, out);
     }
-    VLOG(0) << "------------";
   }
 
   for (auto &in : op_2->inputs) {
