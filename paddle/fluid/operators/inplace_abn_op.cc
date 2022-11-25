@@ -113,7 +113,7 @@ class InplaceABNGradOp : public paddle::operators::BatchNormGradOp {
           true,
           platform::errors::InvalidArgument(
               "Using global stats during training is not supported "
-              "in gradient op kernel of batch_norm_mkldnn_op now."));
+              "in oneDNN version of batch_norm_gradient kernel now."));
     }
 
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "InplaceABNGrad");
