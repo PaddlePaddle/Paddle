@@ -37,8 +37,7 @@ template <typename T>
 class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const auto& dev_ctx =
-        ctx.template device_context<platform::MKLDNNDeviceContext>();
+    const auto& dev_ctx = ctx.template device_context<phi::OneDNNContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     const auto* x = ctx.Input<phi::DenseTensor>("X");
@@ -55,7 +54,7 @@ class ShuffleChannelMKLDNNKernel : public framework::OpKernel<T> {
 
     auto shuffle_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = phi::OneDNNContext::tls().get_stream();
     shuffle_p->execute(
         astream,
         {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});

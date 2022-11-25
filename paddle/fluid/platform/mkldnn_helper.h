@@ -29,6 +29,7 @@ limitations under the License. */
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
+using phi::OneDNNContext;
 #endif
 namespace platform {
 
@@ -43,8 +44,7 @@ inline void ClearMKLDNNCache(const platform::Place& place,
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext* dev_ctx =
-        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->ResetBlobMap(ptr);
   }
 }
@@ -53,8 +53,7 @@ inline void DontClearMKLDNNCache(const platform::Place& place) {
   // Clear mkl-dnn cache,
   if (platform::is_cpu_place(place)) {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::MKLDNNDeviceContext* dev_ctx =
-        (platform::MKLDNNDeviceContext*)pool.Get(place);
+    OneDNNContext* dev_ctx = reinterpret_cast<OneDNNContext*>(pool.Get(place));
     dev_ctx->BlockNextCacheClearing();
   }
 }
@@ -63,7 +62,7 @@ inline void Reorder(dnnl::memory src,
                     dnnl::memory dst,
                     const dnnl::engine& engine) {
   auto reorder_prim = dnnl::reorder(src, dst);
-  auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+  auto& astream = OneDNNContext::tls().get_stream();
   platform::RecordEvent record_reorder("int_reorder",
                                        platform::TracerEventType::UserDefined,
                                        2,
@@ -132,34 +131,32 @@ inline void AttachPointerHashToMKLDNNKey(void* ptr,
     static_vars_barrier.unlock();
 
     if (first_exec != ptr) {
-      paddle::platform::MKLDNNDeviceContext::tls().set_key_suffix(
+      OneDNNContext::tls().set_key_suffix(
           "E" + std::to_string(reinterpret_cast<uintptr_t>(ptr)));
     }
     // Let's register adress of current executor
-    paddle::platform::MKLDNNDeviceContext::tls().set_curr_exec(ptr);
+    OneDNNContext::tls().set_curr_exec(ptr);
 
     // For first thread
     if (first_thread == ThreadIDasStr()) {
-      paddle::platform::MKLDNNDeviceContext::tls().disable_tid_in_key();
+      OneDNNContext::tls().disable_tid_in_key();
     }
   }
 }
 
 template <typename... ArgTypes>
-inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
-                             ArgTypes&&... args) {
+inline std::string CreateKey(const OneDNNContext& dev_ctx, ArgTypes&&... args) {
   std::string key;
   key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
-  key += paddle::platform::MKLDNNDeviceContext::tls().get_key_suffix();
+  key += OneDNNContext::tls().get_key_suffix();
   return key;
 }
 
-inline std::string ExtendKeyWithThreadInfoIfNeeded(
-    const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return (paddle::platform::MKLDNNDeviceContext::tls().is_tid_used_in_key() ==
-          true)
+inline std::string ExtendKeyWithThreadInfoIfNeeded(const OneDNNContext& dev_ctx,
+                                                   const std::string& key) {
+  return (OneDNNContext::tls().is_tid_used_in_key() == true)
              ? key + "-t:" + ThreadIDasStr()
              : key;
 }
@@ -170,7 +167,7 @@ inline void RegisterModelLayout(
   if (platform::is_cpu_place(place)) {
     // If there is already registered NHWC then quit this call
     // not to overwrite setting with analysis of internal "while" op block
-    if (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
+    if (OneDNNContext::tls().get_cur_paddle_data_layout() ==
         phi::DataLayout::kNHWC)
       return;
 
@@ -179,7 +176,7 @@ inline void RegisterModelLayout(
                            const std::string& attrib_name) -> bool {
       if (op->HasAttr(attrib_name)) {
         auto data_format = op->Attr<std::string>(attrib_name);
-        platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
+        OneDNNContext::tls().set_cur_paddle_data_layout(
             data_format.compare("NHWC") == 0 ? phi::DataLayout::kNHWC
                                              : phi::DataLayout::kNCHW);
         return true;

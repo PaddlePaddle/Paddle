@@ -312,10 +312,6 @@ struct DefaultDeviceContextType<platform::CUDAPinnedPlace> {
 };
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
-using MKLDNNDeviceContext = phi::OneDNNContext;
-#endif
-
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 class CustomDeviceContext : public phi::CustomContext {
  public:
