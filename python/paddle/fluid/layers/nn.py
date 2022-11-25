@@ -126,7 +126,6 @@ __all__ = [
     'slice',
     'strided_slice',
     'shape',
-    'size',
     'logical_and',
     'logical_or',
     'clip',
@@ -7898,53 +7897,6 @@ def shape(input):
         outputs={'Out': out},
         stop_gradient=True,
     )
-
-    return out
-
-
-@deprecated(since="2.0.0", update_to="paddle.numel")
-def size(input):
-    """
-    **Size Layer**
-
-    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1].
-
-    Args:
-        input (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
-
-    Returns:
-        Tensor: The number of elements for the input Tensor.
-
-    Raises:
-        TypeError: ``input`` must be a Tensor and the data type of ``input`` must be one of bool, float16, float32, float64, int32, int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid.layers as layers
-            paddle.enable_static()
-
-            input = layers.data(
-                name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
-            rank = layers.size(input) # 300
-    """
-
-    if in_dygraph_mode():
-        return _C_ops.numel(input)
-
-    if _in_legacy_dygraph():
-        return _legacy_C_ops.size(input)
-
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        "size",
-    )
-    helper = LayerHelper('size', **locals())
-    out = helper.create_variable_for_type_inference(dtype='int64')
-    helper.append_op(type='size', inputs={'Input': input}, outputs={'Out': out})
 
     return out
 
