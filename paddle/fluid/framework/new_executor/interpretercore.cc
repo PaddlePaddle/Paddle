@@ -878,10 +878,10 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       // NOTE(zhiqiu): hot fix for jit input var
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      auto* default_dev_ctx = pool.Get(place_);
       if (vec_instr.at(i).OpBase()->Type() == interpreter::kMemcpyD2H) {
+        platform::DeviceContextPool& pool =
+            platform::DeviceContextPool::Instance();
+        auto* default_dev_ctx = pool.Get(place_);
         for (auto& event : vec_instr.at(i).EventsToWait()) {
           platform::RecordEvent record(
               "RecordStreamEvent", platform::TracerEventType::UserDefined, 10);
