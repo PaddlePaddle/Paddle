@@ -1557,8 +1557,8 @@ class CublasFusedMLP {
         workspace_size,
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
 
-    // if add_residual, we compute result + 1.0 * residual, else result + 0.0 *
-    // out.
+    // if add_residual, we compute result + 1.0 * residual,
+    // else result + 0.0 * out.
     double alpha64 = 1.0, beta64 = add_residual ? 1.0 : 0.0;
     float alpha32 = 1.0f, beta32 = add_residual ? 1.0f : 0.0f;
     void *alpha = nullptr, *beta = nullptr;
