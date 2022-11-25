@@ -47,8 +47,9 @@ It operates ``%s`` on Tensor ``X`` and ``Y`` .
 .. math::
         %s
 
-.. note::
+Note:
     ``paddle.%s`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 )DOC",
                                comment.type,

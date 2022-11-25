@@ -423,8 +423,9 @@ def pow(x, y, name=None):
     .. math::
         out = x^{y}
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
 
@@ -683,8 +684,9 @@ def subtract(x, y, name=None):
     .. math::
         out = x - y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -778,8 +780,9 @@ def divide(x, y, name=None):
     .. math::
         out = x / y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -823,8 +826,9 @@ def floor_divide(x, y, name=None):
     .. math::
         out = trunc(x / y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
@@ -867,8 +871,9 @@ def remainder(x, y, name=None):
 
         out = x \% y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -933,8 +938,9 @@ def multiply(x, y, name=None):
     .. math::
         out = x * y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -990,8 +996,9 @@ def maximum(x, y, name=None):
     .. math::
         out = max(x, y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -1057,8 +1064,9 @@ def minimum(x, y, name=None):
     .. math::
         out = min(x, y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -1126,8 +1134,9 @@ def fmax(x, y, name=None):
     .. math::
         out = fmax(x, y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -1195,8 +1204,9 @@ def fmin(x, y, name=None):
     .. math::
         out = fmin(x, y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -3979,8 +3989,9 @@ def broadcast_shape(x_shape, y_shape):
     """
     The function returns the shape of doing operation with broadcasting on tensors of x_shape and y_shape, please refer to boardcasting for more details.
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -5009,8 +5020,9 @@ def heaviside(x, y, name=None):
                 \end{array}
             \right.
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:

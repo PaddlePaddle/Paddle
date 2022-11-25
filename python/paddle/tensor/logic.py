@@ -96,8 +96,9 @@ def logical_and(x, y, out=None, name=None):
 
         out = x \&\& y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -137,8 +138,9 @@ def logical_or(x, y, out=None, name=None):
 
         out = x || y
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+        
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
@@ -180,8 +182,9 @@ def logical_xor(x, y, out=None, name=None):
 
         out = (x || y) \&\& !(x \&\& y)
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:

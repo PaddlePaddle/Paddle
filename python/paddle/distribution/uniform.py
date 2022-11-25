@@ -56,8 +56,9 @@ class Uniform(distribution.Distribution):
     The parameters `low` and `high` must be shaped in a way that supports
     boardcasting (e.g., `high - low` is a valid operation).
 
-    .. note::
+    Note:
         If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
     .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
     
 
