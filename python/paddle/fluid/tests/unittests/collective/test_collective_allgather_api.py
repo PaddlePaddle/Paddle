@@ -35,8 +35,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
-            "complex64",
-            "complex128",
         ]
         for dtype in dtypes_to_test:
             self.check_with_place(
@@ -53,8 +51,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
-            "complex64",
-            "complex128",
         ]
         for dtype in dtypes_to_test:
             self.check_with_place(
@@ -65,7 +61,7 @@ class TestCollectiveAllgatherAPI(TestDistBase):
                 dtype=dtype,
             )
 
-    def test_allgatther_nccl_dygraph(self):
+    def test_allgather_nccl_dygraph(self):
         dtypes_to_test = [
             "float16",
             "float32",
@@ -75,8 +71,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "int8",
             "uint8",
             "bool",
-            "complex64",
-            "complex128",
         ]
         if self._nccl_version >= 2100:
             dtypes_to_test.append("bfloat16")
@@ -100,8 +94,6 @@ class TestCollectiveAllgatherAPI(TestDistBase):
             "uint8",
             "bool",
             "bfloat16",
-            "complex64",
-            "complex128",
         ]
         for dtype in dtypes_to_test:
             self.check_with_place(
