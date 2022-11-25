@@ -583,11 +583,10 @@ function cmake_gen_and_build() {
     echo "pwd:"
     pwd
     echo "pwd ls:"
-    ll
-    echo "ls 1:"
-    ll /workspace/Paddle/build
-    ll ${PADDLE_ROOT}/build/dist
-    ll /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
+    ls -l 
+    cd /workspace/Paddle/build && ls -l
+    cd ${PADDLE_ROOT}/build/dist && ls -l
+    cd  /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/ && ls -l
     echo "ls 2:"
     ll ${PADDLE_ROOT}/build/python/paddle/libs
     build $2
