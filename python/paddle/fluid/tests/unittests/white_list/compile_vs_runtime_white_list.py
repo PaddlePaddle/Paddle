@@ -31,6 +31,5 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'filter_by_instag',
     'im2sequence',
     'detection_map',
-    'locality_aware_nms',
     'var_conv_2d',
 ]
