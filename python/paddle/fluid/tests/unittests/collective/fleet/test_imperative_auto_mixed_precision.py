@@ -16,16 +16,18 @@ import os
 
 os.environ['FLAGS_enable_eager_mode'] = '0'
 
+import tempfile
 import unittest
+
+import numpy as np
+from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
+
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
-import numpy as np
-import tempfile
-from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 import paddle.nn as nn
-from paddle.static import InputSpec
 from paddle.autograd import PyLayer
+from paddle.static import InputSpec
 
 if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})

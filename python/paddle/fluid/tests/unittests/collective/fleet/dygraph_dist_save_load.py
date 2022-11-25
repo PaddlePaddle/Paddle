@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import os
 import shutil
-import numpy as np
+import subprocess
+import sys
 import tempfile
+
+import numpy as np
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.dygraph.nn import Linear
+from paddle import distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
     GroupShardedOptimizerStage2,
@@ -26,13 +31,8 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_sta
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage2 import (
     GroupShardedStage2,
 )
-
-import sys
-import subprocess
-import argparse
-
-from paddle import distributed as dist
-from paddle.incubate.distributed.utils.io import save, load
+from paddle.fluid.dygraph.nn import Linear
+from paddle.incubate.distributed.utils.io import load, save
 
 print(load)
 epoch = 2

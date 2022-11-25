@@ -227,6 +227,25 @@ void PowKernel(const Context& dev_ctx,
 }
 
 template <typename T>
+struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
+  float slope;
+  float offset;
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"slope", &slope}, {"offset", &offset}};
+  }
+
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu_activation_1attr_func<Context, T, XPUType>(
+        dev_ctx, x, out, slope, xpu::hard_sigmoid<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_sigmoid");
+  }
+};
+
+template <typename T>
 struct XPUHardSwishFunctor : public funcs::BaseActivationFunctor<T> {
   float threshold;
   float scale;
@@ -428,6 +447,10 @@ DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(Softplus,
                                             XPUSoftplusFunctor,
                                             beta,
                                             threshold)
+DEFINE_XPU_ACTIVATION_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
+                                            XPUHardSigmoidFunctor,
+                                            slope,
+                                            offset)
 
 template <typename T, typename Context>
 void HardSwishRawKernel(const Context& dev_ctx,
@@ -459,6 +482,7 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(log, LogKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_swish_raw, HardSwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
