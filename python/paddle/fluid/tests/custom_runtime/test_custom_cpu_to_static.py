@@ -54,7 +54,11 @@ def train_func_ampo1(epoch_id, train_loader, model, cost, optimizer, scaler):
     for batch_id, (images, labels) in enumerate(train_loader()):
         # forward
         with paddle.amp.auto_cast(
-            custom_black_list={"flatten_contiguous_range", "greater_than"},
+            custom_black_list={
+                "flatten_contiguous_range",
+                "greater_than",
+                "matmul_v2",
+            },
             level='O1',
         ):
             outputs = model(images)

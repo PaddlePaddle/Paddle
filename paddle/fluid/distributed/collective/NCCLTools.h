@@ -47,7 +47,7 @@
 namespace paddle {
 namespace distributed {
 
-#define NCCLCHECK(cmd)                                  \
+#define NCCL_CHECK(cmd)                                 \
   do {                                                  \
     ncclResult_t r = cmd;                               \
     if (r != ncclSuccess) {                             \
@@ -60,7 +60,35 @@ namespace distributed {
   } while (0)
 
 ncclRedOp_t ToNCCLRedType(ReduceOp reduction);
+
 std::string SerializeNCCLUniqueId(const ncclUniqueId& ncclID);
 
+// static check for p2p
+void StaticCheckTensor(const phi::DenseTensor& tensor,
+                       int rank,
+                       int world_size);
+
+// static check for collective
+void StaticCheckTensors(const phi::DenseTensor& out_tensor,
+                        const phi::DenseTensor& in_tensor,
+                        int rank,
+                        int world_size,
+                        int out_size_factor,
+                        int in_size_factor);
+
+void StaticCheckTensorsSameShape(const phi::DenseTensor& out_tensor,
+                                 const phi::DenseTensor& in_tensor,
+                                 int rank,
+                                 int world_size);
+
+void StaticCheckTensorsScatterLikeShape(const phi::DenseTensor& out_tensor,
+                                        const phi::DenseTensor& in_tensor,
+                                        int rank,
+                                        int world_size);
+
+void StaticCheckTensorsGatherLikeShape(const phi::DenseTensor& out_tensor,
+                                       const phi::DenseTensor& in_tensor,
+                                       int rank,
+                                       int world_size);
 }  // namespace distributed
 }  // namespace paddle
