@@ -36,13 +36,12 @@ __global__ void ElementwiseMask(const T* a,
                                 const T* b,
                                 T* res,
                                 int num_elements) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   auto tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (tid >= num_elements) return;
-  if (b[tid] >= 0) {
-    res[tid] = a[tid];
-  } else {
-    res[tid] = 0;
-  }
+  const T zero = 0;
+  res[tid] = b[tid] >= zero ? a[tid] : zero;
+#endif
 }
 
 template <typename T>
@@ -122,6 +121,7 @@ __global__ void ReduceSum2(
 template <>
 __global__ void ReduceSum2<half>(
     const half* src, half* dst, int bsz, int nb_head, int max_seq_len) {
+#if CUDA_ARCH_FP16_SUPPORTED(__CUDA_ARCH__)
   int tid = threadIdx.x;
   int bid = blockIdx.x;
   int num_blocks_per_head = ((max_seq_len / blockDim.x) * max_seq_len);
@@ -137,11 +137,11 @@ __global__ void ReduceSum2<half>(
 
   for (int offset = blockDim.x >> 1; offset > 0; offset >>= 1) {
     if (tid < offset) {
-      res_half[tid] = res_half[tid] + res_half[tid + offset];
+      res_half[tid] += res_half[tid + offset];
     }
     __syncthreads();
     if (offset % 2 == 1 && tid == offset - 2) {
-      res_half[tid] = res_half[tid] + res_half[tid + 1];
+      res_half[tid] += res_half[tid + 1];
     }
     __syncthreads();
   }
@@ -153,6 +153,7 @@ __global__ void ReduceSum2<half>(
         static_cast<size_t>(bsz * max_seq_len),
         static_cast<platform::float16>(res_half[0]));
   }
+#endif
 }
 
 template <typename T>
