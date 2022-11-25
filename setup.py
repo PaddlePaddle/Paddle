@@ -1150,7 +1150,7 @@ def main():
 
     # envir_dict is environment variables after cmake
     # sys.path.append("/build/python/")
-    from python.env_dict import env_dict
+    from build.python.env_dict import env_dict
 
     global envir_var
     envir_var = env_dict
