@@ -572,6 +572,7 @@ function cmake_gen_and_build() {
     which python
     python setup.py install
     echo "which python:"
+    which python
     build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
