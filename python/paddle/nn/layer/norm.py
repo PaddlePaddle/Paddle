@@ -684,7 +684,7 @@ class _BatchNormBase(Layer):
         )
         self._variance.stop_gradient = True
 
-        # only for npu registed in custom devices
+        # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
         if 'npu' in get_all_custom_device_type():
             with no_grad():
                 weight_trans = _C_ops.npu_identity(

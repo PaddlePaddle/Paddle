@@ -1169,6 +1169,8 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
+    // TODO(qili93): temporary for ascned npu performance to be removed along
+    // with npu_identity op
     paddle::experimental::Tensor tensor_out(
         std::make_shared<phi::DenseTensor>());
     if (tensor.storage_properties_initialized()) {

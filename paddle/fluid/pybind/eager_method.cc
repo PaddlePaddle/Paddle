@@ -263,6 +263,8 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+      // TODO(qili93): temporary for ascned npu performance to be removed along
+      // with npu_identity op
       paddle::experimental::Tensor temp_tensor(
           std::make_shared<phi::DenseTensor>());
       if (dense_tensor->storage_properties_initialized()) {

@@ -158,6 +158,7 @@ def _conv_nd(
                     + bias.shape
                     + [1 for i in range(len(x.shape) - channel_dim - 1)],
                 )
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
             if 'npu' in get_all_custom_device_type():
                 with no_grad():
                     bias_storage = _C_ops.npu_identity(
@@ -765,6 +766,7 @@ def conv2d(
                         + bias.shape
                         + [1 for i in range(len(x.shape) - channel_dim - 1)],
                     )
+                # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
                 if 'npu' in get_all_custom_device_type():
                     with no_grad():
                         bias_storage = _C_ops.npu_identity(
