@@ -289,6 +289,9 @@ std::vector<paddle::experimental::Tensor> CastPyArg2VectorOfTensor(
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(obj,
+                                 reinterpret_cast<PyObject*>(p_tensor_type))) {
+    return {reinterpret_cast<TensorObject*>(obj)->tensor};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -335,6 +338,56 @@ std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos) {
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int>(PyLong_AsLong(obj))};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list or tuple, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
+std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos) {
+  std::vector<int64_t> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(static_cast<int64_t>(PyLong_AsLong(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of int, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {static_cast<int64_t>(PyLong_AsLong(obj))};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -363,10 +416,30 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
             i));
       }
     }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckLongOrConvertToLong(&item)) {
+        result.emplace_back(PyLong_AsSize_t(item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of size_t, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return {PyLong_AsSize_t(obj)};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
-        "list, but got %s",
+        "list of size_t, but got %s",
         arg_pos + 1,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
@@ -487,6 +560,9 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
     }
   } else if (obj == Py_None) {
     return {};
+  } else if (PyObject_IsInstance(
+                 obj, reinterpret_cast<PyObject*>(g_framework_tensor_pytype))) {
+    return {::pybind11::handle(obj).cast<phi::DenseTensor>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -527,7 +603,8 @@ std::unordered_map<std::wstring, int> CastPyArg2Vocab(PyObject* obj,
   }
 }
 
-std::vector<std::string> CastPyArg2Strings(PyObject* obj, ssize_t arg_pos) {
+std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
+                                                  ssize_t arg_pos) {
   if (PyList_Check(obj)) {
     return ::pybind11::handle(obj).cast<std::vector<std::string>>();
   } else {
@@ -1243,7 +1320,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
                                               ssize_t arg_pos) {
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (type_name == "numpy.ndarray" && PySequence_Check(obj)) {
     PyObject* item = nullptr;
     item = PySequence_GetItem(obj, 0);
@@ -1296,7 +1373,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   // obj could be: int, float, bool, paddle.Tensor
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (PyBool_Check(obj)) {
     bool value = CastPyArg2Boolean(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
@@ -1348,7 +1425,7 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
 
   PyTypeObject* type = obj->ob_type;
   auto type_name = std::string(type->tp_name);
-  VLOG(1) << "type_name: " << type_name;
+  VLOG(4) << "type_name: " << type_name;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
@@ -1385,16 +1462,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
 paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
                                                   const std::string& op_type,
                                                   ssize_t arg_pos) {
-  // In case of IntArray, only two possible PyObjects:
-  // 1. list of int
-  // 2. Tensor
   if (obj == Py_None) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
-        op_type,
-        arg_pos + 1,
-        ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
+    return paddle::experimental::IntArray({});
   }
 
   // obj could be: int, float, bool, paddle.Tensor
@@ -1408,10 +1477,13 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
     paddle::experimental::Tensor& value = GetTensorFromPyObject(
         op_type, "" /*arg_name*/, obj, arg_pos, false /*dispensable*/);
     return paddle::experimental::IntArray(value);
+  } else if (PyObject_CheckLongOrConvertToLong(&obj)) {
+    return paddle::experimental::IntArray(
+        {static_cast<int64_t>(PyLong_AsLong(obj))});
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "list or Tensor, but got %s",
+        "list or int, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT

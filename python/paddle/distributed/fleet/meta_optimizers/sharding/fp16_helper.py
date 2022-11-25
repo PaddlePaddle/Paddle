@@ -18,7 +18,7 @@ from paddle.distributed.fleet.meta_optimizers.common import (
     OpRole,
 )
 
-from paddle.fluid import core
+from paddle.framework import core
 
 __all__ = []
 

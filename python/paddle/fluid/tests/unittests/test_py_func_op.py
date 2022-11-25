@@ -81,7 +81,7 @@ def simple_fc_net(img, label, use_py_func_op):
             ),
         )
         if not use_py_func_op:
-            hidden = fluid.layers.tanh(hidden)
+            hidden = paddle.tanh(hidden)
         else:
             new_hidden = (
                 fluid.default_main_program()

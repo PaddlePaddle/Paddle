@@ -79,11 +79,10 @@ def mean(x, axis=None, keepdim=False, name=None):
             out4 = paddle.mean(x, axis=[0, 2])
             # [ 8.5 12.5 16.5]
     """
-
-    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-
     if in_dygraph_mode():
         return _C_ops.mean(x, axis, keepdim)
+
+    reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
     if _in_legacy_dygraph():
         return _legacy_C_ops.reduce_mean(
             x, 'dim', axis, 'keep_dim', keepdim, 'reduce_all', reduce_all
