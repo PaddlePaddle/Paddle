@@ -50,11 +50,11 @@ AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
       allow_free_idle_chunk_(allow_free_idle_chunk) {
-          total_alloc_times_ = 0;
-          total_alloc_size_ = 0;
-          total_free_times_ = 0;
-          total_free_size_ = 0;
-      }
+  total_alloc_times_ = 0;
+  total_alloc_size_ = 0;
+  total_free_times_ = 0;
+  total_free_size_ = 0;
+}
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
@@ -195,17 +195,17 @@ void AutoGrowthBestFitAllocator::Trace() const {
   size_t cur_idle_bytes = 0;
   auto it = free_blocks_.begin();
   for (; it != free_blocks_.end(); ++it) {
-      cur_idle_bytes += it->second->size_;
+    cur_idle_bytes += it->second->size_;
   }
 
-  VLOG(1) << "alloc:" << total_alloc_size_ / double(1024*1024)
-      << "m free:" << total_free_size_ / double(1024*1024)
-      << "m busy:" << (total_alloc_size_ - total_free_size_) / double(1024*1024)
-      << "m idle:" << cur_idle_bytes / double(1024*1024)
-      << "m alloc_times:" << total_alloc_times_
-      << " free_times:" << total_free_times_
-      << " free_blocks_num:" << free_blocks_.size()
-      << " curr_chunks_num:" << chunks_.size();
+  VLOG(1) << "alloc:" << total_alloc_size_ / double(1024 * 1024)
+          << "m free:" << total_free_size_ / double(1024 * 1024) << "m busy:"
+          << (total_alloc_size_ - total_free_size_) / double(1024 * 1024)
+          << "m idle:" << cur_idle_bytes / double(1024 * 1024)
+          << "m alloc_times:" << total_alloc_times_
+          << " free_times:" << total_free_times_
+          << " free_blocks_num:" << free_blocks_.size()
+          << " curr_chunks_num:" << chunks_.size();
 }
 
 }  // namespace allocation

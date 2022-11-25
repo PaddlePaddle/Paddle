@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include <algorithm>
-#include <vector>
-#include <random>
-#include <time.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <stdio.h>
+#include <time.h>
+#include <algorithm>
+#include <random>
+#include <vector>
 #include "paddle/fluid/platform/enforce.h"
 
 DECLARE_bool(gpugraph_debug_gpu_memory);
@@ -29,35 +29,37 @@ namespace paddle {
 namespace framework {
 
 /**
- * @brief wrapper of the std::default_random_engine each construction will have different seeds.
+ * @brief wrapper of the std::default_random_engine each construction will have
+ * different seeds.
  */
 struct random_engine_wrapper_t {
-    std::default_random_engine engine;
-    random_engine_wrapper_t() {
-        timespec tp;
-        clock_gettime(CLOCK_REALTIME, &tp);
-        static std::atomic<unsigned long> x(static_cast<unsigned long>(1));
-        std::seed_seq sseq = {x++, x++, x++,
-            (unsigned long)(tp.tv_sec * 1e9 + tp.tv_nsec)};
-        engine.seed(sseq);
-    }
+  std::default_random_engine engine;
+  random_engine_wrapper_t() {
+    timespec tp;
+    clock_gettime(CLOCK_REALTIME, &tp);
+    static std::atomic<unsigned long> x(static_cast<unsigned long>(1));
+    std::seed_seq sseq = {
+        x++, x++, x++, (unsigned long)(tp.tv_sec * 1e9 + tp.tv_nsec)};
+    engine.seed(sseq);
+  }
 };
 
 /**
- * @brief Get a n-size vector<int>, but its element has unique shuffled int value (from 0 to n-1).
+ * @brief Get a n-size vector<int>, but its element has unique shuffled int
+ * value (from 0 to n-1).
  * @param n vector size
  * @return the shuffled vector.
  */
 inline std::vector<int> shuffle_int_vector(int n) {
-    random_engine_wrapper_t random_engine_wrapper;
-    std::vector<int> ret(n);
-    int i = 0;
+  random_engine_wrapper_t random_engine_wrapper;
+  std::vector<int> ret(n);
+  int i = 0;
 
-    for (auto & e : ret) {
-        e = i++;
-    }
-    std::shuffle(ret.begin(), ret.end(), random_engine_wrapper.engine);
-    return std::move(ret);
+  for (auto& e : ret) {
+    e = i++;
+  }
+  std::shuffle(ret.begin(), ret.end(), random_engine_wrapper.engine);
+  return std::move(ret);
 }
 
 #define CUDA_CHECK(cmd)                                                       \

@@ -462,7 +462,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
     for (size_t i = 0; i < readers_.size(); i++) {
       readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
     }
-    
+
     if (STAT_GET(STAT_epoch_finish) == 1) {
       VLOG(0) << "get epoch finish true";
       STAT_RESET(STAT_epoch_finish, 0);
@@ -474,8 +474,8 @@ void DatasetImpl<T>::LoadIntoMemory() {
     }
 
     for (int64_t i = 0; i < thread_num_; ++i) {
-      load_threads.push_back(
-          std::thread(&paddle::framework::DataFeed::DoWalkandSage, readers_[i].get()));
+      load_threads.push_back(std::thread(
+          &paddle::framework::DataFeed::DoWalkandSage, readers_[i].get()));
     }
     for (std::thread& t : load_threads) {
       t.join();

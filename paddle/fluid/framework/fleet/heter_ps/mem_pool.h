@@ -99,7 +99,7 @@ class HBMMemoryPoolFix : public managed {
  public:
   HBMMemoryPoolFix() {
     capacity_ = 0;
-    size_ = 0 ;
+    size_ = 0;
     block_size_ = 0;
     max_byte_capacity_ = 0;
   }

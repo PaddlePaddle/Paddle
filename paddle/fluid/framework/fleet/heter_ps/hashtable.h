@@ -42,8 +42,8 @@ limitations under the License. */
 #include "xpu/kernel/math.h"
 #include "xpu/kernel/simd.h"
 #endif
-#include "paddle/phi/core/enforce.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer_conf.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {

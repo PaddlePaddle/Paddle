@@ -347,7 +347,8 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task) {
     add_key_to_local(vec_data);
     timeline.Pause();
     VLOG(0) << "GpuGraphTotalKeys: " << vec_data.size()
-        << ", add_key_to_local cost " << timeline.ElapsedSec() << " seconds.";
+            << ", add_key_to_local cost " << timeline.ElapsedSec()
+            << " seconds.";
   }
 
   add_key_to_gputask(gpu_task);
@@ -797,7 +798,7 @@ void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   task_futures.clear();
   timeline.Pause();
   VLOG(0) << "pull sparse from CpuPS into GpuPS total keys " << total_key
-      << ", cost " << timeline.ElapsedSec() << " seconds.";
+          << ", cost " << timeline.ElapsedSec() << " seconds.";
   if (multi_node_) {
     auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
     if (!gloo_wrapper->IsInitialized()) {
@@ -1068,7 +1069,8 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     HeterPs_ = HeterPsBase::get_instance(
         size_max, resource_, fleet_config_, accessor_class_, optimizer_type_);
 #ifdef PADDLE_WITH_CUDA
-    HeterPs_->set_nccl_comm_and_size(inner_comms_, inter_comms_, node_size_, rank_id_);
+    HeterPs_->set_nccl_comm_and_size(
+        inner_comms_, inter_comms_, node_size_, rank_id_);
     HeterPs_->set_sparse_sgd(optimizer_config_);
     HeterPs_->set_embedx_sgd(optimizer_config_);
 #endif
@@ -1147,10 +1149,17 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
     cpu_reday_channels_[i]->Put(task);
   };
 
-  auto build_dymf_hbm_pool = [this, &gpu_task, &accessor_wrapper_ptr, &feature_keys_count](int i) {
+  auto build_dymf_hbm_pool = [this,
+                              &gpu_task,
+                              &accessor_wrapper_ptr,
+                              &feature_keys_count](int i) {
     platform::CUDADeviceGuard guard(resource_->dev_id(i));
     // reset table
-    this->HeterPs_->reset_table(i, feature_keys_count[i], optimizer_config_, optimizer_config_, infer_mode_);
+    this->HeterPs_->reset_table(i,
+                                feature_keys_count[i],
+                                optimizer_config_,
+                                optimizer_config_,
+                                infer_mode_);
     // insert hbm table
     std::vector<std::thread> threads(multi_mf_dim_);
     for (int j = 0; j < multi_mf_dim_; j++) {
