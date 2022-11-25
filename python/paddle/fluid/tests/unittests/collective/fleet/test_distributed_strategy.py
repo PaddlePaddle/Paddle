@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
+
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import (
-    DistributeTranspilerConfig,
-    ServerRuntimeConfig,
+import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
+    fleet,
 )
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy import (
     StrategyFactory,
 )
-from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import (
-    fleet,
+from paddle.fluid.transpiler.distribute_transpiler import (
+    DistributeTranspilerConfig,
+    ServerRuntimeConfig,
 )
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-import os
 
 
 class TestStrategyFactor(unittest.TestCase):

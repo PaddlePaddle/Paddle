@@ -15,14 +15,14 @@
 import typing
 import unittest
 
-import numpy as np
-import paddle
-
 import autograd
 import autograd.numpy as anp
 import autograd.scipy as ascipy
 import config
+import numpy as np
 import utils
+
+import paddle
 from paddle.incubate.autograd import primx
 
 

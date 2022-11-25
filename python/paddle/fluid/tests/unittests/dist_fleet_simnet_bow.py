@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import os
 import time
+
+import numpy as np
+from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-import os
-from test_dist_fleet_base import runtime_main, FleetDistRunnerBase
 
 paddle.enable_static()
 

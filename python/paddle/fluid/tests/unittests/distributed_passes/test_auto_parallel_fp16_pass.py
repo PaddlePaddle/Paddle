@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import random
-import numpy as np
-
 import unittest
+
+import numpy as np
+from auto_parallel_pass_test_base import AutoPallelPassTestBase
+
 import paddle
 import paddle.distributed.fleet as fleet
-from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 
 class TestPF16Pass(AutoPallelPassTestBase):

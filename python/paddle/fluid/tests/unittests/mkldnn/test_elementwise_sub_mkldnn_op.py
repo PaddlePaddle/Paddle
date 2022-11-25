@@ -13,15 +13,17 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
+import paddle.fluid.core as core
 from paddle import enable_static
+from paddle.fluid.framework import _current_expected_place
 from paddle.fluid.tests.unittests.op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.framework import _current_expected_place
-import paddle.fluid.core as core
 
 
 @OpTestTool.skip_if(
