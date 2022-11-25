@@ -621,7 +621,7 @@ def convert_shape(x):
                     values[i] = shape_tensor[i]
         return values
     else:
-        return x.shape
+        return paddle.shape(x)
 
 
 def convert_shape_compare(left, *args):
