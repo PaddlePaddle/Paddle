@@ -38,7 +38,8 @@ class TakeAlongAxisOpConverter : public OpConverter {
                   bool test_mode) override {
     VLOG(3) << "convert a fluid take_along_axis op to tensorrt take_along_axis "
                "layer";
-
+    // AddGatherV2 is supported by the trt version of 8.2.
+#if IS_TRT_VERSION_GE(8200)
     framework::OpDesc op_desc(op, nullptr);
     const auto input_tensor = engine_->GetITensor(op_desc.Input("Input")[0]);
     const auto index_tensor = engine_->GetITensor(op_desc.Input("Index")[0]);
@@ -61,6 +62,7 @@ class TakeAlongAxisOpConverter : public OpConverter {
 
     RreplenishLayerAndOutput(
         layer, "take_along_axis", {output_name}, test_mode);
+#endif
   }
 };
 
