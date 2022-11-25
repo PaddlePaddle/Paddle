@@ -301,6 +301,8 @@ struct OneDNNContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
   bool HasDnnInput(const std::string& input_name) const {
     return dnn_inputs_.count(input_name) != 0UL;
   }
@@ -428,6 +430,8 @@ void OneDNNContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 bool OneDNNContext::HasDnnInput(const std::string& input_name) const {
   return impl_->HasDnnInput(input_name);
 }
+
+void OneDNNContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 const DenseTensor* OneDNNContext::GetDnnInput(
     const std::string& input_name) const {

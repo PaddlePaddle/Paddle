@@ -740,6 +740,8 @@ struct GPUContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+  void ClearDnnAttr() { dnn_attrs_.clear(); }
+
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -1041,5 +1043,7 @@ const Attribute& GPUContext::GetDnnAttr(const std::string& attr_name) const {
 void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
   return impl_->SetDnnAttr(attr_name, std::move(attr));
 }
+
+void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
 }  // namespace phi
