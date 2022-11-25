@@ -580,7 +580,7 @@ function cmake_gen_and_build() {
     echo "ls 1:"
     ll /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
     echo "ls 2:"
-    ll /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/
+    ll ${PADDLE_ROOT}/build/python/paddle/libs
     build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
