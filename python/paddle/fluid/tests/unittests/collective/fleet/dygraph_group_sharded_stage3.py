@@ -17,9 +17,12 @@
 import os
 import shutil
 import tempfile
+
 import numpy as np
+
 import paddle
 import paddle.fluid as fluid
+
 from paddle.nn import Linear
 from paddle.fluid.framework import _test_eager_guard
 
@@ -35,6 +38,8 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
+from paddle.fluid.dygraph.nn import Linear
+from paddle.fluid.framework import _test_eager_guard
 
 epoch = 10
 paddle.seed(2022)

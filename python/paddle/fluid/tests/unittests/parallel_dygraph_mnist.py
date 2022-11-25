@@ -13,13 +13,15 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-from paddle.nn import Linear
-from paddle.fluid.dygraph.base import to_variable
 
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+from paddle.nn import Linear
+
+from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.nn import Linear, Pool2D
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):

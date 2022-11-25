@@ -12,18 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.static as static
-from paddle.distributed import fleet
 import sys
 
 import numpy as np
 
+import paddle
+import paddle.static as static
+from paddle.distributed import fleet
+
 sys.path.append("..")
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
-    GPTModel,
     GPTForPretraining,
+    GPTModel,
     GPTPretrainingCriterion,
 )
 
