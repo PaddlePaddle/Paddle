@@ -20,8 +20,8 @@
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 #include "paddle/fluid/inference/tensorrt/plugin/fused_token_prune_op_plugin.h"
 #include "paddle/fluid/operators/fused_token_prune_op.cu.h"
@@ -147,7 +147,7 @@ __global__ void ReduceSum2<half>(
   }
 
   if (tid == 0) {
-    platform::fastAtomicAdd<platform::float16>(
+    phi::fastAtomicAdd<platform::float16>(
         reinterpret_cast<platform::float16*>(dst),
         static_cast<size_t>(batch * max_seq_len + col),
         static_cast<size_t>(bsz * max_seq_len),
