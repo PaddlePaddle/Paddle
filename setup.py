@@ -1406,9 +1406,6 @@ def main():
     if os.path.exists('${SETUP_LOG_FILE}'):
         os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
     # print_info_of_reminding(build_help_message)
-    import paddle
-
-    paddle.utils.run_check()
 
 
 if __name__ == '__main__':
