@@ -21,12 +21,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.common_ops_import import (
-    VarDesc,
-    dygraph_only,
-    dygraph_utils,
-    templatedoc,
-)
+from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
 
 from ..fluid.data_feeder import (
     check_dtype,
@@ -48,7 +43,7 @@ from ..framework import (
 )
 from ..static import Variable
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
