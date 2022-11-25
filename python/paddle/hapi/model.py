@@ -903,11 +903,11 @@ class DynamicGraphAdapter:
 
     def save(self, path):
         params = self.model.network.state_dict()
-        fluid.save_dygraph(params, path)
+        paddle.utils.save_dygraph(params, path)
         if self.model._optimizer is not None:
             if self.model._optimizer.state_dict():
                 optim = self.model._optimizer.state_dict()
-                fluid.save_dygraph(optim, path)
+                paddle.utils.save_dygraph(optim, path)
         if hasattr(self.model, '_scaler') and self.model._scaler is not None:
             if self.model._scaler.state_dict():
                 scaler = self.model._scaler.state_dict()

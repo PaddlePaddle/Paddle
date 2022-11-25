@@ -315,7 +315,7 @@ class ResNetHelper:
                                 resnet, self.model_save_prefix
                             )
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.utils.save_dygraph(
                                 resnet.state_dict(),
                                 self.dy_state_dict_save_path,
                             )
@@ -330,7 +330,7 @@ class ResNetHelper:
         with fluid.dygraph.guard(place):
             resnet = ResNet()
 
-            model_dict, _ = fluid.dygraph.load_dygraph(
+            model_dict, _ = paddle.utils.load_dygraph(
                 self.dy_state_dict_save_path
             )
             resnet.set_dict(model_dict)

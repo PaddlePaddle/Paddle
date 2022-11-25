@@ -153,7 +153,7 @@ def _load_state_dict_from_save_params(model_path):
 #   - need [full filename] when loading
 #       - paddle.save
 #       - paddle.static.save
-#       - paddle.fluid.save_dygraph
+#       - paddle.utils.save_dygraph
 #   - need [prefix] when loading [compatible for paddle 2.x]
 #       - paddle.jit.save
 #       - paddle.static.save_inference_model
@@ -178,12 +178,12 @@ def _build_load_path_and_config(path, config):
         error_msg = "The ``path`` (%s) to load model not exists."
         # if current path is a prefix, and the path.pdparams or path.pdopt
         # is exist, users may want use `paddle.load` load the result of
-        # `fluid.save_dygraph`, we raise error here for users
+        # `paddle.utils.save_dygraph`, we raise error here for users
         params_file_path = path + ".pdparams"
         opti_file_path = path + ".pdopt"
         if os.path.exists(params_file_path) or os.path.exists(opti_file_path):
             error_msg += (
-                " If you want to load the results saved by `fluid.save_dygraph`, "
+                " If you want to load the results saved by `paddle.utils.save_dygraph`, "
                 "please specify the full file name, not just the file name prefix. For "
                 "example, it should be written as `paddle.load('model.pdparams')` instead of "
                 "`paddle.load('model')`."

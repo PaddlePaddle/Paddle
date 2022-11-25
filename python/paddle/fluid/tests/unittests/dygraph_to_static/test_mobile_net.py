@@ -567,7 +567,7 @@ def train_mobilenet(args, to_static):
                     if to_static:
                         fluid.dygraph.jit.save(net, args.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
+                        paddle.utils.save_dygraph(
                             net.state_dict(), args.dy_state_dict_save_path
                         )
                     break
@@ -607,7 +607,7 @@ def predict_dygraph(args, data):
         elif args.model == "MobileNetV2":
             model = MobileNetV2(class_dim=args.class_dim, scale=1.0)
         # load dygraph trained parameters
-        model_dict, _ = fluid.load_dygraph(args.dy_state_dict_save_path)
+        model_dict, _ = paddle.utils.load_dygraph(args.dy_state_dict_save_path)
         model.set_dict(model_dict)
         model.eval()
 

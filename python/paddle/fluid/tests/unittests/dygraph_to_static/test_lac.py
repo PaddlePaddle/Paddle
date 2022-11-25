@@ -628,7 +628,7 @@ class TestLACModel(unittest.TestCase):
                     output_spec=[crf_decode],
                 )
             else:
-                fluid.dygraph.save_dygraph(
+                paddle.utils.save_dygraph(
                     model.state_dict(), self.dy_param_path
                 )
 
@@ -666,7 +666,9 @@ class TestLACModel(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             model = LexNet(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict, _ = paddle.utils.load_dygraph(
+                self.dy_param_path + ".pdparams"
+            )
             model.set_dict(model_dict)
             model.eval()
 

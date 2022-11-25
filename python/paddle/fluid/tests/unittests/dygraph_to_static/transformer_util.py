@@ -328,7 +328,7 @@ def load_dygraph(model_path, keep_name_table=False):
     To load python2 saved models in python3.
     """
     try:
-        para_dict, opti_dict = fluid.load_dygraph(
+        para_dict, opti_dict = paddle.utils.load_dygraph(
             model_path, keep_name_table=keep_name_table
         )
         return para_dict, opti_dict
@@ -340,7 +340,7 @@ def load_dygraph(model_path, keep_name_table=False):
         )
         load_bak = pickle.load
         pickle.load = partial(load_bak, encoding="latin1")
-        para_dict, opti_dict = fluid.load_dygraph(
+        para_dict, opti_dict = paddle.utils.load_dygraph(
             model_path, keep_name_table=keep_name_table
         )
         pickle.load = load_bak

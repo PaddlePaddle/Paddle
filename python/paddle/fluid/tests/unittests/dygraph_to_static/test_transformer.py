@@ -301,11 +301,11 @@ def train_dygraph(args, batch_generator):
                         model_dir = os.path.join(args.save_dygraph_model_path)
                         if not os.path.exists(model_dir):
                             os.makedirs(model_dir)
-                        fluid.save_dygraph(
+                        paddle.utils.save_dygraph(
                             transformer.state_dict(),
                             os.path.join(model_dir, "transformer"),
                         )
-                        fluid.save_dygraph(
+                        paddle.utils.save_dygraph(
                             optimizer.state_dict(),
                             os.path.join(model_dir, "transformer"),
                         )

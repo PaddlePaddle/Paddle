@@ -120,7 +120,7 @@ class TestBert(unittest.TestCase):
                     if to_static:
                         fluid.dygraph.jit.save(bert, self.model_save_prefix)
                     else:
-                        fluid.dygraph.save_dygraph(
+                        paddle.utils.save_dygraph(
                             bert.state_dict(), self.dy_state_dict_save_path
                         )
                     break
@@ -162,7 +162,7 @@ class TestBert(unittest.TestCase):
             bert = PretrainModelLayer(
                 config=bert_config, weight_sharing=False, use_fp16=False
             )
-            model_dict, _ = fluid.dygraph.load_dygraph(
+            model_dict, _ = paddle.utils.load_dygraph(
                 self.dy_state_dict_save_path
             )
 

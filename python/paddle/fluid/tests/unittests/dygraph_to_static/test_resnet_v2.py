@@ -313,7 +313,7 @@ class TestResnet(unittest.TestCase):
                     if to_static:
                         paddle.jit.save(resnet, self.model_save_prefix)
                     else:
-                        paddle.fluid.dygraph.save_dygraph(
+                        paddle.utils.save_dygraph(
                             resnet.state_dict(), self.dy_state_dict_save_path
                         )
                         # avoid dataloader throw abort signaal
@@ -328,9 +328,7 @@ class TestResnet(unittest.TestCase):
         paddle.disable_static(place)
         resnet = ResNet()
 
-        model_dict, _ = paddle.fluid.dygraph.load_dygraph(
-            self.dy_state_dict_save_path
-        )
+        model_dict, _ = paddle.utils.load_dygraph(self.dy_state_dict_save_path)
         resnet.set_dict(model_dict)
         resnet.eval()
 

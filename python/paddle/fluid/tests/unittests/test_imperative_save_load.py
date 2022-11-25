@@ -317,7 +317,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 else:
                     self.base_opti[k] = v
 
-            fluid.save_dygraph(self.opti_dict, "./test_dy")
+            paddle.utils.save_dygraph(self.opti_dict, "./test_dy")
 
             self.state_dict = ptb_model.state_dict()
 
@@ -326,7 +326,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 np_t = v.numpy()
                 self.model_base[k] = np_t
 
-            fluid.save_dygraph(self.state_dict, "./test_dy")
+            paddle.utils.save_dygraph(self.state_dict, "./test_dy")
 
     def func_testLoadAndSetVarBase(self):
         seed = 90
@@ -416,7 +416,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
             if isinstance(adam._learning_rate, LearningRateDecay):
                 adam._learning_rate.step_num = 0
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph("./test_dy")
+            para_state_dict, opti_state_dict = paddle.utils.load_dygraph(
+                "./test_dy"
+            )
             print(opti_state_dict.keys())
             adam.set_state_dict(opti_state_dict)
 
@@ -822,7 +824,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            state_dict, opti_dict = fluid.load_dygraph("./test_dy")
+            state_dict, opti_dict = paddle.utils.load_dygraph("./test_dy")
             adam.set_state_dict(opti_dict)
             ptb_model.set_state_dict(state_dict)
 
@@ -991,19 +993,21 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
+            paddle.utils.save_dygraph(
+                state_dict, os.path.join('saved_dy', 'emb_dy')
+            )
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph(
+            para_state_dict, opti_state_dict = paddle.utils.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy')
             )
 
             self.assertIsNone(opti_state_dict)
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph(
+            para_state_dict, opti_state_dict = paddle.utils.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdparams')
             )
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph(
+            para_state_dict, opti_state_dict = paddle.utils.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy.pdopt')
             )
 
@@ -1011,9 +1015,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
         with fluid.dygraph.guard():
             emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
-            fluid.save_dygraph(state_dict, os.path.join('saved_dy', 'emb_dy'))
+            paddle.utils.save_dygraph(
+                state_dict, os.path.join('saved_dy', 'emb_dy')
+            )
 
-            para_state_dict, opti_state_dict = fluid.load_dygraph(
+            para_state_dict, opti_state_dict = paddle.utils.load_dygraph(
                 os.path.join('saved_dy', 'emb_dy'), keep_name_table=True
             )
             self.assertIsNotNone(para_state_dict)

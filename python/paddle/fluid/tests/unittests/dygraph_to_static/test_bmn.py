@@ -25,6 +25,7 @@ from paddle.fluid.dygraph import to_variable
 from paddle.fluid.dygraph import ProgramTranslator
 from paddle.fluid.dygraph.io import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
+
 from predictor_utils import PredictorTools
 
 SEED = 2000
@@ -765,7 +766,7 @@ class TestTrain(unittest.TestCase):
                         if to_static:
                             fluid.dygraph.jit.save(bmn, self.model_save_prefix)
                         else:
-                            fluid.dygraph.save_dygraph(
+                            paddle.utils.save_dygraph(
                                 bmn.state_dict(), self.dy_param_path
                             )
                         break
@@ -843,7 +844,9 @@ class TestTrain(unittest.TestCase):
         with fluid.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters
-            model_dict, _ = fluid.load_dygraph(self.dy_param_path + ".pdparams")
+            model_dict, _ = paddle.utils.load_dygraph(
+                self.dy_param_path + ".pdparams"
+            )
             bmn.set_dict(model_dict)
             bmn.eval()
 
