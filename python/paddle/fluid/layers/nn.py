@@ -121,7 +121,6 @@ __all__ = [
     'elementwise_mul',
     'gaussian_random',
     'sampling_id',
-    'gaussian_random_batch_size_like',
     'sum',
     'slice',
     'strided_slice',
@@ -7180,86 +7179,6 @@ def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'min': min, 'max': max, 'seed': seed},
-    )
-
-    return out
-
-
-@deprecated(since='1.8.0', update_to="paddle.normal")
-@templatedoc()
-def gaussian_random_batch_size_like(
-    input,
-    shape,
-    input_dim_idx=0,
-    output_dim_idx=0,
-    mean=0.0,
-    std=1.0,
-    seed=0,
-    dtype='float32',
-):
-    """
-    ${comment}
-
-    Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (int): ${input_dim_idx_comment}
-        output_dim_idx (int): ${output_dim_idx_comment}
-        mean (float): ${mean_comment}
-        std (float): ${std_comment}
-        seed (int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
-
-    Returns:
-        out (Variable): ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-            paddle.enable_static()
-
-            input = fluid.data(name="input", shape=[13, 11], dtype='float32')
-
-            out = fluid.layers.gaussian_random_batch_size_like(
-                input, shape=[-1, 11], mean=1.0, std=2.0)
-    """
-
-    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
-    check_type(
-        input,
-        'input',
-        (Variable),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_type(
-        shape,
-        'shape',
-        (list, tuple),
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    check_dtype(
-        dtype,
-        'dtype',
-        ['float16', 'float32', 'int'],
-        'fluid.layers.gaussian_random_batch_size_like',
-    )
-    out = helper.create_variable_for_type_inference(dtype)
-    c_dtype = convert_np_dtype_to_dtype_(dtype)
-    helper.append_op(
-        type='gaussian_random_batch_size_like',
-        inputs={'Input': input},
-        outputs={'Out': out},
-        attrs={
-            'shape': shape,
-            'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx,
-            'mean': mean,
-            'std': std,
-            'seed': seed,
-            'dtype': c_dtype,
-        },
     )
 
     return out
