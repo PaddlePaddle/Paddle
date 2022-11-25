@@ -105,11 +105,18 @@ struct KernelEventInfo {
   uint64_t submitted;
   // The completed timestamp for the kernel execution, in ns.
   uint64_t completed;
+<<<<<<< HEAD
 
   float blocks_per_sm;
   float warps_per_sm;
   // theoretical achieved occupancy
   float occupancy;
+=======
+#ifdef PADDLE_WITH_HIP
+  void* kernelFunc;
+  uint8_t launchType;
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 static constexpr size_t kMemKindMaxLen = 50;

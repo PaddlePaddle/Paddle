@@ -21,6 +21,7 @@ from op_test import OpTest
 
 
 class TestArangeOp(OpTest):
+
     def setUp(self):
         self.op_type = "range"
         self.init_config()
@@ -31,9 +32,15 @@ class TestArangeOp(OpTest):
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
                 self.dtype
             )
+=======
+            'Out':
+            np.arange(self.case[0], self.case[1],
+                      self.case[2]).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_config(self):
@@ -45,45 +52,56 @@ class TestArangeOp(OpTest):
 
 
 class TestFloatArangeOp(TestArangeOp):
+
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
 class TestInt32ArangeOp(TestArangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
 class TestFloat64ArangeOp(TestArangeOp):
+
     def init_config(self):
         self.dtype = np.float64
         self.case = (10, 1, -2)
 
 
 class TestInt64ArangeOp(TestArangeOp):
+
     def init_config(self):
         self.dtype = np.int64
         self.case = (-1, -10, -2)
 
 
 class TestArangeOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             self.assertRaises(TypeError, paddle.arange, 10, dtype='int8')
 
 
 class TestArangeAPI(unittest.TestCase):
+
     def test_out(self):
         with program_guard(Program(), Program()):
             x1 = paddle.arange(0, 5, 1, 'float32')
 
+<<<<<<< HEAD
             place = (
                 paddle.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
                 else paddle.CPUPlace()
             )
+=======
+            place = paddle.CUDAPlace(
+                0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             exe = paddle.static.Executor(place)
             out = exe.run(fetch_list=[x1])
 
@@ -92,12 +110,18 @@ class TestArangeAPI(unittest.TestCase):
 
 
 class TestArangeImperative(unittest.TestCase):
+
     def test_out(self):
+<<<<<<< HEAD
         place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.disable_static(place)
         x1 = paddle.arange(0, 5, 1)
         x2 = paddle.tensor.arange(5)

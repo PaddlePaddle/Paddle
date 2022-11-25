@@ -582,6 +582,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       }
       runtime_batch = t_shape[0];
       VLOG(1) << "trt input [" << x << "] dtype is " << t.dtype();
+<<<<<<< HEAD
 
       auto indata_type = inference::tensorrt::PhiType2NvType(t.dtype());
       auto intrt_index = engine->engine()->getBindingIndex(x.c_str());
@@ -592,6 +593,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
                             "The TRT Engine OP's input type should equal "
                             "to the input data type"));
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto type = framework::TransToProtoVarType(t.dtype());
       if (type == framework::proto::VarType::FP32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());

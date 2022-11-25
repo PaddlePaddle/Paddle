@@ -27,6 +27,7 @@ import paddle.fluid.core as core
     "core is compiled with CUDA which has no BF implementation",
 )
 class TestScaleOpBF16(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
@@ -67,6 +68,7 @@ class TestScaleOpBF16(OpTest):
 
 
 class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
+
     def setUp(self):
         self.op_type = "scale"
         self.x_fp32 = np.random.random((10, 10)).astype(np.float32)
@@ -86,6 +88,7 @@ class TestScaleOpBF16BiasNotAfterScale(TestScaleOpBF16):
 
 
 class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
+
     def setUp(self):
         self.op_type = "scale"
         self.scale = -2.3
@@ -101,6 +104,7 @@ class TestScaleOpBF16ScaleTensor(TestScaleOpBF16):
 
 
 class TestScaleOpBF16ScaleTensorNotBiasAfterScale(TestScaleOpBF16):
+
     def setUp(self):
         self.op_type = "scale"
         self.scale = 1.2

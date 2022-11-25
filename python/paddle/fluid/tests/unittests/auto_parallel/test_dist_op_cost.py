@@ -16,6 +16,7 @@ import unittest
 import copy
 
 import paddle
+<<<<<<< HEAD
 
 from paddle.distributed.fleet import auto
 from paddle.distributed.auto_parallel.cluster import Cluster
@@ -23,6 +24,11 @@ from paddle.distributed.auto_parallel.operators.common import (
     get_distributed_operator_impl_container,
     is_elementwise_op,
 )
+=======
+import paddle.distributed.auto_parallel as auto
+from paddle.distributed.auto_parallel.cluster import Cluster
+from paddle.distributed.auto_parallel.operators.common import get_distributed_operator_impl_container, is_elementwise_op
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
@@ -33,6 +39,10 @@ paddle.enable_static()
 
 def parallelizer(program_func, rank):
     from paddle.distributed.auto_parallel.completion import Completer
+<<<<<<< HEAD
+=======
+    from paddle.distributed.auto_parallel.partitioner import Partitioner
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     from paddle.distributed.auto_parallel.dist_context import DistributedContext
 
     main_program, startup_program, loss = program_func()
@@ -46,8 +56,12 @@ def parallelizer(program_func, rank):
     # generate backward and complete backward
     with paddle.static.program_guard(main_program, startup_program):
         params_grads = append_backward(
+<<<<<<< HEAD
             loss, None, None, None, distop_context=dist_context.dist_op_context
         )
+=======
+            loss, None, None, None, distop_context=dist_context.dist_op_context)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     completer.complete_backward_annotation(main_program)
     dist_context.block_state.parse_backward_blocks(main_program)
 
@@ -62,13 +76,20 @@ def parallelizer(program_func, rank):
 
 
 class TestDistOpCost(unittest.TestCase):
+<<<<<<< HEAD
     def test_dist_op_cost_part1(self):
+=======
+
+    def test_dist_op_cost_part1(self):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def make_program():
             main_program = paddle.static.Program()
             start_program = paddle.static.Program()
             with paddle.static.program_guard(main_program, start_program):
                 x = paddle.static.data(name='x', shape=[4, 8], dtype='float32')
                 x.stop_gradient = True
+<<<<<<< HEAD
                 label = paddle.static.data(
                     name="label", shape=[4, 1], dtype='float32'
                 )
@@ -79,6 +100,19 @@ class TestDistOpCost(unittest.TestCase):
                 tmp = paddle.fluid.layers.fill_constant_batch_size_like(
                     input=x, shape=[2, 8], value=1, dtype='float32'
                 )
+=======
+                label = paddle.static.data(name="label",
+                                           shape=[4, 1],
+                                           dtype='float32')
+                label.stop_gradient = True
+                auto.shard_tensor(x,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [0, -1]
+                                  })
+                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                    input=x, shape=[2, 8], value=1, dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 weight_attr = paddle.ParamAttr()
                 linear = paddle.nn.Linear(8, 1, weight_attr=weight_attr)
                 linear_out = linear(x)
@@ -94,16 +128,21 @@ class TestDistOpCost(unittest.TestCase):
         cluster = Cluster()
         cluster.gen_default_config_cluster(device_count=2)
         for idx, op in enumerate(ops):
+<<<<<<< HEAD
             if (
                 op.type != "matmul_v2"
                 and op.type != "matmul_v2_grad"
                 and op.type != "sgd"
             ):
+=======
+            if op.type != "matmul_v2" and op.type != "matmul_v2_grad" and op.type != "sgd":
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 dist_op = dist_context.get_dist_op_for_program(op)
                 op_dist_attr = dist_op.dist_attr
                 processes = op_dist_attr.process_mesh.processes
                 if is_elementwise_op(op.type):
                     container = get_distributed_operator_impl_container(
+<<<<<<< HEAD
                         "elementwise"
                     )
                 else:
@@ -118,12 +157,27 @@ class TestDistOpCost(unittest.TestCase):
                 self.assertTrue(dist_op_cost)
 
     def test_dist_op_cost_part2(self):
+=======
+                        "elementwise")
+                else:
+                    container = get_distributed_operator_impl_container(
+                        op_dist_attr.impl_type)
+
+                dist_impl = container.impls[op_dist_attr.impl_idx]
+                dist_op_cost = dist_impl.calc_cost(op.attr('op_role'), dist_op,
+                                                   dist_context, cluster)
+                self.assertTrue(dist_op_cost)
+
+    def test_dist_op_cost_part2(self):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def make_program():
             main_program = paddle.static.Program()
             start_program = paddle.static.Program()
             with paddle.static.program_guard(main_program, start_program):
                 x = paddle.static.data(name='x', shape=[4], dtype='float32')
                 x.stop_gradient = True
+<<<<<<< HEAD
                 label = paddle.static.data(
                     name="label", shape=[8, 1], dtype='float32'
                 )
@@ -141,12 +195,33 @@ class TestDistOpCost(unittest.TestCase):
                 tmp = paddle.fluid.layers.fill_constant_batch_size_like(
                     input=x, shape=[4], value=1, dtype='int32'
                 )
+=======
+                label = paddle.static.data(name="label",
+                                           shape=[8, 1],
+                                           dtype='float32')
+                label.stop_gradient = True
+                auto.shard_tensor(x,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [0]
+                                  })
+
+                auto.shard_tensor(label,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [0, -1]
+                                  })
+                # embedding
+                tmp = paddle.fluid.layers.fill_constant_batch_size_like(
+                    input=x, shape=[4], value=1, dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 embedding = paddle.nn.Embedding(10, 8)
                 out = embedding(tmp)
                 # row parallel embedding
                 for op in main_program.global_block().ops:
                     if op.type == "lookup_table_v2":
                         W = main_program.global_block().vars[op.input("W")[0]]
+<<<<<<< HEAD
                         auto.shard_tensor(
                             W,
                             auto.ProcessMesh([0, 1], dim_names=["x"]),
@@ -406,20 +481,70 @@ class TestDistOpCost(unittest.TestCase):
                 )  # [8, 4] [-1, 0]
 
                 out8 = paddle.transpose(out2, [1, 0])  # [4, 8] [0, -1]
+=======
+                        auto.shard_tensor(W,
+                                          dist_attr={
+                                              "process_mesh":
+                                              auto.ProcessMesh([0, 1]),
+                                              "dims_mapping": [0, -1]
+                                          })
+                out = paddle.fluid.layers.transpose(out,
+                                                    [1, 0])  # [8, 2] [-1, 0]
+
+                # matmul
+                param1 = paddle.fluid.layers.create_parameter(
+                    [4, 8], paddle.float32)  # [2, 8] [0, -1]
+                auto.shard_tensor(param1,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [0, -1]
+                                  })
+                param2 = paddle.fluid.layers.create_parameter(
+                    [8, 8], paddle.float32)  # [8, 4] [-1, 0]
+                auto.shard_tensor(param2,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [-1, 0]
+                                  })
+                out1 = paddle.fluid.layers.matmul(out,
+                                                  param1)  # [8, 8] [-1, -1]
+                tmp_param = paddle.fluid.layers.create_parameter(
+                    [8, 8], paddle.float32)  # [8, 8] [-1, -1]
+                auto.shard_tensor(param2,
+                                  dist_attr={
+                                      "process_mesh": auto.ProcessMesh([0, 1]),
+                                      "dims_mapping": [-1, -1]
+                                  })
+                tmp_out = paddle.fluid.layers.matmul(out1, tmp_param)
+                out2 = paddle.fluid.layers.matmul(tmp_out,
+                                                  param2)  # [8, 4] [-1, 0]
+
+                out8 = paddle.fluid.layers.transpose(out2,
+                                                     [1, 0])  # [4, 8] [0, -1]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 # reshape
                 out9 = paddle.reshape(out8, [8, 2, 4])  # [4, 2, 4] [0, -1, -1]
                 tmp_reshape_out = paddle.reshape(out9, [8, 4, 2])
+<<<<<<< HEAD
                 out10 = paddle.reshape(
                     tmp_reshape_out, [8, 8]
                 )  # [4, 8] [0, -1]
+=======
+                out10 = paddle.reshape(tmp_reshape_out,
+                                       [8, 8])  # [4, 8] [0, -1]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 # softmax
                 softmax = paddle.nn.Softmax()
                 out11 = softmax(out10)
                 error_cost = paddle.nn.functional.square_error_cost(
+<<<<<<< HEAD
                     out11, label
                 )
+=======
+                    out11, label)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 loss = paddle.mean(error_cost)
             return main_program, start_program, loss
 
@@ -433,6 +558,7 @@ class TestDistOpCost(unittest.TestCase):
             processes = op_dist_attr.process_mesh.processes
             if is_elementwise_op(op.type):
                 container = get_distributed_operator_impl_container(
+<<<<<<< HEAD
                     "elementwise"
                 )
             else:
@@ -444,6 +570,16 @@ class TestDistOpCost(unittest.TestCase):
             dist_op_cost = dist_impl.calc_cost(
                 op.attr('op_role'), dist_op, dist_context, cluster
             )
+=======
+                    "elementwise")
+            else:
+                container = get_distributed_operator_impl_container(
+                    op_dist_attr.impl_type)
+
+            dist_impl = container.impls[op_dist_attr.impl_idx]
+            dist_op_cost = dist_impl.calc_cost(op.attr('op_role'), dist_op,
+                                               dist_context, cluster)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertTrue(dist_op_cost)
 
 

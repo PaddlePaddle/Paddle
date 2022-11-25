@@ -26,6 +26,10 @@
 #endif
 #include <cudnn.h>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/conv_cudnn_op_cache.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"
 #include "paddle/phi/kernels/gpudnn/conv_gpudnn_info.h"
 #endif

@@ -29,7 +29,11 @@ if(WITH_HETERPS)
       nv_library(
         ps_gpu_wrapper
         SRCS ps_gpu_wrapper.cu ps_gpu_wrapper.cc
+<<<<<<< HEAD
         DEPS heter_ps gloo_wrapper ps_framework_proto ${BRPC_DEPS})
+=======
+        DEPS heter_ps gloo_wrapper ps_framework_proto graph_gpu_wrapper ${BRPC_DEPS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else()
       nv_library(
         ps_gpu_wrapper

@@ -36,11 +36,13 @@ paddle.enable_static()
 
 
 class XPUTestRNNOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'rnn'
         self.use_dynamic_create_class = False
 
     class TestRNNOp(XPUOpTest):
+
         def setUp(self):
             self.init_size()
             self.init_dtype()
@@ -57,16 +59,24 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             self.direction_num = 2 if self.is_bidirec else 1
             direction = "bidirectional" if self.is_bidirec else "forward"
 
+<<<<<<< HEAD
             input = np.random.uniform(
                 low=-0.1,
                 high=0.1,
                 size=(self.seq_length, self.batch_size, self.input_size),
             ).astype(self.dtype)
+=======
+            input = np.random.uniform(low=-0.1,
+                                      high=0.1,
+                                      size=(self.seq_length, self.batch_size,
+                                            self.input_size)).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             input[11][1:][:] = 0
             input[10][2:][:] = 0
             input[9][3:][:] = 0
             input[8][4:][:] = 0
 
+<<<<<<< HEAD
             rnn1 = LSTM(
                 self.input_size,
                 self.hidden_size,
@@ -81,6 +91,20 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             output, (last_hidden, last_cell) = rnn1(
                 input, sequence_length=self.sequence_length
             )
+=======
+            rnn1 = LSTM(self.input_size,
+                        self.hidden_size,
+                        num_layers=self.num_layers,
+                        time_major=True,
+                        direction=direction,
+                        dropout=self.dropout,
+                        dtype=self.dtype)
+
+            flat_w = get_params_for_net(rnn1)
+            output, (last_hidden,
+                     last_cell) = rnn1(input,
+                                       sequence_length=self.sequence_length)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             init_h = np.zeros(
                 (
@@ -121,10 +145,15 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             }
             self.outputs = {
                 'Out': output,
+<<<<<<< HEAD
                 "State": [
                     ('last_hidden', last_hidden),
                     ('last_cell', last_cell),
                 ],
+=======
+                "State": [('last_hidden', last_hidden),
+                          ('last_cell', last_cell)],
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 'Reserve': np.ndarray((400)).astype("uint8"),
                 'DropoutState': state_out,
             }
@@ -139,19 +168,28 @@ class XPUTestRNNOp(XPUOpTestWrapper):
 
         def test_check_output(self):
             self.check_output_with_place(
+<<<<<<< HEAD
                 self.place, atol=0.01, no_check_set=['Reserve', 'DropoutState']
             )
+=======
+                self.place, atol=0.01, no_check_set=['Reserve', 'DropoutState'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def test_grad(self):
             if not self.is_test:
                 var_name_list = self.get_weight_names()
                 grad_check_list = ['Input', 'init_h', 'init_c']
                 grad_check_list.extend(var_name_list)
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     self.place,
                     set(grad_check_list),
                     ['Out', 'last_hidden', 'last_cell'],
                 )
+=======
+                self.check_grad_with_place(self.place, set(grad_check_list),
+                                           ['Out', 'last_hidden', 'last_cell'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def init_size(self):
             self.seq_length = 12
@@ -173,36 +211,43 @@ class XPUTestRNNOp(XPUOpTestWrapper):
             pass
 
     class TestRNNOp1(TestRNNOp):
+
         def set_attrs(self):
             self.sequence_length = None
 
     class TestRNNOp2(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 1
             self.is_bidirec = True
 
     class TestRNNOp3(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 2
             self.is_bidirec = False
 
     class TestRNNOp4(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 3
             self.is_bidirec = False
 
     class TestRNNOp5(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 2
             self.is_bidirec = True
 
     class TestRNNOp6(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 2
             self.is_bidirec = True
             self.sequence_length = None
 
     class TestRNNOp7(TestRNNOp):
+
         def set_attrs(self):
             self.num_layers = 3
             self.is_bidirec = True
@@ -210,12 +255,19 @@ class XPUTestRNNOp(XPUOpTestWrapper):
 
 support_types = get_xpu_op_support_types('rnn')
 for stype in support_types:
+<<<<<<< HEAD
     create_test_class(
         globals(),
         XPUTestRNNOp,
         stype,
         ignore_device_version=[core.XPUVersion.XPU1],
     )
+=======
+    create_test_class(globals(),
+                      XPUTestRNNOp,
+                      stype,
+                      ignore_deivce_version=[core.XPUVersion.XPU1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 if __name__ == '__main__':
     unittest.main()

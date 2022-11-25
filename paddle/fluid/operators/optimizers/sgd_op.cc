@@ -15,6 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/sgd_op.h"
 
 #include <string>
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -32,6 +38,7 @@ class SGDOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
 
+<<<<<<< HEAD
     // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
     const auto *param_var = ctx.InputVar("Param");
     const auto *grad_var = ctx.InputVar("Grad");
@@ -43,6 +50,26 @@ class SGDOp : public framework::OperatorWithKernel {
                                 grad_var->IsType<phi::DenseTensor>();
     if (!(dense_param_sparse_grad || dense_param_and_grad)) {
       this->SetDnnFallback(true);
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    using dnnl::memory;
+    if (this->CanMKLDNNBeUsed(ctx, data_type)) {
+      const auto *param_var = ctx.InputVar("Param");
+      const auto *grad_var = ctx.InputVar("Grad");
+
+      // supported cases
+      bool dense_param_sparse_grad =
+          param_var->IsType<framework::LoDTensor>() &&
+          grad_var->IsType<phi::SelectedRows>();
+      bool dense_param_and_grad = param_var->IsType<framework::LoDTensor>() &&
+                                  grad_var->IsType<framework::LoDTensor>();
+
+      if (dense_param_sparse_grad || dense_param_and_grad)
+        return framework::OpKernelType(data_type,
+                                       ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
@@ -51,8 +78,13 @@ class SGDOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
+=======
+      const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (var_name == "LearningRate") {
       return framework::OpKernelType(
           framework::TransToProtoVarType(tensor.dtype()),

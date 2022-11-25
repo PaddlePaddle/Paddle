@@ -24,6 +24,7 @@ device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
 
 class TestCostModel(unittest.TestCase):
+
     def test_profiler_measure_empty_program(self):
         cost_model = core.CostModel()
         empty_program = paddle.static.Program()
@@ -72,18 +73,28 @@ class TestCostModel(unittest.TestCase):
         print("conv2d_op_time:", conv2d_op_time)
         print("conv2d_op_config:", conv2d_op_config)
 
+<<<<<<< HEAD
         conv2d_backward_op_cost = cost_model.get_static_op_time(
             "conv2d", forward=False
         )
+=======
+        conv2d_backward_op_cost = cost_model.get_static_op_time("conv2d",
+                                                                forward=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conv2d_backward_op_time = conv2d_backward_op_cost["op_time"]
         conv2d_backward_op_config = conv2d_backward_op_cost["config"]
         self.assertGreater(float(conv2d_backward_op_time), 0)
         print("conv2d_backward_op_time:", conv2d_backward_op_time)
         print("conv2d_backward_op_config:", conv2d_backward_op_config)
 
+<<<<<<< HEAD
         conv2d_fp16_op_cost = cost_model.get_static_op_time(
             "conv2d", dtype="float16"
         )
+=======
+        conv2d_fp16_op_cost = cost_model.get_static_op_time("conv2d",
+                                                            dtype="float16")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conv2d_fp16_op_time = conv2d_fp16_op_cost["op_time"]
         conv2d_fp16_op_config = conv2d_fp16_op_cost["config"]
         self.assertGreater(float(conv2d_fp16_op_time), 0)

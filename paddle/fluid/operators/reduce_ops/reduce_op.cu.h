@@ -32,8 +32,13 @@ template <typename Tx,
           class ReduceOp,
           typename TransformOp>
 void TensorReduceImpl(const phi::GPUContext& dev_ctx,
+<<<<<<< HEAD
                       const phi::DenseTensor& x,
                       phi::DenseTensor* y,
+=======
+                      const framework::Tensor& x,
+                      framework::Tensor* y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
                       gpuStream_t stream,

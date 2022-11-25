@@ -41,6 +41,7 @@ class TestAST2Func(unittest.TestCase):
         return transformed_func
 
     def test_ast2func(self):
+
         def func(x, y):
             return x + y
 
@@ -58,6 +59,7 @@ class TestAST2Func(unittest.TestCase):
                 self.assertTrue((true_ret == test_ret).all())
 
     def test_ast2func_static(self):
+
         def func(x):
             y = fluid.layers.relu(x)
             loss = paddle.mean(y)
@@ -76,9 +78,14 @@ class TestAST2Func(unittest.TestCase):
     def test_ast2func_error(self):
         with self.assertRaises(Exception) as e:
             self.assertRaises(TypeError, ast_to_func("x = a + b", 'foo'))
+<<<<<<< HEAD
         self.assertTrue(
             "Type of ast_root should be gast.AST or ast.AST" in str(e.exception)
         )
+=======
+        self.assertTrue("Type of ast_root should be gast.AST or ast.AST" in str(
+            e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

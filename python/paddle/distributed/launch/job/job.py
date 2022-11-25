@@ -19,7 +19,12 @@ class JobMode:
     HETER = 'heter'
 
 
+<<<<<<< HEAD
 class Job:
+=======
+class Job(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, jid='default', mode=JobMode.COLLECTIVE, nnodes="1"):
         self._mode = mode
         self._id = jid

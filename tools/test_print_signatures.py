@@ -55,6 +55,7 @@ class ClassExample:
 
 
 class Test_all_in_print_signatures(unittest.TestCase):
+
     def test_md5(self):
         algo = hashlib.md5()
         algo.update(func_example.__doc__.encode('utf-8'))
@@ -63,13 +64,19 @@ class Test_all_in_print_signatures(unittest.TestCase):
 
 
 class Test_is_primitive(unittest.TestCase):
+
     def test_single(self):
         self.assertTrue(is_primitive(2))
         self.assertTrue(is_primitive(2.1))
         self.assertTrue(is_primitive("2.1.1"))
+<<<<<<< HEAD
         self.assertFalse(
             is_primitive("hello paddle".encode('UTF-8'))
         )  # True for python2
+=======
+        self.assertFalse(is_primitive(
+            "hello paddle".encode('UTF-8')))  # True for python2
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.assertFalse(is_primitive(1j))
         self.assertTrue(is_primitive(True))
 

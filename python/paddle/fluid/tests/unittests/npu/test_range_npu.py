@@ -24,6 +24,7 @@ paddle.enable_static()
 
 
 class TestRangeOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
         self.place = paddle.NPUPlace(0)
@@ -39,9 +40,15 @@ class TestRangeOp(OpTest):
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.arange(self.case[0], self.case[1], self.case[2]).astype(
                 self.dtype
             )
+=======
+            'Out':
+            np.arange(self.case[0], self.case[1],
+                      self.case[2]).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_config(self):
@@ -53,42 +60,49 @@ class TestRangeOp(OpTest):
 
 
 class TestFloatRangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.float32
         self.case = (0, 5, 1)
 
 
 class TestInt32RangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.case = (0, 5, 2)
 
 
 class TestInt32RangeOpCase1(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.case = (10, 1, -2)
 
 
 class TestInt32RangeOpCase2(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int32
         self.case = (-1, -10, -2)
 
 
 class TestInt64RangeOpCase0(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int64
         self.case = (0, 5, 2)
 
 
 class TestInt64RangeOpCase1(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int64
         self.case = (10, 1, -2)
 
 
 class TestInt64RangeOpCase2(TestRangeOp):
+
     def init_config(self):
         self.dtype = np.int64
         self.case = (-1, -10, -2)

@@ -15,6 +15,10 @@
 #include "paddle/fluid/operators/optimizers/distributed_fused_lamb_init_op.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/optimizers/cast_with_ptr.h"
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/tensor_to_string.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/platform/device/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"
@@ -182,7 +186,11 @@ static size_t FillAlignmentPaddingInfo(std::vector<ParamGradInfo> *infos,
 
 template <typename T>
 static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
+<<<<<<< HEAD
                              phi::DenseTensor *tensor,
+=======
+                             framework::Tensor *tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                              const framework::DDim &dims,
                              T value) {
   tensor->Resize(dims);
@@ -192,10 +200,17 @@ static T *TensorFillConstant(const phi::GPUContext &dev_ctx,
   return ptr;
 }
 
+<<<<<<< HEAD
 static phi::DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
                                                 phi::DenseTensor *origin,
                                                 phi::DenseTensor *fused_out,
                                                 size_t numel_offset) {
+=======
+static framework::Tensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
+                                                 framework::Tensor *origin,
+                                                 framework::Tensor *fused_out,
+                                                 size_t numel_offset) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_EQ(origin->IsInitialized(),
                     true,
                     platform::errors::InvalidArgument(
@@ -224,9 +239,15 @@ static phi::DenseTensor CastDataForInitedTensor(const phi::GPUContext &dev_ctx,
   return sliced_tensor;
 }
 
+<<<<<<< HEAD
 static phi::DenseTensor CopyAndShareBufferForInitedTensor(
     phi::DenseTensor *origin,
     phi::DenseTensor *fused_out,
+=======
+static framework::Tensor CopyAndShareBufferForInitedTensor(
+    framework::Tensor *origin,
+    framework::Tensor *fused_out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     size_t numel_offset,
     gpuStream_t stream) {
   PADDLE_ENFORCE_EQ(
@@ -622,6 +643,7 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
 
     // Step 4: For Moment1, Moment2, Beta1Pow, Beta2Pow, just fill constant
     TensorFillConstant<float>(dev_ctx,
+<<<<<<< HEAD
                               ctx.Output<phi::DenseTensor>("Moment1"),
                               {static_cast<int64_t>(numel_each_device)},
                               0.0f);
@@ -635,6 +657,21 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
                               ctx.Attr<float>("beta1"));
     TensorFillConstant<float>(dev_ctx,
                               ctx.Output<phi::DenseTensor>("Beta2Pow"),
+=======
+                              ctx.Output<framework::Tensor>("Moment1"),
+                              {static_cast<int64_t>(numel_each_device)},
+                              0.0f);
+    TensorFillConstant<float>(dev_ctx,
+                              ctx.Output<framework::Tensor>("Moment2"),
+                              {static_cast<int64_t>(numel_each_device)},
+                              0.0f);
+    TensorFillConstant<float>(dev_ctx,
+                              ctx.Output<framework::Tensor>("Beta1Pow"),
+                              {1},
+                              ctx.Attr<float>("beta1"));
+    TensorFillConstant<float>(dev_ctx,
+                              ctx.Output<framework::Tensor>("Beta2Pow"),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                               {1},
                               ctx.Attr<float>("beta2"));
     VLOG(10) << "Init Moment and BetaPow ends";
@@ -775,7 +812,11 @@ class DistributedFusedLambInitOpKernel<phi::GPUContext, T>
     VLOG(10) << "Init global scale ends";
 
     TensorFillConstant<int64_t>(dev_ctx,
+<<<<<<< HEAD
                                 ctx.Output<phi::DenseTensor>("Step"),
+=======
+                                ctx.Output<framework::Tensor>("Step"),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 {1},
                                 static_cast<int64_t>(0));
 

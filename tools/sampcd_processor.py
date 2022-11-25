@@ -149,6 +149,7 @@ def extract_code_blocks_from_docstr(docstr):
 
     def _append_code_block():
         # nonlocal code_blocks, cb_cur, cb_cur_name, cb_cur_seq_id, cb_required
+<<<<<<< HEAD
         code_blocks.append(
             {
                 'codes': inspect.cleandoc("\n".join(cb_info['cb_cur'])),
@@ -157,6 +158,18 @@ def extract_code_blocks_from_docstr(docstr):
                 'required': cb_info['cb_required'],
             }
         )
+=======
+        code_blocks.append({
+            'codes':
+            inspect.cleandoc("\n".join(cb_info['cb_cur'])),
+            'name':
+            cb_info['cb_cur_name'],
+            'id':
+            cb_info['cb_cur_seq_id'],
+            'required':
+            cb_info['cb_required'],
+        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     for lineno, linecont in enumerate(ds_list):
         if re.search(cb_start_pat, linecont):
@@ -376,6 +389,7 @@ Please use '.. code-block:: python' to format the sample code."""
         # None - no sample code found;
         # False - it need other special equipment or environment.
         # so, the following conditional statements are intentionally arranged.
+<<<<<<< HEAD
         if matched:
             tfname = os.path.join(
                 SAMPLECODE_TEMPDIR,
@@ -384,6 +398,13 @@ Please use '.. code-block:: python' to format the sample code."""
                     '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1),
                 ),
             )
+=======
+        if matched == True:
+            tfname = os.path.join(
+                SAMPLECODE_TEMPDIR, '{}_example{}'.format(
+                    name,
+                    '.py' if len(codeblocks) == 1 else '_{}.py'.format(y + 1)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with open(tfname, 'w') as tempf:
                 sampcd = insert_codes_into_codeblock(cb, name)
                 tempf.write(sampcd)
@@ -397,6 +418,7 @@ Please use '.. code-block:: python' to format the sample code."""
             SUMMARY_INFO['skiptest'].append("{}-{}".format(name, cb['id']))
         elif not matched:
             logger.info(
+<<<<<<< HEAD
                 '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'.format(
                     name,
                     cb['name'],
@@ -405,6 +427,11 @@ Please use '.. code-block:: python' to format the sample code."""
                     SAMPLE_CODE_TEST_CAPACITY,
                 )
             )
+=======
+                '{}\' code block (name:{}, id:{}) required({}) not match capacity({}).'
+                .format(name, cb['name'], cb['id'], cb['required'],
+                        SAMPLE_CODE_TEST_CAPACITY))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if cb['required'] not in SUMMARY_INFO:
                 SUMMARY_INFO[cb['required']] = []
             SUMMARY_INFO[cb['required']].append("{}-{}".format(name, cb['id']))
@@ -437,9 +464,15 @@ def execute_samplecode(tfname):
     logger.info("----example code check----")
     logger.info("executing sample code: %s", tfname)
     start_time = time.time()
+<<<<<<< HEAD
     subprc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+=======
+    subprc = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output, error = subprc.communicate()
     msg = "".join(output.decode(encoding='utf-8'))
     err = "".join(error.decode(encoding='utf-8'))
@@ -508,8 +541,12 @@ def get_filenames(full_test=False):
                 continue
             if hasattr(api_obj, '__doc__') and api_obj.__doc__:
                 sample_code_filenames = sampcd_extract_to_file(
+<<<<<<< HEAD
                     api_obj.__doc__, api
                 )
+=======
+                    api_obj.__doc__, api)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 for tfname in sample_code_filenames:
                     all_sample_code_filenames[tfname] = api
     return all_sample_code_filenames
@@ -610,9 +647,15 @@ def exec_gen_doc():
     cmd = ["bash", "document_preview.sh"]
     logger.info("----exec gen_doc----")
     start_time = time.time()
+<<<<<<< HEAD
     subprc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
+=======
+    subprc = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output, error = subprc.communicate()
     msg = "".join(output.decode(encoding='utf-8'))
     err = "".join(error.decode(encoding='utf-8'))
@@ -663,6 +706,7 @@ def parse_args():
     parser.add_argument('--debug', dest='debug', action="store_true")
     parser.add_argument('--full-test', dest='full_test', action="store_true")
     parser.add_argument('mode', type=str, help='run on device', default='cpu')
+<<<<<<< HEAD
     parser.add_argument(
         '--build-doc',
         dest='build_doc',
@@ -673,6 +717,18 @@ def parse_args():
         parser.add_argument(
             item[0], dest=item[1], help=item[4], type=item[2], default=item[3]
         )
+=======
+    parser.add_argument('--build-doc',
+                        dest='build_doc',
+                        action='store_true',
+                        help='build doc if need.')
+    for item in arguments:
+        parser.add_argument(item[0],
+                            dest=item[1],
+                            help=item[4],
+                            type=item[2],
+                            default=item[3])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['cpu'])
@@ -787,9 +843,14 @@ if __name__ == '__main__':
             )
         for k, v in SUMMARY_INFO.items():
             if k not in ['success', 'failed', 'skiptest', 'nocodes']:
+<<<<<<< HEAD
                 logger.info(
                     "%d sample codes required not match for %s", len(v), k
                 )
+=======
+                logger.info("%d sample codes required not match for %s", len(v),
+                            k)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if len(SUMMARY_INFO['skiptest']):
             logger.info(
                 "%d sample codes skipped", len(SUMMARY_INFO['skiptest'])

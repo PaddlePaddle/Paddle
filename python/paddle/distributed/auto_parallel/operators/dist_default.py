@@ -44,6 +44,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
         ctx.synced_gradient.add(var_name)
         sync_group = new_process_group(ctx.data_parallel_group)
 
+<<<<<<< HEAD
         allreduce_op = main_block.append_op(
             type='c_allreduce_sum',
             inputs={'X': [var_name]},
@@ -68,6 +69,28 @@ def prim_operator_data_parallel_functor(ctx, src_op):
                 OP_ROLE_KEY: OpRole.Forward,
             },
         )
+=======
+        allreduce_op = main_block.append_op(type='c_allreduce_sum',
+                                            inputs={'X': [var_name]},
+                                            outputs={'Out': [var_name]},
+                                            attrs={
+                                                'ring_id': sync_group.id,
+                                                'use_calc_stream': True,
+                                                OP_ROLE_KEY: OpRole.Backward
+                                            })
+
+        param = ctx.grads_params[var_name]
+        startup_block = dist_op_context.startup_block
+        new_op = startup_block.append_op(type='c_broadcast',
+                                         inputs={'X': [param]},
+                                         outputs={'Out': [param]},
+                                         attrs={
+                                             'ring_id': sync_group.id,
+                                             'root': 0,
+                                             'use_calc_stream': True,
+                                             OP_ROLE_KEY: OpRole.Forward
+                                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         grad_var = main_block._var_recursive(var_name)
         dims_mapping = ctx.get_tensor_dist_attr_for_program(
@@ -85,6 +108,7 @@ def prim_operator_data_parallel_functor(ctx, src_op):
 
 
 class DistributedDefault(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -94,6 +118,7 @@ register_distributed_operator_impl_container(DistributedDefault("default"))
 
 # Replicated Default
 class DistributedDefaultImpl0(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -111,6 +136,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
     def calc_fwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
@@ -119,6 +145,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         cost_mapping = build_comp_costs_from_descs(
             _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+        processes = dist_op.dist_attr.process_mesh.processes
+        op_type = dist_op.serial_op.type
+        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
+                                                   ctx, processes, desc_mapping,
+                                                   cluster)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         res_cost = [cost_mapping]
 
         return res_cost
@@ -126,26 +161,45 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def calc_bwd_cost(self, dist_op, ctx, cluster):
         # calc comp op cost
         res = []
+<<<<<<< HEAD
         desc_mapping = build_comp_desc_from_dist_op(
             dist_op=dist_op, dist_context=ctx
         )
+=======
+        desc_mapping = build_comp_desc_from_dist_op(dist_op=dist_op,
+                                                    dist_context=ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         dist_attr = dist_op.dist_attr
         process_mesh = dist_attr.process_mesh
         processes = process_mesh.processes
         backward_op = dist_op.serial_op
         op_type = backward_op.type
+<<<<<<< HEAD
         cost_mapping = build_comp_costs_from_descs(
             _g_op_cost_factory[op_type], ctx, processes, desc_mapping, cluster
         )
         res.append(cost_mapping)
 
         main_block = backward_op.block
+=======
+        cost_mapping = build_comp_costs_from_descs(_g_op_cost_factory[op_type],
+                                                   ctx, processes, desc_mapping,
+                                                   cluster)
+        res.append(cost_mapping)
+
+        main_block = backward_op.block
+        vars = main_block.vars
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
+<<<<<<< HEAD
                     varname, main_block
                 ):
+=======
+                        varname, main_block):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
                     mesh_shape = process_mesh.topology
                     batch_size_axis = var_dim_mapping[0]
@@ -157,16 +211,23 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
                     if "@GRAD" not in varname and is_parameter_related(
+<<<<<<< HEAD
                         varname, main_block
                     ):
                         var_dim_mapping = dist_attr.get_input_dims_mapping(
                             varname
                         )
+=======
+                            varname, main_block):
+                        var_dim_mapping = dist_attr.get_input_dims_mapping(
+                            varname)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         mesh_shape = process_mesh.topology
                         batch_size_axis = var_dim_mapping[0]
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
                         var_names = [varname + "@GRAD"]
+<<<<<<< HEAD
                         build_dp_costs(
                             res,
                             dist_op,
@@ -176,6 +237,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             parallel_axis,
                             cluster,
                         )
+=======
+                        build_dp_costs(res, dist_op, ctx, var_names, attrs,
+                                       parallel_axis, cluster)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return res
 
     def is_input_compatible(self, dist_op):
@@ -357,10 +422,16 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             else:
                 batch_dim_mappings.append(dims_mapping[1])
         for arg_name in op_desc.output_arg_names():
+<<<<<<< HEAD
             if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0]
                 )
+=======
+            if op_desc.type() == "fill_zeros_like":
+                input_tensor = dist_op.get_serial_input(
+                    op_desc.input_arg_names()[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if input_tensor.is_parameter:
                     continue
             serial_tensor = dist_op.get_serial_output(arg_name)
@@ -402,10 +473,16 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     dims_mapping[1] = compatible_dim_mapping
                     changed = True
         for arg_name in op_desc.output_arg_names():
+<<<<<<< HEAD
             if op_desc.type() == 'fill_any_like':
                 input_tensor = dist_op.get_serial_input(
                     op_desc.input_arg_names()[0]
                 )
+=======
+            if op_desc.type() == "fill_zeros_like":
+                input_tensor = dist_op.get_serial_input(
+                    op_desc.input_arg_names()[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if input_tensor.is_parameter:
                     continue
             if op_desc.type() in ["shape", "slice"]:
@@ -509,6 +586,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                         )
                         sync_group = new_process_group(group_ranks)
 
+<<<<<<< HEAD
                         new_op = startup_block.append_op(
                             type='c_broadcast',
                             inputs={'X': param},
@@ -520,6 +598,21 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                 OP_ROLE_KEY: OpRole.Forward,
                             },
                         )
+=======
+                        new_op = startup_block.append_op(type='c_broadcast',
+                                                         inputs={'X': param},
+                                                         outputs={'Out': param},
+                                                         attrs={
+                                                             'ring_id':
+                                                             sync_group.id,
+                                                             'root':
+                                                             0,
+                                                             'use_calc_stream':
+                                                             True,
+                                                             OP_ROLE_KEY:
+                                                             OpRole.Forward
+                                                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                         # set distributed attribute
                         op_attr = OperatorDistributedAttribute()
@@ -573,8 +666,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
+<<<<<<< HEAD
         # data parallel gradient synchronization
         act_grad_names = []
+=======
+        # check if need gradient allreduce
+        # if there is a non-gradient & non-parameter input and its batch dimension is splited,
+        # we need insert gradient allreduce for the gradient of parameter in its output
+        need_gradient_allreduce = False
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not is_parameter_related(
@@ -582,6 +682,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 ):
                     act_grad_names.append(varname)
 
+<<<<<<< HEAD
         out_grad_names = []
         for output_name in backward_op.desc.output_names():
             for varname in backward_op.desc.output(output_name):
@@ -596,6 +697,77 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             ctx, backward_op, act_grad_names, out_grad_names, rank_id
         )
 
+=======
+                    # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+                    if rank_id not in process_mesh.processes:
+                        rank_id = _get_corresponding_rank(
+                            ctx, process_mesh, rank_id)
+
+                    # NOTE: consider that the variable's shape is None
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0] if len(
+                        var_dim_mapping) > 0 else -1
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        need_gradient_allreduce = True
+                        group_ranks = _get_comm_group(process_mesh.processes,
+                                                      process_mesh.topology,
+                                                      batch_size_axis, rank_id)
+                        dp_degree = len(group_ranks)
+                        dp_group = new_process_group(group_ranks)
+                        break
+
+        if need_gradient_allreduce:
+            allreduce_vars = []
+            for output_name in backward_op.desc.output_names():
+                for varname in backward_op.desc.output(output_name):
+                    if varname in kwargs["grad_var_to_var"]:
+                        fwd_name = kwargs["grad_var_to_var"][varname]
+                        if fwd_name not in main_block.vars:
+                            continue
+                        if is_parameter_related(fwd_name, main_block):
+                            allreduce_vars.append(varname)
+
+            if len(allreduce_vars) > 0:
+
+                for varname in allreduce_vars:
+                    added_ops = []
+
+                    grad_var = main_block.var(varname)
+                    allreduce_op = main_block.append_op(
+                        type='c_allreduce_sum',
+                        inputs={'X': [grad_var]},
+                        outputs={'Out': [grad_var]},
+                        attrs={
+                            'ring_id': dp_group.id,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+                    added_ops.append(allreduce_op)
+
+                    if ctx.gradient_scale:
+                        scale_op = main_block.append_op(
+                            type='scale',
+                            inputs={'X': grad_var},
+                            outputs={'Out': grad_var},
+                            attrs={
+                                'scale': 1.0 / dp_degree,
+                                OP_ROLE_KEY: OpRole.Backward
+                            })
+                        added_ops.append(scale_op)
+
+                    dims_mapping = ctx.get_tensor_dist_attr_for_program(
+                        grad_var).dims_mapping
+                    process_mesh = dist_attr.process_mesh
+                    for op in added_ops:
+                        op_attr = OperatorDistributedAttribute()
+                        op_attr.process_mesh = process_mesh
+                        op_attr.set_output_dims_mapping(grad_var.name,
+                                                        dims_mapping)
+                        op_attr.set_input_dims_mapping(grad_var.name,
+                                                       dims_mapping)
+                        ctx.set_op_dist_attr_for_program(op, op_attr)
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 register_distributed_operator_impl(
     "default", DistributedDefaultImpl0("replicate_parallel")

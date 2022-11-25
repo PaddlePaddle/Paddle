@@ -21,6 +21,7 @@ import parameterize as param
 
 
 @param.place(config.DEVICES)
+<<<<<<< HEAD
 @param.param_cls(
     (param.TEST_CASE_NAME, 'base', 'transforms'),
     [
@@ -31,11 +32,21 @@ import parameterize as param
         )
     ],
 )
+=======
+@param.param_cls((param.TEST_CASE_NAME, 'base', 'transforms'),
+                 [('base_normal', paddle.distribution.Normal(
+                     0., 1.), [paddle.distribution.ExpTransform()])])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TestIndependent(unittest.TestCase):
+
     def setUp(self):
         self._t = paddle.distribution.TransformedDistribution(
+<<<<<<< HEAD
             self.base, self.transforms
         )
+=======
+            self.base, self.transforms)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_sum_rightmost(self, value, n):
         return np.sum(value, tuple(range(-n, 0))) if n > 0 else value

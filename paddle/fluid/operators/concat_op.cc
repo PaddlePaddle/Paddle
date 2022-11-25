@@ -49,12 +49,27 @@ class ConcatOp : public framework::OperatorWithKernel {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "All Inputs of Concat OP are Empty!"));
     }
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
+=======
+      const Tensor &tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;
@@ -115,12 +130,32 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    // extra checking if attr "use_mkldnn" exist is needed because
+    // test_reverse_op is calling concat_grad kernel without setting
+    // "use_mkldnn" to any value
+    if (ctx.HasAttr("use_mkldnn") &&
+        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
+=======
+      const Tensor &tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType &expected_kernel_type) const override {
     if (var_name == "AxisTensor") {
       return expected_kernel_type;

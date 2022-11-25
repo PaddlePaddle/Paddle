@@ -21,6 +21,7 @@ import unittest
 
 
 class Conv1DTransposeTestCase(unittest.TestCase):
+<<<<<<< HEAD
     def __init__(
         self,
         methodName='runTest',
@@ -40,6 +41,26 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         dtype="float32",
     ):
         super().__init__(methodName)
+=======
+
+    def __init__(self,
+                 methodName='runTest',
+                 batch_size=4,
+                 spartial_shape=16,
+                 in_channels=6,
+                 out_channels=8,
+                 filter_size=3,
+                 output_size=None,
+                 padding=0,
+                 output_padding=0,
+                 stride=1,
+                 dilation=1,
+                 groups=1,
+                 no_bias=False,
+                 data_format="NCL",
+                 dtype="float32"):
+        super(Conv1DTransposeTestCase, self).__init__(methodName)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.batch_size = batch_size
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -59,6 +80,7 @@ class Conv1DTransposeTestCase(unittest.TestCase):
     def setUp(self):
 
         self.channel_last = False if self.data_format == "NCL" else True
+<<<<<<< HEAD
         input_shape = (
             (self.batch_size, self.in_channels, self.spartial_shape)
             if not self.channel_last
@@ -68,12 +90,21 @@ class Conv1DTransposeTestCase(unittest.TestCase):
                 self.in_channels,
             )
         )
+=======
+        input_shape = (self.batch_size, self.in_channels,
+                       self.spartial_shape) if not self.channel_last else (
+                           self.batch_size,
+                           self.spartial_shape,
+                           self.in_channels,
+                       )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.input = np.random.randn(*input_shape).astype(self.dtype)
 
         if isinstance(self.filter_size, int):
             filter_size = [self.filter_size]
         else:
             filter_size = self.filter_size
+<<<<<<< HEAD
         self.weight_shape = weight_shape = (
             self.in_channels,
             self.out_channels // self.groups,
@@ -81,6 +112,12 @@ class Conv1DTransposeTestCase(unittest.TestCase):
         self.weight = np.random.uniform(-1, 1, size=weight_shape).astype(
             self.dtype
         )
+=======
+        self.weight_shape = weight_shape = (self.in_channels, self.out_channels
+                                            // self.groups) + tuple(filter_size)
+        self.weight = np.random.uniform(-1, 1,
+                                        size=weight_shape).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if not self.no_bias:
             self.bias = np.random.uniform(
                 -1, 1, size=(self.out_channels,)
@@ -99,6 +136,7 @@ class Conv1DTransposeTestCase(unittest.TestCase):
                     else (-1, -1, self.in_channels)
                 )
                 x_var = fluid.data("input", input_shape, dtype=self.dtype)
+<<<<<<< HEAD
                 w_var = fluid.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
@@ -117,6 +155,23 @@ class Conv1DTransposeTestCase(unittest.TestCase):
                     groups=self.groups,
                     data_format=self.data_format,
                 )
+=======
+                w_var = fluid.data("weight",
+                                   self.weight_shape,
+                                   dtype=self.dtype)
+                b_var = fluid.data("bias", (self.out_channels, ),
+                                   dtype=self.dtype)
+                y_var = F.conv1d_transpose(x_var,
+                                           w_var,
+                                           None if self.no_bias else b_var,
+                                           output_size=self.output_size,
+                                           padding=self.padding,
+                                           output_padding=self.output_padding,
+                                           stride=self.stride,
+                                           dilation=self.dilation,
+                                           groups=self.groups,
+                                           data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         feed_dict = {"input": self.input, "weight": self.weight}
         if self.bias is not None:
             feed_dict["bias"] = self.bias
@@ -127,6 +182,7 @@ class Conv1DTransposeTestCase(unittest.TestCase):
 
     def paddle_nn_layer(self):
         x_var = paddle.to_tensor(self.input)
+<<<<<<< HEAD
         conv = nn.Conv1DTranspose(
             self.in_channels,
             self.out_channels,
@@ -138,6 +194,17 @@ class Conv1DTransposeTestCase(unittest.TestCase):
             groups=self.groups,
             data_format=self.data_format,
         )
+=======
+        conv = nn.Conv1DTranspose(self.in_channels,
+                                  self.out_channels,
+                                  self.filter_size,
+                                  padding=self.padding,
+                                  output_padding=self.output_padding,
+                                  stride=self.stride,
+                                  dilation=self.dilation,
+                                  groups=self.groups,
+                                  data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conv.weight.set_value(self.weight)
         if not self.no_bias:
             conv.bias.set_value(self.bias)
@@ -161,6 +228,7 @@ class Conv1DTransposeTestCase(unittest.TestCase):
 
 
 class Conv1DTransposeErrorTestCase(Conv1DTransposeTestCase):
+
     def runTest(self):
         place = fluid.CPUPlace()
         with dg.guard(place):
@@ -171,6 +239,7 @@ class Conv1DTransposeErrorTestCase(Conv1DTransposeTestCase):
 def add_cases(suite):
     suite.addTest(Conv1DTransposeTestCase(methodName='runTest'))
     suite.addTest(
+<<<<<<< HEAD
         Conv1DTransposeTestCase(
             methodName='runTest', stride=[2], no_bias=True, dilation=2
         )
@@ -225,11 +294,54 @@ def add_cases(suite):
             methodName='runTest', data_format="NLC", stride=3, output_padding=2
         )
     )
+=======
+        Conv1DTransposeTestCase(methodName='runTest',
+                                stride=[2],
+                                no_bias=True,
+                                dilation=2))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest',
+                                filter_size=(3),
+                                output_size=[36],
+                                stride=[2],
+                                dilation=2))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest', stride=2, dilation=(2)))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest',
+                                          padding="valid"))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest',
+                                          padding='valid'))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest', filter_size=1, padding=3))
+    suite.addTest(Conv1DTransposeTestCase(methodName='runTest', padding=[2]))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest', data_format="NLC"))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest', groups=2,
+                                padding="valid"))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest',
+                                out_channels=6,
+                                in_channels=3,
+                                groups=3,
+                                padding="valid"))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest',
+                                data_format="NLC",
+                                spartial_shape=16,
+                                output_size=18))
+    suite.addTest(
+        Conv1DTransposeTestCase(methodName='runTest',
+                                data_format="NLC",
+                                stride=3,
+                                output_padding=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     suite.addTest(Conv1DTransposeTestCase(methodName='runTest', padding=[1, 2]))
 
 
 def add_error_cases(suite):
     suite.addTest(
+<<<<<<< HEAD
         Conv1DTransposeErrorTestCase(
             methodName='runTest', data_format="not_valid"
         )
@@ -249,6 +361,21 @@ def add_error_cases(suite):
             methodName='runTest', output_size="not_valid"
         )
     )
+=======
+        Conv1DTransposeErrorTestCase(methodName='runTest',
+                                     data_format="not_valid"))
+    suite.addTest(
+        Conv1DTransposeErrorTestCase(methodName='runTest',
+                                     in_channels=5,
+                                     groups=2))
+    suite.addTest(
+        Conv1DTransposeErrorTestCase(methodName='runTest',
+                                     stride=2,
+                                     output_padding=3))
+    suite.addTest(
+        Conv1DTransposeErrorTestCase(methodName='runTest',
+                                     output_size="not_valid"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def load_tests(loader, standard_tests, pattern):

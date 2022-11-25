@@ -54,10 +54,15 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         if program_config.ops[3].attrs['axis'] not in [-1, 2]:
             return False
 
+<<<<<<< HEAD
         if not (
             program_config.ops[5].attrs['epsilon'] >= 0
             and program_config.ops[5].attrs['epsilon'] <= 0.001
         ):
+=======
+        if not (program_config.ops[5].attrs['epsilon'] >= 0
+                and program_config.ops[5].attrs['epsilon'] <= 0.001):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
 
         if program_config.ops[5].attrs['begin_norm_axis'] != 2:
@@ -87,6 +92,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
         def generate_input(attrs):
             if attrs[0]['op_type'] == 'lookup_table':
+<<<<<<< HEAD
                 return np.random.randint(
                     0,
                     attrs[3]['weight_size'][0],
@@ -98,6 +104,19 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                     attrs[3]['weight_size'][0],
                     size=(attrs[3]['batch_size'], attrs[3]['input_dim']),
                 ).astype(np.int64)
+=======
+                return np.random.randint(0,
+                                         attrs[3]['weight_size'][0],
+                                         size=(attrs[3]['batch_size'],
+                                               attrs[3]['input_dim'],
+                                               1)).astype(np.int64)
+            else:
+                return np.random.randint(0,
+                                         attrs[3]['weight_size'][0],
+                                         size=(attrs[3]['batch_size'],
+                                               attrs[3]['input_dim'])).astype(
+                                                   np.int64)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
@@ -106,9 +125,15 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         def generate_weight2(attrs):
             # set layernorm weight by attrs
             if attrs[2]['begin_norm_axis'] == 1:
+<<<<<<< HEAD
                 return np.random.random(
                     attrs[3]['input_dim'] * attrs[3]['weight_size'][1]
                 ).astype(np.float32)
+=======
+                return np.random.random(attrs[3]['input_dim'] *
+                                        attrs[3]['weight_size'][1]).astype(
+                                            np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 return np.random.random(attrs[3]['weight_size'][1]).astype(
                     np.float32
@@ -130,6 +155,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
             },
         ]
 
+<<<<<<< HEAD
         emb_op1 = OpConfig(
             type=attrs[0]['op_type'],
             inputs={"Ids": ["input_data1"], "W": ["embedding_weight1"]},
@@ -195,6 +221,71 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                 'epsilon': attrs[2]['epsilon'],
             },
         )
+=======
+        emb_op1 = OpConfig(type=attrs[0]['op_type'],
+                           inputs={
+                               "Ids": ["input_data1"],
+                               "W": ["embedding_weight1"]
+                           },
+                           outputs={"Out": ["embedding_output1"]},
+                           attrs={
+                               'is_sparse': attrs[0]['is_sparse'],
+                               'is_distributed': attrs[0]['is_distributed'],
+                               'padding_idx': attrs[0]['padding_idx']
+                           })
+        emb_op2 = OpConfig(type=attrs[0]['op_type'],
+                           inputs={
+                               "Ids": ["input_data2"],
+                               "W": ["embedding_weight2"]
+                           },
+                           outputs={"Out": ["embedding_output2"]},
+                           attrs={
+                               'is_sparse': attrs[0]['is_sparse'],
+                               'is_distributed': attrs[0]['is_distributed'],
+                               'padding_idx': attrs[0]['padding_idx']
+                           })
+        emb_op3 = OpConfig(type=attrs[0]['op_type'],
+                           inputs={
+                               "Ids": ["input_data3"],
+                               "W": ["embedding_weight3"]
+                           },
+                           outputs={"Out": ["embedding_output3"]},
+                           attrs={
+                               'is_sparse': attrs[0]['is_sparse'],
+                               'is_distributed': attrs[0]['is_distributed'],
+                               'padding_idx': attrs[0]['padding_idx']
+                           })
+        add_op1 = OpConfig(type='elementwise_add',
+                           inputs={
+                               "X": [emb_op2.outputs["Out"][0]],
+                               "Y": [emb_op3.outputs["Out"][0]],
+                           },
+                           outputs={"Out": ["elementwise_add_output1"]},
+                           attrs={"axis": attrs[1]['axis']})
+        add_op2 = OpConfig(type='elementwise_add',
+                           inputs={
+                               "X": [add_op1.outputs["Out"][0]],
+                               "Y": [emb_op1.outputs["Out"][0]],
+                           },
+                           outputs={"Out": ["elementwise_add_output2"]},
+                           attrs={"axis": attrs[1]['axis']})
+        layer_norm_op = OpConfig(type='layer_norm',
+                                 inputs={
+                                     "X": [add_op2.outputs["Out"][0]],
+                                     "Bias": ["layer_norm_bias"],
+                                     "Scale": ["layer_norm_scale"]
+                                 },
+                                 outputs={
+                                     "Y": ["layer_norm_output1"],
+                                     "Mean": ["layer_norm_output2"],
+                                     "Variance": ["layer_norm_output3"]
+                                 },
+                                 attrs={
+                                     'begin_norm_axis':
+                                     attrs[2]['begin_norm_axis'],
+                                     'epsilon': attrs[2]['epsilon']
+                                 })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         program_config = ProgramConfig(
             ops=[emb_op1, emb_op2, emb_op3, add_op1, add_op2, layer_norm_op],
@@ -261,6 +352,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                 {
                     "input_data1": [1, 4, 1],
                     "input_data2": [1, 4, 1],
+<<<<<<< HEAD
                     "input_data3": [1, 4, 1],
                 },
                 {
@@ -274,11 +366,24 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                     "input_data3": [2, 128, 1],
                 },
             )
+=======
+                    "input_data3": [1, 4, 1]
+                }, {
+                    "input_data1": [4, 512, 1],
+                    "input_data2": [4, 512, 1],
+                    "input_data3": [4, 512, 1]
+                }, {
+                    "input_data1": [2, 128, 1],
+                    "input_data2": [2, 128, 1],
+                    "input_data3": [2, 128, 1]
+                })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             config.set_trt_dynamic_shape_info(
                 {
                     "input_data1": [1, 4],
                     "input_data2": [1, 4],
+<<<<<<< HEAD
                     "input_data3": [1, 4],
                 },
                 {
@@ -292,9 +397,22 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
                     "input_data3": [2, 128],
                 },
             )
+=======
+                    "input_data3": [1, 4]
+                }, {
+                    "input_data1": [4, 512],
+                    "input_data2": [4, 512],
+                    "input_data3": [4, 512]
+                }, {
+                    "input_data1": [2, 128],
+                    "input_data2": [2, 128],
+                    "input_data3": [2, 128]
+                })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         yield config, ['fused_embedding_eltwise_layernorm'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
+
         def teller1(program_config, predictor_config):
             if (
                 program_config.ops[3].attrs['axis'] in [-1, 2]
@@ -313,12 +431,19 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
     def test(self):
         # this fuse need to fix, now there's no program can ran successfully
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=50,
             passes=["embedding_eltwise_layernorm_fuse_pass"],
             min_success_num=0,
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=50,
+                            passes=["embedding_eltwise_layernorm_fuse_pass"],
+                            min_success_num=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

@@ -76,6 +76,7 @@ void CastCsrGradKernel(const Context& dev_ctx,
                        const SparseCsrTensor& dout,
                        DataType value_dtype,
                        SparseCsrTensor* dx);
+<<<<<<< HEAD
 
 template <typename T, typename Context>
 void TransposeCooGradKernel(const Context& dev_ctx,
@@ -100,6 +101,8 @@ void ReshapeCsrGradKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const SparseCsrTensor& dout,
                           SparseCsrTensor* dx);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 }  // namespace sparse
 }  // namespace phi

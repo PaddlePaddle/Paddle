@@ -37,9 +37,15 @@ from paddle.fluid.log_helper import get_logger
 
 __all__ = []
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _check_args(caller, args, supported_args=None, deprecated_args=None):
@@ -48,6 +54,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
     for arg in args:
         if arg in deprecated_args:
             raise ValueError(
+<<<<<<< HEAD
                 "argument '{}' in function '{}' is deprecated, only {} are supported.".format(
                     arg, caller, supported_args
                 )
@@ -58,6 +65,14 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
                     caller, arg, supported_args
                 )
             )
+=======
+                "argument '{}' in function '{}' is deprecated, only {} are supported."
+                .format(arg, caller, supported_args))
+        elif arg not in supported_args:
+            raise ValueError(
+                "function '{}' doesn't support argument '{}',\n only {} are supported."
+                .format(caller, arg, supported_args))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _check_vars(name, var_list):
@@ -108,6 +123,7 @@ def _get_valid_program(program=None):
 def _clone_var_in_block(block, var):
     assert isinstance(var, Variable)
     if var.desc.type() == core.VarDesc.VarType.LOD_TENSOR:
+<<<<<<< HEAD
         return block.create_var(
             name=var.name,
             shape=var.shape,
@@ -124,6 +140,20 @@ def _clone_var_in_block(block, var):
             type=var.type,
             persistable=True,
         )
+=======
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                lod_level=var.lod_level,
+                                persistable=True)
+    else:
+        return block.create_var(name=var.name,
+                                shape=var.shape,
+                                dtype=var.dtype,
+                                type=var.type,
+                                persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def normalize_program(program, feed_vars, fetch_vars):
@@ -201,9 +231,15 @@ def normalize_program(program, feed_vars, fetch_vars):
         uniq_fetch_vars = []
         for i, var in enumerate(fetch_vars):
             if var.dtype != paddle.bool:
+<<<<<<< HEAD
                 var = layers.scale(
                     var, 1.0, name="save_infer_model/scale_{}".format(i)
                 )
+=======
+                var = layers.scale(var,
+                                   1.,
+                                   name="save_infer_model/scale_{}".format(i))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             uniq_fetch_vars.append(var)
         fetch_vars = uniq_fetch_vars
 
@@ -400,6 +436,7 @@ def _serialize_persistables(program, executor):
         in_vars.append(save_var_map[name])
 
     out_var_name = unique_name.generate("out_var")
+<<<<<<< HEAD
     out_var = save_block.create_var(
         type=core.VarDesc.VarType.RAW, name=out_var_name
     )
@@ -410,6 +447,18 @@ def _serialize_persistables(program, executor):
         outputs={'Y': out_var},
         attrs={'file_path': '', 'save_to_memory': True},
     )
+=======
+    out_var = save_block.create_var(type=core.VarDesc.VarType.RAW,
+                                    name=out_var_name)
+    out_var.desc.set_persistable(True)
+    save_block.append_op(type='save_combine',
+                         inputs={'X': in_vars},
+                         outputs={'Y': out_var},
+                         attrs={
+                             'file_path': '',
+                             'save_to_memory': True
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # run save_program to save vars
     # NOTE(zhiqiu): save op will add variable kLookupTablePath to save_program.desc,
     # which leads to diff between save_program and its desc. Call _sync_with_cpp
@@ -680,8 +729,15 @@ def deserialize_persistables(program, data, executor):
         inputs={},
         outputs={"Out": load_var_list},
         # if load from memory, file_path is data
+<<<<<<< HEAD
         attrs={'file_path': data, 'model_from_memory': True},
     )
+=======
+        attrs={
+            'file_path': data,
+            'model_from_memory': True
+        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     executor.run(load_program)
     # check var shape
     for var in check_vars:

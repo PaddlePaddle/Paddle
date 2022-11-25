@@ -23,6 +23,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestWhereOp(OpTest):
+
     def setUp(self):
         self.op_type = 'where'
         self.python_api = paddle.where
@@ -43,6 +44,7 @@ class TestWhereOp(OpTest):
 
 
 class TestWhereOp2(TestWhereOp):
+
     def init_config(self):
         self.x = np.random.uniform((-5), 5, (60, 2)).astype('float64')
         self.y = np.random.uniform((-5), 5, (60, 2)).astype('float64')
@@ -50,6 +52,7 @@ class TestWhereOp2(TestWhereOp):
 
 
 class TestWhereOp3(TestWhereOp):
+
     def init_config(self):
         self.x = np.random.uniform((-3), 5, (20, 2, 4)).astype('float64')
         self.y = np.random.uniform((-3), 5, (20, 2, 4)).astype('float64')
@@ -57,6 +60,7 @@ class TestWhereOp3(TestWhereOp):
 
 
 class TestWhereAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
 
@@ -77,6 +81,7 @@ class TestWhereAPI(unittest.TestCase):
         for x_stop_gradient in [False, True]:
             for y_stop_gradient in [False, True]:
                 with fluid.program_guard(Program(), Program()):
+<<<<<<< HEAD
                     cond = fluid.layers.data(
                         name='cond', shape=self.shape, dtype='bool'
                     )
@@ -86,14 +91,30 @@ class TestWhereAPI(unittest.TestCase):
                     y = fluid.layers.data(
                         name='y', shape=self.shape, dtype='float32'
                     )
+=======
+                    cond = fluid.layers.data(name='cond',
+                                             shape=self.shape,
+                                             dtype='bool')
+                    x = fluid.layers.data(name='x',
+                                          shape=self.shape,
+                                          dtype='float32')
+                    y = fluid.layers.data(name='y',
+                                          shape=self.shape,
+                                          dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     x.stop_gradient = x_stop_gradient
                     y.stop_gradient = y_stop_gradient
                     result = paddle.where(cond, x, y)
                     append_backward(paddle.mean(result))
                     for use_cuda in [False, True]:
+<<<<<<< HEAD
                         if use_cuda and (
                             not fluid.core.is_compiled_with_cuda()
                         ):
+=======
+                        if (use_cuda
+                                and (not fluid.core.is_compiled_with_cuda())):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             break
                         place = (
                             fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -104,11 +125,21 @@ class TestWhereAPI(unittest.TestCase):
                             fetch_list.append(x.grad_name)
                         if y_stop_gradient is False:
                             fetch_list.append(y.grad_name)
+<<<<<<< HEAD
                         out = exe.run(
                             fluid.default_main_program(),
                             feed={'cond': self.cond, 'x': self.x, 'y': self.y},
                             fetch_list=fetch_list,
                         )
+=======
+                        out = exe.run(fluid.default_main_program(),
+                                      feed={
+                                          'cond': self.cond,
+                                          'x': self.x,
+                                          'y': self.y
+                                      },
+                                      fetch_list=fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         assert np.array_equal(out[0], self.out)
                         if x_stop_gradient is False:
                             assert np.array_equal(
@@ -129,20 +160,34 @@ class TestWhereAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype('float32')
+<<<<<<< HEAD
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 'float32'
             )
+=======
+            y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0,
+                                                   1.0]]).astype('float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = paddle.where((x > 1), x=x, y=y)
             for use_cuda in [False, True]:
                 if use_cuda and (not fluid.core.is_compiled_with_cuda()):
                     return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 out = exe.run(
                     fluid.default_main_program(),
                     feed={'x': x_i, 'y': y_i},
                     fetch_list=[result],
                 )
+=======
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  'x': x_i,
+                                  'y': y_i
+                              },
+                              fetch_list=[result])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 assert np.array_equal(out[0], np.where((x_i > 1), x_i, y_i))
 
     def test_scalar(self):
@@ -150,9 +195,15 @@ class TestWhereAPI(unittest.TestCase):
         main_program = Program()
         with fluid.program_guard(main_program):
             cond_shape = [2, 4]
+<<<<<<< HEAD
             cond = fluid.layers.data(
                 name='cond', shape=cond_shape, dtype='bool'
             )
+=======
+            cond = fluid.layers.data(name='cond',
+                                     shape=cond_shape,
+                                     dtype='bool')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             x_data = 1.0
             y_data = 2.0
             cond_data = np.array([False, False, True, True]).astype('bool')
@@ -174,9 +225,15 @@ class TestWhereAPI(unittest.TestCase):
         paddle.enable_static()
         main_program = Program()
         with fluid.program_guard(main_program):
+<<<<<<< HEAD
             cond = fluid.layers.data(
                 name='cond', shape=cond_shape, dtype='bool'
             )
+=======
+            cond = fluid.layers.data(name='cond',
+                                     shape=cond_shape,
+                                     dtype='bool')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             x = fluid.layers.data(name='x', shape=x_shape, dtype='float32')
             y = fluid.layers.data(name='y', shape=y_shape, dtype='float32')
             cond_data_tmp = np.random.random(size=cond_shape).astype('float32')
@@ -189,11 +246,21 @@ class TestWhereAPI(unittest.TestCase):
                     return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 out = exe.run(
                     fluid.default_main_program(),
                     feed={'cond': cond_data, 'x': x_data, 'y': y_data},
                     fetch_list=[result],
                 )
+=======
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  'cond': cond_data,
+                                  'x': x_data,
+                                  'y': y_data
+                              },
+                              fetch_list=[result])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 expect = np.where(cond_data, x_data, y_data)
                 assert np.array_equal(out[0], expect)
 
@@ -247,6 +314,7 @@ class TestWhereAPI(unittest.TestCase):
 
 
 class TestWhereDygraphAPI(unittest.TestCase):
+
     def test_api(self):
         with fluid.dygraph.guard():
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float64')
@@ -368,6 +436,7 @@ class TestWhereDygraphAPI(unittest.TestCase):
 
 
 class TestWhereOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype('float64')

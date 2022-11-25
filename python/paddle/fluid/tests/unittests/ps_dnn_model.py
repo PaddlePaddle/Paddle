@@ -15,6 +15,7 @@
 import paddle
 import paddle.nn as nn
 import math
+<<<<<<< HEAD
 
 
 class DNNLayer(nn.Layer):
@@ -28,6 +29,21 @@ class DNNLayer(nn.Layer):
         sync_mode=None,
     ):
         super().__init__()
+=======
+import paddle.distributed.fleet as fleet
+
+
+class DNNLayer(nn.Layer):
+
+    def __init__(self,
+                 sparse_feature_number,
+                 sparse_feature_dim,
+                 dense_feature_dim,
+                 num_field,
+                 layer_sizes,
+                 sync_mode=None):
+        super(DNNLayer, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.sync_mode = sync_mode
         self.sparse_feature_number = sparse_feature_number
         self.sparse_feature_dim = sparse_feature_dim
@@ -99,6 +115,7 @@ class DNNLayer(nn.Layer):
 
 
 class FlDNNLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         sparse_feature_number,
@@ -108,6 +125,16 @@ class FlDNNLayer(nn.Layer):
         sync_mode=None,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 sparse_feature_number,
+                 sparse_feature_dim,
+                 dense_feature_dim,
+                 sparse_number,
+                 sync_mode=None):
+        super(FlDNNLayer, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.PART_A_DEVICE_FlAG = 'gpu:0'
         self.PART_A_JOINT_OP_DEVICE_FlAG = 'gpu:2'
@@ -120,11 +147,16 @@ class FlDNNLayer(nn.Layer):
         self.slot_num = sparse_number
         self.dense_feature_dim = dense_feature_dim
 
+<<<<<<< HEAD
         layer_sizes_a = [
             self.slot_num * self.sparse_feature_dim,
             5,
             7,
         ]  # for test
+=======
+        layer_sizes_a = [self.slot_num * self.sparse_feature_dim, 5,
+                         7]  # for test
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         layer_sizes_b = [self.dense_feature_dim, 6, 7]
         layer_sizes_top = [7, 2]
 
@@ -134,9 +166,13 @@ class FlDNNLayer(nn.Layer):
             sparse=True,
             weight_attr=paddle.ParamAttr(
                 name="SparseFeatFactors",
+<<<<<<< HEAD
                 initializer=paddle.nn.initializer.Uniform(),
             ),
         )
+=======
+                initializer=paddle.nn.initializer.Uniform()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # part_a fc
         acts = ["relu" for _ in range(len(layer_sizes_a))]
@@ -147,10 +183,14 @@ class FlDNNLayer(nn.Layer):
                 out_features=layer_sizes_a[i + 1],
                 weight_attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
+<<<<<<< HEAD
                         std=1.0 / math.sqrt(layer_sizes_a[i])
                     )
                 ),
             )
+=======
+                        std=1.0 / math.sqrt(layer_sizes_a[i]))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.add_sublayer('linear_%d' % i, linear)
             self._mlp_layers_a.append(linear)
             act = paddle.nn.ReLU()
@@ -166,10 +206,14 @@ class FlDNNLayer(nn.Layer):
                 out_features=layer_sizes_b[i + 1],
                 weight_attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
+<<<<<<< HEAD
                         std=1.0 / math.sqrt(layer_sizes_b[i])
                     )
                 ),
             )
+=======
+                        std=1.0 / math.sqrt(layer_sizes_b[i]))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.add_sublayer('linear_%d' % i, linear)
             self._mlp_layers_b.append(linear)
             act = paddle.nn.ReLU()
@@ -185,10 +229,14 @@ class FlDNNLayer(nn.Layer):
                 out_features=layer_sizes_top[i + 1],
                 weight_attr=paddle.ParamAttr(
                     initializer=paddle.nn.initializer.Normal(
+<<<<<<< HEAD
                         std=1.0 / math.sqrt(layer_sizes_top[i])
                     )
                 ),
             )
+=======
+                        std=1.0 / math.sqrt(layer_sizes_top[i]))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.add_sublayer('linear_%d' % i, linear)
             self._mlp_layers_top.append(linear)
             act = paddle.nn.ReLU()
@@ -209,8 +257,12 @@ class FlDNNLayer(nn.Layer):
 
             y = self._mlp_layers_a[2](y)
         with paddle.fluid.device_guard(
+<<<<<<< HEAD
             self.PART_A_JOINT_OP_DEVICE_FlAG
         ):  # joint point
+=======
+                self.PART_A_JOINT_OP_DEVICE_FlAG):  # joint point
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             bottom_a = self._mlp_layers_a[3](y)
 
         return bottom_a
@@ -227,11 +279,17 @@ class FlDNNLayer(nn.Layer):
 
     def interactive_layer(self, bottom_a, bottom_b):
         with paddle.fluid.device_guard(
+<<<<<<< HEAD
             self.PART_B_JOINT_OP_DEVICE_FlAG
         ):  # joint point
             interactive = paddle.fluid.layers.elementwise_add(
                 bottom_a, bottom_b
             )
+=======
+                self.PART_B_JOINT_OP_DEVICE_FlAG):  # joint point
+            interactive = paddle.fluid.layers.elementwise_add(
+                bottom_a, bottom_b)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return interactive
 
     def top_layer(self, interactive, label_input):
@@ -239,6 +297,7 @@ class FlDNNLayer(nn.Layer):
             y = self._mlp_layers_top[0](interactive)
             y_top = self._mlp_layers_top[1](y)
             predict_2d = paddle.nn.functional.softmax(y_top)
+<<<<<<< HEAD
             (
                 auc,
                 batch_auc,
@@ -258,6 +317,18 @@ class FlDNNLayer(nn.Layer):
             cost = paddle.nn.functional.cross_entropy(
                 input=y_top, label=label_input
             )
+=======
+            auc, batch_auc, [
+                self.batch_stat_pos, self.batch_stat_neg, self.stat_pos,
+                self.stat_neg
+            ] = paddle.static.auc(input=predict_2d,
+                                  label=label_input,
+                                  num_thresholds=2**12,
+                                  slide_steps=20)
+
+            cost = paddle.nn.functional.cross_entropy(input=y_top,
+                                                      label=label_input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             avg_cost = paddle.mean(x=cost)
 
         return auc, avg_cost
@@ -274,7 +345,12 @@ class FlDNNLayer(nn.Layer):
         return auc, avg_cost
 
 
+<<<<<<< HEAD
 class StaticModel:
+=======
+class StaticModel():
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, config):
         self.cost = None
         self.infer_target_var = None
@@ -307,11 +383,17 @@ class StaticModel:
         self.fc_sizes = self.config.get("hyper_parameters.fc_sizes")
 
     def create_feeds(self, is_infer=False):
+<<<<<<< HEAD
         dense_input = paddle.static.data(
             name="dense_input",
             shape=[None, self.dense_input_dim],
             dtype="float32",
         )
+=======
+        dense_input = paddle.static.data(name="dense_input",
+                                         shape=[None, self.dense_input_dim],
+                                         dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         sparse_input_ids = [
             paddle.static.data(name=str(i), shape=[None, 1], dtype="int64")
@@ -329,6 +411,7 @@ class StaticModel:
         self.dense_input = input[-1]
         sparse_number = self.sparse_inputs_slots - 1
 
+<<<<<<< HEAD
         dnn_model = DNNLayer(
             self.sparse_feature_number,
             self.sparse_feature_dim,
@@ -355,14 +438,37 @@ class StaticModel:
             num_thresholds=2**12,
             slide_steps=20,
         )
+=======
+        dnn_model = DNNLayer(self.sparse_feature_number,
+                             self.sparse_feature_dim,
+                             self.dense_input_dim,
+                             sparse_number,
+                             self.fc_sizes,
+                             sync_mode=self.sync_mode)
+        raw_predict_2d = dnn_model.forward(self.sparse_inputs, self.dense_input)
+        predict_2d = paddle.nn.functional.softmax(raw_predict_2d)
+        self.predict = predict_2d
+        auc, batch_auc, [
+            self.batch_stat_pos, self.batch_stat_neg, self.stat_pos,
+            self.stat_neg
+        ] = paddle.static.auc(input=self.predict,
+                              label=self.label_input,
+                              num_thresholds=2**12,
+                              slide_steps=20)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.inference_target_var = auc
         if is_infer:
             fetch_dict = {'auc': auc}
             return fetch_dict
 
+<<<<<<< HEAD
         cost = paddle.nn.functional.cross_entropy(
             input=raw_predict_2d, label=self.label_input
         )
+=======
+        cost = paddle.nn.functional.cross_entropy(input=raw_predict_2d,
+                                                  label=self.label_input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         avg_cost = paddle.mean(x=cost)
         self._cost = avg_cost
 
@@ -371,6 +477,7 @@ class StaticModel:
 
     def fl_net(self, input, is_infer=False):
         self.label_input = input[0]
+<<<<<<< HEAD
         self.sparse_inputs = input[1 : self.sparse_inputs_slots]
         self.dense_input = input[-1]
         self.sparse_number = self.sparse_inputs_slots - 1
@@ -386,6 +493,20 @@ class StaticModel:
         auc, avg_cost = fl_dnn_model.forward(
             self.sparse_inputs, self.dense_input, self.label_input
         )
+=======
+        self.sparse_inputs = input[1:self.sparse_inputs_slots]
+        self.dense_input = input[-1]
+        self.sparse_number = self.sparse_inputs_slots - 1
+
+        fl_dnn_model = FlDNNLayer(self.sparse_feature_number,
+                                  self.sparse_feature_dim,
+                                  self.dense_input_dim,
+                                  self.sparse_number,
+                                  sync_mode=self.sync_mode)
+
+        auc, avg_cost = fl_dnn_model.forward(self.sparse_inputs,
+                                             self.dense_input, self.label_input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fetch_dict = {'cost': avg_cost, 'auc': auc}
         self._cost = avg_cost
         return fetch_dict

@@ -23,9 +23,15 @@ from ...log_helper import get_logger
 
 __all__ = ['add_supported_layer']
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _default_pruning(weight_nparray, m, n, func_name, param_name):
@@ -38,6 +44,7 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     exlude_cond_shape4 = len(shape) == 4 and shape[1] < m
     if exlude_cond_shape2:
         _logger.warning(
+<<<<<<< HEAD
             '{} is not pruned because the first dimension of {} is smaller than {}'.format(
                 param_name, shape, m
             )
@@ -49,6 +56,15 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
                 param_name, shape, m
             )
         )
+=======
+            '{} is not pruned because the first dimension of {} is smaller than {}'
+            .format(param_name, shape, m))
+        return weight_pruned_nparray, weight_sparse_mask
+    if exlude_cond_shape4:
+        _logger.warning(
+            '{} is not pruned because the second dimension of {} is smaller than {}'
+            .format(param_name, shape, m))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return weight_pruned_nparray, weight_sparse_mask
 
     checked_func_name = sparsity.CheckMethod.get_checking_method(func_name)
@@ -64,9 +80,16 @@ def _default_pruning(weight_nparray, m, n, func_name, param_name):
     # sparsity/utils is row-major pruning. That is the reason we have to transpose weight
     # matrices beforce invoking create_mask. Then we transpose the result mask to make
     # sure its shape to be the same as the input weight.
+<<<<<<< HEAD
     weight_sparse_mask = sparsity.create_mask(
         weight_nparray.T, func_name=func_name, n=n, m=m
     ).T
+=======
+    weight_sparse_mask = sparsity.create_mask(weight_nparray.T,
+                                              func_name=func_name,
+                                              n=n,
+                                              m=m).T
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     weight_pruned_nparray = np.multiply(weight_nparray, weight_sparse_mask)
     assert sparsity.check_sparsity(
         weight_pruned_nparray.T, n=n, m=m, func_name=checked_func_name

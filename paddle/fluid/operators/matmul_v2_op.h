@@ -91,9 +91,15 @@ static void ReshapeTensorIntoMatrixSequence(
   }
 }
 
+<<<<<<< HEAD
 static void ReshapeXYOutIntoMatrixSequence(phi::DenseTensor* x,
                                            phi::DenseTensor* y,
                                            phi::DenseTensor* out,
+=======
+static void ReshapeXYOutIntoMatrixSequence(framework::Tensor* x,
+                                           framework::Tensor* y,
+                                           framework::Tensor* out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                            bool trans_x,
                                            bool trans_y) {
   auto x_dim = RowMatrixFromVector(x->dims());

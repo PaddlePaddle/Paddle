@@ -24,6 +24,7 @@ import paddle.nn as nn
 
 
 class SimpleFCLayer(nn.Layer):
+
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
@@ -37,6 +38,7 @@ class SimpleFCLayer(nn.Layer):
 
 
 class LinearNetWithNone(nn.Layer):
+
     def __init__(self, feature_size, fc_size):
         super().__init__()
         self._linear = nn.Linear(feature_size, fc_size)
@@ -48,6 +50,7 @@ class LinearNetWithNone(nn.Layer):
 
 
 class TestTracedLayerErrMsg(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 4
         self.feature_size = 3
@@ -64,41 +67,61 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             return
         with fluid.dygraph.guard():
             in_x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
+=======
+                np.random.random(
+                    (self.batch_size, self.feature_size)).astype('float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             with self.assertRaises(AssertionError) as e:
                 dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                     None, [in_x]
                 )
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received <{} 'NoneType'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'layer' in fluid.dygraph.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received <{} 'NoneType'>."
+                .format(self.type_str), str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with self.assertRaises(TypeError) as e:
                 dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                     self.layer, 3
                 )
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>."
+                .format(self.type_str), str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with self.assertRaises(TypeError) as e:
                 dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                     self.layer, [True, 1]
                 )
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'each element of inputs' in fluid.dygraph.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'bool'>."
+                .format(self.type_str), str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
@@ -109,10 +132,15 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             return
         with fluid.dygraph.guard():
             in_x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
+=======
+                np.random.random(
+                    (self.batch_size, self.feature_size)).astype('float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
             )
@@ -120,20 +148,30 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(AssertionError) as e:
                 traced_layer.set_strategy(1, fluid.ExecutionStrategy())
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'build_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received <{} 'int'>."
+                .format(self.type_str), str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             with self.assertRaises(AssertionError) as e:
                 traced_layer.set_strategy(fluid.BuildStrategy(), False)
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'exec_strategy' in fluid.dygraph.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received <{} 'bool'>."
+                .format(self.type_str), str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             traced_layer.set_strategy(build_strategy=fluid.BuildStrategy())
             traced_layer.set_strategy(exec_strategy=fluid.ExecutionStrategy())
@@ -146,10 +184,15 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             return
         with fluid.dygraph.guard():
             in_x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
+=======
+                np.random.random(
+                    (self.batch_size, self.feature_size)).astype('float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
             )
@@ -158,6 +201,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             with self.assertRaises(TypeError) as e:
                 traced_layer.save_inference_model([0])
             self.assertEqual(
+<<<<<<< HEAD
                 "The type of 'path' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. ".format(
                     self.type_str, self.type_str
                 ),
@@ -195,6 +239,32 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                 ),
                 str(e.exception),
             )
+=======
+                "The type of 'path' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'str'>, but received <{} 'list'>. "
+                .format(self.type_str, self.type_str), str(e.exception))
+            with self.assertRaises(TypeError) as e:
+                traced_layer.save_inference_model(path, [0], [None])
+            self.assertEqual(
+                "The type of 'each element of fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. "
+                .format(self.type_str, self.type_str), str(e.exception))
+            with self.assertRaises(TypeError) as e:
+                traced_layer.save_inference_model(path, [0], False)
+            self.assertEqual(
+                "The type of 'fetch' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. "
+                .format(self.type_str, self.type_str, self.type_str),
+                str(e.exception))
+            with self.assertRaises(TypeError) as e:
+                traced_layer.save_inference_model(path, [None], [0])
+            self.assertEqual(
+                "The type of 'each element of feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be <{} 'int'>, but received <{} 'NoneType'>. "
+                .format(self.type_str, self.type_str), str(e.exception))
+            with self.assertRaises(TypeError) as e:
+                traced_layer.save_inference_model(path, True, [0])
+            self.assertEqual(
+                "The type of 'feed' in fluid.dygraph.jit.TracedLayer.save_inference_model must be (<{} 'NoneType'>, <{} 'list'>), but received <{} 'bool'>. "
+                .format(self.type_str, self.type_str, self.type_str),
+                str(e.exception))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with self.assertRaises(ValueError) as e:
                 traced_layer.save_inference_model("")
             self.assertEqual(
@@ -218,9 +288,13 @@ class TestTracedLayerErrMsg(unittest.TestCase):
             for i in range(5):
                 in_x = fluid.dygraph.to_variable(
                     np.random.random(
+<<<<<<< HEAD
                         (self.batch_size, self.feature_size)
                     ).astype('float32')
                 )
+=======
+                        (self.batch_size, self.feature_size)).astype('float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 dygraph_out = layer(in_x)
                 loss = fluid.layers.reduce_mean(dygraph_out)
                 loss.backward()
@@ -229,6 +303,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
 
 
 class TestOutVarWithNoneErrMsg(unittest.TestCase):
+
     def test_linear_net_with_none(self):
         if fluid.framework.in_dygraph_mode():
             return
@@ -236,8 +311,12 @@ class TestOutVarWithNoneErrMsg(unittest.TestCase):
         in_x = paddle.to_tensor(np.random.random((4, 100)).astype('float32'))
         with self.assertRaises(TypeError):
             dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+<<<<<<< HEAD
                 model, [in_x]
             )
+=======
+                model, [in_x])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestTracedLayerSaveInferenceModel(unittest.TestCase):

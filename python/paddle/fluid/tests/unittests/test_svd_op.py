@@ -21,6 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 
 
 class TestSvdOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.python_api = paddle.linalg.svd
@@ -69,6 +70,7 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'], ['S'], numeric_grad_delta=0.001, check_eager=True
         )
@@ -82,6 +84,21 @@ class TestSvdOp(OpTest):
         self.check_grad(
             ['X'], ['VH'], numeric_grad_delta=0.001, check_eager=True
         )
+=======
+        self.check_grad(['X'], ['S'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
+
+    def check_U_grad(self):
+        self.check_grad(['X'], ['U'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
+
+    def check_V_grad(self):
+        self.check_grad(['X'], ['VH'],
+                        numeric_grad_delta=0.001,
+                        check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad(self):
         """
@@ -103,14 +120,20 @@ class TestSvdCheckGrad2(TestSvdOp):
         vander matrix must be a full rank matrix.
         """
         self._input_shape = (5, 5)
+<<<<<<< HEAD
         self._input_data = (
             np.vander([2, 3, 4, 5, 6])
             .astype("float64")
             .reshape(self._input_shape)
         )
+=======
+        self._input_data = np.vander([2, 3, 4, 5, 6]).astype("float64").reshape(
+            self._input_shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestSvdNormalMatrixSmall(TestSvdCheckGrad2):
+
     def generate_input(self):
         """small matrix SVD."""
         self._input_shape = (1, 1)
@@ -118,11 +141,13 @@ class TestSvdNormalMatrixSmall(TestSvdCheckGrad2):
 
 
 class TestSvdNormalMatrix6x3(TestSvdCheckGrad2):
+
     def generate_input(self):
         """return a deterministic  matrix, the range matrix;
         vander matrix must be a full rank matrix.
         """
         self._input_shape = (6, 3)
+<<<<<<< HEAD
         self._input_data = np.array(
             [
                 [1.0, 2.0, 3.0],
@@ -133,14 +158,22 @@ class TestSvdNormalMatrix6x3(TestSvdCheckGrad2):
                 [3.0, 1.0, 0.0],
             ]
         ).astype("float64")
+=======
+        self._input_data = np.array([[1.0, 2.0, 3.0], [0.0, 1.0, 5.0],
+                                     [0.0, 0.0, 6.0], [2.0, 4.0, 9.0],
+                                     [3.0, 6.0, 8.0], [3.0, 1.0,
+                                                       0.0]]).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestSvdNormalMatrix3x6(TestSvdCheckGrad2):
+
     def generate_input(self):
         """return a deterministic  matrix, the range matrix;
         vander matrix must be a full rank matrix.
         """
         self._input_shape = (3, 6)
+<<<<<<< HEAD
         self._input_data = np.array(
             [
                 [1.0, 2.0, 3.0],
@@ -151,12 +184,20 @@ class TestSvdNormalMatrix3x6(TestSvdCheckGrad2):
                 [3.0, 1.0, 0.0],
             ]
         ).astype("float64")
+=======
+        self._input_data = np.array([[1.0, 2.0, 3.0], [0.0, 1.0, 5.0],
+                                     [0.0, 0.0, 6.0], [2.0, 4.0, 9.0],
+                                     [3.0, 6.0, 8.0], [3.0, 1.0,
+                                                       0.0]]).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._input_data = self._input_data.transpose((-1, -2))
 
 
 class TestSvdNormalMatrix6x3Batched(TestSvdOp):
+
     def generate_input(self):
         self._input_shape = (10, 6, 3)
+<<<<<<< HEAD
         self._input_data = np.array(
             [
                 [1.0, 2.0, 3.0],
@@ -167,6 +208,12 @@ class TestSvdNormalMatrix6x3Batched(TestSvdOp):
                 [3.0, 1.0, 0.0],
             ]
         ).astype("float64")
+=======
+        self._input_data = np.array([[1.0, 2.0, 3.0], [0.0, 1.0, 5.0],
+                                     [0.0, 0.0, 6.0], [2.0, 4.0, 9.0],
+                                     [3.0, 6.0, 8.0], [3.0, 1.0,
+                                                       0.0]]).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._input_data = np.stack([self._input_data] * 10, axis=0)
 
     def test_svd_forward(self):
@@ -175,11 +222,13 @@ class TestSvdNormalMatrix6x3Batched(TestSvdOp):
 
 
 class TestSvdNormalMatrix3x6Batched(TestSvdOp):
+
     def generate_input(self):
         """return a deterministic  matrix, the range matrix;
         vander matrix must be a full rank matrix.
         """
         self._input_shape = (10, 3, 6)
+<<<<<<< HEAD
         self._input_data = np.array(
             [
                 [1.0, 2.0, 3.0],
@@ -190,6 +239,12 @@ class TestSvdNormalMatrix3x6Batched(TestSvdOp):
                 [3.0, 1.0, 0.0],
             ]
         ).astype("float64")
+=======
+        self._input_data = np.array([[1.0, 2.0, 3.0], [0.0, 1.0, 5.0],
+                                     [0.0, 0.0, 6.0], [2.0, 4.0, 9.0],
+                                     [3.0, 6.0, 8.0], [3.0, 1.0,
+                                                       0.0]]).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._input_data = self._input_data.transpose((-1, -2))
         self._input_data = np.stack([self._input_data] * 10, axis=0)
 
@@ -199,11 +254,13 @@ class TestSvdNormalMatrix3x6Batched(TestSvdOp):
 
 
 class TestSvdNormalMatrix3x3x3x6Batched(TestSvdOp):
+
     def generate_input(self):
         """return a deterministic  matrix, the range matrix;
         vander matrix must be a full rank matrix.
         """
         self._input_shape = (3, 3, 3, 6)
+<<<<<<< HEAD
         self._input_data = np.array(
             [
                 [1.0, 2.0, 3.0],
@@ -214,6 +271,12 @@ class TestSvdNormalMatrix3x3x3x6Batched(TestSvdOp):
                 [3.0, 1.0, 0.0],
             ]
         ).astype("float64")
+=======
+        self._input_data = np.array([[1.0, 2.0, 3.0], [0.0, 1.0, 5.0],
+                                     [0.0, 0.0, 6.0], [2.0, 4.0, 9.0],
+                                     [3.0, 6.0, 8.0], [3.0, 1.0,
+                                                       0.0]]).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._input_data = self._input_data.transpose((-1, -2))
         self._input_data = np.stack(
             [self._input_data, self._input_data, self._input_data], axis=0
@@ -232,6 +295,7 @@ class TestSvdNormalMatrix3x3x3x6Batched(TestSvdOp):
     + "however it is desirable to cover the forward pass"
 )
 class TestSvdNormalMatrixBig(TestSvdOp):
+
     def generate_input(self):
         """big matrix SVD."""
         self._input_shape = (2, 200, 300)
@@ -246,6 +310,7 @@ class TestSvdNormalMatrixBig(TestSvdOp):
 
 
 class TestSvdNormalMatrixBig2(TestSvdOp):
+
     def generate_input(self):
         """big matrix SVD."""
         self._input_shape = (1, 100)
@@ -253,6 +318,7 @@ class TestSvdNormalMatrixBig2(TestSvdOp):
 
 
 class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
 
@@ -272,6 +338,7 @@ class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
 
 
 class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
+
     def get_full_matrices_option(self):
         return True
 
@@ -289,6 +356,7 @@ class TestSvdFullMatriceGrad(TestSvdNormalMatrix6x3):
 
 
 class TestSvdAPI(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
         a = np.random.rand(5, 5)
@@ -305,9 +373,15 @@ class TestSvdAPI(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 a = np.random.rand(5, 5)
+<<<<<<< HEAD
                 x = paddle.fluid.data(
                     name="input", shape=[5, 5], dtype='float64'
                 )
+=======
+                x = paddle.fluid.data(name="input",
+                                      shape=[5, 5],
+                                      dtype='float64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 u, s, vh = paddle.linalg.svd(x)
                 exe = fluid.Executor(place)
                 gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)

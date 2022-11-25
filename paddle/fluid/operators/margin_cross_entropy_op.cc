@@ -25,6 +25,58 @@ class MarginCrossEntropyOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
+=======
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(
+        ctx->HasInput("Logits"), "Input", "Logits", "MarginCrossEntropyOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Label"), "Input", "Label", "MarginCrossEntropyOp");
+
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Softmax"), "Output", "Softmax", "MarginCrossEntropyOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Loss"), "Output", "Loss", "MarginCrossEntropyOp");
+
+    auto logits_dims = ctx->GetInputDim("Logits");
+    auto labels_dims = ctx->GetInputDim("Label");
+
+    auto logits_rank = logits_dims.size();
+    auto axis = logits_rank - 1;
+    for (int i = 0; i < logits_rank; i++) {
+      if (i != axis) {
+        if (ctx->IsRuntime() || (logits_dims[i] > 0 && labels_dims[i] > 0)) {
+          PADDLE_ENFORCE_EQ(logits_dims[i],
+                            labels_dims[i],
+                            platform::errors::InvalidArgument(
+                                "Input(Logits) and Input(Label) should in "
+                                "same shape in dimensions except axis."));
+        }
+      }
+    }
+
+    if (labels_dims.size() > 1) {
+      PADDLE_ENFORCE_EQ(
+          labels_dims[logits_rank - 1],
+          1UL,
+          platform::errors::InvalidArgument(
+              "the last dimension of Input(Label) should be 1."
+              "But received: the last dimension of Input(Label) is [%d],"
+              "the last dimension is [%d]",
+              labels_dims[logits_rank - 1],
+              logits_rank - 1));
+    }
+
+    ctx->SetOutputDim("Softmax", logits_dims);
+
+    logits_dims[axis] = 1;
+    ctx->SetOutputDim("Loss", logits_dims);
+
+    ctx->ShareLoD("Logits", /*->*/ "Softmax");
+    ctx->ShareLoD("Logits", /*->*/ "Loss");
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -95,6 +147,32 @@ class MarginCrossEntropyOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
+=======
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Loss")),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(Loss@Grad) should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Softmax"),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Input(Softmax) should be not null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Label"),
+        true,
+        platform::errors::InvalidArgument("Input(Label) should be not null."));
+
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Logits")),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "Output(Logits@Grad) should be not null."));
+
+    ctx->SetOutputDim(framework::GradVarName("Logits"),
+                      ctx->GetInputDim("Softmax"));
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {

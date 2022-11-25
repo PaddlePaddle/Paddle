@@ -19,6 +19,7 @@ import unittest
 class TestContextManagerRaiseException(unittest.TestCase):
     # When exception raised in 'with' context, we should safely exit the context
     def test_func1(self):
+
         def foo():
             with fluid.dygraph.guard():
                 print("raise error in context manager")

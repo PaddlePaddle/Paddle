@@ -42,6 +42,7 @@ def output_hist(out):
 
 
 class TestNPUUniformRandomOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "uniform_random"
@@ -71,10 +72,16 @@ class TestNPUUniformRandomOp(OpTest):
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
+<<<<<<< HEAD
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
+=======
+        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
+                        "hist: " + str(hist))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_npu():
@@ -89,6 +96,7 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         scope = core.Scope()
         out = scope.var("X").get_selected_rows()
         paddle.seed(10)
+<<<<<<< HEAD
         op = Operator(
             "uniform_random",
             Out="X",
@@ -101,6 +109,19 @@ class TestNPUUniformRandomOpSelectedRows(unittest.TestCase):
         self.assertEqual(out.get_tensor().shape(), [1000, 784])
         hist, prob = output_hist(np.array(out.get_tensor()))
         np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
+=======
+        op = Operator("uniform_random",
+                      Out="X",
+                      shape=[1000, 784],
+                      min=-5.0,
+                      max=10.0,
+                      seed=10)
+        op.run(scope, place)
+        self.assertEqual(out.get_tensor().shape(), [1000, 784])
+        hist, prob = output_hist(np.array(out.get_tensor()))
+        self.assertTrue(np.allclose(hist, prob, rtol=0, atol=0.01),
+                        "hist: " + str(hist))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

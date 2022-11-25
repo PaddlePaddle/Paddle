@@ -21,6 +21,7 @@ __all__ = []
 
 
 class HybridParallelGradScaler:
+
     def __init__(self, scaler, hcg):
         self._scaler = scaler
         self._hcg = hcg
@@ -69,9 +70,15 @@ class HybridParallelGradScaler:
             # TODO(shenliang03) Since the minimize call in the optimizer is
             # after the gradscaler, check_finite needs to synchronize global
             # information. In the future, we should use check_group
+<<<<<<< HEAD
             paddle.distributed.all_reduce(
                 self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
             )
+=======
+            paddle.distributed.all_reduce(self._found_inf,
+                                          op=paddle.distributed.ReduceOp.MAX,
+                                          group=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._found_inf = paddle.cast(self._found_inf, dtype="bool")
 
     def __getattr__(self, item):

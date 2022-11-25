@@ -31,11 +31,13 @@ paddle.enable_static()
 
 
 class XPUTestElementwiseMulOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elementwise_mul'
         self.use_dynamic_create_class = False
 
     class ElementwiseMulOp(XPUOpTest):
+
         def init_kernel_type(self):
             self.use_mkldnn = False
 
@@ -131,6 +133,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseMulOp_scalar(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 3, 4).astype(self.dtype),
@@ -139,6 +142,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     class TestElementwiseMulOp_Vector(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.random((100,)).astype(self.dtype),
@@ -149,6 +153,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(100, 2, 3).astype(self.dtype),
@@ -160,6 +165,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.attrs = {'axis': 0}
 
     class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 100, 3).astype(self.dtype),
@@ -172,6 +178,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 3, 100).astype(self.dtype),
@@ -183,6 +190,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 10, 12, 3).astype(self.dtype),
@@ -191,10 +199,12 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
 
             self.attrs = {'axis': 1}
             self.outputs = {
-                'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
+                'Out':
+                self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
             }
 
     class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 2, 11).astype(self.dtype),
@@ -203,6 +213,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 4, 2, 3).astype(self.dtype),
@@ -211,6 +222,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 3, 100).astype(self.dtype),
@@ -219,6 +231,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(30, 3, 1, 5).astype(self.dtype),
@@ -227,6 +240,7 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
 
     class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(10, 10).astype(self.dtype),
@@ -240,9 +254,11 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
             }
 
     class TestElementwiseMulOpError(unittest.TestCase):
+
         def test_errors(self):
             with program_guard(Program(), Program()):
                 # the input of elementwise_mul must be Variable.
+<<<<<<< HEAD
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.XPUPlace(0)
                 )
@@ -263,6 +279,24 @@ class XPUTestElementwiseMulOp(XPUOpTestWrapper):
                 self.assertRaises(
                     TypeError, fluid.layers.elementwise_mul, x2, y2
                 )
+=======
+                x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                             [[1, 1, 1, 1]], fluid.XPUPlace(0))
+                y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                             [[1, 1, 1, 1]], fluid.XPUPlace(0))
+                self.assertRaises(TypeError, fluid.layers.elementwise_mul, x1,
+                                  y1)
+
+                # the input dtype of elementwise_mul must be float32
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[3, 4, 5, 6],
+                                       dtype="uint8")
+                y2 = fluid.layers.data(name='y2',
+                                       shape=[3, 4, 5, 6],
+                                       dtype="uint8")
+                self.assertRaises(TypeError, fluid.layers.elementwise_mul, x2,
+                                  y2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 support_types = get_xpu_op_support_types('elementwise_mul')

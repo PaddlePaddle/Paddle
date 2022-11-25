@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestMatchMatrixTensorOp(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.set_data()
@@ -76,6 +77,7 @@ class TestMatchMatrixTensorOp(OpTest):
 
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
+
     def set_data(self):
         ix, iy, h, dim_t = [5, 8, 25, 4]
         x_lod = [[5]]
@@ -84,6 +86,7 @@ class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase2(TestMatchMatrixTensorOp):
+
     def set_data(self):
         ix, iy, h, dim_t = [105, 120, 1, 4]
         x_lod = [[30, 45, 30]]
@@ -92,6 +95,7 @@ class TestMatchMatrixTensorOpCase2(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase3(TestMatchMatrixTensorOp):
+
     def set_data(self):
         ix, iy, h, dim_t = [5, 9, 32, 1]
         x_lod = [[1, 2, 2]]
@@ -100,6 +104,7 @@ class TestMatchMatrixTensorOpCase3(TestMatchMatrixTensorOp):
 
 
 class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
+
     def set_data(self):
         ix, iy, h, dim_t = [8, 12, 16, 5]
         x_lod = [[1, 2, 3, 1, 1]]
@@ -109,9 +114,15 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
     def test_api(self):
         x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
         y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
+<<<<<<< HEAD
         out, out_tmp = fluid.contrib.match_matrix_tensor(
             x=x_lod_tensor, y=y_lod_tensor, channel_num=3
         )
+=======
+        out, out_tmp = fluid.contrib.match_matrix_tensor(x=x_lod_tensor,
+                                                         y=y_lod_tensor,
+                                                         channel_num=3)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = fluid.CPUPlace()
         x_data = np.random.rand(7, 10).astype('float32')
@@ -121,9 +132,18 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
 
         exe = fluid.Executor(place=place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         ret = exe.run(
             feed={'x': x, 'y': y}, fetch_list=[out], return_numpy=False
         )
+=======
+        ret = exe.run(feed={
+            'x': x,
+            'y': y
+        },
+                      fetch_list=[out],
+                      return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

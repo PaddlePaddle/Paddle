@@ -23,11 +23,15 @@ from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import (
     create_fill_constant_node,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import Dygraph2StaticException
 from paddle.fluid.dygraph.dygraph_to_static.utils import ORIGI_INFO
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 __all__ = [
     'RETURN_NO_VALUE_MAGIC_NUM',
@@ -53,7 +57,11 @@ RETURN_VALUE_INIT_NAME = '__return_value_init'
 # should return.
 
 # Assign not support float64, use float32 value as magic number.
+<<<<<<< HEAD
 RETURN_NO_VALUE_MAGIC_NUM = 1.77113e27
+=======
+RETURN_NO_VALUE_MAGIC_NUM = 1.77113e+27
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 RETURN_NO_VALUE_VAR_NAME = "__no_value_return_var"
 
 
@@ -204,7 +212,11 @@ class SingleReturnTransformer(BaseTransformer):
         Self-defined visit for appending ancestor
         """
         self.ancestor_nodes.append(node)
+<<<<<<< HEAD
         ret = super().visit(node)
+=======
+        ret = super(ReturnTransformer, self).visit(node)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.ancestor_nodes.pop()
         return ret
 
@@ -249,6 +261,7 @@ class SingleReturnTransformer(BaseTransformer):
         value_name = self.return_value_name
         if value_name is not None:
             node.body.append(
+<<<<<<< HEAD
                 gast.Return(
                     value=gast.Name(
                         id=value_name,
@@ -272,6 +285,24 @@ class SingleReturnTransformer(BaseTransformer):
             node.body.insert(0, assign_return_value_node)
 
         # Prepend no value placeholders
+=======
+                gast.Return(value=gast.Name(id=value_name,
+                                            ctx=gast.Load(),
+                                            annotation=None,
+                                            type_comment=None)))
+            assign_return_value_node = gast.Assign(targets=[
+                gast.Name(id=value_name,
+                          ctx=gast.Store(),
+                          annotation=None,
+                          type_comment=None)
+            ],
+                                                   value=gast.Constant(
+                                                       kind=None, value=None))
+            node.body.insert(0, assign_return_value_node)
+
+        # Prepend no value placeholders
+        self.function_def.pop()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return node
 
     def visit_Return(self, node):
@@ -283,6 +314,28 @@ class SingleReturnTransformer(BaseTransformer):
         for ancestor_index in reversed(range(len(self.ancestor_nodes) - 1)):
             ancestor = self.ancestor_nodes[ancestor_index]
             cur_node = self.ancestor_nodes[ancestor_index + 1]
+<<<<<<< HEAD
+=======
+            if hasattr(ancestor,
+                       "body") and index_in_list(ancestor.body, cur_node) != -1:
+                if cur_node == node:
+                    self._replace_return_in_stmt_list(ancestor.body, cur_node,
+                                                      return_name,
+                                                      max_return_length,
+                                                      parent_node_of_return)
+                self._replace_after_node_to_if_in_stmt_list(
+                    ancestor.body, cur_node, return_name, parent_node_of_return)
+            elif hasattr(ancestor, "orelse") and index_in_list(
+                    ancestor.orelse, cur_node) != -1:
+                if cur_node == node:
+                    self._replace_return_in_stmt_list(ancestor.orelse, cur_node,
+                                                      return_name,
+                                                      max_return_length,
+                                                      parent_node_of_return)
+                self._replace_after_node_to_if_in_stmt_list(
+                    ancestor.orelse, cur_node, return_name,
+                    parent_node_of_return)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             def _deal_branches(branch_name):
                 if hasattr(ancestor, branch_name):
@@ -307,6 +360,7 @@ class SingleReturnTransformer(BaseTransformer):
             _deal_branches("orelse")
             # If return node in while loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.While):
+<<<<<<< HEAD
                 cond_var_node = gast.UnaryOp(
                     op=gast.Not(),
                     operand=gast.Name(
@@ -316,6 +370,14 @@ class SingleReturnTransformer(BaseTransformer):
                         type_comment=None,
                     ),
                 )
+=======
+                cond_var_node = gast.UnaryOp(op=gast.Not(),
+                                             operand=gast.Name(
+                                                 id=return_name,
+                                                 ctx=gast.Load(),
+                                                 annotation=None,
+                                                 type_comment=None))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 ancestor.test = gast.BoolOp(
                     op=gast.And(), values=[ancestor.test, cond_var_node]
                 )
@@ -323,6 +385,7 @@ class SingleReturnTransformer(BaseTransformer):
 
             # If return node in for loop, add `not return_name` in gast.While.test
             if isinstance(ancestor, gast.For):
+<<<<<<< HEAD
                 cond_var_node = gast.UnaryOp(
                     op=gast.Not(),
                     operand=gast.Name(
@@ -332,6 +395,14 @@ class SingleReturnTransformer(BaseTransformer):
                         type_comment=None,
                     ),
                 )
+=======
+                cond_var_node = gast.UnaryOp(op=gast.Not(),
+                                             operand=gast.Name(
+                                                 id=return_name,
+                                                 ctx=gast.Load(),
+                                                 annotation=None,
+                                                 type_comment=None))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 parent_node = self.ancestor_nodes[ancestor_index - 1]
                 for_to_while = ForToWhileTransformer(
                     parent_node, ancestor, cond_var_node
@@ -359,13 +430,23 @@ class SingleReturnTransformer(BaseTransformer):
             return False
 
         assign_nodes = []
+<<<<<<< HEAD
         self.append_assign_to_return_node(
             True, parent_node_of_return, return_name, assign_nodes
         )
+=======
+        # Here assume that the parent node of return is gast.If
+        if isinstance(parent_node_of_return, gast.If):
+            # Prepend control flow boolean nodes such as '__return@1 = True'
+            node_str = "{} = _jst.create_bool_as_type({}, True)".format(
+                return_name,
+                ast_to_source_code(parent_node_of_return.test).strip())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return_length = get_return_size(return_node)
         # In this case we should NOT append RETURN_NO_VALUE placeholder
         if return_node.value is not None:
+<<<<<<< HEAD
             if self.return_value_name is None:
                 self.return_value_name = unique_name.generate(
                     RETURN_VALUE_PREFIX
@@ -395,6 +476,28 @@ class SingleReturnTransformer(BaseTransformer):
     def _replace_after_node_to_if_in_stmt_list(
         self, stmt_list, node, return_name, parent_node_of_return
     ):
+=======
+            cur_func_node = self.function_def[-1]
+            if self.return_value_name[cur_func_node] is None:
+                self.return_value_name[cur_func_node] = unique_name.generate(
+                    RETURN_VALUE_PREFIX)
+
+            assign_nodes.append(
+                gast.Assign(targets=[
+                    gast.Name(id=self.return_value_name[cur_func_node],
+                              ctx=gast.Store(),
+                              annotation=None,
+                              type_comment=None)
+                ],
+                            value=return_node.value))
+
+        stmt_list[i:] = assign_nodes
+        return True
+
+    def _replace_after_node_to_if_in_stmt_list(self, stmt_list, node,
+                                               return_name,
+                                               parent_node_of_return):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         i = index_in_list(stmt_list, node)
         if i < 0 or i >= len(stmt_list):
             return False
@@ -402,6 +505,7 @@ class SingleReturnTransformer(BaseTransformer):
             # No need to add, we consider this as added successfully
             return True
 
+<<<<<<< HEAD
         if_stmt = gast.If(
             test=gast.UnaryOp(
                 op=gast.Not(),
@@ -415,13 +519,34 @@ class SingleReturnTransformer(BaseTransformer):
             body=stmt_list[i + 1 :],
             orelse=[],
         )
+=======
+        if_stmt = gast.If(test=gast.UnaryOp(op=gast.Not(),
+                                            operand=gast.Name(
+                                                id=return_name,
+                                                ctx=gast.Store(),
+                                                annotation=None,
+                                                type_comment=None)),
+                          body=stmt_list[i + 1:],
+                          orelse=[])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         stmt_list[i + 1 :] = [if_stmt]
 
         # Here assume that the parent node of return is gast.If
+<<<<<<< HEAD
         assign_nodes = []
         self.append_assign_to_return_node(
             False, parent_node_of_return, return_name, assign_nodes
         )
         stmt_list[i:i] = assign_nodes
+=======
+        if isinstance(parent_node_of_return, gast.If):
+            # Prepend control flow boolean nodes such as '__return@1 = False'
+            node_str = "{} = _jst.create_bool_as_type({}, False)".format(
+                return_name,
+                ast_to_source_code(parent_node_of_return.test).strip())
+            assign_false_node = gast.parse(node_str).body[0]
+
+            stmt_list[i:i] = [assign_false_node]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return True

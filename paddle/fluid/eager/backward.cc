@@ -214,7 +214,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   std::unordered_map<GradNodeBase*, int> node_in_degree_map =
       getInDegreeMap(queue);
 
+<<<<<<< HEAD
   VLOG(5) << "Startup_ops's size is " << queue.size();
+=======
+  VLOG(3) << "Startup_ops's size is " << queue.size();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   /* --- Topological Visit --- */
   // 1. Pop queue
@@ -223,9 +227,17 @@ std::vector<paddle::experimental::Tensor> RunBackward(
   //    |- node(grads)
   //    |- Prepare for next node
   // 3. Update queue
+<<<<<<< HEAD
   while (!queue.empty()) {
     GradNodeBase* node = queue.front();
     VLOG(3) << "Preparing GradNode:" << node->name() << " addr:" << node;
+=======
+  VLOG(3) << "Run Backward";
+  while (!queue.empty()) {
+    GradNodeBase* node = queue.front();
+    VLOG(3) << "Running GradNode:" << node->name() << " addr:" << node;
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     paddle::platform::RecordEvent node_record_event(
         std::string((*node).name()),
         paddle::platform::TracerEventType::Operator,
@@ -347,7 +359,11 @@ std::vector<paddle::experimental::Tensor> RunBackward(
 
         // Update queue
         node_in_degree_map[next_node]--;
+<<<<<<< HEAD
         VLOG(7) << next_node->name()
+=======
+        VLOG(6) << next_node->name()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 << " ref_cnt is: " << node_in_degree_map[next_node];
 
         PADDLE_ENFORCE(
@@ -357,6 +373,7 @@ std::vector<paddle::experimental::Tensor> RunBackward(
                 "Node's in-degree cannot be negative.",
                 next_node->name()));
 
+<<<<<<< HEAD
         if (is_general_grad) {
           if (node_in_degree_map[next_node] == 0 &&
               GeneralGrad::Instance().IsNeededNodes(next_node)) {
@@ -373,13 +390,24 @@ std::vector<paddle::experimental::Tensor> RunBackward(
             } else {
               queue.push_back(std::move(next_node));
             }
+=======
+        if (node_in_degree_map[next_node] == 0) {
+          if (dynamic_cast<egr::GradNodeAccumulation*>(next_node)) {
+            queue.push_front(std::move(next_node));
+          } else {
+            queue.push_back(std::move(next_node));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           }
         }
       }
     }
   }
 
+<<<<<<< HEAD
   VLOG(7) << "Run Backward Final hook size: "
+=======
+  VLOG(6) << "Run Backward Final hook size: "
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           << egr::Controller::Instance().FinalBackwardHooks().size();
   for (auto& hook : egr::Controller::Instance().FinalBackwardHooks()) {
     (*hook)();

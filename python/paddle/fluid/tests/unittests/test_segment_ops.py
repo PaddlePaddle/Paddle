@@ -83,6 +83,7 @@ def segment_pool_split(X, SegmentIds, pooltype):
 
 
 class TestSegmentOps(OpTest):
+
     def set_data(self):
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
@@ -123,6 +124,7 @@ class TestSegmentOps(OpTest):
 
 
 class TestSegmentSum2(TestSegmentOps):
+
     def prepare(self):
         super().prepare()
         self.shape = [40, 20]
@@ -140,6 +142,7 @@ class TestSegmentSum2(TestSegmentOps):
 
 
 class TestSegmentMax(TestSegmentOps):
+
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MAX")
 
@@ -163,12 +166,14 @@ class TestSegmentMax(TestSegmentOps):
 
 
 class TestSegmentMax2(TestSegmentMax):
+
     def prepare(self):
         super().prepare()
         self.dtype = np.float32
 
 
 class TestSegmentMin(TestSegmentMax):
+
     def compute(self, x, segment_ids):
         return compute_segment_min_max(x, segment_ids, pooltype="MIN")
 
@@ -178,12 +183,14 @@ class TestSegmentMin(TestSegmentMax):
 
 
 class TestSegmentMin2(TestSegmentMin):
+
     def prepare(self):
         super().prepare()
         self.dtype = np.float32
 
 
 class TestSegmentMean(TestSegmentOps):
+
     def compute(self, x, segment_ids):
         return compute_segment_mean(x, segment_ids)
 
@@ -198,14 +205,23 @@ class TestSegmentMean(TestSegmentOps):
         result = self.compute(x, segment_ids)
         self.inputs = {'X': x, 'SegmentIds': segment_ids}
         self.outputs = {
+<<<<<<< HEAD
             'Out': result,
             'SummedIds': compute_segment_sum(
                 np.ones([len(x), 1]).astype(self.dtype), segment_ids
             ),
+=======
+            'Out':
+            result,
+            'SummedIds':
+            compute_segment_sum(
+                np.ones([len(x), 1]).astype(self.dtype), segment_ids)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
 
 class TestSegmentMean2(TestSegmentMean):
+
     def prepare(self):
         super().prepare()
         self.dtype = np.float32
@@ -214,6 +230,7 @@ class TestSegmentMean2(TestSegmentMean):
 
 
 class API_SegmentOpsTest(unittest.TestCase):
+
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -233,6 +250,7 @@ class API_SegmentOpsTest(unittest.TestCase):
             np_max = np.array([[3, 2, 3], [4, 5, 6]], dtype="float32")
             np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
 
+<<<<<<< HEAD
             ret = exe.run(
                 feed={'x': data1, 'y': data2},
                 fetch_list=[res_sum, res_mean, res_max, res_min],
@@ -240,13 +258,30 @@ class API_SegmentOpsTest(unittest.TestCase):
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
             np.testing.assert_allclose(np_res, ret_res, rtol=1e-05, atol=1e-06)
+=======
+            ret = exe.run(feed={
+                'x': data1,
+                'y': data2
+            },
+                          fetch_list=[res_sum, res_mean, res_max, res_min])
+
+        for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+            self.assertTrue(
+                np.allclose(np_res, ret_res, atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, ret_res))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dygraph(self):
         device = paddle.CPUPlace()
         with paddle.fluid.dygraph.guard(device):
+<<<<<<< HEAD
             x = paddle.to_tensor(
                 [[1, 2, 3], [3, 2, 1], [4, 5, 6]], dtype='float32'
             )
+=======
+            x = paddle.to_tensor([[1, 2, 3], [3, 2, 1], [4, 5, 6]],
+                                 dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             y = paddle.to_tensor([0, 0, 1], dtype="int32")
             res_sum = paddle.incubate.segment_sum(x, y)
             res_mean = paddle.incubate.segment_mean(x, y)
@@ -261,6 +296,7 @@ class API_SegmentOpsTest(unittest.TestCase):
             ret = [res_sum, res_mean, res_max, res_min]
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 np_res, ret_res.numpy(), rtol=1e-05, atol=1e-06
             )
@@ -365,6 +401,11 @@ class API_GeometricSegmentOpsTest(unittest.TestCase):
                 np.testing.assert_allclose(
                     np_res, ret_res.numpy(), rtol=1e-05, atol=1e-06
                 )
+=======
+            self.assertTrue(
+                np.allclose(np_res, ret_res.numpy(), atol=1e-6), "two value is\
+                {}\n{}, check diff!".format(np_res, ret_res))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

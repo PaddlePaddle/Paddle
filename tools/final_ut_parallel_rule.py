@@ -15,7 +15,14 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import json
+=======
+import time
+import json
+import datetime
+import codecs
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import sys
 
 
@@ -23,6 +30,7 @@ def classify_cases_by_mem(rootPath):
     """classify cases by mem"""
     case_filename = '%s/build/classify_case_by_cardNum.txt' % rootPath
     case_exec_100 = [
+<<<<<<< HEAD
         'test_conv_eltwiseadd_bn_fuse_pass',
         'test_trt_convert_pool2d',
         'test_fc_fuse_pass',
@@ -44,11 +52,24 @@ def classify_cases_by_mem(rootPath):
         'test_dropout_op',
         'test_concat_op',
     ]  # 木桶原理 70s-100s之间的case
+=======
+        'test_conv_eltwiseadd_bn_fuse_pass', 'test_trt_convert_pool2d',
+        'test_fc_fuse_pass', 'test_trt_convert_depthwise_conv2d',
+        'test_quant2_int8_resnet50_mkldnn',
+        'test_conv_elementwise_add_act_fuse_pass', 'test_trt_convert_conv2d',
+        'test_paddle_save_load', 'test_logical_op', 'test_nearest_interp_op',
+        'test_pool2d_op', 'test_conv3d_transpose_op', 'test_lstmp_op',
+        'test_cross_entropy2_op', 'test_sgd_op', 'test_imperative_ptq',
+        'test_model', 'test_custom_relu_op_setup', 'test_dropout_op',
+        'test_concat_op'
+    ]  #木桶原理 70s-100s之间的case
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     case_exec_200 = [
         'test_post_training_quantization_mnist',
         'test_imperative_auto_mixed_precision',
         'test_trt_dynamic_shape_ernie_fp16_ser_deser',
+<<<<<<< HEAD
         'test_trt_dynamic_shape_ernie',
         'test_layer_norm_op',
         'trt_quant_int8_yolov3_r50_test',
@@ -61,6 +82,15 @@ def classify_cases_by_mem(rootPath):
         'interceptor_pipeline_long_path_test',
         'test_cpuonly_spawn',
     ]  # 木桶原理 110s-200s之间的case 以及容易timeout
+=======
+        'test_trt_dynamic_shape_ernie', 'test_layer_norm_op',
+        'trt_quant_int8_yolov3_r50_test', 'test_gru_op',
+        'test_post_training_quantization_while', 'test_mkldnn_log_softmax_op',
+        'test_mkldnn_matmulv2_op', 'test_mkldnn_shape_op',
+        'interceptor_pipeline_short_path_test',
+        'interceptor_pipeline_long_path_test', 'test_cpuonly_spawn'
+    ]  #木桶原理 110s-200s之间的case 以及容易timeout
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     case_always_timeout = [
         'test_quant2_int8_resnet50_channelwise_mkldnn',
@@ -120,10 +150,17 @@ def classify_cases_by_mem(rootPath):
             if case not in new_lastest_mem:
                 continue
 
+<<<<<<< HEAD
             # mem = 0
             if new_lastest_mem[case]["mem_nvidia"] == 0:
                 case_mem_0 = case_mem_0 + '|^' + case + '$'
             # mem != 0
+=======
+            #mem = 0
+            if new_lastest_mem[case]["mem_nvidia"] == 0:
+                case_mem_0 = case_mem_0 + '|^' + case + '$'
+            #mem != 0
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 case_mem_1[case] = new_lastest_mem[case]["mem_nvidia"]
 
@@ -141,6 +178,19 @@ def classify_cases_by_mem(rootPath):
                     case_mem_1_line = case_mem_1_line + '|^' + index[0] + '$'
                 else:
                     f_not_0.write(case_mem_1_line + '\n')
+<<<<<<< HEAD
+=======
+                    '''
+                    if len(always_timeout_list
+                           ) != 0 and cardType == 'single_card_tests' and count > 25:
+                        f.write(case_mem_1_line + '|^%s$\n' %
+                                always_timeout_list[0])
+                        always_timeout_list.pop(0)
+                    else:
+                        f.write(case_mem_1_line + '\n') 
+                    count += 1
+                    '''
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     case_mem_1_line = '^job$|^' + index[0] + '$'
                     mem_1_sum = index[1]
             f_not_0.write(case_mem_1_line + '\n')

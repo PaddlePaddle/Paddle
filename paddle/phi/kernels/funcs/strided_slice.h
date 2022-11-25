@@ -20,7 +20,10 @@
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_array.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"

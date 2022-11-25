@@ -19,7 +19,10 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/program_desc.h"
+<<<<<<< HEAD
 #include "paddle/fluid/framework/var_desc.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/utils/any.h"
 
 TEST(Attribute, GetAttrValueToAny) {

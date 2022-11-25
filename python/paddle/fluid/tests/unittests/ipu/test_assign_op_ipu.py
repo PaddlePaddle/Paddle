@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -38,9 +39,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.assign(x)
         out = paddle.fluid.layers.elementwise_add(x, x)
         self.fetch_list = [out.name]
@@ -57,6 +64,7 @@ class TestBase(IPUOpTest):
 
 
 class TestAssignFp32Value(TestBase):
+
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
@@ -67,15 +75,22 @@ class TestAssignFp32Value(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         assign = paddle.assign(self.assign_fp32)
         out = paddle.fluid.layers.elementwise_add(x, assign)
         self.fetch_list = [out.name]
 
 
 class TestAssignBoolValue(TestBase):
+
     def set_data_feed(self):
         data = np.random.uniform(size=[2, 3, 1])
         self.feed_fp32 = {'in_0': data.astype(np.float32)}
@@ -85,9 +100,15 @@ class TestAssignBoolValue(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.less_than(x, x)
         assign = paddle.assign(self.assign_bool)
         x = paddle.logical_and(x, assign)

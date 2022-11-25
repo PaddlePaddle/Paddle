@@ -21,6 +21,7 @@ import paddle.fluid.core as core
 
 
 class TestException(unittest.TestCase):
+
     def test_exception(self):
         exception = None
         try:
@@ -33,6 +34,7 @@ class TestException(unittest.TestCase):
 
 
 class TestExceptionNoCStack(unittest.TestCase):
+
     def setUp(self):
         paddle.enable_static()
         # test no C++ stack format
@@ -55,11 +57,20 @@ class TestExceptionNoCStack(unittest.TestCase):
         y = numpy.random.random(size=(8, 1)).astype('float32')
 
         with self.assertRaises(ValueError):
+<<<<<<< HEAD
             exe.run(
                 fluid.default_main_program(),
                 feed={'X': x, 'Y': y},
                 fetch_list=[avg_loss.name],
             )
+=======
+            exe.run(fluid.default_main_program(),
+                    feed={
+                        'X': x,
+                        'Y': y
+                    },
+                    fetch_list=[avg_loss.name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_exception_in_dynamic_mode(self):
         place = fluid.CPUPlace()

@@ -33,9 +33,14 @@ for clazz in root.findall('packages/package/classes/class'):
     clazz_filename = path.join(source, clazz_filename)
 
     if clazz_filename.startswith('/paddle/build/python/'):
+<<<<<<< HEAD
         clazz_filename = (
             '/paddle/python/' + clazz_filename[len('/paddle/build/python/') :]
         )
+=======
+        clazz_filename = '/paddle/python/' + clazz_filename[
+            len('/paddle/build/python/'):]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if not path.exists(clazz_filename):
         continue

@@ -238,6 +238,7 @@ class DataGenerator:
 # add more generalized DataGenerator that can adapt user-defined slot
 # for example, [(name, float_list), (name, str_list), (name, int_list)]
 class MultiSlotStringDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -283,6 +284,7 @@ class MultiSlotStringDataGenerator(DataGenerator):
 
 
 class MultiSlotDataGenerator(DataGenerator):
+
     def _gen_str(self, line):
         '''
         Further processing the output of the process() function rewritten by
@@ -342,7 +344,12 @@ class MultiSlotDataGenerator(DataGenerator):
                 for elem in elements:
                     if isinstance(elem, float):
                         self._proto_info[-1] = (name, "float")
+<<<<<<< HEAD
                     elif not isinstance(elem, int):
+=======
+                    elif not isinstance(elem, int) and not isinstance(
+                            elem, long):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         raise ValueError(
                             "the type of element%s must be in int or float"
                             % type(elem)
@@ -377,7 +384,12 @@ class MultiSlotDataGenerator(DataGenerator):
                     if self._proto_info[index][1] != "float":
                         if isinstance(elem, float):
                             self._proto_info[index] = (name, "float")
+<<<<<<< HEAD
                         elif not isinstance(elem, int):
+=======
+                        elif not isinstance(elem, int) and not isinstance(
+                                elem, long):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             raise ValueError(
                                 "the type of element%s must be in int or float"
                                 % type(elem)

@@ -20,6 +20,7 @@ from model_zoo import simple_net
 
 
 class TestBuildCINNPass(DistPassTestBase):
+
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0

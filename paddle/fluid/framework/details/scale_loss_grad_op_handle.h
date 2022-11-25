@@ -46,8 +46,11 @@ struct ScaleLossGradOpHandle : public OpHandleBase {
 
   proto::VarType::Type DType() const { return out_dtype_; }
 
+<<<<<<< HEAD
   float Coeff() const { return coeff_; }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::string Name() const override;
 
   platform::Place GetPlace() const { return place_; }

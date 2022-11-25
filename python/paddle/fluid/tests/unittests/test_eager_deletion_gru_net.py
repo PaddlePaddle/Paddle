@@ -47,6 +47,7 @@ def gru_net(
 
 
 class GRUTest(TestBase):
+
     def setUp(self):
         self.net = gru_net
 

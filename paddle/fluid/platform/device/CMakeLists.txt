@@ -24,7 +24,10 @@ endif()
 if(WITH_MLU)
   add_subdirectory(mlu)
 endif()
+<<<<<<< HEAD
 
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(custom)
 endif()
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

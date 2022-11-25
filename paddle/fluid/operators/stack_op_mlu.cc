@@ -19,14 +19,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename T>
 class StackMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto x = ctx.MultiInput<phi::DenseTensor>("X");
     auto* y = ctx.Output<phi::DenseTensor>("Y");
+=======
+    auto x = ctx.MultiInput<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int axis = ctx.Attr<int>("axis");
     if (axis < 0) axis += (x[0]->dims().size() + 1);
     int num = static_cast<int>(x.size());

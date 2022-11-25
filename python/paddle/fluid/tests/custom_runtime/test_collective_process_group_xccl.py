@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 import unittest
 import os
 import copy
@@ -40,6 +41,31 @@ def start_local_trainers(
     # proxy maybe make trainers unreachable, so delete them.
     # if we set them to "", grpc will log error message "bad uri"
     # so just delete them.
+=======
+from __future__ import print_function
+
+import unittest
+import os
+import sys
+import copy
+import subprocess
+import time
+
+
+def start_local_trainers(cluster,
+                         pod,
+                         training_script,
+                         training_script_args,
+                         eager_mode=True,
+                         log_dir=None):
+    from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+
+    current_env = copy.copy(os.environ.copy())
+    #paddle broadcast ncclUniqueId use socket, and
+    #proxy maybe make trainers unreachable, so delete them.
+    #if we set them to "", grpc will log error message "bad uri"
+    #so just delete them.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -48,8 +74,13 @@ def start_local_trainers(
     os.system("rm -rf log && mkdir -p log")
     for idx, t in enumerate(pod.trainers):
         proc_env = {
+<<<<<<< HEAD
             "FLAGS_selected_custom_cpus": "%s"
             % ",".join([str(g) for g in t.gpus]),
+=======
+            "FLAGS_selected_custom_cpus":
+            "%s" % ",".join([str(g) for g in t.gpus]),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
@@ -72,9 +103,16 @@ def start_local_trainers(
         print("start trainer proc:{} env:{}".format(cmd, proc_env))
 
         fn = open("workerlog.%d" % idx, "a")
+<<<<<<< HEAD
         proc = subprocess.Popen(
             cmd.split(" "), env=current_env, stdout=fn, stderr=fn
         )
+=======
+        proc = subprocess.Popen(cmd.split(" "),
+                                env=current_env,
+                                stdout=fn,
+                                stderr=fn)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         tp = TrainerProc()
         tp.proc = proc
@@ -88,12 +126,16 @@ def start_local_trainers(
 
 
 def get_cluster_from_args(selected_gpus):
+<<<<<<< HEAD
     from paddle.distributed.utils.launch_utils import (  # noqa: F401
         find_free_ports,
         watch_local_trainers,
         get_cluster,
         TrainerProc,
     )
+=======
+    from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     cluster_node_ips = '127.0.0.1'
     node_ip = '127.0.0.1'
@@ -115,6 +157,7 @@ def get_cluster_from_args(selected_gpus):
 
 
 class TestMultipleCustomCPU(unittest.TestCase):
+<<<<<<< HEAD
     def run_mnist_2custom_cpu(self, target_file_name, eager_mode=True):
         from paddle.distributed.utils.launch_utils import (  # noqa: F401
             find_free_ports,
@@ -122,6 +165,11 @@ class TestMultipleCustomCPU(unittest.TestCase):
             get_cluster,
             TrainerProc,
         )
+=======
+
+    def run_mnist_2custom_cpu(self, target_file_name, eager_mode=True):
+        from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         selected_devices = [0, 1]
         cluster = None
@@ -129,6 +177,7 @@ class TestMultipleCustomCPU(unittest.TestCase):
 
         cluster, pod = get_cluster_from_args(selected_devices)
 
+<<<<<<< HEAD
         procs = start_local_trainers(
             cluster,
             pod,
@@ -136,6 +185,13 @@ class TestMultipleCustomCPU(unittest.TestCase):
             training_script=target_file_name,
             training_script_args=[],
         )
+=======
+        procs = start_local_trainers(cluster,
+                                     pod,
+                                     eager_mode=eager_mode,
+                                     training_script=target_file_name,
+                                     training_script_args=[])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
@@ -147,6 +203,7 @@ class TestMultipleCustomCPU(unittest.TestCase):
 
 
 class TestProcessGroup(TestMultipleCustomCPU):
+<<<<<<< HEAD
     def setUp(self):
         # compile so and set to current path
         cur_dir = os.path.dirname(os.path.abspath(__file__))
@@ -160,11 +217,19 @@ class TestProcessGroup(TestMultipleCustomCPU):
             && mkdir build && cd build && cmake .. && make -j8'.format(
             self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
         )
+=======
+
+    def setUp(self):
+        # compile so and set to current path
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        cmd = 'rm -rf PaddleCustomDevice && git clone https://github.com/PaddlePaddle/PaddleCustomDevice.git && cd PaddleCustomDevice/backends/custom_cpu && mkdir build && cd build && cmake .. && make -j8'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         os.system(cmd)
 
         # set environment for loading and registering compiled custom kernels
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
+<<<<<<< HEAD
             cur_dir,
             '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
                 self.temp_dir.name
@@ -184,6 +249,12 @@ class TestProcessGroup(TestMultipleCustomCPU):
             get_cluster,
             TrainerProc,
         )
+=======
+            cur_dir, 'PaddleCustomDevice/backends/custom_cpu/build')
+
+    def test_process_group_xccl(self):
+        from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.run_mnist_2custom_cpu('process_group_xccl.py')
 

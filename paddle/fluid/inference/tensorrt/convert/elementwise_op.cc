@@ -32,7 +32,11 @@ class ElementwiseTensorOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Y").front());
     if (Y_v) {
       // Y is weight
+<<<<<<< HEAD
       auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+=======
+      auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       std::vector<int> dims_y = phi::vectorize<int>(Y_t->dims());
       auto y_weight = engine_->GetTrtWeight(op_desc.Input("Y").front(), *Y_t);
 
@@ -61,6 +65,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
               ->getOutput(0);
     } else {
       Y = engine_->GetITensor(op_desc.Input("Y").front());
+<<<<<<< HEAD
     }
     bool swap_xy = false;
     // Swap X and Y
@@ -70,6 +75,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
       Y = tmp;
       swap_xy = true;
     }
+=======
+    }
+    bool swap_xy = false;
+    // Swap X and Y
+    if (X->getDimensions().nbDims < Y->getDimensions().nbDims) {
+      auto* tmp = X;
+      X = Y;
+      Y = tmp;
+      swap_xy = true;
+    }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
     auto output_name = op_desc.Output("Out")[0];
@@ -85,10 +101,17 @@ class ElementwiseTensorOpConverter : public OpConverter {
     }
     if (axis == -1) {
       axis = real_x_rank - real_y_rank;
+<<<<<<< HEAD
     }
     if (!engine_->with_dynamic_shape() && axis > 0) {
       axis--;
     }
+=======
+    }
+    if (!engine_->with_dynamic_shape() && axis > 0) {
+      axis--;
+    }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     // X: - -  -    - - - -
     //        axis
@@ -167,7 +190,10 @@ const std::unordered_map<std::string, nvinfer1::ElementWiseOperation>
         {"min", nvinfer1::ElementWiseOperation::kMIN},
         {"pow", nvinfer1::ElementWiseOperation::kPOW},
         {"max", nvinfer1::ElementWiseOperation::kMAX},
+<<<<<<< HEAD
         {"floordiv", nvinfer1::ElementWiseOperation::kFLOOR_DIV},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 class ElementwiseTensorAddOpConverter : public ElementwiseTensorOpConverter {
@@ -223,6 +249,7 @@ REGISTER_TRT_OP_CONVERTER(elementwise_sub_weight,
                           ElementwiseTensorSubOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_div_weight,
                           ElementwiseTensorDivOpConverter);
+<<<<<<< HEAD
 REGISTER_TRT_OP_CONVERTER(elementwise_max_weight,
                           ElementwiseTensorMaxOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_min_weight,
@@ -231,6 +258,10 @@ REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
                           ElementwiseTensorPowOpConverter);
 REGISTER_TRT_OP_CONVERTER(elementwise_floordiv_weight,
                           ElementwiseTensorFloorDivOpConverter);
+=======
+REGISTER_TRT_OP_CONVERTER(elementwise_pow_weight,
+                          ElementwiseTensorPowOpConverter);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 REGISTER_TRT_OP_CONVERTER(elementwise_add_tensor,
                           ElementwiseTensorAddOpConverter);

@@ -27,6 +27,7 @@ SEED = 2021
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestNPUSigmoid(OpTest):
+
     def setUp(self):
         self.op_type = "sigmoid"
         self.set_npu()
@@ -43,9 +44,15 @@ class TestNPUSigmoid(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], 'Out', max_relative_error=0.01
         )
+=======
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.01)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -59,6 +66,7 @@ class TestNPUSigmoid(OpTest):
     not paddle.is_compiled_with_npu(), "core is not compiled with NPU"
 )
 class TestNPUSigmoidFp16(TestNPUSigmoid):
+
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 

@@ -81,7 +81,11 @@ int32_t MemoryDenseTable::InitializeValue() {
 
   fixed_len_params_dim_ = 0;
   for (int x = 0; x < size; ++x) {
+<<<<<<< HEAD
     auto &dim = common.dims()[x];
+=======
+    auto& dim = common.dims()[x];
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (static_cast<int>(dim) != param_dim_) {
       fixed_len_params_dim_ += dim;
     } else {
@@ -148,7 +152,11 @@ int32_t MemoryDenseTable::Push(TableContext &context) {
   return 0;
 }
 
+<<<<<<< HEAD
 int32_t MemoryDenseTable::PullDense(float *pull_values, size_t num) {
+=======
+int32_t MemoryDenseTable::PullDense(float* pull_values, size_t num) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::copy(
       values_[param_idx_].begin(), values_[param_idx_].end(), pull_values);
   return 0;
@@ -352,7 +360,11 @@ int32_t MemoryDenseTable::Save(const std::string &path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y] << " 0";
+<<<<<<< HEAD
       for (size_t x = 2; x < param_col_ids_.size(); ++x) {
+=======
+      for (int x = 2; x < param_col_ids_.size(); ++x) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -364,7 +376,11 @@ int32_t MemoryDenseTable::Save(const std::string &path,
       os.clear();
       os.str("");
       os << values_[param_col_ids_[0]][y];
+<<<<<<< HEAD
       for (size_t x = 1; x < param_col_ids_.size(); ++x) {
+=======
+      for (int x = 1; x < param_col_ids_.size(); ++x) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         os << " ";
         os << values_[param_col_ids_[x]][y];
       }
@@ -382,7 +398,11 @@ int32_t MemoryDenseTable::Save(const std::string &path,
     auto write_channel =
         _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
 
+<<<<<<< HEAD
     for (auto &t : result_buffer_param) {
+=======
+    for (auto& t : result_buffer_param) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       if (0 != write_channel->write_line(t)) {
         ++retry_num;
         is_write_failed = true;

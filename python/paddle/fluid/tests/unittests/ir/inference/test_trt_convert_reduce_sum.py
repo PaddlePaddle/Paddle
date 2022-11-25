@@ -23,6 +23,7 @@ import unittest
 
 
 class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -40,6 +41,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(dtype, attrs: List[Dict[str, Any]]):
             if dtype == -1 or dtype == 5:
                 return np.random.random([1, 3, 32, 32]).astype(np.float32)
@@ -85,11 +87,17 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                             ops=ops,
                             weights={},
                             inputs={
+<<<<<<< HEAD
                                 "input_data": TensorConfig(
                                     data_gen=partial(
                                         generate_input1, out_dtype, dics
                                     )
                                 )
+=======
+                                "input_data":
+                                TensorConfig(data_gen=partial(
+                                    generate_input1, out_dtype, dics))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             },
                             outputs=["reduce_output_data"],
                         )
@@ -100,6 +108,7 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
                         yield program_config
 
     def sample_predictor_configs(self, program_config):
+
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}

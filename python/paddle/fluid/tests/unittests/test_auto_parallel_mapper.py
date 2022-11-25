@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import tempfile
 import unittest
 import os
@@ -361,10 +366,19 @@ cluster_json = """
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, hidden_size=64, intermediate_size=4 * 64, initializer_range=0.02
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 hidden_size=64,
+                 intermediate_size=4 * 64,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         d_model = hidden_size
         dim_feedforward = intermediate_size
         np.random.seed(2021)
@@ -377,6 +391,7 @@ class MLPLayer(nn.Layer):
         weight_attr2 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr2))
         weight_attr3 = paddle.ParamAttr(initializer=NumpyArrayInitializer(arr3))
         bias_attr = None
+<<<<<<< HEAD
         self.linear0 = nn.Linear(
             d_model, dim_feedforward, weight_attr0, bias_attr=bias_attr
         )
@@ -408,14 +423,64 @@ class MLPLayer(nn.Layer):
             auto.shard_tensor(
                 self.linear3.weight, _global_process_mesh[1], ["y", None]
             )
+=======
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr0,
+                                 bias_attr=bias_attr)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr1,
+                                 bias_attr=bias_attr)
+        self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
+        self.linear2 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr2,
+                                 bias_attr=bias_attr)
+        self.linear3 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr3,
+                                 bias_attr=bias_attr)
+
+    def forward(self, input):
+        if _global_parallel_strategy == "dp_mp_pp":
+            auto.shard_tensor(self.linear0.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [-1, 1]
+                              })
+            auto.shard_tensor(self.linear1.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [1, -1]
+                              })
+            auto.shard_tensor(self.linear2.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[1],
+                                  "dims_mapping": [-1, 1]
+                              })
+            auto.shard_tensor(self.linear3.weight,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[1],
+                                  "dims_mapping": [1, -1]
+                              })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         out = self.norm(input)
         out = self.linear0(out)
         out = F.gelu(out, approximate=True)
         out = self.linear1(out)
 
+<<<<<<< HEAD
         auto.shard_tensor(out, _global_process_mesh[1], ["x", None])
 
+=======
+        auto.shard_tensor(out,
+                          dist_attr={
+                              "process_mesh": _global_process_mesh[1],
+                              "dims_mapping": [0, -1]
+                          })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = self.linear2(out)
         out = F.gelu(out, approximate=True)
         out = self.linear3(out)
@@ -428,6 +493,7 @@ def mlp_forward(train_program, start_program):
     ), utils.unique_name.guard():
         batch_size = 4
         hidden_size = 64
+<<<<<<< HEAD
         input = static.data(
             name="input", shape=[batch_size, hidden_size], dtype='float32'
         )
@@ -442,6 +508,24 @@ def mlp_forward(train_program, start_program):
             intermediate_size=4 * hidden_size,
             initializer_range=0.02,
         )
+=======
+        input = static.data(name="input",
+                            shape=[batch_size, hidden_size],
+                            dtype='float32')
+        label = static.data(name="label",
+                            shape=[batch_size, 1],
+                            dtype='float32')
+
+        if _global_parallel_strategy == "dp_mp_pp":
+            auto.shard_tensor(input,
+                              dist_attr={
+                                  "process_mesh": _global_process_mesh[0],
+                                  "dims_mapping": [0, -1]
+                              })
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       initializer_range=0.02)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         predict = mlp(input)
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
@@ -464,6 +548,7 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
         train_program
     )
     dist_context.block_state.parse_forward_blocks(complete_train_program)
+<<<<<<< HEAD
     params_grads = parallelizer._generate_backward(
         complete_train_program,
         startup_program,
@@ -472,6 +557,14 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
         no_grad_set=None,
         callbacks=None,
     )
+=======
+    params_grads = parallelizer._generate_backward(complete_train_program,
+                                                   startup_program,
+                                                   loss,
+                                                   parameter_list=None,
+                                                   no_grad_set=None,
+                                                   callbacks=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     partitioner = Partitioner(dist_context, rank_id)
     (
@@ -512,6 +605,10 @@ def get_device_local_ids(machine):
 
 
 class TestAutoParallelMapper(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -519,9 +616,14 @@ class TestAutoParallelMapper(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_mapper_dp_mp_pp(self):
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)
@@ -564,9 +666,14 @@ class TestAutoParallelMapper(unittest.TestCase):
                 self.assertTrue(is_in_machine(device_ids[0], machine))
                 machine_mapped_ranks.add(rank)
                 machine_mapped_device_local_ids.add(device_ids[0])
+<<<<<<< HEAD
             self.assertEqual(
                 len(machine_mapped_ranks), len(machine_mapped_device_local_ids)
             )
+=======
+            self.assertEqual(len(machine_mapped_ranks),
+                             len(machine_mapped_device_local_ids))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             all_mapped_ranks.update(machine_mapped_ranks)
         self.assertEqual(set(processes), all_mapped_ranks)
 
@@ -598,26 +705,51 @@ class TestAutoParallelMapper(unittest.TestCase):
             broadcast_op = train_program.global_block().append_op(
                 type="c_broadcast",
                 inputs={'X': input},
+<<<<<<< HEAD
                 attrs={'ring_id': ring_id, 'root': root_id},
                 outputs={'Out': output},
             )
+=======
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id
+                },
+                outputs={'Out': output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(get_comm_volume(broadcast_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(broadcast_op, 1, 0))
             allgather_op = train_program.global_block().append_op(
                 type="c_allgather",
                 inputs={'X': input},
+<<<<<<< HEAD
                 attrs={'ring_id': ring_id, 'nranks': nranks},
                 outputs={'Out': output},
             )
+=======
+                attrs={
+                    'ring_id': ring_id,
+                    'nranks': nranks
+                },
+                outputs={'Out': output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(get_comm_volume(allgather_op, 0, 1), 400)
             self.assertIsNone(get_comm_volume(allgather_op, 0, 0))
             reduce_op = train_program.global_block().append_op(
                 type="c_reduce_sum",
                 inputs={'X': input},
+<<<<<<< HEAD
                 attrs={'ring_id': ring_id, 'root_id': root_id},
                 outputs={'Out': output},
             )
             self.assertIsNone(get_comm_volume(reduce_op, 0, 1))
+=======
+                attrs={
+                    'ring_id': ring_id,
+                    'root_id': root_id
+                },
+                outputs={'Out': output})
+            self.assertEqual(get_comm_volume(reduce_op, 0, 1), None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(get_comm_volume(reduce_op, 1, 0), 400)
             cast_op = train_program.global_block().append_op(
                 type="cast",

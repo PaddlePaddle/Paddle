@@ -34,12 +34,19 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
     '''
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=150,
             max_duration=250,
             passes=["conv_transpose_bn_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=150,
+                            max_duration=250,
+                            passes=["conv_transpose_bn_fuse_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def sample_program_config(self, draw):
         # generate random number
@@ -49,6 +56,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_input_dim2 = draw(st.integers(min_value=20, max_value=50))
         random_groups = draw(st.integers(min_value=1, max_value=2))
         random_dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=3), min_size=2, max_size=2
             )
@@ -63,6 +71,19 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 st.integers(min_value=0, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=3),
+                     min_size=2,
+                     max_size=2))
+        random_strides = draw(
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+        random_paddings = draw(
+            st.lists(st.integers(min_value=0, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         random_padding_algorithm = draw(
             st.sampled_from(["EXPLICIT", "SAME", "VALID"])
         )
@@ -70,10 +91,16 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         random_use_mkldnn = draw(st.booleans())
         random_output_size = []
         random_filter = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=4), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=4),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         random_out_channel = draw(st.integers(min_value=10, max_value=25))
         random_epsilon = draw(st.floats(min_value=0.0, max_value=0.001))
 
@@ -94,6 +121,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         def generate_batch_norm_Scale():
+<<<<<<< HEAD
             return np.random.random(
                 [random_out_channel * random_groups * random_groups]
             ).astype(np.float32)
@@ -112,6 +140,26 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             return np.random.random(
                 [random_out_channel * random_groups * random_groups]
             ).astype(np.float32)
+=======
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Bias():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Mean():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+
+        def generate_batch_norm_Variance():
+            return np.random.random([
+                random_out_channel * random_groups * random_groups
+            ]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # define op
         conv2d_op = OpConfig(
@@ -124,6 +172,12 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             outputs={
                 "Output": ["conv2d_Out"],
             },
+<<<<<<< HEAD
+=======
+            outputs={
+                "Output": ["conv2d_Out"],
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             attrs={
                 'groups': random_groups,
                 'dilations': random_dilations,
@@ -138,6 +192,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
             },
         )
 
+<<<<<<< HEAD
         batch_norm_op = OpConfig(
             type="batch_norm",
             inputs={
@@ -163,6 +218,33 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 'use_mkldnn': random_use_mkldnn,
             },
         )
+=======
+        batch_norm_op = OpConfig(type="batch_norm",
+                                 inputs={
+                                     "X": ["conv2d_Out"],
+                                     "Scale": ["batch_norm_Scale"],
+                                     "Bias": ["batch_norm_Bias"],
+                                     "Mean": ["batch_norm_Mean"],
+                                     "Variance": ["batch_norm_Variance"],
+                                 },
+                                 outputs={
+                                     "Y": ["batch_norm_Y"],
+                                     "MeanOut": ["batch_norm_Mean"],
+                                     "VarianceOut": ["batch_norm_Variance"],
+                                     "SavedMean": ["batch_norm_SavedMean"],
+                                     "SavedVariance":
+                                     ["batch_norm_SavedVariance"],
+                                     "ReserveSpace":
+                                     ["batch_norm_ReserveSpace"],
+                                 },
+                                 attrs={
+                                     'epsilon': random_epsilon,
+                                     'is_test': True,
+                                     'trainable_statistics': False,
+                                     'data_layout': random_data_layout,
+                                     'use_mkldnn': random_use_mkldnn,
+                                 })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # define model_net
         model_net = [conv2d_op, batch_norm_op]
@@ -173,6 +255,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 "conv2d_Input": TensorConfig(data_gen=generate_conv2d_Input),
             },
             weights={
+<<<<<<< HEAD
                 "conv2d_Filter": TensorConfig(data_gen=generate_conv2d_Filter),
                 "batch_norm_Scale": TensorConfig(
                     data_gen=generate_batch_norm_Scale
@@ -186,6 +269,18 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
                 "batch_norm_Variance": TensorConfig(
                     data_gen=generate_batch_norm_Variance
                 ),
+=======
+                "conv2d_Filter":
+                TensorConfig(data_gen=generate_conv2d_Filter),
+                "batch_norm_Scale":
+                TensorConfig(data_gen=generate_batch_norm_Scale),
+                "batch_norm_Bias":
+                TensorConfig(data_gen=generate_batch_norm_Bias),
+                "batch_norm_Mean":
+                TensorConfig(data_gen=generate_batch_norm_Mean),
+                "batch_norm_Variance":
+                TensorConfig(data_gen=generate_batch_norm_Variance),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             },
             outputs=["batch_norm_Y"],
         )
@@ -213,6 +308,7 @@ class TestConvTransposeBnFusePass(PassAutoScanTest):
         return True
 
     def add_ignore_pass_case(self):
+
         def teller1(program_config, predictor_config):
             if program_config.ops[0].attrs['data_format'] == "NHWC":
                 return True

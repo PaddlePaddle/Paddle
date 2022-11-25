@@ -178,6 +178,7 @@ class SparseCooTensor : public TensorBase,
   /// \brief get the dnese dim
   int32_t dense_dim() const;
 
+<<<<<<< HEAD
   /// \brief Returns the meta information of the tensor.
   /// \return The meta information of the tensor.
   const SparseTensorMeta& meta() const noexcept { return meta_; }
@@ -188,6 +189,8 @@ class SparseCooTensor : public TensorBase,
 
   void set_dims(const DDim& dims) { meta_.dims = dims; }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   /// \brief query table according to key
   const std::pair<DenseTensor, DenseTensor>* IndicesPairs(
       const std::string& key) const {

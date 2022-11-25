@@ -23,10 +23,12 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TensorRTSubgraphPassConv3dTest(InferencePassTest):
+
     def setUp(self):
         self.init_params()
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 3, 6, 32, 32], dtype="float32"
             )
@@ -41,6 +43,20 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
                 stride=self.stride,
                 act=None,
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 6, 32, 32],
+                              dtype="float32")
+            conv_out = fluid.layers.conv3d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           stride=self.stride,
+                                           act=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.feeds = {
             "data": np.random.random([1, 3, 6, 32, 32]).astype("float32"),
         }
@@ -72,9 +88,15 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
             )
 
 
+<<<<<<< HEAD
 class TensorRTSubgraphPassConv3dValidPaddingTest(
     TensorRTSubgraphPassConv3dTest
 ):
+=======
+class TensorRTSubgraphPassConv3dValidPaddingTest(TensorRTSubgraphPassConv3dTest
+                                                 ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -83,6 +105,7 @@ class TensorRTSubgraphPassConv3dValidPaddingTest(
 
 
 class TensorRTSubgraphPassConv3dSamePaddingTest(TensorRTSubgraphPassConv3dTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -91,6 +114,7 @@ class TensorRTSubgraphPassConv3dSamePaddingTest(TensorRTSubgraphPassConv3dTest):
 
 
 class TensorRTSubgraphPassConv3dPaddingTest(TensorRTSubgraphPassConv3dTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -99,6 +123,7 @@ class TensorRTSubgraphPassConv3dPaddingTest(TensorRTSubgraphPassConv3dTest):
 
 
 class TensorRTSubgraphPassConv3dStrideTest(TensorRTSubgraphPassConv3dTest):
+
     def set_params(self):
         self.conv_num_filters = 6
         self.conv_filter_size = 6
@@ -108,9 +133,11 @@ class TensorRTSubgraphPassConv3dStrideTest(TensorRTSubgraphPassConv3dTest):
 
 
 class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
             )
@@ -125,6 +152,20 @@ class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
                 stride=self.stride,
                 act=None,
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 6, -1, -1, -1],
+                              dtype="float32")
+            conv_out = fluid.layers.conv3d(input=data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           groups=self.conv_groups,
+                                           padding=self.conv_padding,
+                                           bias_attr=False,
+                                           use_cudnn=self.use_cudnn,
+                                           stride=self.stride,
+                                           act=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.feeds = {
             "data": np.random.random([1, 6, 32, 32, 8]).astype("float32"),
         }

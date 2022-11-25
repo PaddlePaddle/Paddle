@@ -24,6 +24,7 @@ class ReaderException(Exception):
 
 
 class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
+
     def setUp(self):
         self.use_pipe = False
         self.raise_exception = False
@@ -39,12 +40,18 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
         batch_size = 4
 
         def fake_reader():
+
             def __impl__():
                 for _ in range(sample_num):
                     if not self.raise_exception:
+<<<<<<< HEAD
                         yield list(
                             np.random.uniform(low=-1, high=1, size=[10])
                         ),
+=======
+                        yield list(np.random.uniform(low=-1, high=1,
+                                                     size=[10])),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     else:
                         raise ValueError()
 
@@ -52,9 +59,15 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             image = fluid.data(name='image', dtype='float32', shape=[None, 10])
+<<<<<<< HEAD
             reader = fluid.io.DataLoader.from_generator(
                 feed_list=[image], capacity=2, iterable=iterable
             )
+=======
+            reader = fluid.io.DataLoader.from_generator(feed_list=[image],
+                                                        capacity=2,
+                                                        iterable=iterable)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             image_p_1 = image + 1
 
@@ -63,6 +76,7 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
             )
 
             if isinstance(place, fluid.CUDAPlace):
+<<<<<<< HEAD
                 reader.set_sample_generator(
                     decorated_reader,
                     batch_size=batch_size,
@@ -74,6 +88,15 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
                     batch_size=batch_size,
                     places=fluid.cpu_places(1),
                 )
+=======
+                reader.set_sample_generator(decorated_reader,
+                                            batch_size=batch_size,
+                                            places=fluid.cuda_places(0))
+            else:
+                reader.set_sample_generator(decorated_reader,
+                                            batch_size=batch_size,
+                                            places=fluid.cpu_places(1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -121,24 +144,39 @@ class TestMultiprocessReaderExceptionWithQueueSuccess(unittest.TestCase):
 
 
 class TestMultiprocessReaderExceptionWithQueueFailed(
+<<<<<<< HEAD
     TestMultiprocessReaderExceptionWithQueueSuccess
 ):
+=======
+        TestMultiprocessReaderExceptionWithQueueSuccess):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.use_pipe = False
         self.raise_exception = True
 
 
 class TestMultiprocessReaderExceptionWithPipeSuccess(
+<<<<<<< HEAD
     TestMultiprocessReaderExceptionWithQueueSuccess
 ):
+=======
+        TestMultiprocessReaderExceptionWithQueueSuccess):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.use_pipe = True
         self.raise_exception = False
 
 
 class TestMultiprocessReaderExceptionWithPipeFailed(
+<<<<<<< HEAD
     TestMultiprocessReaderExceptionWithQueueSuccess
 ):
+=======
+        TestMultiprocessReaderExceptionWithQueueSuccess):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.use_pipe = True
         self.raise_exception = True

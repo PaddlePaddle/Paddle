@@ -104,6 +104,7 @@ void PrepareDeviceCode(platform::Place place,
 
 void CheckOutputs(framework::Scope* scope,
                   const std::vector<std::string>& output_names,
+<<<<<<< HEAD
                   std::vector<phi::DenseTensor>* cpu_tensors,
                   size_t num_inputs,
                   CPUKernelFunc cpu_kernel_func) {
@@ -112,6 +113,16 @@ void CheckOutputs(framework::Scope* scope,
   for (size_t j = 0; j < output_names.size(); ++j) {
     auto* var = scope->Var(output_names[j]);
     const auto& dev_tensor = var->Get<phi::DenseTensor>();
+=======
+                  std::vector<framework::Tensor>* cpu_tensors,
+                  size_t num_inputs,
+                  CPUKernelFunc cpu_kernel_func) {
+  std::vector<framework::Tensor> cpu_outputs;
+  cpu_outputs.resize(output_names.size());
+  for (size_t j = 0; j < output_names.size(); ++j) {
+    auto* var = scope->Var(output_names[j]);
+    const auto& dev_tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     paddle::framework::TensorCopySync(
         dev_tensor, platform::CPUPlace(), &(cpu_outputs[j]));
 

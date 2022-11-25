@@ -49,6 +49,7 @@ model_urls = {
 
 
 class BNACConvLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         num_channels,
@@ -72,6 +73,28 @@ class BNACConvLayer(nn.Layer):
             weight_attr=ParamAttr(),
             bias_attr=False,
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 pad=0,
+                 groups=1,
+                 act="relu"):
+        super(BNACConvLayer, self).__init__()
+        self._batch_norm = BatchNorm(num_channels, act=act)
+
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=pad,
+                            groups=groups,
+                            weight_attr=ParamAttr(),
+                            bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, input):
         y = self._batch_norm(input)
@@ -80,10 +103,12 @@ class BNACConvLayer(nn.Layer):
 
 
 class DenseLayer(nn.Layer):
+
     def __init__(self, num_channels, growth_rate, bn_size, dropout):
         super().__init__()
         self.dropout = dropout
 
+<<<<<<< HEAD
         self.bn_ac_func1 = BNACConvLayer(
             num_channels=num_channels,
             num_filters=bn_size * growth_rate,
@@ -99,6 +124,19 @@ class DenseLayer(nn.Layer):
             pad=1,
             stride=1,
         )
+=======
+        self.bn_ac_func1 = BNACConvLayer(num_channels=num_channels,
+                                         num_filters=bn_size * growth_rate,
+                                         filter_size=1,
+                                         pad=0,
+                                         stride=1)
+
+        self.bn_ac_func2 = BNACConvLayer(num_channels=bn_size * growth_rate,
+                                         num_filters=growth_rate,
+                                         filter_size=3,
+                                         pad=1,
+                                         stride=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if dropout:
             self.dropout_func = Dropout(p=dropout, mode="downscale_in_infer")
@@ -113,10 +151,22 @@ class DenseLayer(nn.Layer):
 
 
 class DenseBlock(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, num_channels, num_layers, bn_size, growth_rate, dropout, name=None
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_layers,
+                 bn_size,
+                 growth_rate,
+                 dropout,
+                 name=None):
+        super(DenseBlock, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dropout = dropout
         self.dense_layer_func = []
 
@@ -125,6 +175,7 @@ class DenseBlock(nn.Layer):
             self.dense_layer_func.append(
                 self.add_sublayer(
                     "{}_{}".format(name, layer + 1),
+<<<<<<< HEAD
                     DenseLayer(
                         num_channels=pre_channel,
                         growth_rate=growth_rate,
@@ -133,6 +184,12 @@ class DenseBlock(nn.Layer):
                     ),
                 )
             )
+=======
+                    DenseLayer(num_channels=pre_channel,
+                               growth_rate=growth_rate,
+                               bn_size=bn_size,
+                               dropout=dropout)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             pre_channel = pre_channel + growth_rate
 
     def forward(self, input):
@@ -143,9 +200,11 @@ class DenseBlock(nn.Layer):
 
 
 class TransitionLayer(nn.Layer):
+
     def __init__(self, num_channels, num_output_features):
         super().__init__()
 
+<<<<<<< HEAD
         self.conv_ac_func = BNACConvLayer(
             num_channels=num_channels,
             num_filters=num_output_features,
@@ -153,6 +212,13 @@ class TransitionLayer(nn.Layer):
             pad=0,
             stride=1,
         )
+=======
+        self.conv_ac_func = BNACConvLayer(num_channels=num_channels,
+                                          num_filters=num_output_features,
+                                          filter_size=1,
+                                          pad=0,
+                                          stride=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.pool2d_avg = AvgPool2D(kernel_size=2, stride=2, padding=0)
 
@@ -163,6 +229,7 @@ class TransitionLayer(nn.Layer):
 
 
 class ConvBNLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         num_channels,
@@ -185,6 +252,27 @@ class ConvBNLayer(nn.Layer):
             weight_attr=ParamAttr(),
             bias_attr=False,
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 pad=0,
+                 groups=1,
+                 act="relu"):
+        super(ConvBNLayer, self).__init__()
+
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=pad,
+                            groups=groups,
+                            weight_attr=ParamAttr(),
+                            bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, input):
@@ -201,7 +289,11 @@ class DenseNet(nn.Layer):
         layers (int, optional): Layers of DenseNet. Default: 121.
         bn_size (int, optional): Expansion of growth rate in the middle layer. Default: 4.
         dropout (float, optional): Dropout rate. Default: :math:`0.0`.
+<<<<<<< HEAD
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -250,6 +342,7 @@ class DenseNet(nn.Layer):
         }
         num_init_features, growth_rate, block_config = densenet_spec[layers]
 
+<<<<<<< HEAD
         self.conv1_func = ConvBNLayer(
             num_channels=3,
             num_filters=num_init_features,
@@ -258,6 +351,14 @@ class DenseNet(nn.Layer):
             pad=3,
             act='relu',
         )
+=======
+        self.conv1_func = ConvBNLayer(num_channels=3,
+                                      num_filters=num_init_features,
+                                      filter_size=7,
+                                      stride=2,
+                                      pad=3,
+                                      act='relu')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.pool2d_max = MaxPool2D(kernel_size=3, stride=2, padding=1)
         self.block_config = block_config
         self.dense_block_func_list = []
@@ -268,6 +369,7 @@ class DenseNet(nn.Layer):
             self.dense_block_func_list.append(
                 self.add_sublayer(
                     "db_conv_{}".format(i + 2),
+<<<<<<< HEAD
                     DenseBlock(
                         num_channels=pre_num_channels,
                         num_layers=num_layers,
@@ -278,6 +380,14 @@ class DenseNet(nn.Layer):
                     ),
                 )
             )
+=======
+                    DenseBlock(num_channels=pre_num_channels,
+                               num_layers=num_layers,
+                               bn_size=bn_size,
+                               growth_rate=growth_rate,
+                               dropout=dropout,
+                               name='conv' + str(i + 2))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             num_features = num_features + num_layers * growth_rate
             pre_num_channels = num_features
@@ -286,12 +396,17 @@ class DenseNet(nn.Layer):
                 self.transition_func_list.append(
                     self.add_sublayer(
                         "tr_conv{}_blk".format(i + 2),
+<<<<<<< HEAD
                         TransitionLayer(
                             num_channels=pre_num_channels,
                             num_output_features=num_features // 2,
                         ),
                     )
                 )
+=======
+                        TransitionLayer(num_channels=pre_num_channels,
+                                        num_output_features=num_features // 2)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 pre_num_channels = num_features // 2
                 num_features = num_features // 2
 

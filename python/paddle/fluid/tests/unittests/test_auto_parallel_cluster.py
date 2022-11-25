@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import tempfile
 import unittest
 import os
@@ -199,6 +204,10 @@ cluster_json = """
 
 
 class TestAutoParallelCluster(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -206,9 +215,14 @@ class TestAutoParallelCluster(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_cluster(self):
+<<<<<<< HEAD
         cluster_json_path = os.path.join(
             self.temp_dir.name, "auto_parallel_cluster.json"
         )
+=======
+        cluster_json_path = os.path.join(self.temp_dir.name,
+                                         "auto_parallel_cluster.json")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         cluster_json_object = json.loads(cluster_json)
         with open(cluster_json_path, "w") as cluster_json_file:
             json.dump(cluster_json_object, cluster_json_file)

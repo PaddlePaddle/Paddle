@@ -19,6 +19,7 @@ limitations under the License. */
 
 namespace phi {
 
+<<<<<<< HEAD
 void AffineGridGradInferMeta(const MetaTensor& output_grad,
                              const IntArray& outputShape,
                              bool align_corners,
@@ -29,6 +30,8 @@ void AffineGridGradInferMeta(const MetaTensor& output_grad,
   }
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad) {
@@ -88,6 +91,7 @@ void BmmGradInferMeta(const MetaTensor& x,
                       const MetaTensor& out_grad,
                       MetaTensor* x_grad,
                       MetaTensor* y_grad) {
+<<<<<<< HEAD
   if (x_grad) {
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(x.dtype());
@@ -96,6 +100,12 @@ void BmmGradInferMeta(const MetaTensor& x,
     y_grad->set_dims(y.dims());
     y_grad->set_dtype(y.dtype());
   }
+=======
+  x_grad->set_dims(x.dims());
+  y_grad->set_dims(y.dims());
+  x_grad->set_dtype(x.dtype());
+  y_grad->set_dtype(y.dtype());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 void ChannelShuffleGradInferMeta(const MetaTensor& out_grad,
@@ -186,10 +196,17 @@ void Conv2dTransposeDoubleGradInferMeta(const MetaTensor& x,
   }
 }
 
+<<<<<<< HEAD
 void CropGradInferMeta(const MetaTensor& out_grad,
                        const MetaTensor& x,
                        const IntArray& offsets,
                        MetaTensor* x_grad) {
+=======
+void CropTensorGradInferMeta(const MetaTensor& out_grad,
+                             const MetaTensor& x,
+                             const IntArray& offsets,
+                             MetaTensor* x_grad) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto x_dims = x.dims();
 
   if (x_grad != nullptr) {
@@ -291,6 +308,7 @@ void EigGradInferMeta(const MetaTensor& out_w,
 
   if (dx) {
     dx->set_dims(dims);
+<<<<<<< HEAD
   }
 }
 
@@ -367,6 +385,8 @@ void FillDiagonalTensorGradInferMeta(const MetaTensor& out_grad,
   if (x_grad != nullptr) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(out_grad.dtype());
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 }
 
@@ -580,6 +600,7 @@ void LUUnpackGradInferMeta(const MetaTensor& x,
   }
 }
 
+<<<<<<< HEAD
 void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
                                      const MetaTensor& label,
                                      const MetaTensor& softmax,
@@ -604,6 +625,8 @@ void MarginCrossEntropyGradInferMeta(const MetaTensor& logits,
   logits_grad->set_dtype(softmax.dtype());
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 void MaxPoolWithIndexGradInferMeta(const MetaTensor& x,
                                    const MetaTensor& mask,
                                    const MetaTensor& dout,
@@ -927,6 +950,7 @@ void StackGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+<<<<<<< HEAD
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
                                        float min,
                                        float max,
@@ -945,6 +969,8 @@ void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
   x_grad->set_dtype(out_grad.dtype());
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad) {
@@ -987,6 +1013,7 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
   x_grad->set_dtype(out_grad[0]->dtype());
 }
 
+<<<<<<< HEAD
 void YoloLossGradInferMeta(const MetaTensor& x,
                            const MetaTensor& gt_box,
                            const MetaTensor& gt_label,
@@ -1005,12 +1032,33 @@ void YoloLossGradInferMeta(const MetaTensor& x,
                            MetaTensor* gt_box_grad,
                            MetaTensor* gt_label_grad,
                            MetaTensor* gt_score_grad) {
+=======
+void Yolov3LossGradInferMeta(const MetaTensor& x,
+                             const MetaTensor& gt_box,
+                             const MetaTensor& gt_label,
+                             const MetaTensor& gt_score,
+                             const MetaTensor& objectness_mask,
+                             const MetaTensor& gt_match_mask,
+                             const MetaTensor& loss_grad,
+                             const std::vector<int>& anchors,
+                             const std::vector<int>& anchor_mask,
+                             int class_num,
+                             float ignore_thresh,
+                             int downsample_ratio,
+                             bool use_label_smooth,
+                             float scale_x_y,
+                             MetaTensor* x_grad,
+                             MetaTensor* gt_box_grad,
+                             MetaTensor* gt_label_grad,
+                             MetaTensor* gt_score_grad) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (x_grad) {
     x_grad->set_dims(x.dims());
     x_grad->set_dtype(x.dtype());
   }
 }
 
+<<<<<<< HEAD
 void IndexAddGradInferMeta(const MetaTensor& index,
                            const MetaTensor& add_value,
                            const MetaTensor& out_grad,
@@ -1033,4 +1081,6 @@ void IndexAddGradInferMeta(const MetaTensor& index,
   }
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }  // namespace phi

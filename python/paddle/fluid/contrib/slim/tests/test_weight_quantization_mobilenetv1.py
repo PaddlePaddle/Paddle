@@ -46,6 +46,7 @@ def _set_variable_data(scope, place, var_name, np_value):
 
 
 class TestWeightQuantization(unittest.TestCase):
+
     def setUp(self):
         self.weight_quantization_dir = 'weight_quantization'
         self.cache_folder = os.path.join(
@@ -66,8 +67,12 @@ class TestWeightQuantization(unittest.TestCase):
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+<<<<<<< HEAD
                 target_folder, zip_path
             )
+=======
+                target_folder, zip_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             os.system(cmd)
 
     def quantize_to_int(
@@ -107,6 +112,7 @@ class TestWeightQuantization(unittest.TestCase):
         try:
             os.system("rm -rf {}".format(save_model_dir))
         except Exception as e:
+<<<<<<< HEAD
             print(
                 "Failed to delete {} due to {}".format(save_model_dir, str(e))
             )
@@ -122,6 +128,15 @@ class TestWeightQuantization(unittest.TestCase):
         model_dir = self.download_model(
             model_name, model_data_url, model_data_md5
         )
+=======
+            print("Failed to delete {} due to {}".format(
+                save_model_dir, str(e)))
+
+    def convert_to_fp16(self, model_name, model_data_url, model_data_md5,
+                        model_filename, params_filename):
+        model_dir = self.download_model(model_name, model_data_url,
+                                        model_data_md5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         load_model_dir = os.path.join(model_dir, model_name)
 
         timestamp = time.strftime('%Y-%m-%d-%H-%M-%S', time.localtime())
@@ -142,6 +157,7 @@ class TestWeightQuantization(unittest.TestCase):
         print("fp16 model saved in " + save_model_dir + "\n")
 
         input_data = np.ones([1, 3, 224, 224], dtype=np.float32)
+<<<<<<< HEAD
         res_fp32 = self.run_models(
             load_model_dir, model_filename, params_filename, input_data, False
         )
@@ -157,10 +173,25 @@ class TestWeightQuantization(unittest.TestCase):
             equal_nan=True,
             err_msg='Failed to test the accuracy of the fp32 and fp16 model.',
         )
+=======
+        res_fp32 = self.run_models(load_model_dir, model_filename,
+                                   params_filename, input_data, False)
+        res_fp16 = self.run_models(save_model_dir, model_filename,
+                                   params_filename, input_data, True)
+
+        self.assertTrue(
+            np.allclose(res_fp32,
+                        res_fp16,
+                        rtol=1e-5,
+                        atol=1e-08,
+                        equal_nan=True),
+            msg='Failed to test the accuracy of the fp32 and fp16 model.')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         try:
             os.system("rm -rf {}".format(save_model_dir))
         except Exception as e:
+<<<<<<< HEAD
             print(
                 "Failed to delete {} due to {}".format(save_model_dir, str(e))
             )
@@ -173,6 +204,13 @@ class TestWeightQuantization(unittest.TestCase):
         input_data,
         is_fp16_model,
     ):
+=======
+            print("Failed to delete {} due to {}".format(
+                save_model_dir, str(e)))
+
+    def run_models(self, model_dir, model_filename, params_filename, input_data,
+                   is_fp16_model):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         print(model_dir)
 
         place = paddle.CPUPlace()

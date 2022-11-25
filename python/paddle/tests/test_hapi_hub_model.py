@@ -17,6 +17,7 @@ import paddle.nn.functional as F
 
 
 class MM(nn.Layer):
+
     def __init__(self, out_channels):
         super().__init__()
         self.conv = nn.Conv2D(3, out_channels, 3, 2, 1)

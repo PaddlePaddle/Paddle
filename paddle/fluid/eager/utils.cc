@@ -296,7 +296,11 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
 
+<<<<<<< HEAD
     VLOG(4) << "Perform View between Output Tensor("
+=======
+    VLOG(3) << "Perform View between Output Tensor("
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             << view_output_tensor->name() << ") and Input Tensor("
             << input_tensor.name()
             << "), share allocation and inplace version.";

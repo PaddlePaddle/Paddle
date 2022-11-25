@@ -70,9 +70,15 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       // create temp input
       for (size_t idx = 0; idx < input_var_size; ++idx) {
         framework::Variable *tmp_input_var = tmp_scope->Var(inputs_name[idx]);
+<<<<<<< HEAD
         phi::DenseTensor *tmp_input_tensor =
             tmp_input_var->GetMutable<phi::DenseTensor>();
         framework::TensorCopy(inputs_variable[idx]->Get<phi::DenseTensor>(),
+=======
+        framework::LoDTensor *tmp_input_tensor =
+            tmp_input_var->GetMutable<framework::LoDTensor>();
+        framework::TensorCopy(inputs_variable[idx]->Get<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                               cpu_place,
                               context.device_context(),
                               tmp_input_tensor);
@@ -83,8 +89,13 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
       phi::DenseTensor *tmp_shows_tensor =
           tmp_shows_var->GetMutable<phi::DenseTensor>();
       framework::Variable *tmp_clicks_var = tmp_scope->Var("Clicks");
+<<<<<<< HEAD
       phi::DenseTensor *tmp_clicks_tensor =
           tmp_clicks_var->GetMutable<phi::DenseTensor>();
+=======
+      framework::LoDTensor *tmp_clicks_tensor =
+          tmp_clicks_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       framework::TensorCopy(
           *shows, cpu_place, context.device_context(), tmp_shows_tensor);
       framework::TensorCopy(
@@ -119,7 +130,11 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
             *tmp_output_tensor,
             context.GetPlace(),
             context.device_context(),
+<<<<<<< HEAD
             outputs_variable[idx]->GetMutable<phi::DenseTensor>());
+=======
+            outputs_variable[idx]->GetMutable<framework::LoDTensor>());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       }
       delete tmp_scope;
     }

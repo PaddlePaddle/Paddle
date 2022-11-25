@@ -37,12 +37,18 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
+<<<<<<< HEAD
         print(
             "Error({}) occurred when `md5({})`, discard it.".format(
                 str(e), doc
             ),
             file=sys.stderr,
         )
+=======
+        print("Error({}) occurred when `md5({})`, discard it.".format(
+            str(e), doc),
+              file=sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return md5sum
 
 
@@ -99,9 +105,14 @@ def visit_member(parent_name, member, func):
     if inspect.isclass(member):
         func(member, cur_name)
         for name, value in inspect.getmembers(member):
+<<<<<<< HEAD
             if hasattr(value, '__name__') and (
                 not name.startswith("_") or name == "__init__"
             ):
+=======
+            if hasattr(value, '__name__') and (not name.startswith("_")
+                                               or name == "__init__"):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 visit_member(cur_name, value, func)
     elif inspect.ismethoddescriptor(member):
         return
@@ -112,9 +123,13 @@ def visit_member(parent_name, member, func):
     else:
         raise RuntimeError(
             "Unsupported generate signature of member, type {0}".format(
+<<<<<<< HEAD
                 str(type(member))
             )
         )
+=======
+                str(type(member))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def is_primitive(instance):
@@ -179,9 +194,14 @@ def get_apis_with_and_without_core_ops(modules):
     api_with_ops = []
     api_without_ops = []
     for m in modules:
+<<<<<<< HEAD
         visit_all_module(
             importlib.import_module(m), split_with_and_without_core_ops
         )
+=======
+        visit_all_module(importlib.import_module(m),
+                         split_with_and_without_core_ops)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return api_with_ops, api_without_ops
 
 

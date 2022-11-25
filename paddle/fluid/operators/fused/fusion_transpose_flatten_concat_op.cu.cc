@@ -53,6 +53,10 @@ class TransposeFlattenConcatFusionKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnCreateTensorDescriptor(&out_desc));
     cudnnDataType_t cudnn_dtype = CudnnDataType<T>::type;
 
+<<<<<<< HEAD
+=======
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto handle = dev_ctx.cudnn_handle();
 
     T* odata = out->data<T>();

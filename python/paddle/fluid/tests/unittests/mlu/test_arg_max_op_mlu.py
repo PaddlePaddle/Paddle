@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import unittest
 import numpy as np
 import sys
@@ -27,6 +32,10 @@ paddle.enable_static()
 
 
 class BaseTestCase(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.MLUPlace(0)
@@ -50,6 +59,10 @@ class BaseTestCase(OpTest):
 
 
 class TestArgMaxSameValue1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dtype = 'float32'
@@ -65,6 +78,10 @@ class TestArgMaxSameValue1(BaseTestCase):
 
 
 class TestArgMaxSameValue2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dtype = 'float16'
@@ -81,6 +98,10 @@ class TestArgMaxSameValue2(BaseTestCase):
 
 # test argmax, dtype: float16
 class TestArgMaxFloat16Case1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -89,6 +110,10 @@ class TestArgMaxFloat16Case1(BaseTestCase):
 
 
 class TestArgMaxFloat16Case2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -97,6 +122,10 @@ class TestArgMaxFloat16Case2(BaseTestCase):
 
 
 class TestArgMaxFloat16Case3(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -105,6 +134,10 @@ class TestArgMaxFloat16Case3(BaseTestCase):
 
 
 class TestArgMaxFloat16Case4(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -113,6 +146,10 @@ class TestArgMaxFloat16Case4(BaseTestCase):
 
 
 class TestArgMaxFloat16Case5(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -121,6 +158,10 @@ class TestArgMaxFloat16Case5(BaseTestCase):
 
 
 class TestArgMaxFloat16Case6(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -129,6 +170,10 @@ class TestArgMaxFloat16Case6(BaseTestCase):
 
 
 class TestArgMaxFloat16Case7(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -137,31 +182,56 @@ class TestArgMaxFloat16Case7(BaseTestCase):
 
 
 class TestArgMaxFloat16Case8(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (1,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (1, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float16'
         self.axis = 0
 
 
 class TestArgMaxFloat16Case9(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (2,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (2, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float16'
         self.axis = 0
 
 
 class TestArgMaxFloat16Case10(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float16'
         self.axis = 0
 
 
 # test argmax, dtype: float32
 class TestArgMaxFloat32Case1(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -170,6 +240,10 @@ class TestArgMaxFloat32Case1(BaseTestCase):
 
 
 class TestArgMaxFloat32Case2(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -178,6 +252,10 @@ class TestArgMaxFloat32Case2(BaseTestCase):
 
 
 class TestArgMaxFloat32Case3(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -186,6 +264,10 @@ class TestArgMaxFloat32Case3(BaseTestCase):
 
 
 class TestArgMaxFloat32Case4(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4, 5)
@@ -194,6 +276,10 @@ class TestArgMaxFloat32Case4(BaseTestCase):
 
 
 class TestArgMaxFloat32Case5(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -202,6 +288,10 @@ class TestArgMaxFloat32Case5(BaseTestCase):
 
 
 class TestArgMaxFloat32Case6(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -210,6 +300,10 @@ class TestArgMaxFloat32Case6(BaseTestCase):
 
 
 class TestArgMaxFloat32Case7(BaseTestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, 4)
@@ -218,30 +312,55 @@ class TestArgMaxFloat32Case7(BaseTestCase):
 
 
 class TestArgMaxFloat32Case8(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (1,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (1, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float32'
         self.axis = 0
 
 
 class TestArgMaxFloat32Case9(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (2,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (2, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float32'
         self.axis = 0
 
 
 class TestArgMaxFloat32Case10(BaseTestCase):
+<<<<<<< HEAD
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3,)
+=======
+
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dtype = 'float32'
         self.axis = 0
 
 
 class BaseTestComplex1_1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.MLUPlace(0)
@@ -259,7 +378,11 @@ class BaseTestComplex1_1(OpTest):
         self.inputs = {'X': self.x}
         self.attrs = {
             'axis': self.axis,
+<<<<<<< HEAD
             'dtype': int(core.VarDesc.VarType.INT32),
+=======
+            'dtype': int(core.VarDesc.VarType.INT32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.outputs = {
             'Out': np.argmax(self.x, axis=self.axis).astype("int32")
@@ -270,6 +393,10 @@ class BaseTestComplex1_1(OpTest):
 
 
 class BaseTestComplex1_2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_mlu(self):
         self.__class__.use_mlu = True
         self.place = paddle.MLUPlace(0)
@@ -287,7 +414,11 @@ class BaseTestComplex1_2(OpTest):
         self.inputs = {'X': self.x}
         self.attrs = {
             'axis': self.axis,
+<<<<<<< HEAD
             'dtype': int(core.VarDesc.VarType.INT32),
+=======
+            'dtype': int(core.VarDesc.VarType.INT32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.outputs = {
             'Out': np.argmax(self.x, axis=self.axis).astype("int32")
@@ -298,6 +429,10 @@ class BaseTestComplex1_2(OpTest):
 
 
 class TestArgMaxAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -309,6 +444,10 @@ class TestArgMaxAPI(unittest.TestCase):
         self.place = [paddle.MLUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2022)
@@ -316,9 +455,14 @@ class TestArgMaxAPI(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmax(numpy_input, axis=self.axis)
             paddle_output = paddle.argmax(tensor_input, axis=self.axis)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
+                             True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.enable_static()
 
         for place in self.place:
@@ -326,6 +470,10 @@ class TestArgMaxAPI(unittest.TestCase):
 
 
 class TestArgMaxAPI_2(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.dims = (3, 4, 5)
         self.dtype = 'float32'
@@ -338,11 +486,16 @@ class TestArgMaxAPI_2(unittest.TestCase):
         self.place = [paddle.MLUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2022)
             numpy_input = (np.random.random(self.dims)).astype(self.dtype)
             tensor_input = paddle.to_tensor(numpy_input)
+<<<<<<< HEAD
             numpy_output = np.argmax(numpy_input, axis=self.axis).reshape(
                 1, 4, 5
             )
@@ -352,6 +505,15 @@ class TestArgMaxAPI_2(unittest.TestCase):
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            numpy_output = np.argmax(numpy_input,
+                                     axis=self.axis).reshape(1, 4, 5)
+            paddle_output = paddle.argmax(tensor_input,
+                                          axis=self.axis,
+                                          keepdim=self.keep_dims)
+            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
+                             True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 
@@ -360,6 +522,10 @@ class TestArgMaxAPI_2(unittest.TestCase):
 
 
 class TestArgMaxAPI_3(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def initTestCase(self):
         self.dims = (1, 9)
         self.dtype = 'float32'
@@ -370,6 +536,10 @@ class TestArgMaxAPI_3(unittest.TestCase):
         self.place = [paddle.MLUPlace(0)]
 
     def test_dygraph_api(self):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2022)
@@ -377,9 +547,14 @@ class TestArgMaxAPI_3(unittest.TestCase):
             tensor_input = paddle.to_tensor(numpy_input)
             numpy_output = np.argmax(numpy_input).reshape([1])
             paddle_output = paddle.argmax(tensor_input)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 numpy_output, paddle_output.numpy(), rtol=1e-05
             )
+=======
+            self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()),
+                             True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
             paddle.enable_static()
 

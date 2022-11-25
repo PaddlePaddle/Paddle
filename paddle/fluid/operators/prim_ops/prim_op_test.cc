@@ -142,7 +142,11 @@ TEST(PrimOp, reduce_sum_p) {
 
   NewVar(block, x0, shape);
   AppendOp(block,
+<<<<<<< HEAD
            "reduce_sum_p",
+=======
+           "reduce_p",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            {{"X", {x0}}},
            {{"Y", {x1}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", false}});
@@ -152,7 +156,11 @@ TEST(PrimOp, reduce_sum_p) {
   ASSERT_EQ(shapes.size(), 1UL);
   ASSERT_EQ(shapes[0], 4L);
   AppendOp(block,
+<<<<<<< HEAD
            "reduce_sum_p",
+=======
+           "reduce_p",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            {{"X", {x0}}},
            {{"Y", {x2}}},
            {{"axis", std::vector<int64_t>{0, 2}}, {"keepdim", true}});

@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -33,10 +34,15 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
 
         # The input dimension should be less than or equal to the set axis.
         if attrs[0]['begin_norm_axis'] >= 0:
+<<<<<<< HEAD
             if (
                 len(inputs['skip_layernorm_inputX_data'].shape)
                 <= attrs[0]['begin_norm_axis']
             ):
+=======
+            if len(inputs['skip_layernorm_inputX_data'].shape
+                   ) <= attrs[0]['begin_norm_axis']:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return False
 
         # 2D input is not supported.
@@ -45,6 +51,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 6, 128, 768]).astype(np.float32)
@@ -100,6 +107,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                             program_config = ProgramConfig(
                                 ops=ops,
                                 weights={
+<<<<<<< HEAD
                                     "Bias": TensorConfig(
                                         data_gen=partial(generate_weight1, dics)
                                     ),
@@ -118,6 +126,22 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                                             generate_input2, dics, batch
                                         )
                                     ),
+=======
+                                    "Bias":
+                                    TensorConfig(data_gen=partial(
+                                        generate_weight1, dics)),
+                                    "Scale":
+                                    TensorConfig(data_gen=partial(
+                                        generate_weight2, dics))
+                                },
+                                inputs={
+                                    "skip_layernorm_inputX_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, dics, batch)),
+                                    "skip_layernorm_inputY_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input2, dics, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 },
                                 outputs=["skip_layernorm_out"],
                             )
@@ -125,8 +149,13 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -208,18 +237,29 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         #     attrs, False), 1e-5
         # self.trt_param.precision = paddle_infer.PrecisionType.Half
         # yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
         #     attrs, False), (1e-3, 1e-3)
+=======
+        #     attrs, False), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
         pass

@@ -36,6 +36,7 @@ def train():
         train_program, start_program
     )
 
+<<<<<<< HEAD
     optimizer = paddle.fluid.optimizer.AdamOptimizer(
         learning_rate=0.00001,
         beta1=0.9,
@@ -43,6 +44,13 @@ def train():
         epsilon=1e-08,
         grad_clip=None,
     )
+=======
+    optimizer = paddle.fluid.optimizer.AdamOptimizer(learning_rate=0.00001,
+                                                     beta1=0.9,
+                                                     beta2=0.999,
+                                                     epsilon=1e-08,
+                                                     grad_clip=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     optimizer = fleet.distributed_optimizer(optimizer)
     (

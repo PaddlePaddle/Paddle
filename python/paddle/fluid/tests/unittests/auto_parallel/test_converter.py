@@ -21,6 +21,7 @@ from paddle.distributed.auto_parallel.converter import Converter
 
 
 class TestConverter(unittest.TestCase):
+
     def test_converter(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "converter.py")
@@ -31,6 +32,7 @@ class TestConverter(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -44,6 +46,12 @@ class TestConverter(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "paddle.distributed.launch", "--devices", "0,1", "--log_dir",
+            tmp_dir.name, launch_model_path
+        ]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         process = subprocess.Popen(cmd)
         process.wait()

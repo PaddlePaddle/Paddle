@@ -17,7 +17,9 @@ import unittest
 
 
 class TestDistributedFusedLambGradientMerge(unittest.TestCase):
+
     def test_gm(self):
+<<<<<<< HEAD
         run_test(
             clip_after_allreduce=True,
             max_global_norm=-1.0,
@@ -31,6 +33,17 @@ class TestDistributedFusedLambGradientMerge(unittest.TestCase):
             gradient_merge_steps=2,
             use_master_acc_grad=False,
         )
+=======
+        run_test(clip_after_allreduce=True,
+                 max_global_norm=-1.0,
+                 gradient_merge_steps=2)
+
+    def test_gm_with_fp16_acc_grad(self):
+        run_test(clip_after_allreduce=True,
+                 max_global_norm=-1.0,
+                 gradient_merge_steps=2,
+                 use_master_acc_grad=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

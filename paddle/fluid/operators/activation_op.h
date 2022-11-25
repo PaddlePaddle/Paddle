@@ -81,10 +81,17 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 template <ActBwdOpFwdDeps kDepValue>
 inline void ExtractActivationGradTensor(
     const framework::ExecutionContext& context,
+<<<<<<< HEAD
     const phi::DenseTensor** X,
     const phi::DenseTensor** Out,
     const phi::DenseTensor** dOut,
     phi::DenseTensor** dX) {
+=======
+    const framework::Tensor** X,
+    const framework::Tensor** Out,
+    const framework::Tensor** dOut,
+    framework::Tensor** dX) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto out_grad_var = context.InputVar(framework::GradVarName("Out"));
   auto x_grad_var = context.OutputVar(framework::GradVarName("X"));
   const framework::Variable* out_var = nullptr;
@@ -267,11 +274,24 @@ template <typename T>
 using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
 
 USE_PHI_FUNCTOR(Tanh)
+<<<<<<< HEAD
+=======
+USE_PHI_FUNCTOR(Exp)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Tanh)
+USE_PHI_TRIPLE_GRAD_FUNCTOR(Tanh)
+USE_PHI_FUNCTOR(BRelu)
+USE_PHI_FUNCTOR(ThresholdedRelu)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 USE_PHI_FUNCTOR(Relu6)
 USE_PHI_FUNCTOR(LeakyRelu)
 USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 USE_PHI_FUNCTOR(HardShrink)
 USE_PHI_FUNCTOR(ELU)
+<<<<<<< HEAD
+=======
+USE_PHI_DOUBLE_GRAD_FUNCTOR(ELU)
+USE_PHI_FUNCTOR(Softsign)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 USE_PHI_FUNCTOR(Sigmoid)
 USE_PHI_FUNCTOR(HardSigmoid)
 USE_PHI_FUNCTOR(Swish)
@@ -279,6 +299,19 @@ USE_PHI_FUNCTOR(HardSwish)
 USE_PHI_FUNCTOR(Pow)
 USE_PHI_FUNCTOR(Mish)
 USE_PHI_FUNCTOR(STanh)
+<<<<<<< HEAD
+=======
+USE_PHI_FUNCTOR(Reciprocal)
+USE_PHI_FUNCTOR(Square)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Square)
+USE_PHI_FUNCTOR(Sqrt)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Sqrt)
+USE_PHI_FUNCTOR(Rsqrt)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(Rsqrt)
+USE_PHI_FUNCTOR(Softplus)
+USE_PHI_FUNCTOR(CELU)
+USE_PHI_DOUBLE_GRAD_FUNCTOR(CELU)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename T>
 using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
@@ -348,16 +381,63 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+<<<<<<< HEAD
+=======
+template <typename DeviceContext, typename T>
+class ELUGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* X = context.Input<framework::Tensor>("X");
+    auto* Out = context.Input<framework::Tensor>("Out");
+    auto* dOut =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dX = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    const float alpha = context.Attr<float>("alpha");
+    dX->mutable_data<T>(context.GetPlace());
+
+    auto x = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(X, "Input", "X", "elu_grad"));
+    auto out = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(Out, "Input", "Out", "elu_grad"));
+    auto dout = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dOut, "Input", "dOut", "elu_grad"));
+    auto dx = framework::EigenVector<T>::Flatten(
+        GET_DATA_SAFELY(dX, "Output", "dX", "elu_grad"));
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
+
+    if (alpha > 0) {
+      ELUGradFunctor<T> functor;
+      functor.alpha = alpha;
+      functor(*place, x, out, dout, dx);
+    } else {
+      ELUGradNegativeAlphaFunctor<T> functor;
+      functor.alpha = alpha;
+      functor(*place, x, out, dout, dx);
+    }
+  }
+};
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 template <typename T>
 struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device>
   void operator()(const Device& dev,
+<<<<<<< HEAD
                   const phi::DenseTensor* X,
                   const phi::DenseTensor* Out,
                   const phi::DenseTensor* ddX,
                   phi::DenseTensor* ddOut,
                   phi::DenseTensor* dOut,
                   phi::DenseTensor* dX) const {
+=======
+                  const framework::Tensor* X,
+                  const framework::Tensor* Out,
+                  const framework::Tensor* ddX,
+                  framework::Tensor* ddOut,
+                  framework::Tensor* dOut,
+                  framework::Tensor* dX) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "AbsGradGrad"));
@@ -377,11 +457,19 @@ struct AbsGradGradFunctor : public BaseActivationFunctor<T> {
 // others. Impliment extraction kernel separately here.
 inline void ExtractDoubleGradTensorWithInputDOut(
     const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
     const phi::DenseTensor** X,
     const phi::DenseTensor** ddX,
     phi::DenseTensor** dX,
     const phi::DenseTensor** dOut,
     phi::DenseTensor** ddOut) {
+=======
+    const framework::Tensor** X,
+    const framework::Tensor** ddX,
+    framework::Tensor** dX,
+    const framework::Tensor** dOut,
+    framework::Tensor** ddOut) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   // extract ddX(output), ddOut(input)
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
@@ -390,7 +478,11 @@ inline void ExtractDoubleGradTensorWithInputDOut(
       platform::errors::NotFound(
           "Cannot get input Variable Out, variable name = %s",
           ctx.InputName("DDX")));
+<<<<<<< HEAD
   *ddX = ctx.Input<phi::DenseTensor>("DDX");
+=======
+  *ddX = ctx.Input<framework::Tensor>("DDX");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (ddo_var) {
     *ddOut = ctx.Output<phi::DenseTensor>("DDOut");
   }

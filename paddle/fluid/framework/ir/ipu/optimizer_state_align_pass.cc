@@ -41,7 +41,11 @@ void IpuOptimizerStateAlignPass::ApplyImpl(ir::Graph* graph) const {
         auto inputs = node->Op()->Inputs();
         if (inputs.count(platform::ipu::sBeta1Pow)) {
           auto var = scope_->GetVar(inputs.at(platform::ipu::sBeta1Pow)[0]);
+<<<<<<< HEAD
           auto data = var->GetMutable<phi::DenseTensor>()->data<float>();
+=======
+          auto data = var->GetMutable<framework::LoDTensor>()->data<float>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           auto beta = PADDLE_GET_CONST(
               float, node->Op()->GetAttr(platform::ipu::sBeta1));
 

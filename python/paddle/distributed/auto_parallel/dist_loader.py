@@ -16,6 +16,7 @@ import abc
 import numpy as np
 
 import paddle
+<<<<<<< HEAD
 from paddle.io import BatchSampler, IterableDataset
 from paddle.fluid.dataloader.batch_sampler import (
     _InfiniteIterableSampler,
@@ -27,6 +28,30 @@ from paddle.fluid.dataloader.dataloader_iter import (
     default_convert_fn,
 )
 
+=======
+from .utils import to_list
+from paddle.fluid.layers.utils import flatten
+from paddle.io import DataLoader, DistributedBatchSampler
+
+
+class DistributedDataLoader(metaclass=abc.ABCMeta):
+
+    def __init__(self,
+                 dataset,
+                 batch_size=1,
+                 epochs=1,
+                 data_parallel_world_size=None,
+                 data_parallel_rank=None,
+                 drop_last=False):
+        self.dataset = dataset
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.data_parallel_world_size = data_parallel_world_size
+        self.data_parallel_rank = data_parallel_rank
+        self.drop_lost = drop_last
+        if data_parallel_world_size is not None and batch_size is not None:
+            assert batch_size % data_parallel_world_size == 0
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -38,6 +63,7 @@ class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
+<<<<<<< HEAD
 class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
     def __init__(
         self,
@@ -59,6 +85,20 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
         data_parallel_rank=[],
     ):
         self.dataset = dataset
+=======
+class NonIterableGeneratorLoader(DistributedDataLoader):
+
+    def __init__(self,
+                 dataset,
+                 feed_list,
+                 places,
+                 batch_size=1,
+                 epochs=1,
+                 steps_per_epoch=None,
+                 data_parallel_world_size=None,
+                 data_parallel_rank=None,
+                 drop_last=False):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.feed_list = feed_list
         self.capacity = capacity
         self.use_double_buffer = use_double_buffer
@@ -113,6 +153,14 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             self.drop_last,
         )
 
+<<<<<<< HEAD
+=======
+        super(NonIterableGeneratorLoader,
+              self).__init__(dataset, batch_size, epochs,
+                             data_parallel_world_size, data_parallel_rank,
+                             drop_last)
+        self._inner_dataloader = self._create_inner_dataloader()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._steps = self._infer_steps()
         self._inner_dataloader = self._create_inner_dataloader()
 
@@ -160,6 +208,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                 return _InfiniteIterableSampler(self.dataset, 1)
 
     def _create_inner_dataloader(self):
+<<<<<<< HEAD
         def data_generator():
             while True:
                 try:
@@ -177,6 +226,29 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                     )
                     break
 
+=======
+
+        def sample_data_generator():
+            batch_data = None
+            for step, data in enumerate(self.dataset):
+                data = flatten(data)
+                if batch_data is None:
+                    batch_data = [[] for i in range(len(data))]
+                for idx in range(len(data)):
+                    batch_data[idx].append(data[idx])
+                if (step + 1) % self.batch_size == 0:
+                    partial_data = []
+                    for d in batch_data:
+                        array = np.array(d)
+                        partial_data.append(
+                            np.split(array, self.dp_world_size)[self.dp_rank])
+                    yield partial_data[:len(self.feed_list)]
+                    batch_data = None
+
+        def batch_data_generator():
+            for data in self.dataset:
+                data = flatten(data)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 partial_data = []
                 for i, d in enumerate(batch):
                     array = np.array(d)

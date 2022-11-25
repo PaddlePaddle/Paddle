@@ -16,6 +16,10 @@ import multiprocessing
 import os
 import sys
 import warnings
+<<<<<<< HEAD
+=======
+from .. import compat as cpt
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from . import framework
 from .framework import _get_paddle_place, _get_paddle_place_list
 from .framework import cuda_places, cpu_places, xpu_places
@@ -401,6 +405,7 @@ class CompiledProgram:
             else:
                 self._exec_strategy.num_threads = len(places) * 2
 
+<<<<<<< HEAD
         if (
             "FLAGS_use_cinn" in core.globals()
             and core.globals()["FLAGS_use_cinn"]
@@ -410,6 +415,12 @@ class CompiledProgram:
                 "At present, when CINN is turned on, each process can "
                 "only contain one thread, so reset the number of threads to 1 here."
             )
+=======
+        if "FLAGS_use_cinn" in core.globals() and core.globals(
+        )["FLAGS_use_cinn"] and self._exec_strategy.num_threads != 1:
+            warnings.warn("At present, when CINN is turned on, each process can " \
+                  "only contain one thread, so reset the number of threads to 1 here.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._exec_strategy.num_threads = 1
 
         if self._build_strategy.num_trainers > 1:
@@ -485,6 +496,7 @@ class CompiledProgram:
         self._persistable_vars.sort()
 
         return core.ParallelExecutor(
+<<<<<<< HEAD
             places,
             self._persistable_vars,
             self._loss_name if self._loss_name else '',
@@ -494,6 +506,12 @@ class CompiledProgram:
             self._build_strategy,
             self._graph,
         )
+=======
+            places, self._persistable_vars,
+            cpt.to_text(self._loss_name) if self._loss_name else six.u(''),
+            self._scope, self._local_scopes, self._exec_strategy,
+            self._build_strategy, self._graph)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _compile_inference(self):
         return core.create_paddle_predictor(self._infer_config)
@@ -544,9 +562,15 @@ class CompiledProgram:
                 use_device = DeviceType.XPU
             else:
                 use_device = DeviceType.CPU
+<<<<<<< HEAD
             self._executor = self._compile_data_parallel(
                 use_device=use_device, scope=self._scope, places=self._places
             )
+=======
+            self._executor = self._compile_data_parallel(use_device=use_device,
+                                                         scope=self._scope,
+                                                         places=self._places)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return self
 
     def _get_places(self, place, place_list):
@@ -567,7 +591,11 @@ class CompiledProgram:
         return place_list
 
 
+<<<<<<< HEAD
 class IpuDynamicPatcher:
+=======
+class IpuDynamicPatcher(object):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Patcher for IPU dynamic2static support.
     """
@@ -578,9 +606,15 @@ class IpuDynamicPatcher:
         pass
 
     @staticmethod
+<<<<<<< HEAD
     def convert_concrete_program(
         ipu_strategy, concrete_program, class_instance=None
     ):
+=======
+    def convert_concrete_program(ipu_strategy,
+                                 concrete_program,
+                                 class_instance=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
         Convert the ConcreteProgram to IPUConcreteProgram.
         """
@@ -616,8 +650,12 @@ class IpuDynamicPatcher:
         # copy the bias and filters
         for param_or_buffer in concrete_program.parameters:
             param_or_buffer_tensor = scope.var(
+<<<<<<< HEAD
                 param_or_buffer.name
             ).get_tensor()
+=======
+                param_or_buffer.name).get_tensor()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             src_tensor = param_or_buffer.value().get_tensor()
             param_or_buffer_tensor._share_data_with(src_tensor)
 
@@ -640,6 +678,7 @@ class IpuDynamicPatcher:
                         dtype=var_tmp.dtype,
                         type=var_tmp.type,
                         shape=var_tmp.shape,
+<<<<<<< HEAD
                         belong_to_optimizer=True,
                     )
                     device = optimizer._get_device_for_param(param_name)
@@ -650,6 +689,15 @@ class IpuDynamicPatcher:
                     param_or_lr_tensor = scope.find_var(
                         var_tmp.name
                     ).get_tensor()
+=======
+                        belong_to_optimizer=True)
+                    device = optimizer._get_device_for_param(param_name)
+                    with device_guard(device):
+                        optimizer.helper.set_variable_initializer(
+                            var, initializer=Constant(value=0.0))
+                    param_or_lr_tensor = scope.find_var(
+                        var_tmp.name).get_tensor()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     optim_tensor = var.value().get_tensor()
                     param_or_lr_tensor._share_data_with(optim_tensor)
                     optimizer._accumulators[k][param_name] = var
@@ -662,6 +710,7 @@ class IpuDynamicPatcher:
                 to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
                     concrete_program.main_program,
                     amp_list,
+<<<<<<< HEAD
                     use_fp16_guard=False,
                 )
                 paddle.static.amp.cast_parameters_to_fp16(
@@ -675,6 +724,18 @@ class IpuDynamicPatcher:
                 ipu_strategy=ipu_strategy,
                 scope=scope,
             ).compile(feed_list, fetch_list)
+=======
+                    use_fp16_guard=False)
+                paddle.static.amp.cast_parameters_to_fp16(
+                    paddle.CPUPlace(),
+                    concrete_program.main_program,
+                    to_fp16_var_names=to_fp16_var_names)
+
+            program = IpuCompiledProgram(concrete_program.main_program,
+                                         ipu_strategy=ipu_strategy,
+                                         scope=scope).compile(
+                                             feed_list, fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return program
 
         main_program = func_compile()
@@ -683,7 +744,11 @@ class IpuDynamicPatcher:
 
     @staticmethod
     def patch_program_cache(ipu_strategy):
+<<<<<<< HEAD
         """Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+=======
+        """ Monkey patch ProgramCache discriptor to support dynamic2static in IPU.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         Args:
             ipu_strategy: The ipu_strategy used in dynamic graph.
@@ -691,6 +756,7 @@ class IpuDynamicPatcher:
         Returns:
             None
         """
+<<<<<<< HEAD
         from ..fluid.dygraph.dygraph_to_static.program_translator import (
             ProgramCache,
         )
@@ -704,20 +770,33 @@ class IpuDynamicPatcher:
         from ..fluid.dygraph.dygraph_to_static.partial_program import (
             partial_program_from,
         )
+=======
+        from ..fluid.dygraph.dygraph_to_static.program_translator import ProgramCache
+        from ..fluid.dygraph.dygraph_to_static.program_translator import CacheKey
+        from ..fluid.dygraph.dygraph_to_static import logging_utils
+        from ..fluid.dygraph.dygraph_to_static.program_translator import MAX_TRACED_PROGRAM_COUNT
+        from ..fluid.dygraph.dygraph_to_static.partial_program import partial_program_from
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         old_getter = ProgramCache.__getitem__
 
         def patch_getter(self, item):
             if not isinstance(item, CacheKey):
                 raise ValueError(
+<<<<<<< HEAD
                     'type(item) should be CacheKey, but received %s'
                     % type(item).__name__
                 )
+=======
+                    'type(item) should be CacheKey, but received %s' %
+                    type(item).__name__)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             item_id = hash(item)
             self._recent_key = item_id
             if item_id not in self._caches or ipu_strategy.need_compile:
                 if item_id in self._caches:
                     logging_utils.warn(
+<<<<<<< HEAD
                         "ipu_strategy chances detected. Please sync weights."
                     )
                 if self._caches and not ipu_strategy.need_compile:
@@ -734,27 +813,53 @@ class IpuDynamicPatcher:
                     concrete_program,
                     partial_program_from(concrete_program),
                 )
+=======
+                        "ipu_strategy chances detected. Please sync weights.")
+                if self._caches and not ipu_strategy.need_compile:
+                    logging_utils.warn(
+                        "dynamic2static on IPU doesn't support mutiple caches. Please make sure"
+                        "dynamic inputs is not used.")
+                concrete_program, _ = self._build_once(item)
+                concrete_program = IpuDynamicPatcher.convert_concrete_program(
+                    ipu_strategy, concrete_program, item.class_instance)
+
+                self._caches[item_id] = (concrete_program,
+                                         partial_program_from(concrete_program))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # Note: raise warnings if number of traced program is more than `max_tracing_count`
                 current_tracing_count = len(self._caches)
                 if current_tracing_count > MAX_TRACED_PROGRAM_COUNT:
                     logging_utils.warn(
                         "Current traced program number: {} > `max_tracing_count`:{}. Too much cached programs will bring expensive overhead. "
+<<<<<<< HEAD
                         "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors.".format(
                             current_tracing_count, MAX_TRACED_PROGRAM_COUNT
                         )
                     )
+=======
+                        "The reason may be: (1) passing tensors with different shapes, (2) passing python objects instead of tensors."
+                        .format(current_tracing_count,
+                                MAX_TRACED_PROGRAM_COUNT))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             return self._caches[item_id]
 
         setattr(ProgramCache, '__getitem__', patch_getter)
         IpuDynamicPatcher.patcher_cache.append(
+<<<<<<< HEAD
             [ProgramCache, '__getitem__', old_getter]
         )
+=======
+            [ProgramCache, '__getitem__', old_getter])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @staticmethod
     def patch_lr_scheduler(ipu_strategy):
         from paddle.optimizer.lr import LRScheduler
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # For IPU dynamic graph usage, lr_var is not synced in executor as static mode do.
         # Manually set lr to ipu_strategy to update the lr.
         old_step = LRScheduler.step
@@ -777,7 +882,11 @@ class IpuDynamicPatcher:
             setattr(module, key, attr)
 
 
+<<<<<<< HEAD
 class IpuStrategy:
+=======
+class IpuStrategy(object):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Help users precisely control the graph building in :code:`paddle.static.IpuCompiledProgram` .
 
@@ -817,7 +926,10 @@ class IpuStrategy:
                 "Can not use IpuStrategy in non IPU compiled environment, please re-compile with WITH_IPU=ON."
             )
         from paddle import in_dynamic_mode
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if in_dynamic_mode():
             self.register_patch()
 
@@ -828,7 +940,11 @@ class IpuStrategy:
 
         Examples:
             .. code-block:: python
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # required: ipu
 
                 import paddle
@@ -846,7 +962,11 @@ class IpuStrategy:
 
         Examples:
             .. code-block:: python
+<<<<<<< HEAD
 
+=======
+	
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # required: ipu
 
                 import paddle
@@ -857,6 +977,79 @@ class IpuStrategy:
                 ipu_strategy.release_patch()
         """
         IpuDynamicPatcher.release_patch()
+<<<<<<< HEAD
+=======
+
+    def set_optimizer(self, optimizer):
+        """
+        Set optimizer to ipu_strategy in dynamic mode.
+
+          Args:
+              optimizer (Optimizer): Optimizer to be used in training.
+              
+          Returns:
+              None.
+
+          Examples:
+              .. code-block:: python
+	
+                  # required: ipu
+
+                  import paddle
+                  import paddle.static as static
+
+                  linear = paddle.nn.Linear(10, 10)
+                  optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                   parameters=linear.parameters())
+                  ipu_strategy = static.IpuStrategy()
+                  ipu_strategy.set_optimizer(optimizer)
+        """
+        from paddle import in_dynamic_mode
+        if in_dynamic_mode():
+            self._optimizer = optimizer
+            optimizer_attrs = self.parse_optimizer(optimizer)
+            self._ipu_strategy.set_options(optimizer_attrs)
+        else:
+            raise RuntimeError("Only needs to set optimizer in dynamic mode.")
+
+    def parse_optimizer(self, optimizer):
+        """
+        Parse optimizer attributes for IPU dynamic to static support. Currently only support parse lr.
+
+          Args:
+              optimizer (Optimizer): Optimizer to be parsed.
+              
+          Returns:
+              Dict.
+
+          Examples:
+              .. code-block:: python
+	
+                  # required: ipu
+
+                  import paddle
+                  import paddle.static as static
+
+                  linear = paddle.nn.Linear(10, 10)
+                  optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                                   parameters=linear.parameters())
+                  ipu_strategy = static.IpuStrategy()
+                  attrs = ipu_strategy.parse_optimizer(optimizer)
+        """
+
+        def get_lr():
+            from paddle.optimizer.lr import LRScheduler
+            if isinstance(optimizer._learning_rate, float):
+                return {"lr": optimizer._learning_rate}
+            elif isinstance(optimizer._learning_rate, LRScheduler):
+                return {"lr": optimizer._learning_rate()}
+
+        attr_fn = [get_lr]
+        optimizer_attrs = {"is_dynamic": True}
+        for fn in attr_fn:
+            optimizer_attrs.update(fn())
+        return optimizer_attrs
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def set_optimizer(self, optimizer):
         """

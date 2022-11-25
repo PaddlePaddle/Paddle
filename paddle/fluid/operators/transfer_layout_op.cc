@@ -41,6 +41,37 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
+=======
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "TransferLayout");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "TransferLayout");
+
+    auto dst_layout = ctx->Attrs().Get<int>("dst_layout");
+    auto low_bound = static_cast<int>(framework::DataLayout::kAnyLayout);
+    auto upper_bound = static_cast<int>(framework::DataLayout::kMKLDNN);
+    PADDLE_ENFORCE_GE(
+        dst_layout,
+        low_bound,
+        platform::errors::PreconditionNotMet(
+            "Required dst_layout >= %d, but received dst_layout = %d",
+            low_bound,
+            dst_layout));
+    PADDLE_ENFORCE_LE(
+        dst_layout,
+        upper_bound,
+        platform::errors::PreconditionNotMet(
+            "Required dst_layout <= %d, but received dst_layout = %d",
+            upper_bound,
+            dst_layout));
+
+    // TODO(Aurelius84): Out's ddim is different with X because they have
+    // different layout
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -49,7 +80,11 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
     auto *in_tensor = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in);
     // NOTE(zhiqiu): hot fix, allow empty tensor of kMKLDNN layout to run this
     // op
+<<<<<<< HEAD
     if (in_tensor->layout() != DataLayout::ONEDNN) {
+=======
+    if (in_tensor->layout() != DataLayout::kMKLDNN) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(in_tensor->IsInitialized(),
                         true,
                         platform::errors::PreconditionNotMet(
@@ -64,7 +99,11 @@ class TransferLayoutOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
+=======
+      const framework::Tensor &tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType &expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -128,6 +167,13 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     TransferLayoutInferShapeFunctor);
 
+<<<<<<< HEAD
+=======
+// dtype is not important
+REGISTER_OP_CPU_KERNEL_FUNCTOR(transfer_layout,
+                               float,
+                               ops::TransferLayoutKernel);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 REGISTER_OP_VERSION(transfer_layout)
     .AddCheckpoint(R"ROC(refine transfer_layout, add src_layout attribute)ROC",
                    paddle::framework::compatible::OpVersionDesc().NewAttr(

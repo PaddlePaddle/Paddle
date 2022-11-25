@@ -264,7 +264,11 @@ template <typename T>
 static const T *GetInputTensorPtr(const framework::ExecutionContext &ctx,
                                   const char *in_name,
                                   int64_t *numel = nullptr) {
+<<<<<<< HEAD
   const auto *in_tensor = ctx.Input<phi::DenseTensor>(in_name);
+=======
+  const auto *in_tensor = ctx.Input<framework::Tensor>(in_name);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -293,7 +297,11 @@ static T *GetSameInOutTensorPtr(const framework::ExecutionContext &ctx,
     return nullptr;
   }
 
+<<<<<<< HEAD
   auto *out_tensor = ctx.Output<phi::DenseTensor>(out_name);
+=======
+  auto *out_tensor = ctx.Output<framework::Tensor>(out_name);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_NOT_NULL(
       in_tensor,
       platform::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
@@ -1192,6 +1200,7 @@ static void PrintAllMinMaxRange(const framework::ExecutionContext &ctx,
   }
 }
 
+<<<<<<< HEAD
 template <typename T>
 static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
   if (numel <= 0) return false;
@@ -1224,6 +1233,8 @@ static bool HasNanInf(const phi::GPUContext &dev_ctx, const T *x, int numel) {
   return flag;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 static void CheckHasNanInfGrad(const float *fp32_grad,
                                int fp32_numel,
                                const platform::float16 *fp16_grad,
@@ -1653,6 +1664,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
              << " , clip_after_allreduce = " << clip_after_allreduce
              << " , use_master_param_norm = " << use_master_param_norm
              << " , is_grad_scaled_by_nranks = " << is_grad_scaled_by_nranks
+<<<<<<< HEAD
              << " , local_shard = " << local_shard
              << " , use_hierarchical_allreduce = "
              << use_hierarchical_allreduce;
@@ -1661,6 +1673,13 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
     int64_t global_rank = 0, local_rank = 0;
     ncclComm_t global_comm = nullptr, local_comm = nullptr,
                external_comm = nullptr;
+=======
+             << " , local_shard = " << local_shard;
+
+    // Step 6: allreduce + global norm gradient clip
+    int64_t global_rank = 0, local_rank = 0;
+    ncclComm_t global_comm = nullptr, local_comm = nullptr;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (nranks > 1) {
       auto *nccl_comm_handle =
           platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
@@ -1672,11 +1691,14 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
             platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
         local_comm = local_nccl_comm_handle->comm();
         local_rank = local_nccl_comm_handle->rank();
+<<<<<<< HEAD
         if (use_hierarchical_allreduce) {
           external_comm = platform::NCCLCommContext::Instance()
                               .Get(ring_ids[2], place)
                               ->comm();
         }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       } else {
         local_comm = global_comm;
         local_rank = global_rank;
@@ -1729,6 +1751,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
       if (clip_after_allreduce) {
         // (1) ReduceScater first
         if (local_shard) {
+<<<<<<< HEAD
           if (use_hierarchical_allreduce) {
             NCCLReduceScatterWithScale(
                 fp32_grad,
@@ -1779,6 +1802,22 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                    stream,
                                    dev_ctx);
           }
+=======
+          NCCLAllReduceWithScale(fp32_grad,
+                                 fp32_sum_grad,
+                                 fp32_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+          NCCLAllReduceWithScale(fp16_grad,
+                                 fp16_sum_grad,
+                                 fp16_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           fp32_sum_grad += (local_rank * fp32_numel_each_device);
           fp16_sum_grad += (local_rank * fp16_numel_each_device);
         } else {
@@ -1861,6 +1900,7 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
         } else {
           VLOG(1) << "Grad scale: " << FlattenToString(fp16_scale, 1, place);
         }
+<<<<<<< HEAD
         // (3) Do ReduceScatter with scale
         VLOG(1) << "FP32 HasNanInf before all reduce: "
                 << HasNanInf(dev_ctx, fp32_grad, fp32_numel);
@@ -1953,23 +1993,71 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                            stream,
                            &cub_tmp_buffer);
         if (num_devices > 1) {
+=======
+        if (nranks > 1) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           PADDLE_ENFORCE_GPU_SUCCESS(
               platform::dynload::ncclAllReduce(fp32_square_grad_norm,
                                                fp32_square_grad_norm,
                                                1,
                                                ncclFloat32,
                                                ncclSum,
+<<<<<<< HEAD
                                                local_comm,
                                                stream));
           VLOG(1) << "Grad square norm after all reduce: "
                   << FlattenToString(fp32_square_grad_norm, 1, place);
         }
+=======
+                                               global_comm,
+                                               stream));
+        }
+        // (3) Do ReduceScatter with scale
+        if (local_shard) {
+          NCCLAllReduceWithScale(fp32_grad,
+                                 fp32_sum_grad,
+                                 fp32_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx,
+                                 fp32_scale);
+          NCCLAllReduceWithScale(fp16_grad,
+                                 fp16_sum_grad,
+                                 fp16_numel,
+                                 nranks,
+                                 global_comm,
+                                 stream,
+                                 dev_ctx,
+                                 fp16_scale);
+          fp32_sum_grad += (local_rank * fp32_numel_each_device);
+          fp16_sum_grad += (local_rank * fp16_numel_each_device);
+        } else {
+          NCCLReduceScatterWithScale(fp32_grad,
+                                     fp32_sum_grad,
+                                     fp32_numel_each_device,
+                                     nranks,
+                                     global_comm,
+                                     stream,
+                                     dev_ctx,
+                                     fp32_scale);
+          NCCLReduceScatterWithScale(fp16_grad,
+                                     fp16_sum_grad,
+                                     fp16_numel_each_device,
+                                     nranks,
+                                     global_comm,
+                                     stream,
+                                     dev_ctx,
+                                     fp16_scale);
+        }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         // (4) mark max_global_grad_norm as 0, meaning that clip has been
         // already performed
         max_global_grad_norm = 0;
       }
     } else {
       if (local_shard) {
+<<<<<<< HEAD
         if (use_hierarchical_allreduce) {
           NCCLReduceScatterWithScale(
               fp32_grad,
@@ -2020,6 +2108,22 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
                                  stream,
                                  dev_ctx);
         }
+=======
+        NCCLAllReduceWithScale(fp32_grad,
+                               fp32_sum_grad,
+                               fp32_numel,
+                               nranks,
+                               global_comm,
+                               stream,
+                               dev_ctx);
+        NCCLAllReduceWithScale(fp16_grad,
+                               fp16_sum_grad,
+                               fp16_numel,
+                               nranks,
+                               global_comm,
+                               stream,
+                               dev_ctx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {

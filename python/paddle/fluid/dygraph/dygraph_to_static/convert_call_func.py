@@ -25,6 +25,7 @@ import numpy
 import builtins
 
 from paddle.fluid.dygraph.container import Sequential
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.convert_operators import (
     convert_len,
     convert_zip,
@@ -46,6 +47,15 @@ from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
     unwrap_decorators,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func, unwrap
+=======
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_len, convert_zip
+from paddle.fluid.dygraph.dygraph_to_static.convert_operators import convert_range, convert_enumerate
+from paddle.fluid.dygraph.dygraph_to_static.logging_utils import TranslatorLogger
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import StaticFunction
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import convert_to_static
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import unwrap_decorators
+from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_func
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.fluid.dygraph.layers import Layer
 
 __all__ = ["convert_call"]
@@ -75,8 +85,13 @@ class ConversionOptions:
 
 
 def is_builtin(func, name=None):
+<<<<<<< HEAD
     """predict whether a function is a builtin function with name={name}.
     if name == None, then any builtin function will return True
+=======
+    """ predict whether a function is a builtin function with name={name}.
+        if name == None, then any builtin function will return True
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
 
     def name_judge():
@@ -84,12 +99,17 @@ def is_builtin(func, name=None):
 
     if isinstance(func, types.BuiltinFunctionType) and name_judge():
         return True
+<<<<<<< HEAD
     elif func in builtins.__dict__.values() and name_judge():
+=======
+    elif func in six.moves.builtins.__dict__.values() and name_judge():
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return True
     else:
         return False
 
 
+<<<<<<< HEAD
 def builtin_modules():
     """
     Return builtin modules.
@@ -116,6 +136,8 @@ def builtin_modules():
 BUILTIN_LIKELY_MODULES = builtin_modules()
 
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 def is_unsupported(func):
     """
     Checks whether the func is supported by dygraph to static graph.
@@ -129,10 +151,15 @@ def is_unsupported(func):
             if func_in_dict:
                 translator_logger.log(
                     2,
+<<<<<<< HEAD
                     "Whitelist: {} is part of built-in module and does not have to be transformed.".format(
                         func
                     ),
                 )
+=======
+                    "Whitelist: {} is part of built-in module and does not have to be transformed."
+                    .format(func))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return True
 
     # NOTE: should be placed before `is_paddle_func`
@@ -142,10 +169,15 @@ def is_unsupported(func):
     if is_paddle_func(func):
         translator_logger.log(
             2,
+<<<<<<< HEAD
             "Whitelist: {} is part of Paddle module and does not have to be transformed.".format(
                 func
             ),
         )
+=======
+            "Whitelist: {} is part of Paddle module and does not have to be transformed."
+            .format(func))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return True
 
 
@@ -199,10 +231,15 @@ def convert_call(func):
     if options is not None and options.not_convert:
         translator_logger.log(
             2,
+<<<<<<< HEAD
             "{} is not converted when it is decorated by 'paddle.jit.not_to_static'.".format(
                 func
             ),
         )
+=======
+            "{} is not converted when it is decorated by 'paddle.jit.not_to_static'."
+            .format(func))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return func
 
     if is_builtin(func, "len"):

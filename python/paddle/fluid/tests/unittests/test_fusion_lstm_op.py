@@ -23,6 +23,7 @@ def fc(x, w, b):
 
 
 def fusion_lstm(
+<<<<<<< HEAD
     x,  # T x M
     lod,  # 1 x N
     wx=None,  # M x 4D
@@ -50,9 +51,27 @@ def fusion_lstm(
         act_cell,
         act_cand,
     )
+=======
+        x,  # T x M
+        lod,  # 1 x N
+        wx=None,  # M x 4D
+        bx=None,  # 1 x 4D
+        h0=None,  # N x D
+        c0=None,  # N x D
+        w_h=None,  # D x 4D
+        w_b=None,  # 1 x 4D
+        w_c=None,  # 1 x 3D
+        is_reverse=False,
+        act_gate=None,
+        act_cell=None,
+        act_cand=None):
+    return lstm(fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
+                act_cell, act_cand)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestFusionLSTMOp(OpTest):
+
     def set_conf(self):
         pass
 
@@ -143,63 +162,74 @@ class TestFusionLSTMOp(OpTest):
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):
+
     def set_conf(self):
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.is_reverse = True
 
 
 class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.has_initial_state = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpMD1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionLSTMOpMD2(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionLSTMOpMD3(TestFusionLSTMOp):
+
     def set_conf(self):
         self.M = 15
         self.D = 3
 
 
 class TestFusionLSTMOpBS1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.lod = [[3]]
         self.D = 16
 
 
 class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
 
 
 class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
 
 
 class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.is_reverse = True
 
 
 class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.has_initial_state = True
@@ -207,6 +237,7 @@ class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
 
 
 class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
+
     def set_conf(self):
         self.use_peepholes = True
         self.lod = [[2]]

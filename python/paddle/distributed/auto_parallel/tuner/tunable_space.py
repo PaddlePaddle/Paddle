@@ -104,6 +104,7 @@ class TunableSpace:
         return self._retrieve(tv)
 
     def int_range(self, name, start, stop, step=1, default=None):
+<<<<<<< HEAD
         tv = IntRange(
             name=name, start=start, stop=stop, step=step, default=default
         )
@@ -113,15 +114,39 @@ class TunableSpace:
         tv = FloatRange(
             name=name, start=start, stop=stop, step=step, default=default
         )
+=======
+        tv = IntRange(name=name,
+                      start=start,
+                      stop=stop,
+                      step=step,
+                      default=default)
+        return self._retrieve(tv)
+
+    def float_range(self, name, start, stop, step=None, default=None):
+        tv = FloatRange(name=name,
+                        start=start,
+                        stop=stop,
+                        step=step,
+                        default=default)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return self._retrieve(tv)
 
     def get_state(self):
         return {
+<<<<<<< HEAD
             "variables": [
                 {"class_name": v.__class__.__name__, "state": v.get_state()}
                 for v in self._variables.values()
             ],
             "values": dict((k, v) for (k, v) in self.values.items()),
+=======
+            "variables": [{
+                "class_name": v.__class__.__name__,
+                "state": v.get_state()
+            } for v in self._variables.values()],
+            "values":
+            dict((k, v) for (k, v) in self.values.items())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     @classmethod
@@ -141,11 +166,16 @@ def _deserialize_tunable_variable(state):
     if isinstance(state, classes):
         return state
 
+<<<<<<< HEAD
     if (
         not isinstance(state, dict)
         or "class_name" not in state
         or "state" not in state
     ):
+=======
+    if (not isinstance(state, dict) or "class_name" not in state
+            or "state" not in state):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         raise ValueError(
             "Expect state to be a python dict containing class_name and state as keys, but found {}".format(
                 state

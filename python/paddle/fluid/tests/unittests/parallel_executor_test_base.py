@@ -30,7 +30,9 @@ DeviceType = core.DeviceType
 
 
 class TestParallelExecutorBase(unittest.TestCase):
+
     @classmethod
+<<<<<<< HEAD
     def check_network_convergence(
         cls,
         method,
@@ -52,6 +54,28 @@ class TestParallelExecutorBase(unittest.TestCase):
         use_fast_executor=False,
         enable_sequential_execution=False,
     ):
+=======
+    def check_network_convergence(cls,
+                                  method,
+                                  use_device=DeviceType.CUDA,
+                                  iter=5,
+                                  batch_size=None,
+                                  feed_dict=None,
+                                  feed_data_reader=None,
+                                  get_data_from_feeder=None,
+                                  use_parallel_executor=True,
+                                  use_reduce=False,
+                                  use_ir_memory_optimize=False,
+                                  enable_inplace=True,
+                                  fuse_elewise_add_act_ops=False,
+                                  fuse_all_optimizer_ops=False,
+                                  fuse_all_reduce_ops=False,
+                                  fuse_relu_depthwise_conv=False,
+                                  optimizer=fluid.optimizer.Adam,
+                                  use_fast_executor=False,
+                                  enable_sequential_execution=False):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def run_executor(exe, binary, feed, fetch_list):
             if feed_data_reader is None:
                 res = exe.run(binary, feed=feed, fetch_list=fetch_list)
@@ -121,6 +145,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         area_below_loss = 0
         begin = time.time()
+<<<<<<< HEAD
         (first_loss,) = run_executor(
             exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name]
         )
@@ -133,14 +158,36 @@ class TestParallelExecutorBase(unittest.TestCase):
         (last_loss,) = run_executor(
             exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name]
         )
+=======
+        first_loss, = run_executor(exe=exe,
+                                   binary=binary,
+                                   feed=feed_dict,
+                                   fetch_list=[loss.name])
+        area_below_loss += 0.5 * first_loss.mean()
+        for _ in range(iter):
+            mid_loss = run_executor(exe=exe,
+                                    binary=binary,
+                                    feed=feed_dict,
+                                    fetch_list=[loss.name])
+            area_below_loss += mid_loss[0].mean()
+        last_loss, = run_executor(exe=exe,
+                                  binary=binary,
+                                  feed=feed_dict,
+                                  fetch_list=[loss.name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         area_below_loss += 0.5 * last_loss.mean()
         end = time.time()
 
         if batch_size is not None:
+<<<<<<< HEAD
             print(
                 "%.4f Instance per second"
                 % ((batch_size * iter + 2) / (end - begin))
             )
+=======
+            print("%.4f Instance per second" % ((batch_size * iter + 2) /
+                                                (end - begin)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         avg_last_loss_val = np.array(last_loss).mean()
         avg_first_loss_val = np.array(first_loss).mean()

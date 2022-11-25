@@ -84,7 +84,11 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(c_reducescatter,
                         ops::CReduceScatterOpCUDAKernel<float>,
                         ops::CReduceScatterOpCUDAKernel<double>,
+<<<<<<< HEAD
 #if NCCL_VERSION_CODE >= 21000
+=======
+#if CUDNN_VERSION_MIN(8, 1, 0) && NCCL_VERSION_CODE >= 21000
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         ops::CReduceScatterOpCUDAKernel<plat::bfloat16>,
 #endif
                         ops::CReduceScatterOpCUDAKernel<int>,

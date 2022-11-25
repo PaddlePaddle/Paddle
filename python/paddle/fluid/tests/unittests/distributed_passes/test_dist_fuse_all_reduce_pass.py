@@ -19,6 +19,7 @@ from model_zoo import resnet_model
 
 
 class TestFuseAllReducePass(DistPassTestBase):
+
     def init(self):
         self.atol = 0.0
         self.rtol = 0.0

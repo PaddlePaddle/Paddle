@@ -49,8 +49,13 @@ struct BoxCoderFunction {
     runner.Run(stream);
     return z;
   }
+<<<<<<< HEAD
   Tensor SubWithBroadCast(const phi::DenseTensor& x,
                           const phi::DenseTensor& y,
+=======
+  Tensor SubWithBroadCast(const Tensor& x,
+                          const Tensor& y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           const framework::DDim& shape) {
     Tensor z;
     z.mutable_data<T>(shape, place);
@@ -58,46 +63,82 @@ struct BoxCoderFunction {
     runner.Run(stream);
     return z;
   }
+<<<<<<< HEAD
   void DivWithBroadCastVoid(const phi::DenseTensor& x,
                             const phi::DenseTensor& y,
                             const framework::DDim& shape,
                             phi::DenseTensor* z) {
+=======
+  void DivWithBroadCastVoid(const Tensor& x,
+                            const Tensor& y,
+                            const framework::DDim& shape,
+                            Tensor* z) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("Div", {x, y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   Tensor DivWithBroadCast(const phi::DenseTensor& x,
                           const phi::DenseTensor& y,
+=======
+  Tensor DivWithBroadCast(const Tensor& x,
+                          const Tensor& y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           const framework::DDim& shape) {
     Tensor z;
     DivWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
+<<<<<<< HEAD
   void MulWithBroadCastVoid(const phi::DenseTensor& x,
                             const phi::DenseTensor& y,
                             const framework::DDim& shape,
                             phi::DenseTensor* z) {
+=======
+  void MulWithBroadCastVoid(const Tensor& x,
+                            const Tensor& y,
+                            const framework::DDim& shape,
+                            Tensor* z) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("Mul", {x, y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   Tensor MulWithBroadCast(const phi::DenseTensor& x,
                           const phi::DenseTensor& y,
+=======
+  Tensor MulWithBroadCast(const Tensor& x,
+                          const Tensor& y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           const framework::DDim& shape) {
     Tensor z;
     MulWithBroadCastVoid(x, y, shape, &z);
     return z;
   }
+<<<<<<< HEAD
   void AddWithBroadCastVoid(const phi::DenseTensor& x,
                             const phi::DenseTensor& y,
                             const framework::DDim& shape,
                             phi::DenseTensor* z) {
+=======
+  void AddWithBroadCastVoid(const Tensor& x,
+                            const Tensor& y,
+                            const framework::DDim& shape,
+                            Tensor* z) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     z->mutable_data<T>(shape, place);
     const auto& runner = NpuOpRunner("AddV2", {x, y}, {*z}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   Tensor AddWithBroadCast(const phi::DenseTensor& x,
                           const phi::DenseTensor& y,
+=======
+  Tensor AddWithBroadCast(const Tensor& x,
+                          const Tensor& y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           const framework::DDim& shape) {
     Tensor z;
     AddWithBroadCastVoid(x, y, shape, &z);
@@ -158,7 +199,11 @@ struct BoxCoderFunction {
   void ConcatVoid(const std::vector<Tensor>& inputs,
                   const framework::DDim& shape_out,
                   int axis,
+<<<<<<< HEAD
                   phi::DenseTensor* output) {
+=======
+                  Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(shape_out, place);
     std::vector<std::string> names;
     for (size_t i = 0; i < inputs.size(); i++) {
@@ -179,7 +224,11 @@ struct BoxCoderFunction {
     ConcatVoid(inputs, shape_out, axis, &output);
     return output;
   }
+<<<<<<< HEAD
   Tensor Slice(const phi::DenseTensor& x,
+=======
+  Tensor Slice(const Tensor& x,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                const std::vector<int>& offsets,
                const std::vector<int>& size,
                const framework::DDim& shape) {
@@ -201,7 +250,11 @@ template <typename T>
 void Vector2Tensor(const framework::ExecutionContext& ctx,
                    const std::vector<T>& vec,
                    const framework::DDim& ddim,
+<<<<<<< HEAD
                    phi::DenseTensor* tsr) {
+=======
+                   Tensor* tsr) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   framework::TensorFromVector<T>(vec, ctx.device_context(), tsr);
   ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
   tsr->Resize(ddim);
@@ -209,12 +262,21 @@ void Vector2Tensor(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BoxCoderEnc(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                  const phi::DenseTensor* tb,
                  const phi::DenseTensor* pb,
                  const phi::DenseTensor* pbv,
                  const bool norm,
                  const std::vector<float>& variance,
                  phi::DenseTensor* out) {
+=======
+                 const Tensor* tb,
+                 const Tensor* pb,
+                 const Tensor* pbv,
+                 const bool norm,
+                 const std::vector<float>& variance,
+                 Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto M = pb->dims()[0];
   auto N = tb->dims()[0];
   auto shape_0 = phi::make_ddim({4, 2});
@@ -273,6 +335,7 @@ void BoxCoderEnc(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BoxCoderDec(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                  const phi::DenseTensor* tb,
                  const phi::DenseTensor* pb,
                  const phi::DenseTensor* pbv,
@@ -280,6 +343,15 @@ void BoxCoderDec(const framework::ExecutionContext& ctx,
                  const std::vector<float>& variance,
                  int axis,
                  phi::DenseTensor* out) {
+=======
+                 const Tensor* tb,
+                 const Tensor* pb,
+                 const Tensor* pbv,
+                 const bool norm,
+                 const std::vector<float>& variance,
+                 int axis,
+                 Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto shape_0 = phi::make_ddim({4, 2});
   Tensor m_diff;
   Tensor m_aver;

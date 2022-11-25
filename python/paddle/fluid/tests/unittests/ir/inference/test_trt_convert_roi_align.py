@@ -22,10 +22,12 @@ from typing import Any, Dict, List
 
 
 class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             return np.ones([batch, 256, 32, 32]).astype(np.float32)
 
@@ -45,6 +47,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                     self.num_input = num_input
                                     if num_input == 1:
                                         batch = 1
+<<<<<<< HEAD
                                     dics = [
                                         {
                                             "spatial_scale": spatial_scale,
@@ -108,6 +111,53 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                             "op_attrs": dics[0],
                                         }
                                     ]
+=======
+                                    dics = [{
+                                        "spatial_scale": spatial_scale,
+                                        "pooled_height": pooled_height,
+                                        "pooled_width": pooled_width,
+                                        "sampling_ratio": sampling_ratio,
+                                        "aligned": aligned
+                                    }, {}]
+                                    dics_input = [{
+                                        "X": ["roi_align_input"],
+                                        "ROIs": ["ROIs"],
+                                        "RoisNum": ["RoisNum"]
+                                    }, {
+                                        "X": ["roi_align_input"],
+                                        "ROIs": ["ROIs"]
+                                    }]
+                                    program_input = [{
+                                        "roi_align_input":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics, batch)),
+                                        "ROIs":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input2, dics, batch)),
+                                        "RoisNum":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input3, dics, batch))
+                                    }, {
+                                        "roi_align_input":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics, batch)),
+                                        "ROIs":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input2, dics, batch),
+                                                     lod=[[32, 3]])
+                                    }]
+                                    ops_config = [{
+                                        "op_type":
+                                        "roi_align",
+                                        "op_inputs":
+                                        dics_input[num_input],
+                                        "op_outputs": {
+                                            "Out": ["roi_align_out"]
+                                        },
+                                        "op_attrs":
+                                        dics[0]
+                                    }]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     ops = self.generate_op_config(ops_config)
                                     program_config = ProgramConfig(
                                         ops=ops,
@@ -119,8 +169,13 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if self.num_input == 0:
                 self.dynamic_shape.min_input_shape = {
@@ -187,14 +242,22 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.inputs) == 3:
                 return True

@@ -22,6 +22,7 @@ import os
 
 
 class SimpleNet(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
         self.conv = paddle.nn.Conv2D(1, 2, (3, 3))
@@ -50,6 +51,7 @@ def static_program(net, data):
 
 
 class TestAutoTune(unittest.TestCase):
+
     def set_flags(self, enable_autotune):
         if paddle.is_compiled_with_cuda():
             if enable_autotune:
@@ -93,6 +95,7 @@ class TestAutoTune(unittest.TestCase):
 
 
 class TestDygraphAutoTuneStatus(TestAutoTune):
+
     def run_program(self, enable_autotune):
         self.set_flags(enable_autotune)
         if enable_autotune:
@@ -128,6 +131,7 @@ class TestDygraphAutoTuneStatus(TestAutoTune):
 
 
 class TestStaticAutoTuneStatus(TestAutoTune):
+
     def run_program(self, enable_autotune):
         paddle.enable_static()
 
@@ -135,9 +139,15 @@ class TestStaticAutoTuneStatus(TestAutoTune):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             data = paddle.static.data(
                 name='X', shape=data_shape, dtype='float32'
             )
+=======
+            data = paddle.static.data(name='X',
+                                      shape=data_shape,
+                                      dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             net = SimpleNet()
             loss = static_program(net, data)
         place = (
@@ -183,6 +193,7 @@ class TestStaticAutoTuneStatus(TestAutoTune):
 
 
 class TestAutoTuneAPI(unittest.TestCase):
+
     def test_set_config_warnings(self):
         with warnings.catch_warnings(record=True) as w:
             config = {"kernel": {"enable": 1, "tuning_range": 1}}

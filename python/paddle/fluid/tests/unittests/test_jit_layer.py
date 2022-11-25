@@ -18,18 +18,30 @@ import unittest
 import tempfile
 import numpy as np
 from paddle.static import InputSpec
+<<<<<<< HEAD
 from paddle.fluid.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.fluid.dygraph.dygraph_to_static.program_translator import (
     ProgramTranslator,
 )
+=======
+from paddle.fluid.framework import _enable_legacy_dygraph
+from paddle.jit.layer import Layer
+from paddle.fluid.dygraph.dygraph_to_static.program_translator import ProgramTranslator
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.seed(1)
 
 
 class Net(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(Net, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.fc1 = paddle.nn.Linear(4, 4)
         self.fc2 = paddle.nn.Linear(4, 4)
         self._bias = 0.4
@@ -51,6 +63,7 @@ class Net(paddle.nn.Layer):
 
 
 class TestMultiLoad(unittest.TestCase):
+<<<<<<< HEAD
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -58,6 +71,11 @@ class TestMultiLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_multi_load(self):
+=======
+
+    def test_multi_load(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         x = paddle.full([2, 4], 2)
         model = Net()
@@ -76,6 +94,7 @@ class TestMultiLoad(unittest.TestCase):
         jit_layer.load(model_path, place)
         forward_out2 = jit_layer.forward(x)
         infer_out2 = jit_layer.infer(x)
+<<<<<<< HEAD
         np.testing.assert_allclose(forward_out1, forward_out2[0], rtol=1e-05)
         np.testing.assert_allclose(infer_out1, infer_out2[0], rtol=1e-05)
 
@@ -113,6 +132,13 @@ class TestMKLOutput(unittest.TestCase):
             out = paddle.unsqueeze(out[0], 0)
             np.testing.assert_equal(out.shape, [1, 498, 80])
 
+=======
+        self.assertEqual(np.allclose(forward_out1, forward_out2[0]), True)
+        self.assertEqual(np.allclose(infer_out1, infer_out2[0]), True)
+
+        self.temp_dir.cleanup()
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 if __name__ == '__main__':
     unittest.main()

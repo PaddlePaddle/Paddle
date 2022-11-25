@@ -34,6 +34,7 @@ SEED = 10
 
 
 def random_batch_reader(input_size, label_size):
+
     def _get_random_inputs_and_labels(input_size, label_size):
         np.random.seed(SEED)
         input = np.random.random(size=input_size).astype('float32')
@@ -51,6 +52,7 @@ def random_batch_reader(input_size, label_size):
 
 
 class LinearNet(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -61,6 +63,7 @@ class LinearNet(fluid.dygraph.Layer):
 
 
 class LinearNetWithInputSpec(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -71,6 +74,7 @@ class LinearNetWithInputSpec(fluid.dygraph.Layer):
 
 
 class LinearNetNotDeclarative(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -80,16 +84,24 @@ class LinearNetNotDeclarative(fluid.dygraph.Layer):
 
 
 class LinerNetWithLabel(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @declarative(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
         ]
     )
+=======
+    @declarative(input_spec=[
+        InputSpec(shape=[None, 784], dtype='float32', name="image"),
+        InputSpec(shape=[None, 1], dtype='int64', name="label")
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
@@ -98,16 +110,24 @@ class LinerNetWithLabel(paddle.nn.Layer):
 
 
 class LinerNetWithPruneInput(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @declarative(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
         ]
     )
+=======
+    @declarative(input_spec=[
+        InputSpec(shape=[None, 784], dtype='float32', name="image"),
+        InputSpec(shape=[None, 1], dtype='int64', name="label")
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, label):
         out = self._linear(x)
         loss = fluid.layers.cross_entropy(out, label)
@@ -116,22 +136,31 @@ class LinerNetWithPruneInput(paddle.nn.Layer):
 
 
 class LinerNetWithUselessInput(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @declarative(
         input_spec=[
             InputSpec(shape=[None, 784], dtype='float32', name="image"),
             InputSpec(shape=[None, 1], dtype='int64', name="label"),
         ]
     )
+=======
+    @declarative(input_spec=[
+        InputSpec(shape=[None, 784], dtype='float32', name="image"),
+        InputSpec(shape=[None, 1], dtype='int64', name="label")
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, label):
         out = self._linear(x)
         return out
 
 
 class LinearNetReturnLoss(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -145,17 +174,25 @@ class LinearNetReturnLoss(fluid.dygraph.Layer):
 
 
 class LinearNetMultiInput(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @declarative(
         input_spec=[
             InputSpec([None, 8], dtype='float32'),
             InputSpec([None, 8], dtype='float32'),
         ]
     )
+=======
+    @declarative(input_spec=[
+        InputSpec([None, 8], dtype='float32'),
+        InputSpec([None, 8], dtype='float32')
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
@@ -164,17 +201,23 @@ class LinearNetMultiInput(fluid.dygraph.Layer):
 
 
 class LinearNetMultiInput1(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear1 = Linear(in_size, out_size)
         self._linear2 = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @declarative(
         input_spec=(
             InputSpec([None, 8], dtype='float32'),
             InputSpec([None, 8], dtype='float32'),
         )
     )
+=======
+    @declarative(input_spec=(InputSpec([None, 8], dtype='float32'),
+                             InputSpec([None, 8], dtype='float32')))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, y):
         x_out = self._linear1(x)
         y_out = self._linear2(y)
@@ -183,6 +226,7 @@ class LinearNetMultiInput1(fluid.dygraph.Layer):
 
 
 class MultiLoadingLinearNet(fluid.dygraph.Layer):
+
     def __init__(self, size, model_path):
         super().__init__()
         self._linear = Linear(size, size)
@@ -199,6 +243,7 @@ class MultiLoadingLinearNet(fluid.dygraph.Layer):
 
 
 class LinearNetReturnHidden(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -213,6 +258,7 @@ class LinearNetReturnHidden(fluid.dygraph.Layer):
 
 
 class LinearNetWithNestOut(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_1 = Linear(in_size, out_size)
@@ -228,16 +274,27 @@ class LinearNetWithNestOut(fluid.dygraph.Layer):
 
 
 class LinearNetWithDictInput(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
 
+<<<<<<< HEAD
     @paddle.jit.to_static(
         input_spec=[
             {'img': InputSpec(shape=[None, 8], dtype='float32', name='img')},
             {'label': InputSpec(shape=[None, 1], dtype='int64', name='label')},
         ]
     )
+=======
+    @paddle.jit.to_static(input_spec=[{
+        'img':
+        InputSpec(shape=[None, 8], dtype='float32', name='img')
+    }, {
+        'label':
+        InputSpec(shape=[None, 1], dtype='int64', name='label')
+    }])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, img, label):
         out = self._linear(img['img'])
         # not return loss to avoid prune output
@@ -246,6 +303,7 @@ class LinearNetWithDictInput(paddle.nn.Layer):
 
 
 class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear = Linear(in_size, out_size)
@@ -256,6 +314,7 @@ class LinearNetWithDictInputNoPrune(paddle.nn.Layer):
 
 
 class EmptyLayer(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -265,6 +324,7 @@ class EmptyLayer(paddle.nn.Layer):
 
 
 class NoParamLayer(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -274,6 +334,7 @@ class NoParamLayer(paddle.nn.Layer):
 
 
 class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self._linear_0 = Linear(in_size, out_size)
@@ -295,6 +356,7 @@ class LinearNetWithMultiStaticFunc(fluid.dygraph.Layer):
 
 def train(layer, input_size=784, label_size=1):
     # create optimizer
+<<<<<<< HEAD
     sgd = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters()
     )
@@ -303,6 +365,14 @@ def train(layer, input_size=784, label_size=1):
     train_loader.set_batch_generator(
         random_batch_reader(input_size, label_size)
     )
+=======
+    sgd = fluid.optimizer.SGDOptimizer(learning_rate=0.01,
+                                       parameter_list=layer.parameters())
+    # create data loader
+    train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+    train_loader.set_batch_generator(random_batch_reader(
+        input_size, label_size))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # train
     for data in train_loader():
         img, label = data
@@ -321,6 +391,7 @@ def train(layer, input_size=784, label_size=1):
 
 def train_with_label(layer, input_size=784, label_size=1):
     # create optimizer
+<<<<<<< HEAD
     sgd = fluid.optimizer.SGDOptimizer(
         learning_rate=0.01, parameter_list=layer.parameters()
     )
@@ -329,6 +400,14 @@ def train_with_label(layer, input_size=784, label_size=1):
     train_loader.set_batch_generator(
         random_batch_reader(input_size, label_size)
     )
+=======
+    sgd = fluid.optimizer.SGDOptimizer(learning_rate=0.01,
+                                       parameter_list=layer.parameters())
+    # create data loader
+    train_loader = fluid.io.DataLoader.from_generator(capacity=5)
+    train_loader.set_batch_generator(random_batch_reader(
+        input_size, label_size))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # train
     for data in train_loader():
         img, label = data
@@ -343,11 +422,17 @@ def train_with_label(layer, input_size=784, label_size=1):
 
 
 class TestJitSaveLoad(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load/model"
         )
+=======
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "test_jit_save_load/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
@@ -362,9 +447,15 @@ class TestJitSaveLoad(unittest.TestCase):
         example_inputs, layer, _ = train(layer)
         final_model_path = model_path if model_path else self.model_path
         orig_input_types = [type(x) for x in example_inputs]
+<<<<<<< HEAD
         paddle.jit.save(
             layer=layer, path=final_model_path, input_spec=example_inputs
         )
+=======
+        paddle.jit.save(layer=layer,
+                        path=final_model_path,
+                        input_spec=example_inputs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         new_input_types = [type(x) for x in example_inputs]
         self.assertEqual(orig_input_types, new_input_types)
         return layer
@@ -383,11 +474,18 @@ class TestJitSaveLoad(unittest.TestCase):
         infer_layer.eval()
         # inference & compare
         x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
             np.random.random((1, 784)).astype('float32')
         )
         np.testing.assert_array_equal(
             train_layer(x).numpy(), infer_layer(x).numpy()
         )
+=======
+            np.random.random((1, 784)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x).numpy(),
+                           infer_layer(x).numpy()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def load_and_finetune(self, train_layer, load_train_layer):
         train_layer.train()
@@ -411,6 +509,7 @@ class TestJitSaveLoad(unittest.TestCase):
         new_layer.eval()
         # inference & compare
         x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
             np.random.random((1, 784)).astype('float32')
         )
         np.testing.assert_array_equal(
@@ -421,18 +520,34 @@ class TestJitSaveLoad(unittest.TestCase):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load.no_path/model_path"
         )
+=======
+            np.random.random((1, 784)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x).numpy(),
+                           new_layer(x).numpy()))
+
+    def test_load_dygraph_no_path(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_load.no_path/model_path")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         with self.assertRaises(ValueError):
             model_dict, _ = fluid.dygraph.load_dygraph(model_path)
 
     def test_jit_load_no_path(self):
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, "test_jit_save_load.no_path/model_path"
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            "test_jit_save_load.no_path/model_path")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         with self.assertRaises(ValueError):
             loaded_layer = paddle.jit.load(path)
 
 
 class TestSaveLoadWithNestOut(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         fluid.enable_dygraph()
@@ -464,6 +579,7 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
+
     def test_dict_input(self):
         # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
@@ -475,6 +591,7 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
         #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
         self.assertEqual(len(net.forward.concrete_program.inputs), 3)
         temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         path = os.path.join(
             temp_dir.name, "test_jit_save_load_with_dict_input/model"
         )
@@ -486,6 +603,19 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
                 {'img': InputSpec(shape=[None, 8], dtype='float32', name='img')}
             ],
         )
+=======
+        path = os.path.join(temp_dir.name,
+                            "test_jit_save_load_with_dict_input/model")
+        # prune inputs
+        paddle.jit.save(layer=net,
+                        path=path,
+                        input_spec=[{
+                            'img':
+                            InputSpec(shape=[None, 8],
+                                      dtype='float32',
+                                      name='img')
+                        }])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         img = paddle.randn(shape=[4, 8], dtype='float32')
         loaded_net = paddle.jit.load(path)
@@ -498,10 +628,12 @@ class TestSaveLoadWithDictInput(unittest.TestCase):
 
 
 class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
+
     def test_dict_input(self):
         net = LinearNetWithDictInputNoPrune(8, 8)
         temp_dir = tempfile.TemporaryDirectory()
         path = os.path.join(
+<<<<<<< HEAD
             temp_dir.name, "test_jit_save_load_with_dict_input_no_prune/model"
         )
         # prune inputs
@@ -519,6 +651,22 @@ class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
                 }
             ],
         )
+=======
+            temp_dir.name, "test_jit_save_load_with_dict_input_no_prune/model")
+        # prune inputs
+        paddle.jit.save(layer=net,
+                        path=path,
+                        input_spec=[{
+                            'img':
+                            InputSpec(shape=[None, 8],
+                                      dtype='float32',
+                                      name='img'),
+                            'img2':
+                            InputSpec(shape=[None, 8],
+                                      dtype='float32',
+                                      name='img2')
+                        }])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         img = paddle.randn(shape=[4, 8], dtype='float32')
         img2 = paddle.randn(shape=[4, 8], dtype='float32')
@@ -530,6 +678,7 @@ class TestSaveLoadWithDictInputNoPrune(unittest.TestCase):
 
 
 class TestSaveLoadWithInputSpec(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         fluid.enable_dygraph()
@@ -541,6 +690,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
     def test_with_input_spec(self):
         net = LinearNetReturnLoss(8, 8)
         # set x.shape = [None, 8]
+<<<<<<< HEAD
         net.forward = declarative(
             net.forward, input_spec=[InputSpec([None, 8], name='x')]
         )
@@ -548,6 +698,13 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         model_path = os.path.join(
             self.temp_dir.name, "input_spec.output_spec/model"
         )
+=======
+        net.forward = declarative(net.forward,
+                                  input_spec=[InputSpec([None, 8], name='x')])
+
+        model_path = os.path.join(self.temp_dir.name,
+                                  "input_spec.output_spec/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 1)
         input_x = net.forward.inputs[0]
@@ -568,9 +725,14 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
     def test_multi_in_out(self):
         net = LinearNetMultiInput(8, 8)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout.output_spec1/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "multi_inout.output_spec1/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # 1. check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
@@ -594,9 +756,14 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_x, pred_y = infer_layer(x, y)
 
         # 1. prune y and loss
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout.output_spec2/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "multi_inout.output_spec2/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output_spec = net.forward.outputs[:1]
         paddle.jit.save(net, model_path, [input_x], output_spec=output_spec)
         # 2. load again
@@ -610,9 +777,14 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
     def test_multi_in_out1(self):
         net = LinearNetMultiInput1(8, 8)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout1.output_spec1/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "multi_inout1.output_spec1/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # 1. check inputs and outputs
         self.assertTrue(len(net.forward.inputs) == 2)
         input_x = net.forward.inputs[0]
@@ -636,9 +808,14 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
         pred_x, pred_y = infer_layer(x, y)
 
         # 1. prune y and loss
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "multi_inout1.output_spec2/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "multi_inout1.output_spec2/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output_spec = net.forward.outputs[:1]
         paddle.jit.save(net, model_path, (input_x,), output_spec=output_spec)
         # 2. load again
@@ -651,6 +828,7 @@ class TestSaveLoadWithInputSpec(unittest.TestCase):
 
 
 class TestJitSaveLoadConfig(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         fluid.enable_dygraph()
@@ -676,6 +854,7 @@ class TestJitSaveLoadConfig(unittest.TestCase):
             adam.minimize(loss)
             train_layer.clear_gradients()
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "save_load_config.output_spec"
         )
@@ -686,15 +865,31 @@ class TestJitSaveLoadConfig(unittest.TestCase):
             input_spec=[x],
             output_spec=output_spec,
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "save_load_config.output_spec")
+        output_spec = [out]
+        paddle.jit.save(layer=train_layer,
+                        path=model_path,
+                        input_spec=[x],
+                        output_spec=output_spec)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         train_layer.eval()
         infer_layer = paddle.jit.load(model_path)
         x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
             np.random.random((4, 8)).astype('float32')
         )
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
+=======
+            np.random.random((4, 8)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x)[0].numpy(),
+                           infer_layer(x).numpy()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_save_no_support_config_error(self):
         layer = LinearNet(784, 1)
@@ -719,12 +914,18 @@ class TestJitSaveLoadConfig(unittest.TestCase):
 
 
 class TestJitMultipleLoading(unittest.TestCase):
+
     def setUp(self):
         self.linear_size = 4
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.model_path = os.path.join(
             self.temp_dir.name, "jit_multi_load/model"
         )
+=======
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "jit_multi_load/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
@@ -739,9 +940,15 @@ class TestJitMultipleLoading(unittest.TestCase):
     def train_and_save_orig_model(self):
         layer = LinearNet(self.linear_size, self.linear_size)
         example_inputs, layer, _ = train(layer, self.linear_size, 1)
+<<<<<<< HEAD
         paddle.jit.save(
             layer=layer, path=self.model_path, input_spec=example_inputs
         )
+=======
+        paddle.jit.save(layer=layer,
+                        path=self.model_path,
+                        input_spec=example_inputs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_load_model_retransform_inference(self):
         multi_loaded_layer = MultiLoadingLinearNet(
@@ -755,12 +962,18 @@ class TestJitMultipleLoading(unittest.TestCase):
 
 
 class TestJitPruneModelAndLoad(unittest.TestCase):
+
     def setUp(self):
         self.linear_size = 4
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.model_path = os.path.join(
             self.temp_dir.name, "jit_prune_model_and_load/model"
         )
+=======
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "jit_prune_model_and_load/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # enable dygraph mode
         fluid.enable_dygraph()
         # config seed
@@ -785,12 +998,19 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
             train_layer.clear_gradients()
 
         output_spec = [hidden]
+<<<<<<< HEAD
         paddle.jit.save(
             layer=train_layer,
             path=self.model_path,
             input_spec=[x],
             output_spec=output_spec,
         )
+=======
+        paddle.jit.save(layer=train_layer,
+                        path=self.model_path,
+                        input_spec=[x],
+                        output_spec=output_spec)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return train_layer
 
@@ -801,11 +1021,18 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
         infer_layer = paddle.jit.load(self.model_path)
 
         x = fluid.dygraph.to_variable(
+<<<<<<< HEAD
             np.random.random((4, 8)).astype('float32')
         )
         np.testing.assert_array_equal(
             train_layer(x)[0].numpy(), infer_layer(x).numpy()
         )
+=======
+            np.random.random((4, 8)).astype('float32'))
+        self.assertTrue(
+            np.array_equal(train_layer(x)[0].numpy(),
+                           infer_layer(x).numpy()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_load_var_not_in_extra_var_info(self):
         self.train_and_save()
@@ -823,6 +1050,7 @@ class TestJitPruneModelAndLoad(unittest.TestCase):
 
 
 class TestJitSaveMultiCases(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         fluid.enable_dygraph()
@@ -866,9 +1094,14 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         train(layer)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_no_prune_to_static_after_train/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_no_prune_to_static_after_train/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer, model_path)
 
         self.verify_inference_correctness(layer, model_path)
@@ -876,9 +1109,14 @@ class TestJitSaveMultiCases(unittest.TestCase):
     def test_no_prune_to_static_no_train(self):
         layer = LinearNetWithInputSpec(784, 1)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_no_prune_to_static_no_train/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_no_prune_to_static_no_train/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer, model_path)
 
         self.verify_inference_correctness(layer, model_path)
@@ -889,6 +1127,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train(layer)
 
         model_path = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "test_no_prune_no_to_static_after_train/model"
         )
         paddle.jit.save(
@@ -896,6 +1135,13 @@ class TestJitSaveMultiCases(unittest.TestCase):
             model_path,
             input_spec=[InputSpec(shape=[None, 784], dtype='float32')],
         )
+=======
+            self.temp_dir.name, "test_no_prune_no_to_static_after_train/model")
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, model_path)
 
@@ -906,8 +1152,12 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         model_path = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             "test_no_prune_no_to_static_after_train_with_examples/model",
         )
+=======
+            "test_no_prune_no_to_static_after_train_with_examples/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer=layer, path=model_path, input_spec=example_inputs)
 
         self.verify_inference_correctness(layer, model_path)
@@ -915,6 +1165,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
     def test_no_prune_no_to_static_no_train(self):
         layer = LinearNetNotDeclarative(784, 1)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_no_prune_no_to_static_no_train/model"
         )
@@ -923,6 +1174,14 @@ class TestJitSaveMultiCases(unittest.TestCase):
             model_path,
             input_spec=[InputSpec(shape=[None, 784], dtype='float32')],
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_no_prune_no_to_static_no_train/model")
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, model_path)
 
@@ -931,6 +1190,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         out = train_with_label(layer)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_prune_to_static_after_train/model"
         )
@@ -946,10 +1206,27 @@ class TestJitSaveMultiCases(unittest.TestCase):
         self.verify_inference_correctness(
             layer, model_path, with_label_and_loss=True
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_prune_to_static_after_train/model")
+        paddle.jit.save(layer,
+                        model_path,
+                        input_spec=[
+                            InputSpec(shape=[None, 784],
+                                      dtype='float32',
+                                      name="image")
+                        ],
+                        output_spec=[out])
+
+        self.verify_inference_correctness(layer,
+                                          model_path,
+                                          with_label_and_loss=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune_to_static_no_train(self):
         layer = LinerNetWithLabel(784, 1)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_prune_to_static_no_train/model"
         )
@@ -968,10 +1245,30 @@ class TestJitSaveMultiCases(unittest.TestCase):
         self.verify_inference_correctness(
             layer, model_path, with_label_and_loss=True
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_prune_to_static_no_train/model")
+        # TODO: no train, cannot get output_spec var here
+        # now only can use index
+        output_spec = layer.forward.outputs[:1]
+        paddle.jit.save(layer,
+                        model_path,
+                        input_spec=[
+                            InputSpec(shape=[None, 784],
+                                      dtype='float32',
+                                      name="image")
+                        ],
+                        output_spec=output_spec)
+
+        self.verify_inference_correctness(layer,
+                                          model_path,
+                                          with_label_and_loss=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune_input_to_static_no_train(self):
         layer = LinerNetWithPruneInput(784, 1)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_prune_input_to_static_no_train/model"
         )
@@ -982,6 +1279,17 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 InputSpec(shape=[None, 784], dtype='float32', name="image")
             ],
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_prune_input_to_static_no_train/model")
+        paddle.jit.save(layer,
+                        model_path,
+                        input_spec=[
+                            InputSpec(shape=[None, 784],
+                                      dtype='float32',
+                                      name="image")
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, model_path, with_label=True)
 
@@ -990,6 +1298,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
 
         model_path = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             "test_prune_useless_input_to_static_no_train/model",
         )
         paddle.jit.save(
@@ -999,6 +1308,16 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 InputSpec(shape=[None, 784], dtype='float32', name="image")
             ],
         )
+=======
+            "test_prune_useless_input_to_static_no_train/model")
+        paddle.jit.save(layer,
+                        model_path,
+                        input_spec=[
+                            InputSpec(shape=[None, 784],
+                                      dtype='float32',
+                                      name="image")
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, model_path, with_label=True)
 
@@ -1008,6 +1327,7 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train(layer)
 
         model_path = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "test_no_prune_input_spec_name_warning/model"
         )
         paddle.jit.save(
@@ -1022,6 +1342,20 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 InputSpec(shape=[None, 784], dtype='float32', name='feed_input')
             ],
         )
+=======
+            self.temp_dir.name, "test_no_prune_input_spec_name_warning/model")
+        paddle.jit.save(
+            layer,
+            model_path,
+            input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+        paddle.jit.save(layer,
+                        model_path,
+                        input_spec=[
+                            InputSpec(shape=[None, 784],
+                                      dtype='float32',
+                                      name='feed_input')
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, model_path)
 
@@ -1031,8 +1365,12 @@ class TestJitSaveMultiCases(unittest.TestCase):
         train(layer)
 
         model_path = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "test_not_prune_output_spec_name_warning/model"
         )
+=======
+            self.temp_dir.name, "test_not_prune_output_spec_name_warning/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
         paddle.jit.save(layer, model_path, output_spec=[out])
 
@@ -1041,13 +1379,19 @@ class TestJitSaveMultiCases(unittest.TestCase):
     def test_prune_input_spec_name_error(self):
         layer = LinerNetWithLabel(784, 1)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_prune_input_spec_name_error/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_prune_input_spec_name_error/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         with self.assertRaises(ValueError):
             paddle.jit.save(
                 layer,
                 model_path,
+<<<<<<< HEAD
                 input_spec=[InputSpec(shape=[None, 784], dtype='float32')],
             )
         with self.assertRaises(ValueError):
@@ -1060,12 +1404,24 @@ class TestJitSaveMultiCases(unittest.TestCase):
                     )
                 ],
             )
+=======
+                input_spec=[InputSpec(shape=[None, 784], dtype='float32')])
+        with self.assertRaises(ValueError):
+            paddle.jit.save(layer,
+                            model_path,
+                            input_spec=[
+                                InputSpec(shape=[None, 784],
+                                          dtype='float32',
+                                          name='feed_input')
+                            ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune_output_spec_name_error(self):
         layer = LinerNetWithLabel(784, 1)
 
         train_with_label(layer)
 
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_prune_to_static_after_train/model"
         )
@@ -1079,14 +1435,34 @@ class TestJitSaveMultiCases(unittest.TestCase):
                 ],
                 output_spec=[out],
             )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_prune_to_static_after_train/model")
+        out = paddle.to_tensor(np.random.random((1, 1)).astype('float'))
+        with self.assertRaises(ValueError):
+            paddle.jit.save(layer,
+                            model_path,
+                            input_spec=[
+                                InputSpec(shape=[None, 784],
+                                          dtype='float32',
+                                          name="image")
+                            ],
+                            output_spec=[out])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestJitSaveLoadEmptyLayer(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.model_path = os.path.join(
             self.temp_dir.name, "jit_save_load_empty_layer/model"
         )
+=======
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "jit_save_load_empty_layer/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # enable dygraph mode
         paddle.disable_static()
 
@@ -1104,11 +1480,17 @@ class TestJitSaveLoadEmptyLayer(unittest.TestCase):
 
 
 class TestJitSaveLoadNoParamLayer(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.model_path = os.path.join(
             self.temp_dir.name, "jit_save_load_no_param_layer/model"
         )
+=======
+        self.model_path = os.path.join(self.temp_dir.name,
+                                       "jit_save_load_no_param_layer/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # enable dygraph mode
         paddle.disable_static()
 
@@ -1127,6 +1509,7 @@ class TestJitSaveLoadNoParamLayer(unittest.TestCase):
 
 
 class TestJitSaveLoadMultiMethods(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -1137,8 +1520,12 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
 
     def test_jit_save_load_inference(self):
         model_path_inference = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "jit_save_load_multi_methods/model"
         )
+=======
+            self.temp_dir.name, "jit_save_load_multi_methods/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         IMAGE_SIZE = 224
         layer = LinearNetWithMultiStaticFunc(IMAGE_SIZE, 10)
         inps = paddle.randn([1, IMAGE_SIZE])
@@ -1150,6 +1537,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         load_net = paddle.jit.load(model_path_inference)
         for func, result in result_origin.items():
             self.assertTrue(
+<<<<<<< HEAD
                 float(
                     (result - getattr(load_net, func, None)(inps)).abs().max()
                 )
@@ -1170,6 +1558,23 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
         model_path_inference = os.path.join(
             self.temp_dir.name, "jit_save_load_parse_name/model"
         )
+=======
+                float((result -
+                       getattr(load_net, func, None)(inps)).abs().max()) < 1e-5)
+
+    def test_jit_save_load_multi_methods_inputspec(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  'jit_save_load_multi_methods/model')
+        layer = LinearNetWithMultiStaticFunc(784, 1)
+        with self.assertRaises(ValueError):
+            paddle.jit.save(layer,
+                            model_path,
+                            input_spec=[InputSpec(shape=[None, 784])])
+
+    def test_parse_name(self):
+        model_path_inference = os.path.join(self.temp_dir.name,
+                                            "jit_save_load_parse_name/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         IMAGE_SIZE = 224
         layer = LinearNet(IMAGE_SIZE, 1)
         inps = paddle.randn([1, IMAGE_SIZE])
@@ -1182,6 +1587,7 @@ class TestJitSaveLoadMultiMethods(unittest.TestCase):
 
 
 class LayerSaved(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size):
         super().__init__()
         self.hidden = 100
@@ -1203,6 +1609,10 @@ class LayerSaved(paddle.nn.Layer):
 
 
 class Net(paddle.nn.Layer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
@@ -1255,6 +1665,10 @@ class Net(paddle.nn.Layer):
 
 
 class NetTensor(paddle.nn.Layer):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         super().__init__()
         self.fc1 = paddle.nn.Linear(4, 4)
@@ -1275,6 +1689,10 @@ class NetTensor(paddle.nn.Layer):
 
 
 class TestJitSaveCombineProperty(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -1284,6 +1702,7 @@ class TestJitSaveCombineProperty(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_combine_property(self):
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_combine/model"
         )
@@ -1297,6 +1716,19 @@ class TestJitSaveCombineProperty(unittest.TestCase):
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_combine/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+        # Use new namespace
+        with unique_name.guard():
+            net = Net()
+        #save
+        paddle.jit.save(net, model_path, combine_params=True)
+
+    def test_jit_save_tensor_property(self):
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_combine/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # Use new namespace
         with unique_name.guard():
             net = NetTensor()
@@ -1305,6 +1737,7 @@ class TestJitSaveCombineProperty(unittest.TestCase):
 
 
 class LayerLoadFinetune(paddle.nn.Layer):
+
     def __init__(self, in_size, out_size, load_path):
         super().__init__()
         # Test duplicate name
@@ -1338,6 +1771,7 @@ class LayerLoadFinetune(paddle.nn.Layer):
 
 
 class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -1348,14 +1782,19 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
 
     def test_save_load_finetune_load(self):
         model_path = os.path.join(
+<<<<<<< HEAD
             self.temp_dir.name, "test_jit_save_load_save_without_running/model"
         )
+=======
+            self.temp_dir.name, "test_jit_save_load_save_without_running/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         IMAGE_SIZE = 224
         inps0 = paddle.randn([1, IMAGE_SIZE])
         inps1 = paddle.randn([2, IMAGE_SIZE])
         # Use new namespace
         with unique_name.guard():
             layer_save = LayerSaved(IMAGE_SIZE, IMAGE_SIZE)
+<<<<<<< HEAD
         # save
         paddle.jit.save(
             layer_save,
@@ -1366,11 +1805,21 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
                 )
             ],
         )
+=======
+        #save
+        paddle.jit.save(layer_save,
+                        model_path,
+                        input_spec=[
+                            paddle.static.InputSpec(shape=[None, IMAGE_SIZE],
+                                                    dtype='float32')
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         result_00 = layer_save(inps0)
         result_01 = layer_save(inps1)
         # load and save without running
         with unique_name.guard():
             layer_load = paddle.jit.load(model_path)
+<<<<<<< HEAD
             paddle.jit.save(
                 layer_load,
                 model_path,
@@ -1381,6 +1830,15 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
                 ],
             )
         # reload
+=======
+            paddle.jit.save(layer_load,
+                            model_path,
+                            input_spec=[
+                                paddle.static.InputSpec(
+                                    shape=[None, IMAGE_SIZE], dtype='float32')
+                            ])
+        #reload
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         layer_reload = paddle.jit.load(model_path)
         result_10 = layer_reload(inps0)
         result_11 = layer_reload(inps1)
@@ -1390,6 +1848,7 @@ class TestJitSaveLoadSaveWithoutRunning(unittest.TestCase):
 
 
 class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
+
     def setUp(self):
         # enable dygraph mode
         paddle.disable_static()
@@ -1399,9 +1858,14 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_save_load_finetune_load(self):
+<<<<<<< HEAD
         model_path = os.path.join(
             self.temp_dir.name, "test_jit_save_load_finetune_load/model"
         )
+=======
+        model_path = os.path.join(self.temp_dir.name,
+                                  "test_jit_save_load_finetune_load/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         IMAGE_SIZE = 224
         inps0 = paddle.randn([1, IMAGE_SIZE])
         inps1 = paddle.randn([2, IMAGE_SIZE])
@@ -1435,6 +1899,7 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
 # So divided into three TestCase: TestJitSaveLoadFunctionCase1,
 # TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
 class TestJitSaveLoadFunctionCase1(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1443,13 +1908,19 @@ class TestJitSaveLoadFunctionCase1(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_static_function(self):
+
         @paddle.jit.to_static
         def fun(inputs):
             return paddle.tanh(inputs)
 
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, 'test_jit_save_load_function_1/func'
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            'test_jit_save_load_function_1/func')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         inps = paddle.rand([3, 6])
         origin = fun(inps)
 
@@ -1461,6 +1932,7 @@ class TestJitSaveLoadFunctionCase1(unittest.TestCase):
 
 
 class TestJitSaveLoadFunctionCase2(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1469,6 +1941,7 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_function_input_spec(self):
+<<<<<<< HEAD
         @paddle.jit.to_static(
             input_spec=[
                 InputSpec(shape=[None, 6], dtype='float32', name='x'),
@@ -1480,6 +1953,17 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
         path = os.path.join(
             self.temp_dir.name, 'test_jit_save_load_function_2/func'
         )
+=======
+
+        @paddle.jit.to_static(input_spec=[
+            InputSpec(shape=[None, 6], dtype='float32', name='x'),
+        ])
+        def fun(inputs):
+            return paddle.nn.functional.relu(inputs)
+
+        path = os.path.join(self.temp_dir.name,
+                            'test_jit_save_load_function_2/func')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         inps = paddle.rand([3, 6])
         origin = fun(inps)
 
@@ -1490,6 +1974,7 @@ class TestJitSaveLoadFunctionCase2(unittest.TestCase):
 
 
 class TestJitSaveLoadFunctionCase3(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1498,9 +1983,11 @@ class TestJitSaveLoadFunctionCase3(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_function_function(self):
+
         def fun(inputs):
             return paddle.tanh(inputs)
 
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, 'test_jit_save_load_function_3/func'
         )
@@ -1514,6 +2001,20 @@ class TestJitSaveLoadFunctionCase3(unittest.TestCase):
                 InputSpec(shape=[None, 6], dtype='float32', name='x'),
             ],
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            'test_jit_save_load_function_3/func')
+        inps = paddle.rand([3, 6])
+        origin = fun(inps)
+
+        paddle.jit.save(fun,
+                        path,
+                        input_spec=[
+                            InputSpec(shape=[None, 6],
+                                      dtype='float32',
+                                      name='x'),
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         load_func = paddle.jit.load(path)
 
         load_result = load_func(inps)
@@ -1521,6 +2022,7 @@ class TestJitSaveLoadFunctionCase3(unittest.TestCase):
 
 
 class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1529,7 +2031,9 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_function(self):
+
         class LinearNet(paddle.nn.Layer):
+
             def __init__(self):
                 super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
@@ -1545,6 +2049,7 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
         inps = paddle.rand([3, 5])
         origin = layer.anothor_forward(inps)
 
+<<<<<<< HEAD
         func = paddle.jit.to_static(
             layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])]
         )
@@ -1552,6 +2057,13 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
             self.temp_dir.name,
             'test_jit_save_load_function_with_params_case1/func',
         )
+=======
+        func = paddle.jit.to_static(layer.anothor_forward,
+                                    [paddle.static.InputSpec(shape=[-1, 5])])
+        path = os.path.join(
+            self.temp_dir.name,
+            'test_jit_save_load_function_with_params_case1/func')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(func, path)
         load_func = paddle.jit.load(path)
 
@@ -1560,6 +2072,7 @@ class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
 
 
 class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1568,7 +2081,9 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_function(self):
+
         class LinearNet(paddle.nn.Layer):
+
             def __init__(self):
                 super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
@@ -1586,8 +2101,12 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
 
         path = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             'test_jit_save_load_function_with_params_case2/func',
         )
+=======
+            'test_jit_save_load_function_with_params_case2/func')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer.anothor_forward, path)
         origin_result = layer.anothor_forward(inps)
         load_func = paddle.jit.load(path)
@@ -1600,6 +2119,7 @@ class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
 
 
 class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -1608,7 +2128,9 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_jit_save_load_function(self):
+
         class LinearNet(paddle.nn.Layer):
+
             def __init__(self):
                 super().__init__()
                 self._linear = paddle.nn.Linear(5, 6)
@@ -1627,8 +2149,12 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
 
         path = os.path.join(
             self.temp_dir.name,
+<<<<<<< HEAD
             'test_jit_save_load_function_with_params_case3/func',
         )
+=======
+            'test_jit_save_load_function_with_params_case3/func')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer.anothor_forward, path)
         load_func = paddle.jit.load(path)
 
@@ -1637,6 +2163,10 @@ class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
 
 
 class TestJitSaveLoadDataParallel(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -1662,12 +2192,20 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
     def test_jit_save_data_parallel_with_inputspec(self):
         layer = LinearNetNotDeclarative(784, 1)
         layer = paddle.DataParallel(layer)
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, "jit_save_data_parallel_with_inputspec/model"
         )
         paddle.jit.save(
             layer=layer, path=path, input_spec=[InputSpec(shape=[None, 784])]
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            "jit_save_data_parallel_with_inputspec/model")
+        paddle.jit.save(layer=layer,
+                        path=path,
+                        input_spec=[InputSpec(shape=[None, 784])])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.verify_inference_correctness(layer, path)
 
@@ -1675,9 +2213,14 @@ class TestJitSaveLoadDataParallel(unittest.TestCase):
         layer = LinearNetWithInputSpec(784, 1)
         layer = paddle.DataParallel(layer)
 
+<<<<<<< HEAD
         path = os.path.join(
             self.temp_dir.name, "jit_save_data_parallel_with_to_static/model"
         )
+=======
+        path = os.path.join(self.temp_dir.name,
+                            "jit_save_data_parallel_with_to_static/model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.jit.save(layer, path)
 
         self.verify_inference_correctness(layer, path)
@@ -1688,17 +2231,28 @@ class InputSepcLayer(paddle.nn.Layer):
     A layer with InputSpec to test InputSpec compatibility
     '''
 
+<<<<<<< HEAD
     @paddle.jit.to_static(
         input_spec=[
             InputSpec(shape=[None, 8], dtype='float32', name='x'),
             InputSpec(shape=[None, 1], dtype='float64', name='y'),
         ]
     )
+=======
+    @paddle.jit.to_static(input_spec=[
+        InputSpec(shape=[None, 8], dtype='float32', name='x'),
+        InputSpec(shape=[None, 1], dtype='float64', name='y')
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def forward(self, x, y):
         return x, y
 
 
 class TestInputSpecCompatibility(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -1719,9 +2273,14 @@ class TestInputSpecCompatibility(unittest.TestCase):
 
     def test_jit_save_compatible_input_sepc(self):
         layer = InputSepcLayer()
+<<<<<<< HEAD
         save_dir = os.path.join(
             self.temp_dir.name, "jit_save_compatible_input_spec"
         )
+=======
+        save_dir = os.path.join(self.temp_dir.name,
+                                "jit_save_compatible_input_spec")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         path = save_dir + "/model"
 
         paddle.jit.save(layer=layer, path=path)
@@ -1729,6 +2288,7 @@ class TestInputSpecCompatibility(unittest.TestCase):
         self._assert_input_spec_layer_return(layer, no_input_spec_layer)
         shutil.rmtree(save_dir)
 
+<<<<<<< HEAD
         paddle.jit.save(
             layer=layer,
             path=path,
@@ -1737,10 +2297,23 @@ class TestInputSpecCompatibility(unittest.TestCase):
                 InputSpec(shape=[None, 1], dtype='float64', name='y'),
             ],
         )
+=======
+        paddle.jit.save(layer=layer,
+                        path=path,
+                        input_spec=[
+                            InputSpec(shape=[None, 8],
+                                      dtype='float32',
+                                      name='x'),
+                            InputSpec(shape=[None, 1],
+                                      dtype='float64',
+                                      name='y')
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         same_input_spec_layer = paddle.jit.load(path)
         self._assert_input_spec_layer_return(layer, same_input_spec_layer)
         shutil.rmtree(save_dir)
 
+<<<<<<< HEAD
         paddle.jit.save(
             layer=layer,
             path=path,
@@ -1749,19 +2322,33 @@ class TestInputSpecCompatibility(unittest.TestCase):
                 InputSpec(shape=[8, -1], dtype='float64'),
             ],
         )
+=======
+        paddle.jit.save(layer=layer,
+                        path=path,
+                        input_spec=[
+                            InputSpec(shape=[8, 8], dtype='float32'),
+                            InputSpec(shape=[8, -1], dtype='float64')
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         compatible_input_spec_layer = paddle.jit.load(path)
         self._assert_input_spec_layer_return(layer, compatible_input_spec_layer)
         shutil.rmtree(save_dir)
 
     def test_jit_save_incompatible_input_sepc(self):
         layer = InputSepcLayer()
+<<<<<<< HEAD
         save_dir = os.path.join(
             self.temp_dir.name, "jit_save_compatible_input_spec"
         )
+=======
+        save_dir = os.path.join(self.temp_dir.name,
+                                "jit_save_compatible_input_spec")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         path = save_dir + "/model"
 
         with self.assertRaises(ValueError):
             # type mismatch
+<<<<<<< HEAD
             paddle.jit.save(
                 layer=layer,
                 path=path,
@@ -1792,6 +2379,32 @@ class TestInputSpecCompatibility(unittest.TestCase):
                     InputSpec(shape=[None, 2], dtype='float64'),
                 ],
             )
+=======
+            paddle.jit.save(layer=layer,
+                            path=path,
+                            input_spec=[
+                                InputSpec(shape=[None, 8], dtype='float64'),
+                                InputSpec(shape=[None, 1], dtype='float64')
+                            ])
+
+        with self.assertRaises(ValueError):
+            # shape len mismatch
+            paddle.jit.save(layer=layer,
+                            path=path,
+                            input_spec=[
+                                InputSpec(shape=[None, 8, 1], dtype='float32'),
+                                InputSpec(shape=[None, 1], dtype='float64')
+                            ])
+
+        with self.assertRaises(ValueError):
+            # shape mismatch
+            paddle.jit.save(layer=layer,
+                            path=path,
+                            input_spec=[
+                                InputSpec(shape=[None, 8], dtype='float32'),
+                                InputSpec(shape=[None, 2], dtype='float64')
+                            ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if os.path.exists(save_dir):
             shutil.rmtree(save_dir)
 

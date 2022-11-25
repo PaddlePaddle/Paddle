@@ -128,6 +128,7 @@ def test(test_case, op_str, use_gpu=False):
 
 
 class TestCPUNormal(unittest.TestCase):
+
     def test_inf(self):
         test(self, 'isinf')
 
@@ -139,6 +140,7 @@ class TestCPUNormal(unittest.TestCase):
 
 
 class TestCUDANormal(unittest.TestCase):
+
     def test_inf(self):
         test(self, 'isinf', True)
 
@@ -150,6 +152,7 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+
     def test_bad_input(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):

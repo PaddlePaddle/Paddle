@@ -222,6 +222,7 @@ class Link:
 
 
 class Machine:
+
     def __init__(self, id):
         self._id = id
         self._hostname = None
@@ -302,6 +303,7 @@ class Machine:
 
 
 class AlphaLatency:
+
     def __init__(self, alpha_latency):
         assert isinstance(alpha_latency, dict)
         self._base = alpha_latency.get("base", None)
@@ -428,6 +430,7 @@ class Cluster:
         # which have the same number accelerators.
         self._num_devices_per_machine = None
 
+<<<<<<< HEAD
     def gen_default_config_cluster(
         self,
         gpu_model="V100",
@@ -443,6 +446,21 @@ class Cluster:
         cpu_dp_gflops=75,
         cpu_sp_gflops=150,
     ):
+=======
+    def gen_default_config_cluster(self,
+                                   gpu_model="V100",
+                                   cpu_model="6271C",
+                                   node_count=1,
+                                   device_count=1,
+                                   gpu_memory=32,
+                                   cpu_memory=503,
+                                   inter_bandwidth=24,
+                                   intra_bandwidth=235,
+                                   gpu_dp_gflops=7800,
+                                   gpu_sp_gflops=15700,
+                                   cpu_dp_gflops=75,
+                                   cpu_sp_gflops=150):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """Generate cluster by default config."""
         gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
         xpu_models = ["XPU"]
@@ -834,6 +852,7 @@ def get_default_cluster():
         global_device_count = int(global_device_count)
         assert global_device_count % local_device_count == 0
         node_count = int(global_device_count) // local_device_count
+<<<<<<< HEAD
     print(
         "Node Count: ",
         node_count,
@@ -846,4 +865,15 @@ def get_default_cluster():
     cluster.gen_default_config_cluster(
         node_count=node_count, device_count=local_device_count
     )
+=======
+    print("Node Count: ",
+          node_count,
+          "Local Device Size: ",
+          local_device_count,
+          "World size: ",
+          paddle.distributed.get_world_size(),
+          flush=True)
+    cluster.gen_default_config_cluster(node_count=node_count,
+                                       device_count=local_device_count)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return cluster

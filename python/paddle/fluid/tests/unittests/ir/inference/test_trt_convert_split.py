@@ -22,6 +22,7 @@ from typing import Any, Dict, List
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -59,11 +60,17 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
         # Test AxisTensor and SectionsTensorList
         if self.num_input == 0:
+<<<<<<< HEAD
             if (
                 self.dims == 2
                 and attrs[0]['sections'] == [10, 14]
                 and len(outputs) == 2
             ):
+=======
+            if self.dims == 2 and attrs[0]['sections'] == [
+                    10, 14
+            ] and len(outputs) == 2:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return True
             else:
                 return False
@@ -71,6 +78,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.random.random([batch, 3, 3, 24]).astype(np.float32)
@@ -112,6 +120,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                     self.batch = batch
                                     self.num_input = num_input
                                     self.dims = dims
+<<<<<<< HEAD
                                     dics = [
                                         {
                                             "sections": sections,
@@ -163,6 +172,48 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                             "op_attrs": dics[0],
                                         }
                                     ]
+=======
+                                    dics = [{
+                                        "sections": sections,
+                                        "num": num,
+                                        "axis": axis
+                                    }, {}]
+
+                                    dics_intput = [{
+                                        "X": ["split_input"],
+                                        "AxisTensor": ["AxisTensor"],
+                                        "SectionsTensorList": [
+                                            "SectionsTensorList1",
+                                            "SectionsTensorList2"
+                                        ]
+                                    }, {
+                                        "X": ["split_input"]
+                                    }]
+                                    dics_intputs = [{
+                                        "AxisTensor":
+                                        TensorConfig(data_gen=partial(
+                                            generate_AxisTensor, dics)),
+                                        "SectionsTensorList1":
+                                        TensorConfig(data_gen=partial(
+                                            generate_SectionsTensorList1,
+                                            dics)),
+                                        "SectionsTensorList2":
+                                        TensorConfig(data_gen=partial(
+                                            generate_SectionsTensorList2, dics))
+                                    }, {}]
+
+                                    ops_config = [{
+                                        "op_type":
+                                        "split",
+                                        "op_inputs":
+                                        dics_intput[num_input],
+                                        "op_outputs": {
+                                            "Out": Out
+                                        },
+                                        "op_attrs":
+                                        dics[0]
+                                    }]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     ops = self.generate_op_config(ops_config)
                                     program_config = ProgramConfig(
                                         ops=ops,
@@ -180,8 +231,13 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
@@ -250,14 +306,22 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.weights) == 3:
                 return True

@@ -28,6 +28,7 @@ SEED = 2021
 
 
 class TestElementwiseMinOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "elementwise_min"
@@ -51,8 +52,12 @@ class TestElementwiseMinOp(OpTest):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.sgn = np.random.choice([-1, 1], [13, 17]).astype(self.dtype)
         self.y = self.x + self.sgn * np.random.uniform(0.1, 1, [13, 17]).astype(
+<<<<<<< HEAD
             self.dtype
         )
+=======
+            self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.out = np.minimum(self.x, self.y)
         self.axis = -1
 
@@ -64,9 +69,15 @@ class TestElementwiseMinOp(OpTest):
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place, ['X', 'Y'], 'Out', max_relative_error=0.5
             )
+=======
+            self.check_grad_with_place(self.place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=0.5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self.check_grad_with_place(
                 self.place,
@@ -76,6 +87,7 @@ class TestElementwiseMinOp(OpTest):
 
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 ['Y'],
@@ -83,6 +95,12 @@ class TestElementwiseMinOp(OpTest):
                 no_grad_set=set("X"),
                 max_relative_error=0.9,
             )
+=======
+            self.check_grad_with_place(self.place, ['Y'],
+                                       'Out',
+                                       no_grad_set=set("X"),
+                                       max_relative_error=0.9)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self.check_grad_with_place(
                 self.place,
@@ -93,6 +111,7 @@ class TestElementwiseMinOp(OpTest):
 
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 ['X'],
@@ -100,6 +119,12 @@ class TestElementwiseMinOp(OpTest):
                 no_grad_set=set("Y"),
                 max_relative_error=0.1,
             )
+=======
+            self.check_grad_with_place(self.place, ['X'],
+                                       'Out',
+                                       no_grad_set=set("Y"),
+                                       max_relative_error=0.1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self.check_grad_with_place(
                 self.place,
@@ -110,22 +135,32 @@ class TestElementwiseMinOp(OpTest):
 
 
 class TestElementwiseMinOpFp16(TestElementwiseMinOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestElementwiseMinOp_Vector(TestElementwiseMinOp):
+
     def init_input_output(self):
+<<<<<<< HEAD
         self.x = np.random.uniform(1, 2, (100,)).astype(self.dtype)
         self.sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
         self.y = self.x + self.sgn * np.random.uniform(0.1, 1, (100,)).astype(
             self.dtype
         )
+=======
+        self.x = np.random.uniform(1, 2, (100, )).astype(self.dtype)
+        self.sgn = np.random.choice([-1, 1], (100, )).astype(self.dtype)
+        self.y = self.x + self.sgn * np.random.uniform(0.1, 1, (100, )).astype(
+            self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.out = np.minimum(self.x, self.y)
         self.axis = -1
 
 
 class TestElementwiseMinOpFp16_Vector(TestElementwiseMinOp_Vector):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -134,6 +169,7 @@ class TestElementwiseMinOpFp16_Vector(TestElementwiseMinOp_Vector):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
+
     def init_input_output(self):
         self.x = np.random.random_integers(-5, 5, [10, 3, 4]).astype(self.dtype)
         self.y = np.array([0.5]).astype(self.dtype)
@@ -145,11 +181,13 @@ class TestElementwiseMinOp_scalar(TestElementwiseMinOp):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestElementwiseMinOpFp16_scalar(TestElementwiseMinOp_scalar):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestElementwiseMinOp_broadcast(TestElementwiseMinOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(self.dtype)
         self.sgn = np.random.choice([-1, 1], (100,)).astype(self.dtype)
@@ -161,11 +199,13 @@ class TestElementwiseMinOp_broadcast(TestElementwiseMinOp):
 
 
 class TestElementwiseMinOpFp16_broadcast(TestElementwiseMinOp_broadcast):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestElementwiseMinOpNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -180,9 +220,15 @@ class TestElementwiseMinOpNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             c = paddle.minimum(a, b)
 
@@ -205,11 +251,21 @@ class TestElementwiseMinOpNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
                 fetch_list=[prediction, loss],
             )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if epoch % 10 == 0:
                 print(
                     "Epoch {} | Prediction[0]: {}, Loss: {}".format(

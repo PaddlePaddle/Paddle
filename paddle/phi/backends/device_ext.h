@@ -83,12 +83,15 @@ typedef struct C_CCLComm_st* C_CCLComm;
 
 typedef enum { SUM = 0, AVG, MAX, MIN, PRODUCT } C_CCLReduceOp;
 
+<<<<<<< HEAD
 typedef struct C_Profiler_st* C_Profiler;
 
 void profiler_add_runtime_trace_event(C_Profiler prof, void* event);
 
 void profiler_add_device_trace_event(C_Profiler prof, void* event);
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 struct C_DeviceInterface {
   // Core fill it and plugin must to check it
   size_t size;
@@ -599,7 +602,10 @@ struct C_DeviceInterface {
                           size_t count,
                           C_DataType data_type,
                           C_CCLReduceOp op,
+<<<<<<< HEAD
                           size_t root,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           C_CCLComm comm,
                           C_Stream stream);
 
@@ -638,6 +644,7 @@ struct C_DeviceInterface {
 
   void* reserved_ccl_api[8];
 
+<<<<<<< HEAD
   //////////////////
   // profiler api //
   //////////////////
@@ -658,6 +665,8 @@ struct C_DeviceInterface {
 
   void* reserved_profiler_api[8];
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   ///////////////
   // other api //
   ///////////////

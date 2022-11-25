@@ -33,8 +33,13 @@ struct CastOpFunctor {
   const phi::DenseTensor* in_;
   phi::DenseTensor* out_;
   const DeviceContext& ctx_;
+<<<<<<< HEAD
   CastOpFunctor(const phi::DenseTensor* in,
                 phi::DenseTensor* out,
+=======
+  CastOpFunctor(const framework::Tensor* in,
+                framework::Tensor* out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 const DeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 

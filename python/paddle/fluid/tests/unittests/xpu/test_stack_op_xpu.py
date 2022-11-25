@@ -31,12 +31,14 @@ paddle.enable_static()
 
 
 class XPUTestStackOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'stack'
         self.use_dynamic_create_class = False
 
     @skip_check_grad_ci(reason="There is no grad kernel for stack_xpu op.")
     class TestStackOp(XPUOpTest):
+
         def initDefaultParameters(self):
             self.num_inputs = 4
             self.input_dim = (5, 6, 7)
@@ -82,19 +84,27 @@ class XPUTestStackOp(XPUOpTestWrapper):
             if self.dtype == np.int32 or self.dtype == np.int64:
                 pass
             else:
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     paddle.XPUPlace(0), self.get_x_names(), 'Y'
                 )
+=======
+                self.check_grad_with_place(paddle.XPUPlace(0),
+                                           self.get_x_names(), 'Y')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     class TestStackOp1(TestStackOp):
+
         def initParameters(self):
             self.num_inputs = 16
 
     class TestStackOp2(TestStackOp):
+
         def initParameters(self):
             self.num_inputs = 30
 
     class TestStackOp3(TestStackOp):
+
         def initParameters(self):
             self.axis = -1
 
@@ -102,6 +112,7 @@ class XPUTestStackOp(XPUOpTestWrapper):
             pass
 
     class TestStackOp4(TestStackOp):
+
         def initParameters(self):
             self.axis = -4
 
@@ -109,14 +120,17 @@ class XPUTestStackOp(XPUOpTestWrapper):
             pass
 
     class TestStackOp5(TestStackOp):
+
         def initParameters(self):
             self.axis = 1
 
     class TestStackOp6(TestStackOp):
+
         def initParameters(self):
             self.axis = 3
 
     class TestStackOp7(TestStackOp):
+
         def initParameters(self):
             self.num_inputs = 4
             self.input_dim = (5, 6, 7)
@@ -127,6 +141,7 @@ class XPUTestStackOp(XPUOpTestWrapper):
             pass
 
     class TestStackOp8(TestStackOp):
+
         def initParameters(self):
             self.num_inputs = 4
             self.input_dim = (5, 6, 7)

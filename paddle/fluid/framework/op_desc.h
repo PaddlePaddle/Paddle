@@ -43,8 +43,11 @@ class OpDesc {
          const VariableNameMap &inputs,
          const VariableNameMap &outputs,
          const AttributeMap &attrs);
+<<<<<<< HEAD
 
   OpDesc(const OpDesc &desc);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   OpDesc(const proto::OpDesc &desc, BlockDesc *block);
 

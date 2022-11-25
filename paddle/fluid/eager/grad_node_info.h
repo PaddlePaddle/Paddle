@@ -255,14 +255,22 @@ class GradNodeBase {
 
   std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
   GetGradientHookFuntions() {
+<<<<<<< HEAD
     VLOG(7) << "GetGradientHookFuntions ";
+=======
+    VLOG(6) << "GetGradientHookFuntions ";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return gradient_hooks_;
   }
 
   void SetGradientHookFuntions(
       std::map<int64_t, std::tuple<size_t, size_t, std::shared_ptr<TensorHook>>>
           hooks) {
+<<<<<<< HEAD
     VLOG(7) << "SetGradientHookFuntions ";
+=======
+    VLOG(6) << "SetGradientHookFuntions ";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     gradient_hooks_ = hooks;
   }
 

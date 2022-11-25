@@ -24,12 +24,21 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using LoDTensor = phi::DenseTensor;
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = phi::EigenVector<T, MajorType, IndexType>;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+template <typename T,
+          int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -39,10 +48,17 @@ template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output,
                   phi::DenseTensor* index) {
+=======
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output,
+                  framework::Tensor* index) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto idx_dims = index->dims();
@@ -118,10 +134,17 @@ template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output,
                   phi::DenseTensor* index) {
+=======
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output,
+                  framework::Tensor* index) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
@@ -179,9 +202,15 @@ template <typename T>
 class MaxSeqPoolGradFunctor {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& out_grad,
                   const phi::DenseTensor& index,
                   phi::DenseTensor* in_grad) {
+=======
+                  const framework::LoDTensor& out_grad,
+                  const framework::Tensor& index,
+                  framework::LoDTensor* in_grad) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto og_dims = out_grad.dims();
     auto ig_dims = in_grad->dims();
     auto idx_dims = index.dims();
@@ -242,9 +271,15 @@ template <typename T>
 class LastSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output) {
+=======
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -276,9 +311,15 @@ template <typename T>
 class FirstSeqPoolFunctor {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output) {
+=======
+                  const framework::LoDTensor& input,
+                  T pad_value,
+                  framework::LoDTensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -310,8 +351,13 @@ template <typename T>
 class SumSeqPoolGradFunctor {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& out_grad,
                   phi::DenseTensor* in_grad) {
+=======
+                  const framework::LoDTensor& out_grad,
+                  framework::LoDTensor* in_grad) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto lod_level = in_grad->lod().size();
     auto lod = in_grad->lod()[lod_level - 1];
     int64_t out_w = out_grad.numel() / out_grad.dims()[0];
@@ -349,10 +395,17 @@ class SequencePoolFunctor<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const std::string pooltype,
                   T pad_value,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* output,
                   bool is_test,
                   phi::DenseTensor* index = nullptr) {
+=======
+                  const framework::LoDTensor& input,
+                  framework::LoDTensor* output,
+                  bool is_test,
+                  framework::Tensor* index = nullptr) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (pooltype == "MAX") {
       if (is_test) {
         math::MaxSeqPoolFunctor<T, true> max_pool;

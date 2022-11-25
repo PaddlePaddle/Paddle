@@ -20,7 +20,15 @@ import unittest
 import hypothesis.strategies as st
 
 
+<<<<<<< HEAD
 class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
+=======
+class TestConvConcatReluMkldnnFusePass(PassAutoScanTest):
+
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def sample_program_config(self, draw):
         data_format = draw(st.sampled_from(['NCHW', 'NHWC']))
         dilations = draw(st.sampled_from([[2, 2]]))
@@ -29,6 +37,7 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
         paddings = draw(st.sampled_from([[0, 3]]))
         strides = draw(st.sampled_from([[1, 2]]))
         axis = draw(st.sampled_from([0]))
+<<<<<<< HEAD
         activation_type = draw(
             st.sampled_from(
                 [
@@ -70,6 +79,60 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
                 'groups': groups,
                 'paddings': paddings,
                 'strides': strides,
+=======
+        batch_size = draw(st.integers(min_value=1, max_value=4))
+
+        def generate_input(attrs):
+            if attrs[0]['data_format'] == "NCHW":
+                return np.random.random([attrs[2]['batch_size'], 48, 64,
+                                         64]).astype(np.float32)
+            else:
+                return np.random.random([attrs[2]['batch_size'], 64, 64,
+                                         48]).astype(np.float32)
+
+        def generate_weight():
+            return np.random.random([16, int(48 / groups), 3,
+                                     3]).astype(np.float32)
+
+        attrs = [{
+            "data_format": data_format,
+            "dilations": dilations,
+            "padding_algorithm": padding_algorithm,
+            "groups": groups,
+            "paddings": paddings,
+            "strides": strides
+        }, {
+            "axis": axis
+        }, {
+            'batch_size': batch_size
+        }]
+
+        ops_config = [{
+            "op_type": "conv2d",
+            "op_inputs": {
+                "Input": ["input_data1"],
+                "Filter": ["input_weight"]
+            },
+            "op_outputs": {
+                "Output": ["conv1_output"]
+            },
+            "op_attrs": {
+                "data_format": attrs[0]['data_format'],
+                "dilations": attrs[0]['dilations'],
+                "padding_algorithm": attrs[0]['padding_algorithm'],
+                "groups": attrs[0]['groups'],
+                "paddings": attrs[0]['paddings'],
+                "strides": attrs[0]['strides']
+            }
+        }, {
+            "op_type": "conv2d",
+            "op_inputs": {
+                "Input": ["input_data2"],
+                "Filter": ["input_weight"]
+            },
+            "op_outputs": {
+                "Output": ["conv2_output"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             },
         )
 
@@ -160,9 +223,14 @@ class TestConvConcatActivationMkldnnFusePass(PassAutoScanTest):
         yield config, ['conv2d', 'conv2d', 'concat'], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False, passes=['conv_activation_mkldnn_fuse_pass']
         )
+=======
+        self.run_and_statis(quant=False,
+                            passes=["conv_concat_relu_mkldnn_fuse_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

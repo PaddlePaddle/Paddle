@@ -28,7 +28,11 @@ namespace framework {
 class Variable;
 
 void SetFeedVariable(Scope* scope,
+<<<<<<< HEAD
                      const phi::DenseTensor& input,
+=======
+                     const LoDTensor& input,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      const std::string& var_name,
                      size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
@@ -40,7 +44,11 @@ void SetFeedVariable(Scope* scope,
     feed_inputs.resize(index + 1);
   }
   // shared data with input tensor
+<<<<<<< HEAD
   auto& val = PADDLE_GET(phi::DenseTensor, feed_inputs[index]);
+=======
+  auto& val = PADDLE_GET(LoDTensor, feed_inputs[index]);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   val.ShareDataWith(input);
   // set lod
   val.set_lod(input.lod());
@@ -92,7 +100,11 @@ phi::DenseTensor& GetVariableTensor(const Scope& scope,
   PADDLE_ENFORCE_NOT_NULL(var,
                           platform::errors::NotFound(
                               "Variable %s is not found in scope.", var_name));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
+=======
+  PADDLE_ENFORCE_EQ(var->IsType<LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     true,
                     platform::errors::InvalidArgument(
                         "Only support lod tensor in GetVariableTensor now."));

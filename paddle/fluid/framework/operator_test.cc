@@ -132,7 +132,11 @@ class OpWithKernelTest : public OperatorWithKernel {
     int sub_type = ctx.Attr<int>("kernel_sub_type");
     return OpKernelType(proto::VarType::FP32,
                         ctx.GetPlace(),
+<<<<<<< HEAD
                         phi::DataLayout::kAnyLayout,
+=======
+                        framework::DataLayout::kAnyLayout,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         framework::LibraryType::kPlain,
                         sub_type);
   }
@@ -428,6 +432,63 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     indicate_other_data_type_test,
     paddle::framework::EmptyTestKernel<phi::CPUContext, int>);
+<<<<<<< HEAD
+=======
+
+TEST(IndicateVarDataTypeTest, lodtensor) {
+  paddle::framework::InitDevices();
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("indicate_lod_tensor_data_type_test");
+  BuildVar("LoDTensor", {"lodtensor_1"}, op_desc.add_inputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("lodtensor_1");
+  var->GetMutable<paddle::framework::LoDTensor>();
+
+  bool caught = false;
+  try {
+    op->Run(scope, cpu_place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(
+        ex_msg.find(
+            "The indicate_lod_tensor_data_type_test Op's Input Variable "
+            "`LoDTensor` contains uninitialized Tensor.") != std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+TEST(IndicateVarDataTypeTest, selectedrows) {
+  paddle::framework::InitDevices();
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("indicate_selected_rows_data_type_test");
+  BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("selected_rows_1");
+  var->GetMutable<phi::SelectedRows>();
+
+  bool caught = false;
+  try {
+    op->Run(scope, cpu_place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(
+        ex_msg.find("The indicate_selected_rows_data_type_test Op's "
+                    "Input Variable `SelectedRows` contains uninitialized "
+                    "Tensor.") != std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 TEST(IndicateVarDataTypeTest, other) {
   paddle::framework::InitDevices();
@@ -599,8 +660,14 @@ class OpUnusedVarTest : public OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
   OpKernelType GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     return OpKernelType(
         proto::VarType::FP32, ctx.GetPlace(), phi::DataLayout::kAnyLayout);
+=======
+    return OpKernelType(proto::VarType::FP32,
+                        ctx.GetPlace(),
+                        framework::DataLayout::kAnyLayout);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 

@@ -82,8 +82,12 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
 
   // Check the dtype of the input
   void GetDTypeAndNumel(
+<<<<<<< HEAD
       const std::vector<std::pair<std::string, const phi::DenseTensor *>>
           &g_tensor,
+=======
+      const std::vector<std::pair<std::string, const LoDTensor *>> &g_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       proto::VarType::Type *dtype,
       int64_t *total_num) const;
 

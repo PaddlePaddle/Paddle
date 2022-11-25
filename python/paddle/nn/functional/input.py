@@ -108,6 +108,7 @@ def one_hot(x, num_classes, name=None):
                 num_classes.stop_gradient = True
                 inputs = {'X': x, 'depth_tensor': num_classes}
                 attrs = {'allow_out_of_range': False}
+<<<<<<< HEAD
             helper.append_op(
                 type="one_hot_v2",
                 inputs=inputs,
@@ -115,6 +116,13 @@ def one_hot(x, num_classes, name=None):
                 outputs={'Out': one_hot_out},
                 stop_gradient=True,
             )
+=======
+            helper.append_op(type="one_hot_v2",
+                             inputs=inputs,
+                             attrs=attrs,
+                             outputs={'Out': one_hot_out},
+                             stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return one_hot_out
 
 
@@ -210,6 +218,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         )
 
     if in_dygraph_mode():
+<<<<<<< HEAD
         return _C_ops.embedding(x, weight, padding_idx, sparse)
     elif _in_legacy_dygraph():
         return _legacy_C_ops.lookup_table_v2(
@@ -224,6 +233,14 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
             'padding_idx',
             padding_idx,
         )
+=======
+        return _C_ops.final_state_embedding(x, weight, padding_idx, sparse)
+    elif _in_legacy_dygraph():
+        return _C_ops.lookup_table_v2(weight, x, 'is_sparse', sparse,
+                                      'is_distributed', False,
+                                      'remote_prefetch', False, 'padding_idx',
+                                      padding_idx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         helper = LayerHelper('embedding', **locals())
         dtype = helper.input_dtype(input_param_name='weight')
@@ -240,6 +257,7 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
         tmp = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
         helper.append_op(
             type='lookup_table_v2',
             inputs={'Ids': x, 'W': weight},
@@ -251,4 +269,18 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
                 'padding_idx': padding_idx,
             },
         )
+=======
+        helper.append_op(type='lookup_table_v2',
+                         inputs={
+                             'Ids': x,
+                             'W': weight
+                         },
+                         outputs={'Out': tmp},
+                         attrs={
+                             'is_sparse': sparse,
+                             'is_distributed': is_distributed,
+                             'remote_prefetch': remote_prefetch,
+                             'padding_idx': padding_idx
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return tmp

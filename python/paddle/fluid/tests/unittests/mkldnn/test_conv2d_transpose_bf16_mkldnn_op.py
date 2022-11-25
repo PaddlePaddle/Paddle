@@ -35,6 +35,7 @@ def conv2d_bias_naive(out, bias):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestConv2DTransposeBF16MKLDNNOp(OpTest):
+
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
 
@@ -135,6 +136,7 @@ class TestConv2DTransposeBF16MKLDNNOp(OpTest):
 
 
 class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -143,6 +145,7 @@ class TestMKLDNNFuseBias(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithPad(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -150,6 +153,7 @@ class TestMKLDNNWithPad(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -158,6 +162,7 @@ class TestMKLDNNWithStride(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithAsymPad(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [0, 0, 1, 2]
@@ -165,6 +170,7 @@ class TestMKLDNNWithAsymPad(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithSamePad(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [0, 0]
@@ -172,6 +178,7 @@ class TestMKLDNNWithSamePad(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithValidPad(TestConv2DTransposeBF16MKLDNNOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.pad = [1, 1]
@@ -179,6 +186,7 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeBF16MKLDNNOp):
 
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
+
     def init_test_case(self):
         super().init_test_case()
         self.data_format = 'NHWC'
@@ -187,8 +195,13 @@ class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
 
 
 class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+<<<<<<< HEAD
     TestConv2DTransposeBF16MKLDNNOp
 ):
+=======
+        TestConv2DTransposeBF16MKLDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         super().init_test_case()
         self.stride = [2, 1]

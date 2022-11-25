@@ -127,8 +127,15 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   auto pad_shape = phi::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   phi::DenseTensor table_t_pad;
 
+<<<<<<< HEAD
   size_t mem_size = table_t->numel() * phi::SizeOf(table_t->dtype());
   size_t line_mem_size = table_t->dims()[1] * phi::SizeOf(table_t->dtype());
+=======
+  size_t mem_size =
+      table_t->numel() * framework::DataTypeSize(table_t->dtype());
+  size_t line_mem_size =
+      table_t->dims()[1] * framework::DataTypeSize(table_t->dtype());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(
@@ -229,7 +236,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // check align
   size_t line_mem_size =
+<<<<<<< HEAD
       table_grad_t->dims()[1] * phi::SizeOf(table_grad_t->dtype());
+=======
+      table_grad_t->dims()[1] * framework::DataTypeSize(table_grad_t->dtype());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_EQ(line_mem_size % 64,
                     0,
                     platform::errors::InvalidArgument(

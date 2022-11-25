@@ -30,10 +30,12 @@ paddle.enable_static()
 
 
 class XPUTestReduceMaxOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'reduce_max'
 
     class XPUTestReduceMaxBase(XPUOpTest):
+
         def setUp(self):
             self.place = paddle.XPUPlace(0)
             self.init_case()
@@ -51,9 +53,15 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
                 self.outputs = {'Out': self.inputs['X'].max()}
             else:
                 self.outputs = {
+<<<<<<< HEAD
                     'Out': self.inputs['X'].max(
                         axis=self.axis, keepdims=self.attrs['keep_dim']
                     )
+=======
+                    'Out':
+                    self.inputs['X'].max(axis=self.axis,
+                                         keepdims=self.attrs['keep_dim'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 }
 
         def init_case(self):
@@ -69,6 +77,7 @@ class XPUTestReduceMaxOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class XPUTestReduceMaxCase1(XPUTestReduceMaxBase):
+
         def init_case(self):
             self.shape = (5, 6, 10)
             self.axis = (0,)

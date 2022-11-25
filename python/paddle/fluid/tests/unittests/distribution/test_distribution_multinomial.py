@@ -33,6 +33,7 @@ import parameterize
     ],
 )
 class TestMultinomial(unittest.TestCase):
+
     def setUp(self):
         self._dist = paddle.distribution.Multinomial(
             total_count=self.total_count, probs=paddle.to_tensor(self.probs)
@@ -41,32 +42,53 @@ class TestMultinomial(unittest.TestCase):
     def test_mean(self):
         mean = self._dist.mean
         self.assertEqual(mean.numpy().dtype, self.probs.dtype)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             mean,
             self._np_mean(),
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        np.testing.assert_allclose(mean,
+                                   self._np_mean(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_variance(self):
         var = self._dist.variance
         self.assertEqual(var.numpy().dtype, self.probs.dtype)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             var,
             self._np_variance(),
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        np.testing.assert_allclose(var,
+                                   self._np_variance(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_entropy(self):
         entropy = self._dist.entropy()
         self.assertEqual(entropy.numpy().dtype, self.probs.dtype)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             entropy,
             self._np_entropy(),
             rtol=config.RTOL.get(str(self.probs.dtype)),
             atol=config.ATOL.get(str(self.probs.dtype)),
         )
+=======
+        np.testing.assert_allclose(entropy,
+                                   self._np_entropy(),
+                                   rtol=config.RTOL.get(str(self.probs.dtype)),
+                                   atol=config.ATOL.get(str(self.probs.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_sample(self):
         sample_shape = ()
@@ -93,9 +115,16 @@ class TestMultinomial(unittest.TestCase):
         sample_mean = samples.mean(axis=0)
         # Tolerance value 0.2 is empirical value which is consistent with
         # TensorFlow
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sample_mean, self._dist.mean, atol=0, rtol=0.20
         )
+=======
+        np.testing.assert_allclose(sample_mean,
+                                   self._dist.mean,
+                                   atol=0,
+                                   rtol=0.20)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_variance(self):
         probs = self.probs / self.probs.sum(-1, keepdims=True)
@@ -121,16 +150,22 @@ class TestMultinomial(unittest.TestCase):
             np.array([2.0, 3.0, 5.0]),
         ),
         ('value-int', 10, np.array([0.2, 0.3, 0.5]), np.array([2, 3, 5])),
+<<<<<<< HEAD
         (
             'value-multi-dim',
             10,
             np.array([[0.3, 0.7], [0.5, 0.5]]),
             np.array([[4.0, 6], [8, 2]]),
         ),
+=======
+        ('value-multi-dim', 10, np.array([[0.3, 0.7], [0.5, 0.5]
+                                          ]), np.array([[4., 6], [8, 2]])),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # ('value-sum-non-n', 10, np.array([0.5, 0.2, 0.3]), np.array([4,5,2])),
     ],
 )
 class TestMultinomialPmf(unittest.TestCase):
+
     def setUp(self):
         self._dist = paddle.distribution.Multinomial(
             total_count=self.total_count, probs=paddle.to_tensor(self.probs)
@@ -157,6 +192,7 @@ class TestMultinomialPmf(unittest.TestCase):
     ],
 )
 class TestMultinomialException(unittest.TestCase):
+
     def TestInit(self):
         with self.assertRaises(ValueError):
             paddle.distribution.Multinomial(

@@ -118,10 +118,15 @@ class LearningRateDecay:
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
+<<<<<<< HEAD
                     "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".format(
                         key
                     )
                 )
+=======
+                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict"
+                    .format(key))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if len(state_dict) > len(self.keys):
             warnings.warn(
                 "There are some unused values in state_dict. Maybe the optimizer have different 'LearningRateDecay' when invoking state_dict and set_dict"
@@ -272,10 +277,16 @@ class NaturalExpDecay(LearningRateDecay):
     def step(self):
         div_res = self.create_lr_var(self.step_num / self.decay_steps)
         if self.staircase:
+<<<<<<< HEAD
             div_res = paddle.floor(div_res)
         decayed_lr = self.learning_rate * paddle.exp(
             -1 * self.decay_rate * div_res
         )
+=======
+            div_res = layers.floor(div_res)
+        decayed_lr = self.learning_rate * layers.exp(
+            -1 * self.decay_rate * div_res)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return decayed_lr
 
@@ -530,10 +541,15 @@ class PolynomialDecay(LearningRateDecay):
             tmp_decay_steps = self.decay_steps * div_res
         else:
             tmp_step_num = self.create_lr_var(
+<<<<<<< HEAD
                 tmp_step_num
                 if tmp_step_num < self.decay_steps
                 else self.decay_steps
             )
+=======
+                tmp_step_num if tmp_step_num < self.decay_steps else self.
+                decay_steps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         decayed_lr = (self.learning_rate - self.end_learning_rate) * (
             (1 - tmp_step_num / tmp_decay_steps) ** self.power
@@ -669,9 +685,14 @@ class NoamDecay(LearningRateDecay):
 
         a = self.create_lr_var(self.step_num**-0.5)
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
+<<<<<<< HEAD
         lr_value = (
             self.learning_rate * (self.d_model**-0.5) * paddle.minimum(a, b)
         )
+=======
+        lr_value = self.learning_rate * (self.d_model**
+                                         -0.5) * layers.elementwise_min(a, b)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return lr_value
 
 
@@ -749,6 +770,7 @@ class LinearLrWarmup(LearningRateDecay):
         )
         if not type_check:
             raise TypeError(
+<<<<<<< HEAD
                 "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}".format(
                     learning_rate
                 )
@@ -762,6 +784,17 @@ class LinearLrWarmup(LearningRateDecay):
         self.lr_ratio_before_warmup = (float(end_lr) - float(start_lr)) / float(
             warmup_steps
         )
+=======
+                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}"
+                .format(learning_rate))
+        self.learning_rate = learning_rate
+        self.warmup_steps = warmup_steps
+        self.start_lr = start_lr
+        assert end_lr > start_lr, "end_lr {} must be greater than start_lr {}".format(
+            end_lr, start_lr)
+        self.lr_ratio_before_warmup = (float(end_lr) -
+                                       float(start_lr)) / float(warmup_steps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def step(self):
         base_lr = self.learning_rate
@@ -947,6 +980,7 @@ class ReduceLROnPlateau(LearningRateDecay):
 
         # loss must be 1-D Tensor with shape [1]
         check_type(loss, 'loss', Variable, 'ReduceLROnPlateau.step')
+<<<<<<< HEAD
         assert len(loss.shape) == 1 and loss.shape[0] == 1, (
             "the loss.shape "
             "should be (1L,), but the current loss.shape is {}. Maybe that "
@@ -954,6 +988,11 @@ class ReduceLROnPlateau(LearningRateDecay):
                 loss.shape
             )
         )
+=======
+        assert len(loss.shape) == 1 and loss.shape[0] == 1, "the loss.shape " \
+            "should be (1L,), but the current loss.shape is {}. Maybe that "  \
+            "you should call paddle.mean to process it first.".format(loss.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.epoch_num += 1
         if self.cooldown_counter > 0:
@@ -968,6 +1007,7 @@ class ReduceLROnPlateau(LearningRateDecay):
             if self.num_bad_epochs > self.patience:
                 self.cooldown_counter = self.cooldown
                 self.num_bad_epochs = 0
+<<<<<<< HEAD
                 new_lr = paddle.maximum(
                     self.learning_rate * self.decay_rate, self.min_lr
                 )
@@ -983,6 +1023,18 @@ class ReduceLROnPlateau(LearningRateDecay):
                                 self.epoch_num, old_lr, new_lr.numpy()[0]
                             )
                         )
+=======
+                new_lr = layers.elementwise_max(
+                    self.learning_rate * self.decay_rate, self.min_lr)
+                if self.learning_rate - new_lr > self.eps:
+                    if self.verbose:
+                        old_lr = self.learning_rate.numpy()[0] if isinstance(
+                            self.learning_rate,
+                            Variable) else self.learning_rate
+                        print('Epoch {}: reducing learning rate from {} to {}.'.
+                              format(self.epoch_num, old_lr,
+                                     new_lr.numpy()[0]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     self.learning_rate = new_lr
 
     def _is_better(self, current, best):

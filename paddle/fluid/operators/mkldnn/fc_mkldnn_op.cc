@@ -16,7 +16,14 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
+<<<<<<< HEAD
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+=======
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 namespace operators {
@@ -26,12 +33,23 @@ using dnnl::memory;
 using dnnl::primitive;
 using dnnl::prop_kind;
 using dnnl::stream;
+<<<<<<< HEAD
 using framework::DDim;
 using framework::ExecutionContext;
 using LoDTensor = phi::DenseTensor;
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::to_void_cast;
 using platform::MKLDNNDeviceContext;
+=======
+using framework::DataLayout;
+using framework::DDim;
+using framework::ExecutionContext;
+using framework::LoDTensor;
+using framework::Tensor;
+using platform::GetMKLDNNFormat;
+using platform::MKLDNNDeviceContext;
+using platform::to_void_cast;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 struct InnerProductCache {
   dnnl::inner_product_forward inner_product_p;
@@ -45,6 +63,7 @@ class FCMKLDNNHandler
     : public phi::funcs::OneDNNHandlerNoCachingT<T_in,
                                                  dnnl::inner_product_forward> {
  public:
+<<<<<<< HEAD
   FCMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                   const platform::MKLDNNDeviceContext& dev_ctx,
                   const phi::DenseTensor* x,
@@ -65,12 +84,59 @@ class FCMKLDNNHandler
     int MB = 1;
     for (int i = 0; i < in_num_col_dims; ++i) {
       MB *= x_vec_dims[i];
+=======
+  explicit FCPrimitiveFactory(const dnnl::engine& engine) : engine_(engine) {}
+
+  void ExecuteFcPrimitive(const LoDTensor* input,
+                          const Tensor* weights,
+                          const Tensor* bias,
+                          LoDTensor* output,
+                          const MKLDNNDeviceContext& dev_ctx,
+                          const ExecutionContext& ctx) {
+    RecomputeOutputDims(ctx, input, weights, output);
+    // If primitive has already been created and cached, don't create new one,
+    // but update input and output data pointers and return it.
+    if (fc_) {
+      UpdateDataPointers(ctx, output, input);
+      this->Execute();
+      return;
+    }  // Otherwise, create a new one.
+
+    auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
+    PADDLE_ENFORCE_LE(
+        in_col_dims,
+        2,
+        platform::errors::Unimplemented(
+            "DNNL FC doesn't support in_num_col_dims parameter to "
+            "be higher than "
+            "2."));
+    if (in_col_dims == 2) {
+      PADDLE_ENFORCE_EQ(
+          input->dims().size(),
+          3,
+          platform::errors::Unimplemented(
+              "DNNL FC only supports in_num_col_dims equal to 2 when "
+              "3 dim input is provided."));
+      PADDLE_ENFORCE_EQ(
+          input->format(),
+          MKLDNNMemoryFormat::ncw,
+          platform::errors::Unimplemented(
+              "DNNL FC only supports in_num_col_dims equal to 2 when "
+              "input format is equal to ncw."));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     int IC = 1;
     for (size_t i = in_num_col_dims; i < x_vec_dims.size(); ++i) {
       IC *= x_vec_dims[i];
     }
+<<<<<<< HEAD
+=======
+    input_ = CreateMemory<T_in>(fc_prim_desc->src_desc(), input);
+    // Update weights format inside of its memory
+    weights_ = Reorder(
+        usr_weights_desc, usr_weights_desc, weights_->get_data_handle());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     int OC = weights_vec_dims[1];
 
@@ -90,6 +156,7 @@ class FCMKLDNNHandler
 
     const auto attrs = CreateFCAttrs(ctx);
 
+<<<<<<< HEAD
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             prop_kind::forward_inference,
                                             src_md,
@@ -111,12 +178,119 @@ class FCMKLDNNHandler
           GetOutputScales(ctx);
       int mask = CreateMask(1, output_shift_scale.size() > 1);
       attributes.set_output_scales(mask, output_shift_scale);
+=======
+    // Return MKL-DNN primitive ready to be fed into pipeline and executed
+    fc_ = inner_product_forward(*fc_prim_desc);
+    this->Execute();
+  }
+
+  void Execute() {
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    if (bias_) {
+      fc_->execute(astream,
+                   {{DNNL_ARG_SRC, *input_},
+                    {DNNL_ARG_WEIGHTS, *weights_},
+                    {DNNL_ARG_BIAS, *bias_},
+                    {DNNL_ARG_DST, *output_}});
+    } else {
+      fc_->execute(astream,
+                   {{DNNL_ARG_SRC, *input_},
+                    {DNNL_ARG_WEIGHTS, *weights_},
+                    {DNNL_ARG_DST, *output_}});
+    }
+    astream.wait();
+  }
+
+ private:
+  // DNNL always returns 2-dimensional data block as a result of computing
+  // inner product. Hence the format 'nc' is always set for its output
+  // primitive. Therefore, function SetOutputFormat is needed to choose
+  // an appropriate format based on the number of input dimensions and
+  // format of an input tensor.
+  void SetOutputFormat(MKLDNNMemoryFormat in_format, Tensor* out) {
+    int dim_num = out->dims().size();
+    // In case of 2 dims, we set the only possible format, nc
+    if (dim_num == 2) {
+      out->set_format(MKLDNNMemoryFormat::nc);
+      out->set_mem_desc({phi::vectorize(out->dims()),
+                         platform::MKLDNNGetDataType<T_out>(),
+                         out->format()});
+      // In case of 3 dims, we generate a format that is based on number
+      // of output dims and the layout of input format (nchw or nhwc).
+    } else if (dim_num == 3) {
+      if (in_format == MKLDNNMemoryFormat::nwc ||
+          in_format == MKLDNNMemoryFormat::nhwc) {
+        out->set_format(
+            platform::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nhwc));
+      } else {
+        out->set_format(
+            platform::MKLDNNFormatForSize(dim_num, MKLDNNMemoryFormat::nchw));
+      }
+      // In any other case we overwrite the output format with the input one.
+    } else {
+      out->set_format(in_format);
+    }
+  }
+
+  void UpdateDataPointers(const ExecutionContext& ctx,
+                          Tensor* out,
+                          const Tensor* in) {
+    input_->set_data_handle(to_void_cast(in->data<T_in>()));
+    output_->set_data_handle(out->mutable_data<T_out>(ctx.GetPlace()));
+    // If the primitive exists, but the output tensor has changed its
+    // variable, update its format to what has been determined in first
+    // call to CreateFcPrimitive method.
+    if (out->format() == MKLDNNMemoryFormat::undef) {
+      SetOutputFormat(in->format(), out);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
+<<<<<<< HEAD
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       post_operations.append_sum(sum_scale);
     }
+=======
+  dnnl::inner_product_forward::primitive_desc Create2DFcPrimDescriptor(
+      const LoDTensor* input,
+      const Tensor* weights,
+      const Tensor* bias,
+      LoDTensor* output,
+      const ExecutionContext& ctx) {
+    auto src_desc = CreateMemDescriptor<T_in>(input, MKLDNNMemoryFormat::any);
+    auto weight_dims = Get2DWeightDimsForDNNL(weights);
+    auto weights_desc =
+        CreateMemDescriptor<T_w>(weight_dims, MKLDNNMemoryFormat::any);
+    auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
+    auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
+    const auto attrs = CreateFCAttrs(ctx);
+    return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+  }
+
+  std::vector<int64_t> Get2DWeightDimsForDNNL(const Tensor* weights) {
+    auto dims = phi::vectorize(weights->dims());
+    std::swap(dims[0], dims[1]);  // swap input dim with output dim
+    return dims;
+  }
+
+  memory::desc Create2DUserWeightsDesc() { return weights_->get_desc(); }
+
+  dnnl::inner_product_forward::primitive_desc Create3DFcPrimDescriptor(
+      const LoDTensor* input,
+      const Tensor* weights,
+      const Tensor* bias,
+      LoDTensor* output,
+      const ExecutionContext& ctx) {
+    auto input_dims = phi::vectorize(input->dims());
+    std::vector<int64_t> new_input_dims = {
+        input_dims[0] * input_dims[1], input_dims[2], 1};
+    auto src_desc =
+        CreateMemDescriptor<T_in>(new_input_dims, MKLDNNMemoryFormat::any);
+
+    auto weight_dims = Get3DWeightDimsForDNNL(weights);
+    auto weights_desc =
+        CreateMemDescriptor<T_w>(weight_dims, MKLDNNMemoryFormat::any);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     // ReLU from "fc_fuse_pass"
     if (ctx.Attr<std::string>("activation_type") == "relu") {
@@ -125,11 +299,20 @@ class FCMKLDNNHandler
     }
     platform::AppendActivation(ctx, post_operations, activation_scale);
 
+<<<<<<< HEAD
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
       post_operations.append_eltwise(
           1.0, dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
     }
+=======
+    auto dst_dims = {input_dims[0] * input_dims[1], weight_dims[0]};
+    auto dst_desc =
+        CreateMemDescriptor<T_out>(dst_dims, MKLDNNMemoryFormat::any);
+    const auto attrs = CreateFCAttrs(ctx);
+    return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     attributes.set_post_ops(post_operations);
     return attributes;
@@ -155,6 +338,7 @@ class FCMKLDNNHandler
     }
   }
 
+<<<<<<< HEAD
   // Correct output scale, to take into account scaling of input and weights
   // Since the data that comes out of input and weight multiplication is
   // scaled with its own scales, this data needs to be divided by
@@ -198,6 +382,24 @@ class FCMKLDNNHandler
       }
       return std::make_tuple(scale_weights_data, sum_scale, activation_scale);
     }
+=======
+  dnnl::inner_product_forward::primitive_desc Create4DFcPrimDescriptor(
+      const LoDTensor* input,
+      const Tensor* weights,
+      const Tensor* bias,
+      LoDTensor* output,
+      const ExecutionContext& ctx) {
+    auto src_desc = CreateMemDescriptor<T_in>(input, MKLDNNMemoryFormat::any);
+    // Since MKL-DNN doesn't support 4D column-major data formats in
+    // inner_product primitive, transpose the weights to be in
+    // row-major format
+    auto dims = Get4DWeightDimsForDNNL(input, weights);
+    auto weights_desc = CreateMemDescriptor<T_w>(dims, MKLDNNMemoryFormat::any);
+    auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
+    auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
+    const auto attrs = CreateFCAttrs(ctx);
+    return CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   // Computing MKL-DNN's scaling mask which determines along which dimension
@@ -226,7 +428,11 @@ class FCMKLDNNHandler
       platform::RecordEvent record_reorder(
           "int_reorder",
           platform::TracerEventType::UserDefined,
+<<<<<<< HEAD
           1,
+=======
+          2,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           platform::EventRole::kUniqueOp);
       reorder_p->execute(
           astream,
@@ -237,6 +443,7 @@ class FCMKLDNNHandler
     return target_memory_p;
   }
 
+<<<<<<< HEAD
   std::string memory_key_;
   const platform::MKLDNNDeviceContext& dev_ctx_;
 
@@ -250,15 +457,54 @@ class FCMKLDNNHandler
       // reshape restrictions are always satisfied because in case of 3 or 4 dim
       // input, plain layout is enforced
       user_md = user_md.reshape(this->fwd_pd_->src_desc().dims());
+=======
+  // Convert data from one data format to another and rescale it.
+  // If the desired data type is (un)signed int8, quantization occurs here.
+  std::shared_ptr<dnnl::memory> ReorderWithScale(
+      const std::shared_ptr<memory> src_mem,
+      const memory::desc& dst_md,
+      const std::vector<float>& scale_data) {
+    auto dst_mem = std::make_shared<dnnl::memory>(dst_md, engine_);
+    dnnl::primitive_attr attributes;
+    // According to MKL-DNN's documentation mask determines along which
+    // dimensions should the scale be applied.
+    // 0 - Single scale applied to whole tensor
+    // 1 - Apply Scale along a slice of each dimension which index is 1.
+    //     In case of weights quantization, that dimension is output,
+    //     becuase we perform per-output-channel quantization
+    int mask = CreateMask(0, scale_data.size() > 1);
+    attributes.set_output_scales(mask, scale_data);
+    auto reorder = dnnl::reorder(*src_mem, *dst_mem, attributes);
+
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+    {
+      platform::RecordEvent record_reorder(
+          "int_reorder",
+          platform::TracerEventType::UserDefined,
+          2,
+          platform::EventRole::kUniqueOp);
+      reorder.execute(astream,
+                      {{DNNL_ARG_FROM, *src_mem}, {DNNL_ARG_TO, *dst_mem}});
+      astream.wait();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     return this->AcquireMemoryWithReorder(
         user_md, this->fwd_pd_->src_desc(), to_void_cast<T_in>(x_data));
   }
 
+<<<<<<< HEAD
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
       const framework::ExecutionContext& ctx, const phi::DenseTensor* bias) {
     const float* bias_data = bias->data<float>();
+=======
+  template <typename T>
+  static dnnl::memory::desc CreateMemDescriptor(
+      const std::vector<int64_t>& dims, MKLDNNMemoryFormat format) {
+    return platform::MKLDNNMemDesc(
+        dims, platform::MKLDNNGetDataType<T>(), format);
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if (phi::funcs::is_int8<T_w>() == false) {
       // for BF16/FP32 bias is 1D and has no scales, so reorder is not needed
@@ -322,9 +568,22 @@ class FCMKLDNNHandler
                                            to_void_cast<float>(weights_data));
       }
 
+<<<<<<< HEAD
       this->dev_ctx_.SetBlob(weights_key, memory_p);
     }
     return memory_p;
+=======
+  // Create weights memory and transform to default MKL-DNN format
+  std::shared_ptr<dnnl::memory> CreateWeightsMemory(const Tensor* weights) {
+    auto dims = phi::vectorize(weights->dims());
+    std::swap(dims[0], dims[1]);  // Correct output dimensions
+    auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::io);
+    auto dst_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oi);
+    // Transpose weights through MKL-DNN's reorder from io to oi format.
+    return Reorder(src_desc,
+                   dst_desc,
+                   platform::to_void_cast<float>(weights->data<float>()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   std::shared_ptr<dnnl::memory> AcquireCustomDstMemory(
@@ -397,6 +656,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     }
   }
 
+<<<<<<< HEAD
   template <typename T_out, typename T_w>
   void RunKernel(const framework::ExecutionContext& ctx) const {
     const auto& dev_ctx =
@@ -478,10 +738,88 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       }
 
       fc_p = handler.AcquireForwardPrimitive();
+=======
+  // Computing MKL-DNN's scaling mask which determines along which dimension
+  // slice should the scaling be applied. For more data plase refer to:
+  // https://intel.github.io/mkl-dnn/group__c__api__attributes.html
+  // Section dnnl_status_t DNNL_API dnnl_primitive_attr_set_output_scales
+  int CreateMask(int slice_dimension, bool is_multi_channel_quantizied) {
+    return is_multi_channel_quantizied ? 1 << slice_dimension : 0;
+  }
+
+  void QuantizeWeights(const ExecutionContext& ctx, memory::desc dst) {
+    weights_ = ReorderWithScale(
+        weights_, dst, ctx.Attr<std::vector<float>>("Scale_weights"));
+  }
+
+  void QuantizeBias(const inner_product_forward::primitive_desc& fc_prim_desc,
+                    const ExecutionContext& ctx) {
+    auto bias_scales = ComputeBiasScales(ctx);
+    bias_ = ReorderWithScale(bias_, fc_prim_desc.bias_desc(), bias_scales);
+  }
+
+  dnnl::primitive_attr CreateFCAttrs(const ExecutionContext& ctx) {
+    dnnl::primitive_attr attributes;
+    dnnl::post_ops post_operations;
+
+    std::vector<float> output_shift_scale;
+    float scale;
+    std::tie(output_shift_scale, scale) = ComputeOutputShiftScale(ctx);
+    int mask = CreateMask(1, output_shift_scale.size() > 1);
+    attributes.set_output_scales(mask, output_shift_scale);
+
+    float sum_scale = 1.0f;
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      post_operations.append_sum(sum_scale);
+    }
+
+    if (ctx.Attr<std::string>("activation_type") == "relu") {
+      constexpr float negative_slope = 0.0f;
+      constexpr float placeholder = 1.0f;  // beta
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_relu, negative_slope, placeholder);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_gelu, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_tanh") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_gelu_tanh, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "gelu_erf") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_gelu_erf, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "tanh") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_tanh, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "sigmoid") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_logistic, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "mish") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_mish, alpha, beta);
+    } else if (ctx.Attr<std::string>("activation_type") == "hard_swish") {
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(
+          scale, dnnl::algorithm::eltwise_hardswish, alpha, beta);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
 
+<<<<<<< HEAD
     std::unordered_map<int, dnnl::memory> fc_args = {
         {DNNL_ARG_SRC, *src_memory_p},
         {DNNL_ARG_WEIGHTS, *weights_memory_p},
@@ -493,6 +831,42 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     fc_p->execute(astream, fc_args);
     astream.wait();
+=======
+  dnnl::inner_product_forward::primitive_desc CreateFcPrimDesc(
+      const dnnl::memory::desc& input_desc,
+      const dnnl::memory::desc& weights_desc,
+      const dnnl::memory::desc& bias_desc,
+      const dnnl::memory::desc& dst_desc,
+      const dnnl::primitive_attr& attrs) {
+    auto fc_desc = inner_product_forward::desc(prop_kind::forward_scoring,
+                                               input_desc,
+                                               weights_desc,
+                                               bias_desc,
+                                               dst_desc);
+
+    return inner_product_forward::primitive_desc(fc_desc, attrs, engine_);
+  }
+
+  // Create output memory based on output tensor and inner_product
+  // primitive descriptor format chosen for output
+  dnnl::memory CreateDstMemory(
+      const dnnl::inner_product_forward::primitive_desc& fc_prim_desc,
+      const ExecutionContext& ctx,
+      Tensor* output) {
+    if (ctx.HasAttr("fuse_residual_connection") &&
+        ctx.Attr<bool>("fuse_residual_connection")) {
+      auto* residual_param = ctx.Output<Tensor>("ResidualData");
+
+      PADDLE_ENFORCE_EQ(
+          output->dims(),
+          residual_param->dims(),
+          platform::errors::InvalidArgument(
+              "Output and elementwise parameter need to have the "
+              "same dimension sizes, but got output's dimension = %d"
+              " and residual param's dimension =%d .",
+              output->dims().size(),
+              residual_param->dims().size()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if (!inner_product_cache) {
       auto ip_cache = std::make_shared<InnerProductCache>();
@@ -513,9 +887,15 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
   }
 
   void RecomputeOutputDims(const ExecutionContext& ctx,
+<<<<<<< HEAD
                            const LoDTensor* x,
                            const phi::DenseTensor* weights,
                            LoDTensor* out) const {
+=======
+                           const LoDTensor* input,
+                           const Tensor* w,
+                           LoDTensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
     bool padding_weights = ctx.Attr<bool>("padding_weights");
     PADDLE_ENFORCE_EQ(padding_weights,
@@ -523,8 +903,13 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                       platform::errors::PermissionDenied(
                           "Weight padding in fc can not be used in MKLDNN."));
     std::vector<int64_t> output_dims;
+<<<<<<< HEAD
     FCOutputSize(x->dims(),
                  weights->dims(),
+=======
+    FCOutputSize(input->dims(),
+                 w->dims(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  output_dims,
                  in_num_col_dims,
                  padding_weights);
@@ -533,6 +918,87 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
   }
 };
 
+<<<<<<< HEAD
+=======
+// Attempt to fetch cached primitive factory based on provided parameters
+// of input format, weight dimensions and output name.
+// If not cached, create a new one.
+template <typename T_in, typename T_w, typename T_out>
+static std::shared_ptr<FCPrimitiveFactory<T_in, T_w, T_out>>
+GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
+                    const std::string& key) {
+  auto prim_creator =
+      std::static_pointer_cast<FCPrimitiveFactory<T_in, T_w, T_out>>(
+          dev_ctx.GetBlob(key));
+  if (prim_creator == nullptr) {
+    prim_creator = std::make_shared<FCPrimitiveFactory<T_in, T_w, T_out>>(
+        dev_ctx.GetEngine());
+    dev_ctx.SetBlob(key, prim_creator);
+  }
+
+  return prim_creator;
+}
+
+// Choose appropriate primitive factory implementation based on inferred
+// output type (uint8, int8 or float).
+template <typename T_in, typename T_w>
+static void ExecuteFc(const ExecutionContext& ctx,
+                      const LoDTensor* input,
+                      const Tensor* w,
+                      const Tensor* bias,
+                      LoDTensor* output,
+                      bool fuse_relu,
+                      bool force_fp32_output) {
+  auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
+  std::string prim_key = platform::CreateKey(dev_ctx,
+                                             input->format(),
+                                             input->dims()[0],
+                                             phi::vectorize<int>(w->dims()),
+                                             ctx.OutputName("Out"));
+  prim_key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, prim_key);
+
+  constexpr bool is_int8 =
+      std::is_same<T_in, int8_t>::value || std::is_same<T_in, uint8_t>::value;
+  bool is_bfloat16 = std::is_same<T_in, paddle::platform::bfloat16>::value;
+  if ((!is_int8 && !is_bfloat16) || force_fp32_output) {
+    GetPrimitiveFactory<T_in, T_w, float>(dev_ctx, prim_key)
+        ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
+  } else if (is_bfloat16) {
+    GetPrimitiveFactory<T_in, T_w, platform::bfloat16>(dev_ctx, prim_key)
+        ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
+  } else if (fuse_relu) {
+    GetPrimitiveFactory<T_in, T_w, uint8_t>(dev_ctx, prim_key)
+        ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
+  } else {
+    GetPrimitiveFactory<T_in, T_w, int8_t>(dev_ctx, prim_key)
+        ->ExecuteFcPrimitive(input, w, bias, output, dev_ctx, ctx);
+  }
+}
+
+template <typename T_in, typename T_w>
+class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()),
+        true,
+        platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
+    auto input = ctx.Input<LoDTensor>("Input");
+    auto w = ctx.Input<Tensor>("W");
+    auto bias = ctx.Input<Tensor>("Bias");
+    auto output = ctx.Output<LoDTensor>("Out");
+
+    bool fuse_relu = ctx.Attr<std::string>("activation_type") == "relu";
+    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+
+    ExecuteFc<T_in, T_w>(
+        ctx, input, w, bias, output, fuse_relu, force_fp32_output);
+
+    output->set_layout(DataLayout::kMKLDNN);
+  }
+};
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }  // namespace operators
 }  // namespace paddle
 
@@ -540,6 +1006,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 // data type implies their destination data type. (What's eventually going to
 // be used during computations of kernel).
 namespace ops = paddle::operators;
+<<<<<<< HEAD
 
 REGISTER_OP_KERNEL(fc,
                    MKLDNN,
@@ -548,3 +1015,34 @@ REGISTER_OP_KERNEL(fc,
                    ops::FCMKLDNNKernel<paddle::platform::bfloat16>,
                    ops::FCMKLDNNKernel<uint8_t>,
                    ops::FCMKLDNNKernel<int8_t>);
+=======
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    FP32,
+                                    ops::kFCMKLDNNFP32,
+                                    ops::FCMKLDNNOpKernel<float, float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    fc,
+    MKLDNN,
+    ::paddle::platform::CPUPlace,
+    BF16,
+    ops::kFCMKLDNNFP32,
+    ops::FCMKLDNNOpKernel<paddle::platform::bfloat16,
+                          paddle::platform::bfloat16>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    U8,
+                                    ops::kFCMKLDNNINT8,
+                                    ops::FCMKLDNNOpKernel<uint8_t, int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(fc,
+                                    MKLDNN,
+                                    ::paddle::platform::CPUPlace,
+                                    S8,
+                                    ops::kFCMKLDNNINT8,
+                                    ops::FCMKLDNNOpKernel<int8_t, int8_t>);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

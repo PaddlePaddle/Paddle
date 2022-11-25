@@ -16,11 +16,21 @@ import os
 import sys
 import subprocess
 import unittest
+<<<<<<< HEAD
 import tempfile
+=======
+import paddle
+import tempfile
+import paddle.fluid as fluid
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.fluid import core
 
 
 class TestGPUPackagePaddle(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -33,9 +43,14 @@ class TestGPUPackagePaddle(unittest.TestCase):
                 os.environ['HIP_VISIBLE_DEVICES'] = ''
             else:
                 os.environ['CUDA_VISIBLE_DEVICES'] = ''
+<<<<<<< HEAD
             test_file = os.path.join(
                 self.temp_dir.name, 'test_no_gpu_run_rand.py'
             )
+=======
+            test_file = os.path.join(self.temp_dir.name,
+                                     'test_no_gpu_run_rand.py')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with open(test_file, 'w') as wb:
                 cmd_test = """
 import paddle
@@ -48,12 +63,19 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
             _python = sys.executable
 
             ps_cmd = '{} {}'.format(_python, test_file)
+<<<<<<< HEAD
             ps_proc = subprocess.Popen(
                 ps_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 env=os.environ,
             )
+=======
+            ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       env=os.environ)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             stdout, stderr = ps_proc.communicate()
 
             assert 'CPU device will be used by default' in str(

@@ -383,6 +383,19 @@ void LaunchBroadcastKernel(
                                          func);
   }
 #endif
+<<<<<<< HEAD
+=======
+  VectorizedBroadcastKernel<InT, OutT, Functor, Arity, NumOuts, VecSize>
+      <<<blocks, threads, 0, stream>>>(ins_data,
+                                       outs_data,
+                                       use_broadcast,
+                                       numel,
+                                       configs,
+                                       main_offset,
+                                       tail_tid,
+                                       read_lens,
+                                       func);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 #ifndef PADDLE_WITH_XPU_KP

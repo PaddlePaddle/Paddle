@@ -45,12 +45,22 @@ def test_static_graph_H0(func, x0, H0, dtype='float32'):
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
         X = paddle.static.data(name='x', shape=[x0.shape[0]], dtype=dtype)
+<<<<<<< HEAD
         H = paddle.static.data(
             name='h', shape=[H0.shape[0], H0.shape[1]], dtype=dtype
         )
         Y = minimize_bfgs(
             func, X, initial_inverse_hessian_estimate=H, dtype=dtype
         )
+=======
+        H = paddle.static.data(name='h',
+                               shape=[H0.shape[0], H0.shape[1]],
+                               dtype=dtype)
+        Y = minimize_bfgs(func,
+                          X,
+                          initial_inverse_hessian_estimate=H,
+                          dtype=dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     exe = paddle.static.Executor()
     exe.run(startup)
@@ -64,6 +74,7 @@ def test_dynamic_graph(
     x0 = paddle.to_tensor(x0)
     if H0 is not None:
         H0 = paddle.to_tensor(H0)
+<<<<<<< HEAD
     return minimize_bfgs(
         func,
         x0,
@@ -71,9 +82,17 @@ def test_dynamic_graph(
         line_search_fn=line_search_fn,
         dtype=dtype,
     )
+=======
+    return minimize_bfgs(func,
+                         x0,
+                         initial_inverse_hessian_estimate=H0,
+                         line_search_fn=line_search_fn,
+                         dtype=dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestBfgs(unittest.TestCase):
+
     def test_quadratic_nd(self):
         for dimension in [1, 10]:
             minimum = np.random.random(size=[dimension]).astype('float32')
@@ -114,6 +133,7 @@ class TestBfgs(unittest.TestCase):
         self.assertFalse(results[0][0])
 
     def test_multi_minima(self):
+
         def func(x):
             # df = 12(x + 1.1)(x - 0.2)(x - 0.8)
             # f = 3*x^4+0.4*x^3-5.46*x^2+2.112*x
@@ -151,6 +171,7 @@ class TestBfgs(unittest.TestCase):
         self.func_rosenbrock()
 
     def test_exception(self):
+
         def func(x):
             return paddle.dot(x, x)
 
@@ -169,6 +190,7 @@ class TestBfgs(unittest.TestCase):
         self.assertRaises(ValueError, test_dynamic_graph, func, x0, H0=H1)
 
         # test line_search_fn is bad
+<<<<<<< HEAD
         self.assertRaises(
             NotImplementedError,
             test_static_graph,
@@ -176,6 +198,13 @@ class TestBfgs(unittest.TestCase):
             x0,
             line_search_fn='other',
         )
+=======
+        self.assertRaises(NotImplementedError,
+                          test_static_graph,
+                          func,
+                          x0,
+                          line_search_fn='other')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

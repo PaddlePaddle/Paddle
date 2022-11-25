@@ -162,6 +162,17 @@ class Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
+  virtual void SetGraphDeviceKeys(
+      const std::vector<uint64_t>& h_device_keys) = 0;
+
+  virtual std::vector<std::string> GetSlots() = 0;
+
+  virtual void SetGpuGraphMode(int is_graph_mode) = 0;
+  virtual int GetGpuGraphMode() = 0;
+  virtual bool GetEpochFinish() = 0;
+
+  virtual void SetPassId(uint32_t pass_id) = 0;
+  virtual uint32_t GetPassID() = 0;
 
   virtual std::vector<std::string> GetSlots() = 0;
 
@@ -251,6 +262,7 @@ class DatasetImpl : public Dataset {
                                          int read_thread_num,
                                          int consume_thread_num,
                                          int shard_num) {}
+  virtual void SetGraphDeviceKeys(const std::vector<uint64_t>& h_device_keys) {}
   virtual void ClearLocalTables() {}
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
@@ -260,11 +272,15 @@ class DatasetImpl : public Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
   virtual std::vector<std::string> GetSlots();
+<<<<<<< HEAD
   /* for enable_heterps_
   virtual void EnableHeterps(bool enable_heterps) {
     enable_heterps_ = enable_heterps;
   }
   */
+=======
+  virtual bool GetEpochFinish();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
@@ -277,10 +293,19 @@ class DatasetImpl : public Dataset {
       return multi_consume_channel_;
     }
   }
+<<<<<<< HEAD
   std::vector<uint64_t>& GetGpuGraphTotalKeys() {
     return gpu_graph_total_keys_;
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   Channel<T>& GetInputChannelRef() { return input_channel_; }
+  std::vector<uint64_t>& GetGpuGraphTotalKeys() {
+    return gpu_graph_total_keys_;
+  }
+
+  virtual void SetPassId(uint32_t pass_id) { pass_id_ = pass_id; }
+  virtual uint32_t GetPassID() { return pass_id_; }
 
  protected:
   virtual int ReceiveFromClient(int msg_type,
@@ -341,9 +366,15 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> use_slots_;
   bool enable_heterps_ = false;
   int gpu_graph_mode_ = 0;
+<<<<<<< HEAD
   // std::vector<std::vector<int64_t>> gpu_graph_device_keys_;
   std::vector<std::vector<std::vector<uint64_t>>> graph_all_type_total_keys_;
   std::vector<uint64_t> gpu_graph_total_keys_;
+=======
+  std::vector<std::vector<std::vector<uint64_t>>> gpu_graph_type_keys_;
+  std::vector<uint64_t> gpu_graph_total_keys_;
+  uint32_t pass_id_ = 0;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 // use std::vector<MultiSlotType> or Record as data type

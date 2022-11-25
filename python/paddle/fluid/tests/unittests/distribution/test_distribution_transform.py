@@ -28,9 +28,11 @@ paddle.seed(2022)
 
 @param.place(config.DEVICES)
 class TestTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.Transform()
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (
@@ -43,10 +45,17 @@ class TestTransform(unittest.TestCase):
             ),
         ]
     )
+=======
+    @param.param_func([(paddle.distribution.Distribution(),
+                        paddle.distribution.TransformedDistribution),
+                       (paddle.distribution.ExpTransform(),
+                        paddle.distribution.ChainTransform)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_call(self, input, expected_type):
         t = transform.Transform()
         self.assertIsInstance(t(input), expected_type)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (transform.Type.BIJECTION, True),
@@ -55,6 +64,12 @@ class TestTransform(unittest.TestCase):
             (transform.Type.OTHER, False),
         ]
     )
+=======
+    @param.param_func([(transform.Type.BIJECTION, True),
+                       (transform.Type.INJECTION, True),
+                       (transform.Type.SURJECTION, False),
+                       (transform.Type.OTHER, False)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_is_injective(self, type, expected):
         transform.Transform._type = type
         self.assertEqual(self._t._is_injective(), expected)
@@ -65,30 +80,50 @@ class TestTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Real))
 
+<<<<<<< HEAD
     @param.param_func(
         [(0, TypeError), (paddle.rand((2, 3)), NotImplementedError)]
     )
+=======
+    @param.param_func([(0, TypeError), (paddle.rand(
+        (2, 3)), NotImplementedError)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_forward(self, input, expected):
         with self.assertRaises(expected):
             self._t.forward(input)
 
+<<<<<<< HEAD
     @param.param_func(
         [(0, TypeError), (paddle.rand((2, 3)), NotImplementedError)]
     )
+=======
+    @param.param_func([(0, TypeError), (paddle.rand(
+        (2, 3)), NotImplementedError)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_inverse(self, input, expected):
         with self.assertRaises(expected):
             self._t.inverse(input)
 
+<<<<<<< HEAD
     @param.param_func(
         [(0, TypeError), (paddle.rand((2, 3)), NotImplementedError)]
     )
+=======
+    @param.param_func([(0, TypeError), (paddle.rand(
+        (2, 3)), NotImplementedError)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_forward_log_det_jacobian(self, input, expected):
         with self.assertRaises(expected):
             self._t.forward_log_det_jacobian(input)
 
+<<<<<<< HEAD
     @param.param_func(
         [(0, TypeError), (paddle.rand((2, 3)), NotImplementedError)]
     )
+=======
+    @param.param_func([(0, TypeError), (paddle.rand(
+        (2, 3)), NotImplementedError)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_inverse_log_det_jacobian(self, input, expected):
         with self.assertRaises(expected):
             self._t.inverse_log_det_jacobian(input)
@@ -106,6 +141,7 @@ class TestTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestAbsTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.AbsTransform()
 
@@ -132,17 +168,26 @@ class TestAbsTransform(unittest.TestCase):
         ]
     )
     def test_forward(self, input, expected):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.forward(paddle.to_tensor(input)).numpy(),
             expected,
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.forward(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([(np.array(1.0), (-np.array(1.0), np.array(1.0)))])
     def test_inverse(self, input, expected):
         actual0, actual1 = self._t.inverse(paddle.to_tensor(input))
         expected0, expected1 = expected
+<<<<<<< HEAD
         np.testing.assert_allclose(
             actual0.numpy(),
             expected0,
@@ -155,21 +200,38 @@ class TestAbsTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(actual0.numpy(),
+                                   expected0,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+        np.testing.assert_allclose(actual1.numpy(),
+                                   expected1,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_forward_log_det_jacobian(self):
         with self.assertRaises(NotImplementedError):
             self._t.forward_log_det_jacobian(paddle.rand((10,)))
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (np.array(1.0), (np.array(0.0), np.array(0.0))),
         ]
     )
+=======
+    @param.param_func([
+        (np.array(1.), (np.array(0.), np.array(0.))),
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_inverse_log_det_jacobian(self, input, expected):
         actual0, actual1 = self._t.inverse_log_det_jacobian(
             paddle.to_tensor(input)
         )
         expected0, expected1 = expected
+<<<<<<< HEAD
         np.testing.assert_allclose(
             actual0.numpy(),
             expected0,
@@ -182,6 +244,16 @@ class TestAbsTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(actual0.numpy(),
+                                   expected0,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+        np.testing.assert_allclose(actual1.numpy(),
+                                   expected1,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -212,10 +284,16 @@ class TestAbsTransform(unittest.TestCase):
     ],
 )
 class TestAffineTransform(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self._t = transform.AffineTransform(
             paddle.to_tensor(self.loc), paddle.to_tensor(self.scale)
         )
+=======
+        self._t = transform.AffineTransform(paddle.to_tensor(self.loc),
+                                            paddle.to_tensor(self.scale))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(
         [
@@ -323,6 +401,7 @@ class TestAffineTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestExpTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.ExpTransform()
 
@@ -339,6 +418,7 @@ class TestExpTransform(unittest.TestCase):
         self.assertEqual(self._t._codomain.event_rank, 0)
         self.assertEqual(self._t._codomain.is_discrete, False)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (
@@ -358,6 +438,19 @@ class TestExpTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+    @param.param_func([(np.array([0., 1., 2.,
+                                  3.]), np.exp(np.array([0., 1., 2., 3.]))),
+                       (np.array([[0., 1., 2., 3.], [-5., 6., 7., 8.]]),
+                        np.exp(np.array([[0., 1., 2., 3.], [-5., 6., 7.,
+                                                            8.]])))])
+    def test_forward(self, input, expected):
+        np.testing.assert_allclose(self._t.forward(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(
         [
@@ -369,12 +462,20 @@ class TestExpTransform(unittest.TestCase):
         ]
     )
     def test_inverse(self, input, expected):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.inverse(paddle.to_tensor(input)).numpy(),
             expected,
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.inverse(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(
         [
@@ -383,12 +484,20 @@ class TestExpTransform(unittest.TestCase):
         ]
     )
     def test_forward_log_det_jacobian(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.forward_log_det_jacobian(paddle.to_tensor(input)).numpy(),
             self._np_forward_jacobian(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.forward_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   self._np_forward_jacobian(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_forward_jacobian(self, x):
         return x
@@ -400,12 +509,20 @@ class TestExpTransform(unittest.TestCase):
         ]
     )
     def test_inverse_log_det_jacobian(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.inverse_log_det_jacobian(paddle.to_tensor(input)).numpy(),
             self._np_inverse_jacobian(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.inverse_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   self._np_inverse_jacobian(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_inverse_jacobian(self, y):
         return -self._np_forward_jacobian(np.log(y))
@@ -431,13 +548,20 @@ class TestExpTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestChainTransform(unittest.TestCase):
+<<<<<<< HEAD
     @param.param_func(
         [(paddle.distribution.Transform, TypeError), ([0], TypeError)]
     )
+=======
+
+    @param.param_func([(paddle.distribution.Transform, TypeError),
+                       ([0], TypeError)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_init_exception(self, transforms, exception):
         with self.assertRaises(exception):
             paddle.distribution.ChainTransform(transforms)
 
+<<<<<<< HEAD
     @param.param_func(
         (
             (
@@ -464,6 +588,16 @@ class TestChainTransform(unittest.TestCase):
             ),
         )
     )
+=======
+    @param.param_func(((transform.ChainTransform(
+        (transform.AbsTransform(),
+         transform.AffineTransform(paddle.rand([1]), paddle.rand([1])))),
+                        False), (transform.ChainTransform((
+                            transform.AffineTransform(paddle.rand([1]),
+                                                      paddle.rand([1])),
+                            transform.ExpTransform(),
+                        )), True)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_is_injective(self, chain, expected):
         self.assertEqual(chain._is_injective(), expected)
 
@@ -517,6 +651,7 @@ class TestChainTransform(unittest.TestCase):
         self.assertEqual(input._codomain.event_rank, expected.event_rank)
         self.assertEqual(input._codomain.is_discrete, expected.is_discrete)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (
@@ -648,12 +783,80 @@ class TestChainTransform(unittest.TestCase):
             ),
         ]
     )
+=======
+    @param.param_func([
+        (transform.ChainTransform(
+            (transform.AffineTransform(paddle.to_tensor(0.0),
+                                       paddle.to_tensor(1.0)),
+             transform.ExpTransform())), np.array([0., 1., 2., 3.]),
+         np.exp(np.array([0., 1., 2., 3.]) * 1.0)),
+        (transform.ChainTransform(
+            (transform.ExpTransform(), transform.TanhTransform())),
+         np.array([[0., -1., 2., -3.], [-5., 6., 7., -8.]]),
+         np.tanh(np.exp(np.array([[0., -1., 2., -3.], [-5., 6., 7., -8.]]))))
+    ])
+    def test_forward(self, chain, input, expected):
+        np.testing.assert_allclose(chain.forward(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func([
+        (transform.ChainTransform(
+            (transform.AffineTransform(paddle.to_tensor(0.0),
+                                       paddle.to_tensor(-1.0)),
+             transform.ExpTransform())), np.array([0., 1., 2., 3.]),
+         np.log(np.array([0., 1., 2., 3.])) / (-1.0)),
+        (transform.ChainTransform(
+            (transform.ExpTransform(), transform.TanhTransform())),
+         np.array([[0., 1., 2., 3.], [5., 6., 7., 8.]]),
+         np.log(np.arctanh(np.array([[0., 1., 2., 3.], [5., 6., 7., 8.]]))))
+    ])
+    def test_inverse(self, chain, input, expected):
+        np.testing.assert_allclose(chain.inverse(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func([
+        (transform.ChainTransform(
+            (transform.AffineTransform(paddle.to_tensor(0.0),
+                                       paddle.to_tensor(-1.0)),
+             transform.PowerTransform(paddle.to_tensor(2.0)))),
+         np.array([1., 2., 3.]), np.log(2. * np.array([1., 2., 3.]))),
+    ])
+    def test_forward_log_det_jacobian(self, chain, input, expected):
+        np.testing.assert_allclose(chain.forward_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func([
+        (transform.ChainTransform(
+            (transform.AffineTransform(paddle.to_tensor(0.0),
+                                       paddle.to_tensor(-1.0)),
+             transform.ExpTransform())), (2, 3, 5), (2, 3, 5)),
+    ])
+    def test_forward_shape(self, chain, shape, expected_shape):
+        self.assertEqual(chain.forward_shape(shape), expected_shape)
+
+    @param.param_func([
+        (transform.ChainTransform(
+            (transform.AffineTransform(paddle.to_tensor(0.0),
+                                       paddle.to_tensor(-1.0)),
+             transform.ExpTransform())), (2, 3, 5), (2, 3, 5)),
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_inverse_shape(self, chain, shape, expected_shape):
         self.assertEqual(chain.inverse_shape(shape), expected_shape)
 
 
 @param.place(config.DEVICES)
 @param.param_cls(
+<<<<<<< HEAD
     (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank', 'x'),
     [
         (
@@ -664,7 +867,14 @@ class TestChainTransform(unittest.TestCase):
         ),
     ],
 )
+=======
+    (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank', 'x'), [
+        ('rank-over-zero', transform.ExpTransform(), 2, np.random.rand(2, 3,
+                                                                       3)),
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TestIndependentTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.IndependentTransform(
             self.base, self.reinterpreted_batch_rank
@@ -718,6 +928,7 @@ class TestIndependentTransform(unittest.TestCase):
 
     def test_forward_log_det_jacobian(self):
         actual = self._t.forward_log_det_jacobian(paddle.to_tensor(self.x))
+<<<<<<< HEAD
         self.assertEqual(
             tuple(actual.shape), self.x.shape[: -self.reinterpreted_batch_rank]
         )
@@ -730,6 +941,16 @@ class TestIndependentTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(self.x.dtype)),
             atol=config.ATOL.get(str(self.x.dtype)),
         )
+=======
+        self.assertEqual(tuple(actual.shape),
+                         self.x.shape[:-self.reinterpreted_batch_rank])
+        expected = self.base.forward_log_det_jacobian(paddle.to_tensor(
+            self.x)).sum(list(range(-self.reinterpreted_batch_rank, 0)))
+        np.testing.assert_allclose(actual.numpy(),
+                                   expected.numpy(),
+                                   rtol=config.RTOL.get(str(self.x.dtype)),
+                                   atol=config.ATOL.get(str(self.x.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -742,6 +963,7 @@ class TestIndependentTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestPowerTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.PowerTransform(paddle.to_tensor(2.0))
 
@@ -762,6 +984,7 @@ class TestPowerTransform(unittest.TestCase):
         self.assertEqual(self._t._codomain.event_rank, 0)
         self.assertEqual(self._t._codomain.is_discrete, False)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (
@@ -786,26 +1009,54 @@ class TestPowerTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(x.dtype)),
             atol=config.ATOL.get(str(x.dtype)),
         )
+=======
+    @param.param_func([(np.array([2.]), np.array([0., -1., 2.]),
+                        np.power(np.array([0., -1., 2.]), 2.)),
+                       (np.array([[0.], [3.]]), np.array([[1., 0.], [5., 6.]]),
+                        np.power(np.array([[1., 0.], [5., 6.]]),
+                                 np.array([[0.], [3.]])))])
+    def test_forward(self, power, x, y):
+        t = transform.PowerTransform(paddle.to_tensor(power))
+        np.testing.assert_allclose(t.forward(paddle.to_tensor(x)).numpy(),
+                                   y,
+                                   rtol=config.RTOL.get(str(x.dtype)),
+                                   atol=config.ATOL.get(str(x.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([(np.array([2.0]), np.array([4.0]), np.array([2.0]))])
     def test_inverse(self, power, y, x):
         t = transform.PowerTransform(paddle.to_tensor(power))
+<<<<<<< HEAD
         np.testing.assert_allclose(
             t.inverse(paddle.to_tensor(y)).numpy(),
             x,
             rtol=config.RTOL.get(str(x.dtype)),
             atol=config.ATOL.get(str(x.dtype)),
         )
+=======
+        np.testing.assert_allclose(t.inverse(paddle.to_tensor(y)).numpy(),
+                                   x,
+                                   rtol=config.RTOL.get(str(x.dtype)),
+                                   atol=config.ATOL.get(str(x.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(((np.array([2.0]), np.array([3.0, 1.4, 0.8])),))
     def test_forward_log_det_jacobian(self, power, x):
         t = transform.PowerTransform(paddle.to_tensor(power))
+<<<<<<< HEAD
         np.testing.assert_allclose(
             t.forward_log_det_jacobian(paddle.to_tensor(x)).numpy(),
             self._np_forward_jacobian(power, x),
             rtol=config.RTOL.get(str(x.dtype)),
             atol=config.ATOL.get(str(x.dtype)),
         )
+=======
+        np.testing.assert_allclose(t.forward_log_det_jacobian(
+            paddle.to_tensor(x)).numpy(),
+                                   self._np_forward_jacobian(power, x),
+                                   rtol=config.RTOL.get(str(x.dtype)),
+                                   atol=config.ATOL.get(str(x.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_forward_jacobian(self, alpha, x):
         return np.abs(np.log(alpha * np.power(x, alpha - 1)))
@@ -833,6 +1084,7 @@ class TestPowerTransform(unittest.TestCase):
 
 @param.place(config.DEVICES)
 class TestTanhTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.TanhTransform()
 
@@ -851,6 +1103,7 @@ class TestTanhTransform(unittest.TestCase):
         self.assertEqual(self._t._codomain._constraint._lower, -1)
         self.assertEqual(self._t._codomain._constraint._upper, 1)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (
@@ -889,6 +1142,30 @@ class TestTanhTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+    @param.param_func([(np.array([0., 1., 2.,
+                                  3.]), np.tanh(np.array([0., 1., 2., 3.]))),
+                       (np.array([[0., 1., 2., 3.], [-5., 6., 7., 8.]]),
+                        np.tanh(np.array([[0., 1., 2., 3.], [-5., 6., 7.,
+                                                             8.]])))])
+    def test_forward(self, input, expected):
+        np.testing.assert_allclose(self._t.forward(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func([(np.array([1., 2.,
+                                  3.]), np.arctanh(np.array([1., 2., 3.]))),
+                       (np.array([[1., 2., 3.], [6., 7., 8.]]),
+                        np.arctanh(np.array([[1., 2., 3.], [6., 7., 8.]])))])
+    def test_inverse(self, input, expected):
+        np.testing.assert_allclose(self._t.inverse(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(
         [
@@ -897,12 +1174,20 @@ class TestTanhTransform(unittest.TestCase):
         ]
     )
     def test_forward_log_det_jacobian(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.forward_log_det_jacobian(paddle.to_tensor(input)).numpy(),
             self._np_forward_jacobian(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.forward_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   self._np_forward_jacobian(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_forward_jacobian(self, x):
         return 2.0 * (np.log(2.0) - x - self._np_softplus(-2.0 * x))
@@ -922,12 +1207,20 @@ class TestTanhTransform(unittest.TestCase):
         ]
     )
     def test_inverse_log_det_jacobian(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.inverse_log_det_jacobian(paddle.to_tensor(input)).numpy(),
             self._np_inverse_jacobian(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.inverse_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   self._np_inverse_jacobian(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -956,6 +1249,7 @@ class TestTanhTransform(unittest.TestCase):
     ],
 )
 class TestReshapeTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.ReshapeTransform(
             self.in_event_shape, self.out_event_shape
@@ -979,6 +1273,7 @@ class TestReshapeTransform(unittest.TestCase):
 
     def test_forward(self):
         x = paddle.ones(self.in_event_shape)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.forward(x),
             paddle.ones(self.out_event_shape),
@@ -1003,6 +1298,26 @@ class TestReshapeTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(x.numpy().dtype)),
             atol=config.ATOL.get(str(x.numpy().dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.forward(x),
+                                   paddle.ones(self.out_event_shape),
+                                   rtol=config.RTOL.get(str(x.numpy().dtype)),
+                                   atol=config.ATOL.get(str(x.numpy().dtype)))
+
+    def test_inverse(self):
+        x = paddle.ones(self.out_event_shape)
+        np.testing.assert_allclose(self._t.inverse(x).numpy(),
+                                   paddle.ones(self.in_event_shape).numpy(),
+                                   rtol=config.RTOL.get(str(x.numpy().dtype)),
+                                   atol=config.ATOL.get(str(x.numpy().dtype)))
+
+    def test_forward_log_det_jacobian(self):
+        x = paddle.ones(self.in_event_shape)
+        np.testing.assert_allclose(self._t.forward_log_det_jacobian(x).numpy(),
+                                   paddle.zeros([1]).numpy(),
+                                   rtol=config.RTOL.get(str(x.numpy().dtype)),
+                                   atol=config.ATOL.get(str(x.numpy().dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_in_event_shape(self):
         self.assertEqual(self._t.in_event_shape, self.in_event_shape)
@@ -1042,6 +1357,7 @@ def _np_softplus(x, beta=1.0, threshold=20.0):
 
 
 class TestSigmoidTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.SigmoidTransform()
 
@@ -1054,6 +1370,7 @@ class TestSigmoidTransform(unittest.TestCase):
     def test_codomain(self):
         self.assertTrue(isinstance(self._t._codomain, variable.Variable))
 
+<<<<<<< HEAD
     @param.param_func(
         ((np.ones((5, 10)), 1 / (1 + np.exp(-np.ones((5, 10))))),)
     )
@@ -1091,6 +1408,34 @@ class TestSigmoidTransform(unittest.TestCase):
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+    @param.param_func(((np.ones(
+        (5, 10)), 1 / (1 + np.exp(-np.ones((5, 10))))), ))
+    def test_forward(self, input, expected):
+        np.testing.assert_allclose(self._t.forward(paddle.to_tensor(input)),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func(
+        ((np.ones(10), np.log(np.ones(10)) - np.log1p(-np.ones(10))), ))
+    def test_inverse(self, input, expected):
+        np.testing.assert_allclose(self._t.inverse(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+
+    @param.param_func(
+        ((np.ones(10),
+          -_np_softplus(-np.ones(10)) - _np_softplus(np.ones(10))), ))
+    def test_forward_log_det_jacobian(self, input, expected):
+        np.testing.assert_allclose(self._t.forward_log_det_jacobian(
+            paddle.to_tensor(input)).numpy(),
+                                   expected,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -1112,6 +1457,7 @@ class TestSigmoidTransform(unittest.TestCase):
 
 
 class TestSoftmaxTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.SoftmaxTransform()
 
@@ -1126,21 +1472,35 @@ class TestSoftmaxTransform(unittest.TestCase):
 
     @param.param_func(((np.random.random((5, 10)),),))
     def test_forward(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.forward(paddle.to_tensor(input)),
             self._np_forward(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.forward(paddle.to_tensor(input)),
+                                   self._np_forward(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(((np.random.random(10),),))
     def test_inverse(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.inverse(paddle.to_tensor(input)),
             self._np_inverse(input),
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.inverse(paddle.to_tensor(input)),
+                                   self._np_inverse(input),
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _np_forward(self, x):
         x = np.exp(x - np.max(x, -1, keepdims=True)[0])
@@ -1173,6 +1533,7 @@ class TestSoftmaxTransform(unittest.TestCase):
 
 
 class TestStickBreakingTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.StickBreakingTransform()
 
@@ -1187,12 +1548,20 @@ class TestStickBreakingTransform(unittest.TestCase):
 
     @param.param_func(((np.random.random((10)),),))
     def test_forward(self, input):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             self._t.inverse(self._t.forward(paddle.to_tensor(input))),
             input,
             rtol=config.RTOL.get(str(input.dtype)),
             atol=config.ATOL.get(str(input.dtype)),
         )
+=======
+        np.testing.assert_allclose(self._t.inverse(
+            self._t.forward(paddle.to_tensor(input))),
+                                   input,
+                                   rtol=config.RTOL.get(str(input.dtype)),
+                                   atol=config.ATOL.get(str(input.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((2, 3, 5), (2, 3, 6))])
     def test_forward_shape(self, shape, expected_shape):
@@ -1218,6 +1587,7 @@ class TestStickBreakingTransform(unittest.TestCase):
     ],
 )
 class TestStackTransform(unittest.TestCase):
+
     def setUp(self):
         self._t = transform.StackTransform(self.transforms, self.axis)
 
@@ -1237,9 +1607,14 @@ class TestStackTransform(unittest.TestCase):
         ]
     )
     def test_forward(self, input):
+<<<<<<< HEAD
         self.assertEqual(
             tuple(self._t.forward(paddle.to_tensor(input)).shape), input.shape
         )
+=======
+        self.assertEqual(tuple(self._t.forward(paddle.to_tensor(input)).shape),
+                         input.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func(
         [
@@ -1252,6 +1627,7 @@ class TestStackTransform(unittest.TestCase):
         ]
     )
     def test_inverse(self, input):
+<<<<<<< HEAD
         self.assertEqual(
             tuple(self._t.inverse(paddle.to_tensor(input)).shape), input.shape
         )
@@ -1266,6 +1642,18 @@ class TestStackTransform(unittest.TestCase):
             ),
             input.shape,
         )
+=======
+        self.assertEqual(tuple(self._t.inverse(paddle.to_tensor(input)).shape),
+                         input.shape)
+
+    @param.param_func([(np.array([[1., 2., 3.]]), ), (np.array([[6., 7.,
+                                                                 8.]]), )])
+    def test_forward_log_det_jacobian(self, input):
+        self.assertEqual(
+            tuple(
+                self._t.forward_log_det_jacobian(
+                    paddle.to_tensor(input)).shape), input.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @param.param_func([((), ()), ((2, 3, 5), (2, 3, 5))])
     def test_forward_shape(self, shape, expected_shape):
@@ -1278,6 +1666,7 @@ class TestStackTransform(unittest.TestCase):
     def test_axis(self):
         self.assertEqual(self._t.axis, self.axis)
 
+<<<<<<< HEAD
     @param.param_func(
         [
             (0, 0, TypeError),
@@ -1285,6 +1674,11 @@ class TestStackTransform(unittest.TestCase):
             ([paddle.distribution.ExpTransform()], 'axis', TypeError),
         ]
     )
+=======
+    @param.param_func([(0, 0, TypeError), ([0], 0, TypeError),
+                       ([paddle.distribution.ExpTransform()], 'axis', TypeError)
+                       ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_init_exception(self, transforms, axis, exc):
         with self.assertRaises(exc):
             paddle.distribution.StackTransform(transforms, axis)

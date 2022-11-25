@@ -28,6 +28,7 @@ from paddle.fluid.tests.unittests.op_test import (
     "CUDA has to be skipped because it forces dygraph",
 )
 class TestSqueeze2OneDNNOp(OpTest):
+
     def set_op_type(self):
         self.op_type = "squeeze2"
 
@@ -64,6 +65,7 @@ class TestSqueeze2OneDNNOp(OpTest):
 
 
 class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
+
     def set_op_type(self):
         self.op_type = "squeeze"
 
@@ -75,6 +77,7 @@ class TestSqueezeOneDNNOp(TestSqueeze2OneDNNOp):
 
 
 class TestSqueeze2OneDNNOp1(TestSqueeze2OneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -82,6 +85,7 @@ class TestSqueeze2OneDNNOp1(TestSqueeze2OneDNNOp):
 
 
 class TestSqueezeOneDNNOp1(TestSqueezeOneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -89,6 +93,7 @@ class TestSqueezeOneDNNOp1(TestSqueezeOneDNNOp):
 
 
 class TestSqueeze2OneDNNOp2(TestSqueeze2OneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -96,6 +101,7 @@ class TestSqueeze2OneDNNOp2(TestSqueeze2OneDNNOp):
 
 
 class TestSqueezeOneDNNOp2(TestSqueezeOneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -103,6 +109,7 @@ class TestSqueezeOneDNNOp2(TestSqueezeOneDNNOp):
 
 
 class TestSqueeze2OneDNNOp3(TestSqueeze2OneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (25, 1, 1, 4, 1)
         self.axes = (1, -1)
@@ -110,6 +117,7 @@ class TestSqueeze2OneDNNOp3(TestSqueeze2OneDNNOp):
 
 
 class TestSqueezeOneDNNOp3(TestSqueezeOneDNNOp):
+
     def init_test_case(self):
         self.ori_shape = (25, 1, 1, 4, 1)
         self.axes = (1, -1)
@@ -118,8 +126,10 @@ class TestSqueezeOneDNNOp3(TestSqueezeOneDNNOp):
 
 #   BF16 TESTS
 def create_squeeze_bf16_test_classes(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestSqueeze2BF16OneDNNOp(parent):
+
         def set_inputs(self):
             self.dtype = np.uint16
             self.inputs = {"X": convert_float_to_uint16(self.x)}
@@ -130,6 +140,7 @@ def create_squeeze_bf16_test_classes(parent):
 
         def test_check_grad(self):
             self.calculate_grads()
+<<<<<<< HEAD
             self.check_grad_with_place(
                 core.CPUPlace(),
                 ["X"],
@@ -137,12 +148,19 @@ def create_squeeze_bf16_test_classes(parent):
                 user_defined_grads=[self.dx],
                 user_defined_grad_outputs=[self.dout],
             )
+=======
+            self.check_grad_with_place(core.CPUPlace(), ["X"],
+                                       "Out",
+                                       user_defined_grads=[self.dx],
+                                       user_defined_grad_outputs=[self.dout])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     cls_name = "{0}_{1}".format(parent.__name__, "Squeeze2_BF16")
     TestSqueeze2BF16OneDNNOp.__name__ = cls_name
     globals()[cls_name] = TestSqueeze2BF16OneDNNOp
 
     class TestSqueezeBF16OneDNNOp(TestSqueeze2BF16OneDNNOp):
+
         def set_op_type(self):
             self.dtype = np.uint16
             self.op_type = "squeeze"

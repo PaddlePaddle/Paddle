@@ -34,6 +34,7 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
     helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     norm = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="norm",
         inputs={"X": x},
@@ -43,6 +44,18 @@ def l2_norm(x, axis, epsilon=1e-12, name=None):
             "epsilon": epsilon,
         },
     )
+=======
+    helper.append_op(type="norm",
+                     inputs={"X": x},
+                     outputs={
+                         "Out": out,
+                         "Norm": norm
+                     },
+                     attrs={
+                         "axis": 1 if axis is None else axis,
+                         "epsilon": epsilon,
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return paddle.squeeze(norm, axis=[axis])
 
 
@@ -89,6 +102,7 @@ def _weight_norm(v, g, dim):
         v_normalized = F.l2_normalize(p_matrix, axis=1)
         v_normalized = paddle.reshape(v_normalized, transposed_shape)
         v_normalized = paddle.transpose(v_normalized, perm)
+<<<<<<< HEAD
     weight = F.elementwise_mul(
         v_normalized, g, axis=dim if dim is not None else -1
     )
@@ -96,6 +110,16 @@ def _weight_norm(v, g, dim):
 
 
 class WeightNorm:
+=======
+    weight = F.elementwise_mul(v_normalized,
+                               g,
+                               axis=dim if dim is not None else -1)
+    return weight
+
+
+class WeightNorm(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, name, dim):
         if dim is None:
             dim = -1

@@ -20,6 +20,7 @@ from op_test import OpTest
 
 
 class TestROIAlignOp(OpTest):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -70,11 +71,17 @@ class TestROIAlignOp(OpTest):
         count = roi_bin_grid_h * roi_bin_grid_w
         bilinear_pos = np.zeros(
             [self.channels, self.pooled_height, self.pooled_width, count, 4],
+<<<<<<< HEAD
             np.float64,
         )
         bilinear_w = np.zeros(
             [self.pooled_height, self.pooled_width, count, 4], np.float64
         )
+=======
+            np.float64)
+        bilinear_w = np.zeros([self.pooled_height, self.pooled_width, count, 4],
+                              np.float64)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for ph in range(self.pooled_width):
             for pw in range(self.pooled_height):
                 c = 0
@@ -213,13 +220,19 @@ class TestROIAlignOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois = np.array(rois).astype("float64")
+<<<<<<< HEAD
         self.boxes_num = np.array(
             [bno + 1 for bno in range(self.batch_size)]
         ).astype('int32')
+=======
+        self.boxes_num = np.array([bno + 1 for bno in range(self.batch_size)
+                                   ]).astype('int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def setUp(self):
         self.op_type = "roi_align"
         self.python_api = lambda x, boxes, boxes_num, pooled_height, pooled_width, spatial_scale, sampling_ratio, aligned: paddle.vision.ops.roi_align(
+<<<<<<< HEAD
             x,
             boxes,
             boxes_num,
@@ -228,6 +241,10 @@ class TestROIAlignOp(OpTest):
             sampling_ratio,
             aligned,
         )
+=======
+            x, boxes, boxes_num, (pooled_height, pooled_width), spatial_scale,
+            sampling_ratio, aligned)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.set_data()
 
     def test_check_output(self):
@@ -238,6 +255,7 @@ class TestROIAlignOp(OpTest):
 
 
 class TestROIAlignInLodOp(TestROIAlignOp):
+
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -263,6 +281,7 @@ class TestROIAlignInLodOp(TestROIAlignOp):
 
 
 class TestROIAlignOpWithAligned(TestROIAlignOp):
+
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3

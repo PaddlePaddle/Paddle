@@ -19,6 +19,7 @@ from paddle.fluid import metrics
 
 
 class TestAucSinglePredOp(OpTest):
+
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
@@ -28,11 +29,17 @@ class TestAucSinglePredOp(OpTest):
         slide_steps = 1
 
         stat_pos = np.zeros(
+<<<<<<< HEAD
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
         stat_neg = np.zeros(
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
+=======
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+        stat_neg = np.zeros(
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {
             'Predict': pred0,
@@ -68,6 +75,7 @@ class TestAucSinglePredOp(OpTest):
 
 
 class TestAucGlobalSinglePredOp(OpTest):
+
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")

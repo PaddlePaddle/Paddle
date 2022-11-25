@@ -127,8 +127,13 @@ __device__ __forceinline__ void warp_reduce_upper_tri(T* sum) {
 template <typename T, int pow2_index>
 __global__ void SoftmaxMaskFuseUpperTriangleGPUKernel(const T* src,
                                                       T* dst,
+<<<<<<< HEAD
                                                       int64_t batch_count,
                                                       int64_t key_seq_len) {
+=======
+                                                      int batch_count,
+                                                      int key_seq_len) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   constexpr int next_pow2 = 1 << pow2_index;
   constexpr int warp_size = (next_pow2 < WARP_SIZE) ? next_pow2 : WARP_SIZE;
   constexpr int kLocalIterations = std::max(next_pow2 / warp_size, 4);
@@ -370,7 +375,11 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
                           key_seq_len,
                           query_seq_len));
 
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len <= 16384,
+=======
+    PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       true,
                       platform::errors::InvalidArgument(
                           "Input x's last dim must be between [32, 16384] "
@@ -448,11 +457,14 @@ class SoftmaxMaskFuseUpperTriangleKernel : public framework::OpKernel<T> {
         SoftmaxMaskFuseUpperTriangleGPUKernel<T, 13>
             <<<blocks, threads, 0, stream>>>(
                 x_data, y_data, batch_count, key_seq_len);
+<<<<<<< HEAD
         break;
       case 14:  // 16384
         SoftmaxMaskFuseUpperTriangleGPUKernel<T, 14>
             <<<blocks, threads, 0, stream>>>(
                 x_data, y_data, batch_count, key_seq_len);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         break;
       default:
         PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));
@@ -572,6 +584,7 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
                                              softmax_rst_data,
                                              batch_count,
                                              key_seq_len);
+<<<<<<< HEAD
         break;
       case 14:
         SoftmaxMaskFuseUpperTriangleGradGPUKernel<T, 14>
@@ -580,6 +593,8 @@ class SoftmaxMaskFuseUpperTriangleGradKernel : public framework::OpKernel<T> {
                                              softmax_rst_data,
                                              batch_count,
                                              key_seq_len);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         break;
       default:
         PADDLE_THROW(phi::errors::Unimplemented("Too large sequence length."));

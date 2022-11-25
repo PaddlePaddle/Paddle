@@ -30,6 +30,7 @@ paddle_apis = {
 
 
 class TestComplexElementwiseLayers(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -56,6 +57,7 @@ class TestComplexElementwiseLayers(unittest.TestCase):
 
     def compare_by_basic_api(self, x, y):
         for place in self._places:
+<<<<<<< HEAD
             self.assert_check(
                 self.paddle_calc(x, y, "add", place), x + y, place
             )
@@ -68,6 +70,16 @@ class TestComplexElementwiseLayers(unittest.TestCase):
             self.assert_check(
                 self.paddle_calc(x, y, "div", place), x / y, place
             )
+=======
+            self.assert_check(self.paddle_calc(x, y, "add", place), x + y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "sub", place), x - y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "mul", place), x * y,
+                              place)
+            self.assert_check(self.paddle_calc(x, y, "div", place), x / y,
+                              place)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def compare_op_by_basic_api(self, x, y):
         for place in self._places:
@@ -81,21 +93,33 @@ class TestComplexElementwiseLayers(unittest.TestCase):
 
     def test_complex_xy(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
             y = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+            y = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.compare_by_basic_api(x, y)
             self.compare_op_by_basic_api(x, y)
 
     def test_complex_x_real_y(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = rand([2, 3, 4, 5]).astype(dtype) + 1j * rand(
                 [2, 3, 4, 5]
             ).astype(dtype)
+=======
+            x = rand([2, 3, 4, 5
+                      ]).astype(dtype) + 1j * rand([2, 3, 4, 5]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             y = rand([4, 5]).astype(dtype)
 
             # promote types cases

@@ -24,6 +24,7 @@ import unittest
 
 
 class TestDefaultScopeFuncs(unittest.TestCase):
+
     def test_cur_scope(self):
         self.assertIsNotNone(get_cur_scope())
 
@@ -39,6 +40,7 @@ class TestDefaultScopeFuncs(unittest.TestCase):
         leave_local_scope()
 
     def test_var_get_int(self):
+
         def __new_scope__():
             i = var("var_i")
             self.assertFalse(i.is_int())

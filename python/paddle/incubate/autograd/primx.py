@@ -16,6 +16,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle.fluid import framework as framework
+<<<<<<< HEAD
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
 
@@ -33,6 +34,17 @@ from .utils import (
     get_input_var_list,
     get_output_var_list,
 )
+=======
+from paddle.fluid.framework import default_main_program
+from paddle.fluid.framework import Operator
+from paddle import compat as cpt
+from .primops import fill_const, add
+from .primreg import op_position_inputs, op_position_output, lookup_orig2prim, lookup_prim2orig
+from .primrules import _orig2prim, _prim2orig, _jvp, _transpose
+from .utils import get_input_var_list, get_output_var_list, flatten, flatten_and_remove_none
+from collections import OrderedDict
+from paddle.incubate.autograd.utils import as_tensors
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def topo_path(xs, ys, block=None):
@@ -66,8 +78,12 @@ def topo_path(xs, ys, block=None):
     # Reaching test, returning whether an op is reached from the given input
     reaching = lambda op: any(
         id(v) in reached_vars
+<<<<<<< HEAD
         for v in flatten_and_remove_none(get_input_var_list(op))
     )
+=======
+        for v in flatten_and_remove_none(get_input_var_list(op)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # block.ops are supposedly in the order that preserves correct data
     # dependence.
@@ -81,8 +97,12 @@ def topo_path(xs, ys, block=None):
     used_vars = OrderedDict((id(y), y) for y in ys if id(y) in reached_vars)
     back_reaching = lambda op: any(
         id(out) in used_vars
+<<<<<<< HEAD
         for out in flatten_and_remove_none(get_output_var_list(op))
     )
+=======
+        for out in flatten_and_remove_none(get_output_var_list(op)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # Backward pass to find all used variables
     for op in reversed(path):
@@ -180,6 +200,7 @@ class VarMap:
 
 
 # TODO(lml): supporting control flow, nested blocks, and block other than current block of main program.
+<<<<<<< HEAD
 class Transform:
     """An object that maintains the state of transformations applied to a
     primitve program."""
@@ -188,6 +209,15 @@ class Transform:
         assert (
             block == default_main_program().current_block()
         ), 'only support transform on current block of main program.'
+=======
+class Transform(object):
+    """ An object that maintains the state of transformations applied to a 
+    primitve program. """
+
+    def __init__(self, block):
+        assert block == default_main_program().current_block(
+        ), f'only support transform on current block of main program.'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.block = block
         self.vars = self.init_vars(block)
         self.var2dot = VarMap('var2dot', self.vars)
@@ -479,9 +509,14 @@ def _lower(block, reverse, blacklist):
             bind(input_args, to_bind, value_table)
 
             for orig_out, new_out in zip(
+<<<<<<< HEAD
                 expand_nested_list(get_output_var_list(op)),
                 expand_nested_list(as_tensors(lower_fn(op, *input_args))),
             ):
+=======
+                    expand_nested_list(get_output_var_list(op)),
+                    expand_nested_list(as_tensors(lower_fn(op, *input_args)))):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 assert not (orig_out is None) ^ (
                     new_out is None
                 ), "orig_out and new_out should match."
@@ -507,6 +542,7 @@ def _lower(block, reverse, blacklist):
 
             new_op_desc = block.desc.append_op()
             with param_guard(inputs), param_guard(outputs):
+<<<<<<< HEAD
                 op = Operator(
                     block=block,
                     desc=new_op_desc,
@@ -515,6 +551,14 @@ def _lower(block, reverse, blacklist):
                     outputs=outputs,
                     attrs=attrs,
                 )
+=======
+                op = Operator(block=block,
+                              desc=new_op_desc,
+                              type=op.type,
+                              inputs=inputs,
+                              outputs=outputs,
+                              attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             block.ops.append(op)
 
     # Step3: Do some post-processing work
@@ -562,9 +606,14 @@ def orig2prim(block=None):
     """
 
     block = default_main_program().current_block() if block is None else block
+<<<<<<< HEAD
     assert (
         block == default_main_program().current_block()
     ), 'block is neither None nor current block of main program'
+=======
+    assert block == default_main_program().current_block(
+    ), f'block is neither None nor current block of main program'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     _lower(block, reverse=False, blacklist=[])
 
 
@@ -608,8 +657,13 @@ def prim2orig(block=None, blacklist=None):
     """
 
     block = default_main_program().current_block() if block is None else block
+<<<<<<< HEAD
     assert (
         block == default_main_program().current_block()
     ), 'block is neither None nor current block of main program'
+=======
+    assert block == default_main_program().current_block(
+    ), f'block is neither None nor current block of main program'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     blacklist = [] if blacklist is None else blacklist
     _lower(block, reverse=True, blacklist=blacklist)

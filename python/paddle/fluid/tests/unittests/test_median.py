@@ -21,6 +21,7 @@ DELTA = 1e-6
 
 
 class TestMedian(unittest.TestCase):
+
     def check_numpy_res(self, np1, np2):
         self.assertEqual(np1.shape, np2.shape)
         mismatch = np.sum((np1 - np2) * (np1 - np2))
@@ -55,11 +56,16 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
+<<<<<<< HEAD
         lis_tests = [
             [x, axis, keepdims]
             for axis in [-1, 0, 1, 2, None]
             for keepdims in [False, True]
         ]
+=======
+        lis_tests = [[x, axis, keepdims] for axis in [-1, 0, 1, 2, None]
+                     for keepdims in [False, True]]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
 
@@ -69,11 +75,16 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
+<<<<<<< HEAD
         lis_tests = [
             [x, axis, keepdims]
             for axis in [-1, 0, 1, 2, None]
             for keepdims in [False, True]
         ]
+=======
+        lis_tests = [[x, axis, keepdims] for axis in [-1, 0, 1, 2, None]
+                     for keepdims in [False, True]]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 

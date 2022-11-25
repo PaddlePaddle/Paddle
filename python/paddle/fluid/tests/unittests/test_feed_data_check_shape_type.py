@@ -65,17 +65,26 @@ class TestFeedData(unittest.TestCase):
 
         predict_label = fluid.layers.fc(hidden, size=class_num, act='softmax')
         loss = paddle.mean(
+<<<<<<< HEAD
             fluid.layers.cross_entropy(input=predict_label, label=label)
         )
+=======
+            fluid.layers.cross_entropy(input=predict_label, label=label))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         optimizer = fluid.optimizer.Adam()
         optimizer.minimize(loss)
         return in_data, label, loss
 
     def test(self):
+<<<<<<< HEAD
         for use_cuda in (
             [True, False] if core.is_compiled_with_cuda() else [False]
         ):
+=======
+        for use_cuda in [True, False
+                         ] if core.is_compiled_with_cuda() else [False]:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for use_parallel_executor in [False, True]:
                 print('Test Parameters:'),
                 print(
@@ -132,6 +141,7 @@ class TestFeedData(unittest.TestCase):
             size=[feed_batch_size, 3, 4, 5]
         ).astype(np.float32)
         label_size = [self.data_batch_size, 1]
+<<<<<<< HEAD
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[feed_batch_size, 1]
         ).astype(np.float64)
@@ -143,11 +153,20 @@ class TestFeedData(unittest.TestCase):
             use_cuda,
             use_parallel_executor,
         )
+=======
+        feed_label = np.random.randint(low=0,
+                                       high=self.class_num,
+                                       size=[feed_batch_size,
+                                             1]).astype(np.float64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_feed_batch_size(use_cuda, use_parallel_executor)
         in_size = [None, 3, 4, 8]
         feed_in_data = np.random.uniform(size=[batch_size, 3, 4, 5]).astype(
+<<<<<<< HEAD
             np.float32
         )
         label_size = [-1, 1]
@@ -162,11 +181,21 @@ class TestFeedData(unittest.TestCase):
             use_cuda,
             use_parallel_executor,
         )
+=======
+            np.float32)
+        label_size = [-1, 1]
+        feed_label = np.random.randint(low=0,
+                                       high=self.class_num,
+                                       size=[batch_size, 1]).astype(np.int64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _test_feed_data_contains_neg_one(self, use_cuda, use_parallel_executor):
         batch_size = self._get_feed_batch_size(use_cuda, use_parallel_executor)
         in_size = [-1, 3, 4, 5]
         feed_in_data = np.random.uniform(size=[batch_size, 3, 4, 5]).astype(
+<<<<<<< HEAD
             np.float32
         )
         label_size = (None, 1)
@@ -181,6 +210,15 @@ class TestFeedData(unittest.TestCase):
             use_cuda,
             use_parallel_executor,
         )
+=======
+            np.float32)
+        label_size = (None, 1)
+        feed_label = np.random.randint(low=0,
+                                       high=self.class_num,
+                                       size=[batch_size, 1]).astype(np.int64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _test_feed_data_match_shape_type(self, use_cuda, use_parallel_executor):
         feed_batch_size = self._get_feed_batch_size(
@@ -191,6 +229,7 @@ class TestFeedData(unittest.TestCase):
             size=[feed_batch_size, 3, 4, 5]
         ).astype(np.float32)
         label_size = [self.data_batch_size, 1]
+<<<<<<< HEAD
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[feed_batch_size, 1]
         ).astype(np.int64)
@@ -202,6 +241,14 @@ class TestFeedData(unittest.TestCase):
             use_cuda,
             use_parallel_executor,
         )
+=======
+        feed_label = np.random.randint(low=0,
+                                       high=self.class_num,
+                                       size=[feed_batch_size,
+                                             1]).astype(np.int64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _test_feed_lod_tensor(self, use_cuda, use_parallel_executor):
         device_count = self._get_device_count(use_cuda)
@@ -212,17 +259,27 @@ class TestFeedData(unittest.TestCase):
         sum_length = int((device_count + 1) * device_count / 2)
 
         feed_in_data = np.random.uniform(size=[sum_length, 3, 4, 5]).astype(
+<<<<<<< HEAD
             np.float32
         )
+=======
+            np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         feed_data_tensor = fluid.LoDTensor()
         feed_data_tensor.set(feed_in_data, fluid.CPUPlace())
         feed_data_tensor.set_recursive_sequence_lengths(sequence_lengths)
 
         label_size = [device_count, 1]
         feed_label_tensor = fluid.LoDTensor()
+<<<<<<< HEAD
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[sum_length, 1]
         ).astype(np.int64)
+=======
+        feed_label = np.random.randint(low=0,
+                                       high=self.class_num,
+                                       size=[sum_length, 1]).astype(np.int64)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         feed_label_tensor.set(feed_label, fluid.CPUPlace())
         feed_label_tensor.set_recursive_sequence_lengths(sequence_lengths)
 
@@ -249,9 +306,15 @@ class TestFeedData(unittest.TestCase):
         main_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
+<<<<<<< HEAD
             in_data, label, loss = self._simple_fc_net(
                 in_size, label_size, self.class_num, self.hidden_sizes
             )
+=======
+            in_data, label, loss = self._simple_fc_net(in_size, label_size,
+                                                       self.class_num,
+                                                       self.hidden_sizes)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -265,11 +328,20 @@ class TestFeedData(unittest.TestCase):
             ).with_data_parallel(loss_name=loss.name)
 
         for i in range(self.iterations):
+<<<<<<< HEAD
             fetches = exe.run(
                 train_program,
                 feed={in_data.name: feed_in_data, label.name: feed_label},
                 fetch_list=[loss.name],
             )
+=======
+            fetches = exe.run(train_program,
+                              feed={
+                                  in_data.name: feed_in_data,
+                                  label.name: feed_label
+                              },
+                              fetch_list=[loss.name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

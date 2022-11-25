@@ -24,7 +24,11 @@ template <typename T, typename Context>
 void DropoutRawKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                       const Scalar& p,
+=======
+                      float p,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       bool is_test,
                       const std::string& mode,
                       int seed,
@@ -36,7 +40,11 @@ template <typename T, typename Context>
 void DropoutNdKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const paddle::optional<DenseTensor>& seed_tensor,
+<<<<<<< HEAD
                      const Scalar& p,
+=======
+                     float p,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      bool is_test,
                      const std::string& mode,
                      int seed,

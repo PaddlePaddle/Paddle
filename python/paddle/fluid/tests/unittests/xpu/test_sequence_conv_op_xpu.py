@@ -53,10 +53,16 @@ def seqconv(
                     [offset[i] - in_begin, offset[i + 1] - offset[i]]
                 )
                 if padding_trainable:
+<<<<<<< HEAD
                     sub_w = padding_data[j : j + pad_size, :]
                     col[
                         offset[i] : offset[i] + pad_size, j * M : (j + 1) * M
                     ] = sub_w
+=======
+                    sub_w = padding_data[j:j + pad_size, :]
+                    col[offset[i]:offset[i] + pad_size,
+                        j * M:(j + 1) * M] = sub_w
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 out_begin = offset[i] + pad_size
                 in_begin = offset[i]
 
@@ -65,6 +71,7 @@ def seqconv(
                     [in_end - offset[i + 1], offset[i + 1] - offset[i]]
                 )
                 if padding_trainable:
+<<<<<<< HEAD
                     sub_w = padding_data[
                         begin_pad
                         + context_start
@@ -78,6 +85,13 @@ def seqconv(
                         offset[i + 1] - pad_size : offset[i + 1],
                         j * M : (j + 1) * M,
                     ] = sub_w
+=======
+                    sub_w = padding_data[begin_pad + context_start + j -
+                                         pad_size:begin_pad + context_start +
+                                         j, :]
+                    col[offset[i + 1] - pad_size:offset[i + 1],
+                        j * M:(j + 1) * M] = sub_w
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 in_end = offset[i + 1]
                 out_end = offset[i + 1] - pad_size
             if in_end <= in_begin:
@@ -88,10 +102,12 @@ def seqconv(
 
 
 class XPUTestSequenceConv(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'sequence_conv'
 
     class TestSeqProject(XPUOpTest):
+
         def setUp(self):
             self.init_test_case()
             self.op_type = 'sequence_conv'
@@ -112,6 +128,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
 
             # one level, batch size
             x = np.random.uniform(
+<<<<<<< HEAD
                 -6.10907e-05,
                 0.000104218,
                 [self.input_size[0], self.input_size[1]],
@@ -124,6 +141,14 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
                     self.output_represention,
                 ],
             ).astype(self.dtype)
+=======
+                -6.10907e-05, 0.000104218,
+                [self.input_size[0], self.input_size[1]]).astype(self.dtype)
+            w = np.random.uniform(-3.17068e-05, 0.000159822, [
+                self.context_length * self.input_size[1],
+                self.output_represention
+            ]).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             begin_pad = np.max([0, -self.context_start])
             end_pad = np.max([0, self.context_start + self.context_length - 1])
@@ -172,6 +197,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
 
         def test_check_grad_padding_data(self):
             if self.padding_trainable:
+<<<<<<< HEAD
                 self.check_grad(
                     ['PaddingData'], 'Out', no_grad_set=set(['X', 'Filter'])
                 )
@@ -198,6 +224,34 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
                 self.check_grad(
                     self.inputs_val_no_x, 'Out', no_grad_set=set(['X'])
                 )
+=======
+                self.check_grad(['PaddingData'],
+                                'Out',
+                                no_grad_set=set(['X', 'Filter']))
+
+        def test_check_grad_Filter(self):
+            self.check_grad(['Filter'],
+                            'Out',
+                            no_grad_set=set(self.inputs_val_no_f))
+
+        def test_check_grad_input_filter(self):
+            if self.padding_trainable:
+                self.check_grad(['X', 'Filter'],
+                                'Out',
+                                no_grad_set=set(['PaddingData']))
+
+        def test_check_grad_padding_input(self):
+            if self.padding_trainable:
+                self.check_grad(self.inputs_val_no_f,
+                                'Out',
+                                no_grad_set=set(['Filter']))
+
+        def test_check_grad_padding_filter(self):
+            if self.padding_trainable:
+                self.check_grad(self.inputs_val_no_x,
+                                'Out',
+                                no_grad_set=set(['X']))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def init_test_case(self):
             self.input_row = 7
@@ -216,6 +270,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
             self.output_represention = 8  # output feature size
 
     class TestSeqProjectCase1(TestSeqProject):
+
         def init_test_case(self):
             self.input_row = 11
             self.context_start = -2
@@ -232,6 +287,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
             self.output_represention = 8  # output feature size
 
     class TestSeqProjectCase2Len0(TestSeqProject):
+
         def init_test_case(self):
             self.input_row = 11
             self.context_start = -2
@@ -248,6 +304,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
             self.output_represention = 8  # output feature size
 
     class TestSeqProjectCase3(TestSeqProject):
+
         def init_test_case(self):
             self.input_row = 25
             self.context_start = -2
@@ -270,6 +327,7 @@ class XPUTestSequenceConv(XPUOpTestWrapper):
             self.output_represention = 8  # output feature size
 
     class TestSeqProjectCase4(TestSeqProject):
+
         def init_test_case(self):
             self.input_row = 7835
             self.input_col = 128
@@ -425,13 +483,21 @@ for stype in support_types:
 
 
 class TestSeqConvApi(unittest.TestCase):
+
     def test_api(self):
         import paddle.fluid as fluid
 
         x = fluid.layers.data('x', shape=[32], lod_level=1)
+<<<<<<< HEAD
         y = fluid.layers.sequence_conv(
             input=x, num_filters=2, filter_size=3, padding_start=None
         )
+=======
+        y = fluid.layers.sequence_conv(input=x,
+                                       num_filters=2,
+                                       filter_size=3,
+                                       padding_start=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(

@@ -40,7 +40,9 @@ _set_use_system_allocator(True)
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
+
     def __assert_close(self, tensor, np_array, msg, rtol=2e-02, atol=2):
+<<<<<<< HEAD
         np.testing.assert_allclose(
             np.array(tensor), np_array, rtol=rtol, atol=atol, err_msg=msg
         )
@@ -48,6 +50,16 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
     def check_forward(
         self, shape, begin_norm_axis, with_scale_bias=True, with_is_test=False
     ):
+=======
+        self.assertTrue(
+            np.allclose(np.array(tensor), np_array, rtol=rtol, atol=atol), msg)
+
+    def check_forward(self,
+                      shape,
+                      begin_norm_axis,
+                      with_scale_bias=True,
+                      with_is_test=False):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # attr
         epsilon = 0.00001
         x_shape = shape
@@ -86,6 +98,7 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
             # scale and bias are fp32 and other vars are of bf16
             for name in ground_truth:
                 if name == 'x_bf16' or name == 'y_bf16':
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='uint16',
@@ -97,6 +110,15 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                         dtype='float32',
                         shape=ground_truth[name].shape,
                     )
+=======
+                    block.create_var(name=name,
+                                     dtype='uint16',
+                                     shape=ground_truth[name].shape)
+                else:
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             inputs = {"X": block.var('x_bf16')}
             if with_scale_bias:
@@ -137,9 +159,15 @@ class TestLayerNormBF16MKLDNNOp(TestLayerNormMKLDNNOp):
                 self.__assert_close(variance, out[2], "variance", 1e-3)
 
     def test_check_forward_with_is_test(self):
+<<<<<<< HEAD
         self.check_forward(
             shape=[2, 3, 4, 5], begin_norm_axis=3, with_is_test=True
         )
+=======
+        self.check_forward(shape=[2, 3, 4, 5],
+                           begin_norm_axis=3,
+                           with_is_test=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # TODO (jczaja): Enable those to test when enabling training using bf16
     def test_check_forward_with_scale_and_bias(self):

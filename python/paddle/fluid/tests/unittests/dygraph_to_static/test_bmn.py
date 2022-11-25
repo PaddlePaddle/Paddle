@@ -101,6 +101,7 @@ def _get_interp1d_bin_mask(
 
 
 class Conv1D(fluid.dygraph.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         prefix,
@@ -133,6 +134,36 @@ class Conv1D(fluid.dygraph.Layer):
             weight_attr=param_attr,
             bias_attr=bias_attr,
         )
+=======
+
+    def __init__(self,
+                 prefix,
+                 num_channels=256,
+                 num_filters=256,
+                 size_k=3,
+                 padding=1,
+                 groups=1,
+                 act="relu"):
+        super(Conv1D, self).__init__()
+        fan_in = num_channels * size_k * 1
+        k = 1. / math.sqrt(fan_in)
+        param_attr = ParamAttr(name=prefix + "_w",
+                               initializer=fluid.initializer.Uniform(low=-k,
+                                                                     high=k))
+        bias_attr = ParamAttr(name=prefix + "_b",
+                              initializer=fluid.initializer.Uniform(low=-k,
+                                                                    high=k))
+
+        self._conv2d = fluid.dygraph.Conv2D(num_channels=num_channels,
+                                            num_filters=num_filters,
+                                            filter_size=(1, size_k),
+                                            stride=1,
+                                            padding=(0, padding),
+                                            groups=groups,
+                                            act=act,
+                                            param_attr=param_attr,
+                                            bias_attr=bias_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, x):
         x = fluid.layers.unsqueeze(input=x, axes=[2])
@@ -142,6 +173,7 @@ class Conv1D(fluid.dygraph.Layer):
 
 
 class BMN(fluid.dygraph.Layer):
+
     def __init__(self, cfg):
         super().__init__()
 
@@ -156,6 +188,7 @@ class BMN(fluid.dygraph.Layer):
         self.hidden_dim_3d = 512
 
         # Base Module
+<<<<<<< HEAD
         self.b_conv1 = Conv1D(
             prefix="Base_1",
             num_channels=cfg.feat_dim,
@@ -206,6 +239,52 @@ class BMN(fluid.dygraph.Layer):
             padding=1,
             act="relu",
         )
+=======
+        self.b_conv1 = Conv1D(prefix="Base_1",
+                              num_channels=cfg.feat_dim,
+                              num_filters=self.hidden_dim_1d,
+                              size_k=3,
+                              padding=1,
+                              groups=4,
+                              act="relu")
+        self.b_conv2 = Conv1D(prefix="Base_2",
+                              num_filters=self.hidden_dim_1d,
+                              size_k=3,
+                              padding=1,
+                              groups=4,
+                              act="relu")
+
+        # Temporal Evaluation Module
+        self.ts_conv1 = Conv1D(prefix="TEM_s1",
+                               num_filters=self.hidden_dim_1d,
+                               size_k=3,
+                               padding=1,
+                               groups=4,
+                               act="relu")
+        self.ts_conv2 = Conv1D(prefix="TEM_s2",
+                               num_filters=1,
+                               size_k=1,
+                               padding=0,
+                               act="sigmoid")
+        self.te_conv1 = Conv1D(prefix="TEM_e1",
+                               num_filters=self.hidden_dim_1d,
+                               size_k=3,
+                               padding=1,
+                               groups=4,
+                               act="relu")
+        self.te_conv2 = Conv1D(prefix="TEM_e2",
+                               num_filters=1,
+                               size_k=1,
+                               padding=0,
+                               act="sigmoid")
+
+        #Proposal Evaluation Module
+        self.p_conv1 = Conv1D(prefix="PEM_1d",
+                              num_filters=self.hidden_dim_2d,
+                              size_k=3,
+                              padding=1,
+                              act="relu")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # init to speed up
         sample_mask = get_interp1d_mask(
@@ -284,7 +363,12 @@ class BMN(fluid.dygraph.Layer):
         xp = paddle.nn.functional.relu(self.p_conv1(x))
         # BM layer
         xp = fluid.layers.matmul(xp, self.sample_mask)
+<<<<<<< HEAD
         xp = paddle.reshape(xp, shape=[0, 0, -1, self.dscale, self.tscale])
+=======
+        xp = fluid.layers.reshape(xp,
+                                  shape=[0, 0, -1, self.dscale, self.tscale])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         xp = self.p_conv3d1(xp)
         xp = fluid.layers.squeeze(xp, axes=[2])
@@ -295,9 +379,15 @@ class BMN(fluid.dygraph.Layer):
         return xp, xs, xe
 
 
+<<<<<<< HEAD
 def bmn_loss_func(
     pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, cfg
 ):
+=======
+def bmn_loss_func(pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end,
+                  cfg):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def _get_mask(cfg):
         dscale = cfg.dscale
         tscale = cfg.tscale
@@ -308,15 +398,24 @@ def bmn_loss_func(
             ]
             bm_mask.append(mask_vector)
         bm_mask = np.array(bm_mask, dtype=np.float32)
+<<<<<<< HEAD
         self_bm_mask = fluid.layers.create_global_var(
             shape=[dscale, tscale], value=0, dtype=DATATYPE, persistable=True
         )
+=======
+        self_bm_mask = fluid.layers.create_global_var(shape=[dscale, tscale],
+                                                      value=0,
+                                                      dtype=DATATYPE,
+                                                      persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fluid.layers.assign(bm_mask, self_bm_mask)
         self_bm_mask.stop_gradient = True
         return self_bm_mask
 
     def tem_loss_func(pred_start, pred_end, gt_start, gt_end):
+
         def bi_loss(pred_score, gt_label):
+<<<<<<< HEAD
             pred_score = paddle.reshape(x=pred_score, shape=[-1])
             gt_label = paddle.reshape(x=gt_label, shape=[-1])
             gt_label.stop_gradient = True
@@ -327,6 +426,20 @@ def bmn_loss_func(
             num_positive = fluid.layers.cast(
                 fluid.layers.reduce_sum(pmask), dtype=DATATYPE
             )
+=======
+            pred_score = fluid.layers.reshape(x=pred_score,
+                                              shape=[-1],
+                                              inplace=False)
+            gt_label = fluid.layers.reshape(x=gt_label,
+                                            shape=[-1],
+                                            inplace=False)
+            gt_label.stop_gradient = True
+            pmask = fluid.layers.cast(x=(gt_label > 0.5), dtype=DATATYPE)
+            num_entries = fluid.layers.cast(fluid.layers.shape(pmask),
+                                            dtype=DATATYPE)
+            num_positive = fluid.layers.cast(fluid.layers.reduce_sum(pmask),
+                                             dtype=DATATYPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ratio = num_entries / num_positive
             coef_0 = 0.5 * ratio / (ratio - 1)
             coef_1 = 0.5 * ratio
@@ -359,6 +472,7 @@ def bmn_loss_func(
         u_lmask = fluid.layers.cast(x=u_lmask, dtype=DATATYPE)
         u_lmask = fluid.layers.elementwise_mul(u_lmask, mask)
 
+<<<<<<< HEAD
         num_h = fluid.layers.cast(
             fluid.layers.reduce_sum(u_hmask), dtype=DATATYPE
         )
@@ -368,22 +482,40 @@ def bmn_loss_func(
         num_l = fluid.layers.cast(
             fluid.layers.reduce_sum(u_lmask), dtype=DATATYPE
         )
+=======
+        num_h = fluid.layers.cast(fluid.layers.reduce_sum(u_hmask),
+                                  dtype=DATATYPE)
+        num_m = fluid.layers.cast(fluid.layers.reduce_sum(u_mmask),
+                                  dtype=DATATYPE)
+        num_l = fluid.layers.cast(fluid.layers.reduce_sum(u_lmask),
+                                  dtype=DATATYPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         r_m = num_h / num_m
         u_smmask = fluid.layers.assign(
             local_random.uniform(
+<<<<<<< HEAD
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
+=======
+                0., 1.,
+                [gt_iou_map.shape[1], gt_iou_map.shape[2]]).astype(DATATYPE))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         u_smmask = fluid.layers.elementwise_mul(u_mmask, u_smmask)
         u_smmask = fluid.layers.cast(x=(u_smmask > (1.0 - r_m)), dtype=DATATYPE)
 
         r_l = num_h / num_l
         u_slmask = fluid.layers.assign(
             local_random.uniform(
+<<<<<<< HEAD
                 0.0, 1.0, [gt_iou_map.shape[1], gt_iou_map.shape[2]]
             ).astype(DATATYPE)
         )
+=======
+                0., 1.,
+                [gt_iou_map.shape[1], gt_iou_map.shape[2]]).astype(DATATYPE))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         u_slmask = fluid.layers.elementwise_mul(u_lmask, u_slmask)
         u_slmask = fluid.layers.cast(x=(u_slmask > (1.0 - r_l)), dtype=DATATYPE)
 
@@ -423,12 +555,25 @@ def bmn_loss_func(
         loss = -1 * (loss_pos + loss_neg) / num_entries
         return loss
 
+<<<<<<< HEAD
     pred_bm_reg = fluid.layers.squeeze(
         fluid.layers.slice(pred_bm, axes=[1], starts=[0], ends=[1]), axes=[1]
     )
     pred_bm_cls = fluid.layers.squeeze(
         fluid.layers.slice(pred_bm, axes=[1], starts=[1], ends=[2]), axes=[1]
     )
+=======
+    pred_bm_reg = fluid.layers.squeeze(fluid.layers.slice(pred_bm,
+                                                          axes=[1],
+                                                          starts=[0],
+                                                          ends=[1]),
+                                       axes=[1])
+    pred_bm_cls = fluid.layers.squeeze(fluid.layers.slice(pred_bm,
+                                                          axes=[1],
+                                                          starts=[1],
+                                                          ends=[2]),
+                                       axes=[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     bm_mask = _get_mask(cfg)
 
@@ -478,6 +623,7 @@ def optimizer(cfg, parameter_list):
 
 
 def fake_data_reader(args, mode='train'):
+
     def iou_with_anchors(anchors_min, anchors_max, box_min, box_max):
         """Compute jaccard score between a box and the anchors."""
         len_anchors = anchors_max - anchors_min
@@ -557,6 +703,7 @@ def fake_data_reader(args, mode='train'):
         for jdx in range(len(anchor_xmin)):
             match_score_start.append(
                 np.max(
+<<<<<<< HEAD
                     ioa_with_anchors(
                         anchor_xmin[jdx],
                         anchor_xmax[jdx],
@@ -565,6 +712,11 @@ def fake_data_reader(args, mode='train'):
                     )
                 )
             )
+=======
+                    ioa_with_anchors(anchor_xmin[jdx], anchor_xmax[jdx],
+                                     gt_start_bboxs[:, 0], gt_start_bboxs[:,
+                                                                          1])))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         match_score_end = []
         for jdx in range(len(anchor_xmin)):
             match_score_end.append(
@@ -603,8 +755,12 @@ def fake_data_reader(args, mode='train'):
                 )
             else:
                 raise NotImplementedError(
+<<<<<<< HEAD
                     'mode {} not implemented'.format(mode)
                 )
+=======
+                    'mode {} not implemented'.format(mode))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if len(batch_out) == args.batch_size:
                 yield batch_out
                 batch_out = []
@@ -634,15 +790,23 @@ def val_bmn(model, args):
         pred_bm, pred_start, pred_end = model(x_data)
 
         loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
+<<<<<<< HEAD
             pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, args
         )
+=======
+            pred_bm, pred_start, pred_end, gt_iou_map, gt_start, gt_end, args)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         avg_loss = paddle.mean(loss)
 
         loss_data += [
             avg_loss.numpy()[0],
             tem_loss.numpy()[0],
             pem_reg_loss.numpy()[0],
+<<<<<<< HEAD
             pem_cls_loss.numpy()[0],
+=======
+            pem_cls_loss.numpy()[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
         print(
@@ -661,6 +825,7 @@ def val_bmn(model, args):
 
 
 class TestTrain(unittest.TestCase):
+
     def setUp(self):
         self.args = Args()
         self.place = (
@@ -696,6 +861,7 @@ class TestTrain(unittest.TestCase):
 
             for epoch in range(args.epoch):
                 for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
                     video_feat = np.array([item[0] for item in data]).astype(
                         DATATYPE
                     )
@@ -708,6 +874,16 @@ class TestTrain(unittest.TestCase):
                     gt_end = np.array([item[3] for item in data]).astype(
                         DATATYPE
                     )
+=======
+                    video_feat = np.array([item[0]
+                                           for item in data]).astype(DATATYPE)
+                    gt_iou_map = np.array([item[1]
+                                           for item in data]).astype(DATATYPE)
+                    gt_start = np.array([item[2]
+                                         for item in data]).astype(DATATYPE)
+                    gt_end = np.array([item[3]
+                                       for item in data]).astype(DATATYPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     x_data = to_variable(video_feat)
                     gt_iou_map = to_variable(gt_iou_map)
@@ -720,6 +896,7 @@ class TestTrain(unittest.TestCase):
                     pred_bm, pred_start, pred_end = bmn(x_data)
 
                     loss, tem_loss, pem_reg_loss, pem_cls_loss = bmn_loss_func(
+<<<<<<< HEAD
                         pred_bm,
                         pred_start,
                         pred_end,
@@ -728,6 +905,10 @@ class TestTrain(unittest.TestCase):
                         gt_end,
                         args,
                     )
+=======
+                        pred_bm, pred_start, pred_end, gt_iou_map, gt_start,
+                        gt_end, args)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     avg_loss = paddle.mean(loss)
 
                     avg_loss.backward()
@@ -738,6 +919,7 @@ class TestTrain(unittest.TestCase):
                         avg_loss.numpy()[0],
                         tem_loss.numpy()[0],
                         pem_reg_loss.numpy()[0],
+<<<<<<< HEAD
                         pem_cls_loss.numpy()[0],
                     ]
 
@@ -753,6 +935,17 @@ class TestTrain(unittest.TestCase):
                                 '%f' % pem_cls_loss.numpy()[0],
                             )
                         )
+=======
+                        pem_cls_loss.numpy()[0]
+                    ]
+
+                    if args.log_interval > 0 and (batch_id % args.log_interval
+                                                  == 0):
+                        print('[TRAIN] Epoch {}, iter {} '.format(epoch, batch_id)
+                                    + '\tLoss = {}, \ttem_loss = {}, \tpem_reg_loss = {}, \tpem_cls_loss = {}'.format(
+                            '%f' % avg_loss.numpy()[0], '%f' % tem_loss.numpy()[0], \
+                            '%f' % pem_reg_loss.numpy()[0], '%f' % pem_cls_loss.numpy()[0]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     # validation
                     if batch_id % args.valid_interval == 0 and batch_id > 0:
@@ -857,6 +1050,7 @@ class TestTrain(unittest.TestCase):
         paddle.enable_static()
         exe = fluid.Executor(self.place)
         # load inference model
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -872,6 +1066,16 @@ class TestTrain(unittest.TestCase):
             feed={feed_target_names[0]: data},
             fetch_list=fetch_targets,
         )
+=======
+        [inference_program, feed_target_names, fetch_targets
+         ] = fluid.io.load_inference_model(self.model_save_dir,
+                                           executor=exe,
+                                           model_filename=self.model_filename,
+                                           params_filename=self.params_filename)
+        pred_res = exe.run(inference_program,
+                           feed={feed_target_names[0]: data},
+                           fetch_list=fetch_targets)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return pred_res
 

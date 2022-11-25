@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestRandomCropOp(OpTest):
+
     def setUp(self):
         to_crop = np.array(
             [[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] * 5
@@ -45,6 +46,7 @@ class TestRandomCropOp(OpTest):
 
 
 class TestRandomCropOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -55,17 +57,29 @@ class TestRandomCropOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
+<<<<<<< HEAD
                 x2 = fluid.layers.data(
                     name='x2', shape=[None, 3, 256, 256], dtype='float16'
                 )
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float16')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.random_crop(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_shape_type():
+<<<<<<< HEAD
                 x3 = fluid.layers.data(
                     name='x3', shape=[None, 3, 256, 256], dtype='float32'
                 )
+=======
+                x3 = fluid.layers.data(name='x3',
+                                       shape=[None, 3, 256, 256],
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.random_crop(x3, shape=1)
 
             self.assertRaises(TypeError, test_shape_type)

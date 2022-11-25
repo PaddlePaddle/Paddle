@@ -26,10 +26,14 @@ limitations under the License. */
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
 #endif
+<<<<<<< HEAD
 #include "paddle/fluid/distributed/collective/ProcessGroup.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/ProcessGroupNCCL.h"
 #endif
+=======
+#include "paddle/fluid/framework/convert_utils.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
@@ -294,7 +298,12 @@ void SyncBatchNormGradFunctor(
     DenseTensor *bias_grad) {
   double epsilon = static_cast<double>(epsilon_f);
 
+<<<<<<< HEAD
   const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   const auto *d_y = &y_grad;
 
@@ -363,10 +372,14 @@ void SyncBatchNormGradFunctor(
   const auto *saved_inv_var =
       saved_variance.template data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
+<<<<<<< HEAD
   auto alloc_ptr = paddle::memory::Alloc(
       ctx.GetPlace(),
       bytes,
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+=======
+  auto alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
 
   const int block = 512;
@@ -416,6 +429,7 @@ void SyncBatchNormGradFunctor(
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
   int global_gid = 0;
   ncclComm_t comm = nullptr;
 
@@ -441,6 +455,21 @@ void SyncBatchNormGradFunctor(
                                     comm,
                                     stream));
     VLOG(3) << "Sync result using all reduce";
+=======
+  auto *comm = ctx.nccl_comm();
+  if (comm) {
+    int dtype = paddle::platform::ToNCCLDataType(
+        paddle::framework::TransToProtoVarType(scale.dtype()));
+    // In-place operation
+    PADDLE_ENFORCE_GPU_SUCCESS(paddle::platform::dynload::ncclAllReduce(
+        stats,
+        stats,
+        2 * C + 1,
+        static_cast<ncclDataType_t>(dtype),
+        ncclSum,
+        comm,
+        stream));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 #endif
 

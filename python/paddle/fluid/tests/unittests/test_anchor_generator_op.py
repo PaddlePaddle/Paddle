@@ -43,12 +43,20 @@ def anchor_generator_in_python(
                     scale_h = anchor_size / stride[1]
                     w = scale_w * base_w
                     h = scale_h * base_h
+<<<<<<< HEAD
                     out_anchors[h_idx, w_idx, idx, :] = [
                         (x_ctr - 0.5 * (w - 1)),
                         (y_ctr - 0.5 * (h - 1)),
                         (x_ctr + 0.5 * (w - 1)),
                         (y_ctr + 0.5 * (h - 1)),
                     ]
+=======
+                    out_anchors[h_idx, w_idx,
+                                idx, :] = [(x_ctr - 0.5 * (w - 1)),
+                                           (y_ctr - 0.5 * (h - 1)),
+                                           (x_ctr + 0.5 * (w - 1)),
+                                           (y_ctr + 0.5 * (h - 1))]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     idx += 1
 
     # set the variance.
@@ -59,6 +67,7 @@ def anchor_generator_in_python(
 
 
 class TestAnchorGeneratorOp(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()

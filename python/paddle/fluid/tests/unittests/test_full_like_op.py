@@ -30,9 +30,15 @@ class TestFullOp(unittest.TestCase):
         train_program = Program()
         with program_guard(train_program, startup_program):
             fill_value = 2.0
+<<<<<<< HEAD
             input = paddle.fluid.data(
                 name='input', dtype='float32', shape=[2, 3]
             )
+=======
+            input = paddle.fluid.data(name='input',
+                                      dtype='float32',
+                                      shape=[2, 3])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             output = paddle.full_like(input, fill_value)
             output_dtype = paddle.full_like(input, fill_value, dtype='float32')
 
@@ -49,10 +55,16 @@ class TestFullOp(unittest.TestCase):
             )
 
             out_np = np.array(res[0])
+<<<<<<< HEAD
             self.assertTrue(
                 not (out_np - np.full_like(img, fill_value)).any(),
                 msg="full_like output is wrong, out = " + str(out_np),
             )
+=======
+            self.assertTrue(not (out_np - np.full_like(img, fill_value)).any(),
+                            msg="full_like output is wrong, out = " +
+                            str(out_np))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_full_like_imperative(self):
         paddle.disable_static()
@@ -74,18 +86,26 @@ class TestFullOp(unittest.TestCase):
 
 
 class TestFullOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             # for ci coverage
 
+<<<<<<< HEAD
             input_data = paddle.fluid.data(
                 name='input', dtype='float32', shape=[2, 3]
             )
+=======
+            input_data = paddle.fluid.data(name='input',
+                                           dtype='float32',
+                                           shape=[2, 3])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             output = paddle.full_like(input_data, 2.0)
 
             def test_input_dtype():
                 paddle.full_like
 
+<<<<<<< HEAD
             self.assertRaises(
                 TypeError,
                 paddle.full_like,
@@ -93,6 +113,13 @@ class TestFullOpError(unittest.TestCase):
                 fill_value=2,
                 dtype='uint4',
             )
+=======
+            self.assertRaises(TypeError,
+                              paddle.full_like,
+                              x=input_data,
+                              fill_value=2,
+                              dtype='uint4')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestFullLikeOp1(OpTest):
@@ -122,6 +149,7 @@ class TestFullLikeOp1(OpTest):
 
 
 class TestFullLikeOp2(TestFullLikeOp1):
+
     def init_data(self):
         self.fill_value = 1000
         self.shape = [1024, 1024]
@@ -129,6 +157,7 @@ class TestFullLikeOp2(TestFullLikeOp1):
 
 
 class TestFullLikeOp3(TestFullLikeOp1):
+
     def init_data(self):
         self.fill_value = 8888
         self.shape = [5000, 5000]
@@ -139,13 +168,20 @@ class TestFullLikeOp3(TestFullLikeOp1):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestFullLikeOp4(unittest.TestCase):
+
     def test_skip_data_transform(self):
         paddle.disable_static()
         with _test_eager_guard():
+<<<<<<< HEAD
             x = paddle.to_tensor(
                 [1.0, 2.0, 3.0, 4.0], place=paddle.CUDAPinnedPlace()
             )
             out = paddle.full_like(x, 1.0)
+=======
+            x = paddle.to_tensor([1., 2., 3., 4.],
+                                 place=paddle.CUDAPinnedPlace())
+            out = paddle.full_like(x, 1.)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertTrue(
                 (out.numpy() == np.ones([4]).astype(np.float32)).all(), True
             )

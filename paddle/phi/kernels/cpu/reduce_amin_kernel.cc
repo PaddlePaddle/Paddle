@@ -28,7 +28,10 @@ void AMinRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::MinFunctor>(
       dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);

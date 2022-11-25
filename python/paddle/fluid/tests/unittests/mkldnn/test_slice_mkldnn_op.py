@@ -28,6 +28,7 @@ import paddle
     "CUDA required dygraph so oneDNN UT must be skipped",
 )
 class TestSliceOneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "slice"
         self.config()
@@ -64,6 +65,7 @@ class TestSliceOneDNNOp(OpTest):
 
 
 class TestSliceOneDNNOp1(TestSliceOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
@@ -74,6 +76,7 @@ class TestSliceOneDNNOp1(TestSliceOneDNNOp):
 
 
 class TestSliceOneDNNOp2(TestSliceOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-3, 0, 2]
@@ -84,6 +87,7 @@ class TestSliceOneDNNOp2(TestSliceOneDNNOp):
 
 
 class TestSliceDecrease1AxisOneDNNOp(TestSliceOneDNNOp):
+
     def set_attrs(self):
         self.attrs['decrease_axis'] = self.decrease_axis
 
@@ -98,6 +102,7 @@ class TestSliceDecrease1AxisOneDNNOp(TestSliceOneDNNOp):
 
 
 class TestSliceDecrease2AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [1, 0, 2]
@@ -109,6 +114,7 @@ class TestSliceDecrease2AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceDecrease3AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6]).astype("float32")
         self.starts = [-1, 0, 2]
@@ -120,6 +126,7 @@ class TestSliceDecrease3AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceDecrease4AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 7]).astype("float32")
         self.starts = [0, 1, 2, 3]
@@ -131,6 +138,7 @@ class TestSliceDecrease4AxesOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice5DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([3, 4, 5, 6, 7]).astype("float32")
         self.starts = [-1]
@@ -142,6 +150,7 @@ class TestSlice5DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([5, 4, 5]).astype("float32")
         self.starts = [-1]
@@ -153,8 +162,13 @@ class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
+<<<<<<< HEAD
     TestSliceDecrease1AxisOneDNNOp
 ):
+=======
+        TestSliceDecrease1AxisOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_inputs(self):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
@@ -172,6 +186,7 @@ class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
 
 
 class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([1, 1, 10, 10]).astype("float32")
         self.starts = [1, 2]
@@ -183,6 +198,7 @@ class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
 
 
 class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
+
     def config(self):
         self.input = np.random.random([1, 1, 10, 10]).astype("float32")
         self.starts = [4, 2]
@@ -195,8 +211,10 @@ class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestSliceBF16OneDNNOp(parent):
+
         def set_inputs(self):
             self.dtype = np.uint16
             self.inputs = {'Input': convert_float_to_uint16(self.input)}
@@ -211,12 +229,17 @@ def create_bf16_test_class(parent):
             for i in range(len(self.axes)):
                 begin[self.axes[i]] = self.starts[i]
                 end[self.axes[i]] = self.ends[i]
+<<<<<<< HEAD
             self.dx[
                 begin[0] : end[0],
                 begin[1] : end[1],
                 begin[2] : end[2],
                 begin[3] : end[3],
             ] = self.dout
+=======
+            self.dx[begin[0]:end[0], begin[1]:end[1], begin[2]:end[2],
+                    begin[3]:end[3]] = self.dout
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def test_check_output(self):
             self.check_output_with_place(core.CPUPlace())

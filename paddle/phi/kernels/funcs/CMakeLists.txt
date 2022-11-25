@@ -16,6 +16,7 @@ math_library(pooling DEPS dense_tensor)
 math_library(segment_pooling)
 math_library(sequence2batch)
 math_library(matrix_solve DEPS dense_tensor eigen3 blas math_function)
+<<<<<<< HEAD
 math_library(cross_entropy)
 math_library(im2col)
 math_library(vol2col)
@@ -49,3 +50,5 @@ else()
   math_library(selected_rows_functor DEPS selected_rows_utils math_function
                blas mixed_vector)
 endif()
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

@@ -21,7 +21,11 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, Operator
+<<<<<<< HEAD
 from .framework import convert_np_dtype_to_dtype_, _apply_pass
+=======
+from .framework import convert_np_dtype_to_dtype_
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 from . import core
 from . import unique_name
@@ -289,9 +293,13 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
             if feed_target_name not in feed_targets:
                 raise Exception(
                     "'feed_targets' does not have {} variable".format(
+<<<<<<< HEAD
                         feed_target_name
                     )
                 )
+=======
+                        feed_target_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             break
     if feed_count > 0 and feed_count != len(feed_targets):
@@ -336,9 +344,13 @@ def has_fetch_operators(
             ]:
                 raise Exception(
                     "'fetch_targets' does not have {} variable".format(
+<<<<<<< HEAD
                         fetch_target_name
                     )
                 )
+=======
+                        fetch_target_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             idx = op.desc.attr('col')
             assert fetch_target_name == fetch_targets[idx].desc.name()
     if fetch_count > 0 and fetch_count != len(fetch_targets):
@@ -469,6 +481,7 @@ def _fetch_var(name, scope=None, return_numpy=True):
 
 
 def _to_name_str(var):
+
     def _to_str(var):
         if isinstance(var, Variable):
             return var.desc.name()
@@ -493,12 +506,26 @@ def _to_name_str(var):
 
 
 def _is_enable_standalone_executor():
+<<<<<<< HEAD
     return (
         framework._enable_standalone_executor_ is None
         or framework._enable_standalone_executor_
         in [1, '1', True, 'True', 'true']
     )
 
+=======
+    """
+    Whether to use experimental executor `StandaloneExecutor`.
+    """
+    flag = False
+    from ..distributed.fleet import fleet
+    # use standalone_executor by default if not distributed
+    if fleet._role_maker is None and framework._enable_standalone_executor_ is None:
+        framework._enable_standalone_executor_ = 1
+
+    if framework._enable_standalone_executor_ in [1, '1', True, 'True', 'true']:
+        flag = True
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 def _is_dy2st_enable_standalone_executor():
     return framework._dy2st_enable_standalone_executor_ in [
@@ -535,13 +562,18 @@ def _get_strong_program_cache_key_for_new_exe(program, feed, fetch_list):
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
+<<<<<<< HEAD
     # TODO(zhiqiu): use hash_str to generate cache key as above
+=======
+    # NOTE(xiongkun) id(proram) may be duplicate. So add addition var_name as cache key.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def _get_varname_from_block(block):
         block_str = []
         for var_name in list(block.vars.keys()):
             block_str.append(var_name)
         return "\n".join(block_str)
 
+<<<<<<< HEAD
     inner_program = (
         program._program
         if isinstance(program, compiler.CompiledProgram)
@@ -552,6 +584,12 @@ def _get_strong_program_cache_key(program, feed, fetch_list):
         + str(id(program))
         + _get_program_cache_key(feed, fetch_list)
     )
+=======
+    inner_program = program._program if isinstance(
+        program, compiler.CompiledProgram) else program
+    return _get_varname_from_block(inner_program.blocks[0]) + str(
+        id(program)) + _get_program_cache_key(feed, fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _get_program_cache_key(feed, fetch_list):
@@ -620,7 +658,12 @@ def _as_lodtensor(data, place, dtype=None):
     return tensor
 
 
+<<<<<<< HEAD
 class FetchHandler:
+=======
+class FetchHandler(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, var_dict=None, period_secs=60):
         assert var_dict is not None
         self.var_dict = var_dict
@@ -648,7 +691,12 @@ handler = FetchHandlerExample(var_dict=var_dict)
         )
 
 
+<<<<<<< HEAD
 class _StandaloneExecutor:
+=======
+class _StandaloneExecutor(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, place, main_program, scope):
         self._place = core.Place()
         self._place.set_place(place)
@@ -668,9 +716,14 @@ class _StandaloneExecutor:
         """
         fetch_list = self._check_fetch(fetch_list)
 
+<<<<<<< HEAD
         tensors = self._new_exe.run(
             scope, feed_names, fetch_list
         )._move_to_list()
+=======
+        tensors = self._new_exe.run(scope, feed_names,
+                                    fetch_list)._move_to_list()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if return_numpy:
             return as_numpy(tensors, copy=True)
         else:
@@ -736,6 +789,7 @@ class _StandaloneExecutor:
         return res
 
 
+<<<<<<< HEAD
 class _ExecutorCache:
     class _CachedData:
         def __init__(
@@ -859,6 +913,14 @@ class _ExecutorCache:
 
             if prim_enabled() and program == default_main_program():
                 prim2orig()
+=======
+class _ExecutorCache(object):
+
+    def __init__(self, place):
+        # {Program : _StandaloneExecutor}
+        self._place = place
+        self._cached_executors = {}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             inner_program = program
 
@@ -1059,12 +1121,75 @@ class Executor:
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
 
+<<<<<<< HEAD
     # just for testing, will be removed later
     @lru_cache()
     def _log_force_set_program_cache(self, use_program_cache):
         logging.warning(
             f"use_program_cache is force set to {use_program_cache} by FLAGS_FORCE_USE_PROGRAM_CACHE"
         )
+=======
+    def _add_feed_fetch_ops(self,
+                            program,
+                            feed,
+                            fetch_list,
+                            feed_var_name,
+                            fetch_var_name,
+                            use_fetch_v2=False):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
+        else:
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True)
+
+        if fetch_var_name in global_block.vars:
+            fetch_var = global_block.var(fetch_var_name)
+        else:
+            fetch_var = global_block.create_var(
+                name=fetch_var_name,
+                type=core.VarDesc.VarType.FETCH_LIST,
+                persistable=True)
+
+        # prepend feed operators
+        if not has_feed_operators(global_block, feed, feed_var_name):
+            for i, name in enumerate(feed):
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(type='feed',
+                                             inputs={'X': [feed_var]},
+                                             outputs={'Out': [out]},
+                                             attrs={'col': i})
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name)
+
+        if use_fetch_v2:
+            fetch_op = 'fetch_v2'
+        else:
+            fetch_op = 'fetch'
+
+        # append fetch_operators
+        if not has_fetch_operators(global_block, fetch_list, fetch_var_name,
+                                   fetch_op):
+            for i, var in enumerate(fetch_list):
+                assert isinstance(var, Variable) or isinstance(
+                    var,
+                    six.string_types), ("Wrong type for fetch_list[%s]: %s" %
+                                        (i, type(var)))
+                global_block.append_op(type=fetch_op,
+                                       inputs={'X': [var]},
+                                       outputs={'Out': [fetch_var]},
+                                       attrs={'col': i})
+
+        return tmp_program
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _feed_data(self, program, feed, feed_var_name, scope):
         # feed var to framework
@@ -1140,10 +1265,16 @@ class Executor:
             elif isinstance(item, tuple):
                 if not isinstance(item[0], (list, tuple)):
                     raise TypeError(
+<<<<<<< HEAD
                         "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".format(
                             index, index, index, type(item[0]).__name__
                         )
                     )
+=======
+                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`."
+                        .format(index, index, index,
+                                type(item[0]).__name__))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
             else:
@@ -1318,11 +1449,17 @@ class Executor:
                 if not isinstance(feed_tensor, core.LoDTensor):
                     # always set to CPU place, since the tensor need to be split
                     # it is fast in CPU
+<<<<<<< HEAD
                     feed_tensor = _as_lodtensor(
                         feed[feed_name],
                         core.CPUPlace(),
                         var.dtype if var else None,
                     )
+=======
+                    feed_tensor = _as_lodtensor(feed[feed_name],
+                                                core.CPUPlace(),
+                                                var.dtype if var else None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if need_check_feed:
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
@@ -1342,11 +1479,17 @@ class Executor:
                         global_block.var(feed_name) if need_check_feed else None
                     )
                     if not isinstance(tensor, core.LoDTensor):
+<<<<<<< HEAD
                         tensor = _as_lodtensor(
                             each[feed_name],
                             program._places[i],
                             var.dtype if var else None,
                         )
+=======
+                        tensor = _as_lodtensor(each[feed_name],
+                                               program._places[i],
+                                               var.dtype if var else None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     if need_check_feed:
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
@@ -1367,8 +1510,12 @@ class Executor:
                 )
             else:
                 exe.feed_and_split_tensor_into_local_scopes(
+<<<<<<< HEAD
                     {lr_sheduler._var_name: lr_tensor}
                 )
+=======
+                    {lr_sheduler._var_name: lr_tensor})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
@@ -1559,6 +1706,7 @@ class Executor:
                 #  [-0.44514108 -0.2345845 ]]
 
         """
+<<<<<<< HEAD
         # Temporary FLAGS, just for testing the performance of program cache
         force_use_program_cache = os.environ.get(
             'FLAGS_FORCE_USE_PROGRAM_CACHE', None
@@ -1601,6 +1749,27 @@ class Executor:
         return_merged,
         use_prune,
     ):
+=======
+        try:
+            res = self._run_impl(program=program,
+                                 feed=feed,
+                                 fetch_list=fetch_list,
+                                 feed_var_name=feed_var_name,
+                                 fetch_var_name=fetch_var_name,
+                                 scope=scope,
+                                 return_numpy=return_numpy,
+                                 use_program_cache=use_program_cache,
+                                 use_prune=use_prune,
+                                 return_merged=return_merged)
+            core.update_autotune_status()
+            return res
+        except Exception as e:
+            six.reraise(*sys.exc_info())
+
+    def _run_impl(self, program, feed, fetch_list, feed_var_name,
+                  fetch_var_name, scope, return_numpy, use_program_cache,
+                  return_merged, use_prune):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -1615,6 +1784,7 @@ class Executor:
                 # Move prepare here for port conflict with nccl in startup program
                 if self._fleet_executor is None:
                     self._fleet_executor = _prepare_fleet_executor()
+<<<<<<< HEAD
                 return self._run_using_fleet_executor(
                     program=program,
                     feed=feed,
@@ -1632,6 +1802,20 @@ class Executor:
 
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
+=======
+                return self._run_using_fleet_executor(program=program,
+                                                      feed=feed,
+                                                      fetch_list=fetch_list)
+            if "startup_program" in program._pipeline_opt:
+                program = program._pipeline_opt["startup_program"]
+            else:
+                return self._run_pipeline(program,
+                                          fetch_list=fetch_list,
+                                          use_program_cache=use_program_cache)
+
+        if isinstance(program, Program) and program._heter_pipeline_opt:
+            #print("program._heter_pipeline_opt: {}".format(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             #    program._heter_pipeline_opt))
             ## change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
@@ -1641,7 +1825,11 @@ class Executor:
             self._default_executor = core.Executor(p)
             # TODO(zhangminxu): support heterps pipeline training using exe.run
             if "startup_program" in program._heter_pipeline_opt:
+<<<<<<< HEAD
                 # print("get startup_program from _pipeline_opt")
+=======
+                #print("get startup_program from _pipeline_opt")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 program = program._heter_pipeline_opt["startup_program"]
 
         if (
@@ -1708,6 +1896,7 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
+<<<<<<< HEAD
             if core.is_compiled_with_mlu():
                 return False
 
@@ -1783,6 +1972,45 @@ class Executor:
                         "Standalone executor is not used for async mode",
                         UserWarning,
                     )
+=======
+            if core.is_compiled_with_mlu() or isinstance(
+                    place, core.CustomPlace):
+                return False
+
+            compiled = isinstance(program, compiler.CompiledProgram)
+            if compiled:
+                # Unsupported case 1 : the CompiledProgram is constructed by Graph
+                if program._program is None:
+                    return False
+
+                # Unsupported case 2: data parallel
+                if program._is_data_parallel and len(
+                        program._get_places(place, program._places)) != 1:
+                    return False
+
+                # Unsupported case 3 : parallel graph
+                if core.globals()['FLAGS_enable_parallel_graph'] in [
+                        1, '1', True, 'True', 'true'
+                ]:
+                    return False
+
+                # Unsupported case 4: inference
+                if program._is_inference:
+                    return False
+
+                # Unsupported case 5: CUDA Graph
+                if program._build_strategy is not None and program._build_strategy.allow_cuda_graph_capture:
+                    return False
+
+                # Unsupported case 6 : disabled by FLAGS_CONVERT_GRAPH_TO_PROGRAM
+                if os.environ.get('FLAGS_CONVERT_GRAPH_TO_PROGRAM',
+                                  None) not in [1, '1', True, 'True', 'true']:
+                    return False
+
+                return True
+            else:
+                if isinstance(program._graph, compiler.CompiledProgram):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     return False
 
             # delete this code after supporting fleet
@@ -1798,6 +2026,7 @@ class Executor:
 
         # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
         # use StandaloneExecutor to run the program.
+<<<<<<< HEAD
         if (
             return_merged
             and self._enable_interpreter_core
@@ -1849,6 +2078,81 @@ class Executor:
             return new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+=======
+        if self._enable_interpreter_core and _can_use_interpreter_core(
+                program, self.place):
+            inner_program = program._program if isinstance(
+                program, compiler.CompiledProgram) else program
+            if not inner_program._is_start_up_program_:
+                if feed is None:
+                    feed = {}
+                elif isinstance(feed, (list, tuple)):
+                    assert len(feed) == 1, "Not compiled with data parallel"
+                    feed = feed[0]
+                if not isinstance(feed, dict):
+                    raise TypeError(
+                        "feed requires dict as its Parameter. But you passed in %s"
+                        % (type(feed)))
+                feed = self._update_feed(program, feed)
+
+                key = _get_strong_program_cache_key(inner_program, feed,
+                                                    fetch_list)
+
+                # a little bit tricy here, use inner_program before _add_feed_fetch_ops to get key
+                # while use program to geet _StandaloneExecutor
+                if key not in self._executor_cache._cached_executors:
+                    # To apply IR pass, compile the Program to IrGraph and convert it back to Program
+                    if isinstance(program, compiler.CompiledProgram):
+                        # print(f"Program before convert:\n {inner_program}", flush=True)
+                        program._compile(scope, self.place)
+                        ir_graph = framework.IrGraph(program._graph)
+                        inner_program = ir_graph.to_program()
+                        # print(f"Program after convert:\n {inner_program}", flush=True)
+                    else:
+                        from paddle.incubate.autograd import prim_enabled, prim2orig
+                        if prim_enabled() and program == default_main_program():
+                            prim2orig()
+
+                    program = self._add_feed_fetch_ops(
+                        program=inner_program,
+                        feed=feed,
+                        fetch_list=fetch_list,
+                        feed_var_name=feed_var_name,
+                        fetch_var_name=fetch_var_name,
+                        use_fetch_v2=True)
+
+                    new_program = program.clone()
+                    new_exe = _StandaloneExecutor(self.place, new_program,
+                                                  scope)
+                    self._executor_cache._cached_executors[key] = (new_program,
+                                                                   new_exe)
+
+                program, new_exe = self._executor_cache._cached_executors[key]
+
+                self._feed_data(program, feed, feed_var_name, scope)
+                if hasattr(program, 'lr_sheduler'):
+                    from paddle.optimizer.lr import LRScheduler
+                    assert isinstance(program.lr_sheduler,
+                                      LRScheduler), "must be LRScheduler"
+                    lr_sheduler = program.lr_sheduler
+                    lr_value = lr_sheduler()
+                    lr_var = program.global_block().vars[lr_sheduler._var_name]
+                    data = np.array([lr_value
+                                     ]).astype(convert_dtype(lr_var.dtype))
+                    tensor = core.get_variable_tensor(scope,
+                                                      lr_sheduler._var_name)
+                    # NOTE(dev): `set` always call TensorCopySync that is a
+                    # blocking behavior. So we use `_copy_from` to replace it.
+                    cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                    # for ipu, tensor is allocated on cpu
+                    if core.is_compiled_with_ipu():
+                        tensor._copy_from(cpu_tensor, tensor._place())
+                    else:
+                        tensor._copy_from(cpu_tensor, self.place)
+
+                return new_exe.run(scope, list(feed.keys()), fetch_list,
+                                   return_numpy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
@@ -1888,6 +2192,7 @@ class Executor:
                 # _graph in program does not support inference since the _graph is optimized
                 # through optimizer.minimize function and should not be used as inference graph
                 # assert not program._graph._is_inference
+<<<<<<< HEAD
                 return self._run_parallel(
                     program._graph,
                     scope=scope,
@@ -1908,11 +2213,30 @@ class Executor:
                 return_numpy=return_numpy,
                 use_program_cache=use_program_cache,
             )
+=======
+                return self._run_parallel(program._graph,
+                                          scope=scope,
+                                          feed=feed,
+                                          fetch_list=fetch_list,
+                                          fetch_var_name=fetch_var_name,
+                                          return_numpy=return_numpy,
+                                          return_merged=return_merged)
+
+            return self._run_program(program,
+                                     feed=feed,
+                                     fetch_list=fetch_list,
+                                     feed_var_name=feed_var_name,
+                                     fetch_var_name=fetch_var_name,
+                                     scope=scope,
+                                     return_numpy=return_numpy,
+                                     use_program_cache=use_program_cache)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         program._compile(scope, self.place)
         if program._is_inference:
             return self._run_inference(program._executor, feed)
         else:
+<<<<<<< HEAD
             return self._run_parallel(
                 program,
                 scope=scope,
@@ -1934,6 +2258,18 @@ class Executor:
         return_numpy,
         use_program_cache,
     ):
+=======
+            return self._run_parallel(program,
+                                      scope=scope,
+                                      feed=feed,
+                                      fetch_list=fetch_list,
+                                      fetch_var_name=fetch_var_name,
+                                      return_numpy=return_numpy,
+                                      return_merged=return_merged)
+
+    def _run_program(self, program, feed, fetch_list, feed_var_name,
+                     fetch_var_name, scope, return_numpy, use_program_cache):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         from paddle.optimizer.lr import LRScheduler
 
         if feed is None:
@@ -1994,6 +2330,7 @@ class Executor:
             ctx = cached_ctx
             scope = cached_scope
         else:
+<<<<<<< HEAD
             program = _add_feed_fetch_ops(
                 program=program,
                 feed=feed,
@@ -2001,6 +2338,13 @@ class Executor:
                 feed_var_name=feed_var_name,
                 fetch_var_name=fetch_var_name,
             )
+=======
+            program = self._add_feed_fetch_ops(program=program,
+                                               feed=feed,
+                                               fetch_list=fetch_list,
+                                               feed_var_name=feed_var_name,
+                                               fetch_var_name=fetch_var_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._feed_data(program, feed, feed_var_name, scope)
         if hasattr(program, 'lr_sheduler'):
@@ -2033,7 +2377,12 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
+<<<<<<< HEAD
         is_fetch_var = lambda var: isinstance(var, (Variable, str))
+=======
+        is_fetch_var = lambda var: isinstance(var,
+                                              (Variable, str, six.string_types))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -2059,16 +2408,22 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
+<<<<<<< HEAD
                     "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )
+=======
+                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}."
+                    .format(i,
+                            type(var).__name__))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return res
 
     def _dump_debug_info(self, program=None, trainer=None):
-        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
-            fout.write(str(trainer))
+        print("program_id: {}, trainer_desc:\n {}".format(
+            id(program), str(trainer)))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
                 fout.write(str(program._fleet_opt["fleet_desc"]))
@@ -2212,16 +2567,26 @@ class Executor:
             dataset.set_use_var(data_vars)
         elif program._heter_pipeline_opt is not None:
             stage_id = program._heter_pipeline_opt["pipeline_stage"]
+<<<<<<< HEAD
             # print("test_fl_stage_id: {}".format(stage_id))
+=======
+            #print("test_fl_stage_id: {}".format(stage_id))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             heter_place = program._heter_pipeline_opt["heter_place"]
             if stage_id != 0:
                 if "is_fl_mode" not in program._heter_pipeline_opt:
                     import paddle
+<<<<<<< HEAD
 
                     if dataset is not None:
                         raise RuntimeError(
                             "dataset should be None for heter pipeline mode"
                         )
+=======
+                    if dataset is not None:
+                        raise RuntimeError(
+                            "dataset should be None for heter pipeline mode")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     # The following fake dataset is created to call
                     # the _prepare_trainer api, and it is meaningless.
                     data_vars = []
@@ -2229,8 +2594,12 @@ class Executor:
                         if var.is_data:
                             data_vars.append(var)
                     dataset = paddle.fluid.DatasetFactory().create_dataset(
+<<<<<<< HEAD
                         'InMemoryDataset'
                     )
+=======
+                        'InMemoryDataset')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     dataset.set_batch_size(1)
                     dataset.set_thread(1)
                     dataset.set_filelist(['None'])
@@ -2278,6 +2647,7 @@ class Executor:
                         core.op_proto_and_checker_maker.OpRole.Optimize,
                     )
             fetch_list = None
+<<<<<<< HEAD
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -2288,6 +2658,16 @@ class Executor:
             fetch_info=fetch_info,
             print_period=print_period,
         )
+=======
+        scope, trainer = self._prepare_trainer(program=program,
+                                               dataset=dataset,
+                                               scope=scope,
+                                               thread=thread,
+                                               debug=debug,
+                                               fetch_list=fetch_list,
+                                               fetch_info=fetch_info,
+                                               print_period=print_period)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
@@ -2302,11 +2682,16 @@ class Executor:
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         if program._heter_pipeline_opt is None:
+<<<<<<< HEAD
             trainer_instance = (
                 self._default_executor.init_for_dataset(  # -->InitForDataset
                     program.desc, trainer._desc(), scope, dataset.dataset
                 )
             )
+=======
+            trainer_instance = self._default_executor.init_for_dataset(  # -->InitForDataset
+                program.desc, trainer._desc(), scope, dataset.dataset)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             # cache trainer instance for heterps pipeline training
             if fetch_list is None:
@@ -2315,9 +2700,14 @@ class Executor:
             trainer_instance = self._get_trainer_cache(cache_key)
             if trainer_instance is None:
                 trainer_instance = self._default_executor.init_for_dataset(
+<<<<<<< HEAD
                     program.desc, trainer._desc(), scope, dataset.dataset
                 )
                 # print("test_fl_ps - trainer_desc: {}\n".format(trainer))
+=======
+                    program.desc, trainer._desc(), scope, dataset.dataset)
+                #print("test_fl_ps - trainer_desc: {}\n".format(trainer))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._add_trainer_cache(cache_key, trainer_instance)
             else:
                 trainer_instance.ResetDataset(dataset.dataset)
@@ -2403,6 +2793,7 @@ class Executor:
                 if fetch_var_name in real_program.global_block().vars:
                     real_fetch_list.append(fetch_var)
 
+<<<<<<< HEAD
             real_program = _add_feed_fetch_ops(
                 program=real_program,
                 feed=[],
@@ -2410,6 +2801,13 @@ class Executor:
                 feed_var_name='feed',
                 fetch_var_name='fetch',
             )
+=======
+            real_program = self._add_feed_fetch_ops(program=real_program,
+                                                    feed=[],
+                                                    fetch_list=real_fetch_list,
+                                                    feed_var_name='feed',
+                                                    fetch_var_name='fetch')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             main_block = real_program.block(0)
             for op in main_block.ops:
                 # set the op_role of fetch op to Optimize to avoid
@@ -2426,6 +2824,7 @@ class Executor:
         program._pipeline_opt["section_program"] = real_program
         fetch_list = None
 
+<<<<<<< HEAD
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -2436,6 +2835,16 @@ class Executor:
             fetch_info=fetch_info,
             print_period=print_period,
         )
+=======
+        scope, trainer = self._prepare_trainer(program=program,
+                                               dataset=dataset,
+                                               scope=scope,
+                                               thread=thread,
+                                               debug=debug,
+                                               fetch_list=fetch_list,
+                                               fetch_info=fetch_info,
+                                               print_period=print_period)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
@@ -2502,6 +2911,7 @@ class Executor:
                 ):
                     warnings.warn("Using 1F1B scheduler with pp_degree == 1.")
                 tasks, task_id_to_rank = run1f1b(
+<<<<<<< HEAD
                     program,
                     cur_rank,
                     fleet_opt.get('num_micro_batches', 1),
@@ -2509,6 +2919,10 @@ class Executor:
                     nrank,
                     with_standalone_executor,
                 )
+=======
+                    program, cur_rank, fleet_opt.get('num_micro_batches', 1),
+                    fleet_opt.get('dist_strategy', {}), nrank)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             elif scheduler == 'Origin':
                 from paddle.distributed.fleet.fleet_executor_utils import origin
 
@@ -2535,6 +2949,7 @@ class Executor:
         place.set_place(self.place)
         # NOTE: the last argument is used to force create some vars in root scope,
         # won't be used during train.
+<<<<<<< HEAD
         self._fleet_executor.init(
             carrier_id,
             program.desc,
@@ -2555,6 +2970,17 @@ class Executor:
         fetch_list=None,
         with_standalone_executor=False,
     ):
+=======
+        self._fleet_executor.init(carrier_id, program.desc, scope, place,
+                                  num_micro_batches, tasks, task_id_to_rank, [])
+
+    def _run_using_fleet_executor(self,
+                                  program=None,
+                                  feed=None,
+                                  feed_var_name="feed",
+                                  fetch_var_name="fetch",
+                                  fetch_list=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
@@ -2598,11 +3024,17 @@ class Executor:
                 feed_task = fleet_opt['tasks'][0]
                 print("Inserting feed ops for task", feed_task.task_id())
                 feed_program = feed_task.get_program()
+<<<<<<< HEAD
                 feed_program = self._add_feed_ops(
                     program=feed_program,
                     feed=real_feed,
                     feed_var_name=feed_var_name,
                 )
+=======
+                feed_program = self._add_feed_ops(program=feed_program,
+                                                  feed=real_feed,
+                                                  feed_var_name=feed_var_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 feed_task.set_program(feed_program)
 
                 # Insert fetch ops
@@ -2625,6 +3057,7 @@ class Executor:
                         )
                 fetch_task.set_program(fetch_program)
 
+<<<<<<< HEAD
             self._prepare_fleet_executor_carrier(
                 cache_key,
                 program=cached_program,
@@ -2632,6 +3065,12 @@ class Executor:
                 fleet_opt=fleet_opt,
                 with_standalone_executor=with_standalone_executor,
             )
+=======
+            self._prepare_fleet_executor_carrier(cache_key,
+                                                 program=cached_program,
+                                                 scope=cached_scope,
+                                                 fleet_opt=fleet_opt)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if feed:
             # NOTE: don't have to traverse programs in task nodes,
@@ -2679,12 +3118,19 @@ class Executor:
             for i, name in enumerate(feed):
                 if global_block.has_var(name):
                     out = global_block.var(name)
+<<<<<<< HEAD
                     global_block._prepend_op(
                         type='feed',
                         inputs={'X': [feed_var]},
                         outputs={'Out': [out]},
                         attrs={'col': i},
                     )
+=======
+                    global_block._prepend_op(type='feed',
+                                             inputs={'X': [feed_var]},
+                                             outputs={'Out': [out]},
+                                             attrs={'col': i})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 else:
                     warnings.warn(
                         "The variable %s is not found in program. It is not declared or is pruned."
@@ -2721,6 +3167,7 @@ class Executor:
         ):
             for i, var in enumerate(fetch_list):
                 assert isinstance(var, Variable) or isinstance(
+<<<<<<< HEAD
                     var, str
                 ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
                 global_block.append_op(
@@ -2729,6 +3176,15 @@ class Executor:
                     outputs={'Out': [fetch_var]},
                     attrs={'col': i},
                 )
+=======
+                    var,
+                    six.string_types), ("Wrong type for fetch_list[%s]: %s" %
+                                        (i, type(var)))
+                global_block.append_op(type=fetch_op,
+                                       inputs={'X': [var]},
+                                       outputs={'Out': [fetch_var]},
+                                       attrs={'col': i})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return tmp_program
 
@@ -2861,6 +3317,7 @@ class Executor:
                                        dataset=dataset)
 
         """
+<<<<<<< HEAD
         return self._run_from_dataset(
             program,
             dataset,
@@ -2894,6 +3351,28 @@ class Executor:
             fetch_info=fetch_info,
             print_period=print_period,
         )
+=======
+        return self._run_from_dataset(program, dataset, scope, thread, True,
+                                      debug, fetch_list, fetch_info,
+                                      print_period, fetch_handler)
+
+    def start_heter_trainer(self,
+                            program=None,
+                            scope=None,
+                            debug=False,
+                            fetch_list=None,
+                            fetch_info=None,
+                            print_period=100,
+                            fetch_handler=None):
+        scope, trainer = self._prepare_trainer(program=program,
+                                               dataset=None,
+                                               scope=scope,
+                                               thread=1,
+                                               debug=debug,
+                                               fetch_list=fetch_list,
+                                               fetch_info=fetch_info,
+                                               print_period=print_period)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         trainer._set_infer(False)
         trainer._gen_trainer_desc()

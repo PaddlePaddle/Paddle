@@ -437,9 +437,14 @@ def _get_corresponding_rank(dist_context, target_mesh, rank):
     # assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
     #     rank)
     if coordinate is not None:
+<<<<<<< HEAD
         return target_mesh.processes[
             _coordinate2linear_idx(mesh.topology, coordinate)
         ]
+=======
+        return target_mesh.processes[_coordinate2linear_idx(
+            mesh.topology, coordinate)]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         return target_mesh.processes[0]
 
@@ -498,9 +503,13 @@ def _update_addition_info(addition_info):
                 raise ValueError(
                     "The key of 'addition_info' should be one of the "
                     "['epoch', 'batch', 'batch_size'], but got '{}'.".format(
+<<<<<<< HEAD
                         str(item)
                     )
                 )
+=======
+                        str(item)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if not isinstance(value, int):
                 raise ValueError(
                     "The value of 'addition_info' should be 'int', "
@@ -523,8 +532,12 @@ def _check_valid_path(file_path):
                 )
             if not os.path.exists(file):
                 raise ValueError(
+<<<<<<< HEAD
                     "The file path '{}' does not exist.".format(file)
                 )
+=======
+                    "The file path '{}' does not exist.".format(file))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return file_path
     else:
         raise TypeError(
@@ -715,9 +728,15 @@ def load_checkpoint_into_program(
     all_cur_dist_attr = get_dist_attr(program, dist_context)
     all_param_dict = all_state_dict_info["model"]
     addition_info = all_state_dict_info["addition_info"]
+<<<<<<< HEAD
     sliced_param_dict = merge_and_slice_parameter(
         all_param_dict, all_pre_dist_attr, all_cur_dist_attr
     )
+=======
+    sliced_param_dict = merge_and_slice_parameter(all_param_dict,
+                                                  all_pre_dist_attr,
+                                                  all_cur_dist_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     load_parameter_into_program(sliced_param_dict, program)
 
     return addition_info
@@ -751,8 +770,12 @@ def _save_distributed_attribute(program, dist_attr_path, dist_context):
     }
     paddle.save(dist_attr_dict, dist_attr_name)
     logging.info(
+<<<<<<< HEAD
         "Already saved distributed attribute to '{}'.".format(dist_attr_path)
     )
+=======
+        "Already saved distributed attribute to '{}'.".format(dist_attr_path))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _load_distributed_attribute(dist_attr_path):
@@ -858,12 +881,18 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     )
     for name, value in dist_param_dict.items():
         if not isinstance(name, str):
+<<<<<<< HEAD
             raise TypeError(
                 "The key of 'dist_param_dict' is parameter's name, "
                 "and its type should be 'str', but got {}.".format(
                     str(type(name))
                 )
             )
+=======
+            raise TypeError("The key of 'dist_param_dict' is parameter's name, "
+                            "and its type should be 'str', but got {}.".format(
+                                str(type(name))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if not isinstance(value, list) or not all(
             isinstance(v, np.ndarray) for v in value
         ):
@@ -898,8 +927,12 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
         cur_dims_mapping = cur_attr["dims_mapping"]
         if len(set(pre_dims_mapping)) > 1 or -1 not in pre_dims_mapping:
             complete_param = _merge_parameter_with_dist_attr(
+<<<<<<< HEAD
                 pre_param, pre_attr
             )
+=======
+                pre_param, pre_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dist_param_dict[var_name] = complete_param
         else:
             complete_param = pre_param[0]
@@ -907,8 +940,12 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
 
         if len(set(cur_dims_mapping)) > 1 or -1 not in cur_dims_mapping:
             sliced_param = _slice_parameter_with_dist_attr(
+<<<<<<< HEAD
                 complete_param, cur_attr
             )
+=======
+                complete_param, cur_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dist_param_dict[var_name] = sliced_param
 
     for var_name in pre_dist_attr:
@@ -919,6 +956,7 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
     if param_not_in_pre:
         warnings.warn(
             "Parameters '{}' are not found in last training process.".format(
+<<<<<<< HEAD
                 str(param_not_in_pre)
             )
         )
@@ -928,6 +966,13 @@ def merge_and_slice_parameter(dist_param_dict, pre_dist_attr, cur_dist_attr):
                 str(param_not_in_cur)
             )
         )
+=======
+                str(param_not_in_pre)))
+    if param_not_in_cur:
+        warnings.warn(
+            "Parameters '{}' are not found in current training process.".format(
+                str(param_not_in_cur)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return dist_param_dict
 
@@ -940,9 +985,15 @@ def _merge_parameter_with_dist_attr(param_list, dist_attr):
     process_shape = dist_attr["process_shape"]
     process_group = dist_attr["process_group"]
     # get the complete shape of the parameter
+<<<<<<< HEAD
     complete_shape = Resharder.compute_complete_shape(
         param_list[0].shape, process_shape, dims_mapping
     )
+=======
+    complete_shape = Resharder.compute_complete_shape(param_list[0].shape,
+                                                      process_shape,
+                                                      dims_mapping)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # merge the parameter with dist_attr
     partition_param_list = []
     merged_partiton = []
@@ -984,9 +1035,15 @@ def _slice_parameter_with_dist_attr(param, dist_attr):
     )
     # get the current parameter's index in sliced_param_list
     rank_id = paddle.distributed.get_rank()
+<<<<<<< HEAD
     sliced_param_index = _get_sliced_param_index(
         rank_id, param.shape, dims_mapping, process_shape, process_group
     )
+=======
+    sliced_param_index = _get_sliced_param_index(rank_id, param.shape,
+                                                 dims_mapping, process_shape,
+                                                 process_group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     sliced_param = sliced_param_list[sliced_param_index]
     return sliced_param
 
@@ -1078,9 +1135,15 @@ def _slice_parameter(complete_param, partition_index_list, length):
     """
     sliced_param_list = []
     axis = len(complete_param.shape) - length
+<<<<<<< HEAD
     sliced_param = np.split(
         complete_param, partition_index_list[axis], axis=axis
     )
+=======
+    sliced_param = np.split(complete_param,
+                            partition_index_list[axis],
+                            axis=axis)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if length == 1:
         return sliced_param
     for param in sliced_param:
@@ -1120,9 +1183,16 @@ def _get_sliced_param_index(
     """
     from .reshard import Resharder
 
+<<<<<<< HEAD
     partition_index = Resharder.compute_partition_index(
         rank, complete_shape, dims_mapping, process_shape, process_group
     )
+=======
+    partition_index = Resharder.compute_partition_index(rank, complete_shape,
+                                                        dims_mapping,
+                                                        process_shape,
+                                                        process_group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     sliced_param_index = 0
     for i, shape in enumerate(complete_shape):
         if dims_mapping[i] == -1:
@@ -1244,6 +1314,7 @@ def set_grad_var_shape(program, dist_context):
                 assert forward_var_name is not None
 
             need_set_shape_list = [
+<<<<<<< HEAD
                 "reshape2_grad",
                 "softmax_with_cross_entropy_grad",
                 "transpose2_grad",
@@ -1278,6 +1349,23 @@ def set_grad_var_shape(program, dist_context):
                 "fused_softmax_mask_upper_triangle",
                 "flatten_contiguous_range",
                 "relu",
+=======
+                "reshape2_grad", "softmax_with_cross_entropy_grad",
+                "transpose2_grad", "softmax_grad", "cross_entropy_grad2",
+                "dropout_grad", "tanh_grad", "slice", "assign",
+                "matmul_v2_triple_grad", "elementwise_add_triple_grad",
+                "fill_constant", "sqrt_grad",
+                "fused_softmax_mask_upper_triangle_grad",
+                "flatten_contiguous_range_grad", "relu_grad"
+            ]
+            forward_list = [
+                "reshape2", "softmax_with_cross_entropy", "transpose2",
+                "softmax", "cross_entropy2", "dropout", "tanh",
+                ["slice_grad", "c_allgather"], "assign", "matmul_v2_grad_grad",
+                "elementwise_add_grad_grad", "shape", "sqrt",
+                "fused_softmax_mask_upper_triangle", "flatten_contiguous_range",
+                "relu"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1319,9 +1407,14 @@ def set_grad_var_shape(program, dist_context):
 
 def is_forward_op(op):
     op_role = int(op.attr('op_role'))
+<<<<<<< HEAD
     return OP_ROLE_KEY in op.attr_names and (
         op_role == int(OpRole.Forward) or op_role == int(OpRole.Loss)
     )
+=======
+    return OP_ROLE_KEY in op.attr_names and (op_role == int(OpRole.Forward)
+                                             or op_role == int(OpRole.Loss))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def is_backward_op(op):
@@ -1342,7 +1435,18 @@ def is_lr_sched_op(op):
     ) & int(OpRole.Optimize.LRSched)
 
 
+def is_optimize_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize)
+
+
+def is_lr_sched_op(op):
+    return OP_ROLE_KEY in op.attr_names and \
+            int(op.all_attrs()[OP_ROLE_KEY]) & int(OpRole.Optimize.LRSched)
+
+
 def is_loss_op(op):
+<<<<<<< HEAD
     return OP_ROLE_KEY in op.attr_names and int(
         op.all_attrs()[OP_ROLE_KEY]
     ) == (int(OpRole.Forward) | int(OpRole.Loss))
@@ -1359,6 +1463,10 @@ def is_gradient_clip_op(op):
     return op.desc.has_attr("op_namescope") and op.desc.attr(
         "op_namescope"
     ).startswith("/gradient_clip")
+=======
+    return OP_ROLE_KEY in op.attr_names and \
+        int(op.all_attrs()[OP_ROLE_KEY]) == (int(OpRole.Forward) | int(OpRole.Loss))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def is_prim_op(op):
@@ -1369,9 +1477,14 @@ def get_loss_op(block):
     loss_ops = []
     for op in block.ops:
         if is_loss_op(op):
+<<<<<<< HEAD
             assert (
                 len(op.desc.output_arg_names()) == 1
             ), "loss op should only output loss var"
+=======
+            assert len(op.desc.output_arg_names()
+                       ) == 1, "loss op should only output loss var"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             loss_ops.append(op)
 
     assert len(loss_ops) == 1, "num of loss op is not equal to one"
@@ -1391,8 +1504,12 @@ def set_var_dist_attr(dist_context, var, dims_mapping, process_mesh, **kwargs):
 
 
 def naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+<<<<<<< HEAD
     new_op, process_mesh, ref_mapping, ctx
 ):
+=======
+        new_op, process_mesh, ref_mapping, ctx):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     assert process_mesh is not None
     assert ref_mapping is not None
 
@@ -1610,9 +1727,19 @@ def get_all_distributed_main_program(
 
 
 class SerialProgramInfo:
+<<<<<<< HEAD
     def __init__(
         self, train_program, satrtup_program, loss, optimizer, cluster=None
     ):
+=======
+
+    def __init__(self,
+                 train_program,
+                 satrtup_program,
+                 loss,
+                 optimizer,
+                 cluster=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._train_program = train_program
         self._startup_program = satrtup_program
         self._loss = loss
@@ -1641,6 +1768,7 @@ class SerialProgramInfo:
 
 
 def get_standalone_cost_data(distributed_programs):
+
     def _compute_runtime(op_cost, op, vars):
         runtime = 0
         try:
@@ -1660,6 +1788,7 @@ def get_standalone_cost_data(distributed_programs):
                 arg_name_lower = info[: info.find(variable) - 1]
                 shape_left_boundary = info.find("[")
                 shape_right_boundary = info.find("]")
+<<<<<<< HEAD
                 assert (
                     shape_left_boundary > 0
                     and shape_right_boundary > 0
@@ -1668,6 +1797,11 @@ def get_standalone_cost_data(distributed_programs):
                 shape = info[
                     shape_left_boundary + 1 : shape_right_boundary
                 ].split(",")
+=======
+                assert shape_left_boundary > 0 and shape_right_boundary > 0 and shape_right_boundary > shape_left_boundary, "Get shape failed."
+                shape = info[shape_left_boundary +
+                             1:shape_right_boundary].split(",")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 shape = list(map(lambda x: int(x.strip()), shape))
                 dtype_factor = 1
                 total_static_input_size += reduce(lambda x, y: x * y, shape)
@@ -1723,16 +1857,22 @@ def get_standalone_cost_data(distributed_programs):
             if op.type in not_enum_ops:
                 cost_data[op.desc.id()] = runtime
                 continue
+<<<<<<< HEAD
             dtype = (
                 str(vars[op.input_arg_names[0]].dtype)
                 if op.input_arg_names
                 else "float32"
             )
+=======
+            dtype = str(vars[op.input_arg_names[0]].dtype
+                        ) if op.input_arg_names else "float32"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 if "_grad" in op.type:
                     forward_op_name = op.type[:-5]
                     if forward_op_name in OP_NAME_MAPPING.keys():
                         forward_op_name = OP_NAME_MAPPING[forward_op_name]
+<<<<<<< HEAD
                     op_cost = cost_model.get_static_op_time(
                         forward_op_name, forward=False, dtype=dtype
                     )
@@ -1742,6 +1882,16 @@ def get_standalone_cost_data(distributed_programs):
                         op_cost = cost_model.get_static_op_time(
                             forward_op_name, dtype=dtype
                         )
+=======
+                    op_cost = cost_model.get_static_op_time(forward_op_name,
+                                                            forward=False,
+                                                            dtype=dtype)
+                    if op_cost:
+                        runtime = _compute_runtime(op_cost, op, vars)
+                    else:
+                        op_cost = cost_model.get_static_op_time(forward_op_name,
+                                                                dtype=dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         if op_cost:
                             runtime = 2 * _compute_runtime(op_cost, op, vars)
             elif int(op.attr('op_role')) == int(OpRole.Forward):
@@ -1788,6 +1938,7 @@ def to_list(value):
 def debug_program(program, path, name):
 
     filename = os.path.join(
+<<<<<<< HEAD
         path, name + '_program' + ".%d" % (paddle.distributed.get_rank())
     )
     with open(filename, 'w') as f:
@@ -2193,3 +2344,8 @@ def insert_dependencies_for_two_ops(
 
     if sync:
         block._sync_with_cpp()
+=======
+        path, name + '_program' + ".%d" % (paddle.distributed.get_rank()))
+    with open(filename, 'w') as f:
+        f.write(str(program))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

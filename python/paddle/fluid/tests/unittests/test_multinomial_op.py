@@ -43,6 +43,7 @@ def sample_output_two_dimension(out, shape):
 
 
 class TestMultinomialOp(OpTest):
+
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
@@ -65,6 +66,7 @@ class TestMultinomialOp(OpTest):
         # normalize the input to get the probability
         prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
         sample_prob = self.sample_output(np.array(outs[0]))
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sample_prob,
             prob,
@@ -72,9 +74,15 @@ class TestMultinomialOp(OpTest):
             atol=0.01,
             err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
         )
+=======
+        self.assertTrue(
+            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestMultinomialOp2(TestMultinomialOp):
+
     def init_data(self):
         # input probability is a matrix
         self.input_np = np.random.rand(3, 4)
@@ -86,6 +94,7 @@ class TestMultinomialOp2(TestMultinomialOp):
 
 
 class TestMultinomialOp3(TestMultinomialOp):
+
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000)
@@ -103,6 +112,7 @@ class TestMultinomialOp3(TestMultinomialOp):
 
 
 class TestMultinomialApi(unittest.TestCase):
+
     def test_dygraph(self):
         # input probability is a vector, and replacement is True
         paddle.disable_static()
@@ -113,6 +123,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out.numpy(), 4)
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sample_prob,
             prob,
@@ -120,6 +131,11 @@ class TestMultinomialApi(unittest.TestCase):
             atol=0.01,
             err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
         )
+=======
+        self.assertTrue(
+            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dygraph2(self):
         # input probability is a matrix, and replacement is True
@@ -130,6 +146,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_two_dimension(out.numpy(), [3, 4])
         prob = x_numpy / x_numpy.sum(axis=-1, keepdims=True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sample_prob,
             prob,
@@ -137,6 +154,11 @@ class TestMultinomialApi(unittest.TestCase):
             atol=0.01,
             err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
         )
+=======
+        self.assertTrue(
+            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.enable_static()
 
     def test_dygraph3(self):
@@ -181,6 +203,7 @@ class TestMultinomialApi(unittest.TestCase):
 
         sample_prob = sample_output_one_dimension(out, 4)
         prob = x_np / x_np.sum(axis=-1, keepdims=True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             sample_prob,
             prob,
@@ -188,9 +211,15 @@ class TestMultinomialApi(unittest.TestCase):
             atol=0.01,
             err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
         )
+=======
+        self.assertTrue(
+            np.allclose(sample_prob, prob, rtol=0, atol=0.01),
+            "sample_prob: " + str(sample_prob) + "\nprob: " + str(prob))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestMultinomialAlias(unittest.TestCase):
+
     def test_alias(self):
         paddle.disable_static()
         x = paddle.rand([4])
@@ -200,10 +229,12 @@ class TestMultinomialAlias(unittest.TestCase):
 
 
 class TestMultinomialError(unittest.TestCase):
+
     def setUp(self):
         paddle.disable_static()
 
     def test_num_sample(self):
+
         def test_num_sample_less_than_0():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=-2)
@@ -211,6 +242,7 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_num_sample_less_than_0)
 
     def test_replacement_False(self):
+
         def test_samples_larger_than_categories():
             x = paddle.rand([4])
             paddle.multinomial(x, num_samples=5, replacement=False)
@@ -218,6 +250,7 @@ class TestMultinomialError(unittest.TestCase):
         self.assertRaises(ValueError, test_samples_larger_than_categories)
 
     def test_input_probs_dim(self):
+
         def test_dim_larger_than_2():
             x = paddle.rand([2, 3, 3])
             paddle.multinomial(x)
@@ -241,6 +274,7 @@ class TestMultinomialError(unittest.TestCase):
 
 
 class TestRandomValue(unittest.TestCase):
+
     def test_fixed_random_number(self):
         # Test GPU Fixed random number, which is generated by 'curandStatePhilox4_32_10_t'
         if not paddle.is_compiled_with_cuda():

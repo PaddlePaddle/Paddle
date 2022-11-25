@@ -31,11 +31,13 @@ paddle.enable_static()
 
 
 class XPUTestElementwiseModOp(XPUOpTestWrapper):
+
     def __init__(self) -> None:
         self.op_name = 'elementwise_mod'
         self.use_dynamic_create_class = False
 
     class ElementwiseModOp(XPUOpTest):
+
         def init_kernel_type(self):
             self.use_mkldnn = False
 
@@ -72,6 +74,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestElementwiseModOp_broadcast_1(ElementwiseModOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(2, 100, 3).astype(self.dtype),
@@ -82,6 +85,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
     class TestElementwiseModOp_broadcast_2(ElementwiseModOp):
+
         def init_input_output(self):
             self.inputs = {
                 'X': np.random.rand(22, 128, 3).astype(self.dtype),
@@ -92,6 +96,7 @@ class XPUTestElementwiseModOp(XPUOpTestWrapper):
             self.outputs = {'Out': self.inputs['X'] % self.inputs['Y']}
 
     class TestRemainderOp(unittest.TestCase):
+
         def test_dygraph(self):
             with fluid.dygraph.guard():
                 np_x = np.random.rand(22, 128, 3).astype('int64')

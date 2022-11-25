@@ -19,6 +19,7 @@ import paddle
 
 
 class TestCenterLossOp(OpTest):
+
     def setUp(self):
         self.op_type = "center_loss"
         self.dtype = np.float64
@@ -85,10 +86,73 @@ class TestCenterLossOp(OpTest):
 
 
 class TestCenterLossOpNoUpdate(TestCenterLossOp):
+
     def config(self):
         self.need_update = False
 
 
+<<<<<<< HEAD
+=======
+class BadInputTestCenterLoss(unittest.TestCase):
+
+    def test_error(self):
+        with fluid.program_guard(fluid.Program()):
+
+            def test_bad_x():
+                data = [[1, 2, 3, 4], [5, 6, 7, 8]]
+                label = fluid.layers.data(name='label',
+                                          shape=[2, 1],
+                                          dtype='int32')
+                res = fluid.layers.center_loss(
+                    data,
+                    label,
+                    num_classes=1000,
+                    alpha=0.2,
+                    param_attr=fluid.initializer.Xavier(uniform=False),
+                    update_center=True)
+
+            self.assertRaises(TypeError, test_bad_x)
+
+            def test_bad_y():
+                data = fluid.layers.data(name='data',
+                                         shape=[2, 32],
+                                         dtype='float32')
+                label = [[2], [3]]
+                res = fluid.layers.center_loss(
+                    data,
+                    label,
+                    num_classes=1000,
+                    alpha=0.2,
+                    param_attr=fluid.initializer.Xavier(uniform=False),
+                    update_center=True)
+
+            self.assertRaises(TypeError, test_bad_y)
+
+            def test_bad_alpha():
+                data = fluid.layers.data(name='data2',
+                                         shape=[2, 32],
+                                         dtype='float32',
+                                         append_batch_size=False)
+                label = fluid.layers.data(name='label2',
+                                          shape=[2, 1],
+                                          dtype='int32',
+                                          append_batch_size=False)
+                alpha = fluid.layers.data(name='alpha',
+                                          shape=[1],
+                                          dtype='int64',
+                                          append_batch_size=False)
+                res = fluid.layers.center_loss(
+                    data,
+                    label,
+                    num_classes=1000,
+                    alpha=alpha,
+                    param_attr=fluid.initializer.Xavier(uniform=False),
+                    update_center=True)
+
+            self.assertRaises(TypeError, test_bad_alpha)
+
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

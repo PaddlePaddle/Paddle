@@ -20,8 +20,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using phi::funcs::OneDNNGetDataType;
 using phi::funcs::OneDNNMemDesc;
+=======
+using paddle::framework::LoDTensor;
+using paddle::framework::Tensor;
+using paddle::platform::MKLDNNGetDataType;
+using paddle::platform::MKLDNNMemDesc;
+using phi::CPUContext;
+using platform::to_void_cast;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename T, typename T_out = T>
 class LSTMMKLDNNHandler
@@ -31,10 +40,17 @@ class LSTMMKLDNNHandler
                     const platform::MKLDNNDeviceContext& dev_ctx,
                     const dnnl::engine mkldnn_engine,
                     platform::Place cpu_place,
+<<<<<<< HEAD
                     const phi::DenseTensor* input,
                     const phi::DenseTensor* weight_h,
                     const phi::DenseTensor* h0,
                     const phi::DenseTensor* c0,
+=======
+                    const LoDTensor* input,
+                    const Tensor* weight_h,
+                    const Tensor* h0,
+                    const Tensor* c0,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     const bool is_reverse,
                     const int64_t N,
                     const int64_t Ti,
@@ -86,11 +102,17 @@ class LSTMMKLDNNHandler
       const int64_t G = 4;  // Number of Gates, 4 for LSTM
 
       // Create memory descriptors
+<<<<<<< HEAD
       auto input_md = OneDNNMemDesc(
           {Ti, N, IC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::tnc);
+=======
+      auto input_md = MKLDNNMemDesc(
+          {Ti, N, IC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::tnc);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto weight_x_md =
           OneDNNMemDesc({L, D, IC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto weight_h_md =
+<<<<<<< HEAD
           OneDNNMemDesc({L, D, OC, G, OC}, weights_dt, OneDNNMemoryFormat::any);
       auto bias_md = OneDNNMemDesc(
           {L, D, G, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::ldgo);
@@ -101,6 +123,18 @@ class LSTMMKLDNNHandler
           {L, D, N, OC}, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
       auto c0_md = OneDNNMemDesc(
           {L, D, N, OC}, OneDNNGetDataType<float>(), OneDNNMemoryFormat::any);
+=======
+          MKLDNNMemDesc({L, D, OC, G, OC}, weights_dt, MKLDNNMemoryFormat::any);
+      auto bias_md = MKLDNNMemDesc(
+          {L, D, G, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::ldgo);
+      auto hidden_md = MKLDNNMemDesc(
+          {Ti, N, OC}, MKLDNNGetDataType<T_out>(), MKLDNNMemoryFormat::any);
+
+      auto h0_md = MKLDNNMemDesc(
+          {L, D, N, OC}, MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::any);
+      auto c0_md = MKLDNNMemDesc(
+          {L, D, N, OC}, MKLDNNGetDataType<float>(), MKLDNNMemoryFormat::any);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
       // Create LSTM oneDNN primitive
       const auto direction =
@@ -121,9 +155,15 @@ class LSTMMKLDNNHandler
             dnnl::memory::desc(),
             dnnl::memory::desc());
       } else {
+<<<<<<< HEAD
         auto weight_peephole_md = OneDNNMemDesc({L, D, 3, OC},
                                                 OneDNNGetDataType<float>(),
                                                 OneDNNMemoryFormat::ldgo);
+=======
+        auto weight_peephole_md = MKLDNNMemDesc({L, D, 3, OC},
+                                                MKLDNNGetDataType<float>(),
+                                                MKLDNNMemoryFormat::ldgo);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         this->AcquireForwardPrimitiveDescriptor(
             this->attr_,
             dnnl::prop_kind::forward_inference,
@@ -171,9 +211,15 @@ class LSTMMKLDNNHandler
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wx_key));
 
     if (!memory_p) {
+<<<<<<< HEAD
       auto user_md = OneDNNMemDesc({1, 1, this->IC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
                                    OneDNNMemoryFormat::ldigo);
+=======
+      auto user_md = MKLDNNMemDesc({1, 1, this->IC, this->G, this->OC},
+                                   MKLDNNGetDataType<U>(),
+                                   MKLDNNMemoryFormat::ldigo);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_x_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -203,9 +249,15 @@ class LSTMMKLDNNHandler
         std::static_pointer_cast<dnnl::memory>(this->dev_ctx_.GetBlob(wh_key));
 
     if (!memory_p) {
+<<<<<<< HEAD
       auto user_md = OneDNNMemDesc({1, 1, this->OC, this->G, this->OC},
                                    OneDNNGetDataType<U>(),
                                    OneDNNMemoryFormat::ldigo);
+=======
+      auto user_md = MKLDNNMemDesc({1, 1, this->OC, this->G, this->OC},
+                                   MKLDNNGetDataType<U>(),
+                                   MKLDNNMemoryFormat::ldigo);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto user_memory = dnnl::memory(user_md, this->engine_);
 
       auto* weight_h_data = reinterpret_cast<U*>(user_memory.get_data_handle());
@@ -262,9 +314,15 @@ class LSTMMKLDNNHandler
         this->dev_ctx_.GetBlob(peepholes_key));
 
     if (!memory_p) {
+<<<<<<< HEAD
       auto user_md = OneDNNMemDesc({1, 1, 3, this->OC},
                                    OneDNNGetDataType<float>(),
                                    OneDNNMemoryFormat::ldgo);
+=======
+      auto user_md = MKLDNNMemDesc({1, 1, 3, this->OC},
+                                   MKLDNNGetDataType<float>(),
+                                   MKLDNNMemoryFormat::ldgo);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto user_memory = dnnl::memory(user_md, this->engine_);
       memory_p = std::make_shared<dnnl::memory>(
           this->fwd_pd_->weights_peephole_desc(), this->engine_);
@@ -290,12 +348,20 @@ class LSTMMKLDNNHandler
     if (!memory_p) {
       auto user_c0_memory = dnnl::memory();
       if (c0) {
+<<<<<<< HEAD
         user_c0_memory =
             dnnl::memory({{1, 1, this->N, this->OC},
                           OneDNNGetDataType<float>(),
                           OneDNNMemoryFormat::ldnc},
                          this->engine_,
                          phi::funcs::to_void_cast(c0->data<float>()));
+=======
+        user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
+                                       MKLDNNGetDataType<float>(),
+                                       MKLDNNMemoryFormat::ldnc},
+                                      this->engine_,
+                                      to_void_cast(c0->data<float>()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       } else {
         user_c0_memory = dnnl::memory({{1, 1, this->N, this->OC},
                                        OneDNNGetDataType<float>(),

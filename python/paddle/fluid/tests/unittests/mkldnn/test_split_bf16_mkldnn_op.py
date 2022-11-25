@@ -27,6 +27,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest
     "core is compiled with CUDA which has no BF implementation",
 )
 class TestSplitSectionsBF16OneDNNOp(OpTest):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
@@ -76,6 +77,7 @@ class TestSplitSectionsBF16OneDNNOp(OpTest):
 
 
 class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 8, 5, 3)).astype("uint16")
         self.axis = 1
@@ -86,6 +88,7 @@ class TestSplitNumBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 
 class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = None
@@ -97,6 +100,7 @@ class TestSplitNumAxisTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 
 class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 1
@@ -112,6 +116,7 @@ class TestSplitSectionsTensorBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
 
 
 class TestSplitOpUnknownSectionBF16OneDNNOp(TestSplitSectionsBF16OneDNNOp):
+
     def init_data(self):
         self.x = np.random.random((4, 5, 6)).astype("uint16")
         self.axis = 2

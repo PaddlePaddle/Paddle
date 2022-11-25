@@ -96,12 +96,19 @@ class WMT14(Dataset):
 
         self.data_file = data_file
         if self.data_file is None:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, URL_TRAIN, MD5_TRAIN, 'wmt14', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(data_file, URL_TRAIN,
+                                                        MD5_TRAIN, 'wmt14',
+                                                        download)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # read dataset into memory
         assert dict_size > 0, "dict_size should be set as positive number"
@@ -109,6 +116,7 @@ class WMT14(Dataset):
         self._load_data()
 
     def _load_data(self):
+
         def __to_dict(fd, size):
             out_dict = dict()
             for line_count, line in enumerate(fd):

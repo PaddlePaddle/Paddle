@@ -15,6 +15,11 @@
 import unittest
 import subprocess
 import sys, os
+<<<<<<< HEAD
+=======
+import json
+import shutil
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import tempfile
 
 import random
@@ -50,13 +55,19 @@ def write_file(name, ct):
 
 def get_files(pth, prefix):
     return [
+<<<<<<< HEAD
         f
         for f in listdir(pth)
         if isfile(join(pth, f)) and not f.endswith('gpu.log')
+=======
+        f for f in listdir(pth) if isfile(join(pth, f)) and f.startswith(prefix)
+        and f != f"{prefix}.gpu.log"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     ]
 
 
 class Collective_Test(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, pyname)
@@ -87,8 +98,12 @@ class Collective_Test(unittest.TestCase):
     def test_collective_2(self):
         log_dir = tempfile.TemporaryDirectory()
         args = "--job_id test2 --devices 0,1,2 --log_dir {}".format(
+<<<<<<< HEAD
             log_dir.name
         )
+=======
+            log_dir.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -100,23 +115,36 @@ class Collective_Test(unittest.TestCase):
     def test_collective_3(self):
         log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
+<<<<<<< HEAD
         args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2"
         p1 = self.pdrun(args.format(log_dir.name + "/1", port))
         p2 = self.pdrun(args.format(log_dir.name + "/2", port))
+=======
+        args = "--job_id test3 --devices 0,1 --log_dir {} --master 127.0.0.1:{} --nnodes 2".format(
+            log_dir.name, port)
+        p1 = self.pdrun(args)
+        p2 = self.pdrun(args)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
+<<<<<<< HEAD
         c1 = get_files(log_dir.name + "/1", 'test3')
         c2 = get_files(log_dir.name + "/2", 'test3')
         print(c1)
         self.assertTrue(len(c1) == 3)
         self.assertTrue(len(c2) == 3)
+=======
+        c = get_files(log_dir.name, 'test3')
+        self.assertTrue(len(c) == 6)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         log_dir.cleanup()
 
 
 class PS_Test(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.temp_dir.name, pyname)
@@ -143,11 +171,16 @@ class PS_Test(unittest.TestCase):
 
     def test_ps_2(self):
         log_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         args = (
             "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
                 log_dir.name
             )
         )
+=======
+        args = "--job_id ps2 --server_num=2 --trainer_num=2 --log_dir {}".format(
+            log_dir.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p = self.pdrun(args)
         p.wait()
         self.assertTrue(p.poll() == 0)
@@ -159,32 +192,51 @@ class PS_Test(unittest.TestCase):
     def test_ps_3(self):
         log_dir = tempfile.TemporaryDirectory()
         port = random.randrange(6000, 8000)
+<<<<<<< HEAD
         args = "--job_id ps3 --log_dir {} --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1"
         p1 = self.pdrun(args.format(log_dir.name + "/1", port))
         p2 = self.pdrun(args.format(log_dir.name + "/2", port))
+=======
+        args = "--job_id ps3 --log_dir {} --master 127.0.0.1:{} --nnodes 2 --server_num=1 --trainer_num=1".format(
+            log_dir.name, port)
+        p1 = self.pdrun(args)
+        p2 = self.pdrun(args)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p1.wait()
         p2.wait()
         self.assertTrue(p1.poll() == 0)
         self.assertTrue(p2.poll() == 0)
 
+<<<<<<< HEAD
         c1 = get_files(log_dir.name + "/1", 'ps3')
         c2 = get_files(log_dir.name + "/2", 'ps3')
         print(c1)
         self.assertTrue(len(c1) == 3)
         self.assertTrue(len(c2) == 3)
+=======
+        c = get_files(log_dir.name, 'ps3')
+        self.assertTrue(len(c) == 6)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         log_dir.cleanup()
 
     def test_ps_4(self):
         log_dir = tempfile.TemporaryDirectory()
         args = "--job_id ps4 --log_dir {} --servers 127.0.0.1:8900,127.0.0.1:8901 --trainers 127.0.0.1:8902,127.0.0.1:8903".format(
+<<<<<<< HEAD
             log_dir.name
         )
+=======
+            log_dir.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p1 = self.pdrun(args)
         p1.wait()
         self.assertTrue(p1.poll() == 0)
 
         c = get_files(log_dir.name, 'ps4')
+<<<<<<< HEAD
         print(c)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.assertTrue(len(c) == 5)
         log_dir.cleanup()
 

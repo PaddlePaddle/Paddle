@@ -17,12 +17,48 @@
 #include <future>
 #include <unordered_set>
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/platform/collective_helper.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
+namespace {
+std::map<Place, std::shared_future<std::unique_ptr<platform::DeviceContext>>>*
+    d2h_ctxs = nullptr;
+std::map<Place, std::shared_future<std::unique_ptr<platform::DeviceContext>>>*
+    h2d_ctxs = nullptr;
+std::mutex ctx_mtx;
+}  // namespace
+
+StreamAnalyzer::StreamAnalyzer(const platform::Place& place) : place_(place) {
+  if (platform::is_gpu_place(place) || platform::is_npu_place(place)) {
+    std::lock_guard<std::mutex> lk(ctx_mtx);
+    if (d2h_ctxs == nullptr) {
+      d2h_ctxs = new std::map<
+          Place,
+          std::shared_future<std::unique_ptr<platform::DeviceContext>>>();
+      h2d_ctxs = new std::map<
+          Place,
+          std::shared_future<std::unique_ptr<platform::DeviceContext>>>();
+    }
+    if (d2h_ctxs->find(place) == d2h_ctxs->end()) {
+      platform::EmplaceDeviceContexts(
+          d2h_ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true);
+      platform::EmplaceDeviceContexts(
+          h2d_ctxs,
+          {place},
+          /*disable_setting_default_stream_for_allocator=*/true);
+    }
+    d2h_ctx_ = (*d2h_ctxs)[place];
+    h2d_ctx_ = (*h2d_ctxs)[place];
+  }
+}
 
 class ContextManager {
  public:
@@ -188,6 +224,7 @@ void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
 
 platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
     const OpFuncNode& op_func_node) {
+<<<<<<< HEAD
   auto& op = op_func_node.operator_base_;
   auto& op_type = op->Type();
   const std::string& execution_stream = op_func_node.execution_stream_;
@@ -232,6 +269,22 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
   }
 
   return op_func_node.dev_ctx_;
+=======
+  auto& op_type = op_func_node.operator_base_->Type();
+  auto* dev_ctx = op_func_node.dev_ctx_;
+  // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
+  // synchronous.
+  if (platform::is_gpu_place(place_) || platform::is_npu_place(place_)) {
+    if (op_type == interpreter::kMemcpyD2H) {
+      VLOG(3) << "Get dev_ctx from d2h_context_pool_";
+      dev_ctx = d2h_ctx_.get().get();
+    } else if (op_type == interpreter::kMemcpyH2D) {
+      VLOG(3) << "Get dev_ctx from h2d_context_pool_";
+      dev_ctx = h2d_ctx_.get().get();
+    }
+  }
+  return dev_ctx;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 /*
@@ -246,6 +299,7 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
  */
 bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
                                  const Instruction& next_instr) {
+<<<<<<< HEAD
   if ((cur_instr.KernelType() == OpFuncType::kQueueSync) &&
       (next_instr.KernelType() == OpFuncType::kQueueSync)) {
     return true;
@@ -263,6 +317,16 @@ bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
 
   // npu d2h kernel is asynchronous.
   if (platform::is_npu_place(place_) || platform::is_custom_place(place_)) {
+=======
+  if (&cur_instr.DeviceContext() == &next_instr.DeviceContext()) return true;
+
+  // xpu&ipu memcpy kerenl is synchronous.
+  if (platform::is_ipu_place(place_) || platform::is_xpu_place(place_))
+    return true;
+
+  // npu d2h kernel is asynchronous.
+  if (platform::is_npu_place(place_)) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return interpreter::IsCpuOp(cur_instr) ||
            interpreter::IsMemcpyH2D(next_instr);
   }
@@ -280,8 +344,11 @@ platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
       return platform::kXPU;
     } else if (platform::is_npu_place(place_)) {
       return platform::kNPU;
+<<<<<<< HEAD
     } else if (platform::is_custom_place(place_)) {
       return platform::kCUSTOM_DEVICE;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
     return platform::kCUDA;
   }

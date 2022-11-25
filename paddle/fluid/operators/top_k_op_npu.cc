@@ -18,7 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 void gen_assist_seq(phi::DenseTensor* assit_tensor,
+=======
+void gen_assist_seq(framework::Tensor* assit_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     int64_t dim,
                     const framework::ExecutionContext& ctx) {
   const int64_t dimx2 = dim;

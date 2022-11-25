@@ -236,7 +236,11 @@ endif()
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
+<<<<<<< HEAD
    OR (ON_INFER AND NOT WITH_PYTHON))
+=======
+   OR ON_INFER)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   set(WITH_DGC OFF)
 endif()
 
@@ -416,6 +420,7 @@ if(WITH_PSCORE)
     include(external/brpc)
     list(APPEND third_party_deps extern_brpc)
   endif()
+<<<<<<< HEAD
 
   include(external/libmct) # download, build, install libmct
   list(APPEND third_party_deps extern_libmct)
@@ -435,6 +440,17 @@ if(WITH_RPC
 
   include(external/brpc)
   list(APPEND third_party_deps extern_brpc)
+=======
+
+  include(external/libmct) # download, build, install libmct
+  list(APPEND third_party_deps extern_libmct)
+
+  include(external/rocksdb) # download, build, install rocksdb
+  list(APPEND third_party_deps extern_rocksdb)
+
+  include(external/jemalloc) # download, build, install jemalloc
+  list(APPEND third_party_deps extern_jemalloc)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()
 
 if(WITH_XBYAK)
@@ -503,6 +519,7 @@ endif()
 if(WITH_CUSPARSELT)
   include(external/cusparselt) # download, build, install cusparselt
   list(APPEND third_party_deps extern_cusparselt)
+<<<<<<< HEAD
 endif()
 
 if(WITH_GPU
@@ -518,6 +535,8 @@ endif()
 if(WITH_CUDNN_FRONTEND)
   include(external/cudnn-frontend) # download cudnn-frontend
   list(APPEND third_party_deps extern_cudnn_frontend)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()
 
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})

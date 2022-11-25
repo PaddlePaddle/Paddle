@@ -27,6 +27,7 @@ SEED = 1024
 
 
 class TestSwishOp(OpTest):
+
     def setUp(self):
         self.op_type = "swish"
         self.set_npu()
@@ -48,6 +49,7 @@ class TestSwishOp(OpTest):
         dx = beta * out + expit(x) * (1 - beta * out)
         dx = dx / x.size
 
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             ['X'],
@@ -55,6 +57,12 @@ class TestSwishOp(OpTest):
             max_relative_error=0.01,
             user_defined_grads=[dx],
         )
+=======
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.01,
+                                   user_defined_grads=[dx])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -65,6 +73,7 @@ class TestSwishOp(OpTest):
 
 
 class TestSwishOpFp16(TestSwishOp):
+
     def test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-3)
 

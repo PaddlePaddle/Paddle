@@ -52,12 +52,18 @@ def md5(doc):
         md5sum = hashinst.hexdigest()
     except UnicodeDecodeError as e:
         md5sum = None
+<<<<<<< HEAD
         print(
             "Error({}) occurred when `md5({})`, discard it.".format(
                 str(e), doc
             ),
             file=sys.stderr,
         )
+=======
+        print("Error({}) occurred when `md5({})`, discard it.".format(
+            str(e), doc),
+              file=sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return md5sum
 
@@ -117,11 +123,17 @@ def visit_all_module(mod):
                     and member_name != instance.__name__
                 ):
                     print(
+<<<<<<< HEAD
                         "Found alias API, alias name is: {}, original name is: {}".format(
                             member_name, instance.__name__
                         ),
                         file=sys.stderr,
                     )
+=======
+                        "Found alias API, alias name is: {}, original name is: {}"
+                        .format(member_name, instance.__name__),
+                        file=sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except:
             if cur_name not in ErrorSet and cur_name not in skiplist:
                 ErrorSet.add(cur_name)
@@ -181,9 +193,14 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
         logger.warning("AttributeError occurred when `id(eval(%s))`", full_name)
         return None
     except Exception as e:
+<<<<<<< HEAD
         logger.warning(
             "Exception(%s) occurred when `id(eval(%s))`", str(e), full_name
         )
+=======
+        logger.warning("Exception(%s) occurred when `id(eval(%s))`", str(e),
+                       full_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return None
     else:
         logger.debug("adding %s to api_info_dict.", full_name)
@@ -204,8 +221,13 @@ def insert_api_into_dict(full_name, gen_doc_anno=None):
                 api_info_dict[fc_id]["gen_doc_anno"] = gen_doc_anno
             if inspect.isfunction(obj):
                 api_info_dict[fc_id]["signature"] = repr(
+<<<<<<< HEAD
                     inspect.getfullargspec(obj)
                 ).replace('FullArgSpec', 'ArgSpec', 1)
+=======
+                    inspect.getfullargspec(obj)).replace(
+                        'FullArgSpec', 'ArgSpec', 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return api_info_dict[fc_id]
 
 
@@ -229,11 +251,16 @@ def process_module(m, attr="__all__"):
                 if inspect.isclass(api_info['object']):
                     for name, value in inspect.getmembers(api_info['object']):
                         if (not name.startswith("_")) and hasattr(
+<<<<<<< HEAD
                             value, '__name__'
                         ):
                             method_full_name = (
                                 full_name + '.' + name
                             )  # value.__name__
+=======
+                                value, '__name__'):
+                            method_full_name = full_name + '.' + name  # value.__name__
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             method_api_info = insert_api_into_dict(
                                 method_full_name, 'class_method'
                             )
@@ -243,6 +270,7 @@ def process_module(m, attr="__all__"):
 
 
 def check_public_api():
+<<<<<<< HEAD
     modulelist = [  # npqa
         paddle,
         paddle.amp,
@@ -288,6 +316,21 @@ def check_public_api():
         paddle.sparse,
         paddle.sparse.nn,
         paddle.sparse.nn.functional,
+=======
+    import paddle
+    modulelist = [  #npqa
+        paddle, paddle.amp, paddle.nn, paddle.nn.functional,
+        paddle.nn.initializer, paddle.nn.utils, paddle.static, paddle.static.nn,
+        paddle.io, paddle.jit, paddle.metric, paddle.distribution,
+        paddle.optimizer, paddle.optimizer.lr, paddle.regularizer, paddle.text,
+        paddle.utils, paddle.utils.download, paddle.utils.profiler,
+        paddle.utils.cpp_extension, paddle.sysconfig, paddle.vision,
+        paddle.vision.datasets, paddle.vision.models, paddle.vision.transforms,
+        paddle.vision.ops, paddle.distributed, paddle.distributed.fleet,
+        paddle.distributed.fleet.utils, paddle.distributed.parallel,
+        paddle.distributed.utils, paddle.callbacks, paddle.hub, paddle.autograd,
+        paddle.incubate, paddle.inference, paddle.onnx, paddle.device
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     ]
 
     apinum = 0
@@ -320,8 +363,12 @@ def check_public_api():
             instance = eval(cur_name)
             doc_md5 = md5(instance.__doc__)
             member_dict[cur_name] = "({}, ('document', '{}'))".format(
+<<<<<<< HEAD
                 cur_name, doc_md5
             )
+=======
+                cur_name, doc_md5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def check_allmodule_callable():
@@ -338,6 +385,7 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description='Print Apis Signatures')
     parser.add_argument('--debug', dest='debug', action="store_true")
+<<<<<<< HEAD
     parser.add_argument(
         '--method',
         dest='method',
@@ -355,6 +403,20 @@ def parse_args():
         help='Skip Checking submodules',
         default='paddle.fluid.libpaddle.eager.ops',
     )
+=======
+    parser.add_argument('--method',
+                        dest='method',
+                        type=str,
+                        default='get_all_api',
+                        help="using get_all_api or from_modulelist")
+    parser.add_argument('module', type=str, help='module',
+                        default='paddle')  # not used
+    parser.add_argument('--skipped',
+                        dest='skipped',
+                        type=str,
+                        help='Skip Checking submodules',
+                        default='paddle.fluid.core_avx.eager.ops')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if len(sys.argv) == 1:
         args = parser.parse_args(['paddle'])
@@ -386,6 +448,7 @@ if __name__ == '__main__':
             if args.skipped != '' and api_name.find(args.skipped) >= 0:
                 continue
             api_info = api_info_dict[all_api_names_to_k[api_name]]
+<<<<<<< HEAD
             print(
                 "{0} ({2}, ('document', '{1}'))".format(
                     api_name,
@@ -395,13 +458,23 @@ if __name__ == '__main__':
                     else 'ArgSpec()',
                 )
             )
+=======
+            print("{0} ({2}, ('document', '{1}'))".format(
+                api_name, md5(api_info['docstring']), api_info['signature']
+                if 'signature' in api_info else 'ArgSpec()'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if len(ErrorSet) == 0:
         sys.exit(0)
     else:
         for erroritem in ErrorSet:
+<<<<<<< HEAD
             print(
                 "Error, new function {} is unreachable".format(erroritem),
                 file=sys.stderr,
             )
+=======
+            print("Error, new function {} is unreachable".format(erroritem),
+                  file=sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         sys.exit(1)

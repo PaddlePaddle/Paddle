@@ -52,8 +52,12 @@ def _to_dtype(t, dtype):
     if t.place.is_gpu_place():
         size_dtype = core.size_of_dtype(dtype)
         waiting_alloc_memory = (
+<<<<<<< HEAD
             ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
         )
+=======
+            (np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         gpu_memory_available = core.gpu_memory_available()
         if gpu_memory_available < waiting_alloc_memory:
             t_used = t._copy_to(paddle.CPUPlace(), False)
@@ -108,6 +112,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             output = fused_bias_dropout_residual_ln(x, residual)  # [2, 4, 128]
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         embed_dim,
@@ -122,10 +127,23 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             "Expected embed_dim to be greater than 0, "
             "but recieved {}".format(embed_dim)
         )
+=======
+    def __init__(self,
+                 embed_dim,
+                 dropout_rate=0.5,
+                 weight_attr=None,
+                 bias_attr=None,
+                 epsilon=1e-5,
+                 name=None):
+        super(FusedBiasDropoutResidualLayerNorm, self).__init__()
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but recieved {}".format(embed_dim))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
         self._weight_attr = weight_attr
         self.embed_dim = embed_dim
+<<<<<<< HEAD
         self.linear_bias = self.create_parameter(
             shape=[embed_dim],
             attr=self._bias_attr,
@@ -140,6 +158,19 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         self.ln_bias = self.create_parameter(
             attr=self._bias_attr, shape=[embed_dim], is_bias=True
         )
+=======
+        self.linear_bias = self.create_parameter(shape=[embed_dim],
+                                                 attr=self._bias_attr,
+                                                 dtype=self._dtype,
+                                                 is_bias=True)
+        self.ln_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.ln_bias = self.create_parameter(attr=self._bias_attr,
+                                             shape=[embed_dim],
+                                             is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dropout_rate = dropout_rate
         self._epsilon = epsilon
 
@@ -172,13 +203,18 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             ln_epsilon=self._epsilon,
             training=self.training,
             mode='upscale_in_train',
+<<<<<<< HEAD
             name=self.name,
         )
+=======
+            name=self.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
         return 'embed_dim={}, seq_len={}, dropout_rate={}, epsilon={}, dtype={}{}'.format(
+<<<<<<< HEAD
             self.embed_dim,
             self.seq_len,
             self.dropout_rate,
@@ -186,6 +222,10 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
             self._dtype,
             name_str,
         )
+=======
+            self.embed_dim, self.seq_len, self.dropout_rate, self._epsilon,
+            self._dtype, name_str)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class FusedMultiHeadAttention(Layer):
@@ -261,6 +301,7 @@ class FusedMultiHeadAttention(Layer):
             output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         embed_dim,
@@ -295,6 +336,35 @@ class FusedMultiHeadAttention(Layer):
         ), "Expected nhead to be greater than 0, " "but received {}".format(
             num_heads
         )
+=======
+    def __init__(self,
+                 embed_dim,
+                 num_heads,
+                 dropout_rate=0.5,
+                 attn_dropout_rate=0.5,
+                 kdim=None,
+                 vdim=None,
+                 normalize_before=False,
+                 need_weights=False,
+                 qkv_weight_attr=None,
+                 qkv_bias_attr=None,
+                 linear_weight_attr=None,
+                 linear_bias_attr=None,
+                 pre_ln_scale_attr=None,
+                 pre_ln_bias_attr=None,
+                 ln_scale_attr=None,
+                 ln_bias_attr=None,
+                 epsilon=1e-5,
+                 nranks=1,
+                 ring_id=-1,
+                 name=None):
+        super(FusedMultiHeadAttention, self).__init__()
+
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but received {}".format(embed_dim))
+        assert num_heads > 0, ("Expected nhead to be greater than 0, "
+                               "but received {}".format(num_heads))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
@@ -307,9 +377,13 @@ class FusedMultiHeadAttention(Layer):
         self.kdim = kdim
         self.vdim = vdim
         self.need_weights = need_weights
+<<<<<<< HEAD
         assert (
             self.head_dim * num_heads == embed_dim
         ), "embed_dim must be divisible by num_heads"
+=======
+        assert self.head_dim * num_heads == embed_dim, "embed_dim must be divisible by num_heads"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         assert need_weights is False, "Only support need_weight is False now."
 
         # tensor model parallel
@@ -332,6 +406,7 @@ class FusedMultiHeadAttention(Layer):
             shape=[num_heads * self.head_dim, embed_dim],
             attr=linear_weight_attr,
             dtype=self._dtype,
+<<<<<<< HEAD
             is_bias=False,
         )
         self.linear_bias = self.create_parameter(
@@ -340,6 +415,13 @@ class FusedMultiHeadAttention(Layer):
             dtype=self._dtype,
             is_bias=True,
         )
+=======
+            is_bias=False)
+        self.linear_bias = self.create_parameter(shape=[embed_dim],
+                                                 attr=linear_bias_attr,
+                                                 dtype=self._dtype,
+                                                 is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # tensor model parallel
         if nranks > 1:
@@ -354,11 +436,18 @@ class FusedMultiHeadAttention(Layer):
             self.pre_ln_scale = self.create_parameter(
                 attr=pre_ln_scale_attr,
                 shape=[embed_dim],
+<<<<<<< HEAD
                 default_initializer=Constant(value=1.0),
             )
             self.pre_ln_bias = self.create_parameter(
                 attr=pre_ln_bias_attr, shape=[embed_dim], is_bias=True
             )
+=======
+                default_initializer=Constant(value=1.0))
+            self.pre_ln_bias = self.create_parameter(attr=pre_ln_bias_attr,
+                                                     shape=[embed_dim],
+                                                     is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.ln_scale = None
             self.ln_bias = None
         else:
@@ -367,11 +456,18 @@ class FusedMultiHeadAttention(Layer):
             self.ln_scale = self.create_parameter(
                 attr=ln_scale_attr,
                 shape=[embed_dim],
+<<<<<<< HEAD
                 default_initializer=Constant(value=1.0),
             )
             self.ln_bias = self.create_parameter(
                 attr=ln_bias_attr, shape=[embed_dim], is_bias=True
             )
+=======
+                default_initializer=Constant(value=1.0))
+            self.ln_bias = self.create_parameter(attr=ln_bias_attr,
+                                                 shape=[embed_dim],
+                                                 is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.dropout_rate = dropout_rate
         self.attn_dropout_rate = attn_dropout_rate
@@ -435,8 +531,12 @@ class FusedMultiHeadAttention(Layer):
             ln_epsilon=self._epsilon,
             training=self.training,
             ring_id=self._ring_id,
+<<<<<<< HEAD
             name=self.name,
         )
+=======
+            name=self.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     def extra_repr(self):
@@ -454,6 +554,25 @@ class FusedMultiHeadAttention(Layer):
             self._dtype,
             name_str,
         )
+
+    def _amp_decorate(self, dtype):
+        # tmp fix for amp.decorator(O2)
+        layer_norm_params_id = []
+        if self.normalize_before:
+            layer_norm_params_id.append(id(self.pre_ln_scale))
+            layer_norm_params_id.append(id(self.pre_ln_bias))
+        else:
+            layer_norm_params_id.append(id(self.ln_scale))
+            layer_norm_params_id.append(id(self.ln_bias))
+
+        for key, param in self._parameters.items():
+            if id(param) in layer_norm_params_id:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = _to_dtype(param, dtype)
+
+        self._dtype = dtype
 
     def _amp_decorate(self, dtype):
         # tmp fix for amp.decorator(O2)
@@ -536,6 +655,7 @@ class FusedFeedForward(Layer):
             # (1, 8, 8)
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         d_model,
@@ -569,6 +689,35 @@ class FusedFeedForward(Layer):
         ), "Expected dim_feedforward to be greater than 0, but received {}".format(
             dim_feedforward
         )
+=======
+    def __init__(self,
+                 d_model,
+                 dim_feedforward,
+                 dropout_rate=0.1,
+                 epsilon=1e-05,
+                 activation="relu",
+                 act_dropout_rate=None,
+                 normalize_before=False,
+                 linear1_weight_attr=None,
+                 linear1_bias_attr=None,
+                 linear2_weight_attr=None,
+                 linear2_bias_attr=None,
+                 ln1_scale_attr=None,
+                 ln1_bias_attr=None,
+                 ln2_scale_attr=None,
+                 ln2_bias_attr=None,
+                 nranks=1,
+                 ring_id=-1,
+                 name=None):
+
+        super(FusedFeedForward, self).__init__()
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, but received {}".format(
+                d_model))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, but received {}".
+            format(dim_feedforward))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._dtype = self._helper.get_default_dtype()
         self._d_model = d_model
@@ -589,6 +738,7 @@ class FusedFeedForward(Layer):
             shape=[d_model, dim_feedforward],
             attr=linear1_weight_attr,
             dtype=self._dtype,
+<<<<<<< HEAD
             is_bias=False,
         )
         self._linear1_bias = self.create_parameter(
@@ -597,6 +747,13 @@ class FusedFeedForward(Layer):
             dtype=self._dtype,
             is_bias=True,
         )
+=======
+            is_bias=False)
+        self._linear1_bias = self.create_parameter(shape=[dim_feedforward],
+                                                   attr=linear1_bias_attr,
+                                                   dtype=self._dtype,
+                                                   is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._linear2_weight = self.create_parameter(
             shape=[dim_feedforward, d_model],
@@ -605,12 +762,19 @@ class FusedFeedForward(Layer):
             is_bias=False,
         )
 
+<<<<<<< HEAD
         self._linear2_bias = self.create_parameter(
             shape=[d_model],
             attr=linear2_bias_attr,
             dtype=self._dtype,
             is_bias=True,
         )
+=======
+        self._linear2_bias = self.create_parameter(shape=[d_model],
+                                                   attr=linear2_bias_attr,
+                                                   dtype=self._dtype,
+                                                   is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if nranks > 1:
             assert ring_id != -1
@@ -624,11 +788,18 @@ class FusedFeedForward(Layer):
                 shape=[d_model],
                 attr=ln1_scale_attr,
                 is_bias=False,
+<<<<<<< HEAD
                 default_initializer=Constant(1.0),
             )
             self._ln1_bias = self.create_parameter(
                 shape=[d_model], attr=ln1_bias_attr, is_bias=True
             )
+=======
+                default_initializer=Constant(1.0))
+            self._ln1_bias = self.create_parameter(shape=[d_model],
+                                                   attr=ln1_bias_attr,
+                                                   is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._ln2_scale = None
             self._ln2_bias = None
         else:
@@ -638,11 +809,18 @@ class FusedFeedForward(Layer):
                 shape=[d_model],
                 attr=ln2_scale_attr,
                 is_bias=False,
+<<<<<<< HEAD
                 default_initializer=Constant(1.0),
             )
             self._ln2_bias = self.create_parameter(
                 shape=[d_model], attr=ln2_bias_attr, is_bias=True
             )
+=======
+                default_initializer=Constant(1.0))
+            self._ln2_bias = self.create_parameter(shape=[d_model],
+                                                   attr=ln2_bias_attr,
+                                                   is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.name = name
 
@@ -665,8 +843,12 @@ class FusedFeedForward(Layer):
             pre_layer_norm=self._normalize_before,
             training=self.training,
             ring_id=self._ring_id,
+<<<<<<< HEAD
             name=self.name,
         )
+=======
+            name=self.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     def extra_repr(self):
@@ -682,6 +864,25 @@ class FusedFeedForward(Layer):
             self._dtype,
             name_str,
         )
+
+    def _amp_decorate(self, dtype):
+        # tmp fix for amp.decorator(O2)
+        layer_norm_params_id = []
+        if self._normalize_before:
+            layer_norm_params_id.append(id(self._ln1_scale))
+            layer_norm_params_id.append(id(self._ln1_bias))
+        else:
+            layer_norm_params_id.append(id(self._ln2_scale))
+            layer_norm_params_id.append(id(self._ln2_bias))
+
+        for key, param in self._parameters.items():
+            if id(param) in layer_norm_params_id:
+                continue
+            if param is not None:
+                with no_grad():
+                    param_applied = _to_dtype(param, dtype)
+
+        self._dtype = dtype
 
     def _amp_decorate(self, dtype):
         # tmp fix for amp.decorator(O2)
@@ -818,6 +1019,7 @@ class FusedTransformerEncoderLayer(Layer):
             pre_ln_scale_attr=weight_attrs[0],
             pre_ln_bias_attr=bias_attrs[0],
             ln_scale_attr=weight_attrs[0],
+<<<<<<< HEAD
             ln_bias_attr=bias_attrs[0],
         )
 
@@ -833,6 +1035,20 @@ class FusedTransformerEncoderLayer(Layer):
             linear2_weight_attr=weight_attrs[1],
             linear2_bias_attr=bias_attrs[1],
         )
+=======
+            ln_bias_attr=bias_attrs[0])
+
+        self.ffn = FusedFeedForward(d_model,
+                                    dim_feedforward,
+                                    dropout_rate=dropout_rate,
+                                    activation=activation,
+                                    act_dropout_rate=act_dropout_rate,
+                                    normalize_before=self.normalize_before,
+                                    linear1_weight_attr=weight_attrs[1],
+                                    linear1_bias_attr=bias_attrs[1],
+                                    linear2_weight_attr=weight_attrs[1],
+                                    linear2_bias_attr=bias_attrs[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -872,9 +1088,15 @@ class FusedTransformerEncoderLayer(Layer):
         if cache is None:
             attn_out = self.fused_attn(src, attn_mask=src_mask)
         else:
+<<<<<<< HEAD
             attn_out, incremental_cache = self.fused_attn(
                 src, attn_mask=src_mask, cache=cache
             )
+=======
+            attn_out, incremental_cache = self.fused_attn(src,
+                                                          attn_mask=src_mask,
+                                                          cache=cache)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         ffn_out = self.ffn(attn_out)
 
@@ -1159,6 +1381,7 @@ class FusedMultiTransformer(Layer):
             enc_output = encoder_layers(enc_input, attn_mask)  # [2, 4, 128]
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         embed_dim,
@@ -1202,6 +1425,42 @@ class FusedMultiTransformer(Layer):
         ), "Expected dim_feedforward to be greater than 0, but received {}".format(
             dim_feedforward
         )
+=======
+    def __init__(self,
+                 embed_dim,
+                 num_heads,
+                 dim_feedforward,
+                 dropout_rate=0.0,
+                 activation="gelu",
+                 normalize_before=True,
+                 ln_scale_attrs=None,
+                 ln_bias_attrs=None,
+                 qkv_weight_attrs=None,
+                 qkv_bias_attrs=None,
+                 linear_weight_attrs=None,
+                 linear_bias_attrs=None,
+                 ffn_ln_scale_attrs=None,
+                 ffn_ln_bias_attrs=None,
+                 ffn1_weight_attrs=None,
+                 ffn1_bias_attrs=None,
+                 ffn2_weight_attrs=None,
+                 ffn2_bias_attrs=None,
+                 epsilon=1e-5,
+                 num_layers=-1,
+                 nranks=1,
+                 trans_qkvw=True,
+                 ring_id=-1,
+                 name=None):
+        super(FusedMultiTransformer, self).__init__()
+
+        assert embed_dim > 0, ("Expected embed_dim to be greater than 0, "
+                               "but received {}".format(embed_dim))
+        assert num_heads > 0, ("Expected nhead to be greater than 0, "
+                               "but received {}".format(num_heads))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, but received {}".
+            format(dim_feedforward))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.normalize_before = normalize_before
         self._dtype = self._helper.get_default_dtype()
@@ -1260,6 +1519,7 @@ class FusedMultiTransformer(Layer):
             ln_scale = self.create_parameter(
                 attr=ln_scale_attr,
                 shape=[embed_dim],
+<<<<<<< HEAD
                 default_initializer=Constant(value=1.0),
             )
             ln_bias = self.create_parameter(
@@ -1269,6 +1529,15 @@ class FusedMultiTransformer(Layer):
                 shape=[3, num_heads, self.head_dim, embed_dim]
                 if trans_qkvw
                 else [embed_dim, 3, num_heads, self.head_dim],
+=======
+                default_initializer=Constant(value=1.0))
+            ln_bias = self.create_parameter(attr=ln_bias_attr,
+                                            shape=[embed_dim],
+                                            is_bias=True)
+            qkv_weight = self.create_parameter(
+                shape=[3, num_heads, self.head_dim, embed_dim]
+                if trans_qkvw else [embed_dim, 3, num_heads, self.head_dim],
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 attr=qkv_weight_attr,
                 dtype=self._dtype,
                 is_bias=False,
@@ -1283,6 +1552,7 @@ class FusedMultiTransformer(Layer):
                 shape=[num_heads * self.head_dim, embed_dim],
                 attr=linear_weight_attr,
                 dtype=self._dtype,
+<<<<<<< HEAD
                 is_bias=False,
             )
             linear_bias = self.create_parameter(
@@ -1291,20 +1561,35 @@ class FusedMultiTransformer(Layer):
                 dtype=self._dtype,
                 is_bias=True,
             )
+=======
+                is_bias=False)
+            linear_bias = self.create_parameter(shape=[embed_dim],
+                                                attr=linear_bias_attr,
+                                                dtype=self._dtype,
+                                                is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             ffn_ln_scale = self.create_parameter(
                 shape=[embed_dim],
                 attr=ffn_ln_scale_attr,
                 is_bias=False,
+<<<<<<< HEAD
                 default_initializer=Constant(1.0),
             )
             ffn_ln_bias = self.create_parameter(
                 shape=[embed_dim], attr=ffn_ln_bias_attr, is_bias=True
             )
+=======
+                default_initializer=Constant(1.0))
+            ffn_ln_bias = self.create_parameter(shape=[embed_dim],
+                                                attr=ffn_ln_bias_attr,
+                                                is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ffn1_weight = self.create_parameter(
                 shape=[embed_dim, dim_feedforward],
                 attr=ffn1_weight_attr,
                 dtype=self._dtype,
+<<<<<<< HEAD
                 is_bias=False,
             )
             ffn1_bias = self.create_parameter(
@@ -1313,10 +1598,18 @@ class FusedMultiTransformer(Layer):
                 dtype=self._dtype,
                 is_bias=True,
             )
+=======
+                is_bias=False)
+            ffn1_bias = self.create_parameter(shape=[dim_feedforward],
+                                              attr=ffn1_bias_attr,
+                                              dtype=self._dtype,
+                                              is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ffn2_weight = self.create_parameter(
                 shape=[dim_feedforward, embed_dim],
                 attr=ffn2_weight_attr,
                 dtype=self._dtype,
+<<<<<<< HEAD
                 is_bias=False,
             )
             ffn2_bias = self.create_parameter(
@@ -1325,6 +1618,13 @@ class FusedMultiTransformer(Layer):
                 dtype=self._dtype,
                 is_bias=True,
             )
+=======
+                is_bias=False)
+            ffn2_bias = self.create_parameter(shape=[embed_dim],
+                                              attr=ffn2_bias_attr,
+                                              dtype=self._dtype,
+                                              is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # tensor model parallel
             if nranks > 1:

@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestNanInf(unittest.TestCase):
+
     def setUp(self):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -32,12 +33,19 @@ class TestNanInf(unittest.TestCase):
     def check_nan_inf(self):
         cmd = self._python_interp
 
+<<<<<<< HEAD
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=self.env,
         )
+=======
+        proc = subprocess.Popen(cmd.split(" "),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                env=self.env)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         out, err = proc.communicate()
         returncode = proc.returncode
@@ -50,8 +58,12 @@ class TestNanInf(unittest.TestCase):
             assert (out + err).find('find_nan=1, find_inf=1'.encode()) != -1
         else:
             assert (out + err).find(
+<<<<<<< HEAD
                 'There are `nan` or `inf` in tensor'.encode()
             ) != -1
+=======
+                'There are `nan` or `inf` in tensor'.encode()) != -1
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_nan_inf_in_static_mode(self):
         self._python_interp += " check_nan_inf_base.py"
@@ -63,6 +75,7 @@ class TestNanInf(unittest.TestCase):
 
 
 class TestNanInfEnv(TestNanInf):
+
     def setUp(self):
         super().setUp()
         # windows python have some bug with env, so need use str to pass ci

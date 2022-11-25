@@ -14,8 +14,12 @@ set(eager_deps
     grad_node_info
     grad_tensor_holder
     accumulation_node
+<<<<<<< HEAD
     custom_operator_node
     python)
+=======
+    custom_operator_node)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 set(fluid_deps
     tracer
@@ -42,7 +46,11 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     grad_tensor_holder
     SRCS grad_tensor_holder.cc
     DEPS grad_node_info gradient_accumulator)
+<<<<<<< HEAD
   add_dependencies(grad_tensor_holder eager_codegen)
+=======
+  add_dependencies(grad_tensor_holder eager_final_state_codegen)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   cc_library(
     backward
     SRCS backward.cc
@@ -79,6 +87,7 @@ cc_library(
        hook_utils)
 
 if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+<<<<<<< HEAD
   target_link_libraries(utils ${PYTHON_LIBRARIES})
 endif()
 
@@ -87,5 +96,7 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     saved_tensors_hooks
     SRCS saved_tensors_hooks.cc
     DEPS hook_utils)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   add_subdirectory(tests)
 endif()

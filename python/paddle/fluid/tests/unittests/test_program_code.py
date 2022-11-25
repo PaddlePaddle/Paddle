@@ -19,9 +19,11 @@ import paddle.fluid.layers as layers
 
 
 class TestProgramToReadableCode(unittest.TestCase):
+
     def setUp(self):
         self.program = fluid.Program()
         self.block = self.program.current_block()
+<<<<<<< HEAD
         self.var = self.block.create_var(
             name="X", shape=[-1, 23, 48], dtype='float32'
         )
@@ -31,10 +33,23 @@ class TestProgramToReadableCode(unittest.TestCase):
         self.op = self.block.append_op(
             type="abs", inputs={"X": [self.var]}, outputs={"Out": [self.var]}
         )
+=======
+        self.var = self.block.create_var(name="X",
+                                         shape=[-1, 23, 48],
+                                         dtype='float32')
+        self.param = self.block.create_parameter(name="W",
+                                                 shape=[23, 48],
+                                                 dtype='float32',
+                                                 trainable=True)
+        self.op = self.block.append_op(type="abs",
+                                       inputs={"X": [self.var]},
+                                       outputs={"Out": [self.var]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # add control flow op and sub block
         self.append_cond_op(self.program)
 
     def append_cond_op(self, program):
+
         def true_func():
             return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
 

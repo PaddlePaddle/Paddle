@@ -21,6 +21,7 @@ from paddle.fluid import Program, program_guard
 
 
 class TestMemcpy_FillConstant(unittest.TestCase):
+
     def get_prog(self):
         paddle.enable_static()
         main_program = Program()
@@ -32,6 +33,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                 shape=[10, 10],
                 dtype='float32',
                 persistable=False,
+<<<<<<< HEAD
                 stop_gradient=True,
             )
             gpu_var = main_program.global_block().create_var(
@@ -51,6 +53,22 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     "place_type": 1,
                 },
             )
+=======
+                stop_gradient=True)
+            gpu_var = main_program.global_block().create_var(name=gpu_var_name,
+                                                             shape=[10, 10],
+                                                             dtype='float32',
+                                                             persistable=False,
+                                                             stop_gradient=True)
+            main_program.global_block().append_op(type="fill_constant",
+                                                  outputs={"Out": gpu_var_name},
+                                                  attrs={
+                                                      "shape": [10, 10],
+                                                      "dtype": gpu_var.dtype,
+                                                      "value": 1.0,
+                                                      "place_type": 1
+                                                  })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             main_program.global_block().append_op(
                 type="fill_constant",
                 outputs={"Out": pinned_var_name},
@@ -65,12 +83,19 @@ class TestMemcpy_FillConstant(unittest.TestCase):
 
     def test_gpu_copy_to_pinned(self):
         main_program, gpu_var, pinned_var = self.get_prog()
+<<<<<<< HEAD
         main_program.global_block().append_op(
             type='memcpy',
             inputs={'X': gpu_var},
             outputs={'Out': pinned_var},
             attrs={'dst_place_type': 2},
         )
+=======
+        main_program.global_block().append_op(type='memcpy',
+                                              inputs={'X': gpu_var},
+                                              outputs={'Out': pinned_var},
+                                              attrs={'dst_place_type': 2})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         gpu_, pinned_ = exe.run(
@@ -81,12 +106,19 @@ class TestMemcpy_FillConstant(unittest.TestCase):
 
     def test_pinned_copy_gpu(self):
         main_program, gpu_var, pinned_var = self.get_prog()
+<<<<<<< HEAD
         main_program.global_block().append_op(
             type='memcpy',
             inputs={'X': pinned_var},
             outputs={'Out': gpu_var},
             attrs={'dst_place_type': 1},
         )
+=======
+        main_program.global_block().append_op(type='memcpy',
+                                              inputs={'X': pinned_var},
+                                              outputs={'Out': gpu_var},
+                                              attrs={'dst_place_type': 1})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         gpu_, pinned_ = exe.run(
@@ -137,12 +169,19 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                     },
                 )
 
+<<<<<<< HEAD
             main_program.global_block().append_op(
                 type='memcpy',
                 inputs={'X': pinned_var},
                 outputs={'Out': gpu_var},
                 attrs={'dst_place_type': 1},
             )
+=======
+            main_program.global_block().append_op(type='memcpy',
+                                                  inputs={'X': pinned_var},
+                                                  outputs={'Out': gpu_var},
+                                                  attrs={'dst_place_type': 1})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             gpu_, pinned_ = exe.run(
@@ -157,6 +196,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
 
 
 class TestMemcpyOPError(unittest.TestCase):
+
     def get_prog(self):
         paddle.enable_static()
         main_program = Program()
@@ -182,6 +222,7 @@ class TestMemcpyOPError(unittest.TestCase):
 
     def test_SELECTED_ROWS(self):
         main_program, pinned_var = self.get_prog()
+<<<<<<< HEAD
         selected_row_var = main_program.global_block().create_var(
             name="selected_row_0",
             dtype="float32",
@@ -206,6 +247,26 @@ class TestMemcpyOPError(unittest.TestCase):
                 outputs={'Out': pinned_var},
                 attrs={'dst_place_type': 2},
             )
+=======
+        selected_row_var = main_program.global_block().create_var( \
+            name="selected_row_0", dtype="float32", persistable=False, \
+            type=fluid.core.VarDesc.VarType.SELECTED_ROWS, stop_gradient=True)
+        main_program.global_block().append_op(type="fill_constant",
+                                              outputs={"Out": selected_row_var},
+                                              attrs={
+                                                  "shape":
+                                                  selected_row_var.shape,
+                                                  "dtype":
+                                                  selected_row_var.dtype,
+                                                  "value": 1.0,
+                                                  "place_type": 1
+                                              })
+        main_program.global_block().append_op(type='memcpy',
+                                              inputs={'X': selected_row_var},
+                                              outputs={'Out': pinned_var},
+                                              attrs={'dst_place_type': 2})
+        with self.assertRaises(NotImplementedError):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             selected_row_var_, pinned_ = exe.run(
@@ -216,6 +277,7 @@ class TestMemcpyOPError(unittest.TestCase):
 
 
 class TestMemcpyApi(unittest.TestCase):
+
     def test_api(self):
         a = paddle.ones([1024, 1024])
         b = paddle.tensor.creation._memcpy(a, paddle.CUDAPinnedPlace())

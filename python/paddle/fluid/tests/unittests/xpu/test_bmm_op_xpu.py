@@ -37,6 +37,7 @@ class XPUTestBmmOp(XPUOpTestWrapper):
         self.use_dynamic_create_class = False
 
     class TestBmmOp(XPUOpTest):
+
         def setUp(self):
             self.init_dtype()
             self.set_xpu()
@@ -69,26 +70,31 @@ class XPUTestBmmOp(XPUOpTestWrapper):
             self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
     class TestBmmOp1(TestBmmOp):
+
         def set_shape(self):
             self.Xshape = (3, 3, 3)
             self.Yshape = (3, 3, 3)
 
     class TestBmmOp2(TestBmmOp):
+
         def set_shape(self):
             self.Xshape = (128, 3, 16)
             self.Yshape = (128, 16, 3)
 
     class TestBmmOp3(TestBmmOp):
+
         def set_shape(self):
             self.Xshape = (2048, 16, 27)
             self.Yshape = (2048, 27, 16)
 
     class TestBmmOp4(TestBmmOp):
+
         def set_shape(self):
             self.Xshape = (2, 27, 27)
             self.Yshape = (2, 27, 27)
 
     class TestBmmOp5(TestBmmOp):
+
         def set_shape(self):
             self.Xshape = (2, 1, 1)
             self.Yshape = (2, 1, 1)

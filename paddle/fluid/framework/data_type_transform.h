@@ -30,9 +30,15 @@ using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
 void TransDataType(const OpKernelType& kernel_type_for_var,
                    const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                    const phi::DenseTensor& in,
                    phi::DenseTensor* out);
 void TransDataType(const phi::DenseTensor& in,
+=======
+                   const Tensor& in,
+                   Tensor* out);
+void TransDataType(const Tensor& in,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    const paddle::framework::proto::VarType::Type& type,
                    phi::DenseTensor* out);
 
@@ -49,8 +55,13 @@ void TransDataType(const phi::DenseTensor& in,
  */
 void TransComplexToReal(const proto::VarType::Type& dst_type,
                         const proto::VarType::Type& src_type,
+<<<<<<< HEAD
                         const phi::DenseTensor& in,
                         phi::DenseTensor* out);
+=======
+                        const Tensor& in,
+                        Tensor* out);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 }  // namespace framework
 }  // namespace paddle

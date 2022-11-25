@@ -49,12 +49,20 @@ class ProgressBar:
         self._last_update = 0
         self.name = name
 
+<<<<<<< HEAD
         self._dynamic_display = (
             (hasattr(self.file, 'isatty') and self.file.isatty())
             or 'ipykernel' in sys.modules
             or 'posix' in sys.modules
             or 'PYCHARM_HOSTED' in os.environ
         )
+=======
+        self._dynamic_display = ((hasattr(self.file, 'isatty')
+                                  and self.file.isatty())
+                                 or 'ipykernel' in sys.modules
+                                 or 'posix' in sys.modules
+                                 or 'PYCHARM_HOSTED' in os.environ)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _get_max_width(self):
         if sys.version_info > (3, 3):
@@ -123,10 +131,15 @@ class ProgressBar:
             if self._num is not None:
                 numdigits = int(np.log10(self._num)) + 1
 
+<<<<<<< HEAD
                 bar_chars = (self.name + ' %' + str(numdigits) + 'd/%d [') % (
                     current_num,
                     self._num,
                 )
+=======
+                bar_chars = (self.name + ' %' + str(numdigits) +
+                             'd/%d [') % (current_num, self._num)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 prog = float(current_num) / self._num
                 prog_width = int(self._width * prog)
 
@@ -188,10 +201,15 @@ class ProgressBar:
         elif self._verbose == 2 or self._verbose == 3:
             if self._num:
                 numdigits = int(np.log10(self._num)) + 1
+<<<<<<< HEAD
                 count = (self.name + ' %' + str(numdigits) + 'd/%d') % (
                     current_num,
                     self._num,
                 )
+=======
+                count = (self.name + ' %' + str(numdigits) +
+                         'd/%d') % (current_num, self._num)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 count = self.name + ' %3d' % current_num
             info = count + info

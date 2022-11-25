@@ -27,6 +27,7 @@ paddle.enable_static()
 
 @parameterize.place(config.DEVICES)
 class TestExponentialFamily(unittest.TestCase):
+
     def setUp(self):
         self.program = paddle.static.Program()
         self.executor = paddle.static.Executor()

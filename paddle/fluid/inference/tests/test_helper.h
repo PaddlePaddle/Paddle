@@ -43,7 +43,11 @@ bool cpu_place_used(const paddle::PaddlePlace& place) {
 }  // namespace paddle
 
 template <typename T>
+<<<<<<< HEAD
 void SetupTensor(phi::DenseTensor* input,
+=======
+void SetupTensor(paddle::framework::LoDTensor* input,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  paddle::framework::DDim dims,
                  T lower,
                  T upper) {
@@ -58,7 +62,11 @@ void SetupTensor(phi::DenseTensor* input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 void SetupTensor(phi::DenseTensor* input,
+=======
+void SetupTensor(paddle::framework::LoDTensor* input,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  paddle::framework::DDim dims,
                  const std::vector<T>& data) {
   CHECK_EQ(phi::product(dims), static_cast<int64_t>(data.size()));
@@ -67,7 +75,11 @@ void SetupTensor(phi::DenseTensor* input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 void SetupLoDTensor(phi::DenseTensor* input,
+=======
+void SetupLoDTensor(paddle::framework::LoDTensor* input,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     const paddle::framework::LoD& lod,
                     T lower,
                     T upper) {

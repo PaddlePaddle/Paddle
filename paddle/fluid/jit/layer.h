@@ -14,7 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include <memory>
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,7 +25,11 @@
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/place.h"
 
+<<<<<<< HEAD
 #include "function.h"  //NOLINT
+=======
+#include "base_function.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 
@@ -32,11 +39,15 @@ class Variable;
 
 namespace jit {
 class CompilationUnit;
+<<<<<<< HEAD
 class FunctionInfo;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 using DenseTensor = phi::DenseTensor;
 using Tensor = paddle::experimental::Tensor;
 using Variable = paddle::framework::Variable;
+<<<<<<< HEAD
 using VariableMap = std::unordered_map<std::string, std::shared_ptr<Variable>>;
 using FunctionInfoMap =
     std::unordered_map<std::string, std::shared_ptr<FunctionInfo>>;
@@ -52,6 +63,20 @@ class Layer {
 
   template <typename T>
   T Attribute(const std::string& name) const;
+=======
+using Name2VariableMap =
+    std::unordered_map<std::string, std::shared_ptr<Variable>>;
+using Name2FunctionMap =
+    std::unordered_map<std::string, std::shared_ptr<BaseFunction>>;
+
+class Layer {
+ public:
+  Layer(const Name2VariableMap& params_dict, const phi::Place& place);
+
+  std::shared_ptr<BaseFunction> Function(const std::string& name) const;
+
+  Variable Attribute(const std::string& name) const;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::vector<Tensor> forward(const std::vector<Tensor>& inputs);
 
@@ -59,6 +84,7 @@ class Layer {
 
   void to(const phi::Place& place);
 
+<<<<<<< HEAD
   void SetEngine(const std::string& name,
                  const std::shared_ptr<BaseEngine>& engine);
 
@@ -71,6 +97,18 @@ class Layer {
   VariableMap params_map_;
   VariableMap attrs_map_;
   FunctionInfoMap info_map_;
+=======
+  void SetFunction(const std::string& name,
+                   const std::shared_ptr<BaseFunction>& function);
+
+  std::vector<std::string> FunctionNames() const;
+
+  const Name2FunctionMap& FunctionMap() const;
+
+ private:
+  Name2VariableMap params_dict_;
+  Name2VariableMap attrs_dict_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::shared_ptr<CompilationUnit> unit_;
 };
 

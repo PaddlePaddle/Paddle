@@ -14,11 +14,18 @@
 
 import unittest
 
+<<<<<<< HEAD
 import paddle
+=======
+import numpy
+import paddle
+import paddle.fluid.core as core
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
+
     def net(self):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
@@ -47,12 +54,22 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(
                         feed={'x': train_data, 'lr': a},
                         fetch_list=[lr, cost],
                         return_numpy=False,
                         use_prune=True,
                     )
+=======
+                    exe.run(feed={
+                        'x': train_data,
+                        'lr': a
+                    },
+                            fetch_list=[lr, cost],
+                            return_numpy=False,
+                            use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_compiled_program_check_feed(self):
         main_program = fluid.Program()
@@ -71,6 +88,7 @@ class TestExecutor(unittest.TestCase):
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
                 with self.assertRaises(ValueError):
+<<<<<<< HEAD
                     exe.run(
                         compiled_prog,
                         feed={'x': train_data, 'lr': a},
@@ -78,6 +96,16 @@ class TestExecutor(unittest.TestCase):
                         return_numpy=False,
                         use_prune=True,
                     )
+=======
+                    exe.run(compiled_prog,
+                            feed={
+                                'x': train_data,
+                                'lr': a
+                            },
+                            fetch_list=[lr, cost],
+                            return_numpy=False,
+                            use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

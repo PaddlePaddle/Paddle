@@ -17,7 +17,14 @@ All layers just related to the detection neural network.
 
 import paddle
 
+<<<<<<< HEAD
 from .layer_function_generator import templatedoc
+=======
+import paddle
+
+from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import autodoc, templatedoc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from ..layer_helper import LayerHelper
 from ..framework import Variable, _non_static_mode, static_only, in_dygraph_mode
 from .. import core
@@ -35,7 +42,11 @@ from ..data_feeder import (
     check_dtype,
 )
 from paddle.utils import deprecated
+<<<<<<< HEAD
 from paddle import _C_ops, _legacy_C_ops
+=======
+from paddle import _C_ops
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from ..framework import in_dygraph_mode
 
 __all__ = [
@@ -298,6 +309,7 @@ def retinanet_target_assign(
         dtype=anchor_box.dtype
     )
     fg_num = helper.create_variable_for_type_inference(dtype='int32')
+<<<<<<< HEAD
     helper.append_op(
         type="retinanet_target_assign",
         inputs={
@@ -320,6 +332,28 @@ def retinanet_target_assign(
             'negative_overlap': negative_overlap,
         },
     )
+=======
+    helper.append_op(type="retinanet_target_assign",
+                     inputs={
+                         'Anchor': anchor_box,
+                         'GtBoxes': gt_boxes,
+                         'GtLabels': gt_labels,
+                         'IsCrowd': is_crowd,
+                         'ImInfo': im_info
+                     },
+                     outputs={
+                         'LocationIndex': loc_index,
+                         'ScoreIndex': score_index,
+                         'TargetLabel': target_label,
+                         'TargetBBox': target_bbox,
+                         'BBoxInsideWeight': bbox_inside_weight,
+                         'ForegroundNumber': fg_num
+                     },
+                     attrs={
+                         'positive_overlap': positive_overlap,
+                         'negative_overlap': negative_overlap
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     loc_index.stop_gradient = True
     score_index.stop_gradient = True
@@ -477,6 +511,7 @@ def rpn_target_assign(
         dtype=anchor_box.dtype
     )
     bbox_inside_weight = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
         dtype=anchor_box.dtype
     )
     helper.append_op(
@@ -503,6 +538,31 @@ def rpn_target_assign(
             'use_random': use_random,
         },
     )
+=======
+        dtype=anchor_box.dtype)
+    helper.append_op(type="rpn_target_assign",
+                     inputs={
+                         'Anchor': anchor_box,
+                         'GtBoxes': gt_boxes,
+                         'IsCrowd': is_crowd,
+                         'ImInfo': im_info
+                     },
+                     outputs={
+                         'LocationIndex': loc_index,
+                         'ScoreIndex': score_index,
+                         'TargetLabel': target_label,
+                         'TargetBBox': target_bbox,
+                         'BBoxInsideWeight': bbox_inside_weight
+                     },
+                     attrs={
+                         'rpn_batch_size_per_im': rpn_batch_size_per_im,
+                         'rpn_straddle_thresh': rpn_straddle_thresh,
+                         'rpn_positive_overlap': rpn_positive_overlap,
+                         'rpn_negative_overlap': rpn_negative_overlap,
+                         'rpn_fg_fraction': rpn_fg_fraction,
+                         'use_random': use_random
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     loc_index.stop_gradient = True
     score_index.stop_gradient = True
@@ -661,12 +721,26 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2.0, alpha=0.25):
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="sigmoid_focal_loss",
         inputs={"X": x, "Label": label, "FgNum": fg_num},
         attrs={"gamma": gamma, 'alpha': alpha},
         outputs={"Out": out},
     )
+=======
+    helper.append_op(type="sigmoid_focal_loss",
+                     inputs={
+                         "X": x,
+                         "Label": label,
+                         "FgNum": fg_num
+                     },
+                     attrs={
+                         "gamma": gamma,
+                         'alpha': alpha
+                     },
+                     outputs={"Out": out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -767,12 +841,19 @@ def detection_output(
                                        return_index=True)
     """
     helper = LayerHelper("detection_output", **locals())
+<<<<<<< HEAD
     decoded_box = box_coder(
         prior_box=prior_box,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size',
     )
+=======
+    decoded_box = box_coder(prior_box=prior_box,
+                            prior_box_var=prior_box_var,
+                            target_box=loc,
+                            code_type='decode_center_size')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     scores = nn.softmax(input=scores)
     scores = paddle.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
@@ -781,6 +862,7 @@ def detection_output(
     )
     if return_index:
         index = helper.create_variable_for_type_inference(dtype='int')
+<<<<<<< HEAD
         helper.append_op(
             type="multiclass_nms2",
             inputs={'Scores': scores, 'BBoxes': decoded_box},
@@ -809,6 +891,41 @@ def detection_output(
                 'nms_eta': 1.0,
             },
         )
+=======
+        helper.append_op(type="multiclass_nms2",
+                         inputs={
+                             'Scores': scores,
+                             'BBoxes': decoded_box
+                         },
+                         outputs={
+                             'Out': nmsed_outs,
+                             'Index': index
+                         },
+                         attrs={
+                             'background_label': 0,
+                             'nms_threshold': nms_threshold,
+                             'nms_top_k': nms_top_k,
+                             'keep_top_k': keep_top_k,
+                             'score_threshold': score_threshold,
+                             'nms_eta': 1.0,
+                         })
+        index.stop_gradient = True
+    else:
+        helper.append_op(type="multiclass_nms",
+                         inputs={
+                             'Scores': scores,
+                             'BBoxes': decoded_box
+                         },
+                         outputs={'Out': nmsed_outs},
+                         attrs={
+                             'background_label': 0,
+                             'nms_threshold': nms_threshold,
+                             'nms_top_k': nms_top_k,
+                             'keep_top_k': keep_top_k,
+                             'score_threshold': score_threshold,
+                             'nms_eta': 1.0,
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     nmsed_outs.stop_gradient = True
     if return_index:
         return nmsed_outs, index
@@ -860,12 +977,22 @@ def iou_similarity(x, y, box_normalized=True, name=None):
     helper = LayerHelper("iou_similarity", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="iou_similarity",
         inputs={"X": x, "Y": y},
         attrs={"box_normalized": box_normalized},
         outputs={"Out": out},
     )
+=======
+    helper.append_op(type="iou_similarity",
+                     inputs={
+                         "X": x,
+                         "Y": y
+                     },
+                     attrs={"box_normalized": box_normalized},
+                     outputs={"Out": out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -993,6 +1120,7 @@ def box_coder(
                                     box_normalized=False,
                                     axis=1)
     """
+<<<<<<< HEAD
     return paddle.vision.ops.box_coder(
         prior_box=prior_box,
         prior_box_var=prior_box_var,
@@ -1002,6 +1130,50 @@ def box_coder(
         axis=axis,
         name=name,
     )
+=======
+    check_variable_and_dtype(prior_box, 'prior_box', ['float32', 'float64'],
+                             'box_coder')
+    check_variable_and_dtype(target_box, 'target_box', ['float32', 'float64'],
+                             'box_coder')
+    if in_dygraph_mode():
+        if isinstance(prior_box_var, Variable):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box,
+                                                        prior_box_var,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        [])
+        elif isinstance(prior_box_var, list):
+            box_coder_op = _C_ops.final_state_box_coder(prior_box, None,
+                                                        target_box, code_type,
+                                                        box_normalized, axis,
+                                                        prior_box_var)
+        else:
+            raise TypeError(
+                "Input variance of box_coder must be Variable or lisz")
+        return box_coder_op
+    helper = LayerHelper("box_coder", **locals())
+
+    output_box = helper.create_variable_for_type_inference(
+        dtype=prior_box.dtype)
+
+    inputs = {"PriorBox": prior_box, "TargetBox": target_box}
+    attrs = {
+        "code_type": code_type,
+        "box_normalized": box_normalized,
+        "axis": axis
+    }
+    if isinstance(prior_box_var, Variable):
+        inputs['PriorBoxVar'] = prior_box_var
+    elif isinstance(prior_box_var, list):
+        attrs['variance'] = prior_box_var
+    else:
+        raise TypeError("Input variance of box_coder must be Variable or lisz")
+    helper.append_op(type="box_coder",
+                     inputs=inputs,
+                     attrs=attrs,
+                     outputs={"OutputBox": output_box})
+    return output_box
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @templatedoc()
@@ -1031,12 +1203,19 @@ def polygon_box_transform(input, name=None):
     helper = LayerHelper("polygon_box_transform", **locals())
     output = helper.create_variable_for_type_inference(dtype=input.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="polygon_box_transform",
         inputs={"Input": input},
         attrs={},
         outputs={"Output": output},
     )
+=======
+    helper.append_op(type="polygon_box_transform",
+                     inputs={"Input": input},
+                     attrs={},
+                     outputs={"Output": output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return output
 
 
@@ -1183,6 +1362,7 @@ def yolov3_loss(
         "scale_x_y": scale_x_y,
     }
 
+<<<<<<< HEAD
     helper.append_op(
         type='yolov3_loss',
         inputs=inputs,
@@ -1193,6 +1373,16 @@ def yolov3_loss(
         },
         attrs=attrs,
     )
+=======
+    helper.append_op(type='yolov3_loss',
+                     inputs=inputs,
+                     outputs={
+                         'Loss': loss,
+                         'ObjectnessMask': objectness_mask,
+                         'GTMatchMask': gt_match_mask
+                     },
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return loss
 
 
@@ -1281,6 +1471,7 @@ def yolo_box(
         "iou_aware_factor": iou_aware_factor,
     }
 
+<<<<<<< HEAD
     helper.append_op(
         type='yolo_box',
         inputs={
@@ -1293,6 +1484,18 @@ def yolo_box(
         },
         attrs=attrs,
     )
+=======
+    helper.append_op(type='yolo_box',
+                     inputs={
+                         "X": x,
+                         "ImgSize": img_size,
+                     },
+                     outputs={
+                         'Boxes': boxes,
+                         'Scores': scores,
+                     },
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return boxes, scores
 
 
@@ -1370,6 +1573,7 @@ def detection_map(
     true_pos = input_states[1] if input_states is not None else None
     false_pos = input_states[2] if input_states is not None else None
 
+<<<<<<< HEAD
     helper.append_op(
         type="detection_map",
         inputs={
@@ -1393,6 +1597,29 @@ def detection_map(
             'class_num': class_num,
         },
     )
+=======
+    helper.append_op(type="detection_map",
+                     inputs={
+                         'Label': label,
+                         'DetectRes': detect_res,
+                         'HasState': has_state,
+                         'PosCount': pos_count,
+                         'TruePos': true_pos,
+                         'FalsePos': false_pos
+                     },
+                     outputs={
+                         'MAP': map_out,
+                         'AccumPosCount': accum_pos_count_out,
+                         'AccumTruePos': accum_true_pos_out,
+                         'AccumFalsePos': accum_false_pos_out
+                     },
+                     attrs={
+                         'overlap_threshold': overlap_threshold,
+                         'evaluate_difficult': evaluate_difficult,
+                         'ap_type': ap_version,
+                         'class_num': class_num,
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return map_out
 
 
@@ -1470,6 +1697,7 @@ def bipartite_match(
     helper = LayerHelper('bipartite_match', **locals())
     match_indices = helper.create_variable_for_type_inference(dtype='int32')
     match_distance = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
         dtype=dist_matrix.dtype
     )
     helper.append_op(
@@ -1484,6 +1712,19 @@ def bipartite_match(
             'ColToRowMatchDist': match_distance,
         },
     )
+=======
+        dtype=dist_matrix.dtype)
+    helper.append_op(type='bipartite_match',
+                     inputs={'DistMat': dist_matrix},
+                     attrs={
+                         'match_type': match_type,
+                         'dist_threshold': dist_threshold,
+                     },
+                     outputs={
+                         'ColToRowMatchIndices': match_indices,
+                         'ColToRowMatchDist': match_distance
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return match_indices, match_distance
 
 
@@ -1582,6 +1823,7 @@ def target_assign(
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     out_weight = helper.create_variable_for_type_inference(dtype='float32')
+<<<<<<< HEAD
     helper.append_op(
         type='target_assign',
         inputs={
@@ -1592,6 +1834,19 @@ def target_assign(
         outputs={'Out': out, 'OutWeight': out_weight},
         attrs={'mismatch_value': mismatch_value},
     )
+=======
+    helper.append_op(type='target_assign',
+                     inputs={
+                         'X': input,
+                         'MatchIndices': matched_indices,
+                         'NegIndices': negative_indices
+                     },
+                     outputs={
+                         'Out': out,
+                         'OutWeight': out_weight
+                     },
+                     attrs={'mismatch_value': mismatch_value})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out, out_weight
 
 
@@ -1750,6 +2005,7 @@ def ssd_loss(
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
+<<<<<<< HEAD
     gt_label = paddle.reshape(
         x=gt_label, shape=(len(gt_label.shape) - 1) * (0,) + (-1, 1)
     )
@@ -1757,6 +2013,14 @@ def ssd_loss(
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label
     )
+=======
+    gt_label = nn.reshape(x=gt_label,
+                          shape=(len(gt_label.shape) - 1) * (0, ) + (-1, 1))
+    gt_label.stop_gradient = True
+    target_label, _ = target_assign(gt_label,
+                                    matched_indices,
+                                    mismatch_value=background_label)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # 2.2. Compute confidence loss.
     # Reshape confidence to 2D tensor.
     confidence = __reshape_to_2d(confidence)
@@ -1769,11 +2033,18 @@ def ssd_loss(
     actual_shape.stop_gradient = True
     # shape=(-1, 0) is set for compile-time, the correct shape is set by
     # actual_shape in runtime.
+<<<<<<< HEAD
     conf_loss = paddle.reshape(x=conf_loss, shape=actual_shape)
+=======
+    conf_loss = nn.reshape(x=conf_loss,
+                           shape=(-1, 0),
+                           actual_shape=actual_shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     conf_loss.stop_gradient = True
     neg_indices = helper.create_variable_for_type_inference(dtype='int32')
     dtype = matched_indices.dtype
     updated_matched_indices = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
         dtype=dtype
     )
     helper.append_op(
@@ -1804,6 +2075,33 @@ def ssd_loss(
         target_box=gt_box,
         code_type='encode_center_size',
     )
+=======
+        dtype=dtype)
+    helper.append_op(type='mine_hard_examples',
+                     inputs={
+                         'ClsLoss': conf_loss,
+                         'LocLoss': None,
+                         'MatchIndices': matched_indices,
+                         'MatchDist': matched_dist,
+                     },
+                     outputs={
+                         'NegIndices': neg_indices,
+                         'UpdatedMatchIndices': updated_matched_indices
+                     },
+                     attrs={
+                         'neg_pos_ratio': neg_pos_ratio,
+                         'neg_dist_threshold': neg_overlap,
+                         'mining_type': mining_type,
+                         'sample_size': sample_size,
+                     })
+
+    # 4. Assign classification and regression targets
+    # 4.1. Encoded bbox according to the prior boxes.
+    encoded_bbox = box_coder(prior_box=prior_box,
+                             prior_box_var=prior_box_var,
+                             target_box=gt_box,
+                             code_type='encode_center_size')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # 4.2. Assign regression targets
     target_bbox, target_loc_weight = target_assign(
         encoded_bbox, updated_matched_indices, mismatch_value=background_label
@@ -1860,7 +2158,11 @@ def prior_box(
     image,
     min_sizes,
     max_sizes=None,
+<<<<<<< HEAD
     aspect_ratios=[1.0],
+=======
+    aspect_ratios=[1.],
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     variance=[0.1, 0.1, 0.2, 0.2],
     flip=False,
     clip=False,
@@ -1944,14 +2246,75 @@ def prior_box(
                 feed={"input":input_data,"image":image_data},
                 fetch_list=[box,var],
                 return_numpy=True)
+<<<<<<< HEAD
+=======
+ 
+	    # print(box_out.shape)
+	    # (6, 9, 1, 4)
+	    # print(var_out.shape)
+	    # (6, 9, 1, 4)
+
+	    # imperative mode
+	    import paddle.fluid.dygraph as dg
+
+	    with dg.guard(place) as g:
+    		input = dg.to_variable(input_data)
+    		image = dg.to_variable(image_data)
+    		box, var = fluid.layers.prior_box(
+		    input=input,
+		    image=image,
+		    min_sizes=[100.],
+		    clip=True,
+		    flip=True)
+		# print(box.shape)
+		# [6L, 9L, 1L, 4L]
+                # print(var.shape)
+		# [6L, 9L, 1L, 4L]
+
+    """
+
+    if in_dygraph_mode():
+        step_w, step_h = steps
+        if max_sizes == None:
+            max_sizes = []
+        return _C_ops.final_state_prior_box(input, image, min_sizes,
+                                            aspect_ratios, variance, max_sizes,
+                                            flip, clip, step_w, step_h, offset,
+                                            min_max_aspect_ratios_order)
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+    check_variable_and_dtype(input, 'input',
+                             ['uint8', 'int8', 'float32', 'float64'],
+                             'prior_box')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # print(box_out.shape)
             # (6, 9, 1, 4)
             # print(var_out.shape)
             # (6, 9, 1, 4)
 
+<<<<<<< HEAD
             # imperative mode
             import paddle.fluid.dygraph as dg
+=======
+    box = helper.create_variable_for_type_inference(dtype)
+    var = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={
+            "Input": input,
+            "Image": image
+        },
+        outputs={
+            "Boxes": box,
+            "Variances": var
+        },
+        attrs=attrs,
+    )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             with dg.guard(place) as g:
                 input = dg.to_variable(input_data)
@@ -2159,8 +2522,19 @@ def density_prior_box(
     var = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="density_prior_box",
+<<<<<<< HEAD
         inputs={"Input": input, "Image": image},
         outputs={"Boxes": box, "Variances": var},
+=======
+        inputs={
+            "Input": input,
+            "Image": image
+        },
+        outputs={
+            "Boxes": box,
+            "Variances": var
+        },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         attrs=attrs,
     )
     box.stop_gradient = True
@@ -2435,6 +2809,7 @@ def multi_box_head(
 
         # get loc
         num_loc_output = num_boxes * 4
+<<<<<<< HEAD
         mbox_loc = nn.conv2d(
             input=input,
             num_filters=num_loc_output,
@@ -2442,6 +2817,13 @@ def multi_box_head(
             padding=pad,
             stride=stride,
         )
+=======
+        mbox_loc = nn.conv2d(input=input,
+                             num_filters=num_loc_output,
+                             filter_size=kernel_size,
+                             padding=pad,
+                             stride=stride)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         mbox_loc = paddle.transpose(mbox_loc, perm=[0, 2, 3, 1])
         mbox_loc_flatten = nn.flatten(mbox_loc, axis=1)
@@ -2449,6 +2831,7 @@ def multi_box_head(
 
         # get conf
         num_conf_output = num_boxes * num_classes
+<<<<<<< HEAD
         conf_loc = nn.conv2d(
             input=input,
             num_filters=num_conf_output,
@@ -2457,6 +2840,14 @@ def multi_box_head(
             stride=stride,
         )
         conf_loc = paddle.transpose(conf_loc, perm=[0, 2, 3, 1])
+=======
+        conf_loc = nn.conv2d(input=input,
+                             num_filters=num_conf_output,
+                             filter_size=kernel_size,
+                             padding=pad,
+                             stride=stride)
+        conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conf_loc_flatten = nn.flatten(conf_loc, axis=1)
         mbox_confs.append(conf_loc_flatten)
 
@@ -2477,9 +2868,14 @@ def multi_box_head(
         mbox_locs_concat = tensor.concat(mbox_locs, axis=1)
         mbox_locs_concat = paddle.reshape(mbox_locs_concat, shape=[0, -1, 4])
         mbox_confs_concat = tensor.concat(mbox_confs, axis=1)
+<<<<<<< HEAD
         mbox_confs_concat = paddle.reshape(
             mbox_confs_concat, shape=[0, -1, num_classes]
         )
+=======
+        mbox_confs_concat = nn.reshape(mbox_confs_concat,
+                                       shape=[0, -1, num_classes])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     box.stop_gradient = True
     var.stop_gradient = True
@@ -2587,7 +2983,14 @@ def anchor_generator(
     helper.append_op(
         type="anchor_generator",
         inputs={"Input": input},
+<<<<<<< HEAD
         outputs={"Anchors": anchor, "Variances": var},
+=======
+        outputs={
+            "Anchors": anchor,
+            "Variances": var
+        },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         attrs=attrs,
     )
     anchor.stop_gradient = True
@@ -2678,6 +3081,7 @@ def roi_perspective_transform(
     transform_matrix = helper.create_variable_for_type_inference(dtype)
     out2in_idx = helper.create_variable_for_type_inference(dtype="int32")
     out2in_w = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="roi_perspective_transform",
         inputs={"X": input, "ROIs": rois},
@@ -2694,6 +3098,25 @@ def roi_perspective_transform(
             "spatial_scale": spatial_scale,
         },
     )
+=======
+    helper.append_op(type="roi_perspective_transform",
+                     inputs={
+                         "X": input,
+                         "ROIs": rois
+                     },
+                     outputs={
+                         "Out": out,
+                         "Out2InIdx": out2in_idx,
+                         "Out2InWeights": out2in_w,
+                         "Mask": mask,
+                         "TransformMatrix": transform_matrix
+                     },
+                     attrs={
+                         "transformed_height": transformed_height,
+                         "transformed_width": transformed_width,
+                         "spatial_scale": spatial_scale
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out, mask, transform_matrix
 
 
@@ -2825,6 +3248,7 @@ def generate_proposal_labels(
     }
     if max_overlap is not None:
         inputs['MaxOverlap'] = max_overlap
+<<<<<<< HEAD
     helper.append_op(
         type="generate_proposal_labels",
         inputs=inputs,
@@ -2849,6 +3273,30 @@ def generate_proposal_labels(
             'is_cascade_rcnn': is_cascade_rcnn,
         },
     )
+=======
+    helper.append_op(type="generate_proposal_labels",
+                     inputs=inputs,
+                     outputs={
+                         'Rois': rois,
+                         'LabelsInt32': labels_int32,
+                         'BboxTargets': bbox_targets,
+                         'BboxInsideWeights': bbox_inside_weights,
+                         'BboxOutsideWeights': bbox_outside_weights,
+                         'MaxOverlapWithGT': max_overlap_with_gt
+                     },
+                     attrs={
+                         'batch_size_per_im': batch_size_per_im,
+                         'fg_fraction': fg_fraction,
+                         'fg_thresh': fg_thresh,
+                         'bg_thresh_hi': bg_thresh_hi,
+                         'bg_thresh_lo': bg_thresh_lo,
+                         'bbox_reg_weights': bbox_reg_weights,
+                         'class_nums': class_nums,
+                         'use_random': use_random,
+                         'is_cls_agnostic': is_cls_agnostic,
+                         'is_cascade_rcnn': is_cascade_rcnn
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     rois.stop_gradient = True
     labels_int32.stop_gradient = True
@@ -3006,6 +3454,7 @@ def generate_mask_labels(
         dtype=gt_classes.dtype
     )
 
+<<<<<<< HEAD
     helper.append_op(
         type="generate_mask_labels",
         inputs={
@@ -3023,6 +3472,26 @@ def generate_mask_labels(
         },
         attrs={'num_classes': num_classes, 'resolution': resolution},
     )
+=======
+    helper.append_op(type="generate_mask_labels",
+                     inputs={
+                         'ImInfo': im_info,
+                         'GtClasses': gt_classes,
+                         'IsCrowd': is_crowd,
+                         'GtSegms': gt_segms,
+                         'Rois': rois,
+                         'LabelsInt32': labels_int32
+                     },
+                     outputs={
+                         'MaskRois': mask_rois,
+                         'RoiHasMaskInt32': roi_has_mask_int32,
+                         'MaskInt32': mask_int32
+                     },
+                     attrs={
+                         'num_classes': num_classes,
+                         'resolution': resolution
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     mask_rois.stop_gradient = True
     roi_has_mask_int32.stop_gradient = True
@@ -3122,6 +3591,7 @@ def generate_proposals(
                          im_info, anchors, variances)
 
     """
+<<<<<<< HEAD
     return paddle.vision.ops.generate_proposals(
         scores=scores,
         bbox_deltas=bbox_deltas,
@@ -3136,6 +3606,20 @@ def generate_proposals(
         return_rois_num=return_rois_num,
         name=name,
     )
+=======
+    return paddle.vision.ops.generate_proposals(scores=scores,
+                                                bbox_deltas=bbox_deltas,
+                                                img_size=im_info[:2],
+                                                anchors=anchors,
+                                                variances=variances,
+                                                pre_nms_top_n=pre_nms_top_n,
+                                                post_nms_top_n=post_nms_top_n,
+                                                nms_thresh=nms_thresh,
+                                                min_size=min_size,
+                                                eta=eta,
+                                                return_rois_num=return_rois_num,
+                                                name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def box_clip(input, im_info, name=None):
@@ -3349,6 +3833,7 @@ def retinanet_detection_output(
 
     helper = LayerHelper('retinanet_detection_output', **locals())
     output = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
         dtype=helper.input_dtype('scores')
     )
     helper.append_op(
@@ -3368,6 +3853,24 @@ def retinanet_detection_output(
         },
         outputs={'Out': output},
     )
+=======
+        dtype=helper.input_dtype('scores'))
+    helper.append_op(type="retinanet_detection_output",
+                     inputs={
+                         'BBoxes': bboxes,
+                         'Scores': scores,
+                         'Anchors': anchors,
+                         'ImInfo': im_info
+                     },
+                     attrs={
+                         'score_threshold': score_threshold,
+                         'nms_top_k': nms_top_k,
+                         'nms_threshold': nms_threshold,
+                         'keep_top_k': keep_top_k,
+                         'nms_eta': 1.,
+                     },
+                     outputs={'Out': output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output.stop_gradient = True
     return output
 
@@ -3511,6 +4014,7 @@ def multiclass_nms(
 
     helper = LayerHelper('multiclass_nms', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="multiclass_nms",
         inputs={'BBoxes': bboxes, 'Scores': scores},
@@ -3525,6 +4029,23 @@ def multiclass_nms(
         },
         outputs={'Out': output},
     )
+=======
+    helper.append_op(type="multiclass_nms",
+                     inputs={
+                         'BBoxes': bboxes,
+                         'Scores': scores
+                     },
+                     attrs={
+                         'background_label': background_label,
+                         'score_threshold': score_threshold,
+                         'nms_top_k': nms_top_k,
+                         'nms_threshold': nms_threshold,
+                         'nms_eta': nms_eta,
+                         'keep_top_k': keep_top_k,
+                         'normalized': normalized
+                     },
+                     outputs={'Out': output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output.stop_gradient = True
 
     return output
@@ -3645,6 +4166,7 @@ def locality_aware_nms(
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     out = {'Out': output}
 
+<<<<<<< HEAD
     helper.append_op(
         type="locality_aware_nms",
         inputs={'BBoxes': bboxes, 'Scores': scores},
@@ -3660,6 +4182,24 @@ def locality_aware_nms(
         },
         outputs={'Out': output},
     )
+=======
+    helper.append_op(type="locality_aware_nms",
+                     inputs={
+                         'BBoxes': bboxes,
+                         'Scores': scores
+                     },
+                     attrs={
+                         'background_label': background_label,
+                         'score_threshold': score_threshold,
+                         'nms_top_k': nms_top_k,
+                         'nms_threshold': nms_threshold,
+                         'nms_eta': nms_eta,
+                         'keep_top_k': keep_top_k,
+                         'nms_eta': nms_eta,
+                         'normalized': normalized
+                     },
+                     outputs={'Out': output})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output.stop_gradient = True
 
     return output
@@ -3790,6 +4330,7 @@ def matrix_nms(
     helper = LayerHelper('matrix_nms', **locals())
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     index = helper.create_variable_for_type_inference(dtype='int')
+<<<<<<< HEAD
     helper.append_op(
         type="matrix_nms",
         inputs={'BBoxes': bboxes, 'Scores': scores},
@@ -3805,6 +4346,27 @@ def matrix_nms(
         },
         outputs={'Out': output, 'Index': index},
     )
+=======
+    helper.append_op(type="matrix_nms",
+                     inputs={
+                         'BBoxes': bboxes,
+                         'Scores': scores
+                     },
+                     attrs={
+                         'background_label': background_label,
+                         'score_threshold': score_threshold,
+                         'post_threshold': post_threshold,
+                         'nms_top_k': nms_top_k,
+                         'gaussian_sigma': gaussian_sigma,
+                         'use_gaussian': use_gaussian,
+                         'keep_top_k': keep_top_k,
+                         'normalized': normalized
+                     },
+                     outputs={
+                         'Out': output,
+                         'Index': index
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output.stop_gradient = True
 
     if return_index:
@@ -3889,6 +4451,7 @@ def distribute_fpn_proposals(
                 refer_level=4,
                 refer_scale=224)
     """
+<<<<<<< HEAD
     return paddle.vision.ops.distribute_fpn_proposals(
         fpn_rois=fpn_rois,
         min_level=min_level,
@@ -3898,6 +4461,15 @@ def distribute_fpn_proposals(
         rois_num=rois_num,
         name=name,
     )
+=======
+    return paddle.vision.ops.distribute_fpn_proposals(fpn_rois=fpn_rois,
+                                                      min_level=min_level,
+                                                      max_level=max_level,
+                                                      refer_level=refer_level,
+                                                      refer_scale=refer_scale,
+                                                      rois_num=rois_num,
+                                                      name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @templatedoc()
@@ -3964,6 +4536,7 @@ def box_decoder_and_assign(
         dtype=prior_box.dtype
     )
 
+<<<<<<< HEAD
     helper.append_op(
         type="box_decoder_and_assign",
         inputs={
@@ -3978,6 +4551,20 @@ def box_decoder_and_assign(
             "OutputAssignBox": output_assign_box,
         },
     )
+=======
+    helper.append_op(type="box_decoder_and_assign",
+                     inputs={
+                         "PriorBox": prior_box,
+                         "PriorBoxVar": prior_box_var,
+                         "TargetBox": target_box,
+                         "BoxScore": box_score
+                     },
+                     attrs={"box_clip": box_clip},
+                     outputs={
+                         "DecodeBox": decoded_box,
+                         "OutputAssignBox": output_assign_box
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return decoded_box, output_assign_box
 
 
@@ -4087,12 +4674,19 @@ def collect_fpn_proposals(
         rois_num = helper.create_variable_for_type_inference(dtype='int32')
         rois_num.stop_gradient = True
         outputs['RoisNum'] = rois_num
+<<<<<<< HEAD
     helper.append_op(
         type='collect_fpn_proposals',
         inputs=inputs,
         outputs=outputs,
         attrs={'post_nms_topN': post_nms_top_n},
     )
+=======
+    helper.append_op(type='collect_fpn_proposals',
+                     inputs=inputs,
+                     outputs=outputs,
+                     attrs={'post_nms_topN': post_nms_top_n})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if rois_num_per_level is not None:
         return output_rois, rois_num
     return output_rois

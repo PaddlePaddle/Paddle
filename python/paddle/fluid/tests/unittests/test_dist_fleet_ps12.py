@@ -37,11 +37,14 @@ batch_size = 4
 
 
 class TestPSPassWithBow(unittest.TestCase):
+
     def net(self):
+
         def get_acc(cos_q_nt, cos_q_pt, batch_size):
             cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
             cond = fluid.layers.cast(cond, dtype='float64')
             cond_3 = fluid.layers.reduce_sum(cond)
+<<<<<<< HEAD
             acc = fluid.layers.elementwise_div(
                 cond_3,
                 fluid.layers.fill_constant(
@@ -49,10 +52,19 @@ class TestPSPassWithBow(unittest.TestCase):
                 ),
                 name="simnet_acc",
             )
+=======
+            acc = fluid.layers.elementwise_div(cond_3,
+                                               fluid.layers.fill_constant(
+                                                   shape=[1],
+                                                   value=batch_size * 1.0,
+                                                   dtype='float64'),
+                                               name="simnet_acc")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
             loss_op1 = fluid.layers.elementwise_sub(
+<<<<<<< HEAD
                 fluid.layers.fill_constant_batch_size_like(
                     input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
                 ),
@@ -65,6 +77,20 @@ class TestPSPassWithBow(unittest.TestCase):
                 ),
                 loss_op2,
             )
+=======
+                fluid.layers.fill_constant_batch_size_like(input=cos_q_pt,
+                                                           shape=[-1, 1],
+                                                           value=margin,
+                                                           dtype='float32'),
+                cos_q_pt)
+            loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
+            loss_op3 = fluid.layers.elementwise_max(
+                fluid.layers.fill_constant_batch_size_like(input=loss_op2,
+                                                           shape=[-1, 1],
+                                                           value=0.0,
+                                                           dtype='float32'),
+                loss_op2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             avg_cost = paddle.mean(loss_op3)
             return avg_cost
 

@@ -48,6 +48,7 @@ def generate_proposal_labels_in_python(
 
     for im_i in range(len(im_info)):
         max_overlap = max_overlaps[im_i] if is_cascade_rcnn else None
+<<<<<<< HEAD
         frcn_blobs = _sample_rois(
             rpn_rois[im_i],
             gt_classes[im_i],
@@ -66,6 +67,14 @@ def generate_proposal_labels_in_python(
             is_cascade_rcnn,
             max_overlap,
         )
+=======
+        frcn_blobs = _sample_rois(rpn_rois[im_i], gt_classes[im_i],
+                                  is_crowd[im_i], gt_boxes[im_i], im_info[im_i],
+                                  batch_size_per_im, fg_fraction, fg_thresh,
+                                  bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
+                                  class_nums, use_random, is_cls_agnostic,
+                                  is_cascade_rcnn, max_overlap)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         lod.append(frcn_blobs['rois'].shape[0])
         rois.append(frcn_blobs['rois'])
         labels_int32.append(frcn_blobs['labels_int32'])
@@ -134,11 +143,18 @@ def _sample_rois(
     # Boxes which with non-zero overlap with gt boxes
     overlapped_boxes_ind = np.where(overlaps_max > 0)[0]
     overlapped_boxes_gt_classes = gt_classes[
+<<<<<<< HEAD
         overlaps_argmax[overlapped_boxes_ind]
     ]
     gt_overlaps[
         overlapped_boxes_ind, overlapped_boxes_gt_classes
     ] = overlaps_max[overlapped_boxes_ind]
+=======
+        overlaps_argmax[overlapped_boxes_ind]]
+    gt_overlaps[
+        overlapped_boxes_ind,
+        overlapped_boxes_gt_classes] = overlaps_max[overlapped_boxes_ind]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     box_to_gt_ind_map[overlapped_boxes_ind] = overlaps_argmax[
         overlapped_boxes_ind
     ]
@@ -151,9 +167,14 @@ def _sample_rois(
     if is_cascade_rcnn:
         # Cascade RCNN Decode Filter
         fg_inds = np.where(max_overlaps >= fg_thresh)[0]
+<<<<<<< HEAD
         bg_inds = np.where(
             (max_overlaps < bg_thresh_hi) & (max_overlaps >= bg_thresh_lo)
         )[0]
+=======
+        bg_inds = np.where((max_overlaps < bg_thresh_hi)
+                           & (max_overlaps >= bg_thresh_lo))[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fg_rois_per_this_image = fg_inds.shape[0]
         bg_rois_per_this_image = bg_inds.shape[0]
     else:
@@ -162,6 +183,7 @@ def _sample_rois(
         fg_rois_per_this_image = np.minimum(fg_rois_per_im, fg_inds.shape[0])
         # Sample foreground if there are too many
         if (fg_inds.shape[0] > fg_rois_per_this_image) and use_random:
+<<<<<<< HEAD
             fg_inds = np.random.choice(
                 fg_inds, size=fg_rois_per_this_image, replace=False
             )
@@ -170,15 +192,30 @@ def _sample_rois(
         bg_inds = np.where(
             (max_overlaps < bg_thresh_hi) & (max_overlaps >= bg_thresh_lo)
         )[0]
+=======
+            fg_inds = np.random.choice(fg_inds,
+                                       size=fg_rois_per_this_image,
+                                       replace=False)
+        fg_inds = fg_inds[:fg_rois_per_this_image]
+        # Background
+        bg_inds = np.where((max_overlaps < bg_thresh_hi)
+                           & (max_overlaps >= bg_thresh_lo))[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         bg_rois_per_this_image = rois_per_image - fg_rois_per_this_image
         bg_rois_per_this_image = np.minimum(
             bg_rois_per_this_image, bg_inds.shape[0]
         )
         # Sample background if there are too many
         if (bg_inds.shape[0] > bg_rois_per_this_image) and use_random:
+<<<<<<< HEAD
             bg_inds = np.random.choice(
                 bg_inds, size=bg_rois_per_this_image, replace=False
             )
+=======
+            bg_inds = np.random.choice(bg_inds,
+                                       size=bg_rois_per_this_image,
+                                       replace=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         bg_inds = bg_inds[:bg_rois_per_this_image]
 
     keep_inds = np.append(fg_inds, bg_inds)
@@ -192,15 +229,22 @@ def _sample_rois(
         sampled_boxes, sampled_gts, sampled_labels, bbox_reg_weights
     )
     bbox_targets, bbox_inside_weights = _expand_bbox_targets(
+<<<<<<< HEAD
         bbox_label_targets, class_nums, is_cls_agnostic
     )
     bbox_outside_weights = np.array(
         bbox_inside_weights > 0, dtype=bbox_inside_weights.dtype
     )
+=======
+        bbox_label_targets, class_nums, is_cls_agnostic)
+    bbox_outside_weights = np.array(bbox_inside_weights > 0,
+                                    dtype=bbox_inside_weights.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # Scale rois
     sampled_rois = sampled_boxes * im_scale
 
     # Faster RCNN blobs
+<<<<<<< HEAD
     frcn_blobs = dict(
         rois=sampled_rois,
         labels_int32=sampled_labels,
@@ -209,6 +253,14 @@ def _sample_rois(
         bbox_outside_weights=bbox_outside_weights,
         max_overlap=sampled_max_overlap,
     )
+=======
+    frcn_blobs = dict(rois=sampled_rois,
+                      labels_int32=sampled_labels,
+                      bbox_targets=bbox_targets,
+                      bbox_inside_weights=bbox_inside_weights,
+                      bbox_outside_weights=bbox_outside_weights,
+                      max_overlap=sampled_max_overlap)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return frcn_blobs
 
 
@@ -242,6 +294,7 @@ def _compute_targets(roi_boxes, gt_boxes, labels, bbox_reg_weights):
 
     targets = np.zeros(roi_boxes.shape)
     bbox_reg_weights = np.asarray(bbox_reg_weights)
+<<<<<<< HEAD
     targets = _box_to_delta(
         ex_boxes=roi_boxes, gt_boxes=gt_boxes, weights=bbox_reg_weights
     )
@@ -249,6 +302,14 @@ def _compute_targets(roi_boxes, gt_boxes, labels, bbox_reg_weights):
     return np.hstack([labels[:, np.newaxis], targets]).astype(
         np.float32, copy=False
     )
+=======
+    targets = _box_to_delta(ex_boxes=roi_boxes,
+                            gt_boxes=gt_boxes,
+                            weights=bbox_reg_weights)
+
+    return np.hstack([labels[:, np.newaxis], targets]).astype(np.float32,
+                                                              copy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _box_to_delta(ex_boxes, gt_boxes, weights):
@@ -274,6 +335,7 @@ def _box_to_delta(ex_boxes, gt_boxes, weights):
 def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
     class_labels = bbox_targets_input[:, 0]
     fg_inds = np.where(class_labels > 0)[0]
+<<<<<<< HEAD
     # if is_cls_agnostic:
     #     class_labels = [1 if ll > 0 else 0 for ll in class_labels]
     #     class_labels = np.array(class_labels, dtype=np.int32)
@@ -284,6 +346,14 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
             4 * class_nums if not is_cls_agnostic else 4 * 2,
         )
     )
+=======
+    #if is_cls_agnostic:
+    #	class_labels = [1 if ll > 0 else 0 for ll in class_labels]
+    #    class_labels = np.array(class_labels, dtype=np.int32)
+    #	class_nums = 2
+    bbox_targets = np.zeros((class_labels.shape[0],
+                             4 * class_nums if not is_cls_agnostic else 4 * 2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     bbox_inside_weights = np.zeros(bbox_targets.shape)
     for ind in fg_inds:
         class_label = int(class_labels[ind]) if not is_cls_agnostic else 1
@@ -295,6 +365,7 @@ def _expand_bbox_targets(bbox_targets_input, class_nums, is_cls_agnostic):
 
 
 class TestGenerateProposalLabelsOp(OpTest):
+
     def set_data(self):
         # self.use_random = False
         self.init_use_random()
@@ -375,8 +446,12 @@ class TestGenerateProposalLabelsOp(OpTest):
             self.im_info[i, 2] = 0.8  # scale
 
         self.rpn_rois, self.rpn_rois_lod = _generate_proposals(
+<<<<<<< HEAD
             images_shape, proposal_nums
         )
+=======
+            images_shape, proposal_nums)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ground_truth, self.gts_lod = _generate_groundtruth(
             images_shape, self.class_nums, gt_nums
         )
@@ -422,6 +497,7 @@ class TestGenerateProposalLabelsOp(OpTest):
 
 
 class TestCascade(TestGenerateProposalLabelsOp):
+
     def init_test_cascade(self):
         self.is_cascade_rcnn = True
         roi_num = len(self.rpn_rois[0])
@@ -433,6 +509,7 @@ class TestCascade(TestGenerateProposalLabelsOp):
 
 
 class TestUseRandom(TestGenerateProposalLabelsOp):
+
     def init_use_random(self):
         self.use_random = True
         self.is_cascade_rcnn = False
@@ -455,6 +532,7 @@ class TestUseRandom(TestGenerateProposalLabelsOp):
 
 
 class TestClsAgnostic(TestCascade):
+
     def init_test_params(self):
         self.batch_size_per_im = 512
         self.fg_fraction = 0.25
@@ -467,6 +545,7 @@ class TestClsAgnostic(TestCascade):
 
 
 class TestOnlyGT(TestCascade):
+
     def init_test_input(self):
         np.random.seed(0)
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
@@ -490,6 +569,7 @@ class TestOnlyGT(TestCascade):
 
 
 class TestOnlyGT2(TestCascade):
+
     def init_test_cascade(self):
         self.is_cascade_rcnn = True
         roi_num = len(self.rpn_rois[0])
@@ -516,15 +596,24 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
     num_gts = 0
     for i, image_shape in enumerate(images_shape):
         # Avoid background
+<<<<<<< HEAD
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums
         ).astype(np.int32)
+=======
+        gt_classes = np.random.randint(low=1, high=class_nums,
+                                       size=gt_nums).astype(np.int32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         gt_boxes = _generate_boxes(image_shape, gt_nums)
         is_crowd = np.zeros((gt_nums), dtype=np.int32)
         is_crowd[0] = 1
         ground_truth.append(
+<<<<<<< HEAD
             dict(gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd)
         )
+=======
+            dict(gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         num_gts += len(gt_classes)
         gts_lod.append(num_gts)
     return ground_truth, [gts_lod]

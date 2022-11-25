@@ -17,7 +17,10 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 
@@ -31,12 +34,15 @@ void LogSoftmaxGradKernel(const Context& dev_ctx,
   const int rank = out.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
 
+<<<<<<< HEAD
   // For 0D Tensor
   if (rank == 0) {
     phi::funcs::set_constant(dev_ctx, x_grad, 0.0);
     return;
   }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (out.numel() != 0) {
     auto out_shape = phi::vectorize<int>(out.dims());
     dev_ctx.template Alloc<T>(x_grad);

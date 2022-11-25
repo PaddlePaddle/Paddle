@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -29,9 +30,14 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         if attrs[0]['scale'] <= 0 and (
             attrs[0]['out_h'] <= 0 or attrs[0]['out_w'] <= 0
         ):
+=======
+        if attrs[0]['scale'] <= 0 and (attrs[0]['out_h'] <= 0
+                                       or attrs[0]['out_w'] <= 0):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
         if (attrs[0]['out_h'] <= 0) ^ (attrs[0]['out_w'] <= 0):
             return False
@@ -39,6 +45,7 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]]):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
@@ -77,11 +84,17 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
                                     ops=ops,
                                     weights={},
                                     inputs={
+<<<<<<< HEAD
                                         "input_data": TensorConfig(
                                             data_gen=partial(
                                                 generate_input1, dics
                                             )
                                         )
+=======
+                                        "input_data":
+                                        TensorConfig(data_gen=partial(
+                                            generate_input1, dics))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     },
                                     outputs=["nearest_interp_output_data"],
                                 )
@@ -89,8 +102,13 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
                                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
@@ -123,14 +141,22 @@ class TrtConvertNearestInterpTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-2
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-2
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if (
                 program_config.ops[0].attrs['scale'] <= 0

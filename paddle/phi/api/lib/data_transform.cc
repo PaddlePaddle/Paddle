@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+// clang-format off
 #include "paddle/phi/api/lib/data_transform.h"
 
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -23,6 +24,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
 
 #include "paddle/fluid/framework/tensor_util.h"
+// clang-format on
 
 namespace paddle {
 namespace experimental {
@@ -198,12 +200,17 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
   phi::DenseTensor out = *tensor;
   bool trans_layout = false;
   bool trans_dtype = false;
+<<<<<<< HEAD
 
   if (NeedTransformLayout(tensor->layout(),
                           target_args_def.layout,
                           tensor->place(),
                           transform_flag) &&
       tensor->dims().size() != 1) {
+=======
+  if (NeedTransformLayout(
+          tensor->layout(), target_args_def.layout, transform_flag)) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out = TransDataLayout(out, target_args_def.layout);
     trans_layout = true;
   }
@@ -302,6 +309,7 @@ paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
   return paddle::none;
 }
 
+<<<<<<< HEAD
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
@@ -347,6 +355,12 @@ void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out) {
   if (tensor && tensor->initialized()) {
+=======
+void TransDataBackend(const phi::DenseTensor* tensor,
+                      Backend target_backend,
+                      phi::DenseTensor* out) {
+  if (tensor) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     *out = TransDataPlace(*tensor, phi::TransToPhiPlace(target_backend));
   }
 }

@@ -81,27 +81,40 @@ class SimpleNetWithCond:
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_x"),
+<<<<<<< HEAD
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.x),
         )
+=======
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.x))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         param_y = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_y"),
+<<<<<<< HEAD
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.y),
         )
+=======
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.y))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         param_z = fluid.layers.create_parameter(
             dtype="float32",
             shape=self.shape,
             attr=fluid.ParamAttr(learning_rate=self.param_lr, name="param_z"),
+<<<<<<< HEAD
             default_initializer=fluid.initializer.NumpyArrayInitializer(self.z),
         )
+=======
+            default_initializer=fluid.initializer.NumpyArrayInitializer(self.z))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         sum_xy = fluid.layers.elementwise_add(param_x, param_y, name='sum_xy')
         sub_yz = fluid.layers.elementwise_sub(param_y, param_z, name='sub_yz')
         useless = fluid.layers.fc(param_x, size=1, name='fc_useless')
 
         def cond_true():
+<<<<<<< HEAD
             cond_yz = fluid.layers.elementwise_add(
                 param_y, param_z, name='sum_cond_yz'
             )
@@ -110,13 +123,29 @@ class SimpleNetWithCond:
             cond_res = fluid.layers.elementwise_add(
                 cond_yz, param_z, name='sum_cond_true'
             )
+=======
+            cond_yz = fluid.layers.elementwise_add(param_y,
+                                                   param_z,
+                                                   name='sum_cond_yz')
+            # param_y will not be updated
+            param_y.stop_gradient = self.y_no_grad
+            cond_res = fluid.layers.elementwise_add(cond_yz,
+                                                    param_z,
+                                                    name='sum_cond_true')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             cond_useless = fluid.layers.elementwise_mul(param_x, param_y)
             return cond_res
 
         def cond_false():
+<<<<<<< HEAD
             cond_res = fluid.layers.elementwise_add(
                 param_y, param_z, name='sum_cond_false'
             )
+=======
+            cond_res = fluid.layers.elementwise_add(param_y,
+                                                    param_z,
+                                                    name='sum_cond_false')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             cond_useless = fluid.layers.elementwise_mul(param_z, param_z)
             return cond_res
 
@@ -243,6 +272,7 @@ class TestOptimizer(unittest.TestCase):
                                 )
                                 gt_grads = test_net._calc_gradient(cond_i)
                                 gt_params = self._apply_optimize(
+<<<<<<< HEAD
                                     test_net, gt_grads
                                 )
                                 param_grads = gt_params + gt_grads
@@ -250,12 +280,20 @@ class TestOptimizer(unittest.TestCase):
                                     np.testing.assert_allclose(
                                         res[i], param_grads[i]
                                     )
+=======
+                                    test_net, gt_grads)
+                                param_grads = gt_params + gt_grads
+                                for i in range(len(res)):
+                                    np.testing.assert_allclose(
+                                        res[i], param_grads[i])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @unittest.skipIf(
     not fluid.core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestSGDOptimizer(TestOptimizer):
+
     def test_optimizer_multiblock_except(self):
         with self.assertRaisesRegexp(
             ValueError, "var param_y not in this block"
@@ -273,9 +311,16 @@ class TestAdamOptimizer(TestOptimizer):
     def setUp(self):
         self._init_config()
         beta1, beta2, epsilon = 0.9, 0.999, 1e-8
+<<<<<<< HEAD
         self.optimizer = optimizer.AdamOptimizer(
             learning_rate=0.01, beta1=beta1, beta2=beta2, epsilon=epsilon
         )
+=======
+        self.optimizer = optimizer.AdamOptimizer(learning_rate=0.01,
+                                                 beta1=beta1,
+                                                 beta2=beta2,
+                                                 epsilon=epsilon)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.attr = {
             "beta1": beta1,
             "beta2": beta2,
@@ -299,11 +344,18 @@ class TestAdamOptimizer(TestOptimizer):
         moment1_out = beta1 * moment1 + (1.0 - beta1) * grad
         moment2_out = beta2 * moment2 + (1.0 - beta2) * np.square(grad)
 
+<<<<<<< HEAD
         lr = attr['lr'] * np.sqrt(1.0 - beta2_pow) / (1.0 - beta1_pow)
         param_out = param - lr * (
             moment1_out
             / (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow))
         )
+=======
+        lr = attr['lr'] * np.sqrt(1. - beta2_pow) / (1. - beta1_pow)
+        param_out = param - lr * (
+            moment1_out /
+            (np.sqrt(moment2_out) + epsilon * np.sqrt(1 - beta2_pow)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # update hyper-parameter of optimizer
         self.param_attr[name]['beta1_pow'] = beta1_pow * beta1

@@ -39,14 +39,21 @@ paddle.enable_static()
 
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
+
     def __init__(self):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank):
         with fluid.program_guard(main_prog, startup_program):
+<<<<<<< HEAD
             tindata = layers.data(
                 name="tindata", shape=[10, 1000], dtype='float32'
             )
+=======
+            tindata = layers.data(name="tindata",
+                                  shape=[10, 1000],
+                                  dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.distributed.all_reduce(tindata)
             return [tindata]
 

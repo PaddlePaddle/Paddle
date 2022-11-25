@@ -110,9 +110,14 @@ def linear_interp_np(
             w1lambda = ratio_w * j - w
         w2lambda = 1.0 - w1lambda
 
+<<<<<<< HEAD
         out[:, :, j] = (
             w2lambda * input[:, :, w] + w1lambda * input[:, :, w + wid]
         )
+=======
+        out[:, :,
+            j] = w2lambda * input[:, :, w] + w1lambda * input[:, :, w + wid]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 1))  # NCHW => NHWC
@@ -121,6 +126,7 @@ def linear_interp_np(
 
 
 class TestLinearInterpOp(OpTest):
+
     def setUp(self):
         self.python_api = linear_interp_test
         self.out_size = None
@@ -187,63 +193,95 @@ class TestLinearInterpOp(OpTest):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
+<<<<<<< HEAD
         self.scale = 0.5
         self.out_size = np.array(
             [
                 50,
             ]
         ).astype("int32")
+=======
+        self.scale = 0.
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.align_corners = False
         self.align_mode = 1
 
 
 class TestLinearInterpOpDataLayout(TestLinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'linear'
         self.input_shape = [1, 100, 3]
         self.out_w = 50
+<<<<<<< HEAD
         self.scale = 0.5
         self.out_size = np.array(
             [
                 50,
             ]
         ).astype("int32")
+=======
+        self.scale = 0.
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.align_corners = False
         self.align_mode = 1
         self.data_layout = 'NHWC'
 
 
 class TestLinearInterpOpAlignMode(TestLinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
+<<<<<<< HEAD
         self.scale = 0.5
         self.out_size = np.array(
             [
                 50,
             ]
         ).astype("int32")
+=======
+        self.scale = 0.
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestLinearInterpOpScale(TestLinearInterpOp):
+
     def init_test_case(self):
         self.interp_method = 'linear'
         self.input_shape = [1, 3, 100]
         self.out_w = 50
+<<<<<<< HEAD
         self.scale = 0.8
         self.out_size = np.array(
             [
                 50,
             ]
         ).astype("int32")
+=======
+        self.scale = 0.5
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.align_corners = False
         self.align_mode = 0
 
 
 class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
+
     def setUp(self):
         self.python_api = linear_interp_test
         self.out_size = None
@@ -310,12 +348,14 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
 
 
 class TestResizeLinearAPI(unittest.TestCase):
+
     def test_case(self):
         x = fluid.data(name="x", shape=[1, 3, 64], dtype="float32")
 
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[1], dtype="int32")
         actual_size = fluid.data(name="actual_size", shape=[1], dtype="int32")
+<<<<<<< HEAD
         scale_tensor = fluid.data(
             name="scale_tensor", shape=[1], dtype="float32"
         )
@@ -386,6 +426,67 @@ class TestResizeLinearAPI(unittest.TestCase):
                 128,
             ]
         ).astype("int32")
+=======
+        scale_tensor = fluid.data(name="scale_tensor",
+                                  shape=[1],
+                                  dtype="float32")
+
+        out1 = fluid.layers.resize_linear(x,
+                                          out_shape=[
+                                              128,
+                                          ],
+                                          align_mode=1,
+                                          align_corners=False)
+        out2 = fluid.layers.resize_linear(x,
+                                          out_shape=[128],
+                                          align_mode=1,
+                                          align_corners=False)
+        out3 = fluid.layers.resize_linear(x,
+                                          out_shape=shape_tensor,
+                                          align_mode=1,
+                                          align_corners=False)
+        out4 = fluid.layers.resize_linear(x,
+                                          out_shape=[
+                                              128,
+                                          ],
+                                          actual_shape=actual_size,
+                                          align_mode=1,
+                                          align_corners=False)
+        out5 = fluid.layers.resize_linear(x,
+                                          scale=scale_tensor,
+                                          align_mode=1,
+                                          align_corners=False)
+
+        out6 = interpolate(x,
+                           scale_factor=scale_tensor,
+                           mode='linear',
+                           align_mode=1,
+                           align_corners=False,
+                           data_format='NCW')
+        out7 = interpolate(x,
+                           size=[
+                               128,
+                           ],
+                           mode='linear',
+                           align_mode=1,
+                           align_corners=False,
+                           data_format='NCW')
+        out8 = interpolate(x,
+                           size=shape_tensor,
+                           mode='linear',
+                           align_mode=1,
+                           align_corners=False,
+                           data_format='NCW')
+
+        x_data = np.random.random((1, 3, 64)).astype("float32")
+        dim_data = np.array([128]).astype("int32")
+        shape_data = np.array([
+            128,
+        ]).astype("int32")
+        actual_size_data = np.array([
+            128,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         scale_data = np.array([2.0]).astype("float32")
 
         if core.is_compiled_with_cuda():
@@ -407,18 +508,27 @@ class TestResizeLinearAPI(unittest.TestCase):
             return_numpy=True,
         )
 
+<<<<<<< HEAD
         expect_res = linear_interp_np(
             x_data, out_w=128, align_mode=1, align_corners=False
         )
+=======
+        expect_res = linear_interp_np(x_data,
+                                      out_w=128,
+                                      align_mode=1,
+                                      align_corners=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for res in results:
             np.testing.assert_allclose(res, expect_res, rtol=1e-05)
 
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
+
     def test_case(self):
 
         # dygraph
         x_data = np.random.random((1, 3, 128)).astype("float32")
+<<<<<<< HEAD
         us_1 = paddle.nn.Upsample(
             size=[64],
             mode='linear',
@@ -426,18 +536,35 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
             align_corners=False,
             data_format='NCW',
         )
+=======
+        us_1 = paddle.nn.Upsample(size=[
+            64,
+        ],
+                                  mode='linear',
+                                  align_mode=1,
+                                  align_corners=False,
+                                  data_format='NCW')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(x_data)
             interp = us_1(x)
 
+<<<<<<< HEAD
             expect = linear_interp_np(
                 x_data, out_w=64, align_mode=1, align_corners=False
             )
+=======
+            expect = linear_interp_np(x_data,
+                                      out_w=64,
+                                      align_mode=1,
+                                      align_corners=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             np.testing.assert_allclose(interp.numpy(), expect, rtol=1e-05)
 
 
 class TestResizeLinearOpUint8(OpTest):
+
     def setUp(self):
         self.out_size = None
         self.actual_shape = None
@@ -491,20 +618,30 @@ class TestResizeLinearOpUint8(OpTest):
         self.interp_method = 'linear'
         self.input_shape = [2, 3, 100]
         self.out_w = 50
+<<<<<<< HEAD
         self.scale = 0.0
         self.out_size = np.array(
             [
                 50,
             ]
         ).astype("int32")
+=======
+        self.scale = 0.
+        self.out_size = np.array([
+            50,
+        ]).astype("int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.align_corners = True
         self.align_mode = 1
 
 
 class TestLinearInterpOpException(unittest.TestCase):
+
     def test_exception(self):
+
         def input_shape_error():
             x1 = fluid.data(name="x1", shape=[1], dtype="float32")
+<<<<<<< HEAD
             out = fluid.layers.resize_linear(
                 x1,
                 out_shape=[
@@ -533,6 +670,30 @@ class TestLinearInterpOpException(unittest.TestCase):
                 ],
                 data_format='NHWC',
             )
+=======
+            out = fluid.layers.resize_linear(x1,
+                                             out_shape=[
+                                                 256,
+                                             ],
+                                             data_format='NCW')
+
+        def data_format_error():
+            x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
+            out = fluid.layers.resize_linear(x2,
+                                             out_shape=[
+                                                 256,
+                                             ],
+                                             data_format='NHWCD')
+
+        def out_shape_error():
+            x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
+            out = fluid.layers.resize_linear(x3,
+                                             out_shape=[
+                                                 256,
+                                                 256,
+                                             ],
+                                             data_format='NHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, input_shape_error)
         self.assertRaises(ValueError, data_format_error)
@@ -540,28 +701,54 @@ class TestLinearInterpOpException(unittest.TestCase):
 
 
 class TestLinearInterpOpError(unittest.TestCase):
+
     def test_error(self):
         with program_guard(Program(), Program()):
 
             def input_shape_error():
                 x1 = fluid.data(name="x1", shape=[1], dtype="float32")
+<<<<<<< HEAD
                 out1 = paddle.nn.Upsample(
                     size=[256], data_format='NCW', mode='linear'
                 )
+=======
+                out1 = paddle.nn.Upsample(size=[
+                    256,
+                ],
+                                          data_format='NCW',
+                                          mode='linear')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 out1_res = out1(x1)
 
             def data_format_error():
                 x2 = fluid.data(name="x2", shape=[1, 3, 128], dtype="float32")
+<<<<<<< HEAD
                 out2 = paddle.nn.Upsample(
                     size=[256], data_format='NHWCD', mode='linear'
                 )
+=======
+                out2 = paddle.nn.Upsample(size=[
+                    256,
+                ],
+                                          data_format='NHWCD',
+                                          mode='linear')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 out2_res = out2(x2)
 
             def out_shape_error():
                 x3 = fluid.data(name="x3", shape=[1, 3, 128], dtype="float32")
+<<<<<<< HEAD
                 out3 = paddle.nn.Upsample(
                     size=[256, 256], data_format='NHWC', mode='linear'
                 )
+=======
+                out3 = paddle.nn.Upsample(size=[
+                    256,
+                    256,
+                ],
+                                          data_format='NHWC',
+                                          mode='linear')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 out3_res = out3(x3)
 
             self.assertRaises(ValueError, input_shape_error)

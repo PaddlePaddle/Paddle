@@ -39,12 +39,26 @@ def fusion_gru(
         np.zeros((1, wh.shape[1]), dtype='float32'),
         is_reverse,
         act_state,
+<<<<<<< HEAD
         act_gate,
         origin_mode=origin_mode,
     )
+=======
+        act_gate):
+    return gru(fc(x, wx, bias),
+               lod,
+               h0,
+               wh,
+               np.zeros((1, wh.shape[1]), dtype='float32'),
+               is_reverse,
+               act_state,
+               act_gate,
+               origin_mode=origin_mode)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestFusionGRUOp(OpTest):
+
     def set_confs(self):
         pass
 
@@ -79,6 +93,7 @@ class TestFusionGRUOp(OpTest):
             else np.zeros((N, self.D), dtype='float32')
         )
 
+<<<<<<< HEAD
         _, _, _, hidden = fusion_gru(
             x,
             self.lod,
@@ -91,6 +106,12 @@ class TestFusionGRUOp(OpTest):
             ACTIVATION[self.act_state],
             ACTIVATION[self.act_gate],
         )
+=======
+        _, _, _, hidden = fusion_gru(x, self.lod, h0, wx, wh, bias,
+                                     self.is_reverse, self.origin_mode,
+                                     ACTIVATION[self.act_state],
+                                     ACTIVATION[self.act_gate])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {'X': (x, self.lod), 'WeightX': wx, 'WeightH': wh}
 
@@ -117,39 +138,46 @@ class TestFusionGRUOp(OpTest):
 
 
 class TestFusionGRUOpNoInitial(TestFusionGRUOp):
+
     def set_confs(self):
         self.with_h0 = False
 
 
 class TestFusionGRUOpNoBias(TestFusionGRUOp):
+
     def set_confs(self):
         self.with_bias = False
 
 
 class TestFusionGRUOpReverse(TestFusionGRUOp):
+
     def set_confs(self):
         self.is_reverse = True
 
 
 class TestFusionGRUOpMD1(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 36
         self.D = 8
 
 
 class TestFusionGRUOpMD2(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 8
         self.D = 8
 
 
 class TestFusionGRUOpMD3(TestFusionGRUOp):
+
     def set_confs(self):
         self.M = 17
         self.D = 15
 
 
 class TestFusionGRUOpBS1(TestFusionGRUOp):
+
     def set_confs(self):
         self.lod = [[3]]
         self.D = 16

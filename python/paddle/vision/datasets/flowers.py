@@ -127,14 +127,19 @@ class Flowers(Dataset):
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+<<<<<<< HEAD
                     backend
                 )
             )
+=======
+                    backend))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.backend = backend
 
         flag = MODE_FLAG_MAP[mode.lower()]
 
         if not data_file:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
@@ -157,6 +162,24 @@ class Flowers(Dataset):
             setid_file = _check_exists_and_download(
                 setid_file, SETID_URL, SETID_MD5, 'flowers', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            data_file = _check_exists_and_download(data_file, DATA_URL,
+                                                   DATA_MD5, 'flowers',
+                                                   download)
+
+        if not label_file:
+            assert download, "label_file is not set and downloading automatically is disabled"
+            label_file = _check_exists_and_download(label_file, LABEL_URL,
+                                                    LABEL_MD5, 'flowers',
+                                                    download)
+
+        if not setid_file:
+            assert download, "setid_file is not set and downloading automatically is disabled"
+            setid_file = _check_exists_and_download(setid_file, SETID_URL,
+                                                    SETID_MD5, 'flowers',
+                                                    download)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.transform = transform
 

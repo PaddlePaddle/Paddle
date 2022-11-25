@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import sys
 
 sys.path.append("..")
@@ -28,6 +32,10 @@ paddle.enable_static()
 
 
 class TestScatterOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -49,6 +57,10 @@ class TestScatterOp(OpTest):
 
 
 class TestScatterOp0(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -71,6 +83,10 @@ class TestScatterOp0(OpTest):
 
 
 class TestScatterOp1(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -96,6 +112,10 @@ class TestScatterOp1(OpTest):
 
 
 class TestScatterOp2(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -117,6 +137,10 @@ class TestScatterOp2(OpTest):
 
 
 class TestScatterAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.places = [paddle.device.MLUPlace(0)]
         self.__class__.use_mlu = True
@@ -134,6 +158,7 @@ class TestScatterAPI(unittest.TestCase):
 
             input_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
             index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+<<<<<<< HEAD
             updates_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(
                 np.float32
             )
@@ -154,6 +179,21 @@ class TestScatterAPI(unittest.TestCase):
                 ).all(),
                 True,
             )
+=======
+            updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                     [4, 4]]).astype(np.float32)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "input": input_data,
+                                  "index": index_data,
+                                  "updates": updates_data
+                              },
+                              fetch_list=[result])
+            self.assertEqual((fetches[0] == \
+                              np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_static(self):
         for place in self.places:
@@ -164,15 +204,21 @@ class TestScatterAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
                 index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+<<<<<<< HEAD
                 updates_data = np.array(
                     [[1, 1], [2, 2], [3, 3], [4, 4]]
                 ).astype(np.float32)
+=======
+                updates_data = np.array([[1, 1], [2, 2], [3, 3],
+                                         [4, 4]]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 x = fluid.dygraph.to_variable(x_data)
                 index = fluid.dygraph.to_variable(index_data)
                 updates = fluid.dygraph.to_variable(updates_data)
 
                 output1 = self.scatter(x, index, updates, overwrite=False)
+<<<<<<< HEAD
                 self.assertEqual(
                     (
                         output1.numpy()
@@ -180,6 +226,10 @@ class TestScatterAPI(unittest.TestCase):
                     ).all(),
                     True,
                 )
+=======
+                self.assertEqual((output1.numpy() == \
+                                  np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_large_data(self):
         if os.name == "nt":
@@ -191,15 +241,22 @@ class TestScatterAPI(unittest.TestCase):
 
         def test_dygraph():
             with fluid.dygraph.guard():
+<<<<<<< HEAD
                 mlu_out = paddle.scatter(
                     paddle.to_tensor(x),
                     paddle.to_tensor(index),
                     paddle.to_tensor(updates),
                 )
+=======
+                mlu_out = paddle.scatter(paddle.to_tensor(x),
+                                         paddle.to_tensor(index),
+                                         paddle.to_tensor(updates))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return mlu_out.numpy()
 
         @switch_to_static_graph
         def test_static_graph():
+<<<<<<< HEAD
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
@@ -210,11 +267,26 @@ class TestScatterAPI(unittest.TestCase):
                 updates_t = paddle.static.data(
                     name="updates", dtype=updates.dtype, shape=updates.shape
                 )
+=======
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(name="index",
+                                             dtype=index.dtype,
+                                             shape=index.shape)
+                updates_t = paddle.static.data(name="updates",
+                                               dtype=updates.dtype,
+                                               shape=updates.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 out_t = paddle.scatter(x_t, index_t, updates_t)
                 feed = {
                     x_t.name: x,
                     index_t.name: index,
+<<<<<<< HEAD
                     updates_t.name: updates,
+=======
+                    updates_t.name: updates
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 }
                 fetch = [out_t]
 
@@ -222,10 +294,18 @@ class TestScatterAPI(unittest.TestCase):
                 mlu_value = mlu_exe.run(feed=feed, fetch_list=fetch)[0]
                 return mlu_value
 
+<<<<<<< HEAD
         np.testing.assert_allclose(test_dygraph(), test_static_graph())
 
 
 class TestScatterOpFp16(OpTest):
+=======
+        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
+
+
+class TestScatterOpFp16(OpTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "scatter"
         self.place = paddle.device.MLUPlace(0)
@@ -248,6 +328,10 @@ class TestScatterOpFp16(OpTest):
 
 
 class TestScatterInplaceAPI(TestScatterAPI):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def executed_api(self):
         self.scatter = paddle.scatter_
 

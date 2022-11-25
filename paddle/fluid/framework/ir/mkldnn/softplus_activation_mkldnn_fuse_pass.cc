@@ -27,12 +27,16 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void SoftplusActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+<<<<<<< HEAD
   auto act_types = phi::funcs::GetSupportedActivations();
 
   // Currently softplus can't be fused with hard_sigmoid
   act_types.erase(
       std::remove(act_types.begin(), act_types.end(), "hard_sigmoid"),
       act_types.end());
+=======
+  auto act_types = paddle::platform::GetSupportedActivations();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   for (const auto &act_type : act_types) {
     FuseSoftplusActivation(graph, act_type);
@@ -75,7 +79,11 @@ void SoftplusActivationOneDNNPass::FuseSoftplusActivation(
     }
 
     auto *activation_op = activation->Op();
+<<<<<<< HEAD
     auto attr_map = phi::funcs::GetAttributeMap(act_type);
+=======
+    auto attr_map = paddle::platform::GetAttributeMap(act_type);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     for (const auto &attr : attr_map) {
       if (activation_op->HasAttr(attr.first)) {
         softplus_op->SetAttr(attr.second, activation_op->GetAttr(attr.first));
@@ -118,6 +126,10 @@ REGISTER_PASS_CAPABILITY(softplus_activation_mkldnn_fuse_pass)
             .EQ("abs", 0)
             .LE("clip", 1)
             .EQ("gelu", 0)
+<<<<<<< HEAD
+=======
+            .EQ("hard_sigmoid", 0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             .LE("hard_swish", 0)
             .LE("leaky_relu", 1)
             .LE("mish", 1)

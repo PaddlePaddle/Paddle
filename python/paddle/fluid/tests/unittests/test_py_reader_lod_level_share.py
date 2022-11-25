@@ -17,6 +17,7 @@ import unittest
 
 
 class TestLoDLevelShare(unittest.TestCase):
+
     def setUp(self):
         self.use_double_buffer = False
 
@@ -36,6 +37,7 @@ class TestLoDLevelShare(unittest.TestCase):
 
 
 class TestLoDLevelShare2(TestLoDLevelShare):
+
     def setUp(self):
         self.use_double_buffer = True
 

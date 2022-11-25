@@ -24,12 +24,16 @@ import paddle
 from paddle.fluid.core import PassVersionChecker
 import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any
+<<<<<<< HEAD
 from program_config import (
     OpConfig,
     ProgramConfig,
     create_fake_model,
     create_quant_model,
 )
+=======
+from program_config import OpConfig, ProgramConfig, create_fake_model, create_quant_model
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 import hypothesis
 from hypothesis import given, settings
@@ -37,6 +41,7 @@ import hypothesis.strategies as st
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
+<<<<<<< HEAD
 settings.register_profile(
     "ci",
     max_examples=100,
@@ -59,6 +64,24 @@ if (
     float(os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')) < 1
     or os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') == 'ci'
 ):
+=======
+settings.register_profile("ci",
+                          max_examples=100,
+                          suppress_health_check=hypothesis.HealthCheck.all(),
+                          deadline=None,
+                          print_blob=True,
+                          derandomize=True,
+                          report_multiple_bugs=False)
+settings.register_profile("dev",
+                          max_examples=1000,
+                          suppress_health_check=hypothesis.HealthCheck.all(),
+                          deadline=None,
+                          print_blob=True,
+                          derandomize=True,
+                          report_multiple_bugs=False)
+if float(os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')) < 1 or \
+    os.getenv('HYPOTHESIS_TEST_PROFILE', 'dev') == 'ci':
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     settings.load_profile("ci")
 else:
     settings.load_profile("dev")
@@ -80,6 +103,7 @@ SkipReasons = IgnoreReasons
 
 
 class AutoScanTest(unittest.TestCase):
+
     def __init__(self, *args, **kwargs):
         np.random.seed(1024)
         paddle.enable_static()
@@ -108,12 +132,18 @@ class AutoScanTest(unittest.TestCase):
         raise NotImplementedError
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def add_ignore_check_case(
         self,
         teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
+=======
+    def add_ignore_check_case(self, teller: [
+        Callable[[ProgramConfig, paddle_infer.Config], bool]
+    ], reason: IgnoreReasons, note: str):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.ignore_cases.append((teller, reason, note))
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
@@ -145,6 +175,7 @@ class AutoScanTest(unittest.TestCase):
         return result
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def assert_tensors_near(
         self,
         atol: float,
@@ -152,6 +183,11 @@ class AutoScanTest(unittest.TestCase):
         tensor: Dict[str, np.array],
         baseline: Dict[str, np.array],
     ):
+=======
+    def assert_tensors_near(self, atol: float, rtol: float,
+                            tensor: Dict[str, np.array],
+                            baseline: Dict[str, np.array]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for key, arr in tensor.items():
             self.assertTrue(
                 baseline[key].shape == arr.shape,
@@ -161,6 +197,7 @@ class AutoScanTest(unittest.TestCase):
                 + str(arr.shape),
             )
             diff = abs(baseline[key] - arr)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 baseline[key],
                 arr,
@@ -170,11 +207,18 @@ class AutoScanTest(unittest.TestCase):
                     np.amax(diff)
                 ),
             )
+=======
+            self.assertTrue(
+                np.allclose(baseline[key], arr, atol=atol, rtol=rtol),
+                "Output has diff, Maximum absolute error: {}".format(
+                    np.amax(diff)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @abc.abstractmethod
     def run_test(self, quant=False):
         raise NotImplementedError
 
+<<<<<<< HEAD
     def generate_op_config(
         self, ops_config: List[Dict[str, Any]]
     ) -> List[OpConfig]:
@@ -200,6 +244,18 @@ class AutoScanTest(unittest.TestCase):
                         attrs=op_config['op_attrs'],
                     )
                 )
+=======
+    def generate_op_config(self, ops_config: List[Dict[str,
+                                                       Any]]) -> List[OpConfig]:
+        ops = []
+        for i in range(len(ops_config)):
+            op_config = ops_config[i]
+            ops.append(
+                OpConfig(type=op_config['op_type'],
+                         inputs=op_config['op_inputs'],
+                         outputs=op_config['op_outputs'],
+                         attrs=op_config['op_attrs']))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return ops
 
     @abc.abstractmethod
@@ -215,6 +271,7 @@ class AutoScanTest(unittest.TestCase):
         logging.info("SUCCESS: " + msg)
 
     @abc.abstractmethod
+<<<<<<< HEAD
     def create_inference_config(
         self,
         passes: Optional[List[str]] = None,
@@ -222,6 +279,13 @@ class AutoScanTest(unittest.TestCase):
         use_mkldnn: bool = False,
         ir_optim: Optional[bool] = None,
     ):
+=======
+    def create_inference_config(self,
+                                passes: Optional[List[str]] = None,
+                                use_gpu: bool = False,
+                                use_mkldnn: bool = False,
+                                ir_optim: Optional[bool] = None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         config = paddle_infer.Config()
         config.switch_ir_debug(True)
         config.set_optim_cache_dir(self.cache_dir)
@@ -239,6 +303,7 @@ class AutoScanTest(unittest.TestCase):
 
 
 class MkldnnAutoScanTest(AutoScanTest):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -280,6 +345,7 @@ class MkldnnAutoScanTest(AutoScanTest):
                 for ignore_info in self.ignore_cases:
                     if ignore_info[0](prog_config, pred_config):
                         ignore_flag = True
+<<<<<<< HEAD
                         if (
                             ignore_info[1]
                             == IgnoreReasons.MKLDNN_ACCURACY_ERROR
@@ -291,6 +357,14 @@ class MkldnnAutoScanTest(AutoScanTest):
                                 + ' vs '
                                 + self.inference_config_str(pred_config)
                             )
+=======
+                        if ignore_info[
+                                1] == IgnoreReasons.MKLDNN_ACCURACY_ERROR:
+                            self.ignore_log(
+                                "[MKLDNN_ACCURACY_ERROR] " + ignore_info[2] +
+                                ' ' + ' vs ' +
+                                self.inference_config_str(pred_config))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         else:
                             raise NotImplementedError
                         break
@@ -317,11 +391,17 @@ class MkldnnAutoScanTest(AutoScanTest):
                     if not ignore_flag:
                         status = False
                     continue
+<<<<<<< HEAD
                 self.success_log(
                     'RUN predictor_config '
                     + self.inference_config_str(pred_config)
                     + ' done'
                 )
+=======
+                self.success_log('RUN predictor_config ' +
+                                 self.inference_config_str(pred_config) +
+                                 ' done')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertTrue(status)
 
@@ -335,6 +415,7 @@ class MkldnnAutoScanTest(AutoScanTest):
 
 
 class PassAutoScanTest(AutoScanTest):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.passes = []
@@ -362,10 +443,15 @@ class PassAutoScanTest(AutoScanTest):
         )
         if not os.path.exists(last_passed_program):
             raise ValueError(
+<<<<<<< HEAD
                 "Cannot find file {}, please make sure that your pass name is correct".format(
                     last_passed_program
                 )
             )
+=======
+                "Cannot find file {}, please make sure that your pass name is correct"
+                .format(last_passed_program))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         model_bytes = paddle.static.load_from_file(last_passed_program)
         pg = paddle.static.deserialize_program(model_bytes)
         main_block = pg.desc.block(0)
@@ -377,6 +463,7 @@ class PassAutoScanTest(AutoScanTest):
         self.assertTrue(
             op_list_after_fusion == after_op_list,
             "Expected operator list after fusion is {}, but now it's {}".format(
+<<<<<<< HEAD
                 op_list_after_fusion, after_op_list
             ),
         )
@@ -390,6 +477,18 @@ class PassAutoScanTest(AutoScanTest):
         max_duration=180,
         passes=None,
     ):
+=======
+                op_list_after_fusion, after_op_list),
+        )
+
+    def run_and_statis(self,
+                       quant=False,
+                       max_examples=100,
+                       reproduce=None,
+                       min_success_num=25,
+                       max_duration=180,
+                       passes=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if os.getenv('HYPOTHESIS_TEST_PROFILE', 'ci') == "dev":
             max_examples *= 10
             min_success_num *= 10
@@ -438,10 +537,16 @@ class PassAutoScanTest(AutoScanTest):
         )
         logging.info("Number of Ran Programs: {}".format(self.num_ran_programs))
         logging.info("Number of Ignore Tests: {}".format(self.num_ignore_tests))
+<<<<<<< HEAD
         successful_ran_programs = int(
             self.num_ran_programs
             - self.num_ignore_tests / max(self.num_predictor_kinds, 1)
         )
+=======
+        successful_ran_programs = int(self.num_ran_programs -
+                                      self.num_ignore_tests /
+                                      max(self.num_predictor_kinds, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         logging.info(
             "Number of successfully ran programs approximately equal to {}".format(
                 successful_ran_programs
@@ -452,18 +557,28 @@ class PassAutoScanTest(AutoScanTest):
                 "satisfied_programs = ran_programs - num_ignore_tests / num_predictor_kinds"
             )
             logging.error(
+<<<<<<< HEAD
                 "At least {} programs need to ran successfully, but now only about {} programs satisfied.".format(
                     min_success_num, successful_ran_programs
                 )
             )
+=======
+                "At least {} programs need to ran successfully, but now only about {} programs satisfied."
+                .format(min_success_num, successful_ran_programs))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert False
         used_time = time.time() - start_time
         if max_duration > 0 and used_time > max_duration:
             logging.error(
+<<<<<<< HEAD
                 "The duration exceeds {} seconds, if this is necessary, try to set a larger number for parameter `max_duration`.".format(
                     max_duration
                 )
             )
+=======
+                "The duration exceeds {} seconds, if this is necessary, try to set a larger number for parameter `max_duration`."
+                .format(max_duration))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert False
 
     def run_test(self, quant=False, prog_configs=None):
@@ -503,12 +618,18 @@ class PassAutoScanTest(AutoScanTest):
                         self.num_ignore_tests += 1
                         if ignore_info[1] == IgnoreReasons.PASS_ACCURACY_ERROR:
                             self.ignore_log(
+<<<<<<< HEAD
                                 "[PASS_ACCURACY_ERROR] "
                                 + ignore_info[2]
                                 + ' '
                                 + ' vs '
                                 + self.inference_config_str(pred_config)
                             )
+=======
+                                "[PASS_ACCURACY_ERROR] " + ignore_info[2] +
+                                ' ' + ' vs ' +
+                                self.inference_config_str(pred_config))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         else:
                             raise NotImplementedError
                         break
@@ -524,6 +645,7 @@ class PassAutoScanTest(AutoScanTest):
                 )
                 try:
                     # baseline
+<<<<<<< HEAD
                     base_result = self.run_test_config(
                         model, params, prog_config, base_config, feed_data
                     )
@@ -532,16 +654,32 @@ class PassAutoScanTest(AutoScanTest):
                         + self.inference_config_str(base_config)
                         + ' done'
                     )
+=======
+                    base_result = self.run_test_config(model, params,
+                                                       prog_config, base_config,
+                                                       feed_data)
+                    self.success_log('RUN_BASELINE ' +
+                                     self.inference_config_str(base_config) +
+                                     ' done')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     if os.path.exists(self.cache_dir):
                         shutil.rmtree(self.cache_dir)
 
+<<<<<<< HEAD
                     pred_result = self.run_test_config(
                         model, params, prog_config, pred_config, feed_data
                     )
                     self.assert_tensors_near(
                         atol, rtol, pred_result, base_result
                     )
+=======
+                    pred_result = self.run_test_config(model, params,
+                                                       prog_config, pred_config,
+                                                       feed_data)
+                    self.assert_tensors_near(atol, rtol, pred_result,
+                                             base_result)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     if not ignore_flag:
                         self.assert_op_list(op_list)
 
@@ -553,11 +691,17 @@ class PassAutoScanTest(AutoScanTest):
                     if not ignore_flag:
                         status = False
                     continue
+<<<<<<< HEAD
                 self.success_log(
                     'RUN predictor_config '
                     + self.inference_config_str(pred_config)
                     + ' done'
                 )
+=======
+                self.success_log('RUN predictor_config ' +
+                                 self.inference_config_str(pred_config) +
+                                 ' done')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         status = self.check_op_version() and status
         self.assertTrue(status)
@@ -592,6 +736,7 @@ class PassAutoScanTest(AutoScanTest):
 
 
 class TrtLayerAutoScanTest(AutoScanTest):
+
     class TensorRTParam:
         '''
         TensorRT subgraph engine parameters.
@@ -642,11 +787,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
         )
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
         self.num_percent_cases = float(
+<<<<<<< HEAD
             os.getenv('TEST_NUM_PERCENT_CASES', default='1.0')
         )
 
         # Use a seperate random generator for skipping tests
         self.skip_rng = np.random.default_rng(int(time.strftime("%W")))
+=======
+            os.getenv('TEST_NUM_PERCENT_CASES', default='1.0'))
+        # Choose different tests by week
+        np.random.seed(int(time.strftime("%W")))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -707,6 +858,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         ]
         trt_engine_size = sum(op_types)
         paddle_op_size = op_size - trt_engine_size
+<<<<<<< HEAD
         self.assertEqual(
             trt_engine_num,
             trt_engine_size,
@@ -721,6 +873,16 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 paddle_op_num, paddle_op_size
             ),
         )
+=======
+        self.assertTrue(
+            trt_engine_size == trt_engine_num,
+            'trt_engine_num is {}, but got {}!'.format(trt_engine_size,
+                                                       trt_engine_num))
+        self.assertTrue(
+            paddle_op_size == paddle_op_num,
+            'paddle_op_num is {}, but got {}!'.format(paddle_op_size,
+                                                      paddle_op_num))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def inference_config_str(self, config: paddle_infer.Config) -> str:
         dic = {}
@@ -736,6 +898,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return str(dic)
 
     def run_test(self, quant=False, skip_baseline=False, *args, **kwargs):
+<<<<<<< HEAD
         all_passes = True
 
         def random_to_skip():
@@ -743,6 +906,10 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 return False
             return True
 
+=======
+        status = True
+        run_flags = []
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for prog_config in self.sample_program_configs(*args, **kwargs):
 
             if random_to_skip():
@@ -765,6 +932,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
             results: List[Dict[str, np.ndarray]] = []
             if not skip_baseline:
+<<<<<<< HEAD
                 # baseline: gpu run
                 logging.info('RUN program_config: ' + str(prog_config))
                 gpu_config = self.create_inference_config(use_trt=False)
@@ -780,6 +948,18 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 nodes_num,
                 threshold,
             ) in self.sample_predictor_configs(prog_config):
+=======
+                #baseline: gpu run
+                logging.info('RUN program_config: ' + str(prog_config))
+                gpu_config = self.create_inference_config(use_trt=False)
+                results.append(
+                    self.run_test_config(model, params, prog_config, gpu_config,
+                                         feed_data))
+                self.success_log('RUN_GPU_BASELINE done')
+
+            for pred_config, nodes_num, threshold in self.sample_predictor_configs(
+                    prog_config):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 if os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
@@ -788,8 +968,12 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     atol = threshold
                     rtol = 1e-8
                 elif isinstance(threshold, list) or isinstance(
+<<<<<<< HEAD
                     threshold, tuple
                 ):
+=======
+                        threshold, tuple):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     atol = threshold[0]
                     rtol = threshold[1]
                 else:
@@ -812,6 +996,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 for teller, reason, note in self.ignore_cases:
                     if teller(prog_config, pred_config):
                         ignore_flag = True
+<<<<<<< HEAD
                         if reason == IgnoreReasons.TRT_NOT_IMPLEMENTED:
                             self.ignore_log(
                                 '[TRT_NOT_IMPLEMENTED] {} vs {}'.format(
@@ -824,6 +1009,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                     note, self.inference_config_str(pred_config)
                                 )
                             )
+=======
+                        if ignore_info[1] == IgnoreReasons.TRT_NOT_IMPLEMENTED:
+                            self.ignore_log(
+                                "[TRT_NOT_IMPLEMENTED] " + ignore_info[2] +
+                                ' ' + ' vs ' +
+                                self.inference_config_str(pred_config))
+                        elif ignore_info[1] == IgnoreReasons.TRT_NOT_SUPPORT:
+                            self.ignore_log(
+                                "[TRT_NOT_SUPPORT] " + ignore_info[2] + ' ' +
+                                ' vs ' + self.inference_config_str(pred_config))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         else:
                             raise NotImplementedError
                         break
@@ -861,18 +1057,35 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     )
                 except Exception as e:
                     self.fail_log(
+<<<<<<< HEAD
                         self.inference_config_str(pred_config)
                         + '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e))
                     )
                     all_passes = False
+=======
+                        self.inference_config_str(pred_config) +
+                        '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
+                    if not ignore_flag:
+                        status = False
+                    continue
+                self.success_log('RUN predictor_config ' +
+                                 self.inference_config_str(pred_config) +
+                                 ' done')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertTrue(all_passes)
 
     # TODO(wilber): just for backward compatible
+<<<<<<< HEAD
     def add_skip_case(
         self,
         teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
         reason: IgnoreReasons,
         note: str,
     ):
+=======
+    def add_skip_case(self, teller: [
+        Callable[[ProgramConfig, paddle_infer.Config], bool]
+    ], reason: IgnoreReasons, note: str):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.ignore_cases.append((teller, reason, note))

@@ -107,6 +107,7 @@ TEST(shape_info_io, read_and_write) {
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
   opt_shape.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
+<<<<<<< HEAD
   min_value.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 112, 112}));
   max_value.insert(
@@ -115,6 +116,10 @@ TEST(shape_info_io, read_and_write) {
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
   paddle::inference::SerializeShapeRangeInfo(
       path, min_shape, max_shape, opt_shape, min_value, max_value, opt_value);
+=======
+  paddle::inference::SerializeShapeRangeInfo(
+      path, min_shape, max_shape, opt_shape);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   min_shape.clear();
   max_shape.clear();
   opt_shape.clear();
@@ -123,6 +128,7 @@ TEST(shape_info_io, read_and_write) {
   opt_value.clear();
   opt_shape.insert(
       std::make_pair("test2", std::vector<int32_t>{1, 3, 224, 224}));
+<<<<<<< HEAD
   paddle::inference::DeserializeShapeRangeInfo(path,
                                                &min_shape,
                                                &max_shape,
@@ -130,6 +136,10 @@ TEST(shape_info_io, read_and_write) {
                                                &min_value,
                                                &max_value,
                                                &opt_value);
+=======
+  paddle::inference::DeserializeShapeRangeInfo(
+      path, &min_shape, &max_shape, &opt_shape);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   min_shape.insert(std::make_pair("test1", std::vector<int32_t>{1, 3, 56, 56}));
   std::vector<std::string> names{"test1"};

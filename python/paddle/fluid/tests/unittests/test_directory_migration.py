@@ -14,12 +14,26 @@
 
 import os
 import sys
+<<<<<<< HEAD
 import tempfile
 import subprocess
 import unittest
 
 
 class TestDirectory(unittest.TestCase):
+=======
+import time
+import tempfile
+import subprocess
+import unittest
+
+import numpy as np
+import paddle
+
+
+class TestDirectory(unittest.TestCase):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -116,11 +130,17 @@ class TestDirectory(unittest.TestCase):
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, import_file)
+<<<<<<< HEAD
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         stdout, stderr = ps_proc.communicate()
 
         self.assertFalse(
@@ -196,9 +216,14 @@ class TestDirectory(unittest.TestCase):
             'paddle.declarative.embedding',
         ]
 
+<<<<<<< HEAD
         import_file = os.path.join(
             self.temp_dir.name, 'run_old_import_modules.py'
         )
+=======
+        import_file = os.path.join(self.temp_dir.name,
+                                   'run_old_import_modules.py')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         with open(import_file, "w") as wb:
             cmd_context_count = """
@@ -232,11 +257,17 @@ if count != {len_old_directory}:
         _python = sys.executable
 
         ps_cmd = "{} {}".format(_python, import_file)
+<<<<<<< HEAD
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         stdout, stderr = ps_proc.communicate()
 
         self.assertFalse("Error" in str(stdout), bytes.decode(stdout))

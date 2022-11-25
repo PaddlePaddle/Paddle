@@ -17,6 +17,7 @@
 #include "paddle/fluid/eager/tensor_wrapper.h"
 #include "paddle/fluid/imperative/tracer.h"
 
+<<<<<<< HEAD
 template <typename T>
 const T& GetAttrWithDefault(
     const paddle::framework::AttributeMap& attrs,
@@ -34,6 +35,8 @@ const T& GetAttrWithDefault(
       phi::errors::InvalidArgument("Attribute(%s) cannot be found.", name));
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class fused_gate_attentionGradNodeCompat : public egr::GradNodeBase {
  public:
   fused_gate_attentionGradNodeCompat() : egr::GradNodeBase() {
@@ -257,9 +260,13 @@ class fused_feedforwardGradNodeCompat : public egr::GradNodeBase {
   }
   void SetTensorWrapperDropout2Out(
       const paddle::experimental::Tensor& Dropout2Out) {
+<<<<<<< HEAD
     auto pre_layer_norm = GetAttrWithDefault<bool>(
         attr_map_, default_attr_map_, "pre_layer_norm");
     Dropout2Out_ = egr::TensorWrapper(Dropout2Out, pre_layer_norm);
+=======
+    Dropout2Out_ = egr::TensorWrapper(Dropout2Out, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   void SetTensorWrapperLinear1Bias(
       const paddle::experimental::Tensor& Linear1Bias) {
@@ -446,27 +453,45 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
   }
   void SetTensorWrapperOutLinearOut(
       const paddle::experimental::Tensor& OutLinearOut) {
+<<<<<<< HEAD
     OutLinearOut_ = egr::TensorWrapper(OutLinearOut, true);
+=======
+    OutLinearOut_ = egr::TensorWrapper(OutLinearOut, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   void SetTensorWrapperOutLinearW(
       const paddle::experimental::Tensor& OutLinearW) {
     OutLinearW_ = egr::TensorWrapper(OutLinearW, false);
   }
   void SetTensorWrapperQKOut(const paddle::experimental::Tensor& QKOut) {
+<<<<<<< HEAD
     QKOut_ = egr::TensorWrapper(QKOut, true);
   }
   void SetTensorWrapperQKTVOut(const paddle::experimental::Tensor& QKTVOut) {
     QKTVOut_ = egr::TensorWrapper(QKTVOut, true);
+=======
+    QKOut_ = egr::TensorWrapper(QKOut, false);
+  }
+  void SetTensorWrapperQKTVOut(const paddle::experimental::Tensor& QKTVOut) {
+    QKTVOut_ = egr::TensorWrapper(QKTVOut, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   void SetTensorWrapperQKVBias(const paddle::experimental::Tensor& QKVBias) {
     QKVBias_ = egr::TensorWrapper(QKVBias, false);
   }
   void SetTensorWrapperQKVBiasOut(
       const paddle::experimental::Tensor& QKVBiasOut) {
+<<<<<<< HEAD
     QKVBiasOut_ = egr::TensorWrapper(QKVBiasOut, true);
   }
   void SetTensorWrapperQKVOut(const paddle::experimental::Tensor& QKVOut) {
     QKVOut_ = egr::TensorWrapper(QKVOut, true);
+=======
+    QKVBiasOut_ = egr::TensorWrapper(QKVBiasOut, false);
+  }
+  void SetTensorWrapperQKVOut(const paddle::experimental::Tensor& QKVOut) {
+    QKVOut_ = egr::TensorWrapper(QKVOut, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   void SetTensorWrapperQKVW(const paddle::experimental::Tensor& QKVW) {
     QKVW_ = egr::TensorWrapper(QKVW, false);
@@ -550,6 +575,7 @@ class fused_attentionGradNodeCompat : public egr::GradNodeBase {
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+<<<<<<< HEAD
 
 class fused_gemm_epilogueGradNodeCompat : public egr::GradNodeBase {
  public:
@@ -614,3 +640,5 @@ class fused_gemm_epilogueGradNodeCompat : public egr::GradNodeBase {
   paddle::framework::AttributeMap attr_map_;
   paddle::framework::AttributeMap default_attr_map_;
 };
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

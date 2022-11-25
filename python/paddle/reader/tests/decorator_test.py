@@ -23,6 +23,7 @@ __all__ = []
 
 
 def reader_creator_10(dur):
+
     def reader():
         for i in range(10):
             # this invocation helps testing paddle.reader.buffer
@@ -33,6 +34,7 @@ def reader_creator_10(dur):
 
 
 class TestMap(unittest.TestCase):
+
     def test_map(self):
         d = {"h": 0, "i": 1}
 
@@ -49,6 +51,7 @@ class TestMap(unittest.TestCase):
 
 
 class TestBuffered(unittest.TestCase):
+
     def test_read(self):
         for size in range(20):
             b = paddle.reader.buffered(reader_creator_10(0), size)
@@ -73,10 +76,16 @@ class TestBuffered(unittest.TestCase):
 
 
 class TestCompose(unittest.TestCase):
+
     def test_compse(self):
+<<<<<<< HEAD
         reader = paddle.reader.compose(
             reader_creator_10(0), reader_creator_10(0)
         )
+=======
+        reader = paddle.reader.compose(reader_creator_10(0),
+                                       reader_creator_10(0))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for idx, e in enumerate(reader()):
             self.assertEqual(e, (idx, idx))
 
@@ -94,11 +103,18 @@ class TestCompose(unittest.TestCase):
 
     def test_compose_not_aligned_no_check(self):
         total = 0
+<<<<<<< HEAD
         reader = paddle.reader.compose(
             paddle.reader.chain(reader_creator_10(0), reader_creator_10(0)),
             reader_creator_10(0),
             check_alignment=False,
         )
+=======
+        reader = paddle.reader.compose(paddle.reader.chain(
+            reader_creator_10(0), reader_creator_10(0)),
+                                       reader_creator_10(0),
+                                       check_alignment=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for e in reader():
             total += 1
         # expecting 10, not 20
@@ -106,6 +122,7 @@ class TestCompose(unittest.TestCase):
 
 
 class TestChain(unittest.TestCase):
+
     def test_chain(self):
         c = paddle.reader.chain(reader_creator_10(0), reader_creator_10(0))
         idx = 0
@@ -116,6 +133,7 @@ class TestChain(unittest.TestCase):
 
 
 class TestShuffle(unittest.TestCase):
+
     def test_shuffle(self):
         case = [(0, True), (1, True), (10, False), (100, False)]
         a = reader_creator_10(0)
@@ -130,7 +148,9 @@ class TestShuffle(unittest.TestCase):
 
 
 class TestXmap(unittest.TestCase):
+
     def test_xmap(self):
+
         def mapper(x):
             return x + 1
 
@@ -154,6 +174,7 @@ class TestXmap(unittest.TestCase):
 
 
 class TestMultiProcessReader(unittest.TestCase):
+
     def setup(self):
         self.samples = []
         for i in range(1000):

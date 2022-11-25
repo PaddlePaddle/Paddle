@@ -395,10 +395,16 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 
     const T* x_data = x->data<T>();
     const T* w_data = w->data<T>();
+<<<<<<< HEAD
 
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto* out_data = dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
 
+=======
+    T* out_data = out->mutable_data<T>(ctx.GetPlace());
+
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     blas.GEMM(false,
               false,
@@ -413,10 +419,17 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
               static_cast<T>(0.0),
               out_data,
               N);
+<<<<<<< HEAD
     auto* y = ctx.Input<phi::DenseTensor>("Y");
     auto* bias_0 = ctx.Input<phi::DenseTensor>("Bias0");
     auto* bias_1 = ctx.Input<phi::DenseTensor>("Bias1");
     auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+=======
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* bias_0 = ctx.Input<framework::Tensor>("Bias0");
+    auto* bias_1 = ctx.Input<framework::Tensor>("Bias1");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     const T* y_data = y->data<T>();
     const T* bias_0_data = bias_0 ? bias_0->data<T>() : nullptr;

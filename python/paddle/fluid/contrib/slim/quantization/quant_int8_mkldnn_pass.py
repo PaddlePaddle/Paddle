@@ -105,8 +105,12 @@ class QuantInt8MkldnnPass:
                 input_name = op_node.input("X")[0]
                 scale_name = op_node.input("Scale")[0]
                 self._in_scale[input_name] = self._load_param(
+<<<<<<< HEAD
                     self._scope, scale_name
                 )[0]
+=======
+                    self._scope, scale_name)[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._max_range[input_name] = op_node.op().attr("max_range")
                 self._new_output[input_name] = op_node.output("Out")[0]
 
@@ -116,8 +120,12 @@ class QuantInt8MkldnnPass:
                 input_name = op_node.input("X")[0]
                 scale_name = op_node.input("InScale")[0]
                 self._in_scale[input_name] = self._load_param(
+<<<<<<< HEAD
                     self._scope, scale_name
                 )[0]
+=======
+                    self._scope, scale_name)[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 #  self._max_range[input_name] = op_node.op().attr("max_range")
                 self._new_output[input_name] = op_node.output("Out")[0]
 
@@ -145,9 +153,14 @@ class QuantInt8MkldnnPass:
         output_name = op_node.output("Output")[0]
         # Convert int8 range weights to fp32 range weights
         weight = self._load_param(self._scope, weight_name)
+<<<<<<< HEAD
         w_fp32 = np.divide(
             np.multiply(weight, self._s8_max), self._max_range[output_name]
         )
+=======
+        w_fp32 = np.divide(np.multiply(weight, self._s8_max),
+                           self._max_range[output_name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(
@@ -163,12 +176,22 @@ class QuantInt8MkldnnPass:
             name: op_node.op().attr(name) for name in op_node.op().attr_names()
         }
 
+<<<<<<< HEAD
         conv_op_node = graph.create_op_node(
             op_type='conv2d',
             attrs=attrs,
             inputs={'Input': input_var_node, 'Filter': weight_var_node},
             outputs={'Output': output_var_node},
         )
+=======
+        conv_op_node = graph.create_op_node(op_type='conv2d',
+                                            attrs=attrs,
+                                            inputs={
+                                                'Input': input_var_node,
+                                                'Filter': weight_var_node
+                                            },
+                                            outputs={'Output': output_var_node})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Based on the Quant's scales to calculate the scales of MKL-DNN INT8 conv2d
         scale_in = self._s8_max / self._in_scale[output_name]
@@ -191,9 +214,14 @@ class QuantInt8MkldnnPass:
         output_name = op_node.output("Out")[0]
         # Convert int8 range weights to fp32 range weights
         weight = self._load_param(self._scope, weight_name)
+<<<<<<< HEAD
         w_fp32 = np.divide(
             np.multiply(weight, self._s8_max), self._max_range[output_name]
         )
+=======
+        w_fp32 = np.divide(np.multiply(weight, self._s8_max),
+                           self._max_range[output_name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         w_fp32 = w_fp32.reshape(weight.shape)
         self._restore_var(weight_name, w_fp32)
         input_var_node = graph._find_node_by_name(
@@ -209,12 +237,22 @@ class QuantInt8MkldnnPass:
             name: op_node.op().attr(name) for name in op_node.op().attr_names()
         }
 
+<<<<<<< HEAD
         mul_op_node = graph.create_op_node(
             op_type='mul',
             attrs=attrs,
             inputs={'X': input_var_node, 'Y': weight_var_node},
             outputs={'Out': output_var_node},
         )
+=======
+        mul_op_node = graph.create_op_node(op_type='mul',
+                                           attrs=attrs,
+                                           inputs={
+                                               'X': input_var_node,
+                                               'Y': weight_var_node
+                                           },
+                                           outputs={'Out': output_var_node})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Based on the Quant's scales to calculate MKL-DNN INT8 mul's scales
         scale_in = self._s8_max / self._in_scale[output_name]
@@ -235,6 +273,7 @@ class QuantInt8MkldnnPass:
         """
         Transform fake_quantize_xx op to quantize mkldnn op in the graph.
         """
+<<<<<<< HEAD
         input_var_node = graph._find_node_by_name(
             op_node.inputs, op_node.input("X")[0]
         )
@@ -245,6 +284,15 @@ class QuantInt8MkldnnPass:
             self._s8_max
             / self._load_param(self._scope, op_node.input("InScale")[0])[0]
         )
+=======
+        input_var_node = graph._find_node_by_name(op_node.inputs,
+                                                  op_node.input("X")[0])
+        output_var_node = graph._find_node_by_name(op_node.outputs,
+                                                   op_node.output("Out")[0])
+        scale_in = self._s8_max / self._load_param(
+            self._scope,
+            op_node.input("InScale")[0])[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         quant_op_node = graph.create_op_node(
             op_type='quantize',
             attrs={

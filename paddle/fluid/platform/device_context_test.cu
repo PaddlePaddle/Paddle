@@ -17,7 +17,10 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/dense_tensor.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 TEST(Device, Init) {
   using paddle::platform::CUDAPlace;

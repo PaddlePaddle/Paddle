@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/for_range.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/cholesky_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/for_range.h"

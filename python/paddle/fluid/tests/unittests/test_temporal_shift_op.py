@@ -41,6 +41,7 @@ def temporal_shift(x, seg_num, shift_ratio, data_format):
 
 
 class TestTemporalShift(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = 'temporal_shift'
@@ -78,6 +79,7 @@ class TestTemporalShift(OpTest):
 
 
 class TestTemporalShift2(TestTemporalShift):
+
     def initTestCase(self):
         self.x_shape = (4, 9, 7, 7)
         self.seg_num = 2
@@ -86,6 +88,7 @@ class TestTemporalShift2(TestTemporalShift):
 
 
 class TestTemporalShift3(TestTemporalShift):
+
     def initTestCase(self):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
@@ -94,6 +97,7 @@ class TestTemporalShift3(TestTemporalShift):
 
 
 class TestTemporalShift4(TestTemporalShift):
+
     def initTestCase(self):
         self.x_shape = (6, 5, 5, 4)
         self.seg_num = 3
@@ -105,6 +109,7 @@ class TestTemporalShift4(TestTemporalShift):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestTemporalShiftFP16(TestTemporalShift):
+
     def initTestCase(self):
         self.x_shape = (3, 10, 5, 5)
         self.seg_num = 1
@@ -124,8 +129,10 @@ class TestTemporalShiftFP16(TestTemporalShift):
 
 
 class TestTemporalShiftAPI(unittest.TestCase):
+
     def test_api(self):
         input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
         out = paddle.fluid.layers.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2
         )
@@ -133,20 +140,43 @@ class TestTemporalShiftAPI(unittest.TestCase):
         out_from_function = paddle.nn.functional.temporal_shift(
             x=input, seg_num=2, shift_ratio=0.2
         )
+=======
+        out = paddle.fluid.layers.temporal_shift(x=input,
+                                                 seg_num=2,
+                                                 shift_ratio=0.2)
+
+        out_from_function = paddle.nn.functional.temporal_shift(x=input,
+                                                                seg_num=2,
+                                                                shift_ratio=0.2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # dygraph
         with paddle.fluid.dygraph.guard():
             input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
             out = paddle.nn.functional.temporal_shift(
                 x=input, seg_num=2, shift_ratio=0.2
             )
+=======
+            out = paddle.nn.functional.temporal_shift(x=input,
+                                                      seg_num=2,
+                                                      shift_ratio=0.2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_error(self):
+
         def attr_data_format():
             input = paddle.randn([6, 4, 2, 2])
+<<<<<<< HEAD
             out = paddle.nn.functional.temporal_shift(
                 x=input, seg_num=2, shift_ratio=0.2, data_format="HWC"
             )
+=======
+            out = paddle.nn.functional.temporal_shift(x=input,
+                                                      seg_num=2,
+                                                      shift_ratio=0.2,
+                                                      data_format="HWC")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, attr_data_format)
 

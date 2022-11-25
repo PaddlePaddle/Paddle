@@ -108,6 +108,7 @@ void DenseToCooKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename IntT>
+<<<<<<< HEAD
 void CsrToCooCPUKernel(const CPUContext& dev_ctx,
                        const SparseCsrTensor& x,
                        SparseCooTensor* out) {
@@ -116,6 +117,16 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
   const auto& csr_crows = x.crows();
   const auto& csr_cols = x.cols();
   const auto& csr_values = x.values();
+=======
+void SparseCsrToCooCPUKernel(const CPUContext& dev_ctx,
+                             const SparseCsrTensor& x,
+                             SparseCooTensor* out) {
+  const DDim& x_dims = x.dims();
+  const int64_t non_zero_num = x.non_zero_cols().numel();
+  const auto& csr_crows = x.non_zero_crows();
+  const auto& csr_cols = x.non_zero_cols();
+  const auto& csr_values = x.non_zero_elements();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const IntT* csr_crows_data = csr_crows.data<IntT>();
   const IntT* csr_cols_data = csr_cols.data<IntT>();
   const T* csr_values_data = csr_values.data<T>();
@@ -158,6 +169,7 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CsrToCooKernel(const Context& dev_ctx,
                     const SparseCsrTensor& x,
                     SparseCooTensor* out) {
@@ -170,6 +182,21 @@ template <typename T, typename IntT>
 void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                        const SparseCooTensor& x,
                        SparseCsrTensor* out) {
+=======
+void SparseCsrToCooKernel(const Context& dev_ctx,
+                          const SparseCsrTensor& x,
+                          SparseCooTensor* out) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_crows().dtype(), "SparseCsrToCooCPUKernel", ([&] {
+        SparseCsrToCooCPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
+}
+
+template <typename T, typename IntT>
+void SparseCooToCsrCPUKernel(const CPUContext& dev_ctx,
+                             const SparseCooTensor& x,
+                             SparseCsrTensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const auto& x_dims = x.dims();
   bool valid = x_dims.size() == 2 || x_dims.size() == 3;
   PADDLE_ENFORCE_EQ(valid,
@@ -182,6 +209,7 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
+<<<<<<< HEAD
   phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
   phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
@@ -191,6 +219,22 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
 
   const auto& coo_indices = x.indices();
   const auto& coo_values = x.values();
+=======
+  phi::DenseTensor non_zero_crows;
+  non_zero_crows.Resize({batchs * (rows + 1)});
+  IntT* csr_crows_data = dev_ctx.template Alloc<IntT>(&non_zero_crows);
+
+  phi::DenseTensor non_zero_cols;
+  non_zero_cols.Resize({non_zero_num});
+  IntT* csr_cols_data = dev_ctx.template Alloc<IntT>(&non_zero_cols);
+
+  phi::DenseTensor non_zero_elements;
+  non_zero_elements.Resize({non_zero_num});
+  T* csr_values_data = dev_ctx.template Alloc<T>(&non_zero_elements);
+
+  const auto& coo_indices = x.non_zero_indices();
+  const auto& coo_values = x.non_zero_elements();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const IntT* batchs_ptr = coo_indices.data<IntT>();
   const IntT* coo_rows_data =
       x_dims.size() == 2 ? batchs_ptr : batchs_ptr + non_zero_num;
@@ -242,6 +286,7 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CooToCsrKernel(const Context& dev_ctx,
                     const SparseCooTensor& x,
                     SparseCsrTensor* out) {
@@ -254,6 +299,21 @@ template <typename T, typename IntT>
 void CooToDenseCPUKernel(const CPUContext& dev_ctx,
                          const SparseCooTensor& x,
                          DenseTensor* out) {
+=======
+void SparseCooToCsrKernel(const Context& dev_ctx,
+                          const SparseCooTensor& x,
+                          SparseCsrTensor* out) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "SparseCooToCsrCPUKernel", ([&] {
+        SparseCooToCsrCPUKernel<T, data_t>(dev_ctx, x, out);
+      }));
+}
+
+template <typename T, typename IntT>
+void SparseCooToDenseCPUKernel(const CPUContext& dev_ctx,
+                               const SparseCooTensor& x,
+                               DenseTensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const auto non_zero_num = x.nnz();
   const auto dense_dims = x.dims();
   const auto indices = x.indices();
@@ -293,12 +353,21 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void CooToDenseKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       DenseTensor* out) {
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "CooToDenseCPUKernel", ([&] {
         CooToDenseCPUKernel<T, data_t>(dev_ctx, x, out);
+=======
+void SparseCooToDenseKernel(const Context& dev_ctx,
+                            const SparseCooTensor& x,
+                            DenseTensor* out) {
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "SparseCooToDenseCPUKernel", ([&] {
+        SparseCooToDenseCPUKernel<T, data_t>(dev_ctx, x, out);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       }));
 }
 

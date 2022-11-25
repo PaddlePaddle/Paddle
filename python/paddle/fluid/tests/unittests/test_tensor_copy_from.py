@@ -19,6 +19,7 @@ from paddle.fluid.core import LoDTensor as Tensor
 
 
 class TestTensorCopyFrom(unittest.TestCase):
+
     def test_main(self):
         place = paddle.CPUPlace()
         np_value = np.random.random(size=[10, 30]).astype('float32')

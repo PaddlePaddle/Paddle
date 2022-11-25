@@ -20,6 +20,11 @@ namespace paddle {
 namespace platform {
 
 static const char* kDefaultFilename = "pid_%s_time_%s.paddle_trace.pb";
+<<<<<<< HEAD
+=======
+static const char* version = "1.0.1";
+static uint32_t span_indx = 0;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 static std::string DefaultFileName() {
   auto pid = GetProcessId();

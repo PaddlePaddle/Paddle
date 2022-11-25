@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
+<<<<<<< HEAD
 from typing import Any, Dict, List
 
 
 class TrtConvertSplitTest(TrtLayerAutoScanTest):
+=======
+from typing import Optional, List, Callable, Dict, Any, Set
+
+
+class TrtConvertSplitTest(TrtLayerAutoScanTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -39,6 +51,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     self.dims = dims
                     self.axes = axes
                     dics = [{"axes": axes}]
+<<<<<<< HEAD
                     ops_config = [
                         {
                             "op_type": "squeeze2",
@@ -58,6 +71,27 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     if max(new_axes) >= dims:
                         continue
                     # generate input data
+=======
+                    ops_config = [{
+                        "op_type": "squeeze2",
+                        "op_inputs": {
+                            "X": ["in_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["out_data"],
+                            "XShape": ["XShape_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    # new_axes is the update of axes
+                    new_axes = list(axes)
+                    for i in range(len(new_axes)):
+                        if (new_axes[i] < 0):
+                            new_axes[i] += dims
+                    if (max(new_axes) >= dims):
+                        continue
+                # generate input data
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     self.input_shape = [1] * dims
                     for i in range(dims):
                         self.input_shape[i] = np.random.randint(1, 20)
@@ -67,26 +101,43 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                         for i in new_axes:
                             self.input_shape[i] = 1
                         return np.random.random(self.input_shape).astype(
+<<<<<<< HEAD
                             np.float32
                         )
+=======
+                            np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     ops = self.generate_op_config(ops_config)
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "in_data": TensorConfig(
                                 data_gen=partial(generate_input1, dics, batch)
                             )
                         },
                         outputs=["out_data"],
                     )
+=======
+                            "in_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch))
+                        },
+                        outputs=["out_data"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             max_shape = list(self.input_shape)
             min_shape = list(self.input_shape)
@@ -113,23 +164,37 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-3
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
         pass

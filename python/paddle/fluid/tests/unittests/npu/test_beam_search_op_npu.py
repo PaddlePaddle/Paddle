@@ -25,6 +25,7 @@ paddle.enable_static()
 
 
 class TestBeamSearchNPUOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -56,6 +57,7 @@ class TestBeamSearchNPUOp(OpTest):
         self.beam_size = 2
         self.is_accumulated = True
         self.pre_ids = np.array([[1], [2], [3], [4]], dtype='int64')
+<<<<<<< HEAD
         self.ids = np.array(
             [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64'
         )
@@ -71,6 +73,20 @@ class TestBeamSearchNPUOp(OpTest):
             ],
             dtype='float32',
         )
+=======
+        self.ids = np.array([[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]],
+                            dtype='int64')
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [1, 1, 1, 1]]
+        self.offset_lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
+        self.score = np.array([
+            [0.5, 0.3, 0.2],
+            [0.6, 0.3, 0.1],
+            [0.9, 0.5, 0.1],
+            [0.7, 0.5, 0.1],
+        ],
+                              dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([4, 2, 3, 8])[:, np.newaxis]
         self.selected_scores = np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]
@@ -81,6 +97,7 @@ class TestBeamSearchNPUOp(OpTest):
 
 
 class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
+
     def init_data(self):
         self.beam_size = 2
         self.is_accumulated = True
@@ -89,6 +106,7 @@ class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [2, 0, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 2, 2, 3, 4]]
+<<<<<<< HEAD
         self.score = np.array(
             [
                 [0.6, 0.9],
@@ -98,6 +116,15 @@ class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
             ],
             dtype='float32',
         )
+=======
+        self.score = np.array([
+            [0.6, 0.9],
+            [0.5, 0.3],
+            [0.9, 0.5],
+            [0.1, 0.7],
+        ],
+                              dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([4, 2, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.6, 0.9, 0.9, 0.7])[:, np.newaxis]
@@ -105,6 +132,7 @@ class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
 
 
 class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
+
     def init_data(self):
         # end_id = 0
         self.beam_size = 2
@@ -114,6 +142,7 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [1, 1, 0, 2]]
         self.offset_lod = [[0, 2, 4], [0, 1, 2, 2, 4]]
+<<<<<<< HEAD
         self.score = np.array(
             [
                 [0.6, 0.9],
@@ -123,6 +152,15 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
             ],
             dtype='float32',
         )
+=======
+        self.score = np.array([
+            [0.6, 0.9],
+            [0.5, 0.3],
+            [0.9, 0.5],
+            [0.6, 0.7],
+        ],
+                              dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.pre_score = np.array([[0.1], [1.2], [0.5], [0.4]], dtype='float32')
         self.selected_ids = np.array([2, 0, 8, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.9, 1.2, 0.6, 0.7])[:, np.newaxis]
@@ -130,6 +168,7 @@ class TestBeamSearchNPUOp3(TestBeamSearchNPUOp):
 
 
 class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
+
     def init_data(self):
         # is_accumulated = False
         self.beam_size = 2
@@ -139,6 +178,7 @@ class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
         self.lod = [[2, 2], [1, 1, 1, 1]]
         self.out_lod = [[2, 2], [0, 2, 1, 1]]
         self.offset_lod = [[0, 2, 4], [0, 0, 2, 3, 4]]
+<<<<<<< HEAD
         self.score = np.array(
             [
                 [0.6, 0.9],
@@ -153,10 +193,24 @@ class TestBeamSearchNPUOp4(TestBeamSearchNPUOp):
         self.selected_scores = np.array(
             [1.50685, 0.996027, 0.194639, 0.043325]
         )[:, np.newaxis]
+=======
+        self.score = np.array([
+            [0.6, 0.9],
+            [0.5, 0.3],
+            [0.9, 0.5],
+            [0.1, 0.7],
+        ],
+                              dtype='float32')
+        self.pre_score = np.array([[0.1], [2.2], [0.3], [0.4]], dtype='float32')
+        self.selected_ids = np.array([7, 3, 3, 1])[:, np.newaxis]
+        self.selected_scores = np.array([1.50685, 0.996027, 0.194639,
+                                         0.043325])[:, np.newaxis]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.parent_idx = np.array([1, 1, 2, 3])
 
 
 class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
+
     def init_data(self):
         # beam_size = 1
         self.beam_size = 1
@@ -166,6 +220,7 @@ class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
         self.lod = [[1, 1, 1, 1], [1, 1, 1, 1]]
         self.out_lod = [[1, 1, 1, 1], [1, 1, 1, 1]]
         self.offset_lod = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4]]
+<<<<<<< HEAD
         self.score = np.array(
             [
                 [0.6, 0.9],
@@ -175,6 +230,15 @@ class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
             ],
             dtype='float32',
         )
+=======
+        self.score = np.array([
+            [0.6, 0.9],
+            [0.5, 0.3],
+            [0.9, 0.5],
+            [0.1, 0.7],
+        ],
+                              dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.pre_score = np.array([[0.1], [0.2], [0.3], [0.4]], dtype='float32')
         self.selected_ids = np.array([2, 7, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.9, 0.5, 0.9, 0.7])[:, np.newaxis]

@@ -19,7 +19,12 @@ from paddle.static import Program, Variable
 __all__ = []
 
 
+<<<<<<< HEAD
 class VarWrapper:
+=======
+class VarWrapper(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, var, graph):
         assert isinstance(var, Variable)
         assert isinstance(graph, GraphWrapper)
@@ -39,7 +44,12 @@ class VarWrapper:
         return self._var.shape
 
 
+<<<<<<< HEAD
 class OpWrapper:
+=======
+class OpWrapper(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, op, graph):
         assert isinstance(graph, GraphWrapper)
         self._op = op
@@ -208,7 +218,12 @@ def static_flops(program, print_detail=False):
     return _graph_flops(graph, detail=print_detail)
 
 
+<<<<<<< HEAD
 class Table:
+=======
+class Table(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, table_heads):
         self.table_heads = table_heads
         self.table_len = []
@@ -222,10 +237,15 @@ class Table:
             print('The row_str should be a list')
         if len(row_str) != self.col_num:
             print(
+<<<<<<< HEAD
                 'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'.format(
                     len(row_str), self.col_num
                 )
             )
+=======
+                'The length of row data should be equal the length of table heads, but the data: {} is not equal table heads {}'
+                .format(len(row_str), self.col_num))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for i in range(self.col_num):
             if len(str(row_str[i])) > self.table_len[i]:
                 self.table_len[i] = len(str(row_str[i]))

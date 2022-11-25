@@ -132,12 +132,19 @@ def shape(input):
     )
     helper = LayerHelper('shape', **locals())
     out = helper.create_variable_for_type_inference(dtype='int32')
+<<<<<<< HEAD
     helper.append_op(
         type='shape',
         inputs={'Input': input},
         outputs={'Out': out},
         stop_gradient=True,
     )
+=======
+    helper.append_op(type='shape',
+                     inputs={'Input': input},
+                     outputs={'Out': out},
+                     stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return out
 
@@ -173,10 +180,15 @@ def is_complex(x):
             "Expected Tensor, but received type of x: {}".format(type(x))
         )
     dtype = x.dtype
+<<<<<<< HEAD
     is_complex_dtype = (
         dtype == core.VarDesc.VarType.COMPLEX64
         or dtype == core.VarDesc.VarType.COMPLEX128
     )
+=======
+    is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64
+                        or dtype == core.VarDesc.VarType.COMPLEX128)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return is_complex_dtype
 
 
@@ -207,12 +219,19 @@ def is_floating_point(x):
             "Expected Tensor, but received type of x: {}".format(type(x))
         )
     dtype = x.dtype
+<<<<<<< HEAD
     is_fp_dtype = (
         dtype == core.VarDesc.VarType.FP32
         or dtype == core.VarDesc.VarType.FP64
         or dtype == core.VarDesc.VarType.FP16
         or dtype == core.VarDesc.VarType.BF16
     )
+=======
+    is_fp_dtype = (dtype == core.VarDesc.VarType.FP32
+                   or dtype == core.VarDesc.VarType.FP64
+                   or dtype == core.VarDesc.VarType.FP16
+                   or dtype == core.VarDesc.VarType.BF16)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return is_fp_dtype
 
 
@@ -247,6 +266,7 @@ def is_integer(x):
             "Expected Tensor, but received type of x: {}".format(type(x))
         )
     dtype = x.dtype
+<<<<<<< HEAD
     is_int_dtype = (
         dtype == core.VarDesc.VarType.UINT8
         or dtype == core.VarDesc.VarType.INT8
@@ -254,6 +274,13 @@ def is_integer(x):
         or dtype == core.VarDesc.VarType.INT32
         or dtype == core.VarDesc.VarType.INT64
     )
+=======
+    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8
+                    or dtype == core.VarDesc.VarType.INT8
+                    or dtype == core.VarDesc.VarType.INT16
+                    or dtype == core.VarDesc.VarType.INT32
+                    or dtype == core.VarDesc.VarType.INT64)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return is_int_dtype
 
 

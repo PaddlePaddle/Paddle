@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestMean(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -36,9 +37,15 @@ class TestMean(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = self.op(x, **self.attrs)
         self.fetch_list = [out.name]
 
@@ -122,21 +129,33 @@ class TestMean(IPUOpTest):
 
 
 class TestMax(TestMean):
+
     def set_test_op(self):
         self.op = paddle.max
 
 
 class TestMin(TestMean):
+
     def set_test_op(self):
         self.op = paddle.min
 
 
+<<<<<<< HEAD
 class TestSum(TestMean):
+=======
+class TestProd(TestMean):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_sum
 
 
+<<<<<<< HEAD
 class TestLogsumexp(TestMean):
+=======
+class TestSum(TestMean):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_test_op(self):
         self.op = paddle.logsumexp
 
@@ -183,6 +202,60 @@ class TestAll(TestMean):
 
 
 class TestAny(TestAll):
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_any
+
+
+class TestLogsumexp(TestMean):
+
+    def set_test_op(self):
+        self.op = paddle.logsumexp
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        if 'dim' in self.attrs:
+            self.attrs['axis'] = self.attrs['dim']
+            del self.attrs['dim']
+        if 'keep_dim' in self.attrs:
+            self.attrs['keepdim'] = self.attrs['keep_dim']
+            del self.attrs['keep_dim']
+        out = self.op(x, **self.attrs)
+        self.fetch_list = [out.name]
+
+
+class TestAll(TestMean):
+
+    @property
+    def fp16_enabled(self):
+        return False
+
+    def set_data_feed0(self):
+        data = np.random.choice(a=[False, True], size=(2, 4))
+        self.feed_fp32 = {"in_0": data.astype(bool)}
+        self.set_feed_attr()
+
+    def set_data_feed1(self):
+        data = np.random.choice(a=[False, True], size=(2, 2, 2))
+        self.feed_fp32 = {"in_0": data.astype(bool)}
+        self.set_feed_attr()
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='bool')
+        out = self.op(x, **self.attrs)
+        self.fetch_list = [out.name]
+
+    def set_test_op(self):
+        self.op = paddle.fluid.layers.reduce_all
+
+
+class TestAny(TestAll):
+
     def set_test_op(self):
         self.op = paddle.fluid.layers.reduce_any
 

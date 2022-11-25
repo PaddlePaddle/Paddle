@@ -30,9 +30,14 @@ np.random.seed(0)
 def generator():
     batch_size = 5
     for i in range(5):
+<<<<<<< HEAD
         curr_train_x = np.random.randint(
             batch_size, size=(batch_size, 3)
         ).astype("float32")
+=======
+        curr_train_x = np.random.randint(batch_size,
+                                         size=(batch_size, 3)).astype("float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if i >= 2:
             curr_train_x[0, :] = np.nan
             curr_train_x[-1, :] = np.inf
@@ -90,6 +95,7 @@ def check(use_cuda):
             for train_data, y_label in generator():
                 outs = exe.run(
                     main,
+<<<<<<< HEAD
                     feed={'x': train_data, 'y': y_label},
                     fetch_list=[y_predict.name, avg_cost.name, acc_top1.name],
                 )
@@ -99,6 +105,16 @@ def check(use_cuda):
                         step, outs[1][0], outs[2][0]
                     )
                 )
+=======
+                    feed={
+                        'x': train_data,
+                        'y': y_label
+                    },
+                    fetch_list=[y_predict.name, avg_cost.name, acc_top1.name])
+                step += 1
+                print('iter={:.0f},cost={},acc1={}'.format(
+                    step, outs[1][0], outs[2][0]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

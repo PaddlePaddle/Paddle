@@ -27,11 +27,19 @@ paddle.enable_static()
 
 
 class TestQuantizationSubGraph(unittest.TestCase):
+
     def build_graph_with_sub_graph(self):
+
         def linear_fc(num):
+<<<<<<< HEAD
             data = fluid.layers.data(
                 name='image', shape=[1, 32, 32], dtype='float32'
             )
+=======
+            data = fluid.layers.data(name='image',
+                                     shape=[1, 32, 32],
+                                     dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             hidden = data
             for _ in range(num):

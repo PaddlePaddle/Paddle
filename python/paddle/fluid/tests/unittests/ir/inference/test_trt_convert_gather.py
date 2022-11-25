@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         attrs = [
@@ -33,6 +34,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(shape):
             return np.random.random(shape).astype(np.float32)
 
@@ -54,6 +56,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                             {
                                 "X": ["input_data"],
                                 "Index": ["index_data"],
+<<<<<<< HEAD
                                 "Axis": ["axis_data"],
                             },
                         ]:
@@ -117,6 +120,52 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+                                "Axis": ["axis_data"]
+                        }]:
+                            self.shape = shape
+                            self.axis = axis
+                            self.input_num = len(input)
+                            dics = [{"overwrite": overwrite, "axis": axis}]
+                            ops_config = [{
+                                "op_type": "gather",
+                                "op_inputs": input,
+                                "op_outputs": {
+                                    "Out": ["output_data"]
+                                },
+                                "op_attrs": dics[0]
+                            }]
+                            ops = self.generate_op_config(ops_config)
+
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs={
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, shape)),
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input2, index)),
+                                } if len(input) == 2 else {
+                                    "input_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input1, shape)),
+                                    "index_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input2, index)),
+                                    "axis_data":
+                                    TensorConfig(data_gen=partial(
+                                        generate_input3, axis)),
+                                },
+                                outputs=["output_data"])
+
+                            yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if len(self.shape) == 1:
                 self.dynamic_shape.min_input_shape = {
@@ -214,10 +263,15 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             def teller1(program_config, predictor_config):
                 if len(self.dynamic_shape.min_input_shape) != 0:
                     inputs = program_config.inputs
+<<<<<<< HEAD
                     if (
                         len(inputs['input_data'].shape) == 1
                         or len(inputs['index_data'].shape) == 1
                     ):
+=======
+                    if len(inputs['input_data'].shape) == 1 or len(
+                            inputs['index_data'].shape) == 1:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         return True
                 return False
 

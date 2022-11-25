@@ -11,6 +11,11 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -23,7 +28,11 @@
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+<<<<<<< HEAD
 #include "paddle/fluid/inference/analysis/ir_passes/dlnne_subgraph_pass.h"
+=======
+#include "paddle/fluid/inference/analysis/ir_passes/dlnne_reg_py.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -221,16 +230,22 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
   InferShapeForDlnneMainGraph();
 
   static std::unordered_set<std::string> teller_set{
+<<<<<<< HEAD
       "nearest_interp_v2",
       "mul",
       "matmul",
       "matmul_v2",
       "flatten_contiguous_range",
+=======
+      "mul",
+      "matmul",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       "conv2d",
       "pool2d",
       "relu",
       "softmax",
       "sigmoid",
+<<<<<<< HEAD
       "softplus",
       "hard_swish",
       "hard_sigmoid",
@@ -240,10 +255,17 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       "concat",
       "clip",
       "cast",
+=======
+      "hard_swish",
+      "depthwise_conv2d",
+      "batch_norm",
+      "concat",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       "tanh",
       "pad",
       "elementwise_add",
       "elementwise_mul",
+<<<<<<< HEAD
       "elementwise_sub",
       "elementwise_div",
       "elementwise_pow",
@@ -264,11 +286,27 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       "scale",
       "slice",
       "stack",
+=======
+      "dropout",
+      "prelu",
+      "conv2d_transpose",
+      "leaky_relu",
+      // "fc",
+      "shuffle_channel",
+      "swish",
+      "split",
+      // "instance_norm",
+      "gelu",
+      // "layer_norm",
+      // "scale",
+      // "stack",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       "relu6",
       "reshape2",
       "transpose2",
       "concat",
       "slice",
+<<<<<<< HEAD
       "fill_constant",
       "fill_constant_batch_size_like",
       "shape",
@@ -277,6 +315,8 @@ void analysis::DlnneSubgraphPass::ApplyImpl(framework::ir::Graph *graph) const {
       "squeeze2",
       "bilinear_interp_v2"
       // "yolo_box"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   };
 
   // the op which output is special, need special process
@@ -604,9 +644,16 @@ void DlnneSubgraphPass::CreateDlnneOp(
   op_desc->SetOutput("Ys",
                      std::vector<std::string>(valid_output_names.begin(),
                                               valid_output_names.end()));
+<<<<<<< HEAD
   op_desc->SetBlockAttr("sub_block", child_block);
 
   op_desc->SetAttr("parameters", params);
+=======
+
+  op_desc->SetAttr("parameters", params);
+  auto engine_key = GenerateEngineKey(
+      input_names_with_id, output_names_with_id, std::to_string(0));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   op_desc->SetAttr("engine_key", engine_key);
   op_desc->SetAttr("max_batch_size", Get<int>("max_batch_size"));
   op_desc->SetAttr("use_static_batch", Get<bool>("use_static_batch"));

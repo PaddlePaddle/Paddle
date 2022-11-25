@@ -115,6 +115,7 @@ class Lamb(Optimizer):
         assert beta1 is not None
         assert beta2 is not None
         assert epsilon is not None
+<<<<<<< HEAD
         super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
@@ -122,6 +123,13 @@ class Lamb(Optimizer):
             grad_clip=grad_clip,
             name=name,
         )
+=======
+        super(Lamb, self).__init__(learning_rate=learning_rate,
+                                   parameters=parameters,
+                                   weight_decay=None,
+                                   grad_clip=grad_clip,
+                                   name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.type = "lamb"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -164,6 +172,7 @@ class Lamb(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
+<<<<<<< HEAD
             var = layers.create_global_var(
                 name=var_name,
                 shape=param.shape,
@@ -181,6 +190,21 @@ class Lamb(Optimizer):
                     "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
+=======
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._master_weights[param.name] = var
         return var
 
@@ -214,6 +238,7 @@ class Lamb(Optimizer):
             self._master_weights[param.name] if find_master else param
         )
         target_name = target_param.name
+<<<<<<< HEAD
         if (
             name not in self._accumulators
             or target_name not in self._accumulators[name]
@@ -223,6 +248,13 @@ class Lamb(Optimizer):
                     name, target_name
                 )
             )
+=======
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -375,6 +407,7 @@ class Lamb(Optimizer):
         if found_inf:
             inputs["SkipUpdate"] = found_inf
 
+<<<<<<< HEAD
         lamb_op = block.append_op(
             type=self.type,
             inputs=inputs,
@@ -382,6 +415,13 @@ class Lamb(Optimizer):
             attrs=attrs,
             stop_gradient=True,
         )
+=======
+        lamb_op = block.append_op(type=self.type,
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  attrs=attrs,
+                                  stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return lamb_op
 

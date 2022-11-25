@@ -142,6 +142,7 @@ class FleetWrapper {
 
   // Pull sparse variables from server in sync mode
   // pull immediately to tensors
+<<<<<<< HEAD
   void PullSparseToTensorSync(
       const uint64_t table_id,
       int fea_dim,
@@ -149,6 +150,14 @@ class FleetWrapper {
       platform::Place place,
       std::vector<const phi::DenseTensor*>* inputs,  // NOLINT
       std::vector<phi::DenseTensor*>* outputs);      // NOLINT
+=======
+  void PullSparseToTensorSync(const uint64_t table_id,
+                              int fea_dim,
+                              uint64_t padding_id,
+                              platform::Place place,
+                              std::vector<const LoDTensor*>* inputs,  // NOLINT
+                              std::vector<LoDTensor*>* outputs);      // NOLINT
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   // pull dense variables from server in sync mod
   // Param<in>: scope, table_id, var_names
@@ -299,7 +308,11 @@ class FleetWrapper {
   // flush all push requests
   void ClientFlush();
   // load from paddle model
+<<<<<<< HEAD
   void LoadFromPaddleModel(Scope& scope,             // NOLINT
+=======
+  void LoadFromPaddleModel(Scope& scope,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                            const uint64_t table_id,  // NOLINT
                            std::vector<std::string> var_list,
                            std::string model_path,

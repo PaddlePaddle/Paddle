@@ -17,6 +17,7 @@ import paddle
 
 import re
 import sys
+<<<<<<< HEAD
 from spectral_op_np import (
     fft_c2c,
     fft_r2c,
@@ -26,6 +27,14 @@ from spectral_op_np import (
     fft_c2r_backward,
 )
 from paddle import _C_ops
+=======
+from spectral_op_np import fft_c2c, fft_r2c, fft_c2r
+import paddle.fluid.core as core
+import paddle.fluid.dygraph as dg
+import paddle.static as static
+from numpy.random import random as rand
+from paddle.fluid import Program, program_guard
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 sys.path.append("../")
 from op_test import OpTest
@@ -76,12 +85,32 @@ def class_name(cls, num, params_dict):
     return "{}_{}{}".format(cls.__name__, num, suffix and "_" + suffix)
 
 
+<<<<<<< HEAD
 def fft_c2c_python_api(x, axes, norm, forward):
     return _C_ops.fft_c2c(x, axes, norm, forward)
 
 
 def fft_r2c_python_api(x, axes, norm, forward, onesided):
     return _C_ops.fft_r2c(x, axes, norm, forward, onesided)
+=======
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward'),
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True),
+     ('test_axis_not_last', (np.random.random(
+         (4, 4, 4)) + 1j * np.random.random(
+             (4, 4, 4))).astype(np.complex128), (0, 1), "backward", False),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True)])
+class TestFFTC2COp(OpTest):
+    # Because framwork not support complex numerial gradient, we skip gradient check.
+    no_need_check_grad = True
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def fft_c2r_python_api(x, axes, norm, forward, last_dim_size=0):
@@ -176,6 +205,7 @@ class TestFFTC2COp(OpTest):
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'last_dim_size'),
+<<<<<<< HEAD
     [
         (
             'test_axes_is_sqe_type',
@@ -230,6 +260,24 @@ class TestFFTC2COp(OpTest):
     ],
 )
 class TestFFTC2ROp(OpTest):
+=======
+    [('test_axes_is_sqe_type', (np.random.random(
+        (12, 14)) + 1j * np.random.random(
+            (12, 14))).astype(np.complex128), [0, 1], 'forward', True, 26),
+     ('test_axis_not_last', (np.random.random(
+         (4, 4, 4)) + 1j * np.random.random((4, 4, 4))).astype(np.complex128),
+      (0, 1), "backward", False, None),
+     ('test_norm_forward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "forward", False, 22),
+     ('test_norm_backward', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (0, ), "backward", True, 22),
+     ('test_norm_ortho', (np.random.random((12, 14)) + 1j * np.random.random(
+         (12, 14))).astype(np.complex128), (1, ), "ortho", True, 26)])
+class TestFFTC2ROp(OpTest):
+    # Because framwork not support complex numerial gradient, we skip gradient check.
+    no_need_check_grad = True
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "fft_c2r"
         self.dtype = self.x.dtype
@@ -273,6 +321,7 @@ class TestFFTC2ROp(OpTest):
 
 @parameterize(
     (TEST_CASE_NAME, 'x', 'axes', 'norm', 'forward', 'onesided'),
+<<<<<<< HEAD
     [
         (
             'test_axes_is_sqe_type',
@@ -317,6 +366,22 @@ class TestFFTC2ROp(OpTest):
     ],
 )
 class TestFFTR2COp(OpTest):
+=======
+    [('test_axes_is_sqe_type', np.random.randn(12, 14).astype(np.float64),
+      (0, 1), 'forward', True, True),
+     ('test_axis_not_last', np.random.randn(4, 4, 4).astype(np.float64),
+      (0, 1), "backward", False, True),
+     ('test_norm_forward', np.random.randn(12, 14).astype(np.float64),
+      (0, 1), "forward", False, False),
+     ('test_norm_backward', np.random.randn(12, 14).astype(np.float64),
+      (0, ), "backward", True, False),
+     ('test_norm_ortho', np.random.randn(12, 14).astype(np.float64),
+      (1, ), "ortho", True, False)])
+class TestFFTR2COp(OpTest):
+    # Because framwork not support complex numerial gradient, we skip gradient check.
+    no_need_check_grad = True
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "fft_r2c"
         self.dtype = self.x.dtype

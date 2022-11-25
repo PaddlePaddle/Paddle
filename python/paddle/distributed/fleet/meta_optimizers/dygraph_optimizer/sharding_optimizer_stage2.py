@@ -113,9 +113,14 @@ class ShardingOptimizerStage2(Optimizer):
             > 0
         )
 
+<<<<<<< HEAD
         self.group = (
             new_group(_get_global_group().ranks) if group is None else group
         )
+=======
+        self.group = new_group(
+            _get_global_group().ranks) if group is None else group
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.world_size = self.group.nranks
         self.rank = self.group.rank
@@ -140,10 +145,15 @@ class ShardingOptimizerStage2(Optimizer):
                 for item in self._optim._param_groups:
                     if "grad_clip" in item.keys():
                         item["grad_clip"] = ShardingClipGrad(
+<<<<<<< HEAD
                             self._optim._grad_clip,
                             paddle.get_device(),
                             self.group,
                         )
+=======
+                            self._optim._grad_clip, paddle.get_device(),
+                            self.group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if offload:
             assert (
@@ -169,9 +179,16 @@ class ShardingOptimizerStage2(Optimizer):
         """
 
         for p in self._local_params:
+<<<<<<< HEAD
             dist.broadcast(
                 p, src=self._global_root_rank, group=self.group, sync_op=True
             )
+=======
+            broadcast(p,
+                      src=self._global_root_rank,
+                      group=self.group,
+                      use_calc_stream=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Multi stream operation will be supported later
         wait(tensor=p, group=self.group, use_calc_stream=True)
@@ -248,9 +265,14 @@ class ShardingOptimizerStage2(Optimizer):
                     self._dtype_rank_params[param.dtype] = [
                         [] for _ in range(self.world_size)
                     ]
+<<<<<<< HEAD
                 self._dtype_rank_params[param.dtype][
                     self.param2rank[param.name]
                 ].append(param)
+=======
+                self._dtype_rank_params[param.dtype][self.param2rank[
+                    param.name]].append(param)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # Sort per rank params by size
             for dtype in self._dtype_rank_params.keys():
@@ -421,10 +443,15 @@ class ShardingOptimizerStage2(Optimizer):
             for param in self._local_params:
                 if param.name in self._master_params.keys():
                     param.set_value(
+<<<<<<< HEAD
                         self._master_params[param.name]
                         .cuda(dev_id)
                         .cast(dtype=param.dtype)
                     )
+=======
+                        self._master_params[param.name].cuda(dev_id).cast(
+                            dtype=param.dtype))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self._optim.step()
 
@@ -456,6 +483,7 @@ class ShardingOptimizerStage2(Optimizer):
         # Exchange all the shards with the other ranks
         for dtype_per_rank in self.param_storages.values():
             for dst_rank, internal_storage in dtype_per_rank.items():
+<<<<<<< HEAD
                 dist.broadcast(
                     tensor=internal_storage.buffer,
                     src=self.group.ranks[dst_rank],
@@ -469,3 +497,14 @@ class ShardingOptimizerStage2(Optimizer):
                 group=self.group,
                 use_calc_stream=True,
             )
+=======
+                broadcast(tensor=internal_storage.buffer,
+                          src=self.group.ranks[dst_rank],
+                          group=self.group,
+                          use_calc_stream=True)
+
+            # Multi stream operation will be supported later
+            wait(tensor=internal_storage.buffer,
+                 group=self.group,
+                 use_calc_stream=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

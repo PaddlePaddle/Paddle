@@ -103,14 +103,23 @@ def calculate_density(x):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
             import paddle
             import numpy as np
+=======
+          import paddle
+          import numpy as np
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             x = np.array([[0, 1, 3, 0],
                         [1, 1, 0, 1]])
+<<<<<<< HEAD
             paddle.incubate.asp.calculate_density(x) # 0.625
 
+=======
+          paddle.incubate.asp.calculate_density(x) # 0.625
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     x_flattened = x.flatten()
     return float(np.nonzero(x_flattened)[0].size) / x_flattened.size
@@ -420,11 +429,16 @@ def _compute_valid_2d_patterns(n, m):
         patterns = patterns + patterns
         patterns = np.asarray(list(set(permutations(patterns, m))))
 
+<<<<<<< HEAD
         valid = (
             ((patterns.sum(axis=1) <= n).sum(axis=1) == m)
             .nonzero()[0]
             .reshape(-1)
         )
+=======
+        valid = ((patterns.sum(axis=1) <= n).sum(
+            axis=1) == m).nonzero()[0].reshape(-1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         valid_patterns = np.empty((valid.shape[0], m, m))
         valid_patterns[:] = patterns[valid[:]]
 
@@ -471,10 +485,16 @@ def get_mask_2d_best(mat, n, m):
 
     mat_flattern, shape = _reshape_2d(mat, m)
     mask_flattern = np.ones_like(mat_flattern).reshape(-1, m, m)
+<<<<<<< HEAD
     pmax = np.argmax(
         np.matmul(mat_flattern, patterns.reshape(patterns.shape[0], m * m).T),
         axis=1,
     )
+=======
+    pmax = np.argmax(np.matmul(mat_flattern,
+                               patterns.reshape(patterns.shape[0], m * m).T),
+                     axis=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     mask_flattern[:] = patterns[pmax[:]]
     mask = np.empty(shape)
@@ -604,9 +624,14 @@ def check_sparsity(tensor, func_name=CheckMethod.CHECK_1D, n=2, m=4):
         t = t.reshape(shape[0] * shape[1], shape[2])
     # 4d-tensor conv (h, w, in, out) -> (h*w*out, in) in GemmConvKernel Op
     elif len(shape) == 4:
+<<<<<<< HEAD
         t = t.transpose([0, 1, 3, 2]).reshape(
             [shape[0] * shape[1] * shape[3], shape[2]]
         )
+=======
+        t = t.transpose([0, 1, 3,
+                         2]).reshape([shape[0] * shape[1] * shape[3], shape[2]])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         raise ValueError(
             "The dimension of input tensor is not supported in create_mask, "

@@ -62,6 +62,7 @@ def assert_allclose(res, out, cum_count):
 
 
 def get_redefined_allclose(cum_count):
+
     def redefined_allclose(x, y, *args, **kwargs):
         return assert_allclose(x, y, cum_count)
 
@@ -72,6 +73,7 @@ def get_redefined_allclose(cum_count):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAssignPosOpInt64(op_test.OpTest):
+
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -94,6 +96,7 @@ class TestAssignPosOpInt64(op_test.OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAssignPosAPI(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(self.x, 16)
@@ -105,6 +108,7 @@ class TestAssignPosAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.fluid.data('x', self.x.shape, dtype="int64")
+<<<<<<< HEAD
             cum_count = paddle.fluid.data(
                 'cum_count', self.cum_count.shape, dtype="int64"
             )
@@ -114,6 +118,18 @@ class TestAssignPosAPI(unittest.TestCase):
                 feed={'x': self.x, "cum_count": self.cum_count},
                 fetch_list=[out],
             )
+=======
+            cum_count = paddle.fluid.data('cum_count',
+                                          self.cum_count.shape,
+                                          dtype="int64")
+            out = utils._assign_pos(x, cum_count)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={
+                'x': self.x,
+                "cum_count": self.cum_count
+            },
+                          fetch_list=[out])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert_allclose(res[0], self.out, self.cum_count)
 
     def func_api_dygraph(self):

@@ -147,7 +147,11 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
     anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
+<<<<<<< HEAD
     # predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
+=======
+    #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
     if variances is not None:
         for i in range(bbox_deltas.shape[0]):
@@ -179,6 +183,7 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
             )
     else:
         for i in range(bbox_deltas.shape[0]):
+<<<<<<< HEAD
             pred_bbox[i, 0] = (
                 bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i, 2]
             )
@@ -193,6 +198,20 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
                 math.exp(min(bbox_deltas[i, 3], math.log(1000 / 16.0)))
                 * anchor_loc[i, 1]
             )
+=======
+            pred_bbox[i,
+                      0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[i,
+                                                                             2]
+            pred_bbox[i,
+                      1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[i,
+                                                                             3]
+            pred_bbox[i, 2] = math.exp(
+                min(bbox_deltas[i, 2], math.log(1000 / 16.0))) * anchor_loc[i,
+                                                                            0]
+            pred_bbox[i, 3] = math.exp(
+                min(bbox_deltas[i, 3], math.log(1000 / 16.0))) * anchor_loc[i,
+                                                                            1]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     proposals[:, 0] = pred_bbox[:, 0] - pred_bbox[:, 2] / 2
     proposals[:, 1] = pred_bbox[:, 1] - pred_bbox[:, 3] / 2
     proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - offset
@@ -211,6 +230,7 @@ def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     )
     offset = 1 if pixel_offset else 0
     # x1 >= 0
+<<<<<<< HEAD
     boxes[:, 0::4] = np.maximum(
         np.minimum(boxes[:, 0::4], im_shape[1] - offset), 0
     )
@@ -226,6 +246,23 @@ def clip_tiled_boxes(boxes, im_shape, pixel_offset=True):
     boxes[:, 3::4] = np.maximum(
         np.minimum(boxes[:, 3::4], im_shape[0] - offset), 0
     )
+=======
+    boxes[:,
+          0::4] = np.maximum(np.minimum(boxes[:, 0::4], im_shape[1] - offset),
+                             0)
+    # y1 >= 0
+    boxes[:,
+          1::4] = np.maximum(np.minimum(boxes[:, 1::4], im_shape[0] - offset),
+                             0)
+    # x2 < im_shape[1]
+    boxes[:,
+          2::4] = np.maximum(np.minimum(boxes[:, 2::4], im_shape[1] - offset),
+                             0)
+    # y2 < im_shape[0]
+    boxes[:,
+          3::4] = np.maximum(np.minimum(boxes[:, 3::4], im_shape[0] - offset),
+                             0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return boxes
 
 
@@ -240,6 +277,7 @@ def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
     if pixel_offset:
         ws_orig_scale = (boxes[:, 2] - boxes[:, 0]) / im_scale + 1
         hs_orig_scale = (boxes[:, 3] - boxes[:, 1]) / im_scale + 1
+<<<<<<< HEAD
         x_ctr = boxes[:, 0] + ws / 2.0
         y_ctr = boxes[:, 1] + hs / 2.0
         keep = np.where(
@@ -248,6 +286,13 @@ def filter_boxes(boxes, min_size, im_info, pixel_offset=True):
             & (x_ctr < im_info[1])
             & (y_ctr < im_info[0])
         )[0]
+=======
+        x_ctr = boxes[:, 0] + ws / 2.
+        y_ctr = boxes[:, 1] + hs / 2.
+        keep = np.where((ws_orig_scale >= min_size)
+                        & (hs_orig_scale >= min_size) & (x_ctr < im_info[1])
+                        & (y_ctr < im_info[0]))[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
@@ -323,6 +368,7 @@ def nms(boxes, scores, nms_threshold, eta=1.0, pixel_offset=True):
 
 
 class TestGenerateProposalsOp(OpTest):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -409,6 +455,7 @@ class TestGenerateProposalsOp(OpTest):
 
 
 class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
+
     def set_data(self):
         self.init_test_params()
         self.init_test_input()
@@ -433,11 +480,16 @@ class TestGenerateProposalsOutLodOp(TestGenerateProposalsOp):
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.rois_num]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.rois_num]),
+<<<<<<< HEAD
             'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32)),
+=======
+            'RpnRoisNum': (np.asarray(self.rois_num, dtype=np.int32))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
 
 class TestGenerateProposalsOpNoBoxLeft(TestGenerateProposalsOp):
+
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
         self.post_nms_topN = 5000  # train 6000, test 1000

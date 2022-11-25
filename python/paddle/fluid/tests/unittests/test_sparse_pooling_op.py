@@ -20,6 +20,7 @@ import copy
 
 
 class TestMaxPool3DFunc(unittest.TestCase):
+
     def setInput(self):
         paddle.seed(0)
         self.dense_x = paddle.randn((1, 4, 4, 4, 4))
@@ -44,7 +45,11 @@ class TestMaxPool3DFunc(unittest.TestCase):
             self.setUp()
             self.dense_x.stop_gradient = False
             sparse_x = self.dense_x.to_sparse_coo(4)
+<<<<<<< HEAD
             sparse_out = paddle.sparse.nn.functional.max_pool3d(
+=======
+            sparse_out = paddle.incubate.sparse.nn.functional.max_pool3d(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 sparse_x,
                 self.kernel_sizes,
                 stride=self.strides,
@@ -54,6 +59,7 @@ class TestMaxPool3DFunc(unittest.TestCase):
             out.backward(out)
 
             dense_x = copy.deepcopy(self.dense_x)
+<<<<<<< HEAD
             dense_out = paddle.nn.functional.max_pool3d(
                 dense_x,
                 self.kernel_sizes,
@@ -61,6 +67,13 @@ class TestMaxPool3DFunc(unittest.TestCase):
                 padding=self.paddings,
                 data_format='NDHWC',
             )
+=======
+            dense_out = paddle.nn.functional.max_pool3d(dense_x,
+                                                        self.kernel_sizes,
+                                                        stride=self.strides,
+                                                        padding=self.paddings,
+                                                        data_format='NDHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dense_out.backward(dense_out)
 
             # compare with dense
@@ -69,11 +82,13 @@ class TestMaxPool3DFunc(unittest.TestCase):
 
 
 class TestStride(TestMaxPool3DFunc):
+
     def setStride(self):
         self.strides = 1
 
 
 class TestPadding(TestMaxPool3DFunc):
+
     def setPadding(self):
         self.paddings = 1
 
@@ -82,6 +97,7 @@ class TestPadding(TestMaxPool3DFunc):
 
 
 class TestKernelSize(TestMaxPool3DFunc):
+
     def setKernelSize(self):
         self.kernel_sizes = [5, 5, 5]
 
@@ -91,6 +107,7 @@ class TestKernelSize(TestMaxPool3DFunc):
 
 
 class TestInput(TestMaxPool3DFunc):
+
     def setInput(self):
         paddle.seed(0)
         self.dense_x = paddle.randn((2, 6, 7, 9, 3))
@@ -99,10 +116,12 @@ class TestInput(TestMaxPool3DFunc):
 
 
 class TestMaxPool3DAPI(unittest.TestCase):
+
     def test(self):
         with _test_eager_guard():
             dense_x = paddle.randn((2, 3, 6, 6, 3))
             sparse_x = dense_x.to_sparse_coo(4)
+<<<<<<< HEAD
             max_pool3d = paddle.sparse.nn.MaxPool3D(
                 kernel_size=3, data_format='NDHWC'
             )
@@ -112,6 +131,16 @@ class TestMaxPool3DAPI(unittest.TestCase):
             dense_out = paddle.nn.functional.max_pool3d(
                 dense_x, 3, data_format='NDHWC'
             )
+=======
+            max_pool3d = paddle.incubate.sparse.nn.MaxPool3D(
+                kernel_size=3, data_format='NDHWC')
+            out = max_pool3d(sparse_x)
+            out = out.to_dense()
+
+            dense_out = paddle.nn.functional.max_pool3d(dense_x,
+                                                        3,
+                                                        data_format='NDHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert np.allclose(dense_out.numpy(), out.numpy())
 
 

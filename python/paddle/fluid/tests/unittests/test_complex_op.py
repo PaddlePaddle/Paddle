@@ -48,6 +48,7 @@ def ref_complex_grad(x, y, dout):
 
 
 class TestComplexOp(OpTest):
+
     def init_spec(self):
         self.x_shape = [10, 10]
         self.y_shape = [10, 10]
@@ -71,6 +72,7 @@ class TestComplexOp(OpTest):
 
     def test_check_grad(self):
         dout = self.out_grad
+<<<<<<< HEAD
         dx, dy = ref_complex_grad(
             self.inputs['X'], self.inputs['Y'], self.out_grad
         )
@@ -81,6 +83,15 @@ class TestComplexOp(OpTest):
             user_defined_grad_outputs=[dout],
             check_eager=True,
         )
+=======
+        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
+                                  self.out_grad)
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[dx, dy],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ignore_x(self):
         dout = self.out_grad
@@ -89,6 +100,7 @@ class TestComplexOp(OpTest):
         )
         self.assertTupleEqual(dx.shape, tuple(self.x_shape))
         self.assertTupleEqual(dy.shape, tuple(self.y_shape))
+<<<<<<< HEAD
         self.check_grad(
             ['Y'],
             'Out',
@@ -111,9 +123,29 @@ class TestComplexOp(OpTest):
             user_defined_grad_outputs=[dout],
             check_eager=True,
         )
+=======
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set('X'),
+                        user_defined_grads=[dy],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
+
+    def test_check_grad_ignore_y(self):
+        dout = self.out_grad
+        dx, dy = ref_complex_grad(self.inputs['X'], self.inputs['Y'],
+                                  self.out_grad)
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[dx],
+                        user_defined_grad_outputs=[dout],
+                        check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestComplexOpBroadcast1(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [10, 3, 1, 4]
         self.y_shape = [100, 1]
@@ -121,6 +153,7 @@ class TestComplexOpBroadcast1(TestComplexOp):
 
 
 class TestComplexOpBroadcast2(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [100, 1]
         self.y_shape = [10, 3, 1, 4]
@@ -128,6 +161,7 @@ class TestComplexOpBroadcast2(TestComplexOp):
 
 
 class TestComplexOpBroadcast3(TestComplexOp):
+
     def init_spec(self):
         self.x_shape = [1, 100]
         self.y_shape = [100]
@@ -135,6 +169,7 @@ class TestComplexOpBroadcast3(TestComplexOp):
 
 
 class TestComplexAPI(unittest.TestCase):
+
     def setUp(self):
         self.x = np.random.randn(10, 10)
         self.y = np.random.randn(10, 10)
@@ -156,10 +191,20 @@ class TestComplexAPI(unittest.TestCase):
 
         exe = static.Executor()
         exe.run(sp)
+<<<<<<< HEAD
         [out_np] = exe.run(
             mp, feed={"x": self.x, "y": self.y}, fetch_list=[out]
         )
         np.testing.assert_allclose(self.out, out_np, rtol=1e-05)
+=======
+        [out_np] = exe.run(mp,
+                           feed={
+                               "x": self.x,
+                               "y": self.y
+                           },
+                           fetch_list=[out])
+        self.assertTrue(np.allclose(self.out, out_np))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_eager(self):
         with _test_eager_guard():

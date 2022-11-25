@@ -67,6 +67,7 @@ class SparseAdagradOptimizer {
         w[i] = optimizer_config.mf_max_bound;
       add_g2sum += scaled_grad * scaled_grad;
     }
+<<<<<<< HEAD
 
     g2sum += add_g2sum / n;
   }
@@ -101,6 +102,43 @@ class SparseAdagradOptimizer {
         g_show,
         slot);
 
+=======
+
+    g2sum += add_g2sum / n;
+  }
+
+  __device__ void update_value(const OptimizerConfig& optimizer_config,
+                               float& val,  // NOLINT
+                               const float& grad) {
+    printf(
+        "Warning: update_value will not used. Please use dy_mf_update_value\n");
+  }
+  __device__ void dy_mf_update_value(const OptimizerConfig& optimizer_config,
+                                     float* ptr,
+                                     const float* grad) {
+    float g_show = grad[gpu_accessor_.common_push_value.ShowIndex()];
+    float g_click = grad[gpu_accessor_.common_push_value.ClickIndex()];
+
+    ptr[gpu_accessor_.common_feature_value.SlotIndex()] =
+        grad[gpu_accessor_.common_push_value.SlotIndex()];
+    ptr[gpu_accessor_.common_feature_value.ShowIndex()] += g_show;
+    ptr[gpu_accessor_.common_feature_value.ClickIndex()] += g_click;
+    ptr[gpu_accessor_.common_feature_value.DeltaScoreIndex()] +=
+        optimizer_config.nonclk_coeff * (g_show - g_click) +
+        optimizer_config.clk_coeff * g_click;
+    float slot = ptr[gpu_accessor_.common_feature_value.SlotIndex()];
+    // dual box
+    float scale = (optimizer_config.multi_node) ? 1.0 : g_show;
+    update_value_work(
+        optimizer_config,
+        1,
+        ptr + gpu_accessor_.common_feature_value.EmbedWIndex(),
+        ptr + gpu_accessor_.common_feature_value.EmbedG2SumIndex(),
+        grad + gpu_accessor_.common_push_value.EmbedGIndex(),
+        scale,
+        slot);
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int mf_dim = int(ptr[gpu_accessor_.common_feature_value.MfDimIndex()]);
     if (ptr[gpu_accessor_.common_feature_value.MfSizeIndex()] == 0) {
       if (optimizer_config.mf_create_thresholds <=
@@ -127,7 +165,11 @@ class SparseAdagradOptimizer {
           ptr + gpu_accessor_.common_feature_value.EmbedxWIndex(),
           ptr + gpu_accessor_.common_feature_value.EmbedxG2SumIndex(),
           grad + gpu_accessor_.common_push_value.EmbedxGIndex(),
+<<<<<<< HEAD
           g_show,
+=======
+          scale,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           slot);
     }
   }
@@ -175,6 +217,7 @@ class SparseAdamOptimizer {
                    (1.0 - beta1_pow_);
     for (int i = 0; i < n; ++i) {
       double scaled_grad = g[i] / scale;
+<<<<<<< HEAD
 
       double new_moment1 =
           optimizer_config.beta1_decay_rate * moment1[i] +
@@ -189,6 +232,22 @@ class SparseAdamOptimizer {
       if (w[i] > optimizer_config.mf_max_bound)
         w[i] = optimizer_config.mf_max_bound;
 
+=======
+
+      double new_moment1 =
+          optimizer_config.beta1_decay_rate * moment1[i] +
+          (1.0 - optimizer_config.beta1_decay_rate) * scaled_grad;
+      double new_moment2 =
+          optimizer_config.beta2_decay_rate * moment2[i] +
+          (1.0 - optimizer_config.beta2_decay_rate) * scaled_grad * scaled_grad;
+      w[i] += ratio * (new_moment1 / (sqrt(new_moment2) + epsilon));
+
+      if (w[i] < optimizer_config.mf_min_bound)
+        w[i] = optimizer_config.mf_min_bound;
+      if (w[i] > optimizer_config.mf_max_bound)
+        w[i] = optimizer_config.mf_max_bound;
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       moment1[i] = new_moment1;
       moment2[i] = new_moment2;
     }

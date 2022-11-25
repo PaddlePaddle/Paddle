@@ -50,10 +50,15 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
 
+<<<<<<< HEAD
         input_arr = block.create_var(
             name="tmp_lod_tensor_array",
             type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         )
+=======
+        input_arr = block.create_var(name="tmp_lod_tensor_array",
+                                     type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         input_arr.persistable = True
         input_arr_var = scope.var('tmp_lod_tensor_array')
         input_tensor_array = input_arr_var.get_lod_tensor_array()
@@ -77,14 +82,21 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         y_out_index = block.create_var(name="OutIndex")
         y_out_index.persistable = True
 
+<<<<<<< HEAD
         y_grad_arr = block.create_var(
             name='Out@GRAD', dtype='float32', shape=[11]
         )
+=======
+        y_grad_arr = block.create_var(name='Out@GRAD',
+                                      dtype='float32',
+                                      shape=[11])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         y_grad_arr.persistable = True
         y_grad = scope.var('Out@GRAD')
         y_grad_tensor = y_grad.get_tensor()
         y_grad_tensor.set(random_grad, cpu)
 
+<<<<<<< HEAD
         op = block.append_op(
             type=self.op_type,
             inputs={"X": input_arr},
@@ -101,6 +113,22 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
             op.desc, set(), []
         )
+=======
+        op = block.append_op(type=self.op_type,
+                             inputs={"X": input_arr},
+                             outputs={
+                                 "Out": y_out,
+                                 "OutIndex": y_out_index
+                             },
+                             attrs=self.attrs)
+
+        out_grad = block.create_var(name="tmp_lod_tensor_array@GRAD",
+                                    type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+        out_grad.persistable = True
+
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+            op.desc, set(), [])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         grad_op_desc = grad_op_desc_list[0]
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
@@ -122,11 +150,18 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         # print ("index: ", np.array(out[1]))
 
         # test forward
+<<<<<<< HEAD
         tensor_res = np.array(out[0])
         tensor_res_out_idx = np.array(out[1])
         tensor_gt = np.array(
             [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32'
         )
+=======
+        tensor_res = numpy.array(out[0])
+        tensor_res_out_idx = numpy.array(out[1])
+        tensor_gt = numpy.array([0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertEqual(len(tensor_res), len(tensor_gt))
         self.assertEqual(len(tensor_res_out_idx), 10)
@@ -156,9 +191,14 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
                     np.array(random_grad[i + 1]),
                 )
             if i == 1:
+<<<<<<< HEAD
                 self.assertEqual(
                     np.array(grad_tensor_array[i]), np.array(random_grad[i + 1])
                 )
+=======
+                self.assertEqual(numpy.array(grad_tensor_array[i]),
+                                 numpy.array(random_grad[i + 1]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLoDTensorArrayStack(unittest.TestCase):
@@ -173,11 +213,17 @@ class TestLoDTensorArrayStack(unittest.TestCase):
             np.random.rand(2, 3, 4).astype("float32"),
         ]
         self.outputs = [
+<<<<<<< HEAD
             np.stack(self.inputs, axis=self.attrs["axis"]),
             np.array(
                 [x.shape[self.attrs["axis"]] for x in self.inputs],
                 dtype="int32",
             ),
+=======
+            numpy.stack(self.inputs, axis=self.attrs["axis"]),
+            numpy.array([x.shape[self.attrs["axis"]] for x in self.inputs],
+                        dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
         self.input_grads = [np.ones_like(x) for x in self.inputs]
         self.set_program()
@@ -203,6 +249,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
     def run_check(self, executor, scope):
         executor.run(self.program, scope=scope)
         for i, output in enumerate(self.outputs):
+<<<<<<< HEAD
             np.allclose(
                 np.array(scope.var(self.output_vars[i].name).get_tensor()),
                 output,
@@ -211,6 +258,17 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
         for i, input_grad in enumerate(self.input_grads):
             np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
+=======
+            numpy.allclose(numpy.array(
+                scope.var(self.output_vars[i].name).get_tensor()),
+                           output,
+                           atol=0)
+        tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
+        for i, input_grad in enumerate(self.input_grads):
+            numpy.allclose(numpy.array(tensor_array_grad[i]),
+                           input_grad,
+                           atol=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_cpu(self):
         scope = core.Scope()
@@ -227,6 +285,7 @@ class TestLoDTensorArrayStack(unittest.TestCase):
 
 
 class TestTensorArrayToTensorAPI(unittest.TestCase):
+
     def _test_case(self, inp1, inp2):
         x0 = fluid.layers.assign(inp1)
         x0.stop_gradient = False

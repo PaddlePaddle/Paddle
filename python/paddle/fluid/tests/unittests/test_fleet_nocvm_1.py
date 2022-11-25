@@ -76,6 +76,7 @@ class TestFleet1(unittest.TestCase):
             cost = fluid.layers.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
+<<<<<<< HEAD
             adam = fleet.distributed_optimizer(
                 adam,
                 strategy={
@@ -84,6 +85,15 @@ class TestFleet1(unittest.TestCase):
                     }
                 },
             )
+=======
+            adam = fleet.distributed_optimizer(adam,
+                                               strategy={
+                                                   "embedding": {
+                                                       "sparse_accessor_class":
+                                                       "DownpourCtrAccessor"
+                                                   }
+                                               })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             adam.minimize([cost], [scope])
             fleet.run_server()
         except:

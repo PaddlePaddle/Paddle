@@ -55,6 +55,7 @@ GRAPH_ID = 0
 
 
 def unique_id():
+
     def generator():
         GRAPH_ID += 1
         return GRAPH_ID
@@ -116,6 +117,7 @@ def draw_graph(startup_program, main_program, **kwargs):
     filename = kwargs.get("filename")
     if filename is None:
         filename = str(graph_id) + ".gv"
+<<<<<<< HEAD
     g = Graph(
         name=str(graph_id),
         filename=filename,
@@ -124,6 +126,14 @@ def draw_graph(startup_program, main_program, **kwargs):
         edge_attr=VAR_STYLE,
         **kwargs
     )
+=======
+    g = Graph(name=str(graph_id),
+              filename=filename,
+              graph_attr=GRAPH_STYLE,
+              node_attr=OP_STYLE,
+              edge_attr=VAR_STYLE,
+              **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     var_dict = {}
     parse_graph(startup_program, g, var_dict)

@@ -24,6 +24,7 @@ cc_test(
   test_op_utils
   SRCS test_op_utils.cc
   DEPS op_compat_infos)
+<<<<<<< HEAD
 cc_test_old(
   test_meta_fn_utils
   SRCS
@@ -33,6 +34,12 @@ cc_test_old(
   wrapped_infermeta
   infermeta
   infermeta_utils)
+=======
+cc_test(
+  test_meta_fn_utils
+  SRCS test_meta_fn_utils.cc
+  DEPS dense_tensor wrapped_infermeta infermeta infermeta_utils)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 cc_test(
   test_ddim

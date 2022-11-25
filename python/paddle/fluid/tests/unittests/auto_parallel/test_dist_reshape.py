@@ -25,10 +25,18 @@ def make_program_dp2():
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 4, 8], dtype='float32')
         x.stop_gradient = False
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
         )
 
+=======
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0, 1]),
+                              "dims_mapping": [0, -1, -1]
+                          })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         tmp_0 = paddle.reshape(x, shape=[0, 0, 4, 2])
         tmp_1 = paddle.reshape(tmp_0, shape=[0, 0, 8])
         tmp_2 = tmp_1.reshape((tmp_1.shape[0], tmp_1.shape[1], -1))
@@ -56,6 +64,7 @@ def parallelizer(program_func, rank):
 
 
 class TestDistReshape(unittest.TestCase):
+
     def test_dist_reshape_mp2(self):
 
         for rank in range(2):

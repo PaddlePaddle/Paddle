@@ -32,13 +32,30 @@ class ElementwiseMulOp : public ElementwiseOp {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+=======
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

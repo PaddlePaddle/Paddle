@@ -39,6 +39,7 @@ def xavier(channels, filter_size):
 
 
 class ConvLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, num_channels, num_filters, filter_size, stride=1, groups=1
     ):
@@ -53,6 +54,24 @@ class ConvLayer(nn.Layer):
             groups=groups,
             bias_attr=False,
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1):
+        super(ConvLayer, self).__init__()
+
+        self._conv = Conv2D(in_channels=num_channels,
+                            out_channels=num_filters,
+                            kernel_size=filter_size,
+                            stride=stride,
+                            padding=(filter_size - 1) // 2,
+                            groups=groups,
+                            bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -60,6 +79,7 @@ class ConvLayer(nn.Layer):
 
 
 class Inception(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         input_channels,
@@ -72,6 +92,12 @@ class Inception(nn.Layer):
         proj,
     ):
         super().__init__()
+=======
+
+    def __init__(self, input_channels, output_channels, filter1, filter3R,
+                 filter3, filter5R, filter5, proj):
+        super(Inception, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._conv1 = ConvLayer(input_channels, filter1, 1)
         self._conv3r = ConvLayer(input_channels, filter3R, 1)
@@ -102,9 +128,15 @@ class Inception(nn.Layer):
 class GoogLeNet(nn.Layer):
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+<<<<<<< HEAD
 
     Args:
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+    
+    Args:
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -160,9 +192,15 @@ class GoogLeNet(nn.Layer):
         if num_classes > 0:
             # out
             self._drop = Dropout(p=0.4, mode="downscale_in_infer")
+<<<<<<< HEAD
             self._fc_out = Linear(
                 1024, num_classes, weight_attr=xavier(1024, 1)
             )
+=======
+            self._fc_out = Linear(1024,
+                                  num_classes,
+                                  weight_attr=xavier(1024, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # out1
             self._conv_o1 = ConvLayer(512, 128, 1)
@@ -228,7 +266,11 @@ class GoogLeNet(nn.Layer):
 def googlenet(pretrained=False, **kwargs):
     """GoogLeNet (Inception v1) model architecture from
     `"Going Deeper with Convolutions" <https://arxiv.org/pdf/1409.4842.pdf>`_.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.

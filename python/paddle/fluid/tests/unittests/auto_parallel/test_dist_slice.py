@@ -24,10 +24,18 @@ def make_program_dp2():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0, 1], dim_names=["x"]), ["x", None, None]
         )
 
+=======
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0, 1]),
+                              "dims_mapping": [0, -1, -1]
+                          })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -41,10 +49,18 @@ def make_program_serial():
     start_program = paddle.fluid.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 5, 6], dtype='float32')
+<<<<<<< HEAD
         auto.shard_tensor(
             x, auto.ProcessMesh([0], dim_names=["x"]), [None, None, None]
         )
 
+=======
+        auto.shard_tensor(x,
+                          dist_attr={
+                              "process_mesh": auto.ProcessMesh([0]),
+                              "dims_mapping": [-1, -1, -1]
+                          })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         tmp_0 = x[0]
         tmp_1 = x[:, 0, :]
         tmp_2 = x[:, :, 1]
@@ -75,6 +91,7 @@ def parallelizer(program_func, rank):
 
 
 class TestDistSlice(unittest.TestCase):
+
     def test_dist_slice_dp2(self):
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)

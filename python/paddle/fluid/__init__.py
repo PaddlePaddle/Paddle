@@ -22,9 +22,14 @@ core_suffix = 'so'
 if os.name == 'nt':
     core_suffix = 'pyd'
 
+<<<<<<< HEAD
 legacy_core = (
     os.path.abspath(os.path.dirname(__file__)) + os.sep + 'core.' + core_suffix
 )
+=======
+legacy_core = os.path.abspath(
+    os.path.dirname(__file__)) + os.sep + 'core.' + core_suffix
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 if os.path.exists(legacy_core):
     sys.stderr.write('Deleting legacy file ' + legacy_core + '\n')
     try:
@@ -200,6 +205,7 @@ def __bootstrap__():
         num_threads = 1
 
     if num_threads > 1:
+<<<<<<< HEAD
         print(
             'WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
             'speed will not be optimized if you use data parallel. It will '
@@ -207,6 +213,13 @@ def __bootstrap__():
             ' OpenBlas does not support multi-threads.'.format(num_threads),
             file=sys.stderr,
         )
+=======
+        print('WARNING: OMP_NUM_THREADS set to {0}, not 1. The computation '
+              'speed will not be optimized if you use data parallel. It will '
+              'fail if this PaddlePaddle binary is compiled with OpenBlas since'
+              ' OpenBlas does not support multi-threads.'.format(num_threads),
+              file=sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         print('PLEASE USE OMP_NUM_THREADS WISELY.', file=sys.stderr)
 
     os.environ['OMP_NUM_THREADS'] = str(num_threads)

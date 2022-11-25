@@ -26,6 +26,7 @@ def get_random_images_and_labels(image_shape, label_shape):
 
 
 def batch_generator_creator(batch_size, batch_num):
+
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
@@ -37,6 +38,7 @@ def batch_generator_creator(batch_size, batch_num):
 
 
 class RandomDataset(Dataset):
+
     def __init__(self, sample_num):
         self.sample_num = sample_num
 
@@ -51,6 +53,7 @@ class RandomDataset(Dataset):
 
 
 class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 8
         self.batch_num = 100
@@ -58,6 +61,7 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
         self.capacity = 50
 
     def prepare_data_loader(self):
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(
             capacity=self.capacity, use_multiprocess=True
         )
@@ -65,6 +69,13 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
             batch_generator_creator(self.batch_size, self.batch_num),
             places=fluid.CPUPlace(),
         )
+=======
+        loader = fluid.io.DataLoader.from_generator(capacity=self.capacity,
+                                                    use_multiprocess=True)
+        loader.set_batch_generator(batch_generator_creator(
+            self.batch_size, self.batch_num),
+                                   places=fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return loader
 
     def run_one_epoch_with_break(self, loader):
@@ -102,10 +113,12 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
 
 
 class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
+
     def prepare_data_loader(self):
         place = fluid.CPUPlace()
         with fluid.dygraph.guard(place):
             dataset = RandomDataset(self.batch_size * self.batch_num)
+<<<<<<< HEAD
             loader = DataLoader(
                 dataset,
                 places=place,
@@ -113,6 +126,13 @@ class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
                 drop_last=True,
                 num_workers=2,
             )
+=======
+            loader = DataLoader(dataset,
+                                places=place,
+                                batch_size=self.batch_size,
+                                drop_last=True,
+                                num_workers=2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return loader
 
 

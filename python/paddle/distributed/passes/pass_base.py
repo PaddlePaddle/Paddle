@@ -17,6 +17,7 @@ from paddle.framework import _apply_pass as _apply_cpp_pass
 
 
 class PassContext:
+
     def __init__(self):
         self._applied_passes = []
         self._attrs = {}
@@ -120,6 +121,7 @@ class PassBase(ABC):
 
 
 def register_pass(name):
+
     def impl(cls):
         PassBase._register(name, cls)
         cls.name = name
@@ -138,6 +140,7 @@ def new_pass(name, pass_attrs={}):
 
 
 class CPPPassWrapper(PassBase):
+
     def __init__(self):
         super().__init__()
 
@@ -166,18 +169,29 @@ class CPPPassWrapper(PassBase):
 
 
 def _fusion_opt_last_rule(pass_before, pass_after):
+<<<<<<< HEAD
     if (
         pass_before._type() == PassType.FUSION_OPT
         and pass_after._type() != PassType.FUSION_OPT
     ):
+=======
+    if pass_before._type(
+    ) == PassType.FUSION_OPT and pass_after._type() != PassType.FUSION_OPT:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return False
     else:
         return True
 
 
+<<<<<<< HEAD
 def _make_rule_from_white_lists_dict(
     before_white_lists_dict, after_white_lists_dict
 ):
+=======
+def _make_rule_from_white_lists_dict(before_white_lists_dict,
+                                     after_white_lists_dict):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def collect_pass_names(white_lists_dict, result):
         for k, v in white_lists_dict.items():
             result.add(k)
@@ -309,6 +323,7 @@ def _solve_pass_conflict(passes, context):
 
 
 class PassManager:
+
     def __init__(self, passes, context=None, auto_solve_conflict=True):
         if context is None:
             context = PassContext()

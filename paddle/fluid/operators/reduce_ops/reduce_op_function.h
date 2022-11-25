@@ -43,8 +43,13 @@ template <typename DeviceContext,
           size_t R_D,
           typename Functor>
 void ReduceFunctor(const DeviceContext& context,
+<<<<<<< HEAD
                    const phi::DenseTensor& input,
                    phi::DenseTensor* output,
+=======
+                   const framework::Tensor& input,
+                   framework::Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    const std::vector<int>& dims,
                    bool keep_dim) {
   auto x = EigenTensor<T, D>::From(input);
@@ -81,10 +86,17 @@ void ReduceFunctor(const DeviceContext& context,
 
 template <typename DeviceContext, typename T, size_t D, typename Functor>
 void ReduceGradFunctor(const DeviceContext& context,
+<<<<<<< HEAD
                        const phi::DenseTensor& input0,
                        const phi::DenseTensor& input1,
                        const phi::DenseTensor& input2,
                        phi::DenseTensor* output,
+=======
+                       const framework::Tensor& input0,
+                       const framework::Tensor& input1,
+                       const framework::Tensor& input2,
+                       framework::Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        Functor functor,
                        const std::vector<int>& dims) {
   auto x = EigenTensor<T, D>::From(input0);

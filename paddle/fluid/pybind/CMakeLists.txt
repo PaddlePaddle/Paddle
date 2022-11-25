@@ -22,6 +22,10 @@ set(PYBIND_DEPS
     analysis_predictor
     imperative_profiler
     imperative_flag
+<<<<<<< HEAD
+=======
+    save_load_util
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     dlpack_tensor
     device_context
     gloo_wrapper
@@ -38,16 +42,24 @@ set(PYBIND_DEPS
     phi_utils
     tcp_store
     new_profiler
+<<<<<<< HEAD
     auto_parallel
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     jit_layer
     jit_property)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
+<<<<<<< HEAD
+=======
+  set(PYBIND_DEPS ${PYBIND_DEPS} graph_py_service)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if(WITH_HETERPS)
     set(PYBIND_DEPS ${PYBIND_DEPS} graph_gpu_wrapper)
   endif()
 endif()
+<<<<<<< HEAD
 if(WITH_RPC)
   set(PYBIND_DEPS
       ${PYBIND_DEPS}
@@ -62,6 +74,8 @@ if(WITH_RPC)
       gflags
       glog)
 endif()
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
   set(PYBIND_DEPS ${PYBIND_DEPS} cuda_device_guard)
@@ -137,9 +151,13 @@ set(PYBIND_SRCS
     generator_py.cc
     communication.cc
     cuda_streams_py.cc
+<<<<<<< HEAD
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
+=======
+    jit.cc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     op_function1.cc
     op_function2.cc
     op_function3.cc
@@ -151,6 +169,7 @@ set(PYBIND_SRCS
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} phi_capi)
+<<<<<<< HEAD
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
 endif()
 
@@ -161,10 +180,22 @@ if(WITH_PYTHON)
   endif()
   if(WITH_XPU_BKCL)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_bkcl)
+=======
+endif()
+
+if(NOT ON_INFER)
+  set(PYBIND_DEPS ${PYBIND_DEPS} processgroup eager_reducer)
+  if(WITH_NCCL OR WITH_RCCL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_nccl)
+    if(WITH_PSCORE)
+      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   endif()
   if(WITH_GLOO)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_gloo)
   endif()
+<<<<<<< HEAD
   if(WITH_MPI)
     set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_mpi)
   endif()
@@ -175,6 +206,13 @@ if(WITH_PYTHON)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     set_source_files_properties(
       distributed_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+=======
+  if(WITH_ASCEND_CL)
+    set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_hccl)
+    if(WITH_PSCORE)
+      set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_heter)
+    endif()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   endif()
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
@@ -199,6 +237,7 @@ endif()
 
 if(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS
+<<<<<<< HEAD
       "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
   )
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -243,6 +282,31 @@ if(WITH_RPC)
   set_source_files_properties(rpc.cc PROPERTIES COMPILE_FLAGS
                                                 ${DISTRIBUTE_COMPILE_FLAGS})
   set(PYBIND_SRCS rpc.cc ${PYBIND_SRCS})
+=======
+      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=type-limits -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+  )
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+    set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
+  endif()
+  set_source_files_properties(
+    heter_wrapper_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+endif()
+if(WITH_PSCORE)
+  if(WITH_ARM_BRPC)
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-faligned-new -Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+  else()
+    set(DISTRIBUTE_COMPILE_FLAGS
+        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=sign-compare -Wno-error=unused-variable -Wno-error=return-type -Wno-error=unused-but-set-variable -Wno-error=unknown-pragmas -Wno-error=parentheses -Wno-error=unused-result"
+    )
+  endif()
+  set_source_files_properties(
+    fleet_py.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+  list(APPEND PYBIND_DEPS fleet communicator index_wrapper index_sampler)
+  list(APPEND PYBIND_SRCS)
+  set(PYBIND_SRCS fleet_py.cc ${PYBIND_SRCS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()
 
 if(WITH_NCCL OR WITH_RCCL)
@@ -291,6 +355,7 @@ if(WITH_PYTHON)
   if(WITH_CNCL)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
   endif()
+<<<<<<< HEAD
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
@@ -301,6 +366,13 @@ if(WITH_PYTHON)
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
   target_link_libraries(eager_legacy_op_function_generator
+=======
+
+  add_executable(op_function_generator op_function_generator.cc)
+  target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS})
+  add_executable(eager_op_function_generator eager_op_function_generator.cc)
+  target_link_libraries(eager_op_function_generator
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         ${OP_FUNCTION_GENERETOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
@@ -337,7 +409,11 @@ if(WITH_PYTHON)
   set(tmp_impl_file8 ${impl_file8}.tmp)
   set(CODE_GEN_SPLIT_FILE_COUNT "8")
   set(eager_impl_file
+<<<<<<< HEAD
       ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_legacy_op_function.cc)
+=======
+      ${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/eager_op_function.cc)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   set(tmp_eager_impl_file ${eager_impl_file}.tmp)
 
   execute_process(
@@ -348,8 +424,13 @@ if(WITH_PYTHON)
       "${CODE_GEN_SPLIT_FILE_COUNT}")
 
   set(OP_IMPL_DEPS op_function_generator)
+<<<<<<< HEAD
   set(EAGER_OP_IMPL_DEPS eager_legacy_op_function_generator
                          eager_python_c_codegen)
+=======
+  set(EAGER_OP_IMPL_DEPS eager_op_function_generator
+                         eager_final_state_python_c_codegen)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   if(WIN32)
     if("${CMAKE_GENERATOR}" STREQUAL "Ninja")
@@ -379,6 +460,7 @@ if(WITH_PYTHON)
 
     file(
       WRITE
+<<<<<<< HEAD
       ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_legacy_op_function_generator_retry.bat
       ""
       "set build_times=1\n"
@@ -386,6 +468,15 @@ if(WITH_PYTHON)
       "ECHO eager_legacy_op_function_generator run %build_times% time\n"
       "taskkill /f /im eager_legacy_op_function_generator.exe 2>NUL\n"
       "${op_impl_path}/eager_legacy_op_function_generator.exe ${tmp_eager_impl_file}\n"
+=======
+      ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_op_function_generator_retry.bat
+      ""
+      "set build_times=1\n"
+      ":retry\n"
+      "ECHO eager_op_function_generator run %build_times% time\n"
+      "taskkill /f /im eager_op_function_generator.exe 2>NUL\n"
+      "${op_impl_path}/eager_op_function_generator.exe ${tmp_eager_impl_file}\n"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       "if %ERRORLEVEL% NEQ 0 (\n"
       "    set /a build_times=%build_times%+1\n"
       "    if %build_times% GEQ 10 (\n"
@@ -473,7 +564,11 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${eager_impl_file}
         COMMAND
+<<<<<<< HEAD
           ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_legacy_op_function_generator_retry.bat
+=======
+          ${CMAKE_BINARY_DIR}/paddle/fluid/pybind/eager_op_function_generator_retry.bat
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
         COMMENT "copy_if_different ${tmp_eager_impl_file} to ${eager_impl_file}"
@@ -562,7 +657,11 @@ if(WITH_PYTHON)
         OUTPUT ${eager_impl_file}
         COMMAND
           ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+<<<<<<< HEAD
           "${CMAKE_CURRENT_BINARY_DIR}/eager_legacy_op_function_generator"
+=======
+          "${CMAKE_CURRENT_BINARY_DIR}/eager_op_function_generator"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           "${tmp_eager_impl_file}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}
@@ -573,7 +672,11 @@ if(WITH_PYTHON)
   endif()
   add_custom_target(op_function_generator_cmd ALL DEPENDS op_function)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+<<<<<<< HEAD
     add_custom_target(eager_legacy_op_function_generator_cmd ALL
+=======
+    add_custom_target(eager_op_function_generator_cmd ALL
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       DEPENDS ${eager_impl_file})
   endif()
 
@@ -586,9 +689,14 @@ if(WITH_PYTHON)
     set(PYBIND_SRCS eager_properties.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_utils.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_py_layer.cc ${PYBIND_SRCS})
+<<<<<<< HEAD
     set(PYBIND_SRCS eager_legacy_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
     set(PYBIND_SRCS eager_math_op_patch.cc ${PYBIND_SRCS})
+=======
+    set(PYBIND_SRCS eager_op_function.cc ${PYBIND_SRCS})
+    set(PYBIND_SRCS eager_final_state_op_function.cc ${PYBIND_SRCS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     list(APPEND PYBIND_DEPS eager_api)
     list(APPEND PYBIND_DEPS autograd_meta)
     list(APPEND PYBIND_DEPS backward)
@@ -605,6 +713,7 @@ if(WITH_PYTHON)
     list(APPEND PYBIND_DEPS python)
     list(APPEND PYBIND_DEPS custom_operator)
     list(APPEND PYBIND_DEPS custom_operator_node)
+<<<<<<< HEAD
     list(APPEND PYBIND_DEPS saved_tensors_hooks)
   endif()
 
@@ -637,6 +746,22 @@ if(WITH_PYTHON)
 
   if(NOT APPLE AND NOT WIN32)
     target_link_libraries(${SHARD_LIB_NAME} rt)
+=======
+  endif()
+
+  cc_library(
+    paddle_pybind SHARED
+    SRCS ${PYBIND_SRCS}
+    DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+
+  if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+    add_dependencies(paddle_pybind eager_codegen)
+    add_dependencies(paddle_pybind eager_op_function_generator_cmd)
+  endif()
+
+  if(NOT APPLE AND NOT WIN32)
+    target_link_libraries(paddle_pybind rt -static-libgcc -static-libstdc++)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   endif()
 
   if(WITH_ROCM)
@@ -648,8 +773,13 @@ if(WITH_PYTHON)
   endif()
 
   get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+<<<<<<< HEAD
   target_link_libraries(${SHARD_LIB_NAME} ${os_dependency_modules})
   add_dependencies(${SHARD_LIB_NAME} op_function_generator_cmd)
 
   target_link_libraries(${SHARD_LIB_NAME} ${PYTHON_LIBRARIES})
+=======
+  target_link_libraries(paddle_pybind ${os_dependency_modules})
+  add_dependencies(paddle_pybind op_function_generator_cmd)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()

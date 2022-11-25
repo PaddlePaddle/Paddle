@@ -31,9 +31,15 @@ from .ptq_registry import PTQRegistry
 
 __all__ = ['ImperativePTQ']
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class ImperativePTQ:
@@ -161,6 +167,7 @@ class ImperativePTQ:
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
+<<<<<<< HEAD
         [
             infer_program,
             feed_target_names,
@@ -171,6 +178,14 @@ class ImperativePTQ:
             model_filename=model_filename,
             params_filename=params_filename,
         )
+=======
+        [infer_program, feed_target_names,
+         fetch_targets] = (paddle.fluid.io.load_inference_model(
+             dirname=dirname,
+             executor=exe,
+             model_filename=model_filename,
+             params_filename=params_filename))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Process inference program
         self._clean_up(infer_program)
@@ -178,6 +193,7 @@ class ImperativePTQ:
         self._remove_scale_op(infer_program)
 
         # Save final program
+<<<<<<< HEAD
         paddle.fluid.io.save_inference_model(
             dirname=dirname,
             feeded_var_names=feed_target_names,
@@ -187,6 +203,15 @@ class ImperativePTQ:
             model_filename=model_filename,
             params_filename=params_filename,
         )
+=======
+        paddle.fluid.io.save_inference_model(dirname=dirname,
+                                             feeded_var_names=feed_target_names,
+                                             target_vars=fetch_targets,
+                                             executor=exe,
+                                             main_program=infer_program.clone(),
+                                             model_filename=model_filename,
+                                             params_filename=params_filename)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if is_dynamic_mode:
             paddle.disable_static()
@@ -332,6 +357,7 @@ class ImperativePTQ:
                 # save the input thresholds
                 assert hasattr(quant_layer, "_fake_quant_input")
                 assert hasattr(quant_layer._fake_quant_input, "_scale")
+<<<<<<< HEAD
                 if len(in_act_quantizer.thresholds) == 1:
                     input_threshold = np.array(
                         [in_act_quantizer.thresholds[0]], dtype=np.float32
@@ -339,12 +365,19 @@ class ImperativePTQ:
                     quant_layer._fake_quant_input._scale.set_value(
                         input_threshold
                     )
+=======
+                assert len(in_act_quantizer.thresholds) == 1
+                input_threshold = np.array([in_act_quantizer.thresholds[0]],
+                                           dtype=np.float32)
+                quant_layer._fake_quant_input._scale.set_value(input_threshold)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 assert hasattr(quant_layer, "_fake_quant_weight")
                 assert hasattr(quant_layer._fake_quant_weight, "_scale")
                 assert len(wt_quantizer.thresholds) == 1
                 weight_threshold = wt_quantizer.thresholds[0]
                 if isinstance(weight_threshold, list):
+<<<<<<< HEAD
                     weight_threshold = np.array(
                         weight_threshold, dtype=np.float32
                     )
@@ -352,6 +385,13 @@ class ImperativePTQ:
                     weight_threshold = np.array(
                         [weight_threshold], dtype=np.float32
                     )
+=======
+                    weight_threshold = np.array(weight_threshold,
+                                                dtype=np.float32)
+                else:
+                    weight_threshold = np.array([weight_threshold],
+                                                dtype=np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 quant_layer._fake_quant_weight._scale.set_value(
                     weight_threshold
                 )
@@ -389,11 +429,17 @@ class ImperativePTQ:
                     in_threshold = utils.load_variable_data(scope, attr_name)
                     in_threshold = utils.fp_numpy_to_naive(in_threshold)
                     argname, index = utils._get_input_name_index(
+<<<<<<< HEAD
                         op, in_var_name
                     )
                     op._set_attr(
                         argname + str(index) + "_threshold", in_threshold
                     )
+=======
+                        op, in_var_name)
+                    op._set_attr(argname + str(index) + "_threshold",
+                                 in_threshold)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     op._set_attr("with_quant_attr", True)
                 else:
                     for out_var_name in utils._get_op_output_var_names(
@@ -457,8 +503,13 @@ class ImperativePTQ:
                 old_attr_name = argname + str(index) + "_threshold"
 
                 argname, index = utils._get_output_name_index(
+<<<<<<< HEAD
                     next_op, next_op.output("Out")[0]
                 )
+=======
+                    next_op,
+                    next_op.output("Out")[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 new_attr_name = argname + str(index) + "_threshold"
 
                 _helper(op, next_op, old_attr_name, new_attr_name)

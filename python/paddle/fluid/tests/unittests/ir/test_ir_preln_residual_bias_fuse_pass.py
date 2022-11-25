@@ -14,11 +14,16 @@
 
 import unittest
 
+<<<<<<< HEAD
+=======
+import numpy as np
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from pass_test import PassTest
 import paddle
 
 
 class PrelnResidualBiasFusePassTest(PassTest):
+<<<<<<< HEAD
     def setUp(self):
         paddle.enable_static()
         with paddle.static.program_guard(
@@ -31,6 +36,22 @@ class PrelnResidualBiasFusePassTest(PassTest):
             y = paddle.static.data(
                 name="y", shape=[128, 768], dtype="float32", lod_level=0
             )
+=======
+
+    def setUp(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(self.main_program,
+                                         self.startup_program):
+            x = paddle.static.data(name="x",
+                                   shape=[128, 768],
+                                   dtype="float32",
+                                   lod_level=0)
+            bias = paddle.static.create_parameter(shape=[768], dtype='float32')
+            y = paddle.static.data(name="y",
+                                   shape=[128, 768],
+                                   dtype="float32",
+                                   lod_level=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             x = x + bias
             elementwise_out = x + y
             out = paddle.static.nn.layer_norm(input=elementwise_out)
@@ -54,6 +75,7 @@ class PrelnResidualBiasFusePassTest(PassTest):
             self.check_program(opt_program)
 
 
+<<<<<<< HEAD
 class PrelnResidualBiasFusePassNoBiasTest(PassTest):
     def setUp(self):
         paddle.enable_static()
@@ -84,5 +106,7 @@ class PrelnResidualBiasFusePassNoBiasTest(PassTest):
             self.check_program(opt_program)
 
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 if __name__ == "__main__":
     unittest.main()

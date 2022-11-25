@@ -43,8 +43,13 @@ struct InterpolateFunction {
     const auto& runner = NpuOpRunner("Range", {t0, tn, t1}, {*x}, {});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void ReduceSum(const phi::DenseTensor* x,
                  phi::DenseTensor* y,
+=======
+  void ReduceSum(const Tensor* x,
+                 Tensor* y,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  const std::vector<int>& dim,
                  bool keep_dims = true) {
     const auto& runner = NpuOpRunner(
@@ -80,18 +85,32 @@ struct InterpolateFunction {
         "Cast", {*x}, {*y}, {{"dst_type", static_cast<int>(dst_dtype)}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void Gather(const phi::DenseTensor* x,
               const phi::DenseTensor* indices,
               const int axis,
               phi::DenseTensor* y) {
+=======
+  void Gather(const Tensor* x,
+              const Tensor* indices,
+              const int axis,
+              Tensor* y) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const auto& runner =
         NpuOpRunner("GatherV2D", {*x, *indices}, {*y}, {{"axis", axis}});
     runner.Run(stream);
   }
+<<<<<<< HEAD
   void GatherGrad(const phi::DenseTensor* gy,
                   const phi::DenseTensor* indices,
                   const int axis,
                   phi::DenseTensor* gx) {
+=======
+  void GatherGrad(const Tensor* gy,
+                  const Tensor* indices,
+                  const int axis,
+                  Tensor* gx) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     //  1  gy swapaxis: axis & 0
     int len = (gy->dims()).size();
     std::vector<int> axis_swap(len);
@@ -121,10 +140,17 @@ struct InterpolateFunction {
     //  3  gx swapaxis: axis, 0
     Transpose(&gx_t, gx, axis_swap);
   }
+<<<<<<< HEAD
   void Scatter(const phi::DenseTensor* x,
                const phi::DenseTensor* index,
                const phi::DenseTensor* updates,
                phi::DenseTensor* y) {
+=======
+  void Scatter(const Tensor* x,
+               const Tensor* index,
+               const Tensor* updates,
+               Tensor* y) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const auto& runner =
         NpuOpRunner("TensorScatterAdd", {*x, *index, *updates}, {*y}, {});
     runner.Run(stream);
@@ -228,6 +254,7 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
                                 bool align_cond,
                                 float ratio_h,
                                 float ratio_w,
+<<<<<<< HEAD
                                 phi::DenseTensor* h0,
                                 phi::DenseTensor* h1,
                                 phi::DenseTensor* w0,
@@ -236,6 +263,16 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
                                 phi::DenseTensor* coef_h1,
                                 phi::DenseTensor* coef_w0,
                                 phi::DenseTensor* coef_w1) {
+=======
+                                Tensor* h0,
+                                Tensor* h1,
+                                Tensor* w0,
+                                Tensor* w1,
+                                Tensor* coef_h0,
+                                Tensor* coef_h1,
+                                Tensor* coef_w0,
+                                Tensor* coef_w1) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   InterpolateFunction<T> F(ctx);
   auto place = ctx.GetPlace();
   Tensor _h0, _w0;
@@ -303,8 +340,13 @@ void BilinearParamTensorCompute(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BilinearFwdNpu(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                     const phi::DenseTensor* input,
                     phi::DenseTensor* output,
+=======
+                    const Tensor* input,
+                    Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     const float scale_h,
                     const float scale_w,
                     const bool align_corners,
@@ -394,8 +436,13 @@ void BilinearFwdNpu(const framework::ExecutionContext& ctx,
 
 template <typename T>
 void BilinearBwdNpu(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                     const phi::DenseTensor* gout,
                     phi::DenseTensor* gin,
+=======
+                    const Tensor* gout,
+                    Tensor* gin,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     const float scale_h,
                     const float scale_w,
                     const bool align_corners,

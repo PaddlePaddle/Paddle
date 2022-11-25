@@ -40,9 +40,16 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     reader = fake_imdb_reader(word_dict_size, batch_size * 40)
     train_reader = paddle.batch(reader, batch_size=batch_size)
 
+<<<<<<< HEAD
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1
     )
+=======
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
@@ -53,9 +60,14 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     feeder = fluid.DataFeeder(feed_list=[data, label], place=place)
+<<<<<<< HEAD
     reader = feeder.decorate_reader(
         train_reader, multi_devices=use_parallel_executor
     )
+=======
+    reader = feeder.decorate_reader(train_reader,
+                                    multi_devices=use_parallel_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     exe = fluid.Executor(place)
     fluid.default_startup_program().random_seed = 1
@@ -65,8 +77,13 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
     train_cp = fluid.default_main_program()
     if use_parallel_executor:
         train_cp = compiler.CompiledProgram(
+<<<<<<< HEAD
             fluid.default_main_program()
         ).with_data_parallel(loss_name=cost.name)
+=======
+            fluid.default_main_program()).with_data_parallel(
+                loss_name=cost.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fetch_list = [cost.name]
     else:
         fetch_list = [cost]
@@ -85,6 +102,7 @@ def train(network, use_cuda, use_parallel_executor, batch_size=32, pass_num=2):
 
 
 class TestBase(unittest.TestCase):
+
     def setUp(self):
         self.net = None
 

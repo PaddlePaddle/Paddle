@@ -57,8 +57,12 @@ def tiny(x):
 
     # Only floating types generate a tiny
     if np.issubdtype(x.dtype, np.floating) or np.issubdtype(
+<<<<<<< HEAD
         x.dtype, np.complexfloating
     ):
+=======
+            x.dtype, np.complexfloating):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         dtype = x.dtype
     else:
         dtype = np.float32
@@ -146,9 +150,14 @@ def __window_ss_fill(x, win_sq, n_frames, hop_length):  # pragma: no cover
     n_fft = len(win_sq)
     for i in range(n_frames):
         sample = i * hop_length
+<<<<<<< HEAD
         x[sample : min(n, sample + n_fft)] += win_sq[
             : max(0, min(n_fft, n - sample))
         ]
+=======
+        x[sample:min(n, sample +
+                     n_fft)] += win_sq[:max(0, min(n_fft, n - sample))]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def window_sumsquare(
@@ -359,9 +368,13 @@ def stft(
     elif n_fft > y.shape[-1]:
         raise Exception(
             "n_fft={} is too large for input signal of length={}".format(
+<<<<<<< HEAD
                 n_fft, y.shape[-1]
             )
         )
+=======
+                n_fft, y.shape[-1]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # Window the time series.
     y_frames = frame(y, frame_length=n_fft, hop_length=hop_length)
@@ -370,9 +383,15 @@ def stft(
         dtype = dtype_r2c(y.dtype)
 
     # Pre-allocate the STFT matrix
+<<<<<<< HEAD
     stft_matrix = np.empty(
         (int(1 + n_fft // 2), y_frames.shape[1]), dtype=dtype, order="F"
     )
+=======
+    stft_matrix = np.empty((int(1 + n_fft // 2), y_frames.shape[1]),
+                           dtype=dtype,
+                           order="F")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # how many columns can we fit within MAX_MEM_BLOCK?
     n_columns = MAX_MEM_BLOCK // (stft_matrix.shape[0] * stft_matrix.itemsize)
@@ -381,9 +400,15 @@ def stft(
     for bl_s in range(0, stft_matrix.shape[1], n_columns):
         bl_t = min(bl_s + n_columns, stft_matrix.shape[1])
 
+<<<<<<< HEAD
         stft_matrix[:, bl_s:bl_t] = fft.rfft(
             fft_window * y_frames[:, bl_s:bl_t], axis=0
         )
+=======
+        stft_matrix[:,
+                    bl_s:bl_t] = fft.rfft(fft_window * y_frames[:, bl_s:bl_t],
+                                          axis=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if input_rank == 2:
         stft_matrix = np.expand_dims(stft_matrix, 0)
@@ -568,6 +593,7 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
 
 
 def place(devices, key='place'):
+
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
@@ -623,9 +649,14 @@ def rand_x(
             np.random.randint(min_dim_len, max_dim_len) for i in range(dims)
         ]
     if complex:
+<<<<<<< HEAD
         return np.random.randn(*shape).astype(dtype) + 1.0j * np.random.randn(
             *shape
         ).astype(dtype)
+=======
+        return np.random.randn(
+            *shape).astype(dtype) + 1.j * np.random.randn(*shape).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         return np.random.randn(*shape).astype(dtype)
 

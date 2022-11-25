@@ -15,7 +15,11 @@
 #pragma once
 
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/dynload/cublas.h"
+=======
+#include "paddle/fluid/platform/dynload/cublas.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -1052,6 +1056,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
 template <>
 template <>
+<<<<<<< HEAD
+=======
 inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
                                         int M,
@@ -1104,6 +1110,109 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                               CUDA_C_32F,
                                               lda,
                                               &c_beta,
+                                              C,
+                                              CUDA_C_32F,
+                                              N,
+                                              CUDA_C_32F);
+#else
+  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::dtype::complex<float>>::GEMM(handle,
+                                             cuTransB,
+                                             cuTransA,
+                                             N,
+                                             M,
+                                             K,
+                                             &c_alpha,
+                                             h_B,
+                                             ldb,
+                                             h_A,
+                                             lda,
+                                             &c_beta,
+                                             h_C,
+                                             N);
+  });
+#endif  // CUDA_VERSION >= 8000
+}
+
+template <>
+template <>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
+inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                        CBLAS_TRANSPOSE transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::complex<double> alpha,
+                                        const phi::dtype::complex<double> *A,
+                                        const phi::dtype::complex<double> *B,
+                                        phi::dtype::complex<double> beta,
+                                        phi::dtype::complex<double> *C) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+
+  // TODO(kexinzhao): add processing code for compute capability < 53 case
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(),
+      53,
+      phi::errors::InvalidArgument(
+          "cublas complex128 gemm requires GPU compute capability >= 53,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  thrust::complex<double> c_alpha =
+      thrust::complex<double>(alpha.real, alpha.imag);
+  thrust::complex<double> c_beta =
+      thrust::complex<double>(beta.real, beta.imag);
+
+#if CUDA_VERSION >= 8000
+  // cublasHgemm does true FP16 computation which is slow for non-Volta
+  // GPUs. So use cublasGemmEx instead which does pesudo FP16 computation:
+  // input/output in fp16, computation in fp32, which can also be accelerated
+  // using tensor cores in volta GPUs.
+  auto &cuda_ctx = const_cast<phi::GPUContext &>(context_);
+  CUBlas<phi::dtype::complex<double>>::GEMM_EX(&cuda_ctx,
+                                               cuTransB,
+                                               cuTransA,
+                                               N,
+                                               M,
+                                               K,
+                                               &c_alpha,
+                                               B,
+                                               CUDA_C_64F,
+                                               ldb,
+                                               A,
+                                               CUDA_C_64F,
+                                               lda,
+                                               &c_beta,
+                                               C,
+                                               CUDA_C_64F,
+                                               N,
+                                               CUDA_C_64F);
+#else
+  // CUDA 7.5 does not support cublasGemmEx, hence we fall back to use hgemm
+
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<phi::dtype::complex<double>>::GEMM(handle,
+                                              cuTransB,
+                                              cuTransA,
+                                              N,
+                                              M,
+                                              K,
+                                              &c_alpha,
+                                              h_B,
+                                              ldb,
+                                              h_A,
+                                              lda,
+                                              &c_beta,
+<<<<<<< HEAD
                                               C,
                                               CUDA_C_32F,
                                               N,
@@ -1205,6 +1314,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                               h_A,
                                               lda,
                                               &c_beta,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                               h_C,
                                               N);
   });
@@ -1434,11 +1545,15 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
             << FLAGS_gemm_use_half_precision_compute_type;
 
     auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11000
     auto compute_type = CUBLAS_COMPUTE_32F;
 #else
     auto compute_type = CUDA_R_32F;
 #endif
+=======
+    cudaDataType_t compute_type = CUDA_R_32F;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     float h_alpha = static_cast<float>(alpha);
     float h_beta = static_cast<float>(beta);
@@ -1449,15 +1564,20 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
         std::is_same<T, phi::dtype::float16>::value) {
       a = static_cast<void *>(&alpha);
       b = static_cast<void *>(&beta);
+<<<<<<< HEAD
 #if CUDA_VERSION >= 11000
       compute_type = CUBLAS_COMPUTE_16F;
 #else
       compute_type = CUDA_R_16F;
 #endif
+=======
+      compute_type = CUDA_R_16F;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
+<<<<<<< HEAD
           phi::dynload::cublasGemmStridedBatchedEx(handle,
                                                    cuTransB,
                                                    cuTransA,
@@ -1481,6 +1601,31 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                    batchCount,
                                                    compute_type,
                                                    algo));
+=======
+          paddle::platform::dynload::cublasGemmStridedBatchedEx(handle,
+                                                                cuTransB,
+                                                                cuTransA,
+                                                                N,
+                                                                M,
+                                                                K,
+                                                                a,
+                                                                B,
+                                                                fp,
+                                                                ldb,
+                                                                strideB,
+                                                                A,
+                                                                fp,
+                                                                lda,
+                                                                strideA,
+                                                                b,
+                                                                C,
+                                                                fp,
+                                                                ldc,
+                                                                strideC,
+                                                                batchCount,
+                                                                compute_type,
+                                                                algo));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     });
   } else {
 #endif  // CUDA_VERSION >= 9010

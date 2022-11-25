@@ -45,9 +45,14 @@ def attention_lstm(
     start_offset = 0
     for bid in range(N):
         seq_len = lod[0][bid]
+<<<<<<< HEAD
         xi = np.copy(x[start_offset : start_offset + seq_len, :]).reshape(
             seq_len, M
         )
+=======
+        xi = np.copy(x[start_offset:start_offset + seq_len, :]).reshape(
+            seq_len, M)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         prev_cell = np.copy(c0[bid]).reshape([1, D])
         prev_hidden = np.copy(h0[bid]).reshape([1, D])
         for step in range(seq_len):
@@ -88,6 +93,7 @@ def attention_lstm(
 
 
 class TestAttentionLSTMOp(OpTest):
+
     def set_conf(self):
         pass
 
@@ -166,11 +172,13 @@ class TestAttentionLSTMOp(OpTest):
 
 
 class TestAttentionOpNonInit(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.has_initial_hidden = False
 
 
 class TestAttentionOpAct(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.M = 3
         self.D = 2
@@ -180,24 +188,28 @@ class TestAttentionOpAct(TestAttentionLSTMOp):
 
 
 class TestAttentionOpMD1(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.M = 36
         self.D = 8
 
 
 class TestAttentionOpMD2(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.M = 8
         self.D = 8
 
 
 class TestAttentionOpMD3(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.M = 15
         self.D = 30
 
 
 class TestAttentionOpBS1(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.lod = [[5]]
         self.M = 16
@@ -205,11 +217,13 @@ class TestAttentionOpBS1(TestAttentionLSTMOp):
 
 
 class TestAttentionOpBS2(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.lod = [[3, 6]]
 
 
 class TestAttentionOpBS5(TestAttentionLSTMOp):
+
     def set_conf(self):
         self.lod = [[3, 2, 4, 7, 5]]
 

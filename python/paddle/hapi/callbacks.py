@@ -69,7 +69,12 @@ def config_callbacks(
     return cbk_list
 
 
+<<<<<<< HEAD
 class CallbackList:
+=======
+class CallbackList(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, callbacks=None):
         # copy
         self.callbacks = [c for c in callbacks]
@@ -453,9 +458,14 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
+<<<<<<< HEAD
         self.eval_progbar = ProgressBar(
             num=self.eval_steps, verbose=self.verbose
         )
+=======
+        self.eval_progbar = ProgressBar(num=self.eval_steps,
+                                        verbose=self.verbose)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._is_print():
             print('Eval begin...')
 
@@ -500,9 +510,14 @@ class ProgBarLogger(Callback):
             'samples': 0,
         }
 
+<<<<<<< HEAD
         self.test_progbar = ProgressBar(
             num=self.test_steps, verbose=self.verbose
         )
+=======
+        self.test_progbar = ProgressBar(num=self.test_steps,
+                                        verbose=self.verbose)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._is_print():
             print('Predict begin...')
 
@@ -962,9 +977,15 @@ class VisualDL(Callback):
                 else:
                     continue
 
+<<<<<<< HEAD
                 self.writer.add_scalar(
                     tag=temp_tag, step=total_step, value=temp_value
                 )
+=======
+                self.writer.add_scalar(tag=temp_tag,
+                                       step=total_step,
+                                       value=temp_value)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -1272,9 +1293,14 @@ class ReduceLROnPlateau(Callback):
                 'fallback to auto mode.' % self.mode
             )
             self.mode = 'auto'
+<<<<<<< HEAD
         if self.mode == 'min' or (
             self.mode == 'auto' and 'acc' not in self.monitor
         ):
+=======
+        if (self.mode == 'min'
+                or (self.mode == 'auto' and 'acc' not in self.monitor)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
             self.best = np.Inf
         else:
@@ -1304,10 +1330,15 @@ class ReduceLROnPlateau(Callback):
                     return
             except Exception as e:
                 warnings.warn(
+<<<<<<< HEAD
                     'There are something wrong when get learning_rate from optimizer: {}.'.format(
                         e
                     )
                 )
+=======
+                    'There are something wrong when get learning_rate from optimizer: {}.'
+                    .format(e))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return
 
         current = logs[self.monitor]

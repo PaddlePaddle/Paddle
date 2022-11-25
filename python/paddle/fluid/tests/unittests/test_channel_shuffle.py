@@ -42,6 +42,7 @@ def channel_shuffle_np(x, groups, data_format="NCHW"):
 
 
 class TestChannelShuffleOp(OpTest):
+
     def setUp(self):
         self.op_type = "channel_shuffle"
         self.init_data_format()
@@ -72,11 +73,13 @@ class TestChannelShuffleOp(OpTest):
 
 
 class TestChannelLast(TestChannelShuffleOp):
+
     def init_data_format(self):
         self.format = "NHWC"
 
 
 class TestChannelShuffleAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
@@ -90,12 +93,21 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
+<<<<<<< HEAD
             x_1 = paddle.fluid.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
+=======
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 9, 4, 4],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 4, 4, 9],
+                                    dtype="float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out_1 = F.channel_shuffle(x_1, 3)
             out_2 = F.channel_shuffle(x_2, 3, "NHWC")
 
@@ -125,12 +137,21 @@ class TestChannelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
+<<<<<<< HEAD
             x_1 = paddle.fluid.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
+=======
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 9, 4, 4],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 4, 4, 9],
+                                    dtype="float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # init instance
             ps_1 = paddle.nn.ChannelShuffle(3)
             ps_2 = paddle.nn.ChannelShuffle(3, "NHWC")
@@ -177,19 +198,30 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
             paddle.disable_static(place=place)
 
+<<<<<<< HEAD
             channel_shuffle = paddle.nn.ChannelShuffle(
                 groups, data_format=data_format
             )
+=======
+            channel_shuffle = paddle.nn.ChannelShuffle(groups,
+                                                       data_format=data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = channel_shuffle(paddle.to_tensor(x))
 
             np.testing.assert_allclose(result.numpy(), npresult, rtol=1e-05)
 
+<<<<<<< HEAD
             result_functional = F.channel_shuffle(
                 paddle.to_tensor(x), 3, data_format
             )
             np.testing.assert_allclose(
                 result_functional.numpy(), npresult, rtol=1e-05
             )
+=======
+            result_functional = F.channel_shuffle(paddle.to_tensor(x), 3,
+                                                  data_format)
+            self.assertTrue(np.allclose(result_functional.numpy(), npresult))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             channel_shuffle_str = 'groups={}'.format(groups)
             if data_format != 'NCHW':
@@ -204,7 +236,9 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
 
 class TestChannelShuffleError(unittest.TestCase):
+
     def test_error_functional(self):
+
         def error_input():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
@@ -229,13 +263,19 @@ class TestChannelShuffleError(unittest.TestCase):
         def error_data_format():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
+<<<<<<< HEAD
                 channel_shuffle = F.channel_shuffle(
                     paddle.to_tensor(x), 3, "WOW"
                 )
+=======
+                channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3,
+                                                    "WOW")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, error_data_format)
 
     def test_error_layer(self):
+
         def error_input_layer():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")

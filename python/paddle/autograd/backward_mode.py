@@ -83,6 +83,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             assert len(in_out_list) > 0, "{} connot be empyt".format(name)
             for each_var in in_out_list:
                 assert isinstance(
+<<<<<<< HEAD
                     each_var, (paddle.Tensor, core.eager.Tensor)
                 ), "Elements of {} must be paddle.Tensor".format(name)
             return in_out_list
@@ -90,6 +91,17 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             assert isinstance(
                 in_out_list, (paddle.Tensor, core.eager.Tensor)
             ), "{} must be Tensor or list of Tensor".format(name)
+=======
+                    each_var,
+                    (paddle.Tensor, core.eager.Tensor
+                     )), "Elements of {} must be paddle.Tensor".format(name)
+            return in_out_list
+        else:
+            assert isinstance(
+                in_out_list,
+                (paddle.Tensor, core.eager.Tensor
+                 )), "{} must be Tensor or list of Tensor".format(name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return [in_out_list]
 
     tensors = check_tensors(tensors, "tensors")

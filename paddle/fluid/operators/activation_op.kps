@@ -13,7 +13,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/bfloat16.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
@@ -243,6 +247,7 @@ namespace plat = paddle::platform;
       ops::ActivationGradCudaKernel<phi::GPUContext,                           \
                                     ops::grad_functor<plat::bfloat16>>);
 
+<<<<<<< HEAD
 REGISTER_OP_CUDA_KERNEL(
     relu6,
     ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<float>>,
@@ -254,6 +259,19 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ActivationCudaKernel<phi::GPUContext,
                               ops::CudaRelu6Functor<plat::bfloat16>>);
 REGISTER_OP_CUDA_KERNEL(
+=======
+REGISTER_OP_CUDA_KERNEL(
+    relu6,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<float>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<double>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int>>,
+    ops::ActivationCudaKernel<phi::GPUContext, ops::CudaRelu6Functor<int64_t>>,
+    ops::ActivationCudaKernel<phi::GPUContext,
+                              ops::CudaRelu6Functor<plat::float16>>,
+    ops::ActivationCudaKernel<phi::GPUContext,
+                              ops::CudaRelu6Functor<plat::bfloat16>>);
+REGISTER_OP_CUDA_KERNEL(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     relu6_grad,
     ops::ActivationGradCudaKernel<phi::GPUContext,
                                   ops::CudaRelu6GradFunctor<float>>,

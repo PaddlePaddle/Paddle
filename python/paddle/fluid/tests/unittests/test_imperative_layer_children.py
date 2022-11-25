@@ -23,7 +23,9 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class LeNetDygraph(fluid.dygraph.Layer):
+
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2D(1, 6, 3, stride=1, padding=1),
@@ -33,6 +35,15 @@ class LeNetDygraph(fluid.dygraph.Layer):
             nn.ReLU(),
             paddle.fluid.dygraph.Pool2D(2, 'max', 2),
         )
+=======
+        super(LeNetDygraph, self).__init__()
+        self.features = nn.Sequential(nn.Conv2D(1, 6, 3, stride=1, padding=1),
+                                      nn.ReLU(),
+                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2),
+                                      nn.Conv2D(6, 16, 5, stride=1, padding=0),
+                                      nn.ReLU(),
+                                      paddle.fluid.dygraph.Pool2D(2, 'max', 2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -40,6 +51,7 @@ class LeNetDygraph(fluid.dygraph.Layer):
 
 
 class TestLayerChildren(unittest.TestCase):
+
     def func_apply_init_weight(self):
         with fluid.dygraph.guard():
             net = LeNetDygraph()

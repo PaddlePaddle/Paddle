@@ -18,8 +18,13 @@ template <typename T>
 class TrilTriuMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int diagonal = ctx.Attr<int>("diagonal");
     bool lower = ctx.Attr<bool>("lower");
     bool upper;

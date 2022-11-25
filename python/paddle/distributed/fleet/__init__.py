@@ -36,6 +36,7 @@ from .optimizer import distributed_optimizer
 from .scaler import distributed_scaler
 from .utils import log_util
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     "CommunicateTopology",
     "UtilBase",
@@ -47,6 +48,13 @@ __all__ = [  # noqa
     "MultiSlotDataGenerator",
     "PaddleCloudRoleMaker",
     "Fleet",
+=======
+__all__ = [  #noqa
+    "CommunicateTopology", "UtilBase", "HybridCommunicateGroup",
+    "MultiSlotStringDataGenerator", "UserDefinedRoleMaker",
+    "DistributedStrategy", "Role", "MultiSlotDataGenerator",
+    "PaddleCloudRoleMaker", "Fleet"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 ]
 
 fleet = Fleet()
@@ -98,8 +106,13 @@ minimize = fleet.minimize
 distributed_model = distributed_model
 shrink = fleet.shrink
 get_hybrid_communicate_group = fleet.get_hybrid_communicate_group
+<<<<<<< HEAD
 distributed_scaler = distributed_scaler
 set_log_level = log_util.set_log_level
 get_log_level_code = log_util.get_log_level_code
 get_log_level_name = log_util.get_log_level_name
 from .. import auto_parallel as auto
+=======
+distributed_scaler = fleet.distributed_scaler
+save_cache_table = fleet.save_cache_table
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

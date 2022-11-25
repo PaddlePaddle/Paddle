@@ -55,8 +55,13 @@ void CastDataLayout::apply() {
 
 void TransDataLayout(const OpKernelType& kernel_type_for_var,
                      const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                      const phi::DenseTensor& in,
                      phi::DenseTensor* out) {
+=======
+                     const Tensor& in,
+                     Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE(
       platform::places_are_same_class(kernel_type_for_var.place_,
                                       expected_kernel_type.place_),
@@ -119,8 +124,13 @@ void* GetDataFromTensor(const phi::DenseTensor& tensor,
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
+<<<<<<< HEAD
                                const phi::DenseTensor& in,
                                phi::DenseTensor* out) {
+=======
+                               const Tensor& in,
+                               Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
   auto place = expected_kernel_type.place_;
@@ -141,8 +151,13 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
                                     DataLayout out_layout,
+<<<<<<< HEAD
                                     const phi::DenseTensor& in,
                                     phi::DenseTensor* out,
+=======
+                                    const Tensor& in,
+                                    Tensor* out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     platform::Place place,
                                     bool always_copy) {
   // Set default as NCHW in case not specified

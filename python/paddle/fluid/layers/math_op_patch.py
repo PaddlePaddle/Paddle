@@ -60,6 +60,7 @@ _already_patch_variable = False
 
 
 def monkey_patch_variable():
+
     def unique_tmp_name():
         return unique_name.generate("tmp")
 
@@ -84,6 +85,7 @@ def monkey_patch_variable():
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
+<<<<<<< HEAD
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
@@ -95,6 +97,17 @@ def monkey_patch_variable():
             },
             stop_gradient=True,
         )
+=======
+        block.append_op(type="fill_constant",
+                        outputs={'Out': [var]},
+                        attrs={
+                            'dtype': var.dtype,
+                            'shape': shape,
+                            'value': value,
+                            'force_cpu': False
+                        },
+                        stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         var.stop_gradient = True
         return var
 
@@ -119,6 +132,7 @@ def monkey_patch_variable():
             else:
                 out_shape.append(d)
         assert batch_dim != -1
+<<<<<<< HEAD
         block.append_op(
             type='fill_constant_batch_size_like',
             outputs={'Out': [var]},
@@ -131,6 +145,18 @@ def monkey_patch_variable():
             },
             stop_gradient=True,
         )
+=======
+        block.append_op(type='fill_constant_batch_size_like',
+                        outputs={'Out': [var]},
+                        inputs={'Input': [ref_var]},
+                        attrs={
+                            'shape': out_shape,
+                            'value': value,
+                            'input_dim_idx': batch_dim,
+                            'output_dim_idx': batch_dim
+                        },
+                        stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         var.stop_gradient = True
         return var
@@ -212,12 +238,22 @@ def monkey_patch_variable():
         """
         block = current_block(self)
         out = create_new_tmp_var(block, dtype)
+<<<<<<< HEAD
         block.append_op(
             type="cast",
             inputs={"X": [self]},
             outputs={"Out": [out]},
             attrs={"in_dtype": self.dtype, "out_dtype": out.dtype},
         )
+=======
+        block.append_op(type="cast",
+                        inputs={"X": [self]},
+                        outputs={"Out": [out]},
+                        attrs={
+                            "in_dtype": self.dtype,
+                            "out_dtype": out.dtype
+                        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out.stop_gradient = self.stop_gradient
         return out
 
@@ -242,10 +278,16 @@ def monkey_patch_variable():
                 )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
+<<<<<<< HEAD
                 "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
                     self.type
                 )
             )
+=======
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}"
+                .format(self.type))
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         array_write(x=var, i=array_length(self), array=self)
 
     @static_only
@@ -290,12 +332,22 @@ def monkey_patch_variable():
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
         out = create_new_tmp_var(block, var.dtype)
+<<<<<<< HEAD
         block.append_op(
             type="scale",
             inputs={"X": [var]},
             outputs={"Out": [out]},
             attrs={"scale": scale, "bias": bias},
         )
+=======
+        block.append_op(type="scale",
+                        inputs={"X": [var]},
+                        outputs={"Out": [out]},
+                        attrs={
+                            "scale": scale,
+                            "bias": bias
+                        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     def _neg_(var):
@@ -338,9 +390,17 @@ def monkey_patch_variable():
     def _scalar_div_(var, value):
         return _scalar_op_(var, 1.0 / value, 0.0)
 
+<<<<<<< HEAD
     def _binary_creator_(
         method_name, op_type, reverse=False, scalar_method=None
     ):
+=======
+    def _binary_creator_(method_name,
+                         op_type,
+                         reverse=False,
+                         scalar_method=None):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
@@ -386,21 +446,34 @@ def monkey_patch_variable():
                             has_batch_size = True
                             break
                     if not has_batch_size:
+<<<<<<< HEAD
                         other_var = create_tensor(
                             current_block(self),
                             other_var,
                             dtype=lhs_dtype,
                             shape=self.shape,
                         )
+=======
+                        other_var = create_tensor(current_block(self),
+                                                  other_var,
+                                                  dtype=lhs_dtype,
+                                                  shape=self.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     else:
                         other_var = create_tensor_with_batchsize(
                             self, other_var, lhs_dtype
                         )
                 else:
                     # add fill_op to current_block
+<<<<<<< HEAD
                     other_var = create_scalar(
                         current_block(self), value=other_var, dtype=lhs_dtype
                     )
+=======
+                    other_var = create_scalar(current_block(self),
+                                              value=other_var,
+                                              dtype=lhs_dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # 3. unify right var type to left var
             rhs_dtype = safe_get_dtype(other_var)
@@ -426,6 +499,7 @@ def monkey_patch_variable():
                     "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
+<<<<<<< HEAD
                     % (
                         file_name,
                         line_num,
@@ -442,6 +516,17 @@ def monkey_patch_variable():
                 outputs={'Out': out},
                 attrs={'axis': axis},
             )
+=======
+                    % (file_name, line_num, EXPRESSION_MAP[method_name],
+                       op_type, op_type, EXPRESSION_MAP[method_name]))
+            current_block(self).append_op(type=op_type,
+                                          inputs={
+                                              'X': [self],
+                                              'Y': [other_var]
+                                          },
+                                          outputs={'Out': out},
+                                          attrs={'axis': axis})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -506,6 +591,7 @@ def monkey_patch_variable():
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
+<<<<<<< HEAD
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),
@@ -578,6 +664,41 @@ def monkey_patch_variable():
             '__matmul__',
             _binary_creator_('__matmul__', "matmul_v2", False, None),
         ),
+=======
+        ('__add__',
+         _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
+        #  a+b == b+a. Do not need to reverse explicitly
+        ('__radd__',
+         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
+        ('__sub__',
+         _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_)),
+        ('__rsub__',
+         _binary_creator_('__rsub__', 'elementwise_sub', True, _scalar_rsub_)),
+        ('__mul__',
+         _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_)),
+        #  a*b == b*a. Do not need to reverse explicitly
+        ('__rmul__',
+         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__',
+         _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_)),
+        ('__truediv__',
+         _binary_creator_('__truediv__', 'elementwise_div', False,
+                          _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
+        ('__rtruediv__',
+         _binary_creator_('__rtruediv__', 'elementwise_div', True, None)),
+        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
+                                     None)),
+        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
+                                      None)),
+        ('__floordiv__',
+         _binary_creator_('__floordiv__', 'elementwise_floordiv', False, None)),
+        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
+                                     None)),
+        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
+                                        None)),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         #  for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),

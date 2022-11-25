@@ -38,7 +38,15 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(phi_modules GLOBAL PROPERTY PHI_MODULES)
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
+<<<<<<< HEAD
 set(utils_modules pretty_log string_helper benchmark)
+
+if(WITH_CUSTOM_DEVICE)
+  set(fluid_modules ${fluid_modules} phi_capi)
+endif()
+=======
+set(utils_modules stringpiece pretty_log string_helper benchmark)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 if(WITH_CUSTOM_DEVICE)
   set(fluid_modules ${fluid_modules} phi_capi)
@@ -57,6 +65,7 @@ set(STATIC_INFERENCE_API
     paddle_pass_builder
     phi
     ${mkldnn_quantizer_cfg})
+<<<<<<< HEAD
 
 set(OP_LIST
     ""
@@ -65,17 +74,22 @@ set(OP_LIST
 set(KERNEL_LIST
     ""
     CACHE STRING "The list of phi kernels that will be compiled")
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #windows GPU static library over the limit, so not create_static_lib, and cc_library is dummy
 if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} phi ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
+<<<<<<< HEAD
   # message("${fluid_modules}")
   # message("PHI_MODULES ${phi_modules}")
   # message("${phi_kernels}")
   # message("${STATIC_INFERENCE_API}")
   # message("${utils_modules}")
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   create_static_lib(paddle_inference ${fluid_modules} ${phi_modules}
                     ${phi_kernels} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
@@ -121,21 +135,27 @@ if(WITH_PSCORE)
                             tensor_table)
 endif()
 
+<<<<<<< HEAD
 if(WITH_INFERENCE_NVTX AND NOT WIN32)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} cuda_profiler)
 endif()
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 if(WITH_ONNXRUNTIME)
   set(SHARED_INFERENCE_SRCS
       ${SHARED_INFERENCE_SRCS}
       ${CMAKE_CURRENT_SOURCE_DIR}/api/onnxruntime_predictor.cc)
 endif()
+<<<<<<< HEAD
 
 #export all symbols for paddle/phi/api/include/api.h on paddle_inference_shared, only for UNIX
 if(UNIX)
   set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS}
                             $<TARGET_OBJECTS:phi_function_api>)
 endif()
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 # Create shared inference library
 cc_library(

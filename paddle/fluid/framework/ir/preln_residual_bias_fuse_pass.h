@@ -29,6 +29,7 @@ namespace ir {
 //        other_op4    layer_norm            other_op4  other_op3
 //                       |
 //                   other_op3
+<<<<<<< HEAD
 //                                 or
 //
 //     |           |                            |            |
@@ -39,6 +40,8 @@ namespace ir {
 //        other_op4    layer_norm            other_op4  other_op3
 //                       |
 //                   other_op3
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class Graph;
 
 class PrelnResidualBiasFusePass : public FusePassBase {
@@ -55,7 +58,11 @@ class PrelnResidualBiasFusePass : public FusePassBase {
         .IsTensor()
         .End()
         .AddAttr("axis")
+<<<<<<< HEAD
         .IsIntIn({0, -1, 2})
+=======
+        .IsIntIn({0, -1})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         .End();
 
     AddOpCompat(OpCompat("layer_norm"))
@@ -90,7 +97,10 @@ class PrelnResidualBiasFusePass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+<<<<<<< HEAD
   int ApplyPattern(ir::Graph* graph, bool with_bias) const;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 }  // namespace ir

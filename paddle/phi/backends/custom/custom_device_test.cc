@@ -203,7 +203,10 @@ void TestCustomCCL(const paddle::platform::Place& place) {
                                 0,
                                 phi::ccl::CCLDataType::CCL_DATA_TYPE_FP32,
                                 phi::ccl::CCLReduceOp::SUM,
+<<<<<<< HEAD
                                 0,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 comm,
                                 stream);
   phi::DeviceManager::CCLAllGather(dev_type,
@@ -260,8 +263,13 @@ void TestBlasAPI(const paddle::platform::Place& place) {
   }
 
   std::vector<int64_t> dims = {2, 5};
+<<<<<<< HEAD
   auto* src = var1.GetMutable<phi::DenseTensor>();
   auto* dst = var2.GetMutable<phi::DenseTensor>();
+=======
+  auto* src = var1.GetMutable<paddle::framework::LoDTensor>();
+  auto* dst = var2.GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   src->Resize(phi::make_ddim(dims));
   dst->Resize(phi::make_ddim(dims));
   auto* src_mutable = src->mutable_data<float>(place);
@@ -280,7 +288,11 @@ void TestBlasAPI(const paddle::platform::Place& place) {
                        sizeof(float) * dst_data.size());
 
   paddle::imperative::TensorAdd<paddle::framework::Variable>(var1, &var2);
+<<<<<<< HEAD
   phi::DenseTensor rlt;
+=======
+  paddle::framework::LoDTensor rlt;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   paddle::platform::CPUPlace rlt_place;
   paddle::framework::TensorCopySync(*dst, rlt_place, &rlt);
 }

@@ -29,6 +29,7 @@ __all__ = []
 
 
 class PipelineParallel(MetaParallelBase):
+
     def __init__(self, layers, hcg, strategy):
         if not isinstance(layers, PipelineLayer):
             raise TypeError(
@@ -306,8 +307,14 @@ class PipelineParallel(MetaParallelBase):
                 labels = self._load_micro_batch(self.micro_batch_id)
                 output_tensor = self._layers._loss_fn(output_tensor, labels)
                 assert isinstance(
+<<<<<<< HEAD
                     output_tensor, (paddle.Tensor, core.eager.Tensor)
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+=======
+                    output_tensor,
+                    (paddle.Tensor, core.eager.Tensor
+                     )), "Currently, loss_fn should obtain Paddle.Tensor dtype"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 with paddle.amp.auto_cast(enable=False):
                     if self.accumulate_steps > 1:
@@ -340,10 +347,15 @@ class PipelineParallel(MetaParallelBase):
                         grad_tensors=[t for t in output_tensor_grad],
                     )
                 else:
+<<<<<<< HEAD
                     paddle.autograd.backward(
                         tensors=[output_tensor],
                         grad_tensors=[output_tensor_grad],
                     )
+=======
+                    paddle.autograd.backward(tensors=[output_tensor],
+                                             grad_tensors=[output_tensor_grad])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             input_tensor_grad = None
             if input_tensor is not None:
@@ -414,6 +426,7 @@ class PipelineParallel(MetaParallelBase):
                 self.total_loss is not None
             ), "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
+<<<<<<< HEAD
             is_fp32 = (
                 paddle.to_tensor(1)
                 if loss.dtype == paddle.float32
@@ -425,11 +438,24 @@ class PipelineParallel(MetaParallelBase):
             paddle.distributed.broadcast(
                 loss, src=self.global_rank, sync_op=True, group=self.pp_group
             )
+=======
+            is_fp32 = paddle.to_tensor(
+                1) if loss.dtype == paddle.float32 else paddle.to_tensor(0)
+            paddle.distributed.broadcast(is_fp32,
+                                         src=self.global_rank,
+                                         use_calc_stream=True,
+                                         group=self.pp_group)
+            paddle.distributed.broadcast(loss,
+                                         src=self.global_rank,
+                                         use_calc_stream=True,
+                                         group=self.pp_group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             is_fp32 = paddle.to_tensor(1)
             paddle.distributed.broadcast(
                 is_fp32,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+<<<<<<< HEAD
                 sync_op=True,
                 group=self.pp_group,
             )
@@ -438,6 +464,14 @@ class PipelineParallel(MetaParallelBase):
                 if is_fp32.numpy()[0]
                 else paddle.zeros(shape=[1], dtype="float16")
             )
+=======
+                use_calc_stream=True,
+                group=self.pp_group)
+            loss = paddle.zeros(shape=[
+                1
+            ], dtype="float32") if is_fp32.numpy()[0] else paddle.zeros(
+                shape=[1], dtype="float16")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.distributed.broadcast(
                 loss,
                 src=self._hcg.get_rank_from_stage(self.num_stages - 1),

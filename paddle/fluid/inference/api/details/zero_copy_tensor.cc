@@ -55,7 +55,11 @@ void Tensor::Reshape(const std::vector<int> &shape) {
       var,
       paddle::platform::errors::PreconditionNotMet(
           "No tensor called [%s] in the runtime scope", name_));
+<<<<<<< HEAD
   auto *tensor = var->GetMutable<phi::DenseTensor>();
+=======
+  auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   tensor->Resize(phi::make_ddim(shape));
 }
 
@@ -93,7 +97,11 @@ T *Tensor::mutable_data(PlaceType place) {
     return ORTGetMutableData<T>();
   }
 #endif
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_GT(
       tensor->numel(),
       0,
@@ -184,7 +192,11 @@ PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
 void Tensor::CopyFromCpu(const T *data) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor);
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_GE(tensor->numel(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -322,7 +334,11 @@ void Tensor::ShareExternalData(const T *data,
                                const std::vector<int> &shape,
                                PlaceType place,
                                DataLayout layout) {
+<<<<<<< HEAD
   EAGER_GET_TENSOR(phi::DenseTensor)
+=======
+  EAGER_GET_TENSOR(paddle::framework::LoDTensor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   size_t size =
       std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>()) *
       sizeof(T);
@@ -780,11 +796,19 @@ void InternalUtils::CopyFromCpuWithIoStream(paddle_infer::Tensor *t,
         var,
         paddle::platform::errors::PreconditionNotMet(
             "No tensor called [%s] in the runtime scope", t->name_));
+<<<<<<< HEAD
     auto *tensor = var->GetMutable<phi::DenseTensor>();
     t->tensor_ = tensor;
   }
 
   auto *tensor = static_cast<phi::DenseTensor *>(t->tensor_);
+=======
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+    t->tensor_ = tensor;
+  }
+
+  auto *tensor = static_cast<paddle::framework::LoDTensor *>(t->tensor_);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_GE(tensor->numel(),
                     0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -833,7 +857,11 @@ void InternalUtils::CopyToCpuWithIoStream(paddle_infer::Tensor *t,
         var,
         paddle::platform::errors::PreconditionNotMet(
             "No tensor called [%s] in the runtime scope", t->name_));
+<<<<<<< HEAD
     auto *tensor = var->GetMutable<phi::DenseTensor>();
+=======
+    auto *tensor = var->GetMutable<paddle::framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     t->tensor_ = tensor;
   }
 

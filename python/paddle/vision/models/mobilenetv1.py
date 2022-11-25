@@ -29,6 +29,7 @@ model_urls = {
 
 
 class DepthwiseSeparable(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         in_channels,
@@ -56,6 +57,26 @@ class DepthwiseSeparable(nn.Layer):
             stride=1,
             padding=0,
         )
+=======
+
+    def __init__(self, in_channels, out_channels1, out_channels2, num_groups,
+                 stride, scale):
+        super(DepthwiseSeparable, self).__init__()
+
+        self._depthwise_conv = ConvNormActivation(in_channels,
+                                                  int(out_channels1 * scale),
+                                                  kernel_size=3,
+                                                  stride=stride,
+                                                  padding=1,
+                                                  groups=int(num_groups *
+                                                             scale))
+
+        self._pointwise_conv = ConvNormActivation(int(out_channels1 * scale),
+                                                  int(out_channels2 * scale),
+                                                  kernel_size=1,
+                                                  stride=1,
+                                                  padding=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, x):
         x = self._depthwise_conv(x)
@@ -69,7 +90,11 @@ class MobileNetV1(nn.Layer):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
+<<<<<<< HEAD
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -98,6 +123,7 @@ class MobileNetV1(nn.Layer):
         self.num_classes = num_classes
         self.with_pool = with_pool
 
+<<<<<<< HEAD
         self.conv1 = ConvNormActivation(
             in_channels=3,
             out_channels=int(32 * scale),
@@ -200,10 +226,81 @@ class MobileNetV1(nn.Layer):
 
         dws56 = self.add_sublayer(
             sublayer=DepthwiseSeparable(
+=======
+        self.conv1 = ConvNormActivation(in_channels=3,
+                                        out_channels=int(32 * scale),
+                                        kernel_size=3,
+                                        stride=2,
+                                        padding=1)
+
+        dws21 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            32 * scale),
+                                                              out_channels1=32,
+                                                              out_channels2=64,
+                                                              num_groups=32,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv2_1")
+        self.dwsl.append(dws21)
+
+        dws22 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            64 * scale),
+                                                              out_channels1=64,
+                                                              out_channels2=128,
+                                                              num_groups=64,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv2_2")
+        self.dwsl.append(dws22)
+
+        dws31 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            128 * scale),
+                                                              out_channels1=128,
+                                                              out_channels2=128,
+                                                              num_groups=128,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv3_1")
+        self.dwsl.append(dws31)
+
+        dws32 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            128 * scale),
+                                                              out_channels1=128,
+                                                              out_channels2=256,
+                                                              num_groups=128,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv3_2")
+        self.dwsl.append(dws32)
+
+        dws41 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            256 * scale),
+                                                              out_channels1=256,
+                                                              out_channels2=256,
+                                                              num_groups=256,
+                                                              stride=1,
+                                                              scale=scale),
+                                  name="conv4_1")
+        self.dwsl.append(dws41)
+
+        dws42 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            256 * scale),
+                                                              out_channels1=256,
+                                                              out_channels2=512,
+                                                              num_groups=256,
+                                                              stride=2,
+                                                              scale=scale),
+                                  name="conv4_2")
+        self.dwsl.append(dws42)
+
+        for i in range(5):
+            tmp = self.add_sublayer(sublayer=DepthwiseSeparable(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 in_channels=int(512 * scale),
                 out_channels1=512,
-                out_channels2=1024,
+                out_channels2=512,
                 num_groups=512,
+<<<<<<< HEAD
                 stride=2,
                 scale=scale,
             ),
@@ -222,6 +319,31 @@ class MobileNetV1(nn.Layer):
             ),
             name="conv6",
         )
+=======
+                stride=1,
+                scale=scale),
+                                    name="conv5_" + str(i + 1))
+            self.dwsl.append(tmp)
+
+        dws56 = self.add_sublayer(sublayer=DepthwiseSeparable(
+            in_channels=int(512 * scale),
+            out_channels1=512,
+            out_channels2=1024,
+            num_groups=512,
+            stride=2,
+            scale=scale),
+                                  name="conv5_6")
+        self.dwsl.append(dws56)
+
+        dws6 = self.add_sublayer(sublayer=DepthwiseSeparable(in_channels=int(
+            1024 * scale),
+                                                             out_channels1=1024,
+                                                             out_channels2=1024,
+                                                             num_groups=1024,
+                                                             stride=1,
+                                                             scale=scale),
+                                 name="conv6")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.dwsl.append(dws6)
 
         if with_pool:
@@ -265,7 +387,11 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV1 from
     `"MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications" <https://arxiv.org/abs/1704.04861>`_.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -296,7 +422,14 @@ def mobilenet_v1(pretrained=False, scale=1.0, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     model = _mobilenet(
         'mobilenetv1_' + str(scale), pretrained, scale=scale, **kwargs
     )
+=======
+    model = _mobilenet('mobilenetv1_' + str(scale),
+                       pretrained,
+                       scale=scale,
+                       **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return model

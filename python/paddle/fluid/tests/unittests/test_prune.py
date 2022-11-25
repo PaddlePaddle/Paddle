@@ -23,6 +23,7 @@ import contextlib
 
 
 class TestPrune(unittest.TestCase):
+
     def net(self):
         x = fluid.layers.data(name='x', shape=[2], dtype='float32')
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
@@ -38,6 +39,7 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
+<<<<<<< HEAD
         self.assertEqual(
             [op.type for op in block.ops],
             [
@@ -48,14 +50,24 @@ class TestPrune(unittest.TestCase):
                 "reduce_mean",
             ],
         )
+=======
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         pruned_program = program._prune_with_input(
             feeded_var_names=[y.name, label.name], targets=[loss]
         )
         self.assertEqual(len(pruned_program.global_block().ops), 2)
+<<<<<<< HEAD
         self.assertEqual(
             [op.type for op in pruned_program.global_block().ops],
             ["cross_entropy2", "reduce_mean"],
         )
+=======
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         ["cross_entropy2", "reduce_mean"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune(self):
         program = framework.Program()
@@ -64,6 +76,7 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
+<<<<<<< HEAD
         self.assertEqual(
             [op.type for op in block.ops],
             [
@@ -86,6 +99,18 @@ class TestPrune(unittest.TestCase):
                 "reduce_mean",
             ],
         )
+=======
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
+        pruned_program = program._prune(targets=[loss])
+        self.assertEqual(len(pruned_program.global_block().ops), 5)
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune_target_not_list(self):
         program = framework.Program()
@@ -94,6 +119,7 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
+<<<<<<< HEAD
         self.assertEqual(
             [op.type for op in block.ops],
             [
@@ -116,6 +142,18 @@ class TestPrune(unittest.TestCase):
                 "reduce_mean",
             ],
         )
+=======
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
+        pruned_program = program._prune(targets=loss)
+        self.assertEqual(len(pruned_program.global_block().ops), 5)
+        self.assertEqual([op.type for op in pruned_program.global_block().ops],
+                         [
+                             "mul", "elementwise_add", "softmax",
+                             "cross_entropy2", "reduce_mean"
+                         ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_prune_target_none(self):
         program = framework.Program()
@@ -124,6 +162,7 @@ class TestPrune(unittest.TestCase):
         with fluid.program_guard(program, startup_program):
             (x, y, label, loss) = self.net()
         self.assertEqual(len(block.ops), 5)
+<<<<<<< HEAD
         self.assertEqual(
             [op.type for op in block.ops],
             [
@@ -134,6 +173,11 @@ class TestPrune(unittest.TestCase):
                 "reduce_mean",
             ],
         )
+=======
+        self.assertEqual([op.type for op in block.ops], [
+            "mul", "elementwise_add", "softmax", "cross_entropy2", "reduce_mean"
+        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         try:
             pruned_program = program._prune(targets=None)
         except ValueError as e:
@@ -157,6 +201,7 @@ def _mock_guard(mock):
 
 
 class TestExecutorRunAutoPrune(unittest.TestCase):
+
     def net1(self):
         x = fluid.layers.data(name='x', shape=[2], dtype='float32')
         label = fluid.layers.data(name="label", shape=[1], dtype="int64")
@@ -203,6 +248,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         loss1 = paddle.mean(x=loss1)
         loss2 = fluid.layers.cross_entropy(input=y2, label=label)
         loss2 = paddle.mean(x=loss2)
+<<<<<<< HEAD
         return (
             x1,
             x2,
@@ -214,6 +260,9 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             w1_param_attrs,
             w2_param_attrs,
         )
+=======
+        return x1, x2, y1, y2, label, loss1, loss2, w1_param_attrs, w2_param_attrs
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_not_prune(self):
         """
@@ -229,12 +278,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=False,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNotNone(scope.find_var(loss2.name))
 
@@ -255,12 +314,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
                 weight = np.array(
@@ -290,12 +359,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))  # loss2 is pruned
                 weight = np.array(
@@ -317,21 +396,36 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(startup_program)
                 compiled_prog = fluid.CompiledProgram(
+<<<<<<< HEAD
                     program
                 ).with_data_parallel(
                     loss_name=loss1.name, places=fluid.CPUPlace()
                 )
+=======
+                    program).with_data_parallel(loss_name=loss1.name,
+                                                places=fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 weight_init = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     compiled_prog,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(compiled_prog,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
@@ -355,12 +449,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={y.name: x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  y.name: x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(
@@ -383,6 +487,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 self.assertRaises(
                     Exception,
                     exe.run,
@@ -391,6 +496,17 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     fetch_list=[loss1.name],
                     use_prune=True,
                 )
+=======
+                self.assertRaises(Exception,
+                                  exe.run,
+                                  program,
+                                  feed={
+                                      y.name: x_np,
+                                      'label': label_np
+                                  },
+                                  fetch_list=[loss1.name],
+                                  use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
 
@@ -416,6 +532,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')
+<<<<<<< HEAD
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
@@ -426,6 +543,18 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=True,
                         )
+=======
+                    label_np = np.random.randint(1,
+                                                 size=(10, 1)).astype('int64')
+                    for i in range(10):
+                        res = exe.run(program,
+                                      feed={
+                                          'x': x_np,
+                                          'label': label_np
+                                      },
+                                      fetch_list=[loss1.name],
+                                      use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         if i == 0:
                             self.assertEqual(exe.prune_called_times, 1)
                         else:
@@ -466,9 +595,14 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     train2 = adam_optimizer2.minimize(loss2)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')
+<<<<<<< HEAD
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
+=======
+                    label_np = np.random.randint(1,
+                                                 size=(10, 1)).astype('int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     for i in range(10):
                         if i % 2:
@@ -522,6 +656,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                     sgd_optimizer.minimize(loss1)
                     exe.run(startup_program)
                     x_np = np.random.random(size=(10, 2)).astype('float32')
+<<<<<<< HEAD
                     label_np = np.random.randint(1, size=(10, 1)).astype(
                         'int64'
                     )
@@ -537,6 +672,21 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             fetch_list=[loss1.name],
                             use_prune=True,
                         )
+=======
+                    label_np = np.random.randint(1,
+                                                 size=(10, 1)).astype('int64')
+                    compiled_prog = fluid.CompiledProgram(
+                        program).with_data_parallel(loss_name=loss1.name,
+                                                    places=fluid.CPUPlace())
+                    for i in range(10):
+                        res = exe.run(compiled_prog,
+                                      feed={
+                                          'x': x_np,
+                                          'label': label_np
+                                      },
+                                      fetch_list=[loss1.name],
+                                      use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         if i == 0:
                             self.assertEqual(exe.prune_called_times, 1)
                         else:
@@ -562,12 +712,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=False,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 weight_without_prune = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
                 )
@@ -576,12 +736,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # use_prune
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             res = exe.run(
                 program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name, train1],
                 use_prune=True,
             )
+=======
+            res = exe.run(program,
+                          feed={
+                              'x': x_np,
+                              'label': label_np
+                          },
+                          fetch_list=[loss1.name, train1],
+                          use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_with_prune = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -590,12 +760,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             exe.run(
                 cloned_program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name],
                 use_prune=False,
             )
+=======
+            exe.run(cloned_program,
+                    feed={
+                        'x': x_np,
+                        'label': label_np
+                    },
+                    fetch_list=[loss1.name],
+                    use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -640,6 +820,7 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
                 compiled_prog1 = fluid.CompiledProgram(
+<<<<<<< HEAD
                     program
                 ).with_data_parallel(
                     loss_name=loss1.name, places=[fluid.CPUPlace()] * 2
@@ -649,6 +830,13 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 ).with_data_parallel(
                     loss_name=loss2.name, places=[fluid.CPUPlace()] * 2
                 )
+=======
+                    program).with_data_parallel(loss_name=loss1.name,
+                                                places=[fluid.CPUPlace()] * 2)
+                compiled_prog2 = fluid.CompiledProgram(
+                    program).with_data_parallel(loss_name=loss2.name,
+                                                places=[fluid.CPUPlace()] * 2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 for i in range(10):
                     if i % 2 == 1:
                         res = exe.run(
@@ -661,12 +849,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                             use_prune=True,
                         )
                     else:
+<<<<<<< HEAD
                         res = exe.run(
                             compiled_prog2,
                             feed={'x2': x_np, 'label': label_np},
                             fetch_list=[loss2.name, train2],
                             use_prune=True,
                         )
+=======
+                        res = exe.run(compiled_prog2,
+                                      feed={
+                                          'x2': x_np,
+                                          'label': label_np
+                                      },
+                                      fetch_list=[loss2.name, train2],
+                                      use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 weight1 = np.array(
                     scope.find_var(w1_param_attrs.name).get_tensor()
                 )
@@ -676,12 +874,23 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
             exe.run(startup_program)
             for i in range(10):
                 if i % 2 == 1:
+<<<<<<< HEAD
                     exe.run(
                         cloned_program,
                         feed={'x1': x_np, 'x2': x_np, 'label': label_np},
                         fetch_list=[loss1.name],
                         use_prune=False,
                     )
+=======
+                    exe.run(cloned_program,
+                            feed={
+                                'x1': x_np,
+                                'x2': x_np,
+                                'label': label_np
+                            },
+                            fetch_list=[loss1.name],
+                            use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight2 = np.array(scope.find_var(w1_param_attrs.name).get_tensor())
         np.testing.assert_allclose(weight1, weight2, rtol=1e-05)
 
@@ -707,12 +916,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
 
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=False,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 weight_without_prune = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -722,12 +941,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # use_prune
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             res = exe.run(
                 program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name, train1],
                 use_prune=True,
             )
+=======
+            res = exe.run(program,
+                          feed={
+                              'x': x_np,
+                              'label': label_np
+                          },
+                          fetch_list=[loss1.name, train1],
+                          use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_with_prune = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -736,12 +965,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             exe.run(
                 cloned_program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name],
                 use_prune=False,
             )
+=======
+            exe.run(cloned_program,
+                    feed={
+                        'x': x_np,
+                        'label': label_np
+                    },
+                    fetch_list=[loss1.name],
+                    use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -787,12 +1026,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
 
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x1': x_np, 'label': label_np},
                     fetch_list=[loss1.name, train1],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x1': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name, train1],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(w1_param_attrs.name))
                 self.assertIsNotNone(scope.find_var(w2_param_attrs.name))
                 self.assertIsNotNone(scope.find_var(loss1.name))
@@ -829,12 +1078,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 exe.run(startup_program)
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={'x': x_np, 'label': label_np},
                     fetch_list=[loss1.name],
                     use_prune=False,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  'x': x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[loss1.name],
+                              use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 weight_without_prune = np.array(
                     scope.find_var(w_param_attrs.name).get_tensor()
@@ -844,11 +1103,20 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         # use_prune
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             res = exe.run(
                 program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name, train1],
             )
+=======
+            res = exe.run(program,
+                          feed={
+                              'x': x_np,
+                              'label': label_np
+                          },
+                          fetch_list=[loss1.name, train1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_with_prune = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -857,12 +1125,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
             exe.run(startup_program)
+<<<<<<< HEAD
             exe.run(
                 cloned_program,
                 feed={'x': x_np, 'label': label_np},
                 fetch_list=[loss1.name],
                 use_prune=False,
             )
+=======
+            exe.run(cloned_program,
+                    feed={
+                        'x': x_np,
+                        'label': label_np
+                    },
+                    fetch_list=[loss1.name],
+                    use_prune=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             weight_expected = np.array(
                 scope.find_var(w_param_attrs.name).get_tensor()
             )
@@ -885,12 +1163,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={y.name: x_np, 'label': label_np},
                     fetch_list=[y.name, loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  y.name: x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[y.name, loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
                 self.assertIsNone(scope.find_var(x.name))
@@ -916,12 +1204,22 @@ class TestExecutorRunAutoPrune(unittest.TestCase):
                 )
                 x_np = np.random.random(size=(10, 2)).astype('float32')
                 label_np = np.random.randint(1, size=(10, 1)).astype('int64')
+<<<<<<< HEAD
                 res = exe.run(
                     program,
                     feed={x.name: x_np, 'label': label_np},
                     fetch_list=[x.name, loss1.name],
                     use_prune=True,
                 )
+=======
+                res = exe.run(program,
+                              feed={
+                                  x.name: x_np,
+                                  'label': label_np
+                              },
+                              fetch_list=[x.name, loss1.name],
+                              use_prune=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertIsNotNone(scope.find_var(loss1.name))
                 self.assertIsNone(scope.find_var(loss2.name))
                 weight = np.array(

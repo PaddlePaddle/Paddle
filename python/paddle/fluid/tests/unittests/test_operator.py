@@ -21,6 +21,7 @@ import paddle.fluid.proto.framework_pb2 as framework_pb2
 
 
 class TestGetAllProtos(unittest.TestCase):
+
     def test_all(self):
         all_protos = op.get_all_op_protos()
         self.assertNotEqual(0, len(all_protos))
@@ -30,6 +31,7 @@ class TestGetAllProtos(unittest.TestCase):
 
 
 class TestOpDescCreationMethod(unittest.TestCase):
+
     def test_plain_input_output(self):
         op_proto = framework_pb2.OpProto()
         op_proto.type = "test"
@@ -110,9 +112,16 @@ class TestOpDescCreationMethod(unittest.TestCase):
         expected1.type = 'fc'
         self.assertEqual(expected1, generated1)
 
+<<<<<<< HEAD
         generated2 = method(
             X=['x1', 'x2', 'x3'], b='b', W=['w1', 'w2', 'w3'], Y='y'
         )
+=======
+        generated2 = method(X=['x1', 'x2', 'x3'],
+                            b='b',
+                            W=['w1', 'w2', 'w3'],
+                            Y='y')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         expected2 = framework_pb2.OpDesc()
 
         tmp = expected2.inputs.add()
@@ -160,6 +169,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
         method = op.OpDescCreationMethod(op_proto)
 
+<<<<<<< HEAD
         generated = method(
             X="a",
             int_attr=10,
@@ -170,6 +180,15 @@ class TestOpDescCreationMethod(unittest.TestCase):
             floats_attr=[0.2, 3.2, 4.5],
             strings_attr=["a", "b", "c"],
         )
+=======
+        generated = method(X="a",
+                           int_attr=10,
+                           float_attr=3.2,
+                           string_attr="test_str",
+                           ints_attr=[0, 1, 2, 3, 4],
+                           floats_attr=[0.2, 3.2, 4.5],
+                           strings_attr=["a", "b", "c"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         expected = framework_pb2.OpDesc()
         expected.type = "test"
@@ -217,6 +236,7 @@ class TestOpDescCreationMethod(unittest.TestCase):
 
 
 class TestOpCreations(unittest.TestCase):
+
     def test_all(self):
         add_op = op.Operator("sum", X=["a", "b"], Out="z")
         self.assertIsNotNone(add_op)

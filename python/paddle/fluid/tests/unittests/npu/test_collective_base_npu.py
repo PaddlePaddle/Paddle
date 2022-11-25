@@ -28,7 +28,12 @@ import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 
 
+<<<<<<< HEAD
 class TestCollectiveRunnerBase:
+=======
+class TestCollectiveRunnerBase(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def get_model(self, train_prog, startup_prog):
         raise NotImplementedError(
             "get model should be implemented by child class."
@@ -41,9 +46,14 @@ class TestCollectiveRunnerBase:
             not_ready_endpoints = []
             for ep in endpoints:
                 ip_port = ep.split(":")
+<<<<<<< HEAD
                 with closing(
                     socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 ) as sock:
+=======
+                with closing(socket.socket(socket.AF_INET,
+                                           socket.SOCK_STREAM)) as sock:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     sock.settimeout(2)
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                     if hasattr(socket, 'SO_REUSEPORT'):
@@ -57,15 +67,25 @@ class TestCollectiveRunnerBase:
                         not_ready_endpoints.append(ep)
             if not all_ok:
                 sys.stderr.write("server not ready, wait 3 sec to retry...\n")
+<<<<<<< HEAD
                 sys.stderr.write(
                     "not ready endpoints:" + str(not_ready_endpoints) + "\n"
                 )
+=======
+                sys.stderr.write("not ready endpoints:" +
+                                 str(not_ready_endpoints) + "\n")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 sys.stderr.flush()
                 time.sleep(3)
             else:
                 break
 
+<<<<<<< HEAD
     # endpoints should be ["ip1:port1","ip2:port2"]
+=======
+
+#endpoints should be ["ip1:port1","ip2:port2"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def initCommunicator(
         self, program, rank, nranks, wait_port, current_endpoint, endpoints
@@ -75,6 +95,7 @@ class TestCollectiveRunnerBase:
         if rank == 0 and wait_port:
             self.wait_server_ready(other_endpoints)
         block = program.global_block()
+<<<<<<< HEAD
         hccl_id_var = block.create_var(
             name=nameGen.generate('hccl_id'),
             persistable=True,
@@ -101,6 +122,28 @@ class TestCollectiveRunnerBase:
                 'rank_ids': nranks,
             },
         )
+=======
+        hccl_id_var = block.create_var(name=nameGen.generate('hccl_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
+        block.append_op(type='c_gen_hccl_id',
+                        inputs={},
+                        outputs={'Out': hccl_id_var},
+                        attrs={
+                            'rank': rank,
+                            'endpoint': current_endpoint,
+                            'other_endpoints': other_endpoints
+                        })
+        block.append_op(type='c_comm_init_hccl',
+                        inputs={'X': hccl_id_var},
+                        outputs={},
+                        attrs={
+                            'rank': rank,
+                            'ring_id': self.global_ring_id,
+                            'device_id': int(os.getenv("FLAGS_selected_npus")),
+                            'rank_ids': nranks
+                        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def run_trainer(self, args):
         train_prog = fluid.Program()
@@ -143,6 +186,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -153,6 +197,7 @@ class TestDistBase(unittest.TestCase):
         self._python_interp = sys.executable
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -193,6 +238,7 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
+<<<<<<< HEAD
         # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
@@ -207,6 +253,18 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()

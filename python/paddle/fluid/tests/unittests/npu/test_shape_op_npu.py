@@ -26,6 +26,7 @@ SEED = 2021
 
 
 class TestShape(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "shape"
@@ -51,21 +52,25 @@ class TestShape(OpTest):
 
 
 class TestShape_fp16(TestShape):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestShape_double(TestShape):
+
     def init_dtype(self):
         self.dtype = np.float64
 
 
 class TestShape_int32(TestShape):
+
     def init_dtype(self):
         self.dtype = np.int32
 
 
 class TestShape_int64(TestShape):
+
     def init_dtype(self):
         self.dtype = np.int64
 

@@ -18,9 +18,17 @@ import os
 import sys
 import shutil
 import subprocess
+<<<<<<< HEAD
 
 
 class TestOptimizationTunerAPI(unittest.TestCase):
+=======
+from paddle.distributed.fleet.launch_utils import run_with_coverage
+
+
+class TestOptimizationTunerAPI(unittest.TestCase):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_engine_api(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "optimization_tuner_api.py")
@@ -31,6 +39,7 @@ class TestOptimizationTunerAPI(unittest.TestCase):
             coverage_args = []
 
         tmp_dir = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         cmd = (
             [sys.executable, "-u"]
             + coverage_args
@@ -44,6 +53,12 @@ class TestOptimizationTunerAPI(unittest.TestCase):
                 launch_model_path,
             ]
         )
+=======
+        cmd = [sys.executable, "-u"] + coverage_args + [
+            "-m", "launch", "--gpus", "0,1", "--log_dir", tmp_dir.name,
+            launch_model_path
+        ]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         process = subprocess.Popen(cmd)
         process.wait()

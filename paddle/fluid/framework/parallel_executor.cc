@@ -558,6 +558,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use IPU device since it's not compiled with IPU,"
           "Please recompile or reinstall Paddle with IPU support."));
 #endif
+<<<<<<< HEAD
     } else if (platform::is_npu_place(place)) {
 #if defined(PADDLE_WITH_ASCEND_CL)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -572,6 +573,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "NPU,"
           "Please recompile or reinstall Paddle with NPU support."));
 #endif
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
@@ -997,16 +1000,27 @@ void ParallelExecutor::BCastParamsToDevices(
 
 FetchUnmergedList ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+<<<<<<< HEAD
   LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (Run).";
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 
   ResetHasFeedGuard reset_has_feed_guard(member_);
+<<<<<<< HEAD
 
   ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_),
                                 fetch_tensors,
                                 member_->HasGarbageCollectors());
 
+=======
+
+  ir::SkipMemOptVarsGuard guard(&(member_->mem_opt_var_infos_),
+                                fetch_tensors,
+                                member_->HasGarbageCollectors());
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   auto fetch_data =
       member_->executor_->Run(fetch_tensors, /*return_merged=*/false);
@@ -1015,7 +1029,10 @@ FetchUnmergedList ParallelExecutor::Run(
 
 FetchList ParallelExecutor::RunAndMerge(
     const std::vector<std::string> &fetch_tensors) {
+<<<<<<< HEAD
   LOG_FIRST_N(INFO, 1) << "ParallelExecutor is Running (RunAndMerge).";
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PreludeToRun(fetch_tensors);
   platform::RecordBlock b(0);
 

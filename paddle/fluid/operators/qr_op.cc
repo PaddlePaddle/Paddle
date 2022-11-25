@@ -12,11 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/qr_op.h"
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/phi/core/ddim.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/ddim.h"
@@ -118,3 +130,10 @@ REGISTER_OPERATOR(qr,
                   QrInferShapeFunctor);
 
 REGISTER_OPERATOR(qr_grad, ops::QrGradOp);
+<<<<<<< HEAD
+=======
+
+REGISTER_OP_CPU_KERNEL(qr_grad,
+                       ops::QrGradKernel<phi::CPUContext, float>,
+                       ops::QrGradKernel<phi::CPUContext, double>);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

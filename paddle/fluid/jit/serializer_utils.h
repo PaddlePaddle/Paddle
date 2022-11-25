@@ -26,7 +26,10 @@ class VarDesc;
 namespace jit {
 static const char PDMODEL_SUFFIX[] = ".pdmodel";
 static const char PDPARAMS_SUFFIX[] = ".pdiparams";
+<<<<<<< HEAD
 static const char PROPERTY_SUFFIX[] = ".meta";
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace utils {
 bool IsPersistable(framework::VarDesc* desc_ptr);

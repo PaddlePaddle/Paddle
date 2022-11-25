@@ -22,9 +22,15 @@ template <typename T>
 class ArgsortMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto* indices = ctx.Output<phi::DenseTensor>("Indices");
+=======
+    auto* input = ctx.Input<framework::LoDTensor>("X");
+    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* indices = ctx.Output<framework::LoDTensor>("Indices");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const auto& place = ctx.GetPlace();
 
     const auto& sorted = true;
@@ -44,7 +50,11 @@ class ArgsortMLUKernel : public framework::OpKernel<T> {
     indices->mutable_data<int64_t>(place);
 
     // cnnl only support int32/int16 type of indices
+<<<<<<< HEAD
     phi::DenseTensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+=======
+    framework::Tensor indices_int32(framework::TransToPhiDataType(VT::INT32));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     indices_int32.Resize(indices->dims());
     indices_int32.mutable_data<int32_t>(place);
 
@@ -79,9 +89,15 @@ template <typename T>
 class ArgsortGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* indices = ctx.Input<phi::DenseTensor>("Indices");
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+=======
+    auto* indices = ctx.Input<Tensor>("Indices");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int axis = ctx.Attr<int>("axis");
     dx->mutable_data<T>(ctx.GetPlace());
 

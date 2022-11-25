@@ -27,7 +27,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 template <typename T,
           int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -260,10 +264,17 @@ class SampleLogitsKernel : public framework::OpKernel<T> {
     }
 
     if (use_customized_samples) {
+<<<<<<< HEAD
       const phi::DenseTensor* customized_samples =
           context.Input<phi::DenseTensor>("CustomizedSamples");
       const phi::DenseTensor* customized_probabilities =
           context.Input<phi::DenseTensor>("CustomizedProbabilities");
+=======
+      const Tensor* customized_samples =
+          context.Input<Tensor>("CustomizedSamples");
+      const Tensor* customized_probabilities =
+          context.Input<Tensor>("CustomizedProbabilities");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(customized_samples,
                         samples,
                         platform::errors::InvalidArgument(

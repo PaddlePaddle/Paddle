@@ -29,7 +29,11 @@ class ScaleLoDTensorFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
                   const T* scales,
+<<<<<<< HEAD
                   phi::DenseTensor* seq) {
+=======
+                  framework::LoDTensor* seq) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const size_t level = 0;
     auto lod = seq->lod();
     const size_t num_seq = lod[level].size() - 1;

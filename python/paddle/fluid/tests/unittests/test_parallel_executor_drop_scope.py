@@ -20,6 +20,7 @@ import os
 
 
 class TestParallelExecutorDropExeScope(unittest.TestCase):
+
     def check_drop_scope(self, use_cuda=True):
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
@@ -41,6 +42,7 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
         exec_strateg = fluid.ExecutionStrategy()
         exec_strateg.num_iteration_per_drop_scope = 10
 
+<<<<<<< HEAD
         train_exe = fluid.ParallelExecutor(
             use_cuda=use_cuda,
             main_program=train_program,
@@ -53,6 +55,16 @@ class TestParallelExecutorDropExeScope(unittest.TestCase):
             share_vars_from=train_exe,
             exec_strategy=exec_strateg,
         )
+=======
+        train_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                           main_program=train_program,
+                                           loss_name=loss.name,
+                                           exec_strategy=exec_strateg)
+        test_exe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                          main_program=test_program,
+                                          share_vars_from=train_exe,
+                                          exec_strategy=exec_strateg)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         x = numpy.random.random(size=(10, 1)).astype('float32')
         train_exe.run(feed={"X": x}, fetch_list=[loss.name])

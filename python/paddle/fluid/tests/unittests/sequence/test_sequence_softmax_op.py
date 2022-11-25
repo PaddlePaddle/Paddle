@@ -23,6 +23,7 @@ from test_softmax_op import stable_softmax
 
 
 class TestSequenceSoftmaxOp(OpTest):
+
     def setUp(self):
         self.op_type = "sequence_softmax"
         self.use_cudnn = False
@@ -75,21 +76,25 @@ class TestSequenceSoftmaxOp(OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
+
     def init_op_type(self):
         self.use_cudnn = True
 
 
 class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[40, 0, 40, 30]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 40, 70, 0]]
 
 
 class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
+
     def init_lod(self):
         self.lod = [[0, 0, 0, 110]]
 

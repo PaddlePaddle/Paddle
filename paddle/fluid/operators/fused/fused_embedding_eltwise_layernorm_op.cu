@@ -15,8 +15,11 @@
 #include <paddle/fluid/platform/device_context.h>
 
 #include <algorithm>
+<<<<<<< HEAD
 #include <cstdint>
 #include <type_traits>
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -108,6 +111,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 
     float eps = context.Attr<float>("epsilon");
 
+<<<<<<< HEAD
     if (std::is_same<T, paddle::platform::float16>::value) {
       const half *scale_new = reinterpret_cast<const half *>(scale_d);
       const half *bias_new = reinterpret_cast<const half *>(bias_d);
@@ -139,6 +143,21 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
                                  input_num,
                                  device_ctx.stream());
     }
+=======
+    int shared_bytes = input_num * sizeof(int64_t);
+    math::EmbEltwiseLayerNormFunctor<T> emb_eltwise_layernorm_func;
+    emb_eltwise_layernorm_func(batch,
+                               seq_len,
+                               hidden,
+                               in_ids_d,
+                               scale_d,
+                               bias_d,
+                               in_embs_d,
+                               output_d,
+                               eps,
+                               input_num,
+                               device_ctx.stream());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 
@@ -146,6 +165,7 @@ class EmbeddingEltWiseLayerNormKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
 REGISTER_OP_CUDA_KERNEL(
     fused_embedding_eltwise_layernorm,
@@ -157,3 +177,8 @@ REGISTER_OP_CUDA_KERNEL(
     fused_embedding_eltwise_layernorm,
     ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);
 #endif
+=======
+REGISTER_OP_CUDA_KERNEL(
+    fused_embedding_eltwise_layernorm,
+    ops::EmbeddingEltWiseLayerNormKernel<phi::GPUContext, float>);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

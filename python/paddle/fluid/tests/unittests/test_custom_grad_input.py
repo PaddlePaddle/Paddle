@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestTensorBackward(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -55,6 +56,7 @@ class TestTensorBackward(unittest.TestCase):
 
 
 class TestBackwardAPI(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -143,6 +145,7 @@ class TestBackwardAPI(unittest.TestCase):
 
     def func_backward_accumulator_with_init_grad(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x = np.random.random(
                 [
                     10,
@@ -158,6 +161,17 @@ class TestBackwardAPI(unittest.TestCase):
                     10,
                 ]
             ).astype(dtype)
+=======
+            x = np.random.random([
+                10,
+            ]).astype(dtype)
+            y_grad = np.random.random([
+                10,
+            ]).astype(dtype)
+            z_grad = np.random.random([
+                10,
+            ]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._places = [paddle.CPUPlace()]
             for place in self._places:
                 with dg.guard(place):

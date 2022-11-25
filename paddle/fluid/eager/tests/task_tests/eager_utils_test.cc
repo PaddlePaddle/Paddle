@@ -163,7 +163,11 @@ TEST(EagerUtils, PassStopGradient) {
                                     auto_grad1.get(),
                                     auto_grad2.get(),
                                     auto_grad3.get());
+<<<<<<< HEAD
   CHECK(auto_grad0->StopGradient() == true);
+=======
+  CHECK(auto_grad0->StopGradient() == false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   CHECK(auto_grad1->StopGradient() == true);
   CHECK(auto_grad2->StopGradient() == true);
   CHECK(auto_grad3->StopGradient() == true);

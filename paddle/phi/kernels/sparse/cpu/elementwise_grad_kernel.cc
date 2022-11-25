@@ -12,9 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/sparse/elementwise_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
@@ -27,7 +30,11 @@ limitations under the License. */
 #include "paddle/phi/kernels/elementwise_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
+=======
+#include "paddle/phi/kernels/sparse/elementwise_kernel.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 namespace sparse {
@@ -36,9 +43,15 @@ template <typename T, typename IntT, typename Context>
 void AllocCsrPtr(const Context& dev_ctx,
                  const SparseCsrTensor& x,
                  SparseCsrTensor* dx) {
+<<<<<<< HEAD
   DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
   DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
+=======
+  DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_crows());
+  DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_cols());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -46,9 +59,15 @@ template <typename T, typename IntT, typename Context>
 void AllocCooPtr(const Context& dev_ctx,
                  const SparseCooTensor& x,
                  SparseCooTensor* dx) {
+<<<<<<< HEAD
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
+=======
+  DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+  DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+  dx->SetMember(dx_indices, dx_values, x.dims(), true);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 template <typename T, typename IntT, typename Context>
@@ -91,7 +110,11 @@ void ElementWiseSubtractCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
+<<<<<<< HEAD
         dev_ctx, dout.values(), dy->mutable_values());
+=======
+        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 }
 
@@ -134,7 +157,11 @@ void ElementWiseDivideCsrGradCPUKernel(const Context& dev_ctx,
     AllocCsrPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
+<<<<<<< HEAD
         dev_ctx, dout.values(), dy->mutable_values());
+=======
+        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto tmp = sparse::ElementWiseMultiplyCsr<T, Context>(dev_ctx, *dy, out);
     sparse::ElementWiseDivideCsrKernel<T, Context>(dev_ctx, tmp, y, dy);
   }
@@ -180,7 +207,11 @@ void ElementWiseSubtractCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
+<<<<<<< HEAD
         dev_ctx, dout.values(), dy->mutable_values());
+=======
+        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 }
 
@@ -223,7 +254,11 @@ void ElementWiseDivideCooGradCPUKernel(const Context& dev_ctx,
     AllocCooPtr<T, IntT>(dev_ctx, y, dy);
     Copy(dev_ctx, dout, dev_ctx.GetPlace(), false, dy);
     phi::NegativeKernel<T, Context>(
+<<<<<<< HEAD
         dev_ctx, dout.values(), dy->mutable_values());
+=======
+        dev_ctx, dout.non_zero_elements(), dy->mutable_non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto tmp = sparse::ElementWiseMultiplyCoo<T, Context>(dev_ctx, *dy, out);
     sparse::ElementWiseDivideCooKernel<T, Context>(dev_ctx, tmp, y, dy);
   }
@@ -239,8 +274,13 @@ void ElementWiseDivideCsrGradKernel(const Context& dev_ctx,
                                     const SparseCsrTensor& dout,
                                     SparseCsrTensor* dx,
                                     SparseCsrTensor* dy) {
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.crows().dtype(), "ElementWiseDivideCsrGradCPUKernel", ([&] {
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_crows().dtype(), "ElementWiseDivideCsrGradCPUKernel", ([&] {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ElementWiseDivideCsrGradCPUKernel<T, data_t>(
             dev_ctx, x, y, out, dout, dx, dy);
       }));
@@ -253,8 +293,13 @@ void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
                                     const SparseCooTensor& dout,
                                     SparseCooTensor* dx,
                                     SparseCooTensor* dy) {
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "ElementWiseDivideCooGradCPUKernel", ([&] {
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "ElementWiseDivideCooGradCPUKernel", ([&] {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ElementWiseDivideCooGradCPUKernel<T, data_t>(
             dev_ctx, x, y, out, dout, dx, dy);
       }));
@@ -265,6 +310,7 @@ void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
                                              \
   DEFINE_ELEMENTWISE_GRAD_KERNEL_COO(name)
 
+<<<<<<< HEAD
 #define DEFINE_ELEMENTWISE_GRAD_KERNEL_CSR(name)                         \
   template <typename T, typename Context>                                \
   void ElementWise##name##CsrGradKernel(const Context& dev_ctx,          \
@@ -293,6 +339,38 @@ void ElementWiseDivideCooGradKernel(const Context& dev_ctx,
           ElementWise##name##CooGradCPUKernel<T, data_t>(                  \
               dev_ctx, x, y, dout, dx, dy);                                \
         }));                                                               \
+=======
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_CSR(name)                              \
+  template <typename T, typename Context>                                     \
+  void ElementWise##name##CsrGradKernel(const Context& dev_ctx,               \
+                                        const SparseCsrTensor& x,             \
+                                        const SparseCsrTensor& y,             \
+                                        const SparseCsrTensor& dout,          \
+                                        SparseCsrTensor* dx,                  \
+                                        SparseCsrTensor* dy) {                \
+    PD_VISIT_INTEGRAL_TYPES(x.non_zero_crows().dtype(),                       \
+                            "ElementWise##name##CsrGradCPUKernel",            \
+                            ([&] {                                            \
+                              ElementWise##name##CsrGradCPUKernel<T, data_t>( \
+                                  dev_ctx, x, y, dout, dx, dy);               \
+                            }));                                              \
+  }
+
+#define DEFINE_ELEMENTWISE_GRAD_KERNEL_COO(name)                              \
+  template <typename T, typename Context>                                     \
+  void ElementWise##name##CooGradKernel(const Context& dev_ctx,               \
+                                        const SparseCooTensor& x,             \
+                                        const SparseCooTensor& y,             \
+                                        const SparseCooTensor& dout,          \
+                                        SparseCooTensor* dx,                  \
+                                        SparseCooTensor* dy) {                \
+    PD_VISIT_INTEGRAL_TYPES(x.non_zero_indices().dtype(),                     \
+                            "ElementWise##name##CooGradCPUKernel",            \
+                            ([&] {                                            \
+                              ElementWise##name##CooGradCPUKernel<T, data_t>( \
+                                  dev_ctx, x, y, dout, dx, dy);               \
+                            }));                                              \
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
 DEFINE_ELEMENTWISE_GRAD_KERNEL(Add)
@@ -415,6 +493,7 @@ PD_REGISTER_KERNEL(divide_coo_coo_grad,
   kernel->InputAt(2).SetDataLayout(phi::DataLayout::SPARSE_COO);
   kernel->InputAt(3).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+<<<<<<< HEAD
 
 PD_REGISTER_KERNEL(add_coo_dense_grad,
                    CPU,
@@ -426,3 +505,5 @@ PD_REGISTER_KERNEL(add_coo_dense_grad,
                    int64_t) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

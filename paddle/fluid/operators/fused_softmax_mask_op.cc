@@ -11,6 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/fused_softmax_mask_op.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -25,6 +29,33 @@ namespace operators {
 class SoftmaxMaskFuseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SoftmaxMaskFuse");
+    OP_INOUT_CHECK(ctx->HasInput("Mask"), "Input", "Mask", "SoftmaxMaskFuse");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "SoftmaxMaskFuse");
+    auto x_dims = ctx->GetInputDim("X");
+    auto mask_dims = ctx->GetInputDim("Mask");
+
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(),
+        4,
+        platform::errors::InvalidArgument("Input x must be in 4D dimension but "
+                                          "received the dimension of X is %d",
+                                          x_dims.size()));
+    PADDLE_ENFORCE_EQ(mask_dims.size(),
+                      4,
+                      platform::errors::InvalidArgument(
+                          "Input mask must be in 4D dimension but "
+                          "received the dimension of mask is %d",
+                          mask_dims.size()));
+
+    ctx->SetOutputDim("Out", x_dims);
+    ctx->ShareLoD("X", "Out");
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 class SoftmaxMaskFuseOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -58,6 +89,20 @@ By doing this fusion, we can optimize the training by
 class SoftmaxMaskFuseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
+<<<<<<< HEAD
+=======
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SoftmaxMaskFuseGrad");
+
+    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    ctx->SetOutputDim(framework::GradVarName("X"), out_dims);
+    ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 template <typename T>
@@ -78,18 +123,29 @@ class SoftmaxMaskFuseGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(fused_softmax_mask,
                             SoftmaxMaskFuseInferShapeFunctor,
                             PD_INFER_META(phi::SoftmaxMaskFuseInferMeta));
 DECLARE_INFER_SHAPE_FUNCTOR(fused_softmax_mask_grad,
                             SoftmaxMaskFuseGradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralUnaryGradInferMeta));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 REGISTER_OPERATOR(fused_softmax_mask,
                   ops::SoftmaxMaskFuseOp,
                   ops::SoftmaxMaskFuseOpMaker,
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::framework::OpDesc>,
+<<<<<<< HEAD
                   ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>,
                   SoftmaxMaskFuseInferShapeFunctor);
 REGISTER_OPERATOR(fused_softmax_mask_grad,
                   ops::SoftmaxMaskFuseOpGrad,
                   SoftmaxMaskFuseGradInferShapeFunctor);
+=======
+                  ops::SoftmaxMaskFuseGradOpMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(fused_softmax_mask_grad, ops::SoftmaxMaskFuseOpGrad);
+REGISTER_OP_CPU_KERNEL(fused_softmax_mask,
+                       ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, float>,
+                       ops::SoftmaxMaskFuseCPUKernel<phi::CPUContext, double>);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

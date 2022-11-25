@@ -13,12 +13,16 @@
 # limitations under the License.
 
 import os
+<<<<<<< HEAD
 import paddle
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.fluid import framework, core, layers, unique_name
 from paddle.fluid.framework import Variable
 from paddle.fluid.clip import ClipGradByGlobalNorm
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.optimizer import Optimizer
+<<<<<<< HEAD
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import name_scope
 from paddle.fluid import core, unique_name
@@ -78,9 +82,74 @@ def broadcast_parameters(block, parameters, ring_id):
             outputs={'Out': p},
             attrs={'ring_id': ring_id, 'use_calc_stream': True},
         )
+=======
+from paddle.distributed import get_rank, get_world_size
+from paddle.distributed.collective import new_group
+from paddle.fluid.executor import global_scope
+from paddle.fluid.framework import name_scope
+from paddle.fluid import core, unique_name
+import numpy as np
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
+
+
+def init_communicator(block, rank, ranks, ring_id):
+    eps = os.environ['PADDLE_TRAINER_ENDPOINTS']
+    eps = [ep.strip() for ep in eps.split(",") if ep.strip()]
+    cur_ep = eps[rank]
+    other_eps = [eps[r] for r in ranks if r != rank]
+
+    local_rank = ranks.index(rank)
+    comm_var_name = unique_name.generate('comm_id')
+    comm_id_var = block.create_var(name=comm_var_name,
+                                   persistable=True,
+                                   type=core.VarDesc.VarType.RAW)
+    block.append_op(type='c_gen_nccl_id',
+                    inputs={},
+                    outputs={'Out': comm_id_var},
+                    attrs={
+                        'rank': local_rank,
+                        'endpoint': cur_ep,
+                        'other_endpoints': other_eps,
+                        'ring_id': ring_id
+                    })
+    block.append_op(type='c_comm_init',
+                    inputs={'X': comm_id_var},
+                    outputs={},
+                    attrs={
+                        'nranks': len(ranks),
+                        'rank': local_rank,
+                        'ring_id': ring_id
+                    })
+    tmp_var = block.create_var(name=unique_name.generate('tmp'))
+    block.append_op(type='fill_constant',
+                    outputs={'Out': tmp_var},
+                    attrs={'value': 1})
+    block.append_op(type='c_allreduce_sum',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var},
+                    attrs={
+                        'ring_id': ring_id,
+                        'use_calc_stream': True
+                    })
+    block.append_op(type='c_sync_calc_stream',
+                    inputs={'X': tmp_var},
+                    outputs={'Out': tmp_var})
+    return ring_id
+
+
+def broadcast_parameters(block, parameters, ring_id):
+    for p in parameters:
+        block.append_op(type='c_broadcast',
+                        inputs={'X': p},
+                        outputs={'Out': p},
+                        attrs={
+                            'ring_id': ring_id,
+                            'use_calc_stream': True
+                        })
 
 
 class DistributedFusedLamb(Optimizer):
+<<<<<<< HEAD
     def __init__(
         self,
         learning_rate=0.001,
@@ -105,6 +174,31 @@ class DistributedFusedLamb(Optimizer):
             not framework._non_static_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
         super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
+=======
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 lamb_weight_decay=0.01,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-6,
+                 parameters=None,
+                 grad_clip=None,
+                 exclude_from_weight_decay_fn=None,
+                 clip_after_allreduce=True,
+                 is_grad_scaled_by_nranks=True,
+                 alignment=128,
+                 use_master_param_norm=True,
+                 gradient_accumulation_steps=1,
+                 use_master_acc_grad=True,
+                 nproc_per_node=None,
+                 name=None):
+        assert not framework._non_static_mode(
+        ), "DistributedFusedLamb does not support dygraph mode"
+        super(DistributedFusedLamb, self).__init__(learning_rate=learning_rate,
+                                                   grad_clip=None,
+                                                   name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._beta1 = beta1
         self._beta2 = beta2
@@ -129,7 +223,10 @@ class DistributedFusedLamb(Optimizer):
         self._gradient_accumulation_steps = gradient_accumulation_steps
         self._use_master_acc_grad = use_master_acc_grad
         self._nproc_per_node = nproc_per_node
+<<<<<<< HEAD
         self._use_hierarchical_allreduce = use_hierarchical_allreduce
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         assert self._gradient_accumulation_steps >= 1
 
         self.helper = LayerHelper('distributed_fused_lamb')
@@ -173,6 +270,7 @@ class DistributedFusedLamb(Optimizer):
 
     def _create_scale_from_constant(self, value):
         name = unique_name.generate('global_scale')
+<<<<<<< HEAD
         return layers.create_global_var(
             name=name,
             shape=[1],
@@ -180,6 +278,13 @@ class DistributedFusedLamb(Optimizer):
             value=float(value),
             persistable=True,
         )
+=======
+        return layers.create_global_var(name=name,
+                                        shape=[1],
+                                        dtype='float32',
+                                        value=float(value),
+                                        persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _get_or_create_scale(self):
         if self._scale is None:
@@ -190,6 +295,7 @@ class DistributedFusedLamb(Optimizer):
         startup_block = self.helper.startup_program.global_block()
         if name is not None:
             name = unique_name.generate(name)
+<<<<<<< HEAD
         startup_var = startup_block.create_var(
             name=name,
             shape=shape,
@@ -205,6 +311,19 @@ class DistributedFusedLamb(Optimizer):
             persistable=True,
             stop_gradient=True,
         )
+=======
+        startup_var = startup_block.create_var(name=name,
+                                               shape=shape,
+                                               dtype=dtype,
+                                               persistable=True,
+                                               stop_gradient=True)
+        main_block = self.helper.main_program.global_block()
+        main_var = main_block.create_var(name=startup_var.name,
+                                         shape=startup_var.shape,
+                                         dtype=startup_var.dtype,
+                                         persistable=True,
+                                         stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return main_var
 
     def _get_parameter(self, name, scope=None):
@@ -247,12 +366,19 @@ class DistributedFusedLamb(Optimizer):
 
         fp32_fused_param = self._create_persistable_var('fp32_fused_param')
         fp32_fused_grad = self._create_persistable_var('fp32_fused_grad')
+<<<<<<< HEAD
         fp16_fused_param = self._create_persistable_var(
             'fp16_fused_param', dtype='float16'
         )
         fp16_fused_grad = self._create_persistable_var(
             'fp16_fused_grad', dtype='float16'
         )
+=======
+        fp16_fused_param = self._create_persistable_var('fp16_fused_param',
+                                                        dtype='float16')
+        fp16_fused_grad = self._create_persistable_var('fp16_fused_grad',
+                                                       dtype='float16')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         master_params = []
         for p, g in params_grads:
@@ -270,9 +396,14 @@ class DistributedFusedLamb(Optimizer):
         param_info = self._create_persistable_var('param_info', dtype='int32')
         param_info.is_distributed = True
 
+<<<<<<< HEAD
         fused_offsets = self._create_persistable_var(
             'fused_offsets', dtype='int32'
         )
+=======
+        fused_offsets = self._create_persistable_var('fused_offsets',
+                                                     dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         fp32_partial_fused_offsets = self._create_persistable_var(
             'fp32_partial_fused_offsets', dtype='int32'
@@ -292,9 +423,14 @@ class DistributedFusedLamb(Optimizer):
                 self._create_persistable_var('fp32_acc_fused_grad')
             ]
             fp16_acc_fused_grad = [
+<<<<<<< HEAD
                 self._create_persistable_var(
                     'fp16_acc_fused_grad', dtype='float16'
                 )
+=======
+                self._create_persistable_var('fp16_acc_fused_grad',
+                                             dtype='float16')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ]
             acc_step = [self._create_persistable_var('acc_step', dtype='int64')]
         else:
@@ -304,23 +440,35 @@ class DistributedFusedLamb(Optimizer):
 
         step = self._get_or_create_step()
 
+<<<<<<< HEAD
         rank = paddle.distributed.get_rank()
         nranks = paddle.distributed.get_world_size()
+=======
+        rank = get_rank()
+        nranks = get_world_size()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._nproc_per_node is None:
             nproc_per_node = nranks
         else:
             nproc_per_node = self._nproc_per_node
+<<<<<<< HEAD
         assert (
             nranks % nproc_per_node == 0
         ), "nranks should be exactly divided by nproc_per_node"
 
         shard_inside_node = nranks > nproc_per_node
+=======
+        assert nranks % nproc_per_node == 0, "nranks should be exactly divided by nproc_per_node"
+
+        shard_inside_node = (nranks > nproc_per_node)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         local_rank = rank % nproc_per_node
         node_id = int(rank / nproc_per_node)
         node_num = int(nranks / nproc_per_node)
         ring_ids = []
         startup_block = self.helper.startup_program.global_block()
         if nranks > 1:
+<<<<<<< HEAD
             ring_id = init_communicator(
                 startup_block, rank, list(range(nranks)), 0
             )
@@ -346,6 +494,19 @@ class DistributedFusedLamb(Optimizer):
                 )
                 ring_ids.append(ring_id)
 
+=======
+            ring_id = init_communicator(startup_block, rank,
+                                        list(range(nranks)), 0)
+            ring_ids.append(ring_id)
+
+        if node_num > 1 and len(ring_ids) <= 1 and shard_inside_node:
+            local_group_ranks = list(
+                range(node_id * nproc_per_node, (node_id + 1) * nproc_per_node))
+            ring_id = init_communicator(startup_block, rank, local_group_ranks,
+                                        1)
+            ring_ids.append(ring_id)
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         scale = self._get_or_create_scale()
 
         params = [p for p, _ in params_grads]
@@ -357,6 +518,7 @@ class DistributedFusedLamb(Optimizer):
                     apply_weight_decay[i] = 0
 
         for g in grads:
+<<<<<<< HEAD
             startup_block.create_var(
                 name=g.name,
                 type=g.type,
@@ -364,6 +526,13 @@ class DistributedFusedLamb(Optimizer):
                 persistable=g.persistable,
                 shape=g.shape,
             )
+=======
+            startup_block.create_var(name=g.name,
+                                     type=g.type,
+                                     dtype=g.dtype,
+                                     persistable=g.persistable,
+                                     shape=g.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if nranks > 1:
             broadcast_parameters(startup_block, params, ring_ids[0])
@@ -447,15 +616,28 @@ class DistributedFusedLamb(Optimizer):
                 'Moment2Out': [moment2],
                 'Beta1PowOut': [beta1pow],
                 'Beta2PowOut': [beta2pow],
-                'ParamOut': params,
-                'GradOut': grads,
+                'ParamOut':
+                params,
+                'GradOut':
+                grads,
                 'FoundInf': [self._found_inf],
+<<<<<<< HEAD
                 'FP32AccFusedGrad': fp32_acc_fused_grad,
                 'FP16AccFusedGrad': fp16_acc_fused_grad,
                 'AccStep': acc_step,
                 'StopUpdate': self._stop_update
                 if self._stop_update is not None
                 else [],
+=======
+                'FP32AccFusedGrad':
+                fp32_acc_fused_grad,
+                'FP16AccFusedGrad':
+                fp16_acc_fused_grad,
+                'AccStep':
+                acc_step,
+                'StopUpdate':
+                self._stop_update if self._stop_update is not None else [],
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 'Step': [step],
             },
             attrs={
@@ -472,7 +654,11 @@ class DistributedFusedLamb(Optimizer):
                 'is_grad_scaled_by_nranks': self._is_grad_scaled_by_nranks,
                 'acc_steps': self._gradient_accumulation_steps,
                 'use_master_acc_grad': self._use_master_acc_grad,
+<<<<<<< HEAD
                 'use_hierarchical_allreduce': use_hierarchical_allreduce,
             },
         )
+=======
+            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return [lamb_op]

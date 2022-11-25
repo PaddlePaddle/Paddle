@@ -194,6 +194,7 @@ class Adam(Optimizer):
         if not isinstance(epsilon, Variable):
             if not 0 <= epsilon:
                 raise ValueError(
+<<<<<<< HEAD
                     "Invaild value of epsilon, expect epsilon >= 0."
                 )
         super().__init__(
@@ -203,6 +204,14 @@ class Adam(Optimizer):
             grad_clip=grad_clip,
             name=name,
         )
+=======
+                    "Invaild value of epsilon, expect epsilon >= 0.")
+        super(Adam, self).__init__(learning_rate=learning_rate,
+                                   parameters=parameters,
+                                   weight_decay=weight_decay,
+                                   grad_clip=grad_clip,
+                                   name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.type = "adam"
         self._beta1 = beta1
         self._beta2 = beta2
@@ -235,6 +244,7 @@ class Adam(Optimizer):
 
             var_name = param.name + "_fp32_master"
             var_name = unique_name.generate(var_name)
+<<<<<<< HEAD
             var = layers.create_global_var(
                 name=var_name,
                 shape=param.shape,
@@ -252,6 +262,21 @@ class Adam(Optimizer):
                     "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
+=======
+            var = layers.create_global_var(name=var_name,
+                                           shape=param.shape,
+                                           value=0,
+                                           dtype='float32',
+                                           persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(type="cast",
+                            inputs={"X": [param]},
+                            outputs={"Out": [var]},
+                            attrs={
+                                "in_dtype": param.dtype,
+                                "out_dtype": core.VarDesc.VarType.FP32
+                            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._master_weights[param.name] = var
         return var
 
@@ -272,6 +297,7 @@ class Adam(Optimizer):
             self._master_weights[param.name] if find_master else param
         )
         target_name = target_param.name
+<<<<<<< HEAD
         if (
             name not in self._accumulators
             or target_name not in self._accumulators[name]
@@ -281,6 +307,13 @@ class Adam(Optimizer):
                     name, target_name
                 )
             )
+=======
+        if (name not in self._accumulators
+                or target_name not in self._accumulators[name]):
+            raise Exception(
+                "Accumulator {} does not exist for parameter {}".format(
+                    name, target_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return self._accumulators[name][target_name]
 
     def _add_moments_pows(self, p):
@@ -364,6 +397,7 @@ class Adam(Optimizer):
         if framework.in_dygraph_mode():
             found_inf = self._get_auxiliary_var('found_inf')
 
+<<<<<<< HEAD
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
@@ -393,6 +427,18 @@ class Adam(Optimizer):
                 find_master,
                 False,
             )
+=======
+            _beta1 = self._beta1 if not isinstance(
+                self._beta1, Variable) else self._beta1.numpy().item(0)
+            _beta2 = self._beta2 if not isinstance(
+                self._beta2, Variable) else self._beta2.numpy().item(0)
+
+            _, _, _, _, _, _ = _C_ops.final_state_adam_(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, master_weight, found_inf, _beta1,
+                _beta2, self._epsilon, self._lazy_mode, 1000, find_master,
+                False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             return None
 
@@ -478,6 +524,7 @@ class Adam(Optimizer):
             inputs["MasterParam"] = master_weight
             outputs["MasterParamOut"] = master_weight
 
+<<<<<<< HEAD
         adam_op = block.append_op(
             type=self.type,
             inputs=inputs,
@@ -485,6 +532,13 @@ class Adam(Optimizer):
             attrs=attrs,
             stop_gradient=True,
         )
+=======
+        adam_op = block.append_op(type=self.type,
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  attrs=attrs,
+                                  stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return adam_op
 
@@ -529,22 +583,34 @@ class Adam(Optimizer):
                                 "Adam don't support weight_decay with sparse parameters, please set it to None."
                             )
                     else:
+<<<<<<< HEAD
                         if (
                             hasattr(grad_var, "_is_sparse")
                             and grad_var._is_sparse()
                             and self.regularization is not None
                         ):
+=======
+                        if hasattr(
+                                grad_var, "_is_sparse") and grad_var._is_sparse(
+                                ) and self.regularization is not None:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             raise RuntimeError(
                                 "Adam don't support weight_decay with sparse parameters, please set it to None."
                             )
                     params_grads.append((param, grad_var))
 
+<<<<<<< HEAD
             optimize_ops = self._apply_optimize(
                 loss=None,
                 startup_program=None,
                 params_grads=params_grads,
                 param_group_idx=0,
             )
+=======
+            optimize_ops = self._apply_optimize(loss=None,
+                                                startup_program=None,
+                                                params_grads=params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             # optimize parameters in groups
             for idx, param_group in enumerate(self._param_groups):
@@ -556,6 +622,7 @@ class Adam(Optimizer):
                         grad_var = param._grad_ivar()
                         params_grads['params'].append((param, grad_var))
                 params_grads.update(
+<<<<<<< HEAD
                     {k: v for k, v in param_group.items() if k != 'params'}
                 )
                 self._apply_optimize(
@@ -564,6 +631,13 @@ class Adam(Optimizer):
                     params_grads=params_grads,
                     param_group_idx=idx,
                 )
+=======
+                    {k: v
+                     for k, v in param_group.items() if k != 'params'})
+                self._apply_optimize(loss=None,
+                                     startup_program=None,
+                                     params_grads=params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _multi_tensor_init(self, target_block, parameters, param_group_idx):
         """
@@ -818,6 +892,7 @@ class Adam(Optimizer):
                             key
                         ][param_group_idx]
                         attrs["multi_precision"] = find_master
+<<<<<<< HEAD
                     target_block.append_op(
                         type="merged_adam",
                         inputs=inputs,
@@ -825,6 +900,13 @@ class Adam(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
+=======
+                    target_block.append_op(type="merged_adam",
+                                           inputs=inputs,
+                                           outputs=outputs,
+                                           attrs=attrs,
+                                           stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return None
 
     def _update_param_group(self, parameters):

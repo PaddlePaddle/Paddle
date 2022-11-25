@@ -32,6 +32,7 @@ fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
 class TestEagerDeletionWhileOpBase(unittest.TestCase):
+
     def test_main(self):
         places = [
             core.CPUPlace(),
@@ -50,8 +51,12 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         self.with_data_parallel = with_data_parallel
 
         if not core.is_compiled_with_cuda() and isinstance(
+<<<<<<< HEAD
             self.place, core.CUDAPlace
         ):
+=======
+                self.place, core.CUDAPlace):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return
 
         if isinstance(self.place, core.CUDAPlace):
@@ -59,6 +64,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 core.get_cuda_device_count() if self.with_data_parallel else 1
             )
         else:
+<<<<<<< HEAD
             device_cnt = (
                 int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 if self.with_data_parallel
@@ -74,6 +80,24 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         d2 = layers.data(
             "d2", shape=[10], append_batch_size=False, dtype='float32'
         )
+=======
+            device_cnt = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count())
+            ) if self.with_data_parallel else 1
+
+        d0 = layers.data("d0",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d1 = layers.data("d1",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+        d2 = layers.data("d2",
+                         shape=[10],
+                         append_batch_size=False,
+                         dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         i = layers.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
@@ -146,8 +170,13 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         prog = fluid.default_main_program()
         if self.with_data_parallel:
             prog = compiler.CompiledProgram(
+<<<<<<< HEAD
                 fluid.default_main_program()
             ).with_data_parallel(loss_name=loss.name)
+=======
+                fluid.default_main_program()).with_data_parallel(
+                    loss_name=loss.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         for _ in range(5):
             d = []
@@ -158,11 +187,21 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
                 else:
                     d.append(numpy.array([tmp] * device_cnt))
 
+<<<<<<< HEAD
             outs = exe.run(
                 program=prog,
                 feed={'d0': d[0], 'd1': d[1], 'd2': d[2]},
                 fetch_list=[sum_result],
             )
+=======
+            outs = exe.run(program=prog,
+                           feed={
+                               'd0': d[0],
+                               'd1': d[1],
+                               'd2': d[2]
+                           },
+                           fetch_list=[sum_result])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
 

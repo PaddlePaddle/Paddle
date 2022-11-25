@@ -194,10 +194,17 @@ class SequencePoolFunctor<phi::GPUContext, T> {
   void operator()(const phi::GPUContext& context,
                   const std::string pooltype,
                   T pad_value,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* output,
                   bool is_test,
                   phi::DenseTensor* index = nullptr) {
+=======
+                  const framework::LoDTensor& input,
+                  framework::LoDTensor* output,
+                  bool is_test,
+                  framework::Tensor* index = nullptr) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto lod_level = input.lod().size();
     auto& lod = input.lod()[lod_level - 1];
     const size_t item_dim = output->numel() / output->dims()[0];

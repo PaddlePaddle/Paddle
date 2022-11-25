@@ -102,8 +102,13 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
 
     // transpose NCHW to NHWC since cnnl pool2d has worse performance in that
     // layout.
+<<<<<<< HEAD
     phi::DenseTensor trans_in_x;
     phi::DenseTensor trans_out;
+=======
+    framework::Tensor trans_in_x;
+    framework::Tensor trans_out;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (channel_last) {
       trans_in_x = *in_x;
       trans_out = *out;
@@ -141,9 +146,16 @@ class MLUPoolOpKernel : public framework::OpKernel<T> {
           handle, pool_mode, out_w, out_h, &extra_input_size);
 
       if (extra_input_size > 0) {
+<<<<<<< HEAD
         phi::DenseTensor extra_host_tensor;
         extra_host_tensor.mutable_data<int8_t>(
             {static_cast<int64_t>(extra_input_size)}, platform::CPUPlace());
+=======
+        phi::CPUContext cpu_ctx;
+        framework::Tensor extra_host_tensor =
+            ctx.AllocateTmpTensor<int8_t, phi::CPUContext>(
+                {static_cast<int64_t>(extra_input_size)}, cpu_ctx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         cnnlInitPoolingExtraInput(handle,
                                   pool_desc.get(),
                                   trans_in_x_desc.get(),

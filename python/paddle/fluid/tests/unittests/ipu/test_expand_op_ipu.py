@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -43,10 +44,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
         out = paddle.expand(x, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        out = paddle.fluid.layers.expand(x, **self.attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.fetch_list = [out.name]
 
     def run_model(self, exec_mode):
@@ -61,6 +69,7 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_data_feed(self):
         x = np.random.uniform(size=[2, 2])
         self.feed_fp32 = {"x": x.astype(np.float32)}
@@ -76,6 +85,7 @@ class TestCase1(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -83,6 +93,16 @@ class TestCase1(TestBase):
             shape=[len(self.feed_shape[0])], dtype="int32", value=2
         )
         out = paddle.expand(x, expand_times, **self.attrs)
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype="float32")
+        expand_times = paddle.fluid.layers.fill_constant(
+            shape=[len(self.feed_shape[0])], dtype="int32", value=2)
+        out = paddle.fluid.layers.expand(x,
+                                         expand_times=expand_times,
+                                         **self.attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.fetch_list = [out.name]
 
 

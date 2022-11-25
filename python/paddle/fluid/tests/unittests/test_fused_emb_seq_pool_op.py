@@ -24,6 +24,7 @@ import paddle.version as ver
     "and 'Linux' in platform.platform()."
 )
 class TestFusedEmbeddingSeqPoolOp(OpTest):
+
     def setUp(self):
         self.op_type = "fused_embedding_seq_pool"
         self.emb_size = 6
@@ -36,6 +37,7 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         self.attrs = {'is_sparse': True}
         self.inputs = {'W': self.table, 'Ids': (ids_expand, self.lod)}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.reshape(
                 np.array(
                     [
@@ -47,6 +49,14 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
                 ),
                 [len(self.lod[0]), 2 * self.emb_size],
             )
+=======
+            'Out':
+            np.reshape(
+                np.array([
+                    self.table[[4, 3]] + self.table[[4, 3]] +
+                    self.table[[2, 1]], self.table[[16, 1]]
+                ]), [len(self.lod[0]), 2 * self.emb_size])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def test_check_output(self):
@@ -57,12 +67,20 @@ class TestFusedEmbeddingSeqPoolOp(OpTest):
         # TODO(wangzhongpu): support lod in dygraph mode
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             self.attrs = {'is_sparse': False}
+<<<<<<< HEAD
             self.check_grad(
                 ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False
             )
+=======
+            self.check_grad(['W'],
+                            'Out',
+                            no_grad_set=['Ids'],
+                            check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
+
     def test_check_output(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
@@ -81,9 +99,15 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
                 output.append(np.sum(out, 0))
                 index += count
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.reshape(
                     np.array(output), [len(self.lod[0]), 2 * self.emb_size]
                 )
+=======
+                'Out':
+                np.reshape(np.array(output),
+                           [len(self.lod[0]), 2 * self.emb_size])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
             self.attrs = {'padding_idx': int(padding_idx)}
             # TODO(wangzhongpu): support lod in dygraph mode
@@ -95,20 +119,35 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
             self.attrs = {'padding_idx': int(padding_idx), 'is_sparse': False}
             # TODO(wangzhongpu): support lod in dygraph mode
+<<<<<<< HEAD
             self.check_grad(
                 ['W'], 'Out', no_grad_set=['Ids'], check_dygraph=False
             )
+=======
+            self.check_grad(['W'],
+                            'Out',
+                            no_grad_set=['Ids'],
+                            check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
+
     def test_api(self):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             import paddle.fluid as fluid
 
             dict_size = 20
+<<<<<<< HEAD
             data_t = fluid.layers.data(
                 name='word', shape=[1], dtype='int64', lod_level=1
             )
+=======
+            data_t = fluid.layers.data(name='word',
+                                       shape=[1],
+                                       dtype='int64',
+                                       lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             padding_idx = np.random.randint(1, 10)
             out = fluid.contrib.fused_embedding_seq_pool(
                 input=data_t,

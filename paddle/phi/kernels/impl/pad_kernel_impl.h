@@ -16,7 +16,10 @@
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/common/scalar.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/padding.h"
 namespace phi {

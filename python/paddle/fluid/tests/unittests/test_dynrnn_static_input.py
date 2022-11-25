@@ -27,6 +27,7 @@ np.random.seed(1)
 
 
 class TestDyRnnStaticInput(unittest.TestCase):
+
     def setUp(self):
         self._delta = 0.005
         self._max_sequence_len = 3
@@ -57,6 +58,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         self.static_input_tensor.set(self.static_input_data, self.place)
 
     def fetch_value(self, var):
+<<<<<<< HEAD
         fetch_outs = self.exe.run(
             feed={
                 'x_tensor': self.x_tensor,
@@ -65,6 +67,16 @@ class TestDyRnnStaticInput(unittest.TestCase):
             fetch_list=[var],
             return_numpy=False,
         )
+=======
+        fetch_outs = self.exe.run(feed={
+            'x_tensor':
+            self.x_tensor,
+            'static_input_tensor':
+            self.static_input_tensor
+        },
+                                  fetch_list=[var],
+                                  return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return self._lodtensor_to_ndarray(fetch_outs[0])
 
     def _lodtensor_to_ndarray(self, lod_tensor):
@@ -75,12 +87,19 @@ class TestDyRnnStaticInput(unittest.TestCase):
         return ndarray, lod_tensor.recursive_sequence_lengths()
 
     def build_graph(self, only_forward=False):
+<<<<<<< HEAD
         x_tensor = fluid.layers.data(
             name='x_tensor',
             shape=[self.x_tensor_dim],
             dtype='float32',
             lod_level=1,
         )
+=======
+        x_tensor = fluid.layers.data(name='x_tensor',
+                                     shape=[self.x_tensor_dim],
+                                     dtype='float32',
+                                     lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_tensor.stop_gradient = False
 
         static_input_tensor = fluid.layers.data(
@@ -104,6 +123,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
             step_x = rnn.step_input(x_tensor)
             step_static_input = rnn.static_input(static_input_tensor)
             if only_forward:
+<<<<<<< HEAD
                 fluid.layers.array_write(
                     x=step_static_input,
                     i=rnn.step_idx,
@@ -115,13 +135,28 @@ class TestDyRnnStaticInput(unittest.TestCase):
             projected = fluid.layers.fc(
                 input=[step_x, last], size=self.output_dim
             )
+=======
+                fluid.layers.array_write(x=step_static_input,
+                                         i=rnn.step_idx,
+                                         array=static_input_out_array)
+            last = fluid.layers.sequence_pool(input=step_static_input,
+                                              pool_type='last')
+            projected = fluid.layers.fc(input=[step_x, last],
+                                        size=self.output_dim)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             rnn.output(projected)
 
         if only_forward:
             static_input_step_outs = []
+<<<<<<< HEAD
             step_idx = fluid.layers.fill_constant(
                 shape=[1], dtype='int64', value=0
             )
+=======
+            step_idx = fluid.layers.fill_constant(shape=[1],
+                                                  dtype='int64',
+                                                  value=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             step_idx.stop_gradient = True
 
             for i in range(self._max_sequence_len):
@@ -154,10 +189,15 @@ class TestDyRnnStaticInput(unittest.TestCase):
         cur_offset = 0
         for i in range(len(static_lod[0])):
             static_sliced.append(
+<<<<<<< HEAD
                 self.static_input_data[
                     cur_offset : (cur_offset + static_lod[0][i])
                 ]
             )
+=======
+                self.static_input_data[cur_offset:(cur_offset +
+                                                   static_lod[0][i])])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             cur_offset += static_lod[0][i]
         static_seq_len = static_lod[0]
         static_reordered = []

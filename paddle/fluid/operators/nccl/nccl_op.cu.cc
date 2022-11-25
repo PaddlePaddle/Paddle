@@ -19,8 +19,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
 
+=======
+using framework::LoDTensor;
+using framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 using platform::Communicator;
 
 template <typename Type>

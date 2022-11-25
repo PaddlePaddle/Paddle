@@ -630,7 +630,10 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 )DOC",
                                GetName(),
                                GetName()));
+<<<<<<< HEAD
     ExtraMake();
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
  protected:

@@ -194,7 +194,11 @@ static void FluidCheckGradTensorValue(
     const std::shared_ptr<imperative::VarBase>& X,
     const paddle::platform::Place& place,
     float value) {
+<<<<<<< HEAD
   auto* grad_tensor = X->MutableGradVar()->GetMutable<phi::DenseTensor>();
+=======
+  auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   float* g_ptr = grad_tensor->mutable_data<float>(place);
   std::vector<float> g_host_data(grad_tensor->numel());
 

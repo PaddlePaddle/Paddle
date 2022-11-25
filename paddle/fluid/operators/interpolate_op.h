@@ -43,7 +43,11 @@ inline std::vector<int> get_new_shape(
                           tensor->dims()));
     if (platform::is_gpu_place(tensor->place()) ||
         platform::is_mlu_place(tensor->place())) {
+<<<<<<< HEAD
       phi::DenseTensor temp;
+=======
+      framework::Tensor temp;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
       vec_new_shape.push_back(static_cast<int32_t>(*temp.data<int32_t>()));
     } else {
@@ -59,7 +63,11 @@ inline std::vector<T> get_new_data_from_tensor(
     const phi::DenseTensor* new_data_tensor) {
   std::vector<T> vec_new_data;
   auto* new_data = new_data_tensor->data<T>();
+<<<<<<< HEAD
   phi::DenseTensor cpu_starts_tensor;
+=======
+  framework::Tensor cpu_starts_tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (platform::is_gpu_place(new_data_tensor->place()) ||
       platform::is_mlu_place(new_data_tensor->place())) {
     paddle::framework::TensorCopySync(
@@ -98,8 +106,13 @@ inline void ExtractNCDWH(const framework::DDim& dims,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void NearestNeighborInterpolate(const phi::DenseTensor& input,
                                        phi::DenseTensor* output,
+=======
+static void NearestNeighborInterpolate(const Tensor& input,
+                                       Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                        const float ratio_h,
                                        const float ratio_w,
                                        const int n,
@@ -132,8 +145,13 @@ static void NearestNeighborInterpolate(const phi::DenseTensor& input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void LinearInterpolation(const phi::DenseTensor& input,
                                 phi::DenseTensor* output,
+=======
+static void LinearInterpolation(const Tensor& input,
+                                Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 const float ratio_w,
                                 const int in_w,
                                 const int n,
@@ -196,8 +214,13 @@ static void LinearInterpolation(const phi::DenseTensor& input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void LinearInterpolationGrad(const phi::DenseTensor& output_grad,
                                     phi::DenseTensor* input_grad,
+=======
+static void LinearInterpolationGrad(const Tensor& output_grad,
+                                    Tensor* input_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     const float ratio_w,
                                     const int in_w,
                                     const int n,
@@ -238,8 +261,13 @@ static void LinearInterpolationGrad(const phi::DenseTensor& output_grad,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void BilinearInterpolation(const phi::DenseTensor& input,
                                   phi::DenseTensor* output,
+=======
+static void BilinearInterpolation(const Tensor& input,
+                                  Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                   const float ratio_h,
                                   const float ratio_w,
                                   const int in_h,
@@ -338,8 +366,13 @@ static void BilinearInterpolation(const phi::DenseTensor& input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void TrilinearInterpolation(const phi::DenseTensor& input,
                                    phi::DenseTensor* output,
+=======
+static void TrilinearInterpolation(const Tensor& input,
+                                   Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                    const float ratio_d,
                                    const float ratio_h,
                                    const float ratio_w,
@@ -523,8 +556,13 @@ static inline T cubic_interp(T x0, T x1, T x2, T x3, T t) {
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void BicubicInterpolation(const phi::DenseTensor& input,
                                  phi::DenseTensor* output,
+=======
+static void BicubicInterpolation(const Tensor& input,
+                                 Tensor* output,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                  const float ratio_h,
                                  const float ratio_w,
                                  const int in_h,
@@ -603,8 +641,13 @@ static void BicubicInterpolation(const phi::DenseTensor& input,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void NearestNeighborInterpolateGrad(const phi::DenseTensor& output_grad,
                                            phi::DenseTensor* input_grad,
+=======
+static void NearestNeighborInterpolateGrad(const Tensor& output_grad,
+                                           Tensor* input_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                            const float ratio_h,
                                            const float ratio_w,
                                            const int n,
@@ -638,8 +681,13 @@ static void NearestNeighborInterpolateGrad(const phi::DenseTensor& output_grad,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void BilinearInterpolationGrad(const phi::DenseTensor& output_grad,
                                       phi::DenseTensor* input_grad,
+=======
+static void BilinearInterpolationGrad(const Tensor& output_grad,
+                                      Tensor* input_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                       const float ratio_h,
                                       const float ratio_w,
                                       const int in_h,
@@ -697,8 +745,13 @@ static void BilinearInterpolationGrad(const phi::DenseTensor& output_grad,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
                                        phi::DenseTensor* input_grad,
+=======
+static void TrilinearInterpolationGrad(const Tensor& output_grad,
+                                       Tensor* input_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                        const float ratio_d,
                                        const float ratio_h,
                                        const float ratio_w,
@@ -794,8 +847,13 @@ static void TrilinearInterpolationGrad(const phi::DenseTensor& output_grad,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void BicubicInterpolationGrad(const phi::DenseTensor& output_grad,
                                      phi::DenseTensor* input_grad,
+=======
+static void BicubicInterpolationGrad(const Tensor& output_grad,
+                                     Tensor* input_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                      const float ratio_h,
                                      const float ratio_w,
                                      const int in_h,
@@ -855,8 +913,13 @@ static void BicubicInterpolationGrad(const phi::DenseTensor& output_grad,
 
 template <typename T>
 static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
+=======
+                                const Tensor& input,
+                                Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -929,8 +992,13 @@ static void Interpolate1DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
+=======
+                                const Tensor& input,
+                                Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1046,8 +1114,13 @@ static void Interpolate2DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 const phi::DenseTensor& input,
                                 phi::DenseTensor* output) {
+=======
+                                const Tensor& input,
+                                Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1158,9 +1231,15 @@ static void Interpolate3DCPUFwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 phi::DenseTensor* input_grad,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
+=======
+                                Tensor* input_grad,
+                                const Tensor& output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1232,9 +1311,15 @@ static void Interpolate1DCPUBwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 phi::DenseTensor* input_grad,
                                 const phi::DenseTensor& output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
+=======
+                                Tensor* input_grad,
+                                const Tensor& output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;
@@ -1343,9 +1428,15 @@ static void Interpolate2DCPUBwd(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void Interpolate3DCPUBwd(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                                 phi::DenseTensor* input_grad,
                                 const Tensor output_grad) {
   auto* input = ctx.Input<phi::DenseTensor>("X");
+=======
+                                Tensor* input_grad,
+                                const Tensor output_grad) {
+  auto* input = ctx.Input<Tensor>("X");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
   int n, c, in_d, in_h, in_w;

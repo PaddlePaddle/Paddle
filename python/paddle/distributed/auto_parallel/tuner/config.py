@@ -14,6 +14,7 @@
 
 import os
 import copy
+<<<<<<< HEAD
 
 from ..strategy import Strategy
 
@@ -30,12 +31,41 @@ class TuningConfig:
     A uniform config wrap:
     distributed strategy: the user defined configuration for optimization pass
     tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific
+=======
+import pathlib
+
+import paddle
+from paddle.distributed import fleet
+
+_tuning_supported_passes = ["sharding", "recompute"]
+_strategy_config_suffiex = "_configs"
+
+
+def _get_pass_config(strategy, pass_name):
+    config_name = pass_name + _strategy_config_suffiex
+    config = getattr(strategy, config_name)
+    return config
+
+
+class TuningConfig(object):
+    """
+    A uniform config wrap:
+    distributed strategy: the user defined configuration for optimization pass
+    tuning config: configuration for the tuning process: mode (profile or cost model), log dir, extra tuning config for optimization like search range for specific 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
 
     def __init__(self, user_config, strategy):
 
+<<<<<<< HEAD
         if not isinstance(strategy, Strategy):
             raise TypeError("'strategy' must be object of class `Strategy`.")
+=======
+        if not isinstance(strategy, fleet.DistributedStrategy):
+            raise TypeError(
+                "'strategy' must be object of class `fleet.DistributedStrategy`."
+            )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if not user_config:
             user_config = {}
@@ -109,6 +139,7 @@ class TuningConfig:
         self._project_dir = project_dir
 
         for p in _tuning_supported_passes:
+<<<<<<< HEAD
             if (
                 getattr(self._dist_strategy, p)
                 and _get_pass_config(self._dist_strategy, p).enable_tuning
@@ -117,6 +148,14 @@ class TuningConfig:
                 self._tuning_passes_name.add(p)
 
                 config_name = p
+=======
+            if getattr(self._dist_strategy, p) and _get_pass_config(
+                    self._dist_strategy, p)["enable_tuning"]:
+                # TODO distinguish different args of each passes
+                self._tuning_passes_name.add(p)
+
+                config_name = p + _strategy_config_suffiex
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 p_dict = getattr(self._dist_strategy, config_name)
                 self.__dict__[config_name] = p_dict
 

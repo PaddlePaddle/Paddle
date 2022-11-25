@@ -24,11 +24,20 @@ from ..dist_tensor import DistributedTensor
 
 
 class CostEstimator:
+<<<<<<< HEAD
     _sepical_op_type = ["fused_attention", "fused_feedforward"]
 
     def __init__(
         self, program, cluster, mode="modeling", rank=None, loop_count=10
     ):
+=======
+
+    def __init__(self,
+                 program,
+                 cluster=None,
+                 dist_context=None,
+                 mode="modeling"):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._program = program
         self._cluster = cluster
         self._check_mode(mode)

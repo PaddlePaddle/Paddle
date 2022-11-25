@@ -22,6 +22,7 @@ from paddle.fluid.core import AnalysisConfig
 
 # normal starts && ends
 class SlicePluginTRTDynamicTest(InferencePassTest):
+
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -33,11 +34,16 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
         )
         self.enable_trt = True
         self.dynamic_shape_params = SlicePluginTRTDynamicTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'data': [1, 1, 1, 1]},
             {'data': [8, 8, 8, 8]},
             {'data': [8, 8, 8, 8]},
             False,
         )
+=======
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def setUp(self):
         self.setUpSliceParams()
@@ -47,9 +53,16 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
             axes = self.params_axes
             starts = self.params_starts
             ends = self.params_ends
+<<<<<<< HEAD
             slice_out = fluid.layers.slice(
                 data, axes=axes, starts=starts, ends=ends
             )
+=======
+            slice_out = fluid.layers.slice(data,
+                                           axes=axes,
+                                           starts=starts,
+                                           ends=ends)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.feeds = {
             "data": np.random.random((3, 3, 3, 3)).astype("float32"),
@@ -68,6 +81,7 @@ class SlicePluginTRTDynamicTest(InferencePassTest):
 
 
 class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
+
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [0, 1]
@@ -78,6 +92,7 @@ class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
             1 << 30, 32, 1, AnalysisConfig.Precision.Half, False, False
         )
         self.enable_trt = True
+<<<<<<< HEAD
         self.dynamic_shape_params = (
             SlicePluginTRTDynamicBoundTest.DynamicShapeParam(
                 {'data': [1, 1, 1, 1]},
@@ -86,9 +101,15 @@ class SlicePluginTRTDynamicBoundTest(SlicePluginTRTDynamicTest):
                 False,
             )
         )
+=======
+        self.dynamic_shape_params = SlicePluginTRTDynamicBoundTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
+
     def setUpSliceParams(self):
         self.params_axes = [1, 3]
         self.params_starts = [-5, 1]
@@ -101,6 +122,7 @@ class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
             )
         )
         self.enable_trt = True
+<<<<<<< HEAD
         self.dynamic_shape_params = (
             SlicePluginTRTDynamicNegativeBoundTest.DynamicShapeParam(
                 {'data': [1, 1, 1, 1]},
@@ -109,6 +131,11 @@ class SlicePluginTRTDynamicNegativeBoundTest(SlicePluginTRTDynamicTest):
                 False,
             )
         )
+=======
+        self.dynamic_shape_params = SlicePluginTRTDynamicNegativeBoundTest.DynamicShapeParam(
+            {'data': [1, 1, 1, 1]}, {'data': [8, 8, 8, 8]},
+            {'data': [8, 8, 8, 8]}, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

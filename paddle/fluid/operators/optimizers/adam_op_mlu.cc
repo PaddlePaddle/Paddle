@@ -27,7 +27,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -36,7 +40,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
     auto* param = ctx.Input<LoDTensor>("Param");
     auto* grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       true,
                       platform::errors::InvalidArgument(
                           "The Grad(%s)'s type should be LoDTensor, "
@@ -59,7 +67,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
 
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -68,7 +80,10 @@ class AdamMLUKernel : public framework::OpKernel<T> {
       std::vector<bool> skip_update_vec;
       paddle::framework::TensorToVector(
           *skip_update_tensor, ctx.device_context(), &skip_update_vec);
+<<<<<<< HEAD
       ctx.device_context().Wait();
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       skip_update = skip_update_vec[0];
     }
     // skip_update=true, just copy input to output, and TensorCopy will call
@@ -162,7 +177,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     Tensor epsilon_tmp(experimental::DataType::FLOAT32);
 
     if (ctx.HasInput("Beta1Tensor")) {
+<<<<<<< HEAD
       beta1_tensor = ctx.Input<phi::DenseTensor>("Beta1Tensor");
+=======
+      beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(beta1_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -181,7 +200,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("Beta2Tensor")) {
+<<<<<<< HEAD
       beta2_tensor = ctx.Input<phi::DenseTensor>("Beta2Tensor");
+=======
+      beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(beta2_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -200,7 +223,11 @@ class AdamMLUKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.HasInput("EpsilonTensor")) {
+<<<<<<< HEAD
       epsilon_tensor = ctx.Input<phi::DenseTensor>("EpsilonTensor");
+=======
+      epsilon_tensor = ctx.Input<framework::Tensor>("EpsilonTensor");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(epsilon_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -278,7 +305,11 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
     bool skip_update = false;
     if (ctx.HasInput("SkipUpdate")) {
       VLOG(3) << "Has SkipUpdate";
+<<<<<<< HEAD
       auto* skip_update_tensor = ctx.Input<phi::DenseTensor>("SkipUpdate");
+=======
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       PADDLE_ENFORCE_EQ(skip_update_tensor->numel(),
                         1,
                         platform::errors::InvalidArgument(
@@ -287,6 +318,7 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
       std::vector<bool> skip_update_vec;
       paddle::framework::TensorToVector(
           *skip_update_tensor, ctx.device_context(), &skip_update_vec);
+<<<<<<< HEAD
       ctx.device_context().Wait();
       skip_update = skip_update_vec[0];
     }
@@ -296,6 +328,11 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
     auto* master_param_out = ctx.Output<LoDTensor>("MasterParamOut");
     const auto* master_param = ctx.Input<LoDTensor>("MasterParam");
 
+=======
+      skip_update = skip_update_vec[0];
+    }
+    bool with_decay = ctx.Attr<bool>("with_decay");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     VLOG(3) << "Skip update: " << skip_update << ", With decay: " << with_decay;
     if (!skip_update && with_decay) {
       auto* param = ctx.Input<LoDTensor>("Param");
@@ -325,7 +362,11 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
                       const_cast<void*>(GetBasePtr(param)));
       } else {
         const auto* param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
         PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+=======
+        PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           true,
                           platform::errors::InvalidArgument(
                               "The Var(%s)'s type should be LoDTensor, "
@@ -338,6 +379,10 @@ class AdamWMLUKernel : public AdamMLUKernel<T> {
 
         // update param with decay coeff: mul(-1 * lr, coeff * param) + param
         MLUCnnlTensorDesc lr_desc(*lr);
+<<<<<<< HEAD
+=======
+        MLUCnnlTensorDesc param_desc(*param);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         MLUCnnlOpTensorDesc mul_op_desc(
             CNNL_OP_TENSOR_MUL, ToCnnlDataType<T>(), CNNL_NOT_PROPAGATE_NAN);
 

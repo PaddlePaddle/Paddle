@@ -26,6 +26,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
+
     def func_ptb_rnn_sort_gradient(self):
         for is_sparse in [True, False]:
             self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
@@ -46,6 +47,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             paddle.framework.random._manual_program_seed(seed)
 
             # TODO: marsyang1993 Change seed to
+<<<<<<< HEAD
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
@@ -58,6 +60,17 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             sgd = SGDOptimizer(
                 learning_rate=1e-3, parameter_list=ptb_model.parameters()
             )
+=======
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale,
+                                 is_sparse=is_sparse)
+
+            sgd = SGDOptimizer(learning_rate=1e-3,
+                               parameter_list=ptb_model.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dy_param_updated = dict()
             dy_param_init = dict()
             dy_loss = None
@@ -70,18 +83,28 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
+<<<<<<< HEAD
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
+=======
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
                 dy_loss, last_hidden, last_cell = ptb_model(
+<<<<<<< HEAD
                     x, y, init_hidden, init_cell
                 )
+=======
+                    x, y, init_hidden, init_cell)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -100,6 +123,7 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
+<<<<<<< HEAD
             ptb_model = PtbModel(
                 hidden_size=hidden_size,
                 vocab_size=vocab_size,
@@ -125,6 +149,28 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
             init_cell = fluid.layers.data(
                 name="init_cell", shape=[1], dtype='float32'
             )
+=======
+            ptb_model = PtbModel(hidden_size=hidden_size,
+                                 vocab_size=vocab_size,
+                                 num_layers=num_layers,
+                                 num_steps=num_steps,
+                                 init_scale=init_scale,
+                                 is_sparse=is_sparse)
+
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            sgd = SGDOptimizer(learning_rate=1e-3)
+            x = fluid.layers.data(name="x",
+                                  shape=[-1, num_steps, 1],
+                                  dtype='int64')
+            y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
+            init_hidden = fluid.layers.data(name="init_hidden",
+                                            shape=[1],
+                                            dtype='float32')
+            init_cell = fluid.layers.data(name="init_cell",
+                                          shape=[1],
+                                          dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             static_loss, static_last_hidden, static_last_cell = ptb_model(
                 x, y, init_hidden, init_cell
@@ -151,11 +197,17 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
+<<<<<<< HEAD
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
                 init_cell_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32'
                 )
+=======
+                    (num_layers, batch_size, hidden_size), dtype='float32')
+                init_cell_data = np.zeros((num_layers, batch_size, hidden_size),
+                                          dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fetch_list = [static_loss, static_last_hidden, static_last_cell]
                 fetch_list.extend(static_param_name_list)
                 out = exe.run(

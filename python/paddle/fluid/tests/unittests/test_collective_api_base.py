@@ -77,6 +77,7 @@ def create_test_data(shape=None, dtype=None, seed=None):
     assert shape, "Shape should be specified"
     if dtype == "float32" or dtype == "float16" or dtype == "float64":
         return create_float_test_data(shape=shape, dtype=dtype, seed=seed)
+<<<<<<< HEAD
     elif dtype == "bfloat16":
         # since numpy does not support bfloat16 yet, use `paddle_bfloat` to replace
         return create_float_test_data(shape=shape, dtype=bfloat16, seed=seed)
@@ -88,6 +89,11 @@ def create_test_data(shape=None, dtype=None, seed=None):
         or dtype == "int8"
         or dtype == "uint8"
     ):
+=======
+    elif dtype == "bool":
+        return create_bool_test_data(shape=shape, seed=seed)
+    elif dtype == "int32" or dtype == "int64" or dtype == "int8" or dtype == "uint8":
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return create_int_test_data(shape=shape, dtype=dtype, seed=seed)
     elif dtype == "complex64" or dtype == "complex128":
         return create_complex_test_data(shape=shape, dtype=dtype, seed=seed)
@@ -99,10 +105,21 @@ def create_test_data(shape=None, dtype=None, seed=None):
         raise NotImplementedError("Unsupported dtype for creating test data.")
 
 
+<<<<<<< HEAD
 class TestCollectiveAPIRunnerBase:
     def get_model(
         self, train_prog, startup_prog, rank, indata=None, dtype=None
     ):
+=======
+class TestCollectiveAPIRunnerBase(object):
+
+    def get_model(self,
+                  train_prog,
+                  startup_prog,
+                  rank,
+                  indata=None,
+                  dtype=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         raise NotImplementedError(
             "get model should be implemented by child class."
         )
@@ -125,9 +142,15 @@ class TestCollectiveAPIRunnerBase:
             place = fluid.XPUPlace(device_id)
         else:
             place = fluid.CPUPlace()
+<<<<<<< HEAD
         indata = create_test_data(
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
+=======
+        indata = create_test_data(shape=(10, 1000),
+                                  dtype=args["dtype"],
+                                  seed=os.getpid())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if args['static_mode']:
             result = self.get_model(train_prog, startup_prog, rank)
             exe = fluid.Executor(place)
@@ -164,6 +187,7 @@ from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
+
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
@@ -175,6 +199,7 @@ class TestDistBase(unittest.TestCase):
 
         self.temp_dir = tempfile.TemporaryDirectory()
 
+<<<<<<< HEAD
         # NOTE: this is a hack to get int format nccl version, like 2134
         # if current platform is not linux, version number will be 0
         nccl_version_str = subprocess.check_output(
@@ -186,10 +211,13 @@ class TestDistBase(unittest.TestCase):
             int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
         )
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -248,6 +276,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
+<<<<<<< HEAD
         path0 = os.path.join(
             self.temp_dir.name, "/tmp/tr0_err_%d.log" % os.getpid()
         )
@@ -270,6 +299,24 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1,
         )
+=======
+        path0 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr0_err_%d.log" % os.getpid())
+        path1 = os.path.join(self.temp_dir.name,
+                             "/tmp/tr1_err_%d.log" % os.getpid())
+        tr0_pipe = open(path0, "w")
+        tr1_pipe = open(path1, "w")
+        #print(tr0_cmd)
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr0_pipe,
+                                    env=env0)
+
+        tr1_proc = subprocess.Popen(tr0_cmd.strip().split(),
+                                    stdout=subprocess.PIPE,
+                                    stderr=tr1_pipe,
+                                    env=env1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -282,6 +329,7 @@ class TestDistBase(unittest.TestCase):
             sys.stderr.write('trainer 0 stderr file: %s\n' % f.read())
         with open(path1, "r") as f:
             sys.stderr.write('trainer 1 stderr file: %s\n' % f.read())
+<<<<<<< HEAD
         return (
             pickle.loads(tr0_out),
             pickle.loads(tr1_out),
@@ -301,6 +349,21 @@ class TestDistBase(unittest.TestCase):
         eager_mode=True,
         dtype=None,
     ):
+=======
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
+
+    def check_with_place(self,
+                         model_file,
+                         col_type,
+                         backend="nccl",
+                         path_id="0",
+                         static_mode="1",
+                         check_error_log=False,
+                         need_envs={},
+                         eager_mode=True,
+                         dtype=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
         else:
@@ -314,7 +377,11 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_DISTRI_BACKEND": backend,
             "BACKEND": backend,
             "PATH_ID": path_id,
+<<<<<<< HEAD
             "DTYPE": dtype,
+=======
+            "DTYPE": dtype
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -325,8 +392,12 @@ class TestDistBase(unittest.TestCase):
 
         if os.getenv('NVIDIA_TF32_OVERRIDE', '') is not None:
             required_envs['NVIDIA_TF32_OVERRIDE'] = os.getenv(
+<<<<<<< HEAD
                 'NVIDIA_TF32_OVERRIDE', ''
             )
+=======
+                'NVIDIA_TF32_OVERRIDE', '')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if eager_mode:
             required_envs["FLAGS_enable_eager_mode"] = "%d" % 1
@@ -334,6 +405,7 @@ class TestDistBase(unittest.TestCase):
             required_envs["FLAGS_enable_eager_mode"] = "%d" % 0
 
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(
+<<<<<<< HEAD
             model_file, required_envs
         )
         input1 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid0)
@@ -342,12 +414,22 @@ class TestDistBase(unittest.TestCase):
         if dtype == "bfloat16":
             input1 = input1.astype("float32")
             input2 = input2.astype("float32")
+=======
+            model_file, required_envs)
+        input1 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid0)
+        input2 = create_test_data(shape=(10, 1000), dtype=dtype, seed=pid1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if col_type == "allgather":
             need_result = np.vstack((input1, input2))
             tr_out0 = np.vstack((tr0_out[0], tr0_out[1]))
             tr_out1 = np.vstack((tr1_out[0], tr1_out[1]))
+<<<<<<< HEAD
             np.testing.assert_allclose(tr_out0, need_result, rtol=1e-05)
             np.testing.assert_allclose(tr_out1, need_result, rtol=1e-05)
+=======
+            self.assertTrue(np.allclose(tr_out0, need_result))
+            self.assertTrue(np.allclose(tr_out1, need_result))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if col_type == "allgather_object":
             need_result = [input1, input2]
             self.assertEqual(need_result, tr0_out)
@@ -383,6 +465,7 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=rtol)
         elif col_type == "allreduce":
             need_result = input1 + input2
+<<<<<<< HEAD
             if dtype == "bfloat16":
                 rtol = 8e-03
                 atol = 8e-03
@@ -395,6 +478,12 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 tr1_out[0], need_result, rtol=rtol, atol=atol
             )
+=======
+            self.assertTrue(
+                np.allclose(tr0_out, need_result, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(tr1_out, need_result, rtol=1e-05, atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif col_type == "parallel_embedding":
             result_data = tr0_out[0]
             np.random.seed(2020)
@@ -402,25 +491,41 @@ class TestDistBase(unittest.TestCase):
             for i in range(result_data.shape[0]):
                 for j in range(result_data.shape[1]):
                     data = result_data[i][j]
+<<<<<<< HEAD
                     assert np.allclose(
                         tr0_out[1][i][j], need_result[data], atol=1e-08
                     )
+=======
+                    assert np.allclose(tr0_out[1][i][j],
+                                       need_result[data],
+                                       atol=1e-08)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif col_type == "row_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
+=======
+            self.assertTrue(
+                np.allclose(result_data, need_result, rtol=1e-05, atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif col_type == "column_parallel_linear":
             result_data = tr0_out[0]
             np.random.seed(2020)
             weight = np.random.rand(1000, 16)
             need_result = np.matmul(input1, weight)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 result_data, need_result, rtol=1e-05, atol=1e-05
             )
+=======
+            self.assertTrue(
+                np.allclose(result_data, need_result, rtol=1e-05, atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif col_type == "alltoall":
             need_result1 = np.vstack(
                 (
@@ -436,6 +541,7 @@ class TestDistBase(unittest.TestCase):
             )
             tr0_out = np.vstack(tr0_out)
             tr1_out = np.vstack(tr1_out)
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out, need_result1, rtol=1e-05, atol=1e-05
             )
@@ -447,6 +553,16 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(
                 input1, result_data, rtol=1e-05, atol=1e-05
             )
+=======
+            self.assertTrue(
+                np.allclose(tr0_out, need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv":
+            result_data = tr1_out[0]
+            self.assertTrue(
+                np.allclose(input1, result_data, rtol=1e-05, atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif col_type == "global_gather":
             in_feat = 2
             n_expert = 2
@@ -532,14 +648,22 @@ class TestDistBase(unittest.TestCase):
                 output1 = np.array([])
             else:
                 output1 = np.concatenate(result1, axis=0).reshape(
+<<<<<<< HEAD
                     sum(local_expert_count1), in_feat
                 )
+=======
+                    sum(local_expert_count1), in_feat)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if result2 == []:
                 output2 = np.array([])
             else:
                 output2 = np.concatenate(result2, axis=0).reshape(
+<<<<<<< HEAD
                     sum(local_expert_count2), in_feat
                 )
+=======
+                    sum(local_expert_count2), in_feat)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
                 tr0_out[0] = np.array([])
@@ -547,6 +671,7 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], output1, rtol=1e-05, atol=1e-05
             )
@@ -560,6 +685,23 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
+=======
+            self.assertTrue(
+                np.allclose(tr0_out[0], output1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(tr0_out[1],
+                                2 * local_input_buf1,
+                                rtol=1e-05,
+                                atol=1e-05))
+                self.assertTrue(
+                    np.allclose(tr1_out[1],
+                                2 * local_input_buf2,
+                                rtol=1e-05,
+                                atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         elif col_type == "global_scatter":
             np.random.seed(pid0)
@@ -630,6 +772,7 @@ class TestDistBase(unittest.TestCase):
             if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
                 tr1_out[0] = np.array([])
 
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 tr0_out[0], output1, rtol=1e-05, atol=1e-05
             )
@@ -643,5 +786,22 @@ class TestDistBase(unittest.TestCase):
                 np.testing.assert_allclose(
                     tr1_out[1], 2 * local_input_buf2, rtol=1e-05, atol=1e-05
                 )
+=======
+            self.assertTrue(
+                np.allclose(tr0_out[0], output1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(tr0_out[1],
+                                2 * local_input_buf1,
+                                rtol=1e-05,
+                                atol=1e-05))
+                self.assertTrue(
+                    np.allclose(tr1_out[1],
+                                2 * local_input_buf2,
+                                rtol=1e-05,
+                                atol=1e-05))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             pass

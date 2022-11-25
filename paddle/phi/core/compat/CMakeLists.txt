@@ -9,10 +9,13 @@ cc_library(
 
 set(convert_utils_deps data_type place op_utils phi_backends)
 
+<<<<<<< HEAD
 if(WITH_MKLDNN)
   set(convert_utils_deps ${convert_utils_deps} mkldnn)
 endif()
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 cc_library(
   convert_utils
   SRCS convert_utils.cc

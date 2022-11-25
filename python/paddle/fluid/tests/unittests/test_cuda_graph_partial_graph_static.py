@@ -15,14 +15,24 @@
 import paddle
 import paddle.nn as nn
 import unittest
+<<<<<<< HEAD
+=======
+import numpy as np
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.device.cuda.graphs import wrap_cuda_graph, is_cuda_graph_supported
 
 paddle.enable_static()
 
 
 class SimpleModel(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__()
+=======
+
+    def __init__(self, in_size, out_size):
+        super(SimpleModel, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.linear = nn.Linear(in_size, out_size)
         self.dropout_1 = paddle.nn.Dropout(0.1)
         self.relu = nn.ReLU()
@@ -39,6 +49,10 @@ class SimpleModel(nn.Layer):
 
 
 class TestCudaGraphAttrAll(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_all_program(self):
         if not is_cuda_graph_supported():
             return
@@ -57,10 +71,15 @@ class TestCudaGraphAttrAll(unittest.TestCase):
                 if op._cuda_graph_attr is None:
                     # the loss and opt are not wrapped
                     assert op.type in [
+<<<<<<< HEAD
                         'sgd',
                         'reduce_mean',
                         'fill_constant',
                         'reduce_mean_grad',
+=======
+                        'sgd', 'reduce_mean', 'fill_constant',
+                        'reduce_mean_grad'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     ]
                 else:
                     assert op._cuda_graph_attr == 'thread_local;0;0'

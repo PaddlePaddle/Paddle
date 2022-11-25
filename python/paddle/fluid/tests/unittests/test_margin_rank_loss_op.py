@@ -20,6 +20,7 @@ import paddle
 
 
 class TestMarginRankLossOp(OpTest):
+
     def setUp(self):
         self.op_type = "margin_rank_loss"
         batch_size = 5
@@ -54,6 +55,7 @@ class TestMarginRankLossOp(OpTest):
 
 
 class TestMarginRankLossLayer(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 5
         self.margin = 0.5
@@ -94,11 +96,21 @@ class TestMarginRankLossLayer(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(start)
+<<<<<<< HEAD
         (out_np,) = exe.run(
             main,
             feed={"label": self.label, "x1": self.x1, "x2": self.x2},
             fetch_list=[out],
         )
+=======
+        out_np, = exe.run(main,
+                          feed={
+                              "label": self.label,
+                              "x1": self.x1,
+                              "x2": self.x2
+                          },
+                          fetch_list=[out])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         np.testing.assert_allclose(out_np, self.loss)
 
 

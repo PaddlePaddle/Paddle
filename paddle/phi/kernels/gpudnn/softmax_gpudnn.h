@@ -767,11 +767,19 @@ __global__ void WarpSoftmaxBackward(T* dst,
   }
 }
 
+<<<<<<< HEAD
 #define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)                   \
   case Log2Elements:                                                    \
     WarpSoftmaxForward<T, VecT, AccT, IndexType, Log2Elements, LogMode> \
         <<<blocks, threads, 0, dev_ctx.stream()>>>(                     \
             dst, src, batch_size, stride, element_count);               \
+=======
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, AccT)        \
+  case Log2Elements:                                         \
+    WarpSoftmaxForward<T, VecT, AccT, Log2Elements, LogMode> \
+        <<<blocks, threads, 0, dev_ctx.stream()>>>(          \
+            dst, src, batch_size, stride, element_count);    \
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     break;
 
 /*
@@ -1135,6 +1143,7 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
   auto mode = axis == rank - 1 ? MIOPEN_SOFTMAX_MODE_INSTANCE
                                : MIOPEN_SOFTMAX_MODE_CHANNEL;
   auto algo = log_mode ? MIOPEN_SOFTMAX_LOG : MIOPEN_SOFTMAX_ACCURATE;
+<<<<<<< HEAD
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSoftmaxBackward_V2(
       handle,
       paddle::platform::CudnnDataType<T>::kOne(),
@@ -1147,6 +1156,21 @@ void SoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
       dx_data,
       algo,
       mode));
+=======
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      paddle::platform::dynload::miopenSoftmaxBackward_V2(
+          handle,
+          paddle::platform::CudnnDataType<T>::kOne(),
+          desc,
+          out_data,
+          desc,
+          dout_data,
+          paddle::platform::CudnnDataType<T>::kZero(),
+          desc,
+          dx_data,
+          algo,
+          mode));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #else
   cudnnTensorDescriptor_t desc = scoped_desc.descriptor<T>(layout, tensor_dims);
   auto mode = axis == rank - 1 ? CUDNN_SOFTMAX_MODE_INSTANCE
@@ -1198,6 +1222,7 @@ void LaunchSoftmaxBackwardCudnnKernel(const GPUContext& dev_ctx,
     dout_data += offset;
     dx_data += offset;
     remaining -= batch_size;
+<<<<<<< HEAD
   }
 }
 
@@ -1222,6 +1247,8 @@ void LaunchKeMatrixSoftmaxForwardKernel(
     default:
       PADDLE_THROW(
           errors::Fatal("the input dim has error in the softmax cuda kernel."));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 }
 
@@ -1252,9 +1279,13 @@ inline void LaunchSoftmaxBackwardCudnnKernel<phi::dtype::bfloat16>(
 #endif
 
 template <typename T>
+<<<<<<< HEAD
 bool UseCudnnSoftmax(const GPUContext& ctx,
                      int64_t softmax_dim,
                      bool last_dim) {
+=======
+bool UseCudnnSoftmax(const GPUContext& ctx, int softmax_dim, bool last_dim) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   bool cudnn_available = ctx.cudnn_handle();
   if (!ctx.cudnn_handle()) {
     if (std::is_same<T, phi::dtype::bfloat16>::value) {
@@ -1265,19 +1296,31 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
   }
   constexpr int max_dim = 512;
   if (!cudnn_available || !last_dim ||
+<<<<<<< HEAD
       (softmax_dim <= max_dim && sizeof(T) <= 4) ||
       softmax_dim >= MATRIX_SOFTMAX_THREAHOLD) {
+=======
+      (softmax_dim <= max_dim && sizeof(T) <= 4)) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return false;
   } else {
     return true;
   }
 }
 
+<<<<<<< HEAD
 template <typename T, typename IndexType, bool LogMode = false>
 void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                         const DenseTensor& x,
                                         const int input_axis,
                                         DenseTensor* out) {
+=======
+template <typename T, bool LogMode = false>
+void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const int input_axis,
+                                    DenseTensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto* out_data = out->data<T>();
 
   int rank = x.dims().size();
@@ -1290,6 +1333,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
   if (D == 1) {
     if (!UseCudnnSoftmax<T>(dev_ctx, dim, true)) {
+<<<<<<< HEAD
       if (dim >= MATRIX_SOFTMAX_THREAHOLD) {
         LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
@@ -1297,6 +1341,10 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       }
       int dim_log2 = static_cast<int>(Log2Ceil(dim));
       IndexType dim_ceil = 1 << dim_log2;
+=======
+      int dim_log2 = static_cast<int>(Log2Ceil(dim));
+      int dim_ceil = 1 << dim_log2;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
       int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
 
@@ -1305,7 +1353,11 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
 
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
+<<<<<<< HEAD
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
+=======
+      int blocks = (N + batches_per_block - 1) / batches_per_block;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       dim3 threads(warp_size, warps_per_block, 1);
 
       // vectorization read/write
@@ -1313,6 +1365,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       using T2 = typename VecT2<T>::Type;
 
       if (dim % 4 == 0) {
+<<<<<<< HEAD
         SwitchWarpSoftmaxForward<T, T4, IndexType, LogMode>(blocks,
                                                             threads,
                                                             dev_ctx,
@@ -1342,6 +1395,37 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim,
                                                            dim,
                                                            dim_log2);
+=======
+        SwitchWarpSoftmaxForward<T, T4, LogMode>(blocks,
+                                                 threads,
+                                                 dev_ctx,
+                                                 out_data,
+                                                 x.data<T>(),
+                                                 N,
+                                                 dim,
+                                                 dim,
+                                                 dim_log2);
+      } else if (dim % 2 == 0) {
+        SwitchWarpSoftmaxForward<T, T2, LogMode>(blocks,
+                                                 threads,
+                                                 dev_ctx,
+                                                 out_data,
+                                                 x.data<T>(),
+                                                 N,
+                                                 dim,
+                                                 dim,
+                                                 dim_log2);
+      } else {
+        SwitchWarpSoftmaxForward<T, T, LogMode>(blocks,
+                                                threads,
+                                                dev_ctx,
+                                                out_data,
+                                                x.data<T>(),
+                                                N,
+                                                dim,
+                                                dim,
+                                                dim_log2);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       }
     } else {
       LaunchSoftmaxForwardCudnnKernel<T>(dev_ctx, x, axis, LogMode, out);
@@ -1349,6 +1433,7 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
   } else {
     LaunchNormalSoftmaxForward<T, LogMode>(
         dev_ctx, out_data, x.data<T>(), N, dim, D);
+<<<<<<< HEAD
   }
 }
 
@@ -1363,6 +1448,8 @@ void SoftmaxForwardCUDAKernelDriver(const GPUContext& dev_ctx,
   } else {
     SoftmaxForwardCUDAKernelDriverImpl<T, int32_t, LogMode>(
         dev_ctx, x, input_axis, out);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 }
 

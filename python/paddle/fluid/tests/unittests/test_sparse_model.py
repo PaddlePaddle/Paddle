@@ -15,21 +15,37 @@
 import unittest
 import numpy as np
 import paddle
+<<<<<<< HEAD
 from paddle.sparse import nn
+=======
+from paddle.incubate import sparse
+from paddle.incubate.sparse import nn
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.fluid.framework import _test_eager_guard
 
 
 class TestGradientAdd(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def sparse(self, sp_x):
         indentity = sp_x
         out = nn.functional.relu(sp_x)
         values = out.values() + indentity.values()
+<<<<<<< HEAD
         out = paddle.sparse.sparse_coo_tensor(
             out.indices(),
             values,
             shape=out.shape,
             stop_gradient=out.stop_gradient,
         )
+=======
+        out = sparse.sparse_coo_tensor(out.indices(),
+                                       values,
+                                       shape=out.shape,
+                                       stop_gradient=out.stop_gradient)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     def dense(self, x):
@@ -55,6 +71,10 @@ class TestGradientAdd(unittest.TestCase):
             sparse_loss.backward(retain_graph=True)
 
             assert np.allclose(dense_out.numpy(), sparse_out.to_dense().numpy())
+<<<<<<< HEAD
+=======
+            assert np.allclose(loss.numpy(), loss.numpy())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert np.allclose(x.grad.numpy(), sparse_x.grad.to_dense().numpy())
 
             loss.backward()

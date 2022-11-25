@@ -67,9 +67,15 @@ def _update_grad_persistable(main_program):
             g_var.persistable = True
 
 
+<<<<<<< HEAD
 def apply_build_strategy(
     main_program, startup_program, build_strategy, pass_attrs
 ):
+=======
+def apply_build_strategy(main_program, startup_program, build_strategy,
+                         pass_attrs):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def update_attr(attrs, attr_types, name, value, typ=None):
         if name not in attrs:
             attrs[name] = value
@@ -206,10 +212,15 @@ class RegisterPassHelper:
                     op_outs = out.Outputs()
                     if len(op_outs) != 1:
                         raise ValueError(
+<<<<<<< HEAD
                             "Operator '{}' has multiple outputs, please specify one output variable.".format(
                                 out._type
                             )
                         )
+=======
+                            "Operator '{}' has multiple outputs, please specify one output variable."
+                            .format(out._type))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     for op_out in op_outs.values():
                         vars.extend(op_out)
                 else:
@@ -221,6 +232,7 @@ class RegisterPassHelper:
         return vars, program.current_block().ops
 
     def _convert_vars_to_pass_desc(self, patterns, replaces, desc):
+
         def _add_element_conditions(conditions, elements):
             for element in elements:
                 if element._condition:
@@ -286,8 +298,15 @@ class RegisterPassHelper:
         return multi_pass_desc.SerializeToString()
 
 
+<<<<<<< HEAD
 class PassDesc:
     class AttrHelper:
+=======
+class PassDesc(object):
+
+    class AttrHelper(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def __init__(self, obj, name, element_index=None):
             self._obj = obj
             self._name = name
@@ -299,9 +318,15 @@ class PassDesc:
             self._mapped = None
 
         def __getitem__(self, index):
+<<<<<<< HEAD
             element = PassDesc.AttrHelper(
                 self._obj, self._name, element_index=index
             )
+=======
+            element = PassDesc.AttrHelper(self._obj,
+                                          self._name,
+                                          element_index=index)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._elements.append(element)
             return element
 
@@ -397,16 +422,24 @@ class PassDesc:
                 if len(ops) <= index:
                     raise ValueError(
                         "Index '{}' of operator '{}' is incorrect.".format(
+<<<<<<< HEAD
                             index, op
                         )
                     )
                 return PassDesc.AttrHelper(
                     ops[index], name, element_index=element_index
                 )
+=======
+                            index, op))
+                return PassDesc.AttrHelper(ops[index],
+                                           name,
+                                           element_index=element_index)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self._mapped = mapped_op if var is None else mapped_var
 
     class VarHelper(paddle.static.Variable):
+
         def __init__(self, *args, **kwargs):
             block = paddle.static.default_main_program().current_block()
             self._var = paddle.static.data(*args, **kwargs)
@@ -422,7 +455,12 @@ class PassDesc:
                 self._attrs[name] = attr
             return attr
 
+<<<<<<< HEAD
     class OpHelper:
+=======
+    class OpHelper(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def __init__(self, type=None):
             self._type = type
 
@@ -458,10 +496,15 @@ class PassDesc:
                         op_outs = in_arg.Outputs()
                         if len(op_outs) != 1:
                             raise ValueError(
+<<<<<<< HEAD
                                 "The size of outputs of operator '{}' is not equal 1, please specify one output variable.".format(
                                     in_arg._type
                                 )
                             )
+=======
+                                "The size of outputs of operator '{}' is not equal 1, please specify one output variable."
+                                .format(in_arg._type))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         for op_out in op_outs.values():
                             op_input.extend(op_out)
                     else:

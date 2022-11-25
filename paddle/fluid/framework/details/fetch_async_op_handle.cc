@@ -78,8 +78,13 @@ static void CheckTensorAttrs(const phi::DenseTensor *tensor,
             "(th) fetched variable. Please set the "
             "parameter `return_merged = False` when you "
             "call the `Executor.run()` method.",
+<<<<<<< HEAD
             phi::DataLayoutToString(layout),
             phi::DataLayoutToString(tensor->layout()),
+=======
+            DataLayoutToString(layout),
+            DataLayoutToString(tensor->layout()),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             offset));
   }
 
@@ -168,6 +173,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   for (size_t i = 1; i < src_lodtensors.size(); ++i) {
     CheckTensorAttrs(
         src_lodtensors[i], new_type, new_layout, check_dim, new_lod, offset_);
+<<<<<<< HEAD
   }
 
   auto rank = src_lodtensors[0]->dims().size();
@@ -188,6 +194,8 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
         }
       }
     }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   // set dst tensor
@@ -245,7 +253,11 @@ void FetchAsyncOpHandle::RunImpl() {
 
   if (return_merged_) {
     auto &val = PADDLE_GET(FetchList, *data_);
+<<<<<<< HEAD
     if (src_vars[0]->IsType<phi::DenseTensor>()) {
+=======
+    if (src_vars[0]->IsType<LoDTensor>()) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       // to lodtensor type
       std::vector<const phi::DenseTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());

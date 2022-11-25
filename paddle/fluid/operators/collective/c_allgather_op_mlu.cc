@@ -85,6 +85,7 @@ class CAllGatherOpMLUKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_MLU_SUCCESS(cnclAllGather(
         send_buff, recv_buff, send_numel, dtype, comm->comm(), stream));
+<<<<<<< HEAD
     if (framework::TransToProtoVarType(x->dtype()) ==
         framework::proto::VarType::INT64) {
       // cast back from int64 out_tensor to out
@@ -98,6 +99,8 @@ class CAllGatherOpMLUKernel : public framework::OpKernel<T> {
                     out_int64_desc.get(),
                     GetBasePtr(out));
     }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with MLU."));

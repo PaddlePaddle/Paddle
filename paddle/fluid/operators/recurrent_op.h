@@ -182,7 +182,11 @@ class RecurrentBase : public framework::OperatorBase {
         src_var,
         platform::errors::NotFound("Source variable %s is not found.",
                                    src_var_name));
+<<<<<<< HEAD
     auto &src_tensor = src_var->Get<phi::DenseTensor>();
+=======
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     auto *dst_var = dst_scope->Var(dst_var_name);
     auto *dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
@@ -205,12 +209,20 @@ class RecurrentBase : public framework::OperatorBase {
         src_var,
         platform::errors::NotFound("Source variable %s is not found.",
                                    src_var_name));
+<<<<<<< HEAD
     auto &src_tensor = src_var->Get<phi::DenseTensor>();
+=======
+    auto &src_tensor = src_var->Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_NOT_NULL(
         dst_var,
         platform::errors::NotFound("Destination variable %s is not found.",
                                    src_var_name));
+<<<<<<< HEAD
     auto *dst_tensor = dst_var->GetMutable<phi::DenseTensor>();
+=======
+    auto *dst_tensor = dst_var->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     callback(src_tensor, dst_tensor);
   }
 };

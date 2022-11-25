@@ -50,7 +50,11 @@ class CPUQuantizeSquashPass : public FusePassBase {
    * elementwise assumes first input type.
    */
   bool IsDequantizeQuantizeIncompatible(Node* quant_op,
+<<<<<<< HEAD
                                         Node* dequant_op,
+=======
+                                        Node* dequant_in,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                         Node* next_op) const;
 
   /*

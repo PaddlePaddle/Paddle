@@ -14,10 +14,15 @@
 
 #include "paddle/phi/kernels/add_n_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/kernels/impl/add_n_kernel_impl.h"
-
+=======
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 

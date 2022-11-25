@@ -14,6 +14,7 @@ cc_library(
   phi_enforce
   SRCS enforce.cc
   DEPS ${phi_enforce_deps})
+<<<<<<< HEAD
 
 if(WITH_XPU)
   cc_library(
@@ -99,6 +100,70 @@ cc_library(
   DEPS version tensor phi_device_context)
 
 cc_library(
+=======
+
+cc_library(
+  kernel_factory
+  SRCS kernel_factory.cc
+  DEPS phi_enforce fluid_convert_utils)
+cc_library(
+  kernel_context
+  SRCS kernel_context.cc
+  DEPS phi_enforce phi_backends)
+
+cc_library(
+  ddim
+  SRCS ddim.cc
+  DEPS phi_enforce)
+cc_library(
+  tensor_base
+  SRCS tensor_base.cc allocator.cc
+  DEPS phi_enforce)
+cc_library(
+  tensor_meta
+  SRCS tensor_meta.cc
+  DEPS phi_enforce)
+cc_library(
+  lod_utils
+  SRCS lod_utils.cc
+  DEPS phi_enforce)
+
+cc_library(
+  dense_tensor
+  SRCS dense_tensor.cc dense_tensor_impl.cc
+  DEPS convert_utils fluid_convert_utils tensor_meta tensor_base)
+cc_library(
+  sparse_coo_tensor
+  SRCS sparse_coo_tensor.cc
+  DEPS tensor_meta tensor_base)
+cc_library(
+  sparse_csr_tensor
+  SRCS sparse_csr_tensor.cc
+  DEPS dense_tensor tensor_base)
+cc_library(
+  string_tensor
+  SRCS string_tensor.cc
+  DEPS convert_utils tensor_meta tensor_base)
+
+cc_library(
+  meta_tensor
+  SRCS meta_tensor.cc
+  DEPS tensor_base tensor_meta dense_tensor)
+cc_library(
+  infermeta_utils
+  SRCS infermeta_utils.cc
+  DEPS meta_tensor)
+cc_library(
+  selected_rows
+  SRCS selected_rows_impl.cc selected_rows.cc
+  DEPS tensor_base dense_tensor phi_enforce ddim memcpy)
+cc_library(
+  phi_device_context
+  SRCS device_context.cc
+  DEPS dense_tensor selected_rows)
+
+cc_library(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   custom_kernel
   SRCS custom_kernel.cc
   DEPS kernel_factory)

@@ -17,6 +17,7 @@ import numpy as np
 import sys
 
 sys.path.append("..")
+<<<<<<< HEAD
 
 import paddle
 import paddle.nn.functional as F
@@ -27,13 +28,27 @@ from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+from op_test import OpTest
+
+import paddle
+import paddle.fluid.core as core
+import paddle.nn.functional as F
+
+from op_test_xpu import XPUOpTest
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.enable_static()
 np.random.seed(10)
 
 
 def ref_log_softmax(x):
+<<<<<<< HEAD
     shiftx = x - np.max(x)
+=======
+    shiftx = (x - np.max(x))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out = shiftx - np.log(np.exp(shiftx).sum())
     return out
 
@@ -43,14 +58,24 @@ def ref_log_softmax_grad(x, axis):
         axis += len(x.shape)
     out = np.apply_along_axis(ref_log_softmax, axis, x)
     axis_dim = x.shape[axis]
+<<<<<<< HEAD
     dout = np.full_like(x, fill_value=1.0 / x.size)
     dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
         axis_dim, axis=axis
     )
+=======
+    dout = np.full_like(x, fill_value=1. / x.size)
+    dx = dout - np.exp(out) * dout.copy().sum(axis=axis, keepdims=True).repeat(
+        axis_dim, axis=axis)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return dx
 
 
 class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.op_name = 'log_softmax'
         self.use_dynamic_create_class = True
@@ -62,12 +87,21 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
         shape_arr = [[2, 3, 4, 5], [12, 10], [2, 5], [7, 7], [3, 5, 7]]
         for axis in axis_arr:
             for shape in shape_arr:
+<<<<<<< HEAD
                 class_name = 'XPUTestLogSoftmax_' + str(axis) + "_" + str(shape)
+=======
+                class_name = 'XPUTestLogSoftmax_' + \
+                       str(axis) + "_" + str(shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 attr_dict = {'axis': axis, 'shape': shape}
                 classes.append([class_name, attr_dict])
         return base_class, classes
 
     class TestXPULogSoftmaxOp(XPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def setUp(self):
             self.op_type = 'log_softmax'
             self.python_api = F.log_softmax
@@ -78,7 +112,11 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
                 self.shape = [2, 3, 4, 5]
                 self.axis = -1
 
+<<<<<<< HEAD
             x = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+=======
+            x = np.random.uniform(0.1, 1., self.shape).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = np.apply_along_axis(ref_log_softmax, self.axis, x)
             self.x_grad = ref_log_softmax_grad(x, self.axis)
 
@@ -93,12 +131,18 @@ class XPUTestLogSoftmaxOp(XPUOpTestWrapper):
             self.check_output(check_eager=True)
 
         def test_check_grad(self):
+<<<<<<< HEAD
             self.check_grad(
                 ['X'],
                 ['Out'],
                 user_defined_grads=[self.x_grad],
                 check_eager=True,
             )
+=======
+            self.check_grad(['X'], ['Out'],
+                            user_defined_grads=[self.x_grad],
+                            check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 support_types = get_xpu_op_support_types('log_softmax')

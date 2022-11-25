@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -53,11 +54,17 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 x = paddle.static.data(
                     name=self.feed_list[0],
                     shape=self.feed_shape[0],
                     dtype=self.feed_dtype[0],
                 )
+=======
+                x = paddle.static.data(name=self.feed_list[0],
+                                       shape=self.feed_shape[0],
+                                       dtype=self.feed_dtype[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 add1 = paddle.fluid.layers.elementwise_add(x, x)
                 reshape = paddle.reshape(add1, **self.attrs)
                 add2 = paddle.fluid.layers.elementwise_add(reshape, reshape)
@@ -76,8 +83,12 @@ class TestBase(IPUOpTest):
             exe.run(startup_prog)
             scale1_out = main_prog.global_block().ops[4].output("Out")[0]
             main_prog.global_block().ops[4]._rename_output(
+<<<<<<< HEAD
                 scale1_out, add2.name
             )
+=======
+                scale1_out, add2.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             main_prog.global_block().ops[5]._rename_input(scale1_out, add2.name)
 
             if run_ipu:
@@ -97,9 +108,14 @@ class TestBase(IPUOpTest):
         res0 = self._test_base(True)
         res1 = self._test_base(False)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
         )
+=======
+        self.assertTrue(
+            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertTrue(res0.shape == res1.shape)
 

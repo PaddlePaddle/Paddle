@@ -40,6 +40,7 @@ def _to_be_recomputed(op):
 
 
 class RecomputeState(ProgramStats):
+
     def __init__(self, block, ops):
         super().__init__(block=block, ops=ops)
         self._block = block
@@ -91,6 +92,7 @@ class RecomputeState(ProgramStats):
             for segment_idx in self.seg_op_deps.values():
                 if len(segment_idx) == 1:
                     continue
+<<<<<<< HEAD
                 segments.append([segment_idx[0], segment_idx[-1] + 1])
                 checkpoints.extend(self._ops[segment_idx[-1]].output_arg_names)
         else:
@@ -155,6 +157,36 @@ class RecomputeState(ProgramStats):
 
     def is_recompute(self):
         return any([_to_be_recomputed(op) for op in self._ops])
+=======
+                op_idx_list = self.var_op_deps[ckpt_name]["var_as_output_ops"]
+                if op_idx_list:
+                    segments.append([0, max(op_idx_list) + 1])
+            else:
+                flag, min_idx, max_idx = self.is_subgraph(
+                    [checkpoints[start_idx]], [checkpoints[start_idx + 1]])
+                if flag:
+                    min_idx = self._update_segment_start(
+                        min_idx, pre_segment_end_idx)
+                    segments.append([min_idx, max_idx + 1])
+                else:
+                    logging.info(
+                        "Could not recompute op range [{}] - [{}] ".format(
+                            min_idx, max_idx + 1))
+            start_idx += 1
+
+        for i, (idx1, idx2) in enumerate(segments):
+            logging.info("recompute segment[{}]".format(i))
+            logging.info("segment start op: [{}]: [{}] [{}]".format(
+                self._ops[idx1].desc.type(),
+                self._ops[idx1].desc.input_arg_names(),
+                self._ops[idx1].desc.output_arg_names()))
+            logging.info("segment end op: [{}]: [{}] [{}]".format(
+                self._ops[idx2 - 1].desc.type(),
+                self._ops[idx2 - 1].desc.input_arg_names(),
+                self._ops[idx2 - 1].desc.output_arg_names()))
+
+        return segments
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def modify_forward_desc_for_recompute(self, dist_context):
         """
@@ -194,6 +226,7 @@ class RecomputeState(ProgramStats):
             # set new seed_var's dist_attr
             ref_dims_mapping = [-1]
             ref_process_mesh = cur_op_dist_attr.process_mesh
+<<<<<<< HEAD
             seed_var_dist_attr = set_var_dist_attr(
                 dist_context, seed_var, ref_dims_mapping, ref_process_mesh
             )
@@ -203,14 +236,29 @@ class RecomputeState(ProgramStats):
                 if cur_op.attr("fix_seed") is False
                 else int(cur_op.attr("seed"))
             )
+=======
+            seed_var_dist_attr = set_var_dist_attr(dist_context, seed_var,
+                                                   ref_dims_mapping,
+                                                   ref_process_mesh)
+
+            seed = 0 if cur_op.attr("fix_seed") is False else int(
+                cur_op.attr("seed"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             seed_op = self._block._insert_op_without_sync(
                 index=cur_op.idx,
                 type="seed",
                 inputs={},
                 outputs={"Out": seed_var},
+<<<<<<< HEAD
                 attrs={"seed": seed, "force_cpu": True},
             )
             seed_op._set_attr('op_namescope', cur_op.attr('op_namescope'))
+=======
+                attrs={
+                    "seed": seed,
+                    "force_cpu": True
+                })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # set new seed op's dist_attr
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 seed_op, ref_process_mesh, ref_dims_mapping, dist_context
@@ -286,6 +334,7 @@ def _add_needed_descs_to_block(
 
 @register_pass("auto_parallel_recompute")
 class RecomputePass(PassBase):
+
     def __init__(self):
         super().__init__()
         self.set_attr("checkpoints", None)
@@ -341,9 +390,13 @@ class RecomputePass(PassBase):
         logging.info(
             "found [{}] vars which cross recompute segment: [{}],"
             "better checkpoints might be set to reduce those vars".format(
+<<<<<<< HEAD
                 len(cross_vars), cross_vars
             )
         )
+=======
+                len(cross_vars), cross_vars))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         vars_should_be_hold.extend(rc_state.get_reserved_vars())
         vars_should_be_hold.extend(rc_state.get_input_nodes())
         vars_should_be_hold = list(set(vars_should_be_hold))
@@ -399,6 +452,7 @@ class RecomputePass(PassBase):
                             ref_process_mesh,
                         )
             # get recomputed segment's descs
+<<<<<<< HEAD
             segment_descs = _add_needed_descs_to_block(
                 fwd_ops,
                 buffer_block,
@@ -406,6 +460,12 @@ class RecomputePass(PassBase):
                 vars_in_memory,
                 self._dist_context,
             )
+=======
+            segment_descs = _add_needed_descs_to_block(fwd_ops, buffer_block,
+                                                       main_block,
+                                                       vars_in_memory,
+                                                       self._dist_context)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # rename recomputed ops' input and output var name
             for key in var_name_dict:
                 _rename_arg_(segment_descs, key, var_name_dict[key])

@@ -49,7 +49,31 @@ class ScaleOpConverter : public OpConverter {
         PADDLE_GET_CONST(bool, op_desc.GetAttr("bias_after_scale"));
     float bias = PADDLE_GET_CONST(float, op_desc.GetAttr("bias"));
     float scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
+<<<<<<< HEAD
     bool is_int = input->getType() == nvinfer1::DataType::kINT32;
+=======
+    auto create_weights = [&](float data, std::string type) -> float* {
+      std::unique_ptr<framework::Tensor> tmp_tensor(new framework::Tensor());
+      tmp_tensor->Resize({1});
+      auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
+      tmp_data[0] = data;
+      engine_->SetWeights(out_name + "_scale_op_" + type,
+                          std::move(tmp_tensor));
+      return tmp_data;
+    };
+
+    int dynamic_shape_offset = engine_->with_dynamic_shape() ? 1 : 0;
+
+    float* bias_ptr = create_weights(bias, "bias");
+    float* scale_ptr = create_weights(scale, "scale");
+
+    TensorRTEngine::Weight scale_weights{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(scale_ptr), 1};
+    TensorRTEngine::Weight shift_weights{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_ptr), 1};
+    TensorRTEngine::Weight power_weights{
+        nvinfer1::DataType::kFLOAT, nullptr, 0};
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
       nvinfer1::ITensor* bias_tensor =
@@ -125,6 +149,7 @@ class ScaleOpConverter : public OpConverter {
           }
         }
       }
+<<<<<<< HEAD
     } else {
       auto create_weights = [&](float data, std::string type) -> float* {
         std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
@@ -207,6 +232,56 @@ class ScaleOpConverter : public OpConverter {
         layer->setName(
             ("Scale: scale_scale (Output: " + out_name + ")").c_str());
       }
+=======
+      expand_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      expand_layer->setReshapeDimensions(expand_shape);
+      input = expand_layer->getOutput(0);
+      expand_layer->getOutput(0)->setName(
+          ("before_reshape_out: " + out_name).c_str());
+      expand_layer->setName(
+          ("Scale: before_reshape (Output: " + out_name + ")").c_str());
+    }
+
+    if (bias_after_scale) {
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   Scale,
+                                   *input,
+                                   nvinfer1::ScaleMode::kUNIFORM,
+                                   shift_weights.get(),
+                                   scale_weights.get(),
+                                   power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_after_scale_out: " + out_name).c_str());
+      layer->setName(("Scale: scale (Output: " + out_name + ")").c_str());
+    } else {
+      // add bias
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   Scale,
+                                   *(input),
+                                   nvinfer1::ScaleMode::kUNIFORM,
+                                   shift_weights.get(),
+                                   power_weights.get(),
+                                   power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_before_scale：bias_out: " + out_name).c_str());
+      layer->setName(("Scale: scale_bias (Output: " + out_name + ")").c_str());
+      // mul scale
+      layer = TRT_ENGINE_ADD_LAYER(engine_,
+                                   Scale,
+                                   *(layer->getOutput(0)),
+                                   nvinfer1::ScaleMode::kUNIFORM,
+                                   power_weights.get(),
+                                   scale_weights.get(),
+                                   power_weights.get());
+      layer->getOutput(0)->setName(
+          ("bias_before_scale：scale_out: " + out_name).c_str());
+      layer->setName(("Scale: scale_scale (Output: " + out_name + ")").c_str());
+    }
+
+    PADDLE_ENFORCE_EQ(layer != nullptr,
+                      true,
+                      platform::errors::Fatal("Create scale layer failed."));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
       PADDLE_ENFORCE_EQ(layer != nullptr,
                         true,

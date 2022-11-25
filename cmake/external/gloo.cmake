@@ -25,8 +25,13 @@ set(GLOO_LIBRARY_DIR
     "${GLOO_INSTALL_DIR}/lib"
     CACHE PATH "gloo library directory." FORCE)
 # As we add extra features for gloo, we use the non-official repo
+<<<<<<< HEAD
 set(GLOO_REPOSITORY ${GIT_URL}/ziyoujiyi/gloo.git)
 set(GLOO_TAG v0.0.3)
+=======
+set(GLOO_REPOSITORY ${GIT_URL}/sandyhouse/gloo.git)
+set(GLOO_TAG v0.0.2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 set(GLOO_LIBRARIES
     "${GLOO_INSTALL_DIR}/lib/libgloo.a"
     CACHE FILEPATH "gloo library." FORCE)

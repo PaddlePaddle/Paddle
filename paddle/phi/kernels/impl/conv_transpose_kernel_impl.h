@@ -14,6 +14,11 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/vol2col.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/conv_transpose_kernel.h"

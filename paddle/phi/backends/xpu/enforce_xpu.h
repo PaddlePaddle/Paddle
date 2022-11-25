@@ -14,11 +14,15 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "xpu/bkcl.h"
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 namespace backends {

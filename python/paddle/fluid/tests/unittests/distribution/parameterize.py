@@ -30,6 +30,7 @@ def xrand(shape=(10, 10, 10), dtype=config.DEFAULT_DTYPE, min=1.0, max=10.0):
 
 
 def place(devices, key='place'):
+
     def decorate(cls):
         module = sys.modules[cls.__module__].__dict__
         raw_classes = {
@@ -70,9 +71,17 @@ def parameterize_cls(fields, values=None):
     return decorate
 
 
+<<<<<<< HEAD
 def parameterize_func(
     input, name_func=None, doc_func=None, skip_on_empty=False
 ):
+=======
+def parameterize_func(input,
+                      name_func=None,
+                      doc_func=None,
+                      skip_on_empty=False):
+    doc_func = doc_func or default_doc_func
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     name_func = name_func or default_name_func
 
     def wrapper(f, instance=None):
@@ -91,9 +100,14 @@ def parameterize_func(
 
         digits = len(str(len(parameters) - 1))
         for num, p in enumerate(parameters):
+<<<<<<< HEAD
             name = name_func(
                 f, "{num:0>{digits}}".format(digits=digits, num=num), p
             )
+=======
+            name = name_func(f, "{num:0>{digits}}".format(digits=digits,
+                                                          num=num), p)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # If the original function has patches applied by 'mock.patch',
             # re-construct all patches on the just former decoration layer
             # of param_as_standalone_func so as not to share
@@ -112,8 +126,14 @@ def parameterize_func(
 
 
 def reapply_patches_if_need(func):
+
     def dummy_wrapper(orgfunc):
+<<<<<<< HEAD
         @functools.wraps(orgfunc)
+=======
+
+        @wraps(orgfunc)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def dummy_func(*args, **kwargs):
             return orgfunc(*args, **kwargs)
 
@@ -143,6 +163,7 @@ def default_name_func(func, num, p):
 
 
 def param_as_standalone_func(p, func, name):
+
     @functools.wraps(func)
     def standalone_func(*a):
         return func(*(a + p.args), **p.kwargs)
@@ -184,6 +205,7 @@ _param = collections.namedtuple("param", "args kwargs")
 
 
 class param(_param):
+
     def __new__(cls, *args, **kwargs):
         return _param.__new__(cls, args, kwargs)
 

@@ -14,7 +14,10 @@
 
 #include "paddle/phi/kernels/gather_tree_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {

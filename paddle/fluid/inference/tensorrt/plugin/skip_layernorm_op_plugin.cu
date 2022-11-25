@@ -31,6 +31,7 @@ namespace plugin {
 // Dynamic Plugin below.
 #if IS_TRT_VERSION_GE(6000)
 
+<<<<<<< HEAD
 template <typename T>
 void SkipLayerNormPluginDynamicImpl<T>::shareGPUData(
     const SkipLayerNormPluginDynamicImplBase *anthor) {
@@ -60,6 +61,19 @@ int SkipLayerNormPluginDynamicImpl<T>::initialize() {
   }
 
   is_initialized_ = true;
+=======
+int SkipLayerNormPluginDynamic::initialize() TRT_NOEXCEPT {
+  cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
+  cudaMemcpy(bias_gpu_,
+             bias_.data(),
+             bias_size_ * sizeof(float),
+             cudaMemcpyHostToDevice);
+  cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
+  cudaMemcpy(scale_gpu_,
+             scale_.data(),
+             scale_size_ * sizeof(float),
+             cudaMemcpyHostToDevice);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   return 0;
 }
 
@@ -103,12 +117,15 @@ bool SkipLayerNormPluginDynamic::supportsFormatCombination(
       in_out,
       platform::errors::InvalidArgument(
           "The input of swish plugin shoule not be nullptr."));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(nb_outputs,
                     1,
                     platform::errors::InvalidArgument(
                         "The SkipLayerNorm's output should be one"
                         "but it's (%d) outputs.",
                         nb_outputs));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   PADDLE_ENFORCE_LT(
       pos,
@@ -172,6 +189,7 @@ int SkipLayerNormPluginDynamicImpl<T>::enqueue(
   int hidden = input_dims.d[2];
 
   auto input_type = input_desc[0].type;
+<<<<<<< HEAD
 
   if (std::is_same<T, float>::value) {
     PADDLE_ENFORCE_EQ(input_type == nvinfer1::DataType::kFLOAT,
@@ -183,6 +201,47 @@ int SkipLayerNormPluginDynamicImpl<T>::enqueue(
                       true,
                       platform::errors::InvalidArgument(
                           "The SkipLayernorm Plugin only support fp16 input."));
+=======
+  if (input_type == nvinfer1::DataType::kFLOAT) {
+    VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp32";
+    const float *input1 = static_cast<const float *>(inputs[0]);
+    const float *input2 = static_cast<const float *>(inputs[1]);
+    float *output = static_cast<float *>(outputs[0]);
+    operators::math::SkipLayerNormFunctor<float> skip_layer_norm_func;
+    skip_layer_norm_func(num,
+                         hidden,
+                         input1,
+                         input2,
+                         scale_gpu_,
+                         bias_gpu_,
+                         output,
+                         eps_,
+                         stream);
+  } else if (input_type == nvinfer1::DataType::kHALF) {
+#ifdef TRT_PLUGIN_FP16_AVALIABLE
+    VLOG(1) << "TRT Plugin DataType selected. SkipLayerNorm-->fp16";
+    const half *input1 = static_cast<const half *>(inputs[0]);
+    const half *input2 = static_cast<const half *>(inputs[1]);
+    half *output = static_cast<half *>(outputs[0]);
+    operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
+    skip_layer_norm_func(num,
+                         hidden,
+                         input1,
+                         input2,
+                         scale_gpu_,
+                         bias_gpu_,
+                         output,
+                         static_cast<half>(eps_),
+                         stream);
+#else
+    PADDLE_THROW(platform::errors::Fatal(
+        "The Ernie(Bert) tensorRT plugin should be "
+        "complied with CUDA version >= 10.0 when running with fp16. "
+        "Please recomplie it or try to use fp32 by set "
+        "config.SetTRTDynamicShapeInfo(min_input_shape, "
+        "max_input_shape, opt_input_shape, true"));
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   } else {
     PADDLE_THROW(platform::errors::Fatal(
         "Unsupport data type, the out type of SkipLayernorm should be "

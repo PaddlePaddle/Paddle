@@ -31,6 +31,7 @@ def add_position_encoding(input, alpha=1.0, beta=1.0):
     for i in range(batch_size):
         for j in range(max_length):
             for k in range(half_shape):
+<<<<<<< HEAD
                 val = (
                     j / pow(10000.0, k * 1.0 / (half_shape - 1))
                     if half_shape > 1
@@ -38,6 +39,14 @@ def add_position_encoding(input, alpha=1.0, beta=1.0):
                 )
                 out[i, j, k] = input[i, j, k] * alpha + math.sin(val) * beta
                 out[i, j, half_shape + k] = (
+=======
+                val = j / pow(
+                    10000.0, k * 1.0 /
+                    (half_shape - 1)) if half_shape > 1 else j / 10000.0
+                out[i, j, k] = \
+                    input[i, j, k] * alpha + math.sin(val) * beta
+                out[i, j, half_shape + k] = \
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     input[i, j, half_shape + k] * alpha + math.cos(val) * beta
                 )
     return out
@@ -135,11 +144,17 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
             max_length = self.lod[0][i]
             for j in range(max_length):
                 for k in range(half_shape):
+<<<<<<< HEAD
                     val = (
                         j / pow(10000.0, k * 1.0 / (half_shape - 1))
                         if half_shape > 1
                         else j / 10000.0
                     )
+=======
+                    val = j / pow(
+                        10000.0, k * 1.0 /
+                        (half_shape - 1)) if half_shape > 1 else j / 10000.0
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     pos = start + j
                     self.out[pos, k] = (
                         self.x[pos, k] * self.alpha + math.sin(val) * self.beta
@@ -152,20 +167,28 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
 
 
 class TestAddPositionEncodingOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((4, 16, 8)).astype("float32")
 
             def test_Variable():
                 # the input type must be Variable
+<<<<<<< HEAD
                 fluid.layers.add_position_encoding(
                     input=input_data, alpha=1.0, beta=1.0
                 )
+=======
+                fluid.layers.add_position_encoding(input=input_data,
+                                                   alpha=1.0,
+                                                   beta=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertRaises(TypeError, test_Variable)
 
 
 class TestAddPositionEncodingOpDygraph(unittest.TestCase):
+
     def test_dygraph(self):
         paddle.disable_static()
         tensor = np.random.randn(16, 32, 64)

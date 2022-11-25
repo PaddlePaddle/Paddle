@@ -35,10 +35,16 @@ class ReduceProdOpMaker : public ops::ReduceOpMaker {
   virtual std::string GetOpType() const { return "Reduce reduce_prod"; }
 };
 
+<<<<<<< HEAD
 DECLARE_INFER_SHAPE_FUNCTOR(
     reduce_prod,
     ReduceProdInferShapeFunctor,
     PD_INFER_META(phi::ReduceIntArrayAxisInferMetaBase));
+=======
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_prod,
+                            ReduceProdInferShapeFunctor,
+                            PD_INFER_META(phi::ReduceInferMetaBase));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 REGISTER_OPERATOR(
     reduce_prod,

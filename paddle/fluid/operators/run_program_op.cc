@@ -55,7 +55,11 @@ class RunProgramOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const framework::Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }
@@ -119,6 +123,7 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("cuda_graph_pool_id",
                      "(int64_t, default 0) The CUDA Graph memory pool ID.")
         .SetDefault(0);
+<<<<<<< HEAD
     AddAttr<bool>("use_interpretorcore",
                   "(bool, default false) Set to true for use interpretercore.")
         .SetDefault(false);
@@ -130,6 +135,8 @@ class RunProgramOpMaker : public framework::OpProtoAndCheckerMaker {
                         "(BlockDesc *)"
                         "The global block of executed backward program desc.")
         .SetDefault(nullptr);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     AddComment(R"DOC(
 RunProgram operator.
 
@@ -173,7 +180,11 @@ class RunProgramGradOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const framework::Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType& expected_kernel_type) const override {
     return expected_kernel_type;
   }

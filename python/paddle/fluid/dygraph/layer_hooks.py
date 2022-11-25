@@ -37,16 +37,25 @@ def record_program_ops_pre_hook(layer, inputs):
     if not _non_static_mode():
         if layer._op_recorder.start < 0:
             layer._op_recorder.start = len(
+<<<<<<< HEAD
                 default_main_program().current_block().ops
             )
+=======
+                default_main_program().current_block().ops)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             layer._op_recorder.is_valid = True
         else:
             layer._op_recorder.is_valid = False
             warnings.warn(
+<<<<<<< HEAD
                 "{} has recorded the op information before. Please check whether you call this layer twice.".format(
                     layer._full_name
                 )
             )
+=======
+                "{} has recorded the op information before. Please check whether you call this layer twice."
+                .format(layer._full_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return None
 

@@ -27,6 +27,7 @@ def set_serialize_factor(serialize_factor):
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -50,6 +51,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0],
             shape=self.feed_shape[0],
@@ -60,6 +62,14 @@ class TestBase(IPUOpTest):
             shape=self.feed_shape[1],
             dtype=self.feed_dtype[1],
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+        y = paddle.static.data(name=self.feed_list[1],
+                               shape=self.feed_shape[1],
+                               dtype=self.feed_dtype[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # decrator maybe the best choice, but need to modify api
         out = paddle.matmul(x, y, **self.attrs)
         set_serialize_factor(4)
@@ -88,9 +98,14 @@ class TestBase(IPUOpTest):
     def test_base(self):
         res0 = self.run_model(False)
         res1 = self.run_model(True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             res0.flatten(), res1.flatten(), rtol=1e-05, atol=self.atol
         )
+=======
+        self.assertTrue(
+            np.allclose(res0.flatten(), res1.flatten(), atol=self.atol))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.assertTrue(res0.shape == res1.shape)
 
 

@@ -123,7 +123,10 @@ message BuildStrategy {
   optional bool allow_cuda_graph_capture = 14 [ default = false ];
   optional int32 reduce_strategy = 15 [ default = 0 ];
   optional bool fuse_gemm_epilogue = 16 [ default = false ];
+<<<<<<< HEAD
   optional string debug_graphviz_path = 17;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 message ExecutionStrategy {
@@ -287,6 +290,7 @@ message CtrAccessorParameter {
   optional float delete_after_unseen_days = 8 [ default = 30 ];
   optional int32 ssd_unseenday_threshold = 9 [ default = 1 ];
   optional bool show_scale = 10 [ default = true ];
+  repeated float load_filter_slots = 11;
 }
 
 message TableAccessorSaveParameter {
@@ -344,8 +348,11 @@ message DistributedStrategy {
   optional bool heter_ccl_mode = 38 [ default = false ];
   optional bool is_fl_ps_mode = 39 [ default = false ];
   optional bool with_coordinator = 40 [ default = false ];
+<<<<<<< HEAD
   optional bool qat = 41 [ default = false ];
   optional bool split_data = 42 [ default = true ];
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;

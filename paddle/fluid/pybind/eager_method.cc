@@ -54,7 +54,10 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_utils.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -188,7 +191,10 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   } else if (self->tensor.is_gpu()) {
+<<<<<<< HEAD
     eager_gil_scoped_release guard;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #if defined(PADDLE_WITH_CUDA)
     gpuMemcpyKind kind = cudaMemcpyDeviceToHost;
 #elif defined(PADDLE_WITH_HIP)
@@ -203,7 +209,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::platform::GpuMemcpySync(
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
+<<<<<<< HEAD
           phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
+=======
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           kind);
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
@@ -212,6 +223,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       paddle::platform::GpuMemcpySync(
           pybind11::detail::array_proxy(array)->data,
           dense_tensor->data(),
+<<<<<<< HEAD
           phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel(),
           kind);
     }
@@ -246,17 +258,36 @@ static PyObject* tensor_method_numpy(TensorObject* self,
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   } else if (self->tensor.is_custom_device()) {
     eager_gil_scoped_release guard;
+=======
+          paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+              dense_tensor->numel(),
+          kind);
+    }
+#endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  } else if (self->tensor.is_custom_device()) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (self->tensor.is_selected_rows()) {
       VLOG(6) << "Getting SelectedRows's numpy value";
       auto* selected_rows =
           static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+<<<<<<< HEAD
       auto* dense_tensor =
           static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+=======
+      auto* dense_tensor = static_cast<paddle::framework::LoDTensor*>(
+          selected_rows->mutable_value());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       phi::DeviceManager::GetDeviceWithPlace(self->tensor.place())
           ->MemoryCopyD2H(
               pybind11::detail::array_proxy(array)->data,
               dense_tensor->data(),
+<<<<<<< HEAD
               phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+=======
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     } else {
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
@@ -265,7 +296,12 @@ static PyObject* tensor_method_numpy(TensorObject* self,
           ->MemoryCopyD2H(
               pybind11::detail::array_proxy(array)->data,
               dense_tensor->data(),
+<<<<<<< HEAD
               phi::SizeOf(dense_tensor->dtype()) * dense_tensor->numel());
+=======
+              paddle::framework::DataTypeSize(dense_tensor->dtype()) *
+                  dense_tensor->numel());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 #endif
   } else {
@@ -482,6 +518,7 @@ static PyObject* tensor_method_copy_(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+<<<<<<< HEAD
 static PyObject* tensor_method_clone(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -503,6 +540,8 @@ static PyObject* tensor_method_clone(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 static PyObject* tensor_retain_grads(TensorObject* self,
                                      PyObject* args,
                                      PyObject* kwargs) {
@@ -821,7 +860,11 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   // Note(0x45f): Using defined() instead of initialized()
   // to support slice tensor which shape like [0, 0, 0].
   PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
       self->tensor.defined(),
+=======
+      self->tensor.initialized(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       true,
       platform::errors::InvalidArgument(
           "tensor %s has not been initialized, we can only slice initialized "
@@ -867,6 +910,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                                            decrease_axis.end());
 
     if (op_type == "slice") {
+<<<<<<< HEAD
       eager_gil_scoped_release guard;
       out = slice_ad_func(self->tensor,
                           slice_axes_tmp,
@@ -874,6 +918,14 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
                           slice_ends,
                           infer_flags_tmp,
                           decrease_axis_tmp);
+=======
+      out = slice_final_state_dygraph_function(self->tensor,
+                                               slice_axes_tmp,
+                                               slice_starts,
+                                               slice_ends,
+                                               infer_flags_tmp,
+                                               decrease_axis_tmp);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     } else if (op_type == "strided_slice") {
       eager_gil_scoped_release guard;
       out = strided_slice_ad_func(
@@ -934,7 +986,12 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     paddle::framework::TensorFromVector(
         list_select_idxs, *dev_ctx, idx_tensor.get());
     framework::AttributeMap attrs = {{"dim", 0}};
+<<<<<<< HEAD
     out = index_select_ad_func(self->tensor, select_index, 0);
+=======
+    out = index_select_final_state_dygraph_function(
+        self->tensor, select_index, 0);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   return ToPyObject(out);
@@ -1166,11 +1223,35 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
             "please check the type of tensor."));
       }
 
+<<<<<<< HEAD
       SetTensorFromPyArray(
           static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
           value,
           self->tensor.place(),
           false);
+=======
+      if (!value_tensor_tmp.initialized()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+            value,
+            platform::Place(platform::CUDAPlace(0)),
+            false);
+#else
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+            value,
+            platform::Place(platform::CPUPlace()),
+            false);
+#endif
+      } else {
+        SetTensorFromPyArray(
+            static_cast<phi::DenseTensor*>(value_tensor_tmp.impl().get()),
+            value,
+            value_tensor_tmp.place(),
+            false);
+      }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
       value_tensor = value_tensor_tmp;
     } else {
@@ -1223,6 +1304,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // Release gil and do tracing
       py::gil_scoped_release release;
       // use inplace set_value_ operator
+<<<<<<< HEAD
       if (value_tensor.initialized() &&
           (self->tensor.dtype() != value_tensor.dtype())) {
         paddle::small_vector<std::vector<paddle::experimental::Tensor>,
@@ -1234,6 +1316,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
         value_tensor = egr::EagerAmpAutoCast(
             value_tensor.name(), value_tensor, amp_dtype, "set_value");
       }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
     }
@@ -1441,6 +1525,7 @@ static PyObject* tensor__copy_gradient_from(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+<<<<<<< HEAD
 static PyObject* tensor__use_cudnn(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
@@ -1478,6 +1563,8 @@ static PyObject* tensor__use_cudnn(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 static PyObject* tensor_method_set_vocab(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1671,6 +1758,7 @@ static PyObject* tensor_method_to_sparse_csr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+<<<<<<< HEAD
 static PyObject* tensor_method_is_same_shape(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
@@ -1680,6 +1768,8 @@ static PyObject* tensor_method_is_same_shape(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 static PyObject* tensor__inplace_version(TensorObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
@@ -1879,6 +1969,7 @@ static PyObject* tensor__unset_fake_empty(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+<<<<<<< HEAD
 static PyObject* tensor_data_ptr(TensorObject* self,
                                  PyObject* args,
                                  PyObject* kwargs) {
@@ -1892,6 +1983,8 @@ static PyObject* tensor_data_ptr(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* args,
@@ -1952,10 +2045,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_copy_,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+<<<<<<< HEAD
     {"clone",
      (PyCFunction)(void (*)(void))tensor_method_clone,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     {"reconstruct_from_",
      (PyCFunction)(void (*)(void))tensor_method_reconstruct_from_,
      METH_VARARGS | METH_KEYWORDS,
@@ -2004,10 +2100,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_get_underline_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+<<<<<<< HEAD
     {"_get_tensor_from_selected_rows",
      (PyCFunction)(void (*)(void))tensor_method__get_tensor_from_selected_rows,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     {"_getitem_index_not_tensor",
      (PyCFunction)(void (*)(void))tensor__getitem_index_not_tensor,
      METH_VARARGS | METH_KEYWORDS,
@@ -2044,10 +2143,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__copy_gradient_from,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+<<<<<<< HEAD
     {"_tensor_use_cudnn",
      (PyCFunction)(void (*)(void))tensor__use_cudnn,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     /** the methods to adapt old dygraph, will be removed in the future **/
     {"set_string_list",
      (PyCFunction)(void (*)(void))tensor_method_set_string_list,
@@ -2094,10 +2196,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_method_is_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+<<<<<<< HEAD
     {"is_same_shape",
      (PyCFunction)(void (*)(void))tensor_method_is_same_shape,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     {"to_sparse_csr",
      (PyCFunction)(void (*)(void))tensor_method_to_sparse_csr,
      METH_VARARGS | METH_KEYWORDS,
@@ -2151,10 +2256,13 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor__unset_fake_empty,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+<<<<<<< HEAD
     {"data_ptr",
      (PyCFunction)(void (*)(void))tensor_data_ptr,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)(void))tensor_method__uva,

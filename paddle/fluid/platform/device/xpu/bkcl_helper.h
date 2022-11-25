@@ -292,6 +292,7 @@ class BKCLCommunicator {
       }
     }
 
+<<<<<<< HEAD
     // as Executor have no way to use BKCLComm created by ParallelExecutor,
     // we assign all flatten contexts to BKCLCommContext to fix.
     int nranks = static_cast<int>(trainers_num * places.size());
@@ -305,6 +306,18 @@ class BKCLCommunicator {
         BKCLCommContext::Instance().AssignBKCLComm(
             ctx.comm_, nranks, rank, dev_id, ring_id);
       }
+=======
+    PADDLE_ENFORCE_EQ(bkcl_ids.size(),
+                      1,
+                      platform::errors::Unimplemented(
+                          "Multi-all-reduce-ring is not support for XPU"));
+    for (size_t i = 0; i < bkcl_ids.size(); i++) {
+      auto ptr = new platform::BKCLContextMap(
+          places, bkcl_ids[i], trainers_num, trainer_id);
+      ptr->init();
+      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
+      flat_ctxs_.emplace_back(ptr);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
   }
 

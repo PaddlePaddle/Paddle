@@ -1,6 +1,7 @@
 cc_library(
   processgroup
   SRCS ProcessGroup.cc
+<<<<<<< HEAD
   DEPS dense_tensor)
 cc_library(
   processgroup_stream
@@ -10,6 +11,13 @@ cc_library(
   eager_reducer
   SRCS reducer.cc
   DEPS eager_api processgroup processgroup_stream phi_api string_helper)
+=======
+  DEPS phi_api eager_api)
+cc_library(
+  eager_reducer
+  SRCS reducer.cc
+  DEPS eager_api processgroup phi_api string_helper)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 if(WITH_DISTRIBUTE)
   cc_library(
@@ -22,6 +30,7 @@ if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     processgroup_nccl
     SRCS ProcessGroupNCCL.cc NCCLTools.cc Common.cc
+<<<<<<< HEAD
     DEPS processgroup
          processgroup_stream
          place
@@ -53,4 +62,38 @@ if(WITH_CUSTOM_DEVICE)
     SRCS ProcessGroupCustom.cc CustomCCLTools.cc Common.cc
     DEPS processgroup phi_backends place enforce collective_helper
          device_context)
+=======
+    DEPS place enforce collective_helper device_context phi_api eager_api)
+  if(WITH_DISTRIBUTE AND WITH_PSCORE)
+    cc_library(
+      processgroup_heter
+      SRCS ProcessGroupHeter.cc NCCLTools.cc Common.cc
+      DEPS place enforce collective_helper device_context phi_api eager_api)
+  endif()
+endif()
+
+if(WITH_ASCEND_CL)
+  cc_library(
+    processgroup_hccl
+    SRCS ProcessGroupHCCL.cc HCCLTools.cc Common.cc
+    DEPS place
+         npu_stream
+         enforce
+         collective_helper
+         device_context
+         phi_api
+         eager_api)
+  if(WITH_DISTRIBUTE AND WITH_PSCORE)
+    cc_library(
+      processgroup_heter
+      SRCS ProcessGroupHeter.cc HCCLTools.cc Common.cc
+      DEPS place
+           npu_stream
+           enforce
+           collective_helper
+           device_context
+           phi_api
+           eager_api)
+  endif()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()

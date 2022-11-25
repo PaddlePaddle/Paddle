@@ -27,6 +27,7 @@ paddle.enable_static()
 
 # Correct: General.
 class TestSqueezeOp(OpTest):
+
     def setUp(self):
         self.op_type = "squeeze2"
         self.python_api = paddle.squeeze
@@ -58,6 +59,7 @@ class TestSqueezeOp(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -66,6 +68,7 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -74,6 +77,7 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 # Correct: Just part of axes be squeezed.
 class TestSqueezeOp3(TestSqueezeOp):
+
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)

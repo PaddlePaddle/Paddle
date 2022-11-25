@@ -45,6 +45,7 @@ struct NormConvolutionArgs {
            int stride,
            int dilation,
            int group) {
+<<<<<<< HEAD
     PADDLE_ENFORCE_LT(
         ctx.GetComputeCapability(),
         90,
@@ -53,6 +54,8 @@ struct NormConvolutionArgs {
             "CUDNN FusedOps is no longer available on H100 and later "
             "devices.",
             ctx.GetComputeCapability()));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(
         input_shape.size(),
         4U,

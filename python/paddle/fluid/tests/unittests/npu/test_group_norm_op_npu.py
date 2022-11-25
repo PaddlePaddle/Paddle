@@ -46,6 +46,7 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
 
 
 class TestGroupNormOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
@@ -57,9 +58,15 @@ class TestGroupNormOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
+<<<<<<< HEAD
                 x2 = fluid.layers.data(
                     name='x2', shape=[2, 100, 3, 5], dtype='int32'
                 )
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[2, 100, 3, 5],
+                                       dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 groups = 2
                 fluid.layers.group_norm(x2, groups)
 
@@ -67,6 +74,7 @@ class TestGroupNormOpError(unittest.TestCase):
 
 
 class TestGroupNormOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = 'group_norm'
@@ -87,6 +95,7 @@ class TestGroupNormOp(OpTest):
             input = np.transpose(input, (0, 2, 3, 1))
         scale = np.random.random([self.shape[1]]).astype(self.dtype)
         bias = np.random.random([self.shape[1]]).astype(self.dtype)
+<<<<<<< HEAD
         output, mean, var = group_norm_naive(
             input,
             scale,
@@ -95,6 +104,12 @@ class TestGroupNormOp(OpTest):
             self.attrs['groups'],
             self.data_format,
         )
+=======
+        output, mean, var = group_norm_naive(input, scale, bias,
+                                             self.attrs['epsilon'],
+                                             self.attrs['groups'],
+                                             self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(input),
@@ -142,45 +157,53 @@ class TestGroupNormOp(OpTest):
 
 
 class TestGroupNormOp1(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 1
 
 
 class TestGroupNormOp2(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 4
 
 
 class TestGroupNormOpBigEps1(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOpBigEps2(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOpBigEps3(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
 
 
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.data_format = "NHWC"
 
 
 class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.data_format = "NHWC"
 
 
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 1
         self.attrs['epsilon'] = 0.5
@@ -188,6 +211,7 @@ class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['groups'] = 4
         self.attrs['epsilon'] = 0.5
@@ -195,17 +219,20 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
 
 
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
+
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
 
 
 class TestGroupNormOpFP16(TestGroupNormOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
 
 class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
+
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -219,9 +246,15 @@ class TestGroupNormException(unittest.TestCase):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
 
         def attr_data_format():
+<<<<<<< HEAD
             out = fluid.layers.group_norm(
                 input=data, groups=2, data_layout="NDHW"
             )
+=======
+            out = fluid.layers.group_norm(input=data,
+                                          groups=2,
+                                          data_layout="NDHW")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, attr_data_format)
 

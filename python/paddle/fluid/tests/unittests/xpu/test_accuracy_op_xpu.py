@@ -30,11 +30,13 @@ paddle.enable_static()
 
 
 class XPUTestAccuracyOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'accuracy'
         self.use_dynamic_create_class = False
 
     class TestXPUAccuracyOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "accuracy"
             self.init_dtype()

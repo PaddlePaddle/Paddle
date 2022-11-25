@@ -29,9 +29,12 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
+<<<<<<< HEAD
 #ifndef PADDLE_NO_PYTHON
 #include "paddle/fluid/eager/saved_tensors_hooks.h"
 #endif
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace egr {
 class TensorWrapper {

@@ -1,7 +1,10 @@
 include(operators)
 
+<<<<<<< HEAD
 add_subdirectory(generator)
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 # solve "math constants not defined" problems caused by the order of inclusion
 # of <cmath> and the definition of macro _USE_MATH_DEFINES
 add_definitions(-D_USE_MATH_DEFINES)
@@ -101,12 +104,20 @@ else()
     cc_library(gather_scatter_kernel SRCS gather_scatter_kernel.cc gather_scatter_kernel.cu DEPS tensor)
 endif()
 
+<<<<<<< HEAD
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel backward_infermeta sparse_backward_infermeta)
+=======
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_api_utils gather_scatter_kernel backward_infermeta)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
+<<<<<<< HEAD
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc run_program_op_npu.cc DEPS executor_cache ${OP_HEADER_DEPS})
+=======
+op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array)
@@ -130,6 +141,10 @@ else()
 endif()
 
 if (WITH_ASCEND_CL)
+  op_library(sync_batch_norm_op)
+endif()
+
+if (WITH_MLU)
   op_library(sync_batch_norm_op)
 endif()
 
@@ -164,7 +179,10 @@ if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
 endif()
 if(WITH_XPU)
+<<<<<<< HEAD
   cc_test(beam_search_decode_op_xpu_test SRCS beam_search_decode_op_xpu_test.cc DEPS lod_tensor)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)

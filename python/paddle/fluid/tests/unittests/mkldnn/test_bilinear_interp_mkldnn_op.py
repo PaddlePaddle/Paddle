@@ -51,12 +51,19 @@ def bilinear_interp_mkldnn_np(
             input_h1_w0 = input[:, :, h1, w0]
             input_h0_w1 = input[:, :, h0, w1]
             input_h1_w1 = input[:, :, h1, w1]
+<<<<<<< HEAD
             out[:, :, oh, ow] = (
                 input_h0_w0 * (1 - Wh) * (1 - Ww)
                 + input_h1_w0 * Wh * (1 - Ww)
                 + input_h0_w1 * (1 - Wh) * Ww
                 + input_h1_w1 * Wh * Ww
             )
+=======
+            out[:, :, oh,
+                ow] = input_h0_w0 * (1 - Wh) * (1 - Ww) + input_h1_w0 * Wh * (
+                    1 - Ww) + input_h0_w1 * (1 -
+                                             Wh) * Ww + input_h1_w1 * Wh * Ww
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if data_layout == "NHWC":
         out = np.transpose(out, (0, 2, 3, 1))  # NCHW => NHWC
@@ -66,6 +73,7 @@ def bilinear_interp_mkldnn_np(
 
 @skip_check_grad_ci(reason="Haven not implement interpolate grad kernel.")
 class TestBilinearInterpMKLDNNOp(OpTest):
+
     def init_test_case(self):
         pass
 
@@ -129,6 +137,7 @@ class TestBilinearInterpMKLDNNOp(OpTest):
 
 
 class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [3, 2, 32, 16]
         self.out_h = 27
@@ -138,6 +147,7 @@ class TestBilinearInterpOpMKLDNNNHWC(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [3, 3, 9, 6]
         self.out_h = 12
@@ -146,6 +156,7 @@ class TestBilinearNeighborInterpMKLDNNCase2(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpDataLayout(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [2, 4, 4, 5]
         self.out_h = 6
@@ -155,6 +166,7 @@ class TestBilinearNeighborInterpDataLayout(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -163,6 +175,7 @@ class TestBilinearNeighborInterpCase3(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [4, 1, 7, 8]
         self.out_h = 1
@@ -172,6 +185,7 @@ class TestBilinearNeighborInterpCase4(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [1, 1, 9, 6]
         self.out_h = 12
@@ -181,6 +195,7 @@ class TestBilinearNeighborInterpCase5(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
@@ -190,6 +205,7 @@ class TestBilinearNeighborInterpCase6(TestBilinearInterpMKLDNNOp):
 
 
 class TestBilinearNeighborInterpSame(TestBilinearInterpMKLDNNOp):
+
     def init_test_case(self):
         self.input_shape = [2, 3, 32, 64]
         self.out_h = 32

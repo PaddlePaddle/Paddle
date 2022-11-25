@@ -22,10 +22,12 @@ import unittest
 
 
 class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             return np.ones([batch, 6, 24, 24]).astype(np.float32)
 
@@ -45,9 +47,15 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={},
                     inputs={
+<<<<<<< HEAD
                         "shuffle_channel_input": TensorConfig(
                             data_gen=partial(generate_input1, dics, batch)
                         )
+=======
+                        "shuffle_channel_input":
+                        TensorConfig(
+                            data_gen=partial(generate_input1, dics, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     },
                     outputs=["shuffle_channel_out"],
                 )
@@ -55,8 +63,13 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "shuffle_channel_input": [1, 6, 24, 24]
@@ -75,10 +88,15 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
+<<<<<<< HEAD
             if (
                 ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8000
                 and dynamic_shape
             ):
+=======
+            if ver[0] * 1000 + ver[1] * 100 + ver[
+                    2] * 10 < 8000 and dynamic_shape == True:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return 0, 3
             else:
                 return 1, 2
@@ -102,12 +120,19 @@ class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
         pass

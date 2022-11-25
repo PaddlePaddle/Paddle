@@ -166,9 +166,14 @@ def _check_dependencies(m):
             pkg for pkg in dependencies if not _check_module_exists(pkg)
         ]
         if len(missing_deps):
+<<<<<<< HEAD
             raise RuntimeError(
                 'Missing dependencies: {}'.format(', '.join(missing_deps))
             )
+=======
+            raise RuntimeError('Missing dependencies: {}'.format(
+                ', '.join(missing_deps)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def list(repo_dir, source='github', force_reload=False):
@@ -198,6 +203,7 @@ def list(repo_dir, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
+<<<<<<< HEAD
             'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
                 source
             )
@@ -207,6 +213,16 @@ def list(repo_dir, source='github', force_reload=False):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source
         )
+=======
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
+
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
@@ -247,6 +263,7 @@ def help(repo_dir, model, source='github', force_reload=False):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
+<<<<<<< HEAD
             'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
                 source
             )
@@ -256,6 +273,16 @@ def help(repo_dir, model, source='github', force_reload=False):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source
         )
+=======
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
+
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 
@@ -291,6 +318,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
+<<<<<<< HEAD
             'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
                 source
             )
@@ -300,6 +328,16 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
         repo_dir = _get_cache_or_reload(
             repo_dir, force_reload, True, source=source
         )
+=======
+            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'
+            .format(source))
+
+    if source in ('github', 'gitee'):
+        repo_dir = _get_cache_or_reload(repo_dir,
+                                        force_reload,
+                                        True,
+                                        source=source)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     hub_module = _import_module(MODULE_HUBCONF.split('.')[0], repo_dir)
 

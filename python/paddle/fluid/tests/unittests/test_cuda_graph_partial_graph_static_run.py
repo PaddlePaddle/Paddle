@@ -16,18 +16,28 @@ import paddle
 import paddle.nn as nn
 import unittest
 import numpy as np
+<<<<<<< HEAD
 from paddle.device.cuda.graphs import (
     wrap_cuda_graph,
     is_cuda_graph_supported,
     cuda_graph_transform,
 )
+=======
+from paddle.device.cuda.graphs import wrap_cuda_graph, is_cuda_graph_supported, cuda_graph_transform
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.enable_static()
 
 
 class SimpleModel(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__()
+=======
+
+    def __init__(self, in_size, out_size):
+        super(SimpleModel, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.linear = nn.Linear(in_size, out_size)
         self.dropout_1 = paddle.nn.Dropout(0.1)
         self.relu = nn.ReLU()
@@ -44,6 +54,10 @@ class SimpleModel(nn.Layer):
 
 
 class TestCudaGraphAttrAll(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})
 

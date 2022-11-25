@@ -24,6 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestMaxMemoryAllocated(unittest.TestCase):
+
     def func_test_max_memory_allocated(self, device=None):
         if core.is_compiled_with_cuda():
             alloc_time = 100
@@ -65,11 +66,15 @@ class TestMaxMemoryAllocated(unittest.TestCase):
         if core.is_compiled_with_cuda():
             wrong_device = [
                 core.CPUPlace(),
+<<<<<<< HEAD
                 device_count() + 1,
                 -2,
                 0.5,
                 "gpu1",
                 "npu",
+=======
+                device_count() + 1, -2, 0.5, "gpu1", "npu"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ]
             for device in wrong_device:
                 with self.assertRaises(BaseException):

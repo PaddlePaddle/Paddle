@@ -41,6 +41,7 @@ fluid.default_main_program().random_seed = 1
 
 
 def fake_simnet_reader():
+
     def reader():
         for _ in range(1000):
             q = np.random.random_integers(0, 1500 - 1, size=1).tolist()
@@ -56,6 +57,7 @@ def get_acc(cos_q_nt, cos_q_pt, batch_size):
     cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
     cond = fluid.layers.cast(cond, dtype='float64')
     cond_3 = fluid.layers.reduce_sum(cond)
+<<<<<<< HEAD
     acc = fluid.layers.elementwise_div(
         cond_3,
         fluid.layers.fill_constant(
@@ -63,11 +65,20 @@ def get_acc(cos_q_nt, cos_q_pt, batch_size):
         ),
         name="simnet_acc",
     )
+=======
+    acc = fluid.layers.elementwise_div(cond_3,
+                                       fluid.layers.fill_constant(
+                                           shape=[1],
+                                           value=batch_size * 1.0,
+                                           dtype='float64'),
+                                       name="simnet_acc")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return acc
 
 
 def get_loss(cos_q_pt, cos_q_nt):
     loss_op1 = fluid.layers.elementwise_sub(
+<<<<<<< HEAD
         fluid.layers.fill_constant_batch_size_like(
             input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
         ),
@@ -80,6 +91,18 @@ def get_loss(cos_q_pt, cos_q_nt):
         ),
         loss_op2,
     )
+=======
+        fluid.layers.fill_constant_batch_size_like(input=cos_q_pt,
+                                                   shape=[-1, 1],
+                                                   value=margin,
+                                                   dtype='float32'), cos_q_pt)
+    loss_op2 = fluid.layers.elementwise_add(loss_op1, cos_q_nt)
+    loss_op3 = fluid.layers.elementwise_max(
+        fluid.layers.fill_constant_batch_size_like(input=loss_op2,
+                                                   shape=[-1, 1],
+                                                   value=0.0,
+                                                   dtype='float32'), loss_op2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     avg_cost = paddle.mean(loss_op3)
     return avg_cost
 
@@ -92,6 +115,7 @@ def train_network(
     is_pyreader=False,
 ):
     # query
+<<<<<<< HEAD
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1
     )
@@ -105,17 +129,42 @@ def train_network(
     nt = fluid.layers.data(
         name="neg_title_ids", shape=[1], dtype="int64", lod_level=1
     )
+=======
+    q = fluid.layers.data(name="query_ids",
+                          shape=[1],
+                          dtype="int64",
+                          lod_level=1)
+    # label data
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    # pt
+    pt = fluid.layers.data(name="pos_title_ids",
+                           shape=[1],
+                           dtype="int64",
+                           lod_level=1)
+    # nt
+    nt = fluid.layers.data(name="neg_title_ids",
+                           shape=[1],
+                           dtype="int64",
+                           lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     datas = [q, label, pt, nt]
 
     reader = None
     if is_pyreader:
+<<<<<<< HEAD
         reader = fluid.io.PyReader(
             feed_list=datas,
             capacity=64,
             iterable=False,
             use_double_buffer=False,
         )
+=======
+        reader = fluid.io.PyReader(feed_list=datas,
+                                   capacity=64,
+                                   iterable=False,
+                                   use_double_buffer=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # embedding
     q_emb = fluid.embedding(
@@ -138,8 +187,12 @@ def train_network(
         param_attr=fluid.ParamAttr(
             initializer=fluid.initializer.Constant(value=0.01),
             name="__q_fc__",
+<<<<<<< HEAD
             learning_rate=base_lr,
         ),
+=======
+            learning_rate=base_lr),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     )
 
     # embedding
@@ -253,8 +306,12 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                     )
                     loss_val = np.mean(loss_val)
                     message = "TRAIN ---> pass: {} loss: {}\n".format(
+<<<<<<< HEAD
                         epoch_id, loss_val
                     )
+=======
+                        epoch_id, loss_val)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start

@@ -54,9 +54,15 @@ template <typename T>
 class Tree2ColFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& EdgeSet,
                   const phi::DenseTensor& node_features,
                   phi::DenseTensor* patch,
+=======
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& node_features,
+                  framework::Tensor* patch,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();
@@ -131,9 +137,15 @@ template <typename T>
 class Col2TreeFunctor<phi::GPUContext, T> {
  public:
   void operator()(const phi::GPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& EdgeSet,
                   const phi::DenseTensor& patch_grad,
                   phi::DenseTensor* embedding_grad,
+=======
+                  const framework::Tensor& EdgeSet,
+                  const framework::Tensor& patch_grad,
+                  framework::Tensor* embedding_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     auto gpu_place = context.GetPlace();

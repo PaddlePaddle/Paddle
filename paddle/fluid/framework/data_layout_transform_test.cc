@@ -26,12 +26,20 @@ TEST(DataTransform, DataLayoutFunction) {
   auto kernel_nhwc =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kNHWC,
+=======
+                                      paddle::framework::DataLayout::kNHWC,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                       paddle::framework::LibraryType::kPlain);
   auto kernel_ncwh =
       paddle::framework::OpKernelType(paddle::framework::proto::VarType::FP32,
                                       place,
+<<<<<<< HEAD
                                       phi::DataLayout::kNCHW,
+=======
+                                      paddle::framework::DataLayout::kNCHW,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                       paddle::framework::LibraryType::kPlain);
 
   paddle::framework::TransDataLayout(kernel_nhwc, kernel_ncwh, in, &out);
@@ -54,8 +62,14 @@ TEST(DataTransformBf16, GetDataFromTensorDNNL) {
 
   void* in_data =
       paddle::framework::GetDataFromTensor(in, dnnl::memory::data_type::bf16);
+<<<<<<< HEAD
   EXPECT_EQ(in_data,
             phi::funcs::to_void_cast(in.data<paddle::platform::bfloat16>()));
+=======
+  EXPECT_EQ(
+      in_data,
+      paddle::platform::to_void_cast(in.data<paddle::platform::bfloat16>()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 TEST(DataTransformInt32, GetDataFromTensorDNNL) {

@@ -27,7 +27,9 @@ batch_num = 1000
 
 
 class SimpleNet(fluid.Layer):
+
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
         self.net_a = paddle.nn.Sequential(
             paddle.nn.Linear(10, 20),
@@ -39,6 +41,15 @@ class SimpleNet(fluid.Layer):
             paddle.nn.Linear(20, 20),
             paddle.nn.Linear(20, 5),
         )
+=======
+        super(SimpleNet, self).__init__()
+        self.net_a = paddle.nn.Sequential(paddle.nn.Linear(10, 20),
+                                          paddle.nn.Linear(20, 20),
+                                          paddle.nn.Linear(20, 5))
+        self.net_b = paddle.nn.Sequential(paddle.nn.Linear(10, 20),
+                                          paddle.nn.Linear(20, 20),
+                                          paddle.nn.Linear(20, 5))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.step = 0
 
     def forward(self, x):
@@ -46,6 +57,7 @@ class SimpleNet(fluid.Layer):
 
 
 def fake_sample_reader():
+
     def __reader__():
         for i in range(batch_num):
             x_data = np.random.random_sample((10,)).astype('float32')
@@ -55,14 +67,23 @@ def fake_sample_reader():
 
 
 class TestSimpleNet(TestParallelDyGraphRunnerBase):
+
     def get_model(self):
         model = SimpleNet()
+<<<<<<< HEAD
         train_reader = paddle.batch(
             fake_sample_reader(), batch_size=batch_size, drop_last=True
         )
         optimizer = paddle.optimizer.SGD(
             learning_rate=0.001, parameters=model.parameters()
         )
+=======
+        train_reader = paddle.batch(fake_sample_reader(),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001,
+                                         parameters=model.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):

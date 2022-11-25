@@ -42,6 +42,7 @@ custom_ops = load(
 
 
 class TestCustomSimpleSliceJit(unittest.TestCase):
+
     def func_slice_output(self):
         np_x = np.random.random((5, 2)).astype("float32")
         x = paddle.to_tensor(np_x)

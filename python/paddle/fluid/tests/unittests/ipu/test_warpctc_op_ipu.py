@@ -18,9 +18,17 @@ import numpy as np
 import paddle
 import paddle.static
 from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
+<<<<<<< HEAD
 
 
 class TestBase(IPUOpTest):
+=======
+import paddle.nn.functional as F
+
+
+class TestBase(IPUOpTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -38,16 +46,24 @@ class TestBase(IPUOpTest):
         self.max_seq_length = 5
         self.max_label_length = 3
         self.num_classes = 5
+<<<<<<< HEAD
         self.logits_length = np.array(
             [self.max_seq_length] * self.batch_size, dtype=np.int64
         )
         self.labels_length = np.array(
             [self.max_label_length] * self.batch_size, dtype=np.int64
         )
+=======
+        self.logits_length = np.array([self.max_seq_length] * self.batch_size,
+                                      dtype=np.int64)
+        self.labels_length = np.array([self.max_label_length] * self.batch_size,
+                                      dtype=np.int64)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.blank = self.num_classes - 1
         self.norm_by_times = False
 
         logits = np.random.uniform(
+<<<<<<< HEAD
             0.1, 1.0, [self.max_seq_length, self.batch_size, self.num_classes]
         ).astype("float32")
         labels = np.random.randint(
@@ -56,6 +72,14 @@ class TestBase(IPUOpTest):
             [self.batch_size, self.max_label_length],
             dtype="int32",
         )
+=======
+            0.1, 1.0, [self.max_seq_length, self.batch_size, self.num_classes
+                       ]).astype("float32")
+        labels = np.random.randint(0,
+                                   self.num_classes - 1,
+                                   [self.batch_size, self.max_label_length],
+                                   dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.feed_fp32 = {
             "Logits": logits,
@@ -82,6 +106,7 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         data = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype="float32"
         )
@@ -104,6 +129,28 @@ class TestBase(IPUOpTest):
             label_length=label_length,
             **self.attrs
         )
+=======
+        data = paddle.static.data(name=self.feed_list[0],
+                                  shape=self.feed_shape[0],
+                                  dtype="float32")
+        logits = paddle.nn.Linear(self.num_classes,
+                                  self.num_classes,
+                                  bias_attr=False)(data)
+        labels = paddle.static.data(name=self.feed_list[1],
+                                    shape=self.feed_shape[1],
+                                    dtype='int32')
+        input_length = paddle.static.data(name=self.feed_list[2],
+                                          shape=self.feed_shape[2],
+                                          dtype='int64')
+        label_length = paddle.static.data(name=self.feed_list[3],
+                                          shape=self.feed_shape[3],
+                                          dtype='int64')
+        out = paddle.fluid.layers.warpctc(logits,
+                                          labels,
+                                          input_length=input_length,
+                                          label_length=label_length,
+                                          **self.attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         loss = paddle.mean(out)
         adam = paddle.optimizer.Adam(learning_rate=1e-2)
         adam.minimize(loss)

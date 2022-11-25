@@ -38,9 +38,13 @@ class TransposeOp : public framework::OperatorWithKernel {
     size_t x_rank = x_dims.size();
     size_t axis_size = axis.size();
 
+<<<<<<< HEAD
     // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
     // axis_size
     PADDLE_ENFORCE_GE(x_rank,
+=======
+    PADDLE_ENFORCE_EQ(x_rank,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       axis_size,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension "
@@ -101,9 +105,21 @@ class TransposeOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
     auto &data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 
@@ -197,9 +213,21 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+<<<<<<< HEAD
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 
@@ -234,9 +262,28 @@ class Transpose2Op : public TransposeOp {
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "X");
+<<<<<<< HEAD
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+      using framework::proto::VarType;
+      auto input_data_type =
+          framework::TransToProtoVarType(ctx.Input<Tensor>("X")->dtype());
+      customized_type_value = (input_data_type == VarType::INT8 ||
+                               input_data_type == VarType::UINT8)
+                                  ? kTransposeMKLDNNINT8
+                                  : kTransposeMKLDNNFP32;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_, customized_type_value);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 
@@ -339,9 +386,21 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     framework::proto::VarType::Type data_type =
         OperatorWithKernel::IndicateVarDataType(ctx,
                                                 framework::GradVarName("Out"));
+<<<<<<< HEAD
     std::string data_format = ctx.Attr<std::string>("data_format");
     phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
     return framework::OpKernelType(data_type, ctx.GetPlace(), layout_);
+=======
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        this->CanMKLDNNBeUsed(ctx, data_type)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        data_type, ctx.GetPlace(), layout_, library_);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 };
 

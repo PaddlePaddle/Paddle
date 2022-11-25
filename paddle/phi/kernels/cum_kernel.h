@@ -14,7 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/phi/common/scalar.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -22,7 +25,11 @@ namespace phi {
 template <typename T, typename Context>
 void CumsumKernel(const Context& dev_ctx,
                   const DenseTensor& x,
+<<<<<<< HEAD
                   const Scalar& axis,
+=======
+                  int axis,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   bool flatten,
                   bool exclusive,
                   bool reverse,

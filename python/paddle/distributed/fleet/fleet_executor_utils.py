@@ -45,6 +45,7 @@ class TaskNode:
         :param program (Program): An instance of Program to init the task node.
         :param lazy_initialize (bool): In user-defined task, the program may change adding feed/fetch op. As efficient consideration, the task node will have the C++ object later.
         """
+<<<<<<< HEAD
         assert (ops is not None) ^ (
             program is not None
         ), "Should provide only one of ops or program to task node."
@@ -77,6 +78,32 @@ class TaskNode:
                 )
             if self.node_type:
                 self.node.set_type(self.node_type)
+=======
+        # NOTE: ops should be checked by `is not None`, since it may be empty list
+        assert ((ops is not None) ^ (program is not None)), \
+            "Should provide only one of ops or program to task node."
+        if not self.previous:
+            self.previous = 'program' if program else 'ops'
+        assert (program is not None and self.previous == 'program') or \
+               (ops is not None and self.previous == 'ops'), \
+               "In one program, task node should be inited in the same way, all by ops or all by program."
+        if ops is not None:
+            assert role is not None and task_id is not None, \
+                "If init task node with ops, should provide `role` and `task_id`."
+            self.node = core.TaskNode(role, ops, cur_rank, int(task_id),
+                                      max_run_times, max_slot_times)
+            print("Creating task node by ops. The role is:", self.role(),
+                  "and the id is:", self.task_id())
+        else:
+            self.program = program
+            self.node = core.TaskNode(program.desc, cur_rank, max_run_times,
+                                      max_slot_times)
+            print("Creating task node by program. The id is:", self.task_id())
+        self.node.set_type(node_type)
+
+    def set_type(self, interceptor_type):
+        self.node.set_type(interceptor_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def task_node(self):
         if self.lazy_initialize:
@@ -427,6 +454,7 @@ def run1f1b(
         task_id_to_rank (dict): task nodes' ids to it's corresponding rank
     """
     print("fleet executor will use python side 1f1b scheduler.")
+<<<<<<< HEAD
     fleet_executor_utils = FleetExecutorUtils(
         dist_strategy=dist_opt,
         rank=rank,
@@ -457,6 +485,120 @@ def run1f1b(
 
 
 def origin(program, rank):
+=======
+    coord_sys = CoordSys(dist_opt)
+    coord = coord_sys.rank_to_coord(cur_rank)
+    max_slot_times = int(max_run_times - coord['pp_idx'])
+    num_of_functionality = 4
+
+    lr_ops, fwd_ops, bwd_ops, opt_ops = [], [], [], []
+    for op in program.block(0).ops:
+        # split the program based on the op_role
+        op_role = int(op.all_attrs()[OP_ROLE_KEY])
+        if is_lr_sched_op(op_role):
+            lr_ops.append(op.desc)
+        elif is_optimizer_op(op_role):
+            opt_ops.append(op.desc)
+        elif is_forward_op(op_role):
+            fwd_ops.append(op.desc)
+        elif is_backward_op(op_role):
+            bwd_ops.append(op.desc)
+        else:
+            raise "The op role: " + str(
+                op_role
+            ) + " isn't one of LRSched, Forward, Backward or Optimizer."
+
+    # Create task nodes.
+    # The lr_sched and opt should be 'amplifier interceptor.
+    # The fwd and bwd should be 'compute interceptor'.
+    lr_task_node = TaskNode(cur_rank=cur_rank,
+                            max_run_times=max_run_times,
+                            max_slot_times=max_slot_times,
+                            role=int(OpRole.Optimize.LRSched),
+                            ops=lr_ops,
+                            task_id=int(cur_rank * num_of_functionality + 0),
+                            node_type="Amplifier")
+    lr_task_node.set_run_pre_steps(max_run_times)
+    fwd_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Forward),
+                             ops=fwd_ops,
+                             task_id=int(cur_rank * num_of_functionality + 1),
+                             node_type="Compute")
+    bwd_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Backward),
+                             ops=bwd_ops,
+                             task_id=int(cur_rank * num_of_functionality + 2),
+                             node_type="Compute")
+    opt_task_node = TaskNode(cur_rank=cur_rank,
+                             max_run_times=max_run_times,
+                             max_slot_times=max_slot_times,
+                             role=int(OpRole.Optimize),
+                             ops=opt_ops,
+                             task_id=int(cur_rank * num_of_functionality + 3),
+                             node_type="Amplifier")
+    opt_task_node.set_run_pre_steps(max_run_times)
+    opt_task_node.set_run_at_offset(max_run_times - 1)
+    task_nodes = [lr_task_node, fwd_task_node, bwd_task_node, opt_task_node]
+
+    # Generated the dependency based on this graph:
+    # lr(1:m) -> forward -> backward -> (m:1)optimize
+    #               ↑          ↓
+    # lr(1:m) -> forward -> backward -> (m:1)optimize
+    #               ↑          ↓
+    # lr(1:m) -> forward -> backward -> (m:1)optimize
+    upstream_coord, downstream_coord = coord.copy(), coord.copy()
+    upstream_coord['pp_idx'] = upstream_coord['pp_idx'] - 1
+    downstream_coord['pp_idx'] = downstream_coord['pp_idx'] + 1
+    pp_upstream = coord_sys.coord_to_rank(upstream_coord)
+    pp_downstream = coord_sys.coord_to_rank(downstream_coord)
+    first_stage = (pp_upstream == -1)
+    last_stage = (pp_downstream == -1)
+    for i in range(num_of_functionality):
+        task_node = task_nodes[i]
+        task_role = task_node.role()
+        cur_id = int(cur_rank * num_of_functionality + i)
+        prev_id = cur_id - 1
+        next_id = cur_id + 1
+        upstream_id = int(pp_upstream * num_of_functionality + i)
+        downstream_id = int(pp_downstream * num_of_functionality + i)
+        pp_buff_size = int(dist_opt['pp_degree'] - coord['pp_idx'])
+        ups = []
+        downs = []
+        if not is_lr_sched_op(task_role):
+            buf_size = pp_buff_size if is_backward_op(task_role) else 2
+            ups.append((prev_id, buf_size))
+        if not is_optimizer_op(task_role):
+            buf_size = pp_buff_size if is_forward_op(task_role) else 2
+            downs.append((next_id, buf_size))
+        if is_forward_op(task_role):
+            if not first_stage:
+                ups.append((upstream_id, 2))
+            if not last_stage:
+                downs.append((downstream_id, 2))
+        elif is_backward_op(task_role):
+            if not last_stage:
+                ups.append((downstream_id, 2))
+            if not first_stage:
+                downs.append((upstream_id, 2))
+        for up in ups:
+            print("Task:", cur_id, "'s upstream includes:", up[0])
+            task_node.add_upstream_task(up[0], up[1])
+        for down in downs:
+            print("Task:", cur_id, "'s downstream includes:", down[0])
+            task_node.add_downstream_task(down[0], down[1])
+    task_id_to_rank = {}
+    for i in range(nrank):
+        for j in range(num_of_functionality):
+            task_id_to_rank[int(i * num_of_functionality + j)] = i
+    return [task_node.task_node() for task_node in task_nodes], task_id_to_rank
+
+
+def origin(program, cur_rank):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Origin scheduler for fleet executor, supports non-pp mode
     :param program: The origin program.
@@ -466,6 +608,7 @@ def origin(program, rank):
         task_id_to_rank (dict): a fake dict, since there is no upstream or downstream, this dict won't be used
     """
     print("fleet executor will use python side origin scheduler.")
+<<<<<<< HEAD
     task_node = TaskNode(
         program=program,
         rank=rank,
@@ -474,4 +617,13 @@ def origin(program, rank):
         max_slot_times=1,
     )
     task_id_to_rank = {task_node.task_id(): rank}
+=======
+    task_node = TaskNode(program=program,
+                         cur_rank=cur_rank,
+                         max_run_times=1,
+                         max_slot_times=1)
+    task_node.set_type("Compute")
+    task_id = task_node.task_id()
+    task_id_to_rank = {task_id: cur_rank}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return [task_node.task_node()], task_id_to_rank

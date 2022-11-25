@@ -67,7 +67,16 @@ Scatter tensors from all participators to all participators.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OP_WITHOUT_GRADIENT(alltoall, ops::AllToAllOp, ops::AllToAllOpMaker)
+=======
+REGISTER_OPERATOR(alltoall,
+                  ops::AllToAllOp,
+                  ops::AllToAllOpMaker,
+                  ops::AllToAllOpGradMaker<paddle::framework::OpDesc>,
+                  ops::AllToAllOpGradMaker<paddle::imperative::OpBase>,
+                  ops::AllToAllInplaceInferer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 REGISTER_OP_CPU_KERNEL(alltoall,
                        ops::AllToAllOpCPUKernel<float>,

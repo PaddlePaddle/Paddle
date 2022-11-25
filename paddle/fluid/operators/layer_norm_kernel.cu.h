@@ -24,7 +24,11 @@ namespace cub = hipcub;
 
 #include <iostream>
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/fused/quant_dequant_kernel.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/ddim.h"
@@ -339,6 +343,7 @@ using LayerNormScaleBiasT =
 template <typename T,
           typename U,
           int BlockDim,
+<<<<<<< HEAD
           bool ScaleBiasWithSameTypeX = false,
           typename InType = T,
           typename OutType = T>
@@ -357,6 +362,18 @@ __global__ void LayerNormForward(
     const int quant_round_type = 1,
     const float quant_max_bound = 127.0,
     const float quant_min_bound = -127.0) {
+=======
+          bool ScaleBiasWithSameTypeX = false>
+__global__ void LayerNormForward(
+    const T *x,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *scale,
+    const LayerNormScaleBiasT<T, U, ScaleBiasWithSameTypeX> *bias,
+    T *y,
+    U *mean,
+    U *var,
+    float epsilon,
+    int64_t feature_size) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   __shared__ U mean_share;
   __shared__ U var_share;
   __shared__ U shared_mean[32];  // threadIdx.x / warpSize <= kMaxBlockDim /

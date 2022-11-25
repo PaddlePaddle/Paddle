@@ -24,6 +24,7 @@ from ..process_group import new_process_group
 
 
 class DistributedFusedFeedForward(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -34,6 +35,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFusedFeedForwardImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True

@@ -53,6 +53,7 @@ def check_initial_inverse_hessian_estimate(H0):
     else:
 
         def create_tmp_var(program, name, dtype, shape):
+<<<<<<< HEAD
             return program.current_block().create_var(
                 name=name, dtype=dtype, shape=shape
             )
@@ -68,6 +69,21 @@ def check_initial_inverse_hessian_estimate(H0):
             paddle.static.nn.py_func(
                 func=raise_func, x=is_symmetric, out=out_var
             )
+=======
+            return program.current_block().create_var(name=name,
+                                                      dtype=dtype,
+                                                      shape=shape)
+
+        out_var = create_tmp_var(paddle.static.default_main_program(),
+                                 name='output',
+                                 dtype='float32',
+                                 shape=[-1])
+
+        def false_fn():
+            paddle.static.nn.py_func(func=raise_func,
+                                     x=is_symmetric,
+                                     out=out_var)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         paddle.static.nn.cond(is_symmetric, None, false_fn)
         # eigvals only support cpu

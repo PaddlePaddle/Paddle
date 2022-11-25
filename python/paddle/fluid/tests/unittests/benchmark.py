@@ -20,6 +20,7 @@ from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):
+
     def timeit_function(self, callback, iters, *args, **kwargs):
         assert iters != 0, "Iters should >= 1"
         start = time.time()
@@ -37,6 +38,7 @@ class BenchmarkSuite(OpTest):
             expect_t = np.array(item_cpu_out)
             actual = item_gpu_out
             actual_t = np.array(item_gpu_out)
+<<<<<<< HEAD
             var_name = variable if isinstance(variable, str) else variable.name
             np.testing.assert_allclose(
                 actual_t, expect_t, rtol=1e-05, atol=atol
@@ -46,6 +48,15 @@ class BenchmarkSuite(OpTest):
                 expect.lod(),
                 "Output (" + var_name + ") has different lod",
             )
+=======
+            var_name = variable if isinstance(
+                variable, six.string_types) else variable.name
+            self.assertTrue(
+                np.allclose(actual_t, expect_t, atol=atol), "Output (" +
+                var_name + ") has diff" + str(actual_t) + "\n" + str(expect_t))
+            self.assertListEqual(actual.lod(), expect.lod(),
+                                 "Output (" + var_name + ") has different lod")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _get_input_names(self):
         inputs = []
@@ -94,6 +105,7 @@ class BenchmarkSuite(OpTest):
     def timeit_grad_with_place(self, place, iters=100):
         inputs_to_check = self._get_input_names()
         output_names = self._get_output_names()
+<<<<<<< HEAD
         return self.timeit_function(
             self._get_gradient,
             iters,
@@ -102,6 +114,14 @@ class BenchmarkSuite(OpTest):
             output_names,
             no_grad_set=None,
         )
+=======
+        return self.timeit_function(self._get_gradient,
+                                    iters,
+                                    inputs_to_check,
+                                    place,
+                                    output_names,
+                                    no_grad_set=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def timeit_grad(self, iters=100):
         places = self._get_places()

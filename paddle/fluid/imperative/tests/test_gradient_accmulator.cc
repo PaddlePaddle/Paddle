@@ -161,7 +161,13 @@ TEST(test_add_functor, add_functor) {
                          static_cast<platform::float16>(1.0),
                          static_cast<platform::float16>(2.0));
   EXPECT_EQ(cpu_res, 0);
+<<<<<<< HEAD
   // double
+=======
+
+#ifndef PADDLE_WITH_XPU
+  // does not support double when compiled using xpu
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   cpu_res = TensorddTest(
       cpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
   EXPECT_EQ(cpu_res, 0);
@@ -208,6 +214,7 @@ TEST(test_add_functor, add_functor) {
   // normal
   xpu_res = TensorddTest(
       xpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+<<<<<<< HEAD
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorddTest(xpu_place,
                          xpu_place,
@@ -216,10 +223,18 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorddTest(
       xpu_place, xpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+=======
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(xpu_place,
+                         xpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   EXPECT_EQ(xpu_res, 0);
   // different places
   xpu_res = TensorddTest(
       cpu_place, xpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+<<<<<<< HEAD
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorddTest(
       xpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
@@ -239,6 +254,21 @@ TEST(test_add_functor, add_functor) {
   EXPECT_EQ(xpu_res, 0);
   xpu_res = TensorddTest(
       xpu_place, cpu_place, static_cast<double>(1.0), static_cast<double>(2.0));
+=======
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(
+      xpu_place, cpu_place, static_cast<float>(1.0), static_cast<float>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(cpu_place,
+                         xpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+  EXPECT_EQ(xpu_res, 0);
+  xpu_res = TensorddTest(xpu_place,
+                         cpu_place,
+                         static_cast<platform::float16>(1.0),
+                         static_cast<platform::float16>(2.0));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   EXPECT_EQ(xpu_res, 0);
 #endif
 }
@@ -286,11 +316,19 @@ static bool IsEqualVar(const framework::Variable& var1,
 
   phi::DenseTensor t1, t2;
 
+<<<<<<< HEAD
   if (var1.IsType<phi::DenseTensor>()) {
     framework::TensorCopySync(
         var1.Get<phi::DenseTensor>(), platform::CPUPlace(), &t1);
     framework::TensorCopySync(
         var2.Get<phi::DenseTensor>(), platform::CPUPlace(), &t2);
+=======
+  if (var1.IsType<framework::LoDTensor>()) {
+    framework::TensorCopySync(
+        var1.Get<framework::LoDTensor>(), platform::CPUPlace(), &t1);
+    framework::TensorCopySync(
+        var2.Get<framework::LoDTensor>(), platform::CPUPlace(), &t2);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   } else {
     auto& s1 = var1.Get<phi::SelectedRows>();
     auto& s2 = var2.Get<phi::SelectedRows>();
@@ -334,7 +372,11 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
                                         const platform::Place& place,
                                         int low = -10,
                                         int high = 10) {
+<<<<<<< HEAD
   phi::DenseTensor cpu_tensor;
+=======
+  framework::Tensor cpu_tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   cpu_tensor.Resize(dims);
   auto* ptr = cpu_tensor.mutable_data<T>(platform::CPUPlace());
   std::uniform_int_distribution<int> dist(low, high);
@@ -346,7 +388,11 @@ static framework::Variable RandomTensor(const framework::DDim& dims,
 
   framework::Variable ret;
   framework::TensorCopySync(
+<<<<<<< HEAD
       cpu_tensor, place, ret.GetMutable<phi::DenseTensor>());
+=======
+      cpu_tensor, place, ret.GetMutable<framework::LoDTensor>());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   return ret;
 }
 

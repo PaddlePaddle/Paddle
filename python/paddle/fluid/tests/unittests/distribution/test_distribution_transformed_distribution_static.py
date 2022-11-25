@@ -34,6 +34,7 @@ paddle.enable_static()
     ],
 )
 class TestIndependent(unittest.TestCase):
+
     def setUp(self):
         value = np.array([0.5])
         loc = np.array([0.0])
@@ -58,6 +59,7 @@ class TestIndependent(unittest.TestCase):
             sample_data = self._t.sample(shape)
 
         exe.run(sp)
+<<<<<<< HEAD
         [
             self.actual_log_prob,
             self.expected_log_prob,
@@ -75,6 +77,23 @@ class TestIndependent(unittest.TestCase):
             rtol=config.RTOL.get(str(self.dtype)),
             atol=config.ATOL.get(str(self.dtype)),
         )
+=======
+        [self.actual_log_prob, self.expected_log_prob,
+         self.sample_data] = exe.run(
+             mp,
+             feed={
+                 'value': value,
+                 'loc': loc,
+                 'scale': scale
+             },
+             fetch_list=[actual_log_prob, expected_log_prob, sample_data])
+
+    def test_log_prob(self):
+        np.testing.assert_allclose(self.actual_log_prob,
+                                   self.expected_log_prob,
+                                   rtol=config.RTOL.get(str(self.dtype)),
+                                   atol=config.ATOL.get(str(self.dtype)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def transformed_log_prob(self, value, base, transforms):
         log_prob = 0.0

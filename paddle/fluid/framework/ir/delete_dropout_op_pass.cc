@@ -12,10 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/ir/delete_dropout_op_pass.h"
+<<<<<<< HEAD
 
 #include <string>
 
 #include "paddle/fluid/framework/op_version_registry.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
+
+#include <string>
 
 namespace phi {
 class DenseTensor;

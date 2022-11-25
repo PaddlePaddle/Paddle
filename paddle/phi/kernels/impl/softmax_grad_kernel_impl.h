@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/funcs/math_function.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 
 namespace phi {

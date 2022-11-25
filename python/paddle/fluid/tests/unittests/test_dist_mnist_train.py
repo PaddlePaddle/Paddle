@@ -21,53 +21,85 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestDistMnist2x2(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py",
             delta=1e-5,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestDistMnist2x2WithMemopt(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._mem_opt = True
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py",
             delta=1e-5,
             check_error_log=True,
             log_name=flag_name,
         )
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=1e-5,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestDistMnistAsync(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._use_reduce = False
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py", delta=200, check_error_log=True, log_name=flag_name
         )
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=200,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestDistMnistDcAsgd(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = False
         self._dc_asgd = True
 
     def test_se_resnext(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_mnist.py", delta=200, check_error_log=True, log_name=flag_name
         )
+=======
+        self.check_with_place("dist_mnist.py",
+                              delta=200,
+                              check_error_log=True,
+                              log_name=flag_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

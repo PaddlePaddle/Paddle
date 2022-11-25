@@ -25,6 +25,7 @@ def infinite_reader():
 
 
 class TestDataLoaderEarlyReset(unittest.TestCase):
+
     def setUp(self):
         self.stop_batch = 10
         self.iterable = True
@@ -44,9 +45,15 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
 
     def create_data_loader(self):
         self.x = fluid.data(name='x', shape=[None, 32], dtype='float32')
+<<<<<<< HEAD
         return fluid.io.DataLoader.from_generator(
             feed_list=[self.x], capacity=10, iterable=self.iterable
         )
+=======
+        return fluid.io.DataLoader.from_generator(feed_list=[self.x],
+                                                  capacity=10,
+                                                  iterable=self.iterable)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_main(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -88,6 +95,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
 
 
 class TestDataLoaderEarlyReset2(TestDataLoaderEarlyReset):
+
     def setUp(self):
         self.stop_batch = 20
         self.iterable = False

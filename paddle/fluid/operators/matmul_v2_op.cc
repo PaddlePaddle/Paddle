@@ -39,6 +39,59 @@ static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
                         dim));
 
   if (!shape.empty() && !axis.empty()) {
+<<<<<<< HEAD
+=======
+    PADDLE_ENFORCE_GE(
+        shape.size(),
+        2,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_LE(
+        shape.size(),
+        4,
+        platform::errors::InvalidArgument(
+            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
+            "or 4 dimensions.",
+            input_name));
+    PADDLE_ENFORCE_EQ(
+        shape.size(),
+        axis.size(),
+        platform::errors::InvalidArgument(
+            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
+            "must be equal.",
+            input_name,
+            input_name));
+
+    int num_negative = std::count(shape.begin(), shape.end(), -1);
+    PADDLE_ENFORCE_LE(num_negative,
+                      1,
+                      platform::errors::InvalidArgument(
+                          "The max number of -1 in fused_reshape_%s is 1 "
+                          "but received %d.",
+                          input_name,
+                          num_negative));
+
+    auto it_zero = std::find(shape.begin(), shape.end(), 0);
+    if (it_zero != shape.end()) {
+      for (uint64_t i = 0; i < shape.size(); i++) {
+        if (shape[i] == 0) {
+          PADDLE_ENFORCE_LT(i,
+                            dim.size(),
+                            platform::errors::InvalidArgument(
+                                "The index of 0 in fused_reshape_%s ",
+                                "should be less than output dim size, ",
+                                "but the index is %d and output dim size is %d",
+                                input_name,
+                                i,
+                                dim.size()));
+          shape[i] = dim.at(i);
+        }
+      }
+    }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     dim = dim.reshape(shape).transpose(axis);
   }
   return dim;
@@ -62,7 +115,11 @@ class MatMulV2Op : public framework::OperatorWithKernel {
                       0,
                       platform::errors::InvalidArgument(
                           "The Input(X) dims size must be greater than 0,"
+<<<<<<< HEAD
                           " but received dims size is 0. "));
+=======
+                          " but reviced dims size is 0. "));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_GT(ndims_y,
                       0,
                       platform::errors::InvalidArgument(
@@ -135,13 +192,30 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+=======
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -199,13 +273,30 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
+<<<<<<< HEAD
+=======
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type,
+                                     ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+=======
+      const framework::Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(

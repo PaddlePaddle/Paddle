@@ -18,11 +18,16 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+<<<<<<< HEAD
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_fill_conj.h"
 #include "paddle/phi/kernels/funcs/frame_functor.h"
 #include "paddle/phi/kernels/funcs/padding.h"
+=======
+#include "paddle/fluid/operators/spectral_op.h"
+#include "paddle/phi/kernels/funcs/frame_functor.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 namespace operators {
@@ -95,9 +100,15 @@ class StftKernel : public framework::OpKernel<T> {
       onesided_dims.at(axes.back()) = onesided_axis_size;
       Tensor onesided_out;
       onesided_out.mutable_data<C>(onesided_dims, ctx.GetPlace());
+<<<<<<< HEAD
       fft_r2c_func(dev_ctx, frames_w, &onesided_out, axes, normalization, true);
       phi::funcs::FFTFillConj<DeviceContext, C>(
           dev_ctx, &onesided_out, out, axes);
+=======
+      fft_r2c_func(
+          dev_ctx, &frames_w, &onesided_out, axes, normalization, true);
+      fill_conj<DeviceContext, C>(dev_ctx, &onesided_out, out, axes);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
   }
 };
@@ -144,7 +155,11 @@ class StftGradKernel : public framework::OpKernel<T> {
 
     if (!onesided) {
       fft_c2c_func(
+<<<<<<< HEAD
           dev_ctx, *dy, &complex_d_frames_w, axes, normalization, false);
+=======
+          dev_ctx, dy, &complex_d_frames_w, axes, normalization, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     } else {
       Tensor full_dy;
       full_dy.mutable_data<C>(d_frames_dims, ctx.GetPlace());
@@ -156,11 +171,28 @@ class StftGradKernel : public framework::OpKernel<T> {
       pads[axes.back() * 2 + 1] = zero_length;
 
       phi::funcs::PaddingFunctor<DeviceContext, C>(
+<<<<<<< HEAD
           rank, dev_ctx, pads, static_cast<C>(0), *dy, &full_dy);
       fft_c2c_func(
           dev_ctx, full_dy, &complex_d_frames_w, axes, normalization, false);
     }
     phi::RealKernel<C>(dev_ctx, complex_d_frames_w, &d_frames_w);
+=======
+          rank,
+          ctx.template device_context<DeviceContext>(),
+          pads,
+          static_cast<C>(0),
+          *dy,
+          &full_dy);
+      fft_c2c_func(
+          dev_ctx, &full_dy, &complex_d_frames_w, axes, normalization, false);
+    }
+    framework::TransComplexToReal(
+        framework::TransToProtoVarType(d_frames_w.dtype()),
+        framework::TransToProtoVarType(complex_d_frames_w.dtype()),
+        complex_d_frames_w,
+        &d_frames_w);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     // d_frames_w -> d_frames
     Tensor d_frames;

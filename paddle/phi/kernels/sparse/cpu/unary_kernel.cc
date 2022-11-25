@@ -25,7 +25,11 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCooKernel(const Context& dev_ctx,
+=======
+void DivCooScalarKernel(const Context& dev_ctx,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         const SparseCooTensor& x,
                         float scalar,
                         SparseCooTensor* out) {
@@ -41,7 +45,11 @@ void DivScalarCooKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void DivScalarCsrKernel(const Context& dev_ctx,
+=======
+void DivCsrScalarKernel(const Context& dev_ctx,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         const SparseCsrTensor& x,
                         float scalar,
                         SparseCsrTensor* out) {
@@ -95,6 +103,7 @@ PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(pow, Pow)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(scale, Scale)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(expm1, Expm1)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu6, Relu6)
+<<<<<<< HEAD
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(relu6_raw, Relu6Raw)
 PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(leaky_relu, LeakyRelu)
 
@@ -102,15 +111,30 @@ PD_REGISTER_KERNEL(divide_scalar_coo,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::DivScalarCooKernel,
+=======
+PD_REGISTER_SPARSE_UNARY_CPU_KERNEL(leaky_relu, LeakyRelu)
+
+PD_REGISTER_KERNEL(divide_coo_scalar,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivCooScalarKernel,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(divide_scalar_csr,
                    CPU,
                    ALL_LAYOUT,
                    phi::sparse::DivScalarCsrKernel,
+=======
+PD_REGISTER_KERNEL(divide_csr_scalar,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::sparse::DivCsrScalarKernel,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);

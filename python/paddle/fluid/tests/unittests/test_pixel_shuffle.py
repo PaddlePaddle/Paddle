@@ -60,6 +60,7 @@ def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
 
 
 class TestPixelShuffleOp(OpTest):
+
     def setUp(self):
         self.op_type = "pixel_shuffle"
         self.python_api = paddle.nn.functional.pixel_shuffle
@@ -91,11 +92,13 @@ class TestPixelShuffleOp(OpTest):
 
 
 class TestChannelLast(TestPixelShuffleOp):
+
     def init_data_format(self):
         self.format = "NHWC"
 
 
 class TestPixelShuffleAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
         self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float64")
@@ -109,12 +112,21 @@ class TestPixelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
+<<<<<<< HEAD
             x_1 = paddle.fluid.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
+=======
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 9, 4, 4],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 4, 4, 9],
+                                    dtype="float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out_1 = F.pixel_shuffle(x_1, 3)
             out_2 = F.pixel_shuffle(x_2, 3, "NHWC")
 
@@ -144,12 +156,21 @@ class TestPixelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
+<<<<<<< HEAD
             x_1 = paddle.fluid.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
             x_2 = paddle.fluid.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
+=======
+            x_1 = paddle.fluid.data(name="x",
+                                    shape=[2, 9, 4, 4],
+                                    dtype="float64")
+            x_2 = paddle.fluid.data(name="x2",
+                                    shape=[2, 4, 4, 9],
+                                    dtype="float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # init instance
             ps_1 = paddle.nn.PixelShuffle(3)
             ps_2 = paddle.nn.PixelShuffle(3, "NHWC")
@@ -196,19 +217,30 @@ class TestPixelShuffleAPI(unittest.TestCase):
 
             paddle.disable_static(place=place)
 
+<<<<<<< HEAD
             pixel_shuffle = paddle.nn.PixelShuffle(
                 up_factor, data_format=data_format
             )
+=======
+            pixel_shuffle = paddle.nn.PixelShuffle(up_factor,
+                                                   data_format=data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = pixel_shuffle(paddle.to_tensor(x))
 
             np.testing.assert_allclose(result.numpy(), npresult, rtol=1e-05)
 
+<<<<<<< HEAD
             result_functional = F.pixel_shuffle(
                 paddle.to_tensor(x), 3, data_format
             )
             np.testing.assert_allclose(
                 result_functional.numpy(), npresult, rtol=1e-05
             )
+=======
+            result_functional = F.pixel_shuffle(paddle.to_tensor(x), 3,
+                                                data_format)
+            self.assertTrue(np.allclose(result_functional.numpy(), npresult))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dygraph1(self):
         self.run_dygraph(3, "NCHW")
@@ -218,7 +250,9 @@ class TestPixelShuffleAPI(unittest.TestCase):
 
 
 class TestPixelShuffleError(unittest.TestCase):
+
     def test_error_functional(self):
+
         def error_upscale_factor():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
@@ -234,6 +268,7 @@ class TestPixelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_data_format)
 
     def test_error_layer(self):
+
         def error_upscale_factor_layer():
             with paddle.fluid.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")

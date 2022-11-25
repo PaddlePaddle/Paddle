@@ -196,6 +196,7 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
       framework::TransToProtoVarType(
           ctx.Input<phi::DenseTensor>("Mean")->dtype()),
       platform::errors::InvalidArgument("Mean input should be of float type"));
+<<<<<<< HEAD
   PADDLE_ENFORCE_EQ(bn_param_type,
                     framework::TransToProtoVarType(
                         ctx.Input<phi::DenseTensor>("Variance")->dtype()),
@@ -203,6 +204,27 @@ framework::OpKernelType BatchNormOp::GetExpectedKernelType(
                         "Variance input should be of float type"));
 
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
+=======
+  PADDLE_ENFORCE_EQ(
+      bn_param_type,
+      framework::TransToProtoVarType(ctx.Input<Tensor>("Variance")->dtype()),
+      platform::errors::InvalidArgument(
+          "Variance input should be of float type"));
+
+  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+  framework::LibraryType library = framework::LibraryType::kPlain;
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  if (library == framework::LibraryType::kPlain &&
+      this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+
+  return framework::OpKernelType(
+      input_data_type, ctx.GetPlace(), layout, library);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
@@ -221,7 +243,11 @@ framework::OpKernelType BatchNormOp::GetKernelTypeForVar(
     auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
+<<<<<<< HEAD
     if (dl != phi::DataLayout::kAnyLayout) {
+=======
+    if (dl != framework::DataLayout::kAnyLayout) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }
@@ -411,7 +437,11 @@ framework::OpKernelType BatchNormGradOp::GetKernelTypeForVar(
     auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)
+<<<<<<< HEAD
     if (dl != phi::DataLayout::kAnyLayout) {
+=======
+    if (dl != framework::DataLayout::kAnyLayout) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       return framework::OpKernelType(
           expected_kernel_type.data_type_, tensor.place(), dl);
     }

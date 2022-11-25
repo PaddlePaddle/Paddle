@@ -31,12 +31,14 @@ paddle.enable_static()
 
 
 class XPUTestReshapeOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "reshape2"
         self.use_dynamic_create_class = False
 
     # situation 1: have shape( list, no tensor), no actual shape(Tensor)
     class TestReshapeOp(XPUOpTest):
+
         def setUp(self):
             self.init_data()
             self.op_type = "reshape2"
@@ -74,12 +76,14 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
                 self.check_grad_with_place(place, ["X"], "Out")
 
     class TestReshapeOpDimInfer1(TestReshapeOp):
+
         def init_data(self):
             self.ori_shape = (5, 25)
             self.new_shape = (5, -1, 5)
             self.infered_shape = (5, -1, 5)
 
     class TestReshapeOpDimInfer2(TestReshapeOp):
+
         def init_data(self):
             self.ori_shape = (10, 2, 6)
             self.new_shape = (10, 0, 3, -1)
@@ -87,6 +91,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
 
     # situation 2: have shape(list, no tensor), have actual shape(Tensor)
     class TestReshapeOpWithInputShape(TestReshapeOp):
+
         def init_data(self):
             self.ori_shape = (6, 20)
             self.new_shape = (0, -1, 20)
@@ -95,7 +100,11 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_input(self):
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
+<<<<<<< HEAD
                 "Shape": np.array(self.actual_shape, dtype="int32"),
+=======
+                "Shape": np.array(self.actual_shape, dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
         def init_test_output(self):
@@ -106,6 +115,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
 
     # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
     class TestReshapeOp_attr_ShapeTensor(TestReshapeOp):
+
         def init_data(self):
             self.ori_shape = (4, 25)
             self.new_shape = (10, 10)
@@ -127,18 +137,30 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_attrs(self):
             self.attrs = {'shape': self.shape, "use_xpu": True}
 
+<<<<<<< HEAD
     class TestReshapeOpDimInfer1_attr_ShapeTensor(
         TestReshapeOp_attr_ShapeTensor
     ):
+=======
+    class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor
+                                                  ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_data(self):
             self.ori_shape = (5, 20)
             self.new_shape = (5, -1, 20)
             self.infered_shape = (5, -1, 20)
             self.shape = (5, -1, -1)
 
+<<<<<<< HEAD
     class TestReshapeOpDimInfer2_attr_ShapeTensor(
         TestReshapeOp_attr_ShapeTensor
     ):
+=======
+    class TestReshapeOpDimInfer2_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor
+                                                  ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_data(self):
             self.ori_shape = (10, 2, 6)
             self.new_shape = (10, 0, 3, -1)
@@ -147,6 +169,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
 
     # Situation 4: have shape(Tensor), no actual shape(Tensor)
     class TestReshapeOp_attr_OnlyShape(TestReshapeOp):
+
         def init_data(self):
             self.ori_shape = (4, 25)
             self.new_shape = (10, 10)
@@ -155,13 +178,18 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
         def init_test_input(self):
             self.inputs = {
                 "X": np.random.random(self.ori_shape).astype(self.dtype),
+<<<<<<< HEAD
                 "Shape": np.array(self.new_shape, dtype="int32"),
+=======
+                "Shape": np.array(self.new_shape, dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
         def init_attrs(self):
             self.attrs = {"use_xpu": True}
 
     class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
+
         def init_data(self):
             self.ori_shape = (5, 20)
             self.new_shape = (5, -1, 10)
@@ -169,6 +197,7 @@ class XPUTestReshapeOp(XPUOpTestWrapper):
             self.shape = (5, -1, -1)
 
     class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
+
         def init_data(self):
             self.ori_shape = (10, 2, 6)
             self.new_shape = (10, 0, 3, -1)

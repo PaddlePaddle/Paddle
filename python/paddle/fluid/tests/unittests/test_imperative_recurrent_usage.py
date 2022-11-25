@@ -23,6 +23,7 @@ import numpy as np
 
 
 class RecurrentTest(fluid.Layer):
+
     def __init__(self, name_scope):
         super().__init__(name_scope)
 
@@ -33,6 +34,7 @@ class RecurrentTest(fluid.Layer):
 
 
 class TestRecurrentFeed(unittest.TestCase):
+
     def test_recurrent_feed(self):
 
         seed = 90
@@ -82,12 +84,21 @@ class TestRecurrentFeed(unittest.TestCase):
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
+<<<<<<< HEAD
             in1 = fluid.layers.data(
                 name="inp1", shape=[2, 2], append_batch_size=False
             )
             in2 = fluid.layers.data(
                 name="inp2", shape=[2, 2], append_batch_size=False
             )
+=======
+            in1 = fluid.layers.data(name="inp1",
+                                    shape=[2, 2],
+                                    append_batch_size=False)
+            in2 = fluid.layers.data(name="inp2",
+                                    shape=[2, 2],
+                                    append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
             fluid.backward.append_backward(static_sum_out)
@@ -104,11 +115,20 @@ class TestRecurrentFeed(unittest.TestCase):
             )
             fetch_list = [static_sum_out, static_out, static_dout]
             for i in range(3):
+<<<<<<< HEAD
                 out = exe.run(
                     fluid.default_main_program(),
                     feed={"inp1": original_np1, "inp2": original_np2},
                     fetch_list=fetch_list,
                 )
+=======
+                out = exe.run(fluid.default_main_program(),
+                              feed={
+                                  "inp1": original_np1,
+                                  "inp2": original_np2
+                              },
+                              fetch_list=fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 static_out_value = out[1]
                 static_sum_out = out[0]
                 static_dout = out[2]

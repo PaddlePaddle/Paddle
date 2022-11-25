@@ -81,6 +81,7 @@ _already_patch_repr = False
 
 
 def monkey_patch_varbase():
+
     @switch_to_static_graph
     def _to_static_var(self, to_parameter=False, **kwargs):
         """
@@ -288,11 +289,17 @@ def monkey_patch_varbase():
                     assert isinstance(
                         grad_tensor, paddle.Tensor
                     ), "The type of grad_tensor must be paddle.Tensor"
+<<<<<<< HEAD
                 assert (
                     grad_tensor.shape == self.shape
                 ), "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
+=======
+                assert grad_tensor.shape == self.shape, \
+                    "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
+                    grad_tensor.name, grad_tensor.shape, self.name, self.shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             if framework._in_eager_mode_:
                 if grad_tensor is None:
@@ -341,7 +348,12 @@ def monkey_patch_varbase():
     @deprecated(
         since="2.1.0",
         level=1,
+<<<<<<< HEAD
         reason="Please use tensor.grad, which returns the tensor value of the gradient.",
+=======
+        reason=
+        "Please use tensor.grad, which returns the tensor value of the gradient."
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     )
     def gradient(self):
         """
@@ -378,10 +390,16 @@ def monkey_patch_varbase():
 
             new_ivar = self._grad_ivar()._copy_to(core.CPUPlace(), True)
             if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
+<<<<<<< HEAD
                 return (
                     np.array(new_ivar.value().get_selected_rows().get_tensor()),
                     np.array(new_ivar.value().get_selected_rows().rows()),
                 )
+=======
+                return (np.array(
+                    new_ivar.value().get_selected_rows().get_tensor()),
+                        np.array(new_ivar.value().get_selected_rows().rows()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 return np.array(new_ivar.value().get_tensor())
 
@@ -774,7 +792,9 @@ def monkey_patch_varbase():
         return False
 
     def __getitem__(self, item):
+
         def is_list_tuple(index, contain_type):
+
             def _is_list_tuple(item):
                 if isinstance(item, (tuple, list)):
                     for s in item:
@@ -802,6 +822,7 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
+
         def contain_tensor_or_list(item):
             if not isinstance(item, tuple):
                 item = [item]
@@ -961,11 +982,20 @@ def monkey_patch_varbase():
                     indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                     values = [1, 2, 3, 4, 5]
                     dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
                     print(sparse_x.values())
                     #[1, 2, 3, 4, 5]
         """
+<<<<<<< HEAD
         return _C_ops.sparse_values(self)
+=======
+
+        if self.is_sparse_coo() or self.is_sparse_csr():
+            return _C_ops.final_state_sparse_values(self)
+        else:
+            raise ValueError(
+                "only SparseCooTensor and SparseCsrTensor have method values")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @framework.dygraph_only
     def to_dense(self):
@@ -986,7 +1016,7 @@ def monkey_patch_varbase():
                     indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
                     values = [1, 2, 3, 4, 5]
                     dense_shape = [3, 4]
-                    sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                    sparse_x = paddle.incubate.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
                     dense_x = sparse_x.to_dense()
                     #[[0., 1., 0., 2.],
                     # [0., 0., 3., 0.],
@@ -1027,6 +1057,7 @@ def monkey_patch_varbase():
     if framework._in_eager_mode_ and not hasattr(core, "eager"):
         return
 
+<<<<<<< HEAD
     for method_name, method in (
         ("__bool__", __bool__),
         ("__nonzero__", __nonzero__),
@@ -1051,6 +1082,27 @@ def monkey_patch_varbase():
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
     ):
+=======
+    for method_name, method in (("__bool__", __bool__), ("__nonzero__",
+                                                         __nonzero__),
+                                ("_to_static_var",
+                                 _to_static_var), ("set_value", set_value),
+                                ("block", block), ("backward", backward),
+                                ("clear_grad", clear_grad), ("inplace_version",
+                                                             inplace_version),
+                                ("gradient", gradient), ("register_hook",
+                                                         register_hook),
+                                ("__str__", __str__), ("__repr__", __str__),
+                                ("__deepcopy__", __deepcopy__), ("__module__",
+                                                                 "paddle"),
+                                ("__array__",
+                                 __array__), ("__getitem__",
+                                              __getitem__), ("item", item),
+                                ("__setitem__",
+                                 __setitem__), ("_to", _to), ("values", values),
+                                ("to_dense", to_dense), ("to_sparse_coo",
+                                                         to_sparse_coo)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if framework._in_eager_mode_:
             setattr(core.eager.Tensor, method_name, method)
         else:

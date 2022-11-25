@@ -37,6 +37,7 @@ def convolutional_neural_network(use_py_reader):
                 use_double_buffer=False,
             )
 
+<<<<<<< HEAD
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
             filter_size=5,
@@ -54,6 +55,21 @@ def convolutional_neural_network(use_py_reader):
             pool_stride=2,
             act="relu",
         )
+=======
+        conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                      filter_size=5,
+                                                      num_filters=20,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      act="relu")
+        conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                      filter_size=5,
+                                                      num_filters=50,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      act="relu")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -70,6 +86,7 @@ def test():
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
 
+<<<<<<< HEAD
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=BATCH_SIZE
     )
@@ -83,6 +100,13 @@ def test():
         acc,
         py_reader,
     ) = convolutional_neural_network(use_py_reader=False)
+=======
+    test_reader = paddle.batch(paddle.dataset.mnist.test(),
+                               batch_size=BATCH_SIZE)
+
+    array, img, label, prediction, avg_loss, acc, py_reader = convolutional_neural_network(
+        use_py_reader=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
     def train_test(train_test_program, train_test_feed, train_test_reader):
@@ -132,10 +156,16 @@ def train(use_cuda, thread_num, cpu_num):
     optimizer.minimize(avg_loss)
     print("Adam optimizer minimize done.")
 
+<<<<<<< HEAD
     train_reader = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
         batch_size=BATCH_SIZE,
     )
+=======
+    train_reader = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.mnist.train(), buf_size=500),
+                                batch_size=BATCH_SIZE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     print("declared train reader done.")
 
     place = fluid.CPUPlace()
@@ -157,6 +187,7 @@ def train(use_cuda, thread_num, cpu_num):
     exec_strategy.num_iteration_per_run = 10
 
     main_program = fluid.default_main_program()
+<<<<<<< HEAD
     pe = fluid.ParallelExecutor(
         use_cuda=False,
         loss_name=avg_loss.name,
@@ -164,6 +195,13 @@ def train(use_cuda, thread_num, cpu_num):
         build_strategy=build_strategy,
         exec_strategy=exec_strategy,
     )
+=======
+    pe = fluid.ParallelExecutor(use_cuda=False,
+                                loss_name=avg_loss.name,
+                                main_program=main_program,
+                                build_strategy=build_strategy,
+                                exec_strategy=exec_strategy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     print("declare parallel executor done.")
 
     py_reader.set_sample_list_generator(train_reader)
@@ -195,11 +233,13 @@ def train(use_cuda, thread_num, cpu_num):
 
 
 class TestAsyncSSAGraphExecutor(unittest.TestCase):
+
     def test_check_async_ssa_exe_train(self):
         step_list = []
         for cpu_num in [1, 2, 4]:
             print("run cpu_num -> " + str(cpu_num))
             with fluid.scope_guard(fluid.core.Scope()):
+<<<<<<< HEAD
                 with fluid.program_guard(
                     main_program=fluid.Program(),
                     startup_program=fluid.Program(),
@@ -222,6 +262,20 @@ class TestAsyncSSAGraphExecutor(unittest.TestCase):
                     main_program=fluid.Program(),
                     startup_program=fluid.Program(),
                 ):
+=======
+                with fluid.program_guard(main_program=fluid.Program(),
+                                         startup_program=fluid.Program()):
+                    start_time = time.time()
+                    step = train(use_cuda=False,
+                                 thread_num=cpu_num,
+                                 cpu_num=cpu_num)
+                    end_time = time.time()
+                    step_list.append(step)
+                print("cpu_num -> " + str(cpu_num) + " step -> " + str(step) +
+                      " time -> " + str(end_time - start_time))
+                with fluid.program_guard(main_program=fluid.Program(),
+                                         startup_program=fluid.Program()):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     test()
         assert abs(int(step_list[0] / 2) - int(step_list[1])) < 5
         assert abs(int(step_list[1] / 2) - int(step_list[2])) < 5

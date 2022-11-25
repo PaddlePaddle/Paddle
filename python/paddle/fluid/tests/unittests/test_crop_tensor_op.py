@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 
 
 def crop(data, offsets, crop_shape):
+
     def indexOf(shape, index):
         result = []
         for dim in reversed(shape):
@@ -44,6 +45,7 @@ def crop(data, offsets, crop_shape):
 
 
 class TestCropTensorOp(OpTest):
+
     def setUp(self):
         self.op_type = "crop_tensor"
         self.shape_by_input = False
@@ -87,6 +89,7 @@ class TestCropTensorOp(OpTest):
 
 
 class TestCase1(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = 100
         self.crop_shape = [64]
@@ -94,6 +97,7 @@ class TestCase1(TestCropTensorOp):
 
 
 class TestCase2(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = (12, 24)
         self.crop_shape = [-1, 8]
@@ -101,6 +105,7 @@ class TestCase2(TestCropTensorOp):
 
 
 class TestCase3(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = (4, 8, 16)
         self.crop_shape = [2, 2, 3]
@@ -109,6 +114,7 @@ class TestCase3(TestCropTensorOp):
 
 
 class TestCase4(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = (8, 3, 6, 6)
         self.crop_shape = [-1, 3, -1, 4]
@@ -117,6 +123,7 @@ class TestCase4(TestCropTensorOp):
 
 
 class TestCase5(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = (2, 4, 5, 8, 8)
         self.crop_shape = [1, 1, 2, 4, 4]
@@ -125,6 +132,7 @@ class TestCase5(TestCropTensorOp):
 
 
 class TestCase6(TestCropTensorOp):
+
     def initTestCase(self):
         self.x_shape = (2, 2, 4, 4, 4, 2)
         self.crop_shape = [1, 1, 4, 2, 2, 2]
@@ -134,6 +142,7 @@ class TestCase6(TestCropTensorOp):
 
 
 class TestCropTensorOpTensorAttr(OpTest):
+
     def setUp(self):
         self.op_type = "crop_tensor"
         self.OffsetsTensor = False
@@ -188,6 +197,7 @@ class TestCropTensorOpTensorAttr(OpTest):
 
 
 class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
+
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [-1, -1, 3]
@@ -196,6 +206,7 @@ class TestCropTensorOpTensorAttrCase1(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
+
     def initTestCase(self):
         self.x_shape = (4, 8, 16, 8)
         self.crop_shape = [2, 2, 3, 4]
@@ -204,6 +215,7 @@ class TestCropTensorOpTensorAttrCase2(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
+
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -214,6 +226,7 @@ class TestCropTensorOpTensorAttrCase3(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
+
     def initTestCase(self):
         self.x_shape = (16, 8, 32)
         self.crop_shape = [2, 2, 3]
@@ -224,6 +237,7 @@ class TestCropTensorOpTensorAttrCase4(TestCropTensorOpTensorAttr):
 
 
 class TestCropTensorException(unittest.TestCase):
+
     def test_exception(self):
         input1 = fluid.data(name="input1", shape=[2, 3, 6, 6], dtype="float32")
         input2 = fluid.data(name="input2", shape=[2, 3, 6, 6], dtype="float16")
@@ -246,6 +260,7 @@ class TestCropTensorException(unittest.TestCase):
             out = paddle.crop(input1, shape=[2, 2, 3, 3], offsets=0)
 
         def attr_offsets_dtype():
+<<<<<<< HEAD
             out = paddle.crop(
                 input1, shape=[2, 2, 3, 3], offsets=[0, 1.0, 0, 0]
             )
@@ -254,6 +269,16 @@ class TestCropTensorException(unittest.TestCase):
             out = paddle.crop(
                 input1, shape=[2, 2, 3, 3], offsets=[0, -1, offset, 0]
             )
+=======
+            out = paddle.crop(input1,
+                              shape=[2, 2, 3, 3],
+                              offsets=[0, 1.0, 0, 0])
+
+        def attr_offsets_value():
+            out = paddle.crop(input1,
+                              shape=[2, 2, 3, 3],
+                              offsets=[0, -1, offset, 0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def input_dtype():
             out = paddle.crop(input2, shape=[2, 2, 3, 3])

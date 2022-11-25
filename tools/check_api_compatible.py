@@ -72,20 +72,31 @@ def check_compatible(old_api_spec, new_api_spec):
     """
     check compatible, FullArgSpec
     """
+<<<<<<< HEAD
     if not (
         isinstance(old_api_spec, inspect.FullArgSpec)
         and isinstance(new_api_spec, inspect.FullArgSpec)
     ):
+=======
+    if not (isinstance(old_api_spec, inspect.FullArgSpec)
+            and isinstance(new_api_spec, inspect.FullArgSpec)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         logger.warning(
             "new_api_spec or old_api_spec is not instance of inspect.FullArgSpec"
         )
         return False
     return _check_compatible(
+<<<<<<< HEAD
         old_api_spec.args,
         new_api_spec.args,
         [] if old_api_spec.defaults is None else old_api_spec.defaults,
         [] if new_api_spec.defaults is None else new_api_spec.defaults,
     )
+=======
+        old_api_spec.args, new_api_spec.args,
+        [] if old_api_spec.defaults is None else old_api_spec.defaults,
+        [] if new_api_spec.defaults is None else new_api_spec.defaults)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def check_compatible_str(old_api_spec_str, new_api_spec_str):
@@ -146,6 +157,7 @@ def parse_args():
     parser.add_argument(
         'prev',
         type=argparse.FileType('r'),
+<<<<<<< HEAD
         help='the previous version (the version from develop branch)',
     )
     parser.add_argument(
@@ -157,6 +169,18 @@ def parse_args():
         parser.add_argument(
             item[0], dest=item[1], help=item[4], type=item[2], default=item[3]
         )
+=======
+        help='the previous version (the version from develop branch)')
+    parser.add_argument('post',
+                        type=argparse.FileType('r'),
+                        help='the post version (the version from PullRequest)')
+    for item in arguments:
+        parser.add_argument(item[0],
+                            dest=item[1],
+                            help=item[4],
+                            type=item[2],
+                            default=item[3])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if len(sys.argv) < 2:
         parser.print_help()

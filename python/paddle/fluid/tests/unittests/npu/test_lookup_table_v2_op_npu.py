@@ -26,6 +26,7 @@ SEED = 2021
 
 
 class TestLookupTableV2(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "lookup_table_v2"
@@ -36,9 +37,15 @@ class TestLookupTableV2(OpTest):
         self.init_padding_idx()
         np.random.seed(SEED)
         w = np.random.random([self.vocab, self.dim]).astype(self.dtype)
+<<<<<<< HEAD
         x = np.random.randint(
             0, self.vocab, size=(self.bsz, self.seqlen)
         ).astype(self.ids_dtype)
+=======
+        x = np.random.randint(0, self.vocab,
+                              size=(self.bsz,
+                                    self.seqlen)).astype(self.ids_dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = w[x]
         if self.padding_idx != -1:
             out[np.squeeze(x == self.padding_idx)] = np.zeros(self.dim)
@@ -77,9 +84,15 @@ class TestLookupTableV2(OpTest):
 
     def test_check_grad(self):
         if self.dtype == np.float16:
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place, ['W'], 'Out', max_relative_error=0.01
             )
+=======
+            self.check_grad_with_place(self.place, ['W'],
+                                       'Out',
+                                       max_relative_error=0.01)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self.check_grad_with_place(self.place, ['W'], 'Out')
 
@@ -97,6 +110,7 @@ class TestLookupTableV2FP16(TestLookupTableV2):
 
 
 class TestLookupTableV2Dim32(TestLookupTableV2):
+
     def init_dims(self):
         self.bsz = 6
         self.seqlen = 8
@@ -124,11 +138,13 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
 
 
 class TestLookupTableV2WithPadding(TestLookupTableV2):
+
     def init_padding_idx(self):
         self.padding_idx = np.random.randint(0, self.vocab)
 
 
 class TestLookupTableV2WithPadding1(TestLookupTableV2):
+
     def init_padding_idx(self):
         self.padding_idx = np.random.randint(0, self.vocab)
 

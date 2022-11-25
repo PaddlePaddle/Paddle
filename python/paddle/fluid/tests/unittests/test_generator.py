@@ -33,9 +33,15 @@ class TestGenerator(unittest.TestCase):
 
     def test_basic_generator_error(self):
         if paddle.fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.assertRaises(
                 ValueError, generator.Generator, place=paddle.CUDAPlace(0)
             )
+=======
+            self.assertRaises(ValueError,
+                              generator.Generator,
+                              place=paddle.CUDAPlace(0))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

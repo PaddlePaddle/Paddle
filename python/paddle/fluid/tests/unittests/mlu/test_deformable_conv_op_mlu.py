@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle
 import unittest
 import numpy as np
@@ -28,6 +33,10 @@ paddle.enable_static()
 
 
 class TestModulatedDeformableConvOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.place = paddle.device.MLUPlace(0)
         self.__class__.use_mlu = True
@@ -41,7 +50,11 @@ class TestModulatedDeformableConvOp(OpTest):
         conv_param = {
             'stride': self.stride,
             'pad': self.pad,
+<<<<<<< HEAD
             'dilation': self.dilations,
+=======
+            'dilation': self.dilations
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -49,16 +62,25 @@ class TestModulatedDeformableConvOp(OpTest):
         mask = 10 * np.random.random(self.mask_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
+<<<<<<< HEAD
         output = dconv_im2col_gemm(
             input, offset, mask, filter, self.groups, conv_param
         )
+=======
+        output = dconv_im2col_gemm(input, offset, mask, filter, self.groups,
+                                   conv_param)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
             'Mask': OpTest.np_dtype_to_fluid_dtype(mask),
+<<<<<<< HEAD
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+=======
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.attrs = {
             'strides': self.stride,
@@ -74,6 +96,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.check_output_with_place(self.place, check_eager=False)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place,
             {'Input', 'Offset', 'Mask', 'Filter'},
@@ -81,6 +104,13 @@ class TestModulatedDeformableConvOp(OpTest):
             max_relative_error=0.05,
             check_eager=False,
         )
+=======
+        self.check_grad_with_place(self.place,
+                                   {'Input', 'Offset', 'Mask', 'Filter'},
+                                   'Output',
+                                   max_relative_error=0.05,
+                                   check_eager=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -92,6 +122,7 @@ class TestModulatedDeformableConvOp(OpTest):
         self.filter_size = [4, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
+<<<<<<< HEAD
         offset_c = (
             2
             * self.deformable_groups
@@ -112,6 +143,17 @@ class TestModulatedDeformableConvOp(OpTest):
             mask_c,
             self.input_size[2],
             self.input_size[3],
+=======
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        mask_c = self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
+        self.mask_size = [
+            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
     def init_dilation(self):
@@ -125,6 +167,10 @@ class TestModulatedDeformableConvOp(OpTest):
 
 
 class TestWithStride(TestModulatedDeformableConvOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.pad = [3, 3]
         self.stride = [2, 2]
@@ -134,6 +180,7 @@ class TestWithStride(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
+<<<<<<< HEAD
         offset_c = (
             2
             * self.deformable_groups
@@ -154,10 +201,25 @@ class TestWithStride(TestModulatedDeformableConvOp):
             mask_c,
             self.input_size[2],
             self.input_size[3],
+=======
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        mask_c = self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
+        self.mask_size = [
+            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
 
 class TestWithDilation(TestModulatedDeformableConvOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.pad = [2, 2]
         self.stride = [1, 1]
@@ -167,6 +229,7 @@ class TestWithDilation(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
+<<<<<<< HEAD
         offset_c = (
             2
             * self.deformable_groups
@@ -187,6 +250,17 @@ class TestWithDilation(TestModulatedDeformableConvOp):
             mask_c,
             self.input_size[2],
             self.input_size[3],
+=======
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        mask_c = self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
+        self.mask_size = [
+            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
     def init_dilation(self):
@@ -194,6 +268,10 @@ class TestWithDilation(TestModulatedDeformableConvOp):
 
 
 class TestWith3x3(TestModulatedDeformableConvOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.pad = [1, 1]
         self.stride = [1, 1]
@@ -203,6 +281,7 @@ class TestWith3x3(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
+<<<<<<< HEAD
         offset_c = (
             2
             * self.deformable_groups
@@ -223,6 +302,17 @@ class TestWith3x3(TestModulatedDeformableConvOp):
             mask_c,
             self.input_size[2],
             self.input_size[3],
+=======
+        offset_c = 2 * self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        mask_c = self.deformable_groups * self.filter_size[
+            2] * self.filter_size[3]
+        self.offset_size = [
+            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+        ]
+        self.mask_size = [
+            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
 

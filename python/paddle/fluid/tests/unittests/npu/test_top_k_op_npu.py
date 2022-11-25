@@ -28,6 +28,7 @@ SEED = 2021
 
 
 class TestTopk(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -43,9 +44,14 @@ class TestTopk(OpTest):
         ).astype(self.dtype)
 
         self.inputs = {'X': x}
+<<<<<<< HEAD
         np_out = np.array([[0.88745828], [0.82196718], [0.96527182]]).astype(
             self.dtype
         )
+=======
+        np_out = np.array([[0.88745828], [0.82196718],
+                           [0.96527182]]).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         np_indices = np.array([[1], [0], [0]])
 
         self.attrs = {'k': 1, "axis": -1}
@@ -63,6 +69,7 @@ class TestTopk(OpTest):
 
 
 class TestTopkV2(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -102,6 +109,7 @@ class TestTopkV2(OpTest):
 
 
 class TestTopkV3(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -110,9 +118,16 @@ class TestTopkV3(OpTest):
         self.init_dtype()
         self.set_input_data()
         self.set_attrs()
+<<<<<<< HEAD
         output, indices = numpy_topk(
             self.input_data, axis=self.axis, k=self.k, largest=True
         )
+=======
+        output, indices = numpy_topk(self.input_data,
+                                     axis=self.axis,
+                                     k=self.k,
+                                     largest=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {'X': self.input_data}
         self.attrs = {'k': self.k, 'axis': self.axis}
@@ -133,9 +148,14 @@ class TestTopkV3(OpTest):
         self.axis = 1
 
     def set_input_data(self):
+<<<<<<< HEAD
         self.input_data = np.random.choice(
             10000, size=(10, 20), replace=False
         ).astype(self.dtype)
+=======
+        self.input_data = np.random.choice(10000, size=(10, 20),
+                                           replace=False).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

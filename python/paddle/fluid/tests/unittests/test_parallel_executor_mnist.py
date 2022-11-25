@@ -32,10 +32,15 @@ def simple_fc_net(use_feed):
             hidden,
             size=200,
             act='tanh',
+<<<<<<< HEAD
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
+=======
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
@@ -75,6 +80,7 @@ def init_data():
 
 
 class TestMNIST(TestParallelExecutorBase):
+
     @classmethod
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
@@ -90,6 +96,7 @@ class TestMNIST(TestParallelExecutorBase):
 
         img, label = init_data()
 
+<<<<<<< HEAD
         (
             all_reduce_first_loss,
             all_reduce_last_loss,
@@ -97,13 +104,28 @@ class TestMNIST(TestParallelExecutorBase):
         ) = self.check_network_convergence(
             model,
             feed_dict={"image": img, "label": label},
+=======
+        all_reduce_first_loss, all_reduce_last_loss, _ = self.check_network_convergence(
+            model,
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             use_device=use_device,
             use_reduce=False,
         )
 
         reduce_first_loss, reduce_last_loss, _ = self.check_network_convergence(
             model,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             use_device=use_device,
             use_reduce=True,
         )
@@ -123,12 +145,22 @@ class TestMNIST(TestParallelExecutorBase):
 
         img, label = init_data()
 
+<<<<<<< HEAD
         self.check_network_convergence(
             simple_fc_net,
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_reduce=use_reduce,
         )
+=======
+        self.check_network_convergence(simple_fc_net,
+                                       feed_dict={
+                                           "image": img,
+                                           "label": label
+                                       },
+                                       use_device=use_device,
+                                       use_reduce=use_reduce)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_simple_fc(self):
         # use_device
@@ -155,6 +187,7 @@ class TestMNIST(TestParallelExecutorBase):
 
         single_first_loss, single_last_loss, _ = self.check_network_convergence(
             method=simple_fc_net,
+<<<<<<< HEAD
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_parallel_executor=False,
@@ -166,6 +199,20 @@ class TestMNIST(TestParallelExecutorBase):
         ) = self.check_network_convergence(
             method=simple_fc_net,
             feed_dict={"image": img, "label": label},
+=======
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+            use_device=use_device,
+            use_parallel_executor=False)
+        parallel_first_loss, parallel_last_loss, _ = self.check_network_convergence(
+            method=simple_fc_net,
+            feed_dict={
+                "image": img,
+                "label": label
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             use_device=use_device,
             use_parallel_executor=True,
         )
@@ -175,9 +222,15 @@ class TestMNIST(TestParallelExecutorBase):
             single_first_loss,
             delta=1e-6,
         )
+<<<<<<< HEAD
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6
         )
+=======
+        self.assertAlmostEquals(np.mean(parallel_last_loss),
+                                single_last_loss,
+                                delta=1e-6)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_simple_fc_parallel_accuracy(self):
         self.check_simple_fc_parallel_accuracy(DeviceType.CUDA)
@@ -190,12 +243,22 @@ class TestMNIST(TestParallelExecutorBase):
             return
         img, label = init_data()
 
+<<<<<<< HEAD
         self.check_network_convergence(
             fc_with_batchnorm,
             feed_dict={"image": img, "label": label},
             use_device=use_device,
             use_fast_executor=use_fast_executor,
         )
+=======
+        self.check_network_convergence(fc_with_batchnorm,
+                                       feed_dict={
+                                           "image": img,
+                                           "label": label
+                                       },
+                                       use_device=use_device,
+                                       use_fast_executor=use_fast_executor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_batchnorm_fc(self):
         for use_device in (DeviceType.CPU, DeviceType.CUDA):
@@ -216,6 +279,7 @@ class TestMNIST(TestParallelExecutorBase):
 
 
 class TestMNISTNoReduce(unittest.TestCase):
+
     def run_program(self, device_type):
         if device_type == DeviceType.CUDA:
             if not paddle.is_compiled_with_cuda():
@@ -240,18 +304,30 @@ class TestMNISTNoReduce(unittest.TestCase):
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.reduce_strategy = no_reduce
         main_multi_place = paddle.static.CompiledProgram(
+<<<<<<< HEAD
             main
         ).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy, places=places
         )
+=======
+            main).with_data_parallel(loss_name=loss.name,
+                                     build_strategy=build_strategy,
+                                     places=places)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.reduce_strategy = no_reduce
         main_single_place = paddle.static.CompiledProgram(
+<<<<<<< HEAD
             main.clone()
         ).with_data_parallel(
             loss_name=loss.name, build_strategy=build_strategy, places=places[0]
         )
+=======
+            main.clone()).with_data_parallel(loss_name=loss.name,
+                                             build_strategy=build_strategy,
+                                             places=places[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         image, label = init_data()
         feed = {'image': image, 'label': label}
@@ -271,6 +347,7 @@ class TestMNISTNoReduce(unittest.TestCase):
                     grads_single_place[i].append(g)
 
             for i in range(len(grads)):
+<<<<<<< HEAD
                 grads_single_place[i] = np.concatenate(
                     grads_single_place[i], axis=0
                 ) / len(places)
@@ -278,6 +355,15 @@ class TestMNISTNoReduce(unittest.TestCase):
         self.assertEqual(len(grads_multi_place), len(grads_single_place))
         for g1, g2 in zip(grads_multi_place, grads_single_place):
             np.testing.assert_allclose(g1, g2, rtol=1e-05)
+=======
+                grads_single_place[i] = np.concatenate(grads_single_place[i],
+                                                       axis=0) / len(places)
+
+        self.assertEqual(len(grads_multi_place), len(grads_single_place))
+        for g1, g2 in zip(grads_multi_place, grads_single_place):
+            self.assertTrue(np.allclose(g1, g2),
+                            'g1 = {}\ng2 = {}\n'.format(g1, g2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def split_feed(self, feed, n):
         image = feed['image']

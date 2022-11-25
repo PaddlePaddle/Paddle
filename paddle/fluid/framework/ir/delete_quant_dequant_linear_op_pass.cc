@@ -111,6 +111,12 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     }
     */
     std::unordered_set<const Node*> nodes2rm = {};
+<<<<<<< HEAD
+=======
+    int bit_length =
+        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
+    int range = ((1 << (bit_length - 1)) - 1);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     // Get input scale from tensor
     const phi::DenseTensor& input_scale_tensor =

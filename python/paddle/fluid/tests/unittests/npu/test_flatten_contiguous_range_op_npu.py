@@ -25,6 +25,7 @@ paddle.enable_static()
 
 
 class TestFlattenOp(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "flatten_contiguous_range"
@@ -64,6 +65,7 @@ class TestFlattenOp(OpTest):
 
 
 class TestFlattenOp_1(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 1
@@ -78,6 +80,7 @@ class TestFlattenOp_1(TestFlattenOp):
 
 
 class TestFlattenOp_2(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -92,6 +95,7 @@ class TestFlattenOp_2(TestFlattenOp):
 
 
 class TestFlattenOp_3(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -106,6 +110,7 @@ class TestFlattenOp_3(TestFlattenOp):
 
 
 class TestFlattenOp_4(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = -2
@@ -120,6 +125,7 @@ class TestFlattenOp_4(TestFlattenOp):
 
 
 class TestFlattenOp_5(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 2
@@ -134,6 +140,7 @@ class TestFlattenOp_5(TestFlattenOp):
 
 
 class TestFlattenOpSixDims(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.start_axis = 3
@@ -148,6 +155,7 @@ class TestFlattenOpSixDims(TestFlattenOp):
 
 
 class TestFlattenOp_Float32(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -163,6 +171,7 @@ class TestFlattenOp_Float32(TestFlattenOp):
 
 
 class TestFlattenOp_int32(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -181,6 +190,7 @@ class TestFlattenOp_int32(TestFlattenOp):
 
 
 class TestFlattenOp_uint8(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -199,6 +209,7 @@ class TestFlattenOp_uint8(TestFlattenOp):
 
 
 class TestFlattenOp_int8(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -217,6 +228,7 @@ class TestFlattenOp_int8(TestFlattenOp):
 
 
 class TestFlattenOp_int64(TestFlattenOp):
+
     def init_test_case(self):
         self.in_shape = (3, 2, 5, 4)
         self.start_axis = 0
@@ -235,6 +247,7 @@ class TestFlattenOp_int64(TestFlattenOp):
 
 
 class TestFlatten2OpError(unittest.TestCase):
+
     def test_errors(self):
         image_shape = (2, 3, 4, 4)
         x = (
@@ -249,25 +262,43 @@ class TestFlatten2OpError(unittest.TestCase):
         x = x.astype('float32')
 
         def test_ValueError1():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = paddle.flatten(x_var, start_axis=2, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError1)
 
         def test_ValueError2():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.flatten(x_var, start_axis=10, stop_axis=1)
 
         self.assertRaises(ValueError, test_ValueError2)
 
         def test_ValueError3():
+<<<<<<< HEAD
             x_var = paddle.static.data(
                 name="x", shape=image_shape, dtype='float32'
             )
+=======
+            x_var = paddle.static.data(name="x",
+                                       shape=image_shape,
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.flatten(x_var, start_axis=2, stop_axis=10)
 
         self.assertRaises(ValueError, test_ValueError3)
@@ -284,9 +315,15 @@ class TestFlatten2OpError(unittest.TestCase):
                 / 100.0
             )
             x2 = x2.astype('float16')
+<<<<<<< HEAD
             x2_var = paddle.fluid.data(
                 name='x2', shape=[3, 2, 4, 5], dtype='float16'
             )
+=======
+            x2_var = paddle.fluid.data(name='x2',
+                                       shape=[3, 2, 4, 5],
+                                       dtype='float16')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.flatten(x2_var)
 
         self.assertRaises(TypeError, test_type)
@@ -298,6 +335,7 @@ class TestFlatten2OpError(unittest.TestCase):
 
 
 class TestStaticFlattenPythonAPI(unittest.TestCase):
+
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return paddle.flatten(x, start_axis, stop_axis)
 
@@ -307,9 +345,15 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
 
         main_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, paddle.static.Program()):
+<<<<<<< HEAD
             x = paddle.static.data(
                 name="x", shape=[2, 3, 4, 4], dtype='float32'
             )
+=======
+            x = paddle.static.data(name="x",
+                                   shape=[2, 3, 4, 4],
+                                   dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = self.execute_api(x, start_axis=-2, stop_axis=-1)
 
         exe = paddle.static.Executor(place=paddle.NPUPlace(0))
@@ -318,11 +362,13 @@ class TestStaticFlattenPythonAPI(unittest.TestCase):
 
 
 class TestStaticInplaceFlattenPythonAPI(TestStaticFlattenPythonAPI):
+
     def execute_api(self, x, start_axis=0, stop_axis=-1):
         return x.flatten_(start_axis, stop_axis)
 
 
 class TestFlattenPython(unittest.TestCase):
+
     def test_python_api(self):
         image_shape = (2, 3, 4, 4)
         x = (

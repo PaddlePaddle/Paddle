@@ -40,6 +40,7 @@ decoder_size = hidden_dim
 
 def encoder(is_sparse):
     # encoder
+<<<<<<< HEAD
     src_word_id = pd.data(
         name="src_word_id", shape=[1], dtype='int64', lod_level=1
     )
@@ -50,6 +51,17 @@ def encoder(is_sparse):
         is_sparse=is_sparse,
         param_attr=fluid.ParamAttr(name='vemb'),
     )
+=======
+    src_word_id = pd.data(name="src_word_id",
+                          shape=[1],
+                          dtype='int64',
+                          lod_level=1)
+    src_embedding = pd.embedding(input=src_word_id,
+                                 size=[dict_size, word_dim],
+                                 dtype='float32',
+                                 is_sparse=is_sparse,
+                                 param_attr=fluid.ParamAttr(name='vemb'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
     lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
@@ -59,6 +71,7 @@ def encoder(is_sparse):
 
 def decoder_train(context, is_sparse):
     # decoder
+<<<<<<< HEAD
     trg_language_word = pd.data(
         name="target_language_word", shape=[1], dtype='int64', lod_level=1
     )
@@ -69,6 +82,17 @@ def decoder_train(context, is_sparse):
         is_sparse=is_sparse,
         param_attr=fluid.ParamAttr(name='vemb'),
     )
+=======
+    trg_language_word = pd.data(name="target_language_word",
+                                shape=[1],
+                                dtype='int64',
+                                lod_level=1)
+    trg_embedding = pd.embedding(input=trg_language_word,
+                                 size=[dict_size, word_dim],
+                                 dtype='float32',
+                                 is_sparse=is_sparse,
+                                 param_attr=fluid.ParamAttr(name='vemb'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     rnn = pd.DynamicRNN()
     with rnn.block():
@@ -101,9 +125,16 @@ def decoder_decode(context, is_sparse):
     scores_array = pd.create_array('float32')
 
     init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
+<<<<<<< HEAD
     init_scores = pd.data(
         name="init_scores", shape=[1], dtype="float32", lod_level=2
     )
+=======
+    init_scores = pd.data(name="init_scores",
+                          shape=[1],
+                          dtype="float32",
+                          lod_level=2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     pd.array_write(init_ids, array=ids_array, i=counter)
     pd.array_write(init_scores, array=scores_array, i=counter)
@@ -119,12 +150,19 @@ def decoder_decode(context, is_sparse):
         # expand the recursive_sequence_lengths of pre_state to be the same with pre_score
         pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
+<<<<<<< HEAD
         pre_ids_emb = pd.embedding(
             input=pre_ids,
             size=[dict_size, word_dim],
             dtype='float32',
             is_sparse=is_sparse,
         )
+=======
+        pre_ids_emb = pd.embedding(input=pre_ids,
+                                   size=[dict_size, word_dim],
+                                   dtype='float32',
+                                   is_sparse=is_sparse)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # use rnn unit to update rnn
         current_state = pd.fc(
@@ -139,6 +177,7 @@ def decoder_decode(context, is_sparse):
         )
         topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
         # calculate accumulated scores after topk to reduce computation cost
+<<<<<<< HEAD
         accu_scores = pd.elementwise_add(
             x=pd.log(topk_scores),
             y=paddle.reshape(pre_score, shape=[-1]),
@@ -153,6 +192,18 @@ def decoder_decode(context, is_sparse):
             end_id=10,
             level=0,
         )
+=======
+        accu_scores = pd.elementwise_add(x=pd.log(topk_scores),
+                                         y=pd.reshape(pre_score, shape=[-1]),
+                                         axis=0)
+        selected_ids, selected_scores = pd.beam_search(pre_ids,
+                                                       pre_score,
+                                                       topk_indices,
+                                                       accu_scores,
+                                                       beam_size,
+                                                       end_id=10,
+                                                       level=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         pd.increment(x=counter, value=1, in_place=True)
 
@@ -183,9 +234,16 @@ def train_main(use_cuda, is_sparse, is_local=True):
 
     context = encoder(is_sparse)
     rnn_out = decoder_train(context, is_sparse)
+<<<<<<< HEAD
     label = pd.data(
         name="target_language_next_word", shape=[1], dtype='int64', lod_level=1
     )
+=======
+    label = pd.data(name="target_language_next_word",
+                    shape=[1],
+                    dtype='int64',
+                    lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     cost = pd.cross_entropy(input=rnn_out, label=label)
     avg_cost = pd.mean(cost)
 
@@ -197,12 +255,18 @@ def train_main(use_cuda, is_sparse, is_local=True):
     )
     optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000
         ),
         batch_size=batch_size,
     )
+=======
+    train_data = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+                              batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     feed_order = [
         'src_word_id',
@@ -277,9 +341,14 @@ def decode_main(use_cuda, is_sparse):
     exe.run(framework.default_startup_program())
 
     init_ids_data = np.array([1 for _ in range(batch_size)], dtype='int64')
+<<<<<<< HEAD
     init_scores_data = np.array(
         [1.0 for _ in range(batch_size)], dtype='float32'
     )
+=======
+    init_scores_data = np.array([1. for _ in range(batch_size)],
+                                dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
     init_recursive_seq_lens = [1] * batch_size
@@ -292,12 +361,18 @@ def decode_main(use_cuda, is_sparse):
         init_scores_data, init_recursive_seq_lens, place
     )
 
+<<<<<<< HEAD
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000
         ),
         batch_size=batch_size,
     )
+=======
+    train_data = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+                              batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     feed_order = ['src_word_id']
     feed_list = [
@@ -336,9 +411,14 @@ def scope_prog_guard():
 
 
 def inject_test_train(use_cuda, is_sparse):
+<<<<<<< HEAD
     f_name = 'test_{0}_{1}_train'.format(
         'cuda' if use_cuda else 'cpu', 'sparse' if is_sparse else 'dense'
     )
+=======
+    f_name = 'test_{0}_{1}_train'.format('cuda' if use_cuda else 'cpu',
+                                         'sparse' if is_sparse else 'dense')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def f(*args):
         with scope_prog_guard():
@@ -348,9 +428,14 @@ def inject_test_train(use_cuda, is_sparse):
 
 
 def inject_test_decode(use_cuda, is_sparse, decorator=None):
+<<<<<<< HEAD
     f_name = 'test_{0}_{1}_decode'.format(
         'cuda' if use_cuda else 'cpu', 'sparse' if is_sparse else 'dense'
     )
+=======
+    f_name = 'test_{0}_{1}_decode'.format('cuda' if use_cuda else 'cpu',
+                                          'sparse' if is_sparse else 'dense')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def f(*args):
         with scope_prog_guard():
@@ -375,9 +460,15 @@ for _use_cuda_ in (False, True):
                 reason='Beam Search does not support CUDA!'
             )
 
+<<<<<<< HEAD
         inject_test_decode(
             is_sparse=_is_sparse_, use_cuda=_use_cuda_, decorator=_decorator_
         )
+=======
+        inject_test_decode(is_sparse=_is_sparse_,
+                           use_cuda=_use_cuda_,
+                           decorator=_decorator_)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 if __name__ == '__main__':
     unittest.main()

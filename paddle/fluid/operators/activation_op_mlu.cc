@@ -144,8 +144,13 @@ template <typename T>
 class SqrtMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto place = ctx.GetPlace();
 
     out->mutable_data<T>(place);
@@ -167,9 +172,15 @@ template <typename T>
 class SqrtGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto place = ctx.GetPlace();
 
     dx->mutable_data<T>(place);
@@ -190,8 +201,13 @@ template <cnnlLogBase_t Log_base, typename T>
 class LogMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*input);
@@ -212,8 +228,13 @@ template <typename T>
 class ExpMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*input);
@@ -233,9 +254,15 @@ template <typename T>
 class ExpGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     dx->mutable_data<T>(ctx.GetPlace());
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
@@ -260,8 +287,13 @@ template <typename T>
 class HardSwishMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(ctx.GetPlace());
     float threshold = ctx.Attr<float>("threshold");
     float scale = ctx.Attr<float>("scale");
@@ -312,9 +344,15 @@ class HardSwishGradMLUKernel : public framework::OpKernel<T> {
         offset,
         3.0f,
         platform::errors::External("Not support offset [%f] in MLU", offset));
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("X");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out = ctx.Input<Tensor>("X");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     dx->mutable_data<T>(ctx.GetPlace());
 
@@ -342,8 +380,13 @@ template <typename T>
 class HardSigmoidMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     float slope = ctx.Attr<float>("slope");
     float offset = ctx.Attr<float>("offset");
     output->mutable_data<T>(ctx.GetPlace());
@@ -369,9 +412,15 @@ template <typename T>
 class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     float slope = ctx.Attr<float>("slope");
     float offset = ctx.Attr<float>("offset");
     dx->mutable_data<T>(ctx.GetPlace());
@@ -381,7 +430,11 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
                                    1.0f /*sliced_dim useless*/,
                                    slope,
                                    offset);
+<<<<<<< HEAD
     MLUCnnlTensorDesc x_desc(*x);
+=======
+    MLUCnnlTensorDesc out_desc(*out);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     MLUCnnlTensorDesc dout_desc(*dout);
     MLUCnnlTensorDesc dx_desc(*dx);
     MLUCnnl::ActiveGrad(ctx,
@@ -392,8 +445,13 @@ class HardSigmoidGradMLUKernel : public framework::OpKernel<T> {
                         nullptr,
                         dout_desc.get(),
                         GetBasePtr(dout),
+<<<<<<< HEAD
                         x_desc.get(),
                         GetBasePtr(x),
+=======
+                        out_desc.get(),
+                        GetBasePtr(out),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         dx_desc.get(),
                         GetBasePtr(dx));
   }
@@ -403,8 +461,13 @@ template <typename T>
 class FloorMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("X");
     auto* output = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* input = ctx.Input<Tensor>("X");
+    auto* output = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(ctx.GetPlace());
 
     MLUCnnlTensorDesc input_desc(*input);
@@ -422,8 +485,13 @@ template <typename DeviceContext, typename T>
 class ReciprocalMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
     MLUCnnlTensorDesc x_desc(*x);
@@ -437,9 +505,15 @@ template <typename DeviceContext, typename T>
 class ReciprocalGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* out = ctx.Input<phi::DenseTensor>("Out");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* out = ctx.Input<Tensor>("Out");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto place = ctx.GetPlace();
     dx->mutable_data<T>(place);
     Tensor square_out;

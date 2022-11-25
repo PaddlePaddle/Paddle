@@ -63,10 +63,17 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
       cudaMalloc(&embs_gpu_[i], sizeof(T) * size);
       cudaMemcpy(
           embs_gpu_[i], host_ptr, size * sizeof(T), cudaMemcpyHostToDevice);
+<<<<<<< HEAD
+=======
+      if (std::is_same<T, half>::value) {
+        delete[] host_ptr;
+      }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
   }
 
   if (bias_) {
+<<<<<<< HEAD
     cudaMalloc(&bias_gpu_, sizeof(T) * bias_size_);
     cudaMemcpy(
         bias_gpu_, bias_, bias_size_ * sizeof(T), cudaMemcpyHostToDevice);
@@ -75,6 +82,18 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::initialize() {
     cudaMalloc(&scale_gpu_, sizeof(T) * scale_size_);
     cudaMemcpy(
         scale_gpu_, scale_, scale_size_ * sizeof(T), cudaMemcpyHostToDevice);
+=======
+    cudaMalloc(&bias_gpu_, sizeof(float) * bias_size_);
+    cudaMemcpy(
+        bias_gpu_, bias_, bias_size_ * sizeof(float), cudaMemcpyHostToDevice);
+  }
+  if (scale_) {
+    cudaMalloc(&scale_gpu_, sizeof(float) * scale_size_);
+    cudaMemcpy(scale_gpu_,
+               scale_,
+               scale_size_ * sizeof(float),
+               cudaMemcpyHostToDevice);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   int input_num = embs_.size();
@@ -218,6 +237,15 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
           "The input of swish plugin shoule not be nullptr."));
   PADDLE_ENFORCE_EQ(nb_outputs,
                     1,
+<<<<<<< HEAD
+=======
+                    platform::errors::InvalidArgument(
+                        "The EmbEltwiseLayerNorm's output should be one"
+                        "but it's (%d) outputs.",
+                        nb_outputs));
+  PADDLE_ENFORCE_EQ(nb_outputs,
+                    1,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     platform::errors::InvalidArgument(
                         "The EmbEltwiseLayerNorm's output should be one"
                         "but it's (%d) outputs.",
@@ -225,11 +253,22 @@ bool EmbEltwiseLayernormPluginDynamic::supportsFormatCombination(
   int all_nums = nb_inputs + nb_outputs;
   PADDLE_ENFORCE_LT(
       pos,
+<<<<<<< HEAD
       all_nums,
       platform::errors::InvalidArgument("The pos(%d) should be less than the "
                                         "num(%d) of the input and the output.",
                                         pos,
                                         all_nums));
+=======
+      nb_inputs + nb_outputs,
+      platform::errors::InvalidArgument("The pos(%d) should be less than the "
+                                        "num(%d) of the input and the output.",
+                                        pos,
+                                        nb_inputs + nb_outputs));
+
+  int all_nums = nb_inputs + nb_outputs;
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const nvinfer1::PluginTensorDesc &desc = in_out[pos];
   if (desc.format != nvinfer1::TensorFormat::kLINEAR) {
     return false;
@@ -263,7 +302,11 @@ nvinfer1::DataType EmbEltwiseLayernormPluginDynamic::getOutputDataType(
       index,
       0,
       platform::errors::InvalidArgument(
+<<<<<<< HEAD
           "The EmbEltwiseLayernorm Plugin only has one output, so the "
+=======
+          "The EmbEltwiseLayernorm Plugin only has one input, so the "
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           "index value should be 0, but get %d.",
           index));
   if (with_fp16_)

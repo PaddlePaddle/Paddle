@@ -19,9 +19,13 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
 from paddle.fluid.dygraph.dygraph_to_static.utils import is_paddle_api
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 PDB_SET = "pdb.set_trace"
 
@@ -51,10 +55,14 @@ class CallTransformer(BaseTransformer):
 
         func_str = ast_to_source_code(node.func).strip()
         try:
+<<<<<<< HEAD
             from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import (
                 is_builtin,
             )
 
+=======
+            from paddle.fluid.dygraph.dygraph_to_static.convert_call_func import is_builtin
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             need_convert_builtin_func_list = {
                 'len',
                 'zip',

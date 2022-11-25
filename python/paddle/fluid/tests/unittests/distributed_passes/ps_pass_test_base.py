@@ -23,6 +23,7 @@ from paddle.fluid.tests.unittests.distributed_passes.dist_pass_test_base import 
 
 
 class PsPassTestBase(unittest.TestCase):
+
     def init(self):
         self.config = {}
         self.config['ps_mode_config'] = ""

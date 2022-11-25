@@ -54,6 +54,7 @@ def db_lstm(
     word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark, **ignored
 ):
     # 8 features
+<<<<<<< HEAD
     predicate_embedding = fluid.layers.embedding(
         input=predicate,
         size=[pred_dict_len, word_dim],
@@ -76,6 +77,25 @@ def db_lstm(
             input=x,
             param_attr=fluid.ParamAttr(name=embedding_name, trainable=False),
         )
+=======
+    predicate_embedding = fluid.layers.embedding(input=predicate,
+                                                 size=[pred_dict_len, word_dim],
+                                                 dtype='float32',
+                                                 is_sparse=IS_SPARSE,
+                                                 param_attr='vemb')
+
+    mark_embedding = fluid.layers.embedding(input=mark,
+                                            size=[mark_dict_len, mark_dim],
+                                            dtype='float32',
+                                            is_sparse=IS_SPARSE)
+
+    word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
+    emb_layers = [
+        fluid.layers.embedding(size=[word_dict_len, word_dim],
+                               input=x,
+                               param_attr=fluid.ParamAttr(name=embedding_name,
+                                                          trainable=False))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for x in word_input
     ]
     emb_layers.append(predicate_embedding)
@@ -87,6 +107,7 @@ def db_lstm(
 
     hidden_0 = fluid.layers.sums(input=hidden_0_layers)
 
+<<<<<<< HEAD
     lstm_0 = fluid.layers.dynamic_lstm(
         input=hidden_0,
         size=hidden_dim,
@@ -94,6 +115,13 @@ def db_lstm(
         gate_activation='sigmoid',
         cell_activation='sigmoid',
     )
+=======
+    lstm_0 = fluid.layers.dynamic_lstm(input=hidden_0,
+                                       size=hidden_dim,
+                                       candidate_activation='relu',
+                                       gate_activation='sigmoid',
+                                       cell_activation='sigmoid')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # stack L-LSTM and R-LSTM with direct edges
     input_tmp = [hidden_0, lstm_0]
@@ -106,6 +134,7 @@ def db_lstm(
             ]
         )
 
+<<<<<<< HEAD
         lstm = fluid.layers.dynamic_lstm(
             input=mix_hidden,
             size=hidden_dim,
@@ -114,6 +143,14 @@ def db_lstm(
             cell_activation='sigmoid',
             is_reverse=((i % 2) == 1),
         )
+=======
+        lstm = fluid.layers.dynamic_lstm(input=mix_hidden,
+                                         size=hidden_dim,
+                                         candidate_activation='relu',
+                                         gate_activation='sigmoid',
+                                         cell_activation='sigmoid',
+                                         is_reverse=((i % 2) == 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         input_tmp = [mix_hidden, lstm]
 
@@ -133,6 +170,7 @@ def db_lstm(
 
 def train(use_cuda, save_dirname=None, is_local=True):
     # define network topology
+<<<<<<< HEAD
     word = fluid.layers.data(
         name='word_data', shape=[1], dtype='int64', lod_level=1
     )
@@ -166,11 +204,56 @@ def train(use_cuda, save_dirname=None, is_local=True):
         label=target,
         param_attr=fluid.ParamAttr(name='crfw', learning_rate=mix_hidden_lr),
     )
+=======
+    word = fluid.layers.data(name='word_data',
+                             shape=[1],
+                             dtype='int64',
+                             lod_level=1)
+    predicate = fluid.layers.data(name='verb_data',
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1)
+    ctx_n2 = fluid.layers.data(name='ctx_n2_data',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+    ctx_n1 = fluid.layers.data(name='ctx_n1_data',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+    ctx_0 = fluid.layers.data(name='ctx_0_data',
+                              shape=[1],
+                              dtype='int64',
+                              lod_level=1)
+    ctx_p1 = fluid.layers.data(name='ctx_p1_data',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+    ctx_p2 = fluid.layers.data(name='ctx_p2_data',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+    mark = fluid.layers.data(name='mark_data',
+                             shape=[1],
+                             dtype='int64',
+                             lod_level=1)
+    feature_out = db_lstm(**locals())
+    target = fluid.layers.data(name='target',
+                               shape=[1],
+                               dtype='int64',
+                               lod_level=1)
+    crf_cost = fluid.layers.linear_chain_crf(input=feature_out,
+                                             label=target,
+                                             param_attr=fluid.ParamAttr(
+                                                 name='crfw',
+                                                 learning_rate=mix_hidden_lr))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     avg_cost = paddle.mean(crf_cost)
 
     # TODO(qiao)
     # check other optimizers and check why out will be NAN
     sgd_optimizer = fluid.optimizer.SGD(
+<<<<<<< HEAD
         learning_rate=fluid.layers.exponential_decay(
             learning_rate=0.01,
             decay_steps=100000,
@@ -178,6 +261,12 @@ def train(use_cuda, save_dirname=None, is_local=True):
             staircase=True,
         )
     )
+=======
+        learning_rate=fluid.layers.exponential_decay(learning_rate=0.01,
+                                                     decay_steps=100000,
+                                                     decay_rate=0.5,
+                                                     staircase=True))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     sgd_optimizer.minimize(avg_cost)
 
     # TODO(qiao)
@@ -186,6 +275,7 @@ def train(use_cuda, save_dirname=None, is_local=True):
         input=feature_out, param_attr=fluid.ParamAttr(name='crfw')
     )
 
+<<<<<<< HEAD
     train_data = paddle.batch(
         paddle.reader.shuffle(paddle.dataset.conll05.test(), buf_size=8192),
         batch_size=BATCH_SIZE,
@@ -206,6 +296,17 @@ def train(use_cuda, save_dirname=None, is_local=True):
         ],
         place=place,
     )
+=======
+    train_data = paddle.batch(paddle.reader.shuffle(
+        paddle.dataset.conll05.test(), buf_size=8192),
+                              batch_size=BATCH_SIZE)
+
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    feeder = fluid.DataFeeder(feed_list=[
+        word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
+    ],
+                              place=place)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     exe = fluid.Executor(place)
 
     def train_loop(main_program):
@@ -230,15 +331,21 @@ def train(use_cuda, save_dirname=None, is_local=True):
                 if batch_id % 10 == 0:
                     print("avg_cost:" + str(cost))
                     if batch_id != 0:
+<<<<<<< HEAD
                         print(
                             "second per batch: "
                             + str((time.time() - start_time) / batch_id)
                         )
+=======
+                        print("second per batch: " +
+                              str((time.time() - start_time) / batch_id))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     # Set the threshold low to speed up the CI test
                     if float(cost) < 80.0:
                         if save_dirname is not None:
                             # TODO(liuyiqun): Change the target to crf_decode
                             fluid.io.save_inference_model(
+<<<<<<< HEAD
                                 save_dirname,
                                 [
                                     'word_data',
@@ -253,6 +360,13 @@ def train(use_cuda, save_dirname=None, is_local=True):
                                 [feature_out],
                                 exe,
                             )
+=======
+                                save_dirname, [
+                                    'word_data', 'verb_data', 'ctx_n2_data',
+                                    'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                                    'ctx_p2_data', 'mark_data'
+                                ], [feature_out], exe)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         return
 
                 batch_id = batch_id + 1
@@ -319,6 +433,7 @@ def infer(use_cuda, save_dirname=None):
         recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
+<<<<<<< HEAD
         word = fluid.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=word_dict_len - 1
         )
@@ -343,6 +458,48 @@ def infer(use_cuda, save_dirname=None):
         mark = fluid.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=mark_dict_len - 1
         )
+=======
+        word = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                 base_shape,
+                                                 place,
+                                                 low=0,
+                                                 high=word_dict_len - 1)
+        pred = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                 base_shape,
+                                                 place,
+                                                 low=0,
+                                                 high=pred_dict_len - 1)
+        ctx_n2 = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                   base_shape,
+                                                   place,
+                                                   low=0,
+                                                   high=word_dict_len - 1)
+        ctx_n1 = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                   base_shape,
+                                                   place,
+                                                   low=0,
+                                                   high=word_dict_len - 1)
+        ctx_0 = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                  base_shape,
+                                                  place,
+                                                  low=0,
+                                                  high=word_dict_len - 1)
+        ctx_p1 = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                   base_shape,
+                                                   place,
+                                                   low=0,
+                                                   high=word_dict_len - 1)
+        ctx_p2 = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                   base_shape,
+                                                   place,
+                                                   low=0,
+                                                   high=word_dict_len - 1)
+        mark = fluid.create_random_int_lodtensor(recursive_seq_lens,
+                                                 base_shape,
+                                                 place,
+                                                 low=0,
+                                                 high=mark_dict_len - 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -381,9 +538,14 @@ def main(use_cuda, is_local=True):
 
     temp_dir = tempfile.TemporaryDirectory()
     # Directory for saving the trained model
+<<<<<<< HEAD
     save_dirname = os.path.join(
         temp_dir.name, "label_semantic_roles.inference.model"
     )
+=======
+    save_dirname = os.path.join(temp_dir.name,
+                                "label_semantic_roles.inference.model")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     train(use_cuda, save_dirname, is_local)
     infer(use_cuda, save_dirname)
@@ -392,6 +554,7 @@ def main(use_cuda, is_local=True):
 
 
 class TestLabelSemanticRoles(unittest.TestCase):
+
     def test_cuda(self):
         with self.scope_prog_guard():
             main(use_cuda=True)

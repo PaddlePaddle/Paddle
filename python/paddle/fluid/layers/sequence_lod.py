@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle
 from .layer_function_generator import templatedoc
 from ..framework import (
@@ -164,13 +169,20 @@ def sequence_conv(
     helper = LayerHelper('sequence_conv', **locals())
     dtype = helper.input_dtype()
     filter_shape = [filter_size * input.shape[1], num_filters]
+<<<<<<< HEAD
     filter_param = helper.create_parameter(
         attr=helper.param_attr, shape=filter_shape, dtype=dtype
     )
+=======
+    filter_param = helper.create_parameter(attr=helper.param_attr,
+                                           shape=filter_shape,
+                                           dtype=dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     pre_bias = helper.create_variable_for_type_inference(dtype)
     if padding_start is None:
         padding_start = -int(filter_size // 2)
 
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_conv',
         inputs={
@@ -184,6 +196,19 @@ def sequence_conv(
             'contextLength': filter_size,
         },
     )
+=======
+    helper.append_op(type='sequence_conv',
+                     inputs={
+                         'X': [input],
+                         'Filter': [filter_param],
+                     },
+                     outputs={"Out": pre_bias},
+                     attrs={
+                         'contextStride': filter_stride,
+                         'contextStart': padding_start,
+                         'contextLength': filter_size,
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     pre_act = helper.append_bias_op(pre_bias)
     return helper.append_activation(pre_act)
 
@@ -266,12 +291,19 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     )
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="sequence_softmax",
         inputs={"X": input},
         outputs={"Out": softmax_out},
         attrs={"use_cudnn": use_cudnn},
     )
+=======
+    helper.append_op(type="sequence_softmax",
+                     inputs={"X": input},
+                     outputs={"Out": softmax_out},
+                     attrs={"use_cudnn": use_cudnn})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return softmax_out
 
 
@@ -373,6 +405,7 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
     pool_out = helper.create_variable_for_type_inference(dtype)
     max_index = helper.create_variable_for_type_inference(dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="sequence_pool",
         inputs={"X": input},
@@ -383,6 +416,19 @@ def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
             "pad_value": pad_value,
         },
     )
+=======
+    helper.append_op(type="sequence_pool",
+                     inputs={"X": input},
+                     outputs={
+                         "Out": pool_out,
+                         "MaxIndex": max_index
+                     },
+                     attrs={
+                         "pooltype": pool_type.upper(),
+                         "is_test": is_test,
+                         "pad_value": pad_value
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # when pool_type is max, variable max_index is initialized,
     # so we stop the gradient explicitly here
@@ -455,9 +501,15 @@ def sequence_concat(input, name=None):
         )
 
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]}
     )
+=======
+    helper.append_op(type='sequence_concat',
+                     inputs={'X': input},
+                     outputs={'Out': [out]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -663,11 +715,21 @@ def sequence_slice(input, offset, length, name=None):
     offset.stop_gradient = True
     length.stop_gradient = True
 
+<<<<<<< HEAD
     helper.append_op(
         type="sequence_slice",
         inputs={"X": input, "Offset": offset, "Length": length},
         outputs={"Out": out},
     )
+=======
+    helper.append_op(type="sequence_slice",
+                     inputs={
+                         "X": input,
+                         "Offset": offset,
+                         "Length": length
+                     },
+                     outputs={"Out": out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return out
 
@@ -802,12 +864,22 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     helper = LayerHelper('sequence_expand', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_expand',
         inputs={'X': x, 'Y': y},
         outputs={'Out': tmp},
         attrs={'ref_level': ref_level},
     )
+=======
+    helper.append_op(type='sequence_expand',
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Out': tmp},
+                     attrs={'ref_level': ref_level})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return tmp
 
 
@@ -925,9 +997,18 @@ def sequence_expand_as(x, y, name=None):
     helper = LayerHelper('sequence_expand_as', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     tmp = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_expand_as', inputs={'X': x, 'Y': y}, outputs={'Out': tmp}
     )
+=======
+    helper.append_op(type='sequence_expand_as',
+                     inputs={
+                         'X': x,
+                         'Y': y
+                     },
+                     outputs={'Out': tmp})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return tmp
 
 
@@ -1043,12 +1124,25 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
     if maxlen is None:
         maxlen = -1
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_pad',
         inputs={'X': x, 'PadValue': pad_value},
         outputs={'Out': out, 'Length': length},
         attrs={'padded_length': maxlen},
     )
+=======
+    helper.append_op(type='sequence_pad',
+                     inputs={
+                         'X': x,
+                         'PadValue': pad_value
+                     },
+                     outputs={
+                         'Out': out,
+                         'Length': length
+                     },
+                     attrs={'padded_length': maxlen})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out, length
 
 
@@ -1125,11 +1219,20 @@ def sequence_unpad(x, length, name=None):
 
     length.stop_gradient = True
 
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_unpad',
         inputs={'X': x, 'Length': length},
         outputs={'Out': out},
     )
+=======
+    helper.append_op(type='sequence_unpad',
+                     inputs={
+                         'X': x,
+                         'Length': length
+                     },
+                     outputs={'Out': out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -1193,12 +1296,19 @@ def sequence_reshape(input, new_dim):
         'fluid.layers.sequence_reshape',
     )
     out = helper.create_variable_for_type_inference(helper.input_dtype())
+<<<<<<< HEAD
     helper.append_op(
         type='sequence_reshape',
         inputs={'X': [input]},
         outputs={'Out': [out]},
         attrs={'new_dim': new_dim},
     )
+=======
+    helper.append_op(type='sequence_reshape',
+                     inputs={'X': [input]},
+                     outputs={'Out': [out]},
+                     attrs={'new_dim': new_dim})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -1290,11 +1400,21 @@ def sequence_scatter(input, index, updates, name=None):
 
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="sequence_scatter",
         inputs={"X": input, "Ids": index, "Updates": updates},
         outputs={"Out": out},
     )
+=======
+    helper.append_op(type="sequence_scatter",
+                     inputs={
+                         "X": input,
+                         "Ids": index,
+                         "Updates": updates
+                     },
+                     outputs={"Out": out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -1356,6 +1476,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         input, 'input', ['int32', 'int64'], 'sequence_enumerate'
     )
     helper = LayerHelper('sequence_enumerate', **locals())
+<<<<<<< HEAD
     out = helper.create_variable_for_type_inference(
         helper.input_dtype(), stop_gradient=True
     )
@@ -1365,6 +1486,17 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         outputs={'Out': out},
         attrs={'win_size': win_size, 'pad_value': pad_value},
     )
+=======
+    out = helper.create_variable_for_type_inference(helper.input_dtype(),
+                                                    stop_gradient=True)
+    helper.append_op(type='sequence_enumerate',
+                     inputs={'X': input},
+                     outputs={'Out': out},
+                     attrs={
+                         'win_size': win_size,
+                         'pad_value': pad_value
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -1490,10 +1622,17 @@ def sequence_reverse(x, name=None):
     )
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="sequence_reverse",
         inputs={"X": x},
         outputs={"Y": out},
         attrs=dict(),
     )
+=======
+    helper.append_op(type="sequence_reverse",
+                     inputs={"X": x},
+                     outputs={"Y": out},
+                     attrs=dict())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out

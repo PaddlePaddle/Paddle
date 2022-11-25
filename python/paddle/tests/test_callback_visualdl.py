@@ -24,11 +24,13 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class MnistDataset(MNIST):
+
     def __len__(self):
         return 512
 
 
 class TestCallbacks(unittest.TestCase):
+
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -47,11 +49,17 @@ class TestCallbacks(unittest.TestCase):
         model = paddle.Model(net, inputs, labels)
 
         optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+<<<<<<< HEAD
         model.prepare(
             optimizer=optim,
             loss=paddle.nn.CrossEntropyLoss(),
             metrics=paddle.metric.Accuracy(),
         )
+=======
+        model.prepare(optimizer=optim,
+                      loss=paddle.nn.CrossEntropyLoss(),
+                      metrics=paddle.metric.Accuracy())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
         model.fit(

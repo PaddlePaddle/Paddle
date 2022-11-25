@@ -29,6 +29,7 @@ SEED = 2021
 
 
 class TestUpdateLossScalingOpMinLossScalingBad(TestUpdateLossScalingOpBad):
+
     def setUp(self):
         self.set_npu()
         self.op_type = "update_loss_scaling"

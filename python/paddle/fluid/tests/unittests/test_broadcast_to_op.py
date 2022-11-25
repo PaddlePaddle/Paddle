@@ -22,11 +22,17 @@ paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
+<<<<<<< HEAD
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
+=======
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             shape = [2, 2]
             self.assertRaises(TypeError, paddle.tensor.broadcast_to, x1, shape)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
@@ -38,8 +44,10 @@ class TestBroadcastToError(unittest.TestCase):
 
 # Test python API
 class TestBroadcastToAPI(unittest.TestCase):
+
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
+<<<<<<< HEAD
         x = fluid.layers.data(
             name='x', shape=[12, 14], append_batch_size=False, dtype="float32"
         )
@@ -51,6 +59,18 @@ class TestBroadcastToAPI(unittest.TestCase):
             append_batch_size=False,
             dtype="int32",
         )
+=======
+        x = fluid.layers.data(name='x',
+                              shape=[12, 14],
+                              append_batch_size=False,
+                              dtype="float32")
+
+        positive_2 = fluid.layers.fill_constant([1], "int32", 12)
+        expand_shape = fluid.layers.data(name="expand_shape",
+                                         shape=[2],
+                                         append_batch_size=False,
+                                         dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         out_1 = paddle.broadcast_to(x, shape=[12, 14])
         out_2 = paddle.broadcast_to(x, shape=[positive_2, 14])
@@ -59,6 +79,7 @@ class TestBroadcastToAPI(unittest.TestCase):
         g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
+<<<<<<< HEAD
         res_1, res_2, res_3 = exe.run(
             fluid.default_main_program(),
             feed={
@@ -67,6 +88,16 @@ class TestBroadcastToAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3],
         )
+=======
+        res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
+                                      feed={
+                                          "x":
+                                          input,
+                                          "expand_shape":
+                                          np.array([12, 14]).astype("int32")
+                                      },
+                                      fetch_list=[out_1, out_2, out_3])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         assert np.array_equal(res_1, np.tile(input, (1, 1)))
         assert np.array_equal(res_2, np.tile(input, (1, 1)))
         assert np.array_equal(res_3, np.tile(input, (1, 1)))

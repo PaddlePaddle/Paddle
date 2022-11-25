@@ -30,9 +30,14 @@ from transformer_dygraph_model import (
 )
 
 trainer_count = 1
+<<<<<<< HEAD
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
+=======
+place = fluid.CUDAPlace(
+    0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 SEED = 10
 STEP_NUM = 10
 
@@ -96,6 +101,7 @@ def train_static(args, batch_generator):
             )
             # define optimizer
             learning_rate = fluid.layers.learning_rate_scheduler.noam_decay(
+<<<<<<< HEAD
                 args.d_model, args.warmup_steps, args.learning_rate
             )
             optimizer = fluid.optimizer.Adam(
@@ -114,6 +120,19 @@ def train_static(args, batch_generator):
                     args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20
                 )
             )
+=======
+                args.d_model, args.warmup_steps, args.learning_rate)
+            optimizer = fluid.optimizer.Adam(learning_rate=learning_rate,
+                                             beta1=args.beta1,
+                                             beta2=args.beta2,
+                                             epsilon=float(args.eps))
+            optimizer.minimize(avg_cost)
+            # the best cross-entropy value with label smoothing
+            loss_normalizer = -((1. - args.label_smooth_eps) * np.log(
+                (1. - args.label_smooth_eps)) + args.label_smooth_eps *
+                                np.log(args.label_smooth_eps /
+                                       (args.trg_vocab_size - 1) + 1e-20))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     step_idx = 0
     total_batch_num = 0
     avg_loss = []
@@ -129,8 +148,12 @@ def train_static(args, batch_generator):
             )
             if step_idx % args.print_step == 0:
                 sum_cost_val, token_num_val = np.array(outs[0]), np.array(
+<<<<<<< HEAD
                     outs[1]
                 )
+=======
+                    outs[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 total_sum_cost = sum_cost_val.sum()
                 total_token_num = token_num_val.sum()
                 total_avg_cost = total_sum_cost / total_token_num
@@ -152,6 +175,7 @@ def train_static(args, batch_generator):
                 else:
                     logging.info(
                         "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
+<<<<<<< HEAD
                         "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
                         % (
                             step_idx,
@@ -163,6 +187,13 @@ def train_static(args, batch_generator):
                             args.print_step / (time.time() - avg_batch_time),
                         )
                     )
+=======
+                        "normalized loss: %f, ppl: %f, speed: %.2f steps/s" %
+                        (step_idx, pass_id, batch_id, total_avg_cost,
+                         total_avg_cost - loss_normalizer,
+                         np.exp([min(total_avg_cost, 100)]), args.print_step /
+                         (time.time() - avg_batch_time)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     avg_batch_time = time.time()
             batch_id += 1
             step_idx += 1
@@ -221,11 +252,18 @@ def train_dygraph(args, batch_generator):
         )
         # the best cross-entropy value with label smoothing
         loss_normalizer = -(
+<<<<<<< HEAD
             (1.0 - args.label_smooth_eps)
             * np.log((1.0 - args.label_smooth_eps))
             + args.label_smooth_eps
             * np.log(args.label_smooth_eps / (args.trg_vocab_size - 1) + 1e-20)
         )
+=======
+            (1. - args.label_smooth_eps) * np.log(
+                (1. - args.label_smooth_eps)) +
+            args.label_smooth_eps * np.log(args.label_smooth_eps /
+                                           (args.trg_vocab_size - 1) + 1e-20))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ce_time = []
         ce_ppl = []
         avg_loss = []
@@ -234,6 +272,7 @@ def train_dygraph(args, batch_generator):
             pass_start_time = time.time()
             batch_id = 0
             for input_data in train_loader():
+<<<<<<< HEAD
                 (
                     src_word,
                     src_pos,
@@ -257,6 +296,16 @@ def train_dygraph(args, batch_generator):
                 sum_cost, avg_cost, token_num = criterion(
                     logits, lbl_word, lbl_weight
                 )
+=======
+                (src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
+                 trg_slf_attn_bias, trg_src_attn_bias, lbl_word,
+                 lbl_weight) = input_data
+                logits = transformer(src_word, src_pos, src_slf_attn_bias,
+                                     trg_word, trg_pos, trg_slf_attn_bias,
+                                     trg_src_attn_bias)
+                sum_cost, avg_cost, token_num = criterion(
+                    logits, lbl_word, lbl_weight)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 avg_cost.backward()
                 optimizer.minimize(avg_cost)
                 transformer.clear_gradients()
@@ -281,6 +330,7 @@ def train_dygraph(args, batch_generator):
                         logging.info(
                             "step_idx: %d, epoch: %d, batch: %d, avg loss: %f, "
                             "normalized loss: %f, ppl: %f, speed: %.2f steps/s"
+<<<<<<< HEAD
                             % (
                                 step_idx,
                                 pass_id,
@@ -292,6 +342,13 @@ def train_dygraph(args, batch_generator):
                                 / (time.time() - avg_batch_time),
                             )
                         )
+=======
+                            % (step_idx, pass_id, batch_id, total_avg_cost,
+                               total_avg_cost - loss_normalizer,
+                               np.exp([min(total_avg_cost, 100)
+                                       ]), args.print_step /
+                               (time.time() - avg_batch_time)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         ce_ppl.append(np.exp([min(total_avg_cost, 100)]))
                         avg_batch_time = time.time()
                 batch_id += 1
@@ -432,9 +489,14 @@ def predict_static(args, batch_generator):
 
         input_field = util.InputField(input_slots)
         feed_list = input_field.feed_list
+<<<<<<< HEAD
         loader = fluid.io.DataLoader.from_generator(
             feed_list=feed_list, capacity=10
         )
+=======
+        loader = fluid.io.DataLoader.from_generator(feed_list=feed_list,
+                                                    capacity=10)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # define model
         transformer = Transformer(
@@ -457,6 +519,7 @@ def predict_static(args, batch_generator):
             args.eos_idx,
         )
 
+<<<<<<< HEAD
         out_ids, out_scores = transformer.beam_search(
             *feed_list,
             bos_id=args.bos_idx,
@@ -464,6 +527,13 @@ def predict_static(args, batch_generator):
             beam_size=args.beam_size,
             max_len=args.max_out_len
         )
+=======
+        out_ids, out_scores = transformer.beam_search(*feed_list,
+                                                      bos_id=args.bos_idx,
+                                                      eos_id=args.eos_idx,
+                                                      beam_size=args.beam_size,
+                                                      max_len=args.max_out_len)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # This is used here to set dropout to the test mode.
     test_prog = test_prog.clone(for_test=True)
@@ -471,9 +541,14 @@ def predict_static(args, batch_generator):
     # define the executor and program for training
     exe = fluid.Executor(place)
 
+<<<<<<< HEAD
     util.load(
         test_prog, os.path.join(args.save_static_model_path, "transformer"), exe
     )
+=======
+    util.load(test_prog, os.path.join(args.save_static_model_path,
+                                      "transformer"), exe)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     loader.set_batch_generator(batch_generator, places=place)
 
@@ -513,6 +588,7 @@ def predict_static(args, batch_generator):
 
 
 class TestTransformer(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -547,8 +623,17 @@ class TestTransformer(unittest.TestCase):
         static_seq_ids, static_scores = predict_static(args, batch_generator)
         dygraph_seq_ids, dygraph_scores = predict_dygraph(args, batch_generator)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(static_seq_ids, static_seq_ids, rtol=1e-05)
         np.testing.assert_allclose(static_scores, dygraph_scores, rtol=1e-05)
+=======
+        self.assertTrue(np.allclose(static_seq_ids, static_seq_ids),
+                        msg="static_seq_ids: {} \n dygraph_seq_ids: {}".format(
+                            static_seq_ids, dygraph_seq_ids))
+        self.assertTrue(np.allclose(static_scores, dygraph_scores),
+                        msg="static_scores: {} \n dygraph_scores: {}".format(
+                            static_scores, dygraph_scores))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_result(self):
         self._test_train()

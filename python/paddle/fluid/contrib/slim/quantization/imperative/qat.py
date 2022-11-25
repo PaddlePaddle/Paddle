@@ -38,9 +38,15 @@ from . import fuse_utils
 
 __all__ = ['ImperativeQuantAware']
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def lazy_import_fleet(layer_name_map, fake_quant_input_layers):
@@ -62,6 +68,7 @@ class ImperativeQuantAware:
     Applying quantization aware training (QAT) to the dgraph model.
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         quantizable_layer_type=[
@@ -83,6 +90,20 @@ class ImperativeQuantAware:
         act_quantize_layer=None,
         onnx_format=False,
     ):
+=======
+    def __init__(self,
+                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 fuse_conv_bn=False,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
         The constructor for ImperativeQuantAware.
 
@@ -310,6 +331,7 @@ class ImperativeQuantizeInputs:
     logic both for activation inputs and weight inputs.
     """
 
+<<<<<<< HEAD
     def __init__(
         self,
         quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
@@ -323,6 +345,19 @@ class ImperativeQuantizeInputs:
         weight_quantize_layer=None,
         act_quantize_layer=None,
     ):
+=======
+    def __init__(self,
+                 quantizable_layer_type=['Conv2D', 'Linear', 'Conv2DTranspose'],
+                 weight_quantize_type='abs_max',
+                 activation_quantize_type='moving_average_abs_max',
+                 weight_bits=8,
+                 activation_bits=8,
+                 moving_rate=0.9,
+                 weight_preprocess_layer=None,
+                 act_preprocess_layer=None,
+                 weight_quantize_layer=None,
+                 act_quantize_layer=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
         The constructor for ImperativeQuantizeInputs.
 
@@ -334,11 +369,16 @@ class ImperativeQuantizeInputs:
         )
 
         self._quantizable_layer_type = tuple(
+<<<<<<< HEAD
             self.layer_name_map[layer]
             if layer in self.layer_name_map
             else layer
             for layer in quantizable_layer_type
         )
+=======
+            utils.layer_name_map[layer] if layer in
+            utils.layer_name_map else layer for layer in quantizable_layer_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for layer in self._quantizable_layer_type:
             assert (
                 not isinstance(layer, str)
@@ -554,6 +594,7 @@ class ImperativeQuantizeOutputs:
         model_filename = basename + INFER_MODEL_SUFFIX
         params_filename = basename + INFER_PARAMS_SUFFIX
 
+<<<<<<< HEAD
         [
             infer_program,
             feed_target_names,
@@ -564,6 +605,13 @@ class ImperativeQuantizeOutputs:
             model_filename=model_filename,
             params_filename=params_filename,
         )
+=======
+        [infer_program, feed_target_names, fetch_targets
+         ] = (load_inference_model(dirname=dirname,
+                                   executor=exe,
+                                   model_filename=model_filename,
+                                   params_filename=params_filename))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if not self._onnx_format:
             self._gather_scales(infer_program, scope, fetch_targets)
@@ -598,6 +646,7 @@ class ImperativeQuantizeOutputs:
 
             clip_extra = True
 
+<<<<<<< HEAD
         move_persistable_var_to_global_block(infer_program)
 
         save_inference_model(
@@ -610,6 +659,16 @@ class ImperativeQuantizeOutputs:
             params_filename=params_filename,
             clip_extra=clip_extra,
         )
+=======
+        save_inference_model(dirname=dirname,
+                             feeded_var_names=feed_target_names,
+                             target_vars=fetch_targets,
+                             executor=exe,
+                             main_program=infer_program.clone(),
+                             model_filename=model_filename,
+                             params_filename=params_filename,
+                             clip_extra=clip_extra)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if is_dynamic_mode:
             paddle.disable_static()

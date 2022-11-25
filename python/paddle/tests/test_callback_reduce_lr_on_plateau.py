@@ -27,23 +27,31 @@ from paddle.fluid.framework import _test_eager_guard
 
 # Accelerate unittest
 class CustomMnist(MNIST):
+
     def __len__(self):
         return 8
 
 
 class TestReduceLROnPlateau(unittest.TestCase):
+
     def func_reduce_lr_on_plateau(self):
         transform = T.Compose([T.Transpose(), T.Normalize([127.5], [127.5])])
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=net.parameters()
         )
+=======
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=net.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(
             patience=1, verbose=1, cooldown=1
         )
@@ -56,6 +64,18 @@ class TestReduceLROnPlateau(unittest.TestCase):
             epochs=10,
             callbacks=[callbacks],
         )
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(patience=1,
+                                                       verbose=1,
+                                                       cooldown=1)
+        model.fit(train_dataset,
+                  val_dataset,
+                  batch_size=8,
+                  log_freq=1,
+                  save_freq=10,
+                  epochs=10,
+                  callbacks=[callbacks])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_reduce_lr_on_plateau(self):
         with _test_eager_guard():
@@ -72,13 +92,19 @@ class TestReduceLROnPlateau(unittest.TestCase):
         train_dataset = CustomMnist(mode='train', transform=transform)
         val_dataset = CustomMnist(mode='test', transform=transform)
         net = LeNet()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=net.parameters()
         )
+=======
+        optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                      parameters=net.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
         labels = [InputSpec([None, 1], 'int64', 'label')]
         model = Model(net, inputs=inputs, labels=labels)
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(
             monitor='miou', patience=3, verbose=1
         )
@@ -91,6 +117,18 @@ class TestReduceLROnPlateau(unittest.TestCase):
             epochs=1,
             callbacks=[callbacks],
         )
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='miou',
+                                                       patience=3,
+                                                       verbose=1)
+        model.fit(train_dataset,
+                  val_dataset,
+                  batch_size=8,
+                  log_freq=1,
+                  save_freq=10,
+                  epochs=1,
+                  callbacks=[callbacks])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         optim = paddle.optimizer.Adam(
             learning_rate=paddle.optimizer.lr.PiecewiseDecay(
@@ -100,6 +138,7 @@ class TestReduceLROnPlateau(unittest.TestCase):
         )
 
         model.prepare(optim, loss=CrossEntropyLoss(), metrics=[Accuracy()])
+<<<<<<< HEAD
         callbacks = paddle.callbacks.ReduceLROnPlateau(
             monitor='acc', mode='max', patience=3, verbose=1, cooldown=1
         )
@@ -112,6 +151,20 @@ class TestReduceLROnPlateau(unittest.TestCase):
             epochs=3,
             callbacks=[callbacks],
         )
+=======
+        callbacks = paddle.callbacks.ReduceLROnPlateau(monitor='acc',
+                                                       mode='max',
+                                                       patience=3,
+                                                       verbose=1,
+                                                       cooldown=1)
+        model.fit(train_dataset,
+                  val_dataset,
+                  batch_size=8,
+                  log_freq=1,
+                  save_freq=10,
+                  epochs=3,
+                  callbacks=[callbacks])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_warn_or_error(self):
         with _test_eager_guard():

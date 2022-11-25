@@ -23,6 +23,7 @@ import paddle.nn.functional as functional
 
 
 class TestNNSigmoidAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
 
@@ -68,6 +69,7 @@ class TestNNSigmoidAPI(unittest.TestCase):
 
 
 class TestNNFunctionalSigmoidAPI(unittest.TestCase):
+
     def setUp(self):
         self.init_data()
 

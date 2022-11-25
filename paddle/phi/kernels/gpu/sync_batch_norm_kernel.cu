@@ -22,6 +22,7 @@ namespace phi {
 template <typename T, typename Context>
 void SyncBatchNormKernel(const Context &ctx,
                          const DenseTensor &x,
+<<<<<<< HEAD
                          const DenseTensor &mean,
                          const DenseTensor &variance,
                          const DenseTensor &scale,
@@ -32,6 +33,19 @@ void SyncBatchNormKernel(const Context &ctx,
                          const std::string &data_layout_str,
                          bool use_global_stats,
                          bool trainable_statistics,
+=======
+                         const DenseTensor &scale,
+                         const DenseTensor &bias,
+                         const DenseTensor &mean,
+                         const DenseTensor &variance,
+                         float momentum,
+                         float epsilon_f,
+                         const std::string &data_layout_str,
+                         bool is_test,
+                         bool use_global_stats,
+                         bool trainable_statistics,
+                         bool fuse_with_relu,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          DenseTensor *y,
                          DenseTensor *mean_out,
                          DenseTensor *variance_out,
@@ -47,7 +61,12 @@ void SyncBatchNormKernel(const Context &ctx,
 
   double epsilon = epsilon_f;
   const bool trainable_stats = trainable_statistics;
+<<<<<<< HEAD
   const DataLayout layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   bool test_mode = is_test && (!trainable_statistics);
   const auto &x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -84,28 +103,44 @@ void SyncBatchNormKernel(const Context &ctx,
     // x, x^2, 1, here 1 is used to calc device num
     // device num also can be got from platform::DeviceContextPool
     const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
+<<<<<<< HEAD
     alloc_ptr = paddle::memory::Alloc(
         ctx.GetPlace(),
         bytes,
         phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
+=======
+    alloc_ptr = paddle::memory::Alloc(ctx, bytes);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
+<<<<<<< HEAD
     if (layout == phi::DataLayout::kNCHW) {
       KeLocalStats<T, threads, phi::DataLayout::kNCHW>
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     } else {
       KeLocalStats<T, threads, phi::DataLayout::kNHWC>
+=======
+    if (layout == paddle::framework::DataLayout::kNCHW) {
+      KeLocalStats<T, threads, paddle::framework::DataLayout::kNCHW>
+          <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+    } else {
+      KeLocalStats<T, threads, paddle::framework::DataLayout::kNHWC>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
     }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+<<<<<<< HEAD
     ncclComm_t comm = static_cast<ncclComm_t>(detail::GetCCLComm(x.place(), 0));
     if (comm == nullptr) {
       comm = ctx.nccl_comm();
     }
 
+=======
+    auto *comm = ctx.nccl_comm();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (comm) {
       int dtype = paddle::platform::ToNCCLDataType(
           paddle::framework::TransToProtoVarType(mean_out->dtype()));
@@ -118,7 +153,10 @@ void SyncBatchNormKernel(const Context &ctx,
           ncclSum,
           comm,
           stream));
+<<<<<<< HEAD
       VLOG(3) << "Sync result using all reduce";
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 #endif
 
@@ -149,8 +187,13 @@ void SyncBatchNormKernel(const Context &ctx,
   }
 
   int grid2 = (std::min(x_numel, max_threads) + block - 1) / block;
+<<<<<<< HEAD
   if (layout == phi::DataLayout::kNCHW) {
     KeNormAffine<T, phi::DataLayout::kNCHW>
+=======
+  if (layout == paddle::framework::DataLayout::kNCHW) {
+    KeNormAffine<T, paddle::framework::DataLayout::kNCHW>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -162,7 +205,11 @@ void SyncBatchNormKernel(const Context &ctx,
                                       x_numel,
                                       y_d);
   } else {
+<<<<<<< HEAD
     KeNormAffine<T, phi::DataLayout::kNHWC>
+=======
+    KeNormAffine<T, paddle::framework::DataLayout::kNHWC>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         <<<grid2, block, 0, stream>>>(x_d,
                                       s_d,
                                       b_d,
@@ -184,6 +231,7 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    ALL_LAYOUT,
                    phi::SyncBatchNormKernel,
                    float,
+<<<<<<< HEAD
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -196,6 +244,9 @@ PD_REGISTER_KERNEL(sync_batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
+=======
+                   phi::dtype::float16) {}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #else
 PD_REGISTER_KERNEL(sync_batch_norm,
                    GPU,
@@ -203,6 +254,7 @@ PD_REGISTER_KERNEL(sync_batch_norm,
                    phi::SyncBatchNormKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16) {
   if (kernel_key.dtype() == phi::DataType::FLOAT16) {
     kernel->InputAt(1).SetDataType(phi::DataType::FLOAT32);
@@ -215,4 +267,7 @@ PD_REGISTER_KERNEL(sync_batch_norm,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
+=======
+                   phi::dtype::float16) {}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #endif

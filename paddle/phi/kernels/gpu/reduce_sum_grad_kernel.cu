@@ -29,6 +29,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* x_grad) {
+<<<<<<< HEAD
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   // get reduce_dim for reduce_mean_grad
   int dim_size = x.dims().size();
@@ -53,6 +54,41 @@ void ReduceSumGradKernel(const Context& dev_ctx,
       &new_out_grad,
       x_grad,
       x.dtype(),
+=======
+  using MPType = typename kps::details::MPTypeTrait<T>::Type;
+  auto out_dtype = x.dtype();
+  auto* in_x = &x;
+  auto* d_out = &out_grad;
+  auto* d_x = x_grad;
+
+  // get reduce_dim and reduce_num for reduce_mean_grad
+  int dim_size = in_x->dims().size();
+  std::vector<int> reduce_dims =
+      funcs::details::GetReduceDim(dims, dim_size, reduce_all);
+
+  auto update_dims = vectorize(d_x->dims());
+  int reduce_num = 1;
+  for (auto i : reduce_dims) {
+    reduce_num *= (in_x->dims())[i];
+    update_dims[i] = 1;
+  }
+  // make new tensor
+  DenseTensor new_d_out(d_out->dtype());
+  new_d_out.ShareDataWith(*d_out);
+  new_d_out.Resize(phi::make_ddim(update_dims));
+
+  dev_ctx.Alloc(d_x, x.dtype());
+  auto pt_out_dtype = x.dtype();
+  auto pt_d_out = new_d_out;
+  auto pt_d_x = *d_x;
+  std::vector<const DenseTensor*> inputs = {&pt_d_out};
+  std::vector<DenseTensor*> outputs = {&pt_d_x};
+  phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
+      dev_ctx,
+      &pt_d_out,
+      &pt_d_x,
+      pt_out_dtype,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       kps::IdentityFunctor<T, MPType>());
 }
 

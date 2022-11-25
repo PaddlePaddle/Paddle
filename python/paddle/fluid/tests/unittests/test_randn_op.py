@@ -20,6 +20,7 @@ from paddle.static import program_guard, Program
 
 
 class TestRandnOp(unittest.TestCase):
+
     def test_api(self):
         shape = [1000, 784]
         train_program = Program()
@@ -35,6 +36,7 @@ class TestRandnOp(unittest.TestCase):
             var_shape = paddle.static.data('X', [2], 'int32')
             x4 = paddle.randn(var_shape)
 
+<<<<<<< HEAD
         place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
@@ -46,6 +48,14 @@ class TestRandnOp(unittest.TestCase):
             feed={'X': np.array(shape, dtype='int32')},
             fetch_list=[x1, x2, x3, x4],
         )
+=======
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        res = exe.run(train_program,
+                      feed={'X': np.array(shape, dtype='int32')},
+                      fetch_list=[x1, x2, x3, x4])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         for out in res:
             self.assertAlmostEqual(np.mean(out), 0.0, delta=0.1)
@@ -53,13 +63,19 @@ class TestRandnOp(unittest.TestCase):
 
 
 class TestRandnOpForDygraph(unittest.TestCase):
+
     def test_api(self):
         shape = [1000, 784]
+<<<<<<< HEAD
         place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
+=======
+        place = paddle.CUDAPlace(
+            0) if core.is_compiled_with_cuda() else paddle.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.disable_static(place)
         x1 = paddle.randn(shape, 'float32')
         x2 = paddle.randn(shape, 'float64')
@@ -78,6 +94,7 @@ class TestRandnOpForDygraph(unittest.TestCase):
 
 
 class TestRandnOpError(unittest.TestCase):
+
     def test_error(self):
         with program_guard(Program(), Program()):
             # The argument shape's type of randn_op should be list or tuple.

@@ -259,7 +259,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 namespace ops = paddle::operators;
 DECLARE_INFER_SHAPE_FUNCTOR(hierarchical_sigmoid,
                             HierarchicalSigmoidInferShapeFunctor,
+<<<<<<< HEAD
                             PD_INFER_META(phi::HSigmoidLossInferMeta));
+=======
+                            PD_INFER_META(phi::HierarchicalSigmoidInferMeta));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 REGISTER_OPERATOR(hierarchical_sigmoid,
                   ops::HierarchicalSigmoidOp,
                   ops::HierarchicalSigmoidOpMaker<int>,

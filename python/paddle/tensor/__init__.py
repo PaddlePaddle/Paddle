@@ -287,8 +287,13 @@ from .array import create_array  # noqa: F401
 
 from .einsum import einsum  # noqa: F401
 
+<<<<<<< HEAD
 # this list used in math_op_patch.py for _binary_creator_
 tensor_method_func = [  # noqa
+=======
+#this list used in math_op_patch.py for _binary_creator_
+tensor_method_func = [  #noqa
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     'matmul',
     'dot',
     'cov',
@@ -351,7 +356,10 @@ tensor_method_func = [  # noqa
     'square',
     'stanh',
     'sum',
+<<<<<<< HEAD
     'nan_to_num',
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -372,7 +380,10 @@ tensor_method_func = [  # noqa
     'divide',
     'floor_divide',
     'remainder',
+<<<<<<< HEAD
     'remainder_',
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     'mod',
     'floor_mod',
     'multiply',
@@ -432,7 +443,10 @@ tensor_method_func = [  # noqa
     'shard_index',
     'slice',
     'split',
+<<<<<<< HEAD
     'vsplit',
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     'chunk',
     'tensordot',
     'squeeze',
@@ -515,12 +529,15 @@ tensor_method_func = [  # noqa
     'put_along_axis_',
     'exponential_',
     'heaviside',
+<<<<<<< HEAD
     'index_add',
     "index_add_",
     'take',
     'bucketize',
     'sgn',
     'frexp',
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 ]
 
 # this list used in math_op_patch.py for magic_method bind

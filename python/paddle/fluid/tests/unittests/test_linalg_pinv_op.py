@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 
 
 class LinalgPinvTestCase(unittest.TestCase):
+
     def setUp(self):
         self.init_config()
         self.generate_input()
@@ -49,9 +50,15 @@ class LinalgPinvTestCase(unittest.TestCase):
         for place in self.places:
             paddle.disable_static(place)
             x = paddle.to_tensor(self._input_data, place=place)
+<<<<<<< HEAD
             out = paddle.linalg.pinv(
                 x, rcond=self.rcond, hermitian=self.hermitian
             ).numpy()
+=======
+            out = paddle.linalg.pinv(x,
+                                     rcond=self.rcond,
+                                     hermitian=self.hermitian).numpy()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if (np.abs(out - self._output_data) < 1e-6).any():
                 pass
             else:
@@ -66,6 +73,7 @@ class LinalgPinvTestCase(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
                 x = paddle.fluid.data(
                     name="input",
                     shape=self._input_shape,
@@ -74,6 +82,14 @@ class LinalgPinvTestCase(unittest.TestCase):
                 out = paddle.linalg.pinv(
                     x, rcond=self.rcond, hermitian=self.hermitian
                 )
+=======
+                x = paddle.fluid.data(name="input",
+                                      shape=self._input_shape,
+                                      dtype=self._input_data.dtype)
+                out = paddle.linalg.pinv(x,
+                                         rcond=self.rcond,
+                                         hermitian=self.hermitian)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 exe = fluid.Executor(place)
                 fetches = exe.run(
                     fluid.default_main_program(),
@@ -89,12 +105,21 @@ class LinalgPinvTestCase(unittest.TestCase):
 
     def test_grad(self):
         for place in self.places:
+<<<<<<< HEAD
             x = paddle.to_tensor(
                 self._input_data, place=place, stop_gradient=False
             )
             out = paddle.linalg.pinv(
                 x, rcond=self.rcond, hermitian=self.hermitian
             )
+=======
+            x = paddle.to_tensor(self._input_data,
+                                 place=place,
+                                 stop_gradient=False)
+            out = paddle.linalg.pinv(x,
+                                     rcond=self.rcond,
+                                     hermitian=self.hermitian)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             try:
                 out.backward()
                 x_grad = x.grad
@@ -104,6 +129,7 @@ class LinalgPinvTestCase(unittest.TestCase):
 
 
 class LinalgPinvTestCase1(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (4, 5)
         np.random.seed(123)
@@ -113,6 +139,7 @@ class LinalgPinvTestCase1(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCase2(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (5, 4)
         np.random.seed(123)
@@ -122,6 +149,7 @@ class LinalgPinvTestCase2(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseBatch1(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -131,6 +159,7 @@ class LinalgPinvTestCaseBatch1(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseBatch2(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 4, 5)
         np.random.seed(123)
@@ -140,6 +169,7 @@ class LinalgPinvTestCaseBatch2(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseBatch3(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 4)
         np.random.seed(123)
@@ -149,6 +179,7 @@ class LinalgPinvTestCaseBatch3(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseBatch4(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 6, 5, 4)
         np.random.seed(123)
@@ -158,6 +189,7 @@ class LinalgPinvTestCaseBatch4(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseBatchBig(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (2, 200, 300)
         np.random.seed(123)
@@ -167,6 +199,7 @@ class LinalgPinvTestCaseBatchBig(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseFP32(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -181,6 +214,7 @@ class LinalgPinvTestCaseFP32(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseRcond(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -195,6 +229,7 @@ class LinalgPinvTestCaseRcond(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitian1(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (5, 5)
         np.random.seed(123)
@@ -210,6 +245,7 @@ class LinalgPinvTestCaseHermitian1(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitian2(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -225,6 +261,7 @@ class LinalgPinvTestCaseHermitian2(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitian3(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -240,6 +277,7 @@ class LinalgPinvTestCaseHermitian3(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitian4(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (5, 5)
         np.random.seed(123)
@@ -253,6 +291,7 @@ class LinalgPinvTestCaseHermitian4(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
@@ -266,6 +305,7 @@ class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
 
 
 class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
+
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)

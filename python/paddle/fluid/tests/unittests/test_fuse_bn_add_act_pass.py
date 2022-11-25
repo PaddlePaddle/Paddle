@@ -25,6 +25,7 @@ paddle.enable_static()
     not core.is_compiled_with_cuda(), "Paddle core is not compiled with CUDA"
 )
 class TestFusedBnAddActAPI(unittest.TestCase):
+
     def setUp(self):
         self.conv_param_attr1 = fluid.ParamAttr(
             name='conv2d_1.weight',
@@ -63,6 +64,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+<<<<<<< HEAD
             conv1_1 = fluid.layers.conv2d(
                 input=x,
                 filter_size=3,
@@ -92,6 +94,31 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
+=======
+            conv1_1 = fluid.layers.conv2d(input=x,
+                                          filter_size=3,
+                                          num_filters=32,
+                                          stride=1,
+                                          padding=1,
+                                          act=None,
+                                          param_attr=self.conv_param_attr1,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+            conv1_2 = fluid.layers.conv2d(input=x,
+                                          filter_size=3,
+                                          num_filters=32,
+                                          stride=1,
+                                          padding=1,
+                                          act=None,
+                                          param_attr=self.conv_param_attr2,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+            bn = fluid.layers.batch_norm(input=conv1_1,
+                                         param_attr=self.bn_param_attr1,
+                                         bias_attr=self.bn_bias_attr1,
+                                         act=None,
+                                         data_layout='NHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(
                 conv1_2,
                 bn,
@@ -120,6 +147,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+<<<<<<< HEAD
             conv1_1 = fluid.layers.conv2d(
                 input=x,
                 filter_size=3,
@@ -155,6 +183,35 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
+=======
+            conv1_1 = fluid.layers.conv2d(input=x,
+                                          filter_size=3,
+                                          num_filters=32,
+                                          stride=1,
+                                          padding=1,
+                                          act=None,
+                                          param_attr=self.conv_param_attr1,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+            bn1 = fluid.layers.batch_norm(input=conv1_1,
+                                          param_attr=self.bn_param_attr1,
+                                          bias_attr=self.bn_bias_attr1,
+                                          act=None,
+                                          data_layout='NHWC')
+            conv1_2 = fluid.layers.conv2d(input=conv1_1,
+                                          filter_size=1,
+                                          num_filters=32,
+                                          stride=1,
+                                          act=None,
+                                          param_attr=self.conv_param_attr2,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+            bn2 = fluid.layers.batch_norm(input=conv1_1,
+                                          param_attr=self.bn_param_attr2,
+                                          bias_attr=self.bn_bias_attr2,
+                                          act=None,
+                                          data_layout='NHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = bn1 + bn2
             out = fluid.layers.relu(out)
             prediction = fluid.layers.fc(
@@ -199,9 +256,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 y = np.random.random((batch_size, 1)).astype("int64")
                 x_data.append(x)
                 y_data.append(y)
+<<<<<<< HEAD
                 loss_v = exe.run(
                     binary_fused, feed={"x": x, "y": y}, fetch_list=[loss]
                 )
+=======
+                loss_v = exe.run(binary_fused,
+                                 feed={
+                                     "x": x,
+                                     "y": y
+                                 },
+                                 fetch_list=[loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 loss_vals_fused.append(loss_v[0][0])
 
         # build_origin_program: turn off fused_bn_act_ops
@@ -215,11 +281,20 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         with fluid.scope_guard(scope):
             exe.run(startup_program)
             for i in range(iters):
+<<<<<<< HEAD
                 loss_v = exe.run(
                     binary,
                     feed={"x": x_data[i], "y": y_data[i]},
                     fetch_list=[loss],
                 )
+=======
+                loss_v = exe.run(binary,
+                                 feed={
+                                     "x": x_data[i],
+                                     "y": y_data[i]
+                                 },
+                                 fetch_list=[loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 loss_vals.append(loss_v[0][0])
 
         # check loss
@@ -235,9 +310,15 @@ class TestFusedBnAddActAPI(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         place = fluid.CUDAPlace(0)
+<<<<<<< HEAD
         x, y, loss = self.build_fused_program(
             main_program, startup_program, use_cuda=True
         )
+=======
+        x, y, loss = self.build_fused_program(main_program,
+                                              startup_program,
+                                              use_cuda=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         exe = fluid.Executor(place)
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
@@ -245,9 +326,18 @@ class TestFusedBnAddActAPI(unittest.TestCase):
             for _ in range(5):
                 x = np.random.random((4, 1, 28, 28)).astype("float32")
                 y = np.random.random((4, 1)).astype("int64")
+<<<<<<< HEAD
                 loss_v = exe.run(
                     main_program, feed={"x": x, "y": y}, fetch_list=[loss]
                 )
+=======
+                loss_v = exe.run(main_program,
+                                 feed={
+                                     "x": x,
+                                     "y": y
+                                 },
+                                 fetch_list=[loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

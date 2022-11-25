@@ -17,21 +17,28 @@ import paddle
 
 
 class TestAdagradOpV2(unittest.TestCase):
+
     def test_v20_coverage(self):
         paddle.disable_static()
         inp = paddle.rand(shape=[10, 10])
         linear = paddle.nn.Linear(10, 10)
         out = linear(inp)
         loss = paddle.mean(out)
+<<<<<<< HEAD
         adagrad = paddle.optimizer.Adagrad(
             learning_rate=0.1, parameters=linear.parameters()
         )
+=======
+        adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
+                                           parameters=linear.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out.backward()
         adagrad.step()
         adagrad.clear_grad()
 
 
 class TestAdagradOpV2Group(TestAdagradOpV2):
+
     def test_v20_coverage(self):
         paddle.disable_static()
         inp = paddle.rand(shape=[10, 10])
@@ -40,6 +47,7 @@ class TestAdagradOpV2Group(TestAdagradOpV2):
         out = linear_1(inp)
         out = linear_2(out)
         loss = paddle.mean(out)
+<<<<<<< HEAD
         adagrad = paddle.optimizer.Adagrad(
             learning_rate=0.01,
             parameters=[
@@ -51,6 +59,19 @@ class TestAdagradOpV2Group(TestAdagradOpV2):
             ],
             weight_decay=0.1,
         )
+=======
+        adagrad = paddle.optimizer.Adagrad(learning_rate=0.01,
+                                           parameters=[{
+                                               'params':
+                                               linear_1.parameters()
+                                           }, {
+                                               'params':
+                                               linear_2.parameters(),
+                                               'weight_decay':
+                                               0.001,
+                                           }],
+                                           weight_decay=0.1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out.backward()
         adagrad.step()
         adagrad.clear_grad()

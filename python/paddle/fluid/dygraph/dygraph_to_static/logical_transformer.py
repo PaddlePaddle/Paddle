@@ -14,9 +14,13 @@
 
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 cmpop_type_to_str = {
     gast.Eq: "==",
@@ -99,8 +103,12 @@ class LogicalTransformer(BaseTransformer):
 
         args = [ast_to_source_code(child) for child in nodes]
         new_node_str = "_jst.{}(lambda:{}, lambda:{})".format(
+<<<<<<< HEAD
             api_type, args[0], args[1]
         )
+=======
+            api_type, args[0], args[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # NOTE: gast.parse return Module(body=[expr(...)])
         new_node = gast.parse(new_node_str).body[0].value
         return new_node

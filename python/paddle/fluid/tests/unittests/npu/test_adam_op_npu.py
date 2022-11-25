@@ -28,6 +28,7 @@ SEED = 2021
 
 
 class TestAdam(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -78,6 +79,7 @@ class TestAdam(OpTest):
 
 
 class TestAdamWithEpsilonTensor(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -131,6 +133,7 @@ class TestAdamWithEpsilonTensor(OpTest):
 
 
 class TestAdamOpWithSkipUpdate(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -183,6 +186,7 @@ class TestAdamOpWithSkipUpdate(OpTest):
 
 
 class TestAdamOpWithGlobalBetaPow(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.place = paddle.NPUPlace(0)
@@ -239,6 +243,7 @@ class TestAdamOpWithGlobalBetaPow(OpTest):
 
 
 class TestNet(unittest.TestCase):
+
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -253,9 +258,15 @@ class TestNet(unittest.TestCase):
         with paddle.static.program_guard(main_prog, startup_prog):
             a = paddle.static.data(name="a", shape=[32, 32], dtype='float32')
             b = paddle.static.data(name="b", shape=[32, 32], dtype='float32')
+<<<<<<< HEAD
             label = paddle.static.data(
                 name="label", shape=[32, 1], dtype='int64'
             )
+=======
+            label = paddle.static.data(name="label",
+                                       shape=[32, 1],
+                                       dtype='int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             sum = paddle.add(a, b)
             z = paddle.pow(sum, 2.0)
@@ -279,11 +290,21 @@ class TestNet(unittest.TestCase):
         print("Start run on {}".format(place))
         for epoch in range(100):
 
+<<<<<<< HEAD
             pred_res, loss_res = exe.run(
                 main_prog,
                 feed={"a": a_np, "b": b_np, "label": label_np},
                 fetch_list=[prediction, loss],
             )
+=======
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if epoch % 10 == 0:
                 print(
                     "Epoch {} | Prediction[0]: {}, Loss: {}".format(
@@ -302,6 +323,7 @@ class TestNet(unittest.TestCase):
 
 
 class TestNetWithEpsilonTensor(unittest.TestCase):
+<<<<<<< HEAD
     def _test(
         self,
         place,
@@ -310,6 +332,15 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
         use_global_beta_pow=False,
         flatten_param_grads=False,
     ):
+=======
+
+    def _test(self,
+              place,
+              use_tensor=True,
+              use_fluid_api=True,
+              use_global_beta_pow=False,
+              flatten_param_grads=False):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.enable_static()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
@@ -336,9 +367,15 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
             with paddle.utils.unique_name.guard():
                 a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
                 b = paddle.static.data(name="b", shape=[2, 2], dtype='float32')
+<<<<<<< HEAD
                 label = paddle.static.data(
                     name="label", shape=[2, 1], dtype='int64'
                 )
+=======
+                label = paddle.static.data(name="label",
+                                           shape=[2, 1],
+                                           dtype='int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 sum = paddle.add(a, b)
                 z = paddle.pow(sum, 2.0)
@@ -387,6 +424,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             grad_clip=clip,
                         )
                     else:
+<<<<<<< HEAD
                         adam = paddle.optimizer.Adam(
                             learning_rate=0.01,
                             beta1=beta1,
@@ -394,6 +432,13 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             epsilon=epsilon,
                             grad_clip=clip,
                         )
+=======
+                        adam = paddle.optimizer.Adam(learning_rate=0.01,
+                                                     beta1=beta1,
+                                                     beta2=beta2,
+                                                     epsilon=epsilon,
+                                                     grad_clip=clip)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 else:
                     if use_fluid_api:
                         adam = fluid.optimizer.Adam(
@@ -407,6 +452,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             grad_clip=clip,
                         )
                     else:
+<<<<<<< HEAD
                         adam = fluid.optimizer.Adam(
                             learning_rate=0.01,
                             beta1=beta1_init,
@@ -414,6 +460,13 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             epsilon=epsilon_init,
                             grad_clip=clip,
                         )
+=======
+                        adam = fluid.optimizer.Adam(learning_rate=0.01,
+                                                    beta1=beta1_init,
+                                                    beta2=beta2_init,
+                                                    epsilon=epsilon_init,
+                                                    grad_clip=clip)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 adam.minimize(loss)
 
@@ -424,6 +477,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
 
             print("Start run on {}".format(place))
             for epoch in range(10):
+<<<<<<< HEAD
                 pred_res, loss_res = exe.run(
                     main_prog,
                     feed={"a": a_np, "b": b_np, "label": label_np},
@@ -434,6 +488,17 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                         epoch, pred_res[0], loss_res
                     )
                 )
+=======
+                pred_res, loss_res = exe.run(main_prog,
+                                             feed={
+                                                 "a": a_np,
+                                                 "b": b_np,
+                                                 "label": label_np
+                                             },
+                                             fetch_list=[prediction, loss])
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.disable_static()
             return pred_res, loss_res
 
@@ -445,6 +510,7 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
             for use_fluid_api in [True, False]:
                 for use_global_beta_pow in [True, False]:
                     for flatten_param_grads in [True, False]:
+<<<<<<< HEAD
                         pred, loss = self._test(
                             place,
                             use_tensor,
@@ -452,6 +518,12 @@ class TestNetWithEpsilonTensor(unittest.TestCase):
                             use_global_beta_pow,
                             flatten_param_grads,
                         )
+=======
+                        pred, loss = self._test(place, use_tensor,
+                                                use_fluid_api,
+                                                use_global_beta_pow,
+                                                flatten_param_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         preds.append(pred)
                         losses.append(loss)
         for pred in preds:

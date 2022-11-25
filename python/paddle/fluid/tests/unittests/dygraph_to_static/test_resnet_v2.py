@@ -56,6 +56,7 @@ def optimizer_setting(parameter_list=None):
 
 
 class ConvBNLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         num_channels,
@@ -76,6 +77,25 @@ class ConvBNLayer(paddle.nn.Layer):
             groups=groups,
             bias_attr=False,
         )
+=======
+
+    def __init__(self,
+                 num_channels,
+                 num_filters,
+                 filter_size,
+                 stride=1,
+                 groups=1,
+                 act=None):
+        super(ConvBNLayer, self).__init__()
+
+        self._conv = paddle.nn.Conv2D(in_channels=num_channels,
+                                      out_channels=num_filters,
+                                      kernel_size=filter_size,
+                                      stride=stride,
+                                      padding=(filter_size - 1) // 2,
+                                      groups=groups,
+                                      bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._batch_norm = paddle.nn.BatchNorm(num_filters, act=act)
 
@@ -87,9 +107,11 @@ class ConvBNLayer(paddle.nn.Layer):
 
 
 class BottleneckBlock(paddle.nn.Layer):
+
     def __init__(self, num_channels, num_filters, stride, shortcut=True):
         super().__init__()
 
+<<<<<<< HEAD
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
             num_filters=num_filters,
@@ -117,6 +139,27 @@ class BottleneckBlock(paddle.nn.Layer):
                 filter_size=1,
                 stride=stride,
             )
+=======
+        self.conv0 = ConvBNLayer(num_channels=num_channels,
+                                 num_filters=num_filters,
+                                 filter_size=1,
+                                 act='relu')
+        self.conv1 = ConvBNLayer(num_channels=num_filters,
+                                 num_filters=num_filters,
+                                 filter_size=3,
+                                 stride=stride,
+                                 act='relu')
+        self.conv2 = ConvBNLayer(num_channels=num_filters,
+                                 num_filters=num_filters * 4,
+                                 filter_size=1,
+                                 act=None)
+
+        if not shortcut:
+            self.short = ConvBNLayer(num_channels=num_channels,
+                                     num_filters=num_filters * 4,
+                                     filter_size=1,
+                                     stride=stride)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.shortcut = shortcut
 
@@ -134,13 +177,19 @@ class BottleneckBlock(paddle.nn.Layer):
 
         y = paddle.add(x=short, y=conv2)
 
+<<<<<<< HEAD
         layer_helper = paddle.fluid.layer_helper.LayerHelper(
             self.full_name(), act='relu'
         )
+=======
+        layer_helper = paddle.fluid.layer_helper.LayerHelper(self.full_name(),
+                                                             act='relu')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return layer_helper.append_activation(y)
 
 
 class ResNet(paddle.nn.Layer):
+
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 
@@ -161,12 +210,24 @@ class ResNet(paddle.nn.Layer):
         num_channels = [64, 256, 512, 1024]
         num_filters = [64, 128, 256, 512]
 
+<<<<<<< HEAD
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu'
         )
         self.pool2d_max = paddle.fluid.dygraph.Pool2D(
             pool_size=3, pool_stride=2, pool_padding=1, pool_type='max'
         )
+=======
+        self.conv = ConvBNLayer(num_channels=3,
+                                num_filters=64,
+                                filter_size=7,
+                                stride=2,
+                                act='relu')
+        self.pool2d_max = paddle.fluid.dygraph.Pool2D(pool_size=3,
+                                                      pool_stride=2,
+                                                      pool_padding=1,
+                                                      pool_type='max')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -174,6 +235,7 @@ class ResNet(paddle.nn.Layer):
             for i in range(depth[block]):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
+<<<<<<< HEAD
                     BottleneckBlock(
                         num_channels=num_channels[block]
                         if i == 0
@@ -189,6 +251,19 @@ class ResNet(paddle.nn.Layer):
         self.pool2d_avg = paddle.fluid.dygraph.Pool2D(
             pool_size=7, pool_type='avg', global_pooling=True
         )
+=======
+                    BottleneckBlock(num_channels=num_channels[block]
+                                    if i == 0 else num_filters[block] * 4,
+                                    num_filters=num_filters[block],
+                                    stride=2 if i == 0 and block != 0 else 1,
+                                    shortcut=shortcut))
+                self.bottleneck_block_list.append(bottleneck_block)
+                shortcut = True
+
+        self.pool2d_avg = paddle.fluid.dygraph.Pool2D(pool_size=7,
+                                                      pool_type='avg',
+                                                      global_pooling=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.pool2d_avg_output = num_filters[len(num_filters) - 1] * 4 * 1 * 1
 
@@ -217,6 +292,7 @@ class ResNet(paddle.nn.Layer):
 
 
 def reader_decorator(reader):
+
     def __reader__():
         for item in reader():
             img = np.array(item[0]).astype('float32').reshape(3, 224, 224)
@@ -227,6 +303,7 @@ def reader_decorator(reader):
 
 
 class TestResnet(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -256,6 +333,7 @@ class TestResnet(unittest.TestCase):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
+<<<<<<< HEAD
         train_reader = paddle.batch(
             reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
             batch_size=batch_size,
@@ -264,6 +342,14 @@ class TestResnet(unittest.TestCase):
         data_loader = paddle.io.DataLoader.from_generator(
             capacity=5, iterable=True
         )
+=======
+        train_reader = paddle.batch(reader_decorator(
+            paddle.dataset.flowers.train(use_xmap=False)),
+                                    batch_size=batch_size,
+                                    drop_last=True)
+        data_loader = paddle.io.DataLoader.from_generator(capacity=5,
+                                                          iterable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         data_loader.set_sample_list_generator(train_reader)
 
         resnet = ResNet()
@@ -280,9 +366,14 @@ class TestResnet(unittest.TestCase):
                 img, label = data
 
                 pred = resnet(img)
+<<<<<<< HEAD
                 loss = paddle.nn.functional.cross_entropy(
                     input=pred, label=label
                 )
+=======
+                loss = paddle.nn.functional.cross_entropy(input=pred,
+                                                          label=label)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 avg_loss = paddle.mean(x=loss)
                 acc_top1 = paddle.metric.accuracy(input=pred, label=label, k=1)
                 acc_top5 = paddle.metric.accuracy(input=pred, label=label, k=5)
@@ -335,10 +426,17 @@ class TestResnet(unittest.TestCase):
         resnet.eval()
 
         pred_res = resnet(
+<<<<<<< HEAD
             paddle.to_tensor(
                 data=data, dtype=None, place=None, stop_gradient=True
             )
         )
+=======
+            paddle.to_tensor(data=data,
+                             dtype=None,
+                             place=None,
+                             stop_gradient=True))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         ret = pred_res.numpy()
         paddle.enable_static()
@@ -396,6 +494,7 @@ class TestResnet(unittest.TestCase):
         st_pre = self.predict_static(image)
         dy_jit_pre = self.predict_dygraph_jit(image)
         predictor_pre = self.predict_analysis_inference(image)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dy_pre,
             st_pre,
@@ -418,10 +517,22 @@ class TestResnet(unittest.TestCase):
                 predictor_pre, st_pre
             ),
         )
+=======
+        self.assertTrue(np.allclose(dy_pre, st_pre),
+                        msg="dy_pre:\n {}\n, st_pre: \n{}.".format(
+                            dy_pre, st_pre))
+        self.assertTrue(np.allclose(dy_jit_pre, st_pre),
+                        msg="dy_jit_pre:\n {}\n, st_pre: \n{}.".format(
+                            dy_jit_pre, st_pre))
+        self.assertTrue(np.allclose(predictor_pre, st_pre),
+                        msg="predictor_pre:\n {}\n, st_pre: \n{}.".format(
+                            predictor_pre, st_pre))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             static_loss,
             dygraph_loss,
@@ -430,6 +541,11 @@ class TestResnet(unittest.TestCase):
                 static_loss, dygraph_loss
             ),
         )
+=======
+        self.assertTrue(np.allclose(static_loss, dygraph_loss),
+                        msg="static_loss: {} \n dygraph_loss: {}".format(
+                            static_loss, dygraph_loss))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.verify_predict()
 
     def test_in_static_mode_mkldnn(self):

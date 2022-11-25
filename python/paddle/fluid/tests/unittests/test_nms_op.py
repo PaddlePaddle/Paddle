@@ -68,6 +68,7 @@ def nms(boxes, nms_threshold):
 
 
 class TestNMSOp(OpTest):
+
     def setUp(self):
         self.op_type = 'nms'
         self.python_api = paddle.vision.ops.nms

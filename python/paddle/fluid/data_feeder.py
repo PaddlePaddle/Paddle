@@ -52,6 +52,7 @@ def convert_dtype(dtype):
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
+<<<<<<< HEAD
             bool,
             np.float16,
             np.uint16,
@@ -64,6 +65,11 @@ def convert_dtype(dtype):
             np.uint8,
             np.complex64,
             np.complex128,
+=======
+                bool, np.float16, np.uint16, np.float32, np.float64, np.int8,
+                np.int16, np.int32, np.int64, np.uint8, np.complex64,
+                np.complex128
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]:
             return dtype.__name__
     else:
@@ -210,7 +216,12 @@ def check_shape(
         check_dtype(shape.dtype, 'shape', expected_tensor_dtype, op_name)
 
 
+<<<<<<< HEAD
 class DataToLoDTensorConverter:
+=======
+class DataToLoDTensorConverter(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, place, lod_level, shape, dtype):
         self.place = place
         self.lod_level = lod_level
@@ -244,10 +255,15 @@ class DataToLoDTensorConverter:
         for s1, s2 in zip(self.shape, shape):
             if s1 != s2 and s1 >= 0 and s2 >= 0:
                 raise ValueError(
+<<<<<<< HEAD
                     "Shape not match. What is defined in data layer is {}, but receive {}".format(
                         self.shape, shape
                     )
                 )
+=======
+                    "Shape not match. What is defined in data layer is {}, but receive {}"
+                    .format(self.shape, shape))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def done(self):
         arr = np.array(self.data, dtype=self.dtype)
@@ -269,7 +285,12 @@ class DataToLoDTensorConverter:
         return t
 
 
+<<<<<<< HEAD
 class BatchedTensorProvider:
+=======
+class BatchedTensorProvider(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, feed_list, place, batch_size, generator, drop_last):
         self.place = place
         self.batch_size = batch_size
@@ -280,6 +301,7 @@ class BatchedTensorProvider:
         for var in feed_list:
             assert var.lod_level == 0, "lod_level must be 0"
             self.converters.append(
+<<<<<<< HEAD
                 DataToLoDTensorConverter(
                     place=self.place,
                     lod_level=0,
@@ -287,6 +309,12 @@ class BatchedTensorProvider:
                     dtype=var.dtype,
                 )
             )
+=======
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=0,
+                                         shape=var.shape,
+                                         dtype=var.dtype))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _done(self):
         return [c.done() for c in self.converters]
@@ -294,7 +322,12 @@ class BatchedTensorProvider:
     def __call__(self):
         idx = 0
         for each_sample in self.generator():
+<<<<<<< HEAD
             for each_slot, each_converter in zip(each_sample, self.converters):
+=======
+            for each_slot, each_converter in six.moves.zip(
+                    each_sample, self.converters):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 each_converter.data.append(each_slot)
 
             idx += 1
@@ -427,6 +460,7 @@ class DataFeeder:
 
         """
         converter = []
+<<<<<<< HEAD
         for lod_level, shape, dtype in zip(
             self.feed_lod_level, self.feed_shapes, self.feed_dtypes
         ):
@@ -445,6 +479,23 @@ class DataFeeder:
                 + "len(feed_list) (%d)"
             ) % (len(each_sample), len(converter))
             for each_converter, each_slot in zip(converter, each_sample):
+=======
+        for lod_level, shape, dtype in six.moves.zip(self.feed_lod_level,
+                                                     self.feed_shapes,
+                                                     self.feed_dtypes):
+            converter.append(
+                DataToLoDTensorConverter(place=self.place,
+                                         lod_level=lod_level,
+                                         shape=shape,
+                                         dtype=dtype))
+
+        for each_sample in iterable:
+            assert len(each_sample) == len(converter), (
+                "The number of fields in data (%d) does not match " +
+                "len(feed_list) (%d)") % (len(each_sample), len(converter))
+            for each_converter, each_slot in six.moves.zip(
+                    converter, each_sample):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 each_converter.feed(each_slot)
         ret_dict = {}
         for each_name, each_converter in zip(self.feed_names, converter):
@@ -507,6 +558,7 @@ class DataFeeder:
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
+<<<<<<< HEAD
                 core.CUDAPlace(i)
                 for i in range(self._get_number_of_places_(num_places))
             ]
@@ -514,6 +566,15 @@ class DataFeeder:
             places = [
                 core.CPUPlace()
                 for _ in range(self._get_number_of_places_(num_places))
+=======
+                core.CUDAPlace(i) for i in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
+            ]
+        else:
+            places = [
+                core.CPUPlace() for _ in six.moves.xrange(
+                    self._get_number_of_places_(num_places))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ]
 
         if len(iterable) != len(places):

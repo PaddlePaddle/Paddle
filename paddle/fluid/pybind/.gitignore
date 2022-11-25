@@ -8,4 +8,8 @@ op_function6.cc
 op_function7.cc
 op_function8.cc
 eager_op_function.cc
+<<<<<<< HEAD
 eager_legacy_op_function.cc
+=======
+eager_final_state_op_function.cc
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

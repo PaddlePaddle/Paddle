@@ -46,7 +46,12 @@ class SmoothedValue:
         return self.loss_sum / self.iter_cnt
 
 
+<<<<<<< HEAD
 class FakeDataReader:
+=======
+class FakeDataReader(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.generator_out = []
         self.total_iter = cfg.max_iter
@@ -59,14 +64,21 @@ class FakeDataReader:
                 point1 = cfg.input_size / 4
                 point2 = cfg.input_size / 2
                 gt_boxes = np.array([[point1, point1, point2, point2]])
+<<<<<<< HEAD
                 gt_labels = np.random.randint(
                     low=0, high=cfg.class_num, size=[1]
                 )
+=======
+                gt_labels = np.random.randint(low=0,
+                                              high=cfg.class_num,
+                                              size=[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 gt_scores = np.zeros([1])
                 batch_out.append([img, gt_boxes, gt_labels, gt_scores])
             self.generator_out.append(batch_out)
 
     def reader(self):
+
         def generator():
             for i in range(self.total_iter):
                 yield self.generator_out[i]
@@ -96,9 +108,15 @@ def train(to_static):
         learning_rate = cfg.learning_rate
         values = [learning_rate * (gamma**i) for i in range(step_num + 1)]
 
+<<<<<<< HEAD
         lr = fluid.dygraph.PiecewiseDecay(
             boundaries=boundaries, values=values, begin=0
         )
+=======
+        lr = fluid.dygraph.PiecewiseDecay(boundaries=boundaries,
+                                          values=values,
+                                          begin=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         lr = fluid.layers.linear_lr_warmup(
             learning_rate=lr,
@@ -150,6 +168,7 @@ def train(to_static):
             snapshot_time += start_time - prev_start_time
             total_sample += 1
 
+<<<<<<< HEAD
             print(
                 "Iter {:d}, loss {:.6f}, time {:.5f}".format(
                     iter_id,
@@ -157,6 +176,11 @@ def train(to_static):
                     start_time - prev_start_time,
                 )
             )
+=======
+            print("Iter {:d}, loss {:.6f}, time {:.5f}".format(
+                iter_id, smoothed_loss.get_mean_value(),
+                start_time - prev_start_time))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ret.append(smoothed_loss.get_mean_value())
 
             loss.backward()
@@ -168,12 +192,22 @@ def train(to_static):
 
 
 class TestYolov3(unittest.TestCase):
+
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dygraph_loss, static_loss, rtol=0.001, atol=1e-05
         )
+=======
+        self.assertTrue(np.allclose(dygraph_loss,
+                                    static_loss,
+                                    atol=1e-5,
+                                    rtol=1e-3),
+                        msg="dygraph_loss: {} \nstatic_loss: {}".format(
+                            dygraph_loss, static_loss))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.test_pool2d_op import (
 
 
 class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -32,6 +33,7 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
 
     def setUp(self):
         TestPool2D_Op.setUp(self)
+<<<<<<< HEAD
         assert self.dtype in [
             np.int8,
             np.uint8,
@@ -50,20 +52,37 @@ class TestPool2DMKLDNNInt8_Op(TestPool2D_Op):
                 self.dtype,
             )
         ).astype(self.dtype)
+=======
+        assert self.dtype in [np.int8,
+                              np.uint8], 'Dtype should be int8 or uint8'
+        input = np.random.randint(0, 100, self.shape).astype(self.dtype)
+        output = (self.pool2D_forward_naive(input, self.ksize, self.strides,
+                                            self.paddings, self.global_pool,
+                                            self.ceil_mode, self.exclusive,
+                                            self.adaptive,
+                                            self.dtype)).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
         self.outputs = {'Out': output}
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
+<<<<<<< HEAD
         self.check_output_with_place(
             core.CPUPlace(), atol=1e-5, check_dygraph=False
         )
+=======
+        self.check_output_with_place(core.CPUPlace(),
+                                     atol=1e-5,
+                                     check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad(self):
         pass
 
 
 class TestCase1Avg(TestPool2DMKLDNNInt8_Op):
+
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -78,6 +97,7 @@ class TestCase1Avg(TestPool2DMKLDNNInt8_Op):
 
 
 class TestCase2Avg(TestPool2DMKLDNNInt8_Op):
+
     def init_test_case(self):
         self.shape = [2, 3, 7, 7]
         self.ksize = [3, 3]
@@ -92,29 +112,35 @@ class TestCase2Avg(TestPool2DMKLDNNInt8_Op):
 
 
 class TestCase0Max(TestPool2DMKLDNNInt8_Op):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase1Max(TestCase1Avg):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 class TestCase2Max(TestCase2Avg):
+
     def init_pool_type(self):
         self.pool_type = "max"
         self.pool2D_forward_naive = max_pool2D_forward_naive
 
 
 def create_test_s8_u8_class(parent):
+
     class TestS8Case(parent):
+
         def init_data_type(self):
             self.dtype = np.int8
 
     class TestU8Case(parent):
+
         def init_data_type(self):
             self.dtype = np.uint8
 

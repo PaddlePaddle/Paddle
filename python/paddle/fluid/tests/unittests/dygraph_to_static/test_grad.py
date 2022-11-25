@@ -20,6 +20,7 @@ import tempfile
 
 
 class GradLayer(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -32,6 +33,7 @@ class GradLayer(paddle.nn.Layer):
 
 
 class GradLinearLayer(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
@@ -43,13 +45,21 @@ class GradLinearLayer(paddle.nn.Layer):
         for i in range(10):
             tmp = self.linear(tmp)
         out = tmp
+<<<<<<< HEAD
         dx = paddle.grad(
             [out], [x], None, create_graph=True, allow_unused=False
         )[0]
+=======
+        dx = paddle.grad([out], [x],
+                         None,
+                         create_graph=True,
+                         allow_unused=False)[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return dx
 
 
 class NoGradLinearLayer(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
@@ -66,6 +76,7 @@ class NoGradLinearLayer(paddle.nn.Layer):
 
 
 class TestGrad(unittest.TestCase):
+
     def setUp(self):
         self.func = GradLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
@@ -85,6 +96,7 @@ class TestGrad(unittest.TestCase):
 
 
 class TestGradLinear(TestGrad):
+
     def setUp(self):
         self.func = GradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
@@ -136,6 +148,7 @@ class TestGradLinear(TestGrad):
 
 
 class TestNoGradLinear(TestGradLinear):
+
     def setUp(self):
         self.func = NoGradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')

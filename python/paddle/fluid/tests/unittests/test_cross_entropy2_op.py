@@ -18,6 +18,7 @@ import numpy as np
 
 
 class CrossEntropy2OpTestBase(OpTest):
+
     def initParameters(self):
         return [32, 64], 'float64', -100, False
 
@@ -42,12 +43,20 @@ class CrossEntropy2OpTestBase(OpTest):
         feature_size = int(self.shape[-1])
         batch_size = int(np.prod(self.shape) / feature_size)
         logits = (np.random.random(size=self.shape) + 1).astype(self.dtype)
+<<<<<<< HEAD
         label_shape = (
             self.shape[0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
         )
         label = np.random.random_integers(
             low=0, high=feature_size - 1, size=label_shape
         ).astype('int64')
+=======
+        label_shape = self.shape[
+            0:-1] if self.drop_last_dim else self.shape[0:-1] + [1]
+        label = np.random.random_integers(low=0,
+                                          high=feature_size - 1,
+                                          size=label_shape).astype('int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         outputs, match_x = self.calc_output(
             np.reshape(logits, [batch_size, feature_size]),
             np.reshape(label, [batch_size, 1]),
@@ -58,7 +67,11 @@ class CrossEntropy2OpTestBase(OpTest):
         self.outputs = {
             'Y': np.reshape(outputs, out_shape),
             'MatchX': np.reshape(match_x, self.shape[:-1] + [1]),
+<<<<<<< HEAD
             'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype),
+=======
+            'XShape': np.zeros(shape=logits.shape, dtype=logits.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.attrs = {'ignore_index': self.ignore_index}
 
@@ -66,34 +79,45 @@ class CrossEntropy2OpTestBase(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             inputs_to_check=['X'],
             output_names=['Y'],
             no_grad_set=['XShape', 'MatchX', 'Label'],
         )
+=======
+        self.check_grad(inputs_to_check=['X'],
+                        output_names=['Y'],
+                        no_grad_set=['XShape', 'MatchX', 'Label'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class CrossEntropy2OpTest2(CrossEntropy2OpTestBase):
+
     def initParameters(self):
         return [32, 64], 'float64', 3, False
 
 
 class CrossEntropy2OpTest2RemoveLastDim(CrossEntropy2OpTestBase):
+
     def initParameters(self):
         return [32, 64], 'float64', 3, True
 
 
 class CrossEntropy2OpTest3(CrossEntropy2OpTestBase):
+
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', -100, False
 
 
 class CrossEntropy2OpTest3RemoveLastDim(CrossEntropy2OpTestBase):
+
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', -100, True
 
 
 class CrossEntropy2OpTest4(CrossEntropy2OpTestBase):
+
     def initParameters(self):
         return [4, 8, 16, 32], 'float64', 3, False
 

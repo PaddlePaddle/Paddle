@@ -23,6 +23,7 @@ from paddle import enable_static
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestElementwiseMulBf16MklDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.use_mkldnn = True
@@ -49,6 +50,7 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             core.CPUPlace(),
             ["X", "Y"],
@@ -60,6 +62,16 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
             ],
             user_defined_grad_outputs=[self.x_bf16],
         )
+=======
+        self.check_grad_with_place(core.CPUPlace(), ["X", "Y"],
+                                   "Out",
+                                   check_dygraph=False,
+                                   user_defined_grads=[
+                                       np.multiply(self.x, self.y),
+                                       np.multiply(self.x, self.x)
+                                   ],
+                                   user_defined_grad_outputs=[self.x_bf16])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
@@ -82,9 +94,15 @@ class TestElementwiseMulBf16MklDNNOp(OpTest):
         )
 
 
+<<<<<<< HEAD
 class TestElementwiseMulBroadcastingBf16MklDNNOp(
     TestElementwiseMulBf16MklDNNOp
 ):
+=======
+class TestElementwiseMulBroadcastingBf16MklDNNOp(TestElementwiseMulBf16MklDNNOp
+                                                 ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def generate_data(self):
         self.x = np.random.uniform(1, 2, [1, 2, 3, 100]).astype(np.float32)
         self.y = np.random.uniform(1, 2, [100]).astype(np.float32)

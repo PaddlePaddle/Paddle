@@ -18,6 +18,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/macros.h"  // import FLT_MAX
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"

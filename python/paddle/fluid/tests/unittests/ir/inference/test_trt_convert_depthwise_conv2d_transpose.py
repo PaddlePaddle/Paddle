@@ -22,6 +22,7 @@ import unittest
 
 
 class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -29,10 +30,15 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         if (
             inputs['input_data'].shape[1]
             != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
         ):
+=======
+        if inputs['input_data'].shape[
+                1] != weights['conv2d_weight'].shape[1] * attrs[0]['groups']:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
 
         if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[1]:
@@ -54,6 +60,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
+<<<<<<< HEAD
             return np.ones([batch, attrs[0]['groups'], 64, 64]).astype(
                 np.float32
             )
@@ -62,6 +69,14 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             return np.random.random([attrs[0]['groups'], 1, 3, 3]).astype(
                 np.float32
             )
+=======
+            return np.ones([batch, attrs[0]['groups'], 64,
+                            64]).astype(np.float32)
+
+        def generate_weight1(attrs: List[Dict[str, Any]]):
+            return np.random.random([attrs[0]['groups'], 1, 3,
+                                     3]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         for batch in [1, 2, 4]:
             for strides in [[1, 1], [2, 2], [1, 2]]:
@@ -122,8 +137,13 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
                                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, attrs[0]['groups'], 32, 32],
@@ -168,8 +188,12 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
+=======
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
@@ -179,6 +203,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
         #     attrs, True), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
                 return True

@@ -18,6 +18,7 @@ from paddle.fluid import unique_name
 from .pass_base import PassBase, register_pass
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_type
+<<<<<<< HEAD
 from paddle.distributed.auto_parallel.utils import (
     get_loss_op,
     set_var_dist_attr,
@@ -50,11 +51,26 @@ from paddle.distributed.auto_parallel.dist_attribute import (
     OperatorDistributedAttribute,
 )
 from ..auto_parallel.utils import is_forward_op, is_backward_op, is_loss_op
+=======
+from paddle.distributed.auto_parallel.utils import get_loss_op, set_var_dist_attr
+from paddle.distributed.auto_parallel.utils import naive_set_dist_op_attr_for_program_by_mesh_and_mapping
+from paddle.distributed.auto_parallel.process_group import get_world_process_group
+from paddle.fluid.contrib.mixed_precision.fp16_utils import AutoMixedPrecisionLists
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _keep_fp32_input, _keep_fp32_output, find_op_index
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _valid_types, find_true_post_op, find_true_prev_op
+from paddle.fluid.contrib.mixed_precision.fp16_utils import _is_in_black_varnames, _dtype_to_str, _rename_arg
+from paddle.distributed.auto_parallel.dist_attribute import OperatorDistributedAttribute
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 world_process_group = get_world_process_group()
 
 
+<<<<<<< HEAD
 class AMPState:
+=======
+class AMPState(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, block):
         self._block = block
         self._op_fp16_dict = (
@@ -78,11 +94,18 @@ class AMPState:
             elif int(op.attr('op_role')) == int(OpRole.Backward):
                 if op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
                     fwd_op_id = dist_op_context.grad_op_id_to_op_id[
+<<<<<<< HEAD
                         op.desc.original_id()
                     ]
                     if self._is_fp16_op(fwd_op_id) is True:
                         self._op_fp16_dict[op.desc.original_id()] = True
                     elif self._is_fp16_op(fwd_op_id) is False:
+=======
+                        op.desc.original_id()]
+                    if self._is_fp16_op(fwd_op_id) == True:
+                        self._op_fp16_dict[op.desc.original_id()] = True
+                    elif self._is_fp16_op(fwd_op_id) == False:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         self._op_fp16_dict[op.desc.original_id()] = False
             elif int(op.attr('op_role')) == int(OpRole.Optimize):
                 break
@@ -102,8 +125,12 @@ class AMPState:
             if op.type == 'create_py_reader' or op.type == 'read':
                 continue
             if amp_lists.black_varnames is not None and _is_in_black_varnames(
+<<<<<<< HEAD
                 op, amp_lists
             ):
+=======
+                    op, amp_lists):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._op_fp16_dict[op.desc.original_id()] = False
                 continue
             if op.type in amp_lists.black_list:
@@ -123,13 +150,18 @@ class AMPState:
                                 continue
                             elif in_var.op is op:
                                 prev_op = find_true_prev_op(
+<<<<<<< HEAD
                                     ops, op, in_var_name
                                 )
+=======
+                                    ops, op, in_var_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 if prev_op is None:
                                     continue
                             else:
                                 prev_op = in_var.op
                             # if it's one of inputs
+<<<<<<< HEAD
                             if (
                                 self._is_fp16_op(prev_op.desc.original_id())
                                 is False
@@ -141,6 +173,13 @@ class AMPState:
                                 is True
                                 or prev_op.type in amp_lists.white_list
                             ):
+=======
+                            if self._is_fp16_op(prev_op.desc.original_id()) == False or \
+                                    prev_op.type in amp_lists.black_list:
+                                is_black_op = True
+                            elif self._is_fp16_op(prev_op.desc.original_id()) == True or \
+                                    prev_op.type in amp_lists.white_list:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                 is_white_op = True
                 if is_black_op:
                     self._op_fp16_dict[op.desc.original_id()] = False
@@ -161,6 +200,7 @@ class AMPState:
             num_cast_ops = 0
             if int(op.attr('op_role')) == int(OpRole.Backward):
                 break
+<<<<<<< HEAD
             if self._is_fp16_op(op.desc.original_id()) is False:
                 num_cast_ops = self._insert_cast_op_forward(
                     op,
@@ -170,6 +210,13 @@ class AMPState:
                     dist_context,
                 )
             elif self._is_fp16_op(op.desc.original_id()) is True:
+=======
+            if self._is_fp16_op(op.desc.original_id()) == False:
+                num_cast_ops = self._insert_cast_op_forward(
+                    op, idx, core.VarDesc.VarType.FP16,
+                    core.VarDesc.VarType.FP32, dist_context)
+            elif self._is_fp16_op(op.desc.original_id()) == True:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 num_cast_ops = self._insert_cast_op_forward(
                     op,
                     idx,
@@ -220,8 +267,12 @@ class AMPState:
                         ref_mesh = in_var_dist_attr.process_mesh
                         ref_mapping = in_var_dist_attr.dims_mapping
                         consume_op_attr.set_input_dist_attr(
+<<<<<<< HEAD
                             cast_name, in_var_dist_attr
                         )
+=======
+                            cast_name, in_var_dist_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                         out_var = self._block.create_var(
                             name=cast_name,
@@ -249,11 +300,17 @@ class AMPState:
                         num_cast_ops += 1
                     else:
                         in_var_dist_attr = consume_op_attr.get_input_dist_attr(
+<<<<<<< HEAD
                             in_var.name
                         )
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr
                         )
+=======
+                            in_var.name)
+                        consume_op_attr.set_input_dist_attr(
+                            cast_name, in_var_dist_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     _rename_arg(op, in_var.name, cast_name)
                 else:
                     if op.has_attr('in_dtype'):
@@ -289,6 +346,7 @@ class AMPState:
         while idx < len(ops):
             num_cast_ops = 0
             grad_op = ops[idx]
+<<<<<<< HEAD
 
             # NOTE: the map in `grad_var_to_var` may be changed when the var is casted,
             # which will affect the dist_op to insert allreduce_sum op.
@@ -312,6 +370,16 @@ class AMPState:
                         appended_grad_times,
                     )
                 elif self._is_fp16_op(grad_op_orig_id) is True:  # fp16
+=======
+            grad_op_orig_id = grad_op.desc.original_id()
+            dist_op_context = dist_context.dist_op_context
+            if grad_op_orig_id in dist_op_context.grad_op_id_to_op_id:
+                if self._is_fp16_op(grad_op_orig_id) == False:  # fp32
+                    num_cast_ops = self._insert_cast_op_backward(
+                        grad_op, idx, core.VarDesc.VarType.FP16,
+                        core.VarDesc.VarType.FP32, dist_context)
+                elif self._is_fp16_op(grad_op_orig_id) == True:  # fp16
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     num_cast_ops = self._insert_cast_op_backward(
                         grad_op,
                         idx,
@@ -391,11 +459,17 @@ class AMPState:
                         cast_name = self._var_name_dict[fwd_op_id][in_var_name]
                         grad_op.desc._rename_input(in_var_name, cast_name)
                         in_var_dist_attr = consume_op_attr.get_input_dist_attr(
+<<<<<<< HEAD
                             in_var_name
                         )
                         consume_op_attr.set_input_dist_attr(
                             cast_name, in_var_dist_attr
                         )
+=======
+                            in_var_name)
+                        consume_op_attr.set_input_dist_attr(
+                            cast_name, in_var_dist_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     else:
                         assert (
                             in_var.dtype == dst_dtype
@@ -506,9 +580,14 @@ def _update_backward_cast_ops(params_grads, dist_context):
     for p, g in params_grads:
         op = g.op
         if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+<<<<<<< HEAD
             if int(op.attr('op_role')) == int(OpRole.Backward) and op.has_attr(
                 'op_role_var'
             ):
+=======
+            if int(op.attr('op_role')) == int(
+                    OpRole.Backward) and op.has_attr('op_role_var'):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 op._remove_attr("op_role_var")
 
             post_ops = find_true_post_op(main_block.ops, op, g.name)
@@ -525,6 +604,7 @@ def _update_backward_cast_ops(params_grads, dist_context):
             # add new op in the python and cpp at the same time
             new_op_desc = main_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
+<<<<<<< HEAD
             new_op = paddle.fluid.framework.Operator(
                 block=main_block,
                 desc=new_op_desc,
@@ -533,6 +613,14 @@ def _update_backward_cast_ops(params_grads, dist_context):
                 outputs=None,
                 attrs=None,
             )
+=======
+            new_op = paddle.fluid.framework.Operator(block=main_block,
+                                                     desc=new_op_desc,
+                                                     type=None,
+                                                     inputs=None,
+                                                     outputs=None,
+                                                     attrs=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             main_block.ops.append(new_op)
 
             # dist attr
@@ -590,12 +678,19 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
     inputs = {'X': grads, 'Scale': loss_scaling}
     outputs = {'Out': grads, 'FoundInfinite': found_inf}
     attrs = {'op_role': OpRole.Optimize}
+<<<<<<< HEAD
     new_op = main_block.append_op(
         type='check_finite_and_unscale',
         inputs=inputs,
         outputs=outputs,
         attrs=attrs,
     )
+=======
+    new_op = main_block.append_op(type='check_finite_and_unscale',
+                                  inputs=inputs,
+                                  outputs=outputs,
+                                  attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     new_op_dist_attr = OperatorDistributedAttribute()
     new_op_dist_attr.process_mesh = world_process_group.ranks
@@ -617,6 +712,7 @@ def _check_and_update_gradient(params_grads, loss_scaling, dist_context):
 
 @register_pass("auto_parallel_amp")
 class AMPPass(PassBase):
+
     def __init__(self):
         super().__init__()
         self.set_attr("loss", None)
@@ -675,12 +771,24 @@ class AMPPass(PassBase):
             is_train = amp_state._build_state(amp_lists, self.dist_context)
 
             amp_state.cast_forward_program(self.dist_context)
+<<<<<<< HEAD
 
         if is_train:
             with paddle.static.program_guard(main_program, startup_program):
                 amp_state.cast_backward_program(params_grads, self.dist_context)
                 self._init_amp_var()
                 self._scale_loss()
+=======
+            amp_state.cast_backward_program(params_grads, self.dist_context)
+            # TODO (JZ-LIANG)support cast forward program only when inference
+            self._init_amp_var()
+            self._scale_loss()
+
+            if self.get_attr("use_dynamic_loss_scaling"
+                             ) or self.get_attr("init_loss_scaling") != 1.0:
+                grads, found_inf = _check_and_update_gradient(
+                    params_grads, self._loss_scaling, self.dist_context)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 if (
                     self.get_attr("use_dynamic_loss_scaling")
@@ -751,6 +859,15 @@ class AMPPass(PassBase):
         )
 
         if loss.dtype != core.VarDesc.VarType.FP32:
+<<<<<<< HEAD
+=======
+            # cast loss here will change the effective loss tensor for the computation graph
+            # and therefore will effect all following passes whose logic is based on the loss tensor(Recompute & Gradient Merge),
+            # so we it is not allowed by now. fixed it in future.
+            raise NotImplementedError(
+                "Loss's generator op is not support in FP16 in Auto Parallel by now, please put that op into your black-list."
+            )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             tmp_name = unique_name.generate(loss.name + ".cast_fp32")
             cast_loss = main_block.create_var(
@@ -761,8 +878,12 @@ class AMPPass(PassBase):
             )
             ref_mesh = loss_op_dist_attr.process_mesh
             self.dist_context.set_tensor_dist_attr_for_program(
+<<<<<<< HEAD
                 cast_loss, loss_dist_attr
             )
+=======
+                cast_loss, loss_dist_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # forward
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
@@ -785,6 +906,7 @@ class AMPPass(PassBase):
                 cast_op, ref_mesh, [-1], self.dist_context
             )
 
+<<<<<<< HEAD
             # backward
             first_backward_op = main_block.ops[loss_op_idx + 2]
             assert (
@@ -822,6 +944,10 @@ class AMPPass(PassBase):
             self.get_attr("use_dynamic_loss_scaling")
             or self.get_attr("init_loss_scaling") != 1.0
         ):
+=======
+        if self.get_attr("use_dynamic_loss_scaling"
+                         ) or self.get_attr("init_loss_scaling") != 1.0:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             loss_op_idx = find_op_index(main_block.desc, loss_op.desc)
 
@@ -840,6 +966,7 @@ class AMPPass(PassBase):
             elementwise_mul_op = main_block._insert_op(
                 loss_op_idx + 1,
                 type='elementwise_mul',
+<<<<<<< HEAD
                 inputs={'X': [loss], 'Y': [self._loss_scaling]},
                 outputs={'Out': [self._scaled_loss]},
                 attrs={
@@ -849,6 +976,18 @@ class AMPPass(PassBase):
             loss_op._set_attr(
                 OP_ROLE_KEY, core.op_proto_and_checker_maker.OpRole.Forward
             )
+=======
+                inputs={
+                    'X': [loss],
+                    'Y': [self._loss_scaling]
+                },
+                outputs={'Out': [self._scaled_loss]},
+                attrs={
+                    'op_role': loss_op.all_attrs()[OP_ROLE_KEY],
+                })
+            loss_op._set_attr(OP_ROLE_KEY,
+                              core.op_proto_and_checker_maker.OpRole.Forward)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                 elementwise_mul_op, ref_mesh, [-1], self.dist_context
             )
@@ -953,6 +1092,7 @@ class AMPPass(PassBase):
             'incr_ratio': self.get_attr("incr_ratio"),
             'decr_ratio': self.get_attr("decr_ratio"),
             'stop_update': self.get_attr("stop_update"),
+<<<<<<< HEAD
             'op_role': OpRole.Optimize,
         }
 
@@ -962,6 +1102,15 @@ class AMPPass(PassBase):
             outputs=outputs,
             attrs=attrs,
         )
+=======
+            'op_role': OpRole.Optimize
+        }
+
+        new_op = main_block.append_op(type='update_loss_scaling',
+                                      inputs=inputs,
+                                      outputs=outputs,
+                                      attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         new_op_dist_attr = OperatorDistributedAttribute()
         new_op_dist_attr.process_mesh = world_process_group.ranks

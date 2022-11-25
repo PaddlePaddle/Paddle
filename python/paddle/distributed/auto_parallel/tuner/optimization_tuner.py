@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 # import yaml
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import os
 import sys
 import copy
@@ -24,11 +27,16 @@ import pickle
 import json
 import logging
 import subprocess
+<<<<<<< HEAD
+=======
+import traceback
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 import paddle
 from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.distributed.passes import new_pass, PassContext
+<<<<<<< HEAD
 
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.auto_parallel.completion import Completer
@@ -42,6 +50,18 @@ from paddle.distributed.auto_parallel.utils import debug_program
 from paddle.distributed.auto_parallel.utils import set_grad_var_shape
 
 from ..utils import get_logger
+=======
+from paddle.distributed.utils import get_logger
+
+from paddle.distributed.auto_parallel.dist_context import DistributedContext, get_default_distributed_context
+from paddle.distributed.auto_parallel.completion import Completer
+from paddle.distributed.auto_parallel.reshard import Resharder
+from paddle.distributed.auto_parallel.partitioner import Partitioner
+from paddle.distributed.auto_parallel.process_group import clear_all_process_groups, get_all_process_groups
+from paddle.distributed.auto_parallel.utils import debug_program
+from paddle.distributed.auto_parallel.utils import make_data_unshard, set_grad_var_shape
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from .config import TuningConfig
 from .algorithms import new_algorithm
 from .trial import TrialStatus
@@ -85,8 +105,14 @@ def parse_process_groups():
 
 def get_metric(results):
     assert isinstance(
+<<<<<<< HEAD
         results, dict
     ), "results should be type of dictionary, but got {}.".format(type(results))
+=======
+        results,
+        dict), "results should be type of dictionary, but got {}.".format(
+            type(results))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if 'Throughtput' in results and isinstance(results['Throughtput'], float):
         return float(results['Throughtput'])
     else:
@@ -110,18 +136,26 @@ def _copy_context(ref_dist_context):
     clear_all_process_groups()
 
     new_dist_context = DistributedContext()
+<<<<<<< HEAD
     new_dist_context._serial_main_program = (
         ref_dist_context.serial_main_program.clone(for_test=False)
     )
     new_dist_context._serial_startup_program = (
         ref_dist_context.serial_startup_program.clone(for_test=False)
     )
+=======
+    new_dist_context._serial_main_program = ref_dist_context.serial_main_program.clone(
+        for_test=False)
+    new_dist_context._serial_startup_program = ref_dist_context.serial_startup_program.clone(
+        for_test=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # mapping variable into new dist context
     if getattr(ref_dist_context, '_params_grads', None):
         new_dist_context._params_grads = _get_new_params_grads(
             new_dist_context.serial_main_program,
             ref_dist_context.serial_main_program,
+<<<<<<< HEAD
             ref_dist_context._params_grads,
         )
     new_dist_context._serial_loss = _get_new_loss(
@@ -129,6 +163,12 @@ def _copy_context(ref_dist_context):
         ref_dist_context.serial_main_program,
         ref_dist_context.serial_loss,
     )
+=======
+            ref_dist_context._params_grads)
+    new_dist_context._serial_loss = _get_new_loss(
+        new_dist_context.serial_main_program,
+        ref_dist_context.serial_main_program, ref_dist_context.serial_loss)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     for key, var_list in ref_dist_context._serial_feed_vars.items():
         new_var_list = []
@@ -136,13 +176,18 @@ def _copy_context(ref_dist_context):
             block_idx = var.block.idx
             var_name = var.name
             var = new_dist_context._serial_main_program.blocks[
+<<<<<<< HEAD
                 block_idx
             ]._var_recursive(var_name)
+=======
+                block_idx]._var_recursive(var_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             new_var_list.append(var)
         new_dist_context._serial_feed_vars[key] = new_var_list
 
     for key, var_list in ref_dist_context._serial_fetch_vars.items():
         new_var_list = []
+<<<<<<< HEAD
         # metrics is a list of list
         if key == "metrics":
             for inner_var_list in var_list:
@@ -163,10 +208,19 @@ def _copy_context(ref_dist_context):
                     block_idx
                 ]._var_recursive(var_name)
                 new_var_list.append(var)
+=======
+        for var in var_list:
+            block_idx = var.block.idx
+            var_name = var.name
+            var = new_dist_context._serial_main_program.blocks[
+                block_idx]._var_recursive(var_name)
+            new_var_list.append(var)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         new_dist_context._serial_fetch_vars[key] = new_var_list
 
     # copy information in forward and backward
     new_dist_context._serial_optimizer = copy.deepcopy(
+<<<<<<< HEAD
         ref_dist_context.serial_optimizer
     )
     new_dist_context._dist_tensors_for_program = copy.deepcopy(
@@ -180,6 +234,17 @@ def _copy_context(ref_dist_context):
     new_dist_context._dist_op_context = copy.deepcopy(
         ref_dist_context._dist_op_context
     )
+=======
+        ref_dist_context.serial_optimizer)
+    new_dist_context._dist_tensors_for_program = copy.deepcopy(
+        ref_dist_context._dist_tensors_for_program)
+    new_dist_context._dist_ops_for_program = copy.deepcopy(
+        ref_dist_context._dist_ops_for_program)
+    for pm in ref_dist_context.process_meshes:
+        new_dist_context.add_process_mesh(pm)
+    new_dist_context._dist_op_context = copy.deepcopy(
+        ref_dist_context._dist_op_context)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     new_dist_context._block_state = copy.deepcopy(ref_dist_context.block_state)
 
     return new_dist_context
@@ -187,7 +252,11 @@ def _copy_context(ref_dist_context):
 
 class OptimizationTuner:
     """
+<<<<<<< HEAD
     OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs)
+=======
+    OptimizationTuner is used to manage the tuning procedure of hyper-parameters (configs) 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     of Optimization Pass in AutoParallel.
     """
 
@@ -243,14 +312,19 @@ class OptimizationTuner:
     def _build_programs_without_optimization(self):
 
         serial_main_program = self._baseline_dist_context.serial_main_program
+<<<<<<< HEAD
         serial_startup_program = (
             self._baseline_dist_context.serial_startup_program
         )
+=======
+        serial_startup_program = self._baseline_dist_context.serial_startup_program
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         serial_loss = self._baseline_dist_context.serial_loss
 
         with program_guard(serial_main_program, serial_startup_program):
             params_grads = append_backward(
                 serial_loss,
+<<<<<<< HEAD
                 distop_context=self._baseline_dist_context.dist_op_context,
             )
 
@@ -260,12 +334,21 @@ class OptimizationTuner:
         self._baseline_dist_context.block_state.parse_backward_blocks(
             serial_main_program
         )
+=======
+                distop_context=self._baseline_dist_context.dist_op_context)
+
+        self._baseline_completer.complete_backward_annotation(
+            serial_main_program)
+        self._baseline_dist_context.block_state.parse_backward_blocks(
+            serial_main_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._baseline_dist_context._params_grads = params_grads
 
         if self._config.verbose:
             baseline_dir = os.path.join(self.project_dir, "baseline")
             if not os.path.exists(baseline_dir):
                 pathlib.Path(baseline_dir).mkdir(parents=True, exist_ok=True)
+<<<<<<< HEAD
             debug_program(
                 self._baseline_dist_context._serial_main_program,
                 baseline_dir,
@@ -276,6 +359,12 @@ class OptimizationTuner:
                 baseline_dir,
                 "startup",
             )
+=======
+            debug_program(self._baseline_dist_context._serial_main_program,
+                          baseline_dir, "main")
+            debug_program(self._baseline_dist_context._serial_startup_program,
+                          baseline_dir, "startup")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _select_tuning_algorithm(self):
 
@@ -293,13 +382,19 @@ class OptimizationTuner:
         startup_program = dist_context.serial_startup_program
 
         # applying optimization pass
+<<<<<<< HEAD
         if new_strategy.amp.enable:
             config = copy.deepcopy(new_strategy.amp.to_dict())
+=======
+        if new_strategy.amp:
+            config = copy.deepcopy(new_strategy.amp_configs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             config["dist_context"] = dist_context
             config["params_grads"] = dist_context._params_grads
 
             # TODO AMP Pass should not use loss var
             config["loss"] = dist_context.serial_loss
+<<<<<<< HEAD
             config["input_data"] = (
                 self._baseline_dist_context.serial_feed_vars["inputs"]
                 + self._baseline_dist_context.serial_feed_vars["labels"]
@@ -339,17 +434,50 @@ class OptimizationTuner:
         ) = partitioner.partition(
             main_program, startup_program, dist_context._params_grads
         )
+=======
+            config["input_data"] = self._baseline_dist_context.serial_feed_vars["inputs"] \
+                + self._baseline_dist_context.serial_feed_vars["labels"]
+            if config["use_pure_fp16"]:
+                config["base_opt"] = dist_context.optimizer
+                auto_parallel_fp16_pass = new_pass("auto_parallel_fp16", config)
+                auto_parallel_fp16_pass.apply([main_program], [startup_program],
+                                              pass_context)
+            else:
+                auto_parallel_amp_pass = new_pass("auto_parallel_amp", config)
+                auto_parallel_amp_pass.apply([main_program], [startup_program],
+                                             pass_context)
+
+        if new_strategy.recompute:
+            config = copy.deepcopy(new_strategy.recompute_configs)
+            config["dist_context"] = dist_context
+            config["no_grad_set"] = None
+            config["loss"] = dist_context.serial_loss
+            auto_parallel_recompute_pass = new_pass("auto_parallel_recompute",
+                                                    config)
+            auto_parallel_recompute_pass.apply([main_program],
+                                               [startup_program], pass_context)
+
+        # Do logical partition
+        partitioner = Partitioner(dist_context, self.rank)
+        dist_main_prog, dist_startup_prog, dist_params_grads = partitioner.partition(
+            main_program, startup_program, dist_context._params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Generate optimizer
         # FIXME should be remove from apply pass after pass support optimizers
         with program_guard(dist_main_prog, dist_startup_prog):
             optimizer_ops = dist_context.serial_optimizer.apply_gradients(
+<<<<<<< HEAD
                 dist_params_grads
             )
+=======
+                dist_params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         completer.complete_update_annotation(dist_main_prog)
 
         # Do reshard process
         set_grad_var_shape(dist_main_prog, dist_context)
+<<<<<<< HEAD
         resharder = Resharder(
             dist_main_prog,
             dist_startup_prog,
@@ -385,6 +513,32 @@ class OptimizationTuner:
             dist_main_prog,
             dist_startup_prog,
         )
+=======
+        resharder = Resharder(dist_main_prog, dist_startup_prog, self.rank,
+                              dist_context, dist_params_grads)
+        resharder.reshard()
+
+        if new_strategy.sharding:
+            config = copy.deepcopy(new_strategy.sharding_configs)
+            config["dist_context"] = dist_context
+            config["params_grads"] = dist_params_grads
+            config["global_rank"] = self.rank
+            auto_parallel_sharding_pass = new_pass("auto_parallel_sharding",
+                                                   config)
+            auto_parallel_sharding_pass.apply([dist_main_prog],
+                                              [dist_startup_prog], pass_context)
+
+        if new_strategy.gradient_merge:
+            config = copy.deepcopy(new_strategy.gradient_merge_configs)
+            config["dist_context"] = dist_context
+            config["params_grads"] = dist_params_grads
+            auto_parallel_gradient_merge_pass = new_pass(
+                "auto_parallel_gradient_merge_pass", config)
+            auto_parallel_gradient_merge_pass.apply([dist_main_prog],
+                                                    [dist_startup_prog],
+                                                    pass_context)
+        trial.main_program, trial.startup_program = dist_main_prog, dist_startup_prog
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return trial
 
     def _get_profile_context(self, trial, result_path):
@@ -392,6 +546,7 @@ class OptimizationTuner:
         profile_ctx = {}
 
         profile_ctx['distributed_env'] = copy.deepcopy(
+<<<<<<< HEAD
             paddle.distributed.ParallelEnv()
         )
         profile_ctx['group_map'] = parse_process_groups()
@@ -404,6 +559,18 @@ class OptimizationTuner:
         profile_ctx[
             "startup_program_decs"
         ] = trial.startup_program.desc.serialize_to_string()
+=======
+            paddle.distributed.ParallelEnv())
+        profile_ctx['group_map'] = parse_process_groups()
+        profile_ctx[
+            "loss_var_name"] = self._baseline_dist_context.serial_loss.name
+        profile_ctx[
+            "main_program_decs"] = trial.main_program.desc.serialize_to_string(
+            )
+        profile_ctx[
+            "startup_program_decs"] = trial.startup_program.desc.serialize_to_string(
+            )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._dataset.batch_size = self._batch_size
         self._dataset.input_names = self._get_input_names()
 
@@ -425,6 +592,7 @@ class OptimizationTuner:
         else:
             coverage_args = []
 
+<<<<<<< HEAD
         profile_args = " ".join(
             [
                 "--rank",
@@ -444,6 +612,17 @@ class OptimizationTuner:
             + " "
             + profile_args
         )
+=======
+        profile_args = " ".join([
+            "--rank",
+            str(self.rank),
+            "--device_id",
+            str(self.device_id),
+            "--ctx_filename",
+            ctx_path,
+        ])
+        cmd_args = "-m paddle.distributed.auto_parallel.tuner.profiler" + " " + profile_args
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         cmd = [sys.executable, "-u"] + coverage_args + shlex.split(cmd_args)
 
         parent_env = copy.copy(os.environ.copy())
@@ -456,11 +635,18 @@ class OptimizationTuner:
         # TODO if any rank hang or fail, kill all processes
         self._logger.debug("Executing cmd:\n{} .".format(" ".join(cmd)))
         # new_process = subprocess.Popen(cmd, env=new_env)
+<<<<<<< HEAD
         with open(
             os.path.join(trial_dir, "stdout.log" + str(self.rank)), "wb"
         ) as out, open(
             os.path.join(trial_dir, "stderr.log" + str(self.rank)), "wb"
         ) as err:
+=======
+        with open(os.path.join(trial_dir, "stdout.log" + str(self.rank)),
+                  "wb") as out, open(
+                      os.path.join(trial_dir, "stderr.log" + str(self.rank)),
+                      "wb") as err:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = subprocess.Popen(cmd, stdout=out, stderr=err, env=new_env)
             result.wait()
             out.flush()
@@ -512,6 +698,7 @@ class OptimizationTuner:
 
         elif self._config.mode == "COSTMODEL":
             raise NotImplementedError(
+<<<<<<< HEAD
                 "COSTMODEL mode for optimization tuning is not supported yet!"
             )
         else:
@@ -524,13 +711,26 @@ class OptimizationTuner:
                 trial.name, parse_results(results)
             )
         )
+=======
+                "COSTMODEL mode for optimization tuning is not supported yet!")
+        else:
+            raise NotImplementedError("invalid evaluation mode: {}".format(
+                self._config.mode))
+
+        self._logger.info("Trial {} evaluation finish with {}.".format(
+            trial.name, parse_results(results)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return results
 
     def _update(self, i, trial, results):
         self._finished_trials.append(trial)
 
         cur_mertic = get_metric(results)
+<<<<<<< HEAD
         if self._best_metric is None or cur_mertic > self._best_metric:
+=======
+        if self._best_metric == None or cur_mertic > self._best_metric:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._best_metric = cur_mertic
             self._best_iter = i
 
@@ -542,7 +742,11 @@ class OptimizationTuner:
         Return the best optimization configuration found in the tuning.
 
         Returns:
+<<<<<<< HEAD
             A object of fleet.DistributedStrategy with best configuration.
+=======
+            A object of fleet.DistributedStrategy with best configuration.       
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
         assert self._best_iter >= 0, "The best configuration is not found yet !"
         best_trial = self._finished_trials[self._best_iter]
@@ -557,6 +761,7 @@ class OptimizationTuner:
         summary_ = """
 Tuning Result Summary
 Run total {} trials with {} min.
+<<<<<<< HEAD
 The best trial is: [{}], whose configuration is following:
         """.format(
             len(self._finished_trials),
@@ -564,15 +769,29 @@ The best trial is: [{}], whose configuration is following:
             best_trial.name,
         )
         summary_ += "\n" + best_trial.summary() + "\n"
+=======
+The best trial is: [{}], whose configuration is following: 
+        """.format(len(self._finished_trials),
+                   (time.time() - self._tuning_start_time) / 60,
+                   best_trial.name)
+        summary_ += "\n" + best_trial.summary() + "\n"\
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._logger.info(summary_)
         with open(os.path.join(self.project_dir, "summary.txt"), "w+") as fw:
             for line in summary_.split("\n"):
                 fw.write(line + "\n")
 
+<<<<<<< HEAD
         # full_strategy = self.get_best_config()
         # path = os.path.join(self.project_dir, "tuned_dist_strategy.yaml")
         # with open(path, 'w') as outfile:
         #     yaml.dump(full_strategy, outfile, default_flow_style=False)
+=======
+        full_strategy = self.get_best_config()
+        full_strategy.save_to_prototxt(
+            os.path.join(self.project_dir, "tuned_dist_strategy.prototxt"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def clear(self):
         """
@@ -586,8 +805,13 @@ The best trial is: [{}], whose configuration is following:
 
     def tune(self):
         """
+<<<<<<< HEAD
         Performs the search for best hyperparameter configuations
         for the selected optimization pass(es).
+=======
+        Performs the search for best hyperparameter configuations 
+        for the selected optimization pass(es). 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
 
         # step1: collect model info which might be used for
@@ -595,8 +819,12 @@ The best trial is: [{}], whose configuration is following:
         self._tuning_start_time = time.time()
         self._algorithm.collect_model_info(
             self._baseline_dist_context.serial_main_program,
+<<<<<<< HEAD
             self._baseline_dist_context.serial_startup_program,
         )
+=======
+            self._baseline_dist_context.serial_startup_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # main search loop
         i = 0
@@ -618,6 +846,7 @@ The best trial is: [{}], whose configuration is following:
 
             # early stop
             i += 1
+<<<<<<< HEAD
             if (
                 self._config.early_stop
                 and self._config.early_stop <= i - self._best_iter
@@ -627,6 +856,12 @@ The best trial is: [{}], whose configuration is following:
                         self._config.early_stop
                     )
                 )
+=======
+            if self._config.early_stop and self._config.early_stop <= i - self._best_iter:
+                self._logger.info(
+                    "Early stop the Tuning since there is no better trial found within [{}] trials"
+                    .format(self._config.early_stop))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 break
 
         # step5: summary the best config and return

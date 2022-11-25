@@ -14,9 +14,15 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/generator.h"
+=======
+#include "paddle/fluid/framework/generator.h"
+#include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/core/dense_tensor.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

@@ -13,6 +13,11 @@
 # limitations under the License.
 
 
+<<<<<<< HEAD
 class Resource:
+=======
+class Resource(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.devices = []

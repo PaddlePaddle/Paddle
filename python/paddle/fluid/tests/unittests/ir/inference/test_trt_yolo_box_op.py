@@ -22,11 +22,13 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTYoloBoxTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = fluid.data(name='image', shape=image_shape, dtype='float32')
+<<<<<<< HEAD
             image_size = fluid.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
@@ -37,6 +39,18 @@ class TRTYoloBoxTest(InferencePassTest):
             'image_size': np.random.randint(32, 64, size=(self.bs, 2)).astype(
                 'int32'
             ),
+=======
+            image_size = fluid.data(name='image_size',
+                                    shape=[self.bs, 2],
+                                    dtype='int32')
+            boxes, scores = self.append_yolobox(image, image_size)
+
+        self.feeds = {
+            'image':
+            np.random.random(image_shape).astype('float32'),
+            'image_size':
+            np.random.randint(32, 64, size=(self.bs, 2)).astype('int32'),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.enable_trt = True
         self.trt_parameters = TRTYoloBoxTest.TensorRTParam(
@@ -55,6 +69,7 @@ class TRTYoloBoxTest(InferencePassTest):
         self.downsample_ratio = 32
 
     def append_yolobox(self, image, image_size):
+<<<<<<< HEAD
         return fluid.layers.yolo_box(
             x=image,
             img_size=image_size,
@@ -63,6 +78,14 @@ class TRTYoloBoxTest(InferencePassTest):
             conf_thresh=self.conf_thresh,
             downsample_ratio=self.downsample_ratio,
         )
+=======
+        return fluid.layers.yolo_box(x=image,
+                                     img_size=image_size,
+                                     class_num=self.class_num,
+                                     anchors=self.anchors,
+                                     conf_thresh=self.conf_thresh,
+                                     downsample_ratio=self.downsample_ratio)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -74,14 +97,21 @@ class TRTYoloBoxTest(InferencePassTest):
 
 
 class TRTYoloBoxFP16Test(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = fluid.data(name='image', shape=image_shape, dtype='float32')
+<<<<<<< HEAD
             image_size = fluid.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
+=======
+            image_size = fluid.data(name='image_size',
+                                    shape=[self.bs, 2],
+                                    dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             boxes, scores = self.append_yolobox(image, image_size)
 
         self.feeds = {
@@ -105,6 +135,7 @@ class TRTYoloBoxFP16Test(InferencePassTest):
         self.downsample_ratio = 32
 
     def append_yolobox(self, image, image_size):
+<<<<<<< HEAD
         return fluid.layers.yolo_box(
             x=image,
             img_size=image_size,
@@ -113,6 +144,14 @@ class TRTYoloBoxFP16Test(InferencePassTest):
             conf_thresh=self.conf_thresh,
             downsample_ratio=self.downsample_ratio,
         )
+=======
+        return fluid.layers.yolo_box(x=image,
+                                     img_size=image_size,
+                                     class_num=self.class_num,
+                                     anchors=self.anchors,
+                                     conf_thresh=self.conf_thresh,
+                                     downsample_ratio=self.downsample_ratio)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -124,11 +163,13 @@ class TRTYoloBoxFP16Test(InferencePassTest):
 
 
 class TRTYoloBoxIoUAwareTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             image_shape = [self.bs, self.channel, self.height, self.width]
             image = fluid.data(name='image', shape=image_shape, dtype='float32')
+<<<<<<< HEAD
             image_size = fluid.data(
                 name='image_size', shape=[self.bs, 2], dtype='int32'
             )
@@ -139,6 +180,18 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
             'image_size': np.random.randint(32, 64, size=(self.bs, 2)).astype(
                 'int32'
             ),
+=======
+            image_size = fluid.data(name='image_size',
+                                    shape=[self.bs, 2],
+                                    dtype='int32')
+            boxes, scores = self.append_yolobox(image, image_size)
+
+        self.feeds = {
+            'image':
+            np.random.random(image_shape).astype('float32'),
+            'image_size':
+            np.random.randint(32, 64, size=(self.bs, 2)).astype('int32'),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.enable_trt = True
         self.trt_parameters = TRTYoloBoxTest.TensorRTParam(
@@ -159,6 +212,7 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
         self.iou_aware_factor = 0.5
 
     def append_yolobox(self, image, image_size):
+<<<<<<< HEAD
         return fluid.layers.yolo_box(
             x=image,
             img_size=image_size,
@@ -169,6 +223,16 @@ class TRTYoloBoxIoUAwareTest(InferencePassTest):
             iou_aware=self.iou_aware,
             iou_aware_factor=self.iou_aware_factor,
         )
+=======
+        return fluid.layers.yolo_box(x=image,
+                                     img_size=image_size,
+                                     class_num=self.class_num,
+                                     anchors=self.anchors,
+                                     conf_thresh=self.conf_thresh,
+                                     downsample_ratio=self.downsample_ratio,
+                                     iou_aware=self.iou_aware,
+                                     iou_aware_factor=self.iou_aware_factor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

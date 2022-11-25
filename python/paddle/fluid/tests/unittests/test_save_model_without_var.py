@@ -18,10 +18,18 @@ import paddle.fluid as fluid
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):
+
     def test_no_var_save(self):
+<<<<<<< HEAD
         data = fluid.layers.data(
             name='data', shape=[-1, 1], dtype='float32', append_batch_size=False
         )
+=======
+        data = fluid.layers.data(name='data',
+                                 shape=[-1, 1],
+                                 dtype='float32',
+                                 append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         data_plus = data + 1
 
         if fluid.core.is_compiled_with_cuda():
@@ -35,6 +43,7 @@ class TestSaveModelWithoutVar(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
 
+<<<<<<< HEAD
             fluid.io.save_inference_model(
                 dirname='test',
                 feeded_var_names=['data'],
@@ -43,6 +52,14 @@ class TestSaveModelWithoutVar(unittest.TestCase):
                 model_filename='model',
                 params_filename='params',
             )
+=======
+            fluid.io.save_inference_model(dirname='test',
+                                          feeded_var_names=['data'],
+                                          target_vars=[data_plus],
+                                          executor=exe,
+                                          model_filename='model',
+                                          params_filename='params')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             expected_warn = "no variable in your model, please ensure there are any variables in your model to save"
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[-1].message))

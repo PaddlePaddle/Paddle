@@ -21,6 +21,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class TestComplexReshape(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -29,9 +30,15 @@ class TestComplexReshape(unittest.TestCase):
 
     def test_shape_norm_dims(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x_np = np.random.randn(2, 3, 4).astype(
                 dtype
             ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+=======
+            x_np = np.random.randn(
+                2, 3,
+                4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             shape = (2, -1)
             for place in self._places:
                 with dg.guard(place):
@@ -44,9 +51,15 @@ class TestComplexReshape(unittest.TestCase):
 
     def test_shape_omit_dims(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             x_np = np.random.randn(2, 3, 4).astype(
                 dtype
             ) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+=======
+            x_np = np.random.randn(
+                2, 3,
+                4).astype(dtype) + 1j * np.random.randn(2, 3, 4).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             shape = (0, -1)
             shape_ = (2, 12)
             for place in self._places:

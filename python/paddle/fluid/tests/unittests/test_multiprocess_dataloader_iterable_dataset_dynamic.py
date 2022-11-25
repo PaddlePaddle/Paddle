@@ -36,6 +36,7 @@ from test_multiprocess_dataloader_iterable_dataset_static import (
 
 
 class SimpleFCNet(fluid.dygraph.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -49,6 +50,7 @@ class SimpleFCNet(fluid.dygraph.Layer):
         in_channel = IMAGE_SIZE
         for hidden_size in [10, 20, 30]:
             self._fcs.append(
+<<<<<<< HEAD
                 Linear(
                     in_channel,
                     hidden_size,
@@ -67,6 +69,20 @@ class SimpleFCNet(fluid.dygraph.Layer):
                 bias_attr=bias_attr,
             )
         )
+=======
+                Linear(in_channel,
+                       hidden_size,
+                       act='tanh',
+                       param_attr=param_attr,
+                       bias_attr=bias_attr))
+            in_channel = hidden_size
+        self._fcs.append(
+            Linear(in_channel,
+                   CLASS_NUM,
+                   act='softmax',
+                   param_attr=param_attr,
+                   bias_attr=bias_attr))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, image):
         out = image
@@ -76,6 +92,7 @@ class SimpleFCNet(fluid.dygraph.Layer):
 
 
 class TestDygraphDataLoader(unittest.TestCase):
+
     def run_main(self, num_workers, places, persistent_workers):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
@@ -84,6 +101,7 @@ class TestDygraphDataLoader(unittest.TestCase):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomDataset(SAMPLE_NUM, CLASS_NUM)
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 num_workers=num_workers,
@@ -91,6 +109,13 @@ class TestDygraphDataLoader(unittest.TestCase):
                 drop_last=True,
                 persistent_workers=persistent_workers,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    num_workers=num_workers,
+                                    batch_size=BATCH_SIZE,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             step_list = []
             loss_list = []
@@ -131,11 +156,17 @@ class TestDygraphDataLoader(unittest.TestCase):
                         persistent_workers,
                     )
                     sys.stdout.flush()
+<<<<<<< HEAD
                     ret = self.run_main(
                         num_workers=num_workers,
                         places=p,
                         persistent_workers=persistent_workers,
                     )
+=======
+                    ret = self.run_main(num_workers=num_workers,
+                                        places=p,
+                                        persistent_workers=persistent_workers)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     results.append(ret)
                 assert (
                     results[0]['loss'].shape[0] * 2
@@ -144,6 +175,7 @@ class TestDygraphDataLoader(unittest.TestCase):
 
 
 class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
+
     def run_main(self, num_workers, places, persistent_workers):
         fluid.default_startup_program().random_seed = 1
         fluid.default_main_program().random_seed = 1
@@ -152,6 +184,7 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
             optimizer = fluid.optimizer.Adam(parameter_list=fc_net.parameters())
 
             dataset = RandomBatchedDataset(SAMPLE_NUM, CLASS_NUM)
+<<<<<<< HEAD
             dataloader = DataLoader(
                 dataset,
                 num_workers=num_workers,
@@ -159,6 +192,13 @@ class TestDygraphDataLoaderWithBatchedDataset(TestDygraphDataLoader):
                 drop_last=True,
                 persistent_workers=persistent_workers,
             )
+=======
+            dataloader = DataLoader(dataset,
+                                    num_workers=num_workers,
+                                    batch_size=None,
+                                    drop_last=True,
+                                    persistent_workers=persistent_workers)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             step_list = []
             loss_list = []

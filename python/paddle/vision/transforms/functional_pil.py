@@ -60,8 +60,12 @@ def to_tensor(pic, data_format='CHW'):
 
     if data_format not in ['CHW', 'HWC']:
         raise ValueError(
+<<<<<<< HEAD
             'data_format should be CHW or HWC. Got {}'.format(data_format)
         )
+=======
+            'data_format should be CHW or HWC. Got {}'.format(data_format))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # PIL Image
     if pic.mode == 'I':
@@ -229,11 +233,17 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         img = np.asarray(img)
         # RGB image
         if len(img.shape) == 3:
+<<<<<<< HEAD
             img = np.pad(
                 img,
                 ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
                 padding_mode,
             )
+=======
+            img = np.pad(img,
+                         ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)),
+                         padding_mode)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # Grayscale image
         if len(img.shape) == 2:
             img = np.pad(
@@ -396,8 +406,12 @@ def adjust_hue(img, hue_factor):
     """
     if not (-0.5 <= hue_factor <= 0.5):
         raise ValueError(
+<<<<<<< HEAD
             'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor)
         )
+=======
+            'hue_factor:{} is not in [-0.5, 0.5].'.format(hue_factor))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     input_mode = img.mode
     if input_mode in {'L', '1', 'I', 'F'}:
@@ -478,6 +492,7 @@ def rotate(
     if isinstance(fill, int):
         fill = tuple([fill] * 3)
 
+<<<<<<< HEAD
     return img.rotate(
         angle,
         _pil_interp_from_str[interpolation],
@@ -485,6 +500,13 @@ def rotate(
         center,
         fillcolor=fill,
     )
+=======
+    return img.rotate(angle,
+                      _pil_interp_from_str[interpolation],
+                      expand,
+                      center,
+                      fillcolor=fill)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def perspective(img, coeffs, interpolation="nearest", fill=0):

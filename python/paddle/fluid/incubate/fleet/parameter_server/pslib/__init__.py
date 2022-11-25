@@ -89,9 +89,14 @@ class PSLib(Fleet):
                 if self._role_maker.is_xpu():
                     local_endpoint = self._role_maker.get_local_endpoint()
                     local_endpoint = local_endpoint.split(":")
+<<<<<<< HEAD
                     self._heter_ptr.start_xpu_service(
                         str(local_endpoint[0]), int(local_endpoint[1])
                     )
+=======
+                    self._heter_ptr.start_xpu_service(str(local_endpoint[0]),
+                                                      int(local_endpoint[1]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._role_maker._barrier_all()
             self.all_ips_ = self._role_maker._all_gather(self._local_ip)
             # worker_index * 2 is for compatible with older versions of pslib
@@ -146,11 +151,17 @@ class PSLib(Fleet):
                             var_name = table.dense_variable_name[i]
                             if scope.find_var(var_name) is None:
                                 raise ValueError(
+<<<<<<< HEAD
                                     "var "
                                     + var_name
                                     + " not found in scope, "
                                     + "you should run startup program first"
                                 )
+=======
+                                    "var " + var_name +
+                                    " not found in scope, " +
+                                    "you should run startup program first")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             var_name_list.append(var_name)
                         if not self._opt_info["use_ps_gpu"]:
                             self._fleet_ptr.init_model(
@@ -277,6 +288,7 @@ class PSLib(Fleet):
     ):
         """ """
 
+<<<<<<< HEAD
         trainer_instance = executor.start_heter_trainer(
             program,
             scope,
@@ -286,6 +298,12 @@ class PSLib(Fleet):
             print_period,
             fetch_handler,
         )
+=======
+        trainer_instance = executor.start_heter_trainer(program, scope, debug,
+                                                        fetch_list, fetch_info,
+                                                        print_period,
+                                                        fetch_handler)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._role_maker.is_xpu():
             print("barrier heter")
             self._role_maker._barrier_heter()
@@ -1094,8 +1112,12 @@ class DownpourOptimizer(DistributedOptimizer):
                 "Currently, distributed optimizer only support Adam"
                 "Will config built-in adam for you."
                 "We will support more functions in DistributedOptimizer",
+<<<<<<< HEAD
                 sys.stderr,
             )
+=======
+                sys.stderr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._optimizer_name = "DistributedAdam"
 
         self._distributed_optimizer = globals()[self._optimizer_name](optimizer)
@@ -1252,6 +1274,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
+<<<<<<< HEAD
                 t.transpile(
                     startup_program=start_program,
                     main_program=main_program,
@@ -1260,6 +1283,14 @@ class DownpourOptimizer(DistributedOptimizer):
                     current_endpoint=env['current_endpoint'],
                     wait_port=False,
                 )
+=======
+                t.transpile(startup_program=start_program,
+                            main_program=main_program,
+                            rank=env["trainer_id"],
+                            endpoints=env["trainer_endpoints"],
+                            current_endpoint=env['current_endpoint'],
+                            wait_port=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if i > 0:
                     self._remove_collective_ops(
                         start_program, "c_comm_init_all"

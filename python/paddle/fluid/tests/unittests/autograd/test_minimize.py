@@ -17,16 +17,25 @@ import unittest
 import numpy as np
 import paddle
 from paddle.incubate.autograd.primx import prim2orig
+<<<<<<< HEAD
 from paddle.incubate.autograd.utils import (
     disable_prim,
     enable_prim,
     prim_enabled,
 )
+=======
+from paddle.incubate.autograd.utils import (disable_prim, enable_prim,
+                                            prim_enabled)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.enable_static()
 
 
 class TestMinimize(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def model(self, x, w, bias, opt):
         paddle.seed(0)
         place = paddle.CPUPlace()
@@ -38,12 +47,21 @@ class TestMinimize(unittest.TestCase):
         with paddle.static.program_guard(main, startup):
             input_x = paddle.static.data('x', x.shape, dtype=x.dtype)
             input_x.stop_gradient = False
+<<<<<<< HEAD
             params_w = paddle.static.create_parameter(
                 shape=w.shape, dtype=w.dtype, is_bias=False
             )
             params_bias = paddle.static.create_parameter(
                 shape=bias.shape, dtype=bias.dtype, is_bias=True
             )
+=======
+            params_w = paddle.static.create_parameter(shape=w.shape,
+                                                      dtype=w.dtype,
+                                                      is_bias=False)
+            params_bias = paddle.static.create_parameter(shape=bias.shape,
+                                                         dtype=bias.dtype,
+                                                         is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             y = paddle.tanh(paddle.matmul(input_x, params_w) + params_bias)
             loss = paddle.norm(y, p=2)
             opt = opt
@@ -51,9 +69,19 @@ class TestMinimize(unittest.TestCase):
             if prim_enabled():
                 prim2orig(main.block(0))
         exe.run(startup)
+<<<<<<< HEAD
         grads = exe.run(
             main, feed={'x': x, 'w': w, 'bias': bias}, fetch_list=grads
         )
+=======
+        grads = exe.run(main,
+                        feed={
+                            'x': x,
+                            'w': w,
+                            'bias': bias
+                        },
+                        fetch_list=grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return grads
 
     def test_adam(self):

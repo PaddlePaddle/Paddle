@@ -31,21 +31,35 @@ from paddle.fluid.framework import _test_eager_guard
 
 os.environ["CPU_NUM"] = "1"
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class PACT(nn.Layer):
+
     def __init__(self, init_value=20):
         super().__init__()
         alpha_attr = paddle.ParamAttr(
             name=self.full_name() + ".pact",
+<<<<<<< HEAD
             initializer=paddle.nn.initializer.Constant(value=init_value),
         )
         self.alpha = self.create_parameter(
             shape=[1], attr=alpha_attr, dtype='float32'
         )
+=======
+            initializer=paddle.nn.initializer.Constant(value=init_value))
+        self.alpha = self.create_parameter(shape=[1],
+                                           attr=alpha_attr,
+                                           dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, x):
         out_left = paddle.nn.functional.relu(x - self.alpha)
@@ -55,7 +69,9 @@ class PACT(nn.Layer):
 
 
 class CustomQAT(nn.Layer):
+
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
         attr = paddle.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=1.0)
@@ -76,9 +92,31 @@ class CustomQAT(nn.Layer):
         self.lower = self.create_parameter(
             shape=[1], attr=attr, dtype='float32'
         )
+=======
+        super(CustomQAT, self).__init__()
+        attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(
+            value=1.0))
+        self.u_param = self.create_parameter(shape=[1],
+                                             attr=attr,
+                                             dtype='float32')
+        self.l_param = self.create_parameter(shape=[1],
+                                             attr=attr,
+                                             dtype='float32')
+        self.alpha_param = self.create_parameter(shape=[1],
+                                                 attr=attr,
+                                                 dtype='float32')
+        self.upper = self.create_parameter(shape=[1],
+                                           attr=attr,
+                                           dtype='float32')
+        self.upper.stop_gradient = True
+        self.lower = self.create_parameter(shape=[1],
+                                           attr=attr,
+                                           dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.lower.stop_gradient = True
 
     def forward(self, x):
+
         def clip(x, upper, lower):
             x = x + paddle.nn.functional.relu(lower - x)
             x = x - paddle.nn.functional.relu(x - upper)
@@ -109,6 +147,7 @@ class CustomQAT(nn.Layer):
 
 
 class ModelForConv2dT(nn.Layer):
+
     def __init__(self, num_classes=10):
         super().__init__()
         self.features = nn.Conv2DTranspose(4, 6, (3, 3))
@@ -122,9 +161,11 @@ class ModelForConv2dT(nn.Layer):
 
 
 class ImperativeLenet(paddle.nn.Layer):
+
     def __init__(self, num_classes=10, classifier_activation='softmax'):
         super().__init__()
         self.features = Sequential(
+<<<<<<< HEAD
             paddle.nn.Conv2D(
                 in_channels=1,
                 out_channels=6,
@@ -142,14 +183,34 @@ class ImperativeLenet(paddle.nn.Layer):
             ),
             Pool2D(pool_size=2, pool_type='max', pool_stride=2),
         )
+=======
+            Conv2D(num_channels=1,
+                   num_filters=6,
+                   filter_size=3,
+                   stride=1,
+                   padding=1),
+            Pool2D(pool_size=2, pool_type='max', pool_stride=2),
+            Conv2D(num_channels=6,
+                   num_filters=16,
+                   filter_size=5,
+                   stride=1,
+                   padding=0),
+            Pool2D(pool_size=2, pool_type='max', pool_stride=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.fc = Sequential(
             Linear(input_dim=400, output_dim=120),
             Linear(input_dim=120, output_dim=84),
+<<<<<<< HEAD
             Linear(
                 input_dim=84, output_dim=num_classes, act=classifier_activation
             ),
         )
+=======
+            Linear(input_dim=84,
+                   output_dim=num_classes,
+                   act=classifier_activation))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def forward(self, inputs):
         x = self.features(inputs)
@@ -160,6 +221,7 @@ class ImperativeLenet(paddle.nn.Layer):
 
 
 class TestUserDefinedActPreprocess(unittest.TestCase):
+
     def setUp(self):
         _logger.info("test act_preprocess")
         self.imperative_qat = ImperativeQuantAware(act_preprocess_layer=PACT)
@@ -205,6 +267,7 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
             for epoch in range(epoch_num):
                 model.train()
                 for batch_id, data in enumerate(train_reader()):
+<<<<<<< HEAD
                     x_data = np.array(
                         [x[0].reshape(1, 28, 28) for x in data]
                     ).astype('float32')
@@ -213,6 +276,12 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                         .astype('int64')
                         .reshape(-1, 1)
                     )
+=======
+                    x_data = np.array([x[0].reshape(1, 28, 28)
+                                       for x in data]).astype('float32')
+                    y_data = np.array([x[1] for x in data
+                                       ]).astype('int64').reshape(-1, 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     img = paddle.to_tensor(x_data)
                     label = paddle.to_tensor(y_data)
@@ -225,16 +294,23 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     model.clear_gradients()
                     if batch_id % 50 == 0:
                         _logger.info(
+<<<<<<< HEAD
                             "Train | At epoch {} step {}: loss = {:}, acc= {:}".format(
                                 epoch, batch_id, avg_loss.numpy(), acc.numpy()
                             )
                         )
+=======
+                            "Train | At epoch {} step {}: loss = {:}, acc= {:}".
+                            format(epoch, batch_id, avg_loss.numpy(),
+                                   acc.numpy()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         break
 
         def test(model):
             model.eval()
             avg_acc = [[], []]
             for batch_id, data in enumerate(test_reader()):
+<<<<<<< HEAD
                 x_data = np.array(
                     [x[0].reshape(1, 28, 28) for x in data]
                 ).astype('float32')
@@ -243,6 +319,12 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                     .astype('int64')
                     .reshape(-1, 1)
                 )
+=======
+                x_data = np.array([x[0].reshape(1, 28, 28)
+                                   for x in data]).astype('float32')
+                y_data = np.array([x[1] for x in data
+                                   ]).astype('int64').reshape(-1, 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 img = paddle.to_tensor(x_data)
                 label = paddle.to_tensor(y_data)
@@ -259,9 +341,15 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
                         )
                     )
 
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=512, drop_last=True
         )
+=======
+        train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                    batch_size=512,
+                                    drop_last=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         test_reader = paddle.batch(paddle.dataset.mnist.test(), batch_size=512)
         train(lenet)
         test(lenet)
@@ -273,18 +361,21 @@ class TestUserDefinedActPreprocess(unittest.TestCase):
 
 
 class TestUserDefinedWeightPreprocess(TestUserDefinedActPreprocess):
+
     def setUp(self):
         _logger.info("test weight_preprocess")
         self.imperative_qat = ImperativeQuantAware(weight_preprocess_layer=PACT)
 
 
 class TestUserDefinedActQuantize(TestUserDefinedActPreprocess):
+
     def setUp(self):
         _logger.info("test act_quantize")
         self.imperative_qat = ImperativeQuantAware(act_quantize_layer=CustomQAT)
 
 
 class TestUserDefinedWeightQuantize(TestUserDefinedActPreprocess):
+
     def setUp(self):
         _logger.info("test weight_quantize")
         self.imperative_qat = ImperativeQuantAware(

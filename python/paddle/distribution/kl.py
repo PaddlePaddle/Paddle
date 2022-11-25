@@ -85,9 +85,14 @@ def register_kl(cls_p, cls_q):
             def kl_beta_beta():
                 pass # insert implementation here
     """
+<<<<<<< HEAD
     if not issubclass(cls_p, Distribution) or not issubclass(
         cls_q, Distribution
     ):
+=======
+    if (not issubclass(cls_p, Distribution)
+            or not issubclass(cls_q, Distribution)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         raise TypeError('cls_p and cls_q must be subclass of Distribution')
 
     def decorator(f):
@@ -127,7 +132,12 @@ def _dispatch(cls_p, cls_q):
 
 
 @functools.total_ordering
+<<<<<<< HEAD
 class _Compare:
+=======
+class _Compare(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, *classes):
         self.classes = classes
 
@@ -145,6 +155,7 @@ class _Compare:
 
 @register_kl(Beta, Beta)
 def _kl_beta_beta(p, q):
+<<<<<<< HEAD
     return (
         (q.alpha.lgamma() + q.beta.lgamma() + (p.alpha + p.beta).lgamma())
         - (p.alpha.lgamma() + p.beta.lgamma() + (q.alpha + q.beta).lgamma())
@@ -155,11 +166,20 @@ def _kl_beta_beta(p, q):
             * (p.alpha + p.beta).digamma()
         )
     )
+=======
+    return ((q.alpha.lgamma() + q.beta.lgamma() + (p.alpha + p.beta).lgamma()) -
+            (p.alpha.lgamma() + p.beta.lgamma() + (q.alpha + q.beta).lgamma()) +
+            ((p.alpha - q.alpha) * p.alpha.digamma()) +
+            ((p.beta - q.beta) * p.beta.digamma()) +
+            (((q.alpha + q.beta) - (p.alpha + p.beta)) *
+             (p.alpha + p.beta).digamma()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @register_kl(Dirichlet, Dirichlet)
 def _kl_dirichlet_dirichlet(p, q):
     return (
+<<<<<<< HEAD
         (p.concentration.sum(-1).lgamma() - q.concentration.sum(-1).lgamma())
         - ((p.concentration.lgamma() - q.concentration.lgamma()).sum(-1))
         + (
@@ -172,6 +192,13 @@ def _kl_dirichlet_dirichlet(p, q):
             ).sum(-1)
         )
     )
+=======
+        (p.concentration.sum(-1).lgamma() - q.concentration.sum(-1).lgamma()) -
+        ((p.concentration.lgamma() - q.concentration.lgamma()).sum(-1)) +
+        (((p.concentration - q.concentration) *
+          (p.concentration.digamma() -
+           p.concentration.sum(-1).digamma().unsqueeze(-1))).sum(-1)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @register_kl(Categorical, Categorical)
@@ -212,17 +239,28 @@ def _kl_expfamily_expfamily(p, q):
 
     try:
         if _non_static_mode():
+<<<<<<< HEAD
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True
             )
+=======
+            p_grads = paddle.grad(p_log_norm,
+                                  p_natural_params,
+                                  create_graph=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             p_grads = paddle.static.gradients(p_log_norm, p_natural_params)
     except RuntimeError as e:
         raise TypeError(
+<<<<<<< HEAD
             "Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q}).".format(
                 cls_p=type(p).__name__, cls_q=type(q).__name__
             )
         ) from e
+=======
+            "Cann't compute kl_divergence({cls_p}, {cls_q}) use bregman divergence. Please register_kl({cls_p}, {cls_q})."
+            .format(cls_p=type(p).__name__, cls_q=type(q).__name__)) from e
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     kl = q._log_normalizer(*q_natural_params) - p_log_norm
     for p_param, q_param, p_grad in zip(

@@ -15,7 +15,20 @@
 #include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
 
 #include <queue>
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+=======
+
+// The difference between "sequential_run" and "serial_run":
+// "sequential_run" dispatches OPs one by one according to the sequence in the
+// Program, while "serial_run" ensures that all Ops are scheduled in a singal
+// thread. In standalone executor, "sequential_run" is also "serial_run", while
+// "serial_run" is not necessarily "sequential_run".
+PADDLE_DEFINE_EXPORTED_bool(new_executor_sequential_run,
+                            false,
+                            "Enable sequential execution for standalone "
+                            "executor, only applied to GPU OPs.");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 namespace framework {
@@ -28,6 +41,52 @@ size_t CountDownstreamMap(const std::map<int, std::set<int>>& downstream_map) {
   }
   return count;
 }
+<<<<<<< HEAD
+=======
+
+bool IsCommunicationOp(const std::string& op_name) {
+  const std::set<std::string> special_comm_op_set = {
+      "send",
+      "recv",
+      "send_v2",
+      "recv_v2",
+  };
+  const std::string communication_op_prefix = "c_";
+  if (op_name.find(communication_op_prefix) != std::string::npos ||
+      special_comm_op_set.count(op_name)) {
+    return true;
+  }
+  return false;
+}
+
+// check whether exists prior_op -> ... -> posterior_op to avoid building loops
+bool IsDependency(int prior_op_idx,
+                  int posterior_op_idx,
+                  const std::map<int, std::set<int>>& downstream_map) {
+  std::queue<int> q;
+  q.push(prior_op_idx);
+
+  while (!q.empty()) {
+    int op_idx = q.front();
+    q.pop();
+
+    auto it = downstream_map.find(op_idx);
+    if (it != downstream_map.end()) {
+      for (int downstream_op_idx : it->second) {
+        if (downstream_op_idx == posterior_op_idx) {
+          return true;
+        }
+
+        // no need for double enqueue checking since DAG is assumed
+        q.push(downstream_op_idx);
+      }
+    }
+  }
+
+  return false;
+}
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 const std::string StringizeDownstreamMap(
     const std::map<int, std::set<int>>& downstream_map) {
   std::ostringstream oss;
@@ -42,7 +101,11 @@ const std::string StringizeDownstreamMap(
 }
 
 const std::map<int, std::set<int>>& DependencyBuilder::Build(
+<<<<<<< HEAD
     const std::vector<Instruction>& instructions, bool is_sequential_run) {
+=======
+    const std::vector<Instruction>& instructions) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_EQ(
       is_build_,
       false,
@@ -55,15 +118,25 @@ const std::map<int, std::set<int>>& DependencyBuilder::Build(
   BuildOpHappensBefore();
   ShrinkDownstreamMap();
 
+<<<<<<< HEAD
   if (is_sequential_run) {
     AddDependencyForSequentialRun();
   }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   AddDependencyForCoalesceTensorOp();
   AddDependencyForCommunicationOp();
   AddDependencyForRandomOp();
   AddDependencyForReadOp();
 
+<<<<<<< HEAD
+=======
+  if (FLAGS_new_executor_sequential_run) {
+    AddDependencyForSequentialRun();
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   is_build_ = true;
 
   VLOG(8) << "Finish build dependency";
@@ -84,6 +157,10 @@ bool DependencyBuilder::OpHappensBefore(int prior_op_idx,
 }
 
 void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
+<<<<<<< HEAD
+=======
+  const std::string kCoalesceTensor = "coalesce_tensor";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (instructions_->at(op_idx).OpBase()->Type() == kCoalesceTensor) {
       VLOG(4) << "Add depend for " << kCoalesceTensor << " " << op_idx;
@@ -150,8 +227,14 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       // 'first_read_fused_out_op'
       size_t target = first_read_fused_out_op;
       for (size_t j = first_read_fused_out_op + 1; j < op_num_; ++j) {
+<<<<<<< HEAD
         if (j == target + 1 && IsCommunicationOp(instructions_->at(target)) &&
             IsCommunicationOp(instructions_->at(j))) {
+=======
+        if (j == target + 1 &&
+            IsCommunicationOp(instructions_->at(target).OpBase()->Type()) &&
+            IsCommunicationOp(instructions_->at(j).OpBase()->Type())) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           VLOG(4) << "Found consecutive communication ops, "
                   << instructions_->at(target).OpBase()->Type() << " -> "
                   << instructions_->at(j).OpBase()->Type();
@@ -170,9 +253,30 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
 }
 
 void DependencyBuilder::AddDependencyForCommunicationOp() {
+<<<<<<< HEAD
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     if (IsCommunicationOp(instructions_->at(op_idx))) {
+=======
+  auto IsCommunicationOp = [](std::string op) -> bool {
+    const std::set<std::string> special_comm_op_set = {
+        "send",
+        "recv",
+        "send_v2",
+        "recv_v2",
+    };
+    const std::string communication_op_prefix = "c_";
+    if (op.find(communication_op_prefix) != std::string::npos ||
+        special_comm_op_set.count(op)) {
+      return true;
+    }
+    return false;
+  };
+
+  int dependence_op_idx = -1;
+  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+    if (IsCommunicationOp(instructions_->at(op_idx).OpBase()->Type())) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       if (dependence_op_idx != -1) {
         AddDownstreamOp(dependence_op_idx, op_idx);
       }
@@ -204,6 +308,7 @@ void DependencyBuilder::AddDependencyForCommunicationOp() {
 
 // make sure that the random op is scheduled sequentially
 void DependencyBuilder::AddDependencyForRandomOp() {
+<<<<<<< HEAD
   const std::set<std::string> random_op_set = {"bernoulli",
                                                "poisson",
                                                "multinomial",
@@ -216,6 +321,22 @@ void DependencyBuilder::AddDependencyForRandomOp() {
                                                "sampling_id",
                                                "dropout",
                                                "class_center_sample"};
+=======
+  const std::set<std::string> random_op_set = {
+      "bernoulli",
+      "poisson",
+      "multinomial",
+      "gaussian_random",
+      "truncated_gaussian_random",
+      "uniform_random",
+      "randint",
+      "randperm",
+      "exponential",
+      "sampling_id"
+      "dropout",
+      "class_center_sample",
+  };
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   int dependence_op_idx = -1;
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
@@ -255,9 +376,14 @@ void DependencyBuilder::AddDependencyForReadOp() {
   for (size_t read_op_idx : read_ops) {
     for (size_t downstream_op_idx : startup_ops) {
       if (read_op_idx != downstream_op_idx &&
+<<<<<<< HEAD
           !op_happens_before_[downstream_op_idx][read_op_idx]) {
         AddDownstreamOp(read_op_idx, downstream_op_idx);
       }
+=======
+          !IsDependency(downstream_op_idx, read_op_idx, op_downstream_map_))
+        AddDownstreamOp(read_op_idx, downstream_op_idx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
   }
 }
@@ -303,10 +429,13 @@ void DependencyBuilder::AddDownstreamOp(int prior_op_idx,
 
   if (op_happens_before_.size() != 0) {
     for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
+<<<<<<< HEAD
       if (op_happens_before_[op_idx][prior_op_idx]) {
         op_happens_before_[op_idx][posterior_op_idx] = true;
       }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       if (op_happens_before_[posterior_op_idx][op_idx]) {
         op_happens_before_[prior_op_idx][op_idx] = true;
       }
@@ -433,6 +562,13 @@ void DependencyBuilder::BuildDownstreamMap() {
       AddDownstreamOp(dep_op, op);
     }
   }
+<<<<<<< HEAD
+=======
+
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
+          << StringizeDownstreamMap(op_downstream_map_);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 void DependencyBuilder::BuildOpHappensBefore() {
@@ -463,7 +599,11 @@ void DependencyBuilder::BuildOpHappensBefore() {
                                 next,
                                 op_idx));
           op_happens_before_[op_idx][next] = true;
+<<<<<<< HEAD
           VLOG(10) << "happens before: " << op_idx << " " << next;
+=======
+          VLOG(8) << "happens before: " << op_idx << " " << next;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           q.push(next);
         }
       }
@@ -510,9 +650,14 @@ void DependencyBuilder::ShrinkDownstreamMap() {
     }
     op_downstream_map_.at(i) = minumum_nexts;
   }
+<<<<<<< HEAD
   VLOG(8) << "Finish shrink downstream map";
   VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
+=======
+  VLOG(6) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(6) << "downstream_map: " << std::endl
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           << StringizeDownstreamMap(op_downstream_map_);
 }
 

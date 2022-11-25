@@ -14,14 +14,19 @@
 
 import unittest
 from paddle.fluid.framework import default_main_program
+<<<<<<< HEAD
 from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import (
     _get_optimizer_input_shape,
 )
+=======
+from paddle.fluid.incubate.fleet.parameter_server.ir.pserver_pass import _get_optimizer_input_shape
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 main_program = default_main_program()
 
 
 class TestFleetPS(unittest.TestCase):
+
     def test_version(self):
         from paddle.fluid.incubate.fleet.parameter_server import version
 

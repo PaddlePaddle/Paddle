@@ -61,9 +61,12 @@ float CastPyArg2Float(PyObject* obj,
 double CastPyArg2Double(PyObject* obj,
                         const std::string& op_type,
                         ssize_t arg_pos);
+<<<<<<< HEAD
 phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
                                              const std::string& op_type,
                                              ssize_t arg_pos);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 std::string CastPyArg2String(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos);

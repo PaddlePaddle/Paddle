@@ -20,6 +20,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 
 class MyLayer(fluid.Layer):
+
     def __init__(self, layerlist):
         super().__init__()
         self.layerlist = layerlist
@@ -31,6 +32,14 @@ class MyLayer(fluid.Layer):
 
 
 class TestImperativeContainer(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+    def fluid_dygraph_list(self):
+        return fluid.dygraph.LayerList(
+            [fluid.dygraph.Linear(2**i, 2**(i + 1)) for i in range(6)])
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def paddle_imperative_list(self):
         return paddle.nn.LayerList(
             [fluid.dygraph.Linear(2**i, 2 ** (i + 1)) for i in range(6)]

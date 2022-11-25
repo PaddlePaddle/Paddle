@@ -21,6 +21,7 @@ from .cifar import Cifar10  # noqa: F401
 from .cifar import Cifar100  # noqa: F401
 from .voc2012 import VOC2012  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
     'DatasetFolder',
     'ImageFolder',
@@ -30,4 +31,9 @@ __all__ = [  # noqa
     'Cifar10',
     'Cifar100',
     'VOC2012',
+=======
+__all__ = [  #noqa
+    'DatasetFolder', 'ImageFolder', 'MNIST', 'FashionMNIST', 'Flowers',
+    'Cifar10', 'Cifar100', 'VOC2012'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 ]

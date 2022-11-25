@@ -26,9 +26,18 @@ TEST(fused_token_prune_op_plugin, test_plugin) {
                                       /*keep_first_token*/ false,
                                       /*keep_order*/ true,
                                       /*flag_varseqlen*/ false);
+<<<<<<< HEAD
   plugin.initialize();
   plugin.getPluginType();
   plugin.getNbOutputs();
+=======
+  plugin.configurePlugin(nullptr, 4, nullptr, 2);
+  plugin.initialize();
+  plugin.getPluginType();
+  plugin.getNbOutputs();
+  auto clone_plugin = plugin.clone();
+  clone_plugin->destroy();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   size_t buf_size = plugin.getSerializationSize();
   std::vector<char> buf(buf_size);
   plugin.serialize(buf.data());

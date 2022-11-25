@@ -43,10 +43,17 @@ void MatmulCooDenseGradKernel(const Context& dev_ctx,
     // 'cusparseSDDMM' only support CSR now, so use COO->CSR->COO,
     // which will increase some expenses.
     EmptyLikeCooKernel<T, Context>(dev_ctx, x, dx);
+<<<<<<< HEAD
     SparseCsrTensor dx_csr = CooToCsr<T, Context>(dev_ctx, *dx);
     sparse_blas.SDDMM(
         false, true, static_cast<T>(1), dout, y, static_cast<T>(0), &dx_csr);
     CsrToCooKernel<T, Context>(dev_ctx, dx_csr, dx);
+=======
+    SparseCsrTensor dx_csr = SparseCooToCsr<T, Context>(dev_ctx, *dx);
+    sparse_blas.SDDMM(
+        false, true, static_cast<T>(1), dout, y, static_cast<T>(0), &dx_csr);
+    SparseCsrToCooKernel<T, Context>(dev_ctx, dx_csr, dx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   // dy{Dense} = x'{SparseCoo} * dout{Dense}

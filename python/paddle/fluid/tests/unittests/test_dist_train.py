@@ -37,6 +37,7 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
 class TestSendOp(unittest.TestCase):
+
     def test_send(self):
         remove_ps_flag(os.getpid())
         # Run init_serv in a thread
@@ -79,6 +80,7 @@ class TestSendOp(unittest.TestCase):
         with fluid.program_guard(main):
             serv = ListenAndServ("127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
+<<<<<<< HEAD
                 out_var = main.global_block().create_var(
                     name="scale_0.tmp_0",
                     psersistable=True,
@@ -91,6 +93,16 @@ class TestSendOp(unittest.TestCase):
                     name="X",
                     append_batch_size=False,
                 )
+=======
+                out_var = main.global_block().create_var(name="scale_0.tmp_0",
+                                                         psersistable=True,
+                                                         dtype="float32",
+                                                         shape=[32, 32])
+                x = layers.data(shape=[32, 32],
+                                dtype='float32',
+                                name="X",
+                                append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
                 ops._scale(x=x, scale=10.0, out=out_var)
 
@@ -100,6 +112,7 @@ class TestSendOp(unittest.TestCase):
     def init_client(self, place, port):
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             main.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
@@ -116,6 +129,22 @@ class TestSendOp(unittest.TestCase):
                 name='X',
                 append_batch_size=False,
             )
+=======
+            main.global_block().append_op(type="fetch_barrier",
+                                          inputs={},
+                                          outputs={"Out": []},
+                                          attrs={
+                                              "endpoints":
+                                              ["127.0.0.1:{0}".format(port)],
+                                              RPC_OP_ROLE_ATTR_NAME:
+                                              RPC_OP_ROLE_ATTR_VALUE
+                                          })
+
+            x = layers.data(shape=[32, 32],
+                            dtype='float32',
+                            name='X',
+                            append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             x.persistable = True
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
 
@@ -143,12 +172,19 @@ class TestSendOp(unittest.TestCase):
     def run_local(self, place):
         main = fluid.Program()
         with fluid.program_guard(main):
+<<<<<<< HEAD
             x = layers.data(
                 shape=[32, 32],
                 dtype='float32',
                 name='X',
                 append_batch_size=False,
             )
+=======
+            x = layers.data(shape=[32, 32],
+                            dtype='float32',
+                            name='X',
+                            append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
             o = layers.scale(x=x, scale=10.0)
         exe = fluid.Executor(place)

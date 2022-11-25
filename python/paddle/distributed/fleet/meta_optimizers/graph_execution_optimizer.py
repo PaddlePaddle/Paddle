@@ -23,6 +23,7 @@ __all__ = []
 
 
 class GraphExecutionOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -69,10 +70,14 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         if trainer_id == 0 and not paddle.is_compiled_with_npu():
             wait_server_ready(other_trainers)
 
+<<<<<<< HEAD
         if (
             build_strategy.reduce_strategy
             == BuildStrategy.ReduceStrategy._NoReduce
         ):
+=======
+        if build_strategy.reduce_strategy == BuildStrategy.ReduceStrategy._NoReduce:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return
 
         if core.is_compiled_with_cuda():
@@ -105,6 +110,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"NCCLID": comm_id_var},
                 attrs={
+<<<<<<< HEAD
                     "trainers": trainer_endpoints,
                     "trainer_id": trainer_id,
                     "nccl_comm_num": build_strategy.nccl_comm_num,
@@ -112,6 +118,19 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                     "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
                 },
             )
+=======
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    build_strategy.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_ranks":
+                    build_strategy.hierarchical_allreduce_inter_nranks
+                })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         elif core.is_compiled_with_xpu():
             comm_id_var = startup_program.global_block().create_var(
                 name="BKCLID", persistable=True, type=core.VarDesc.VarType.RAW
@@ -133,6 +152,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                 inputs={},
                 outputs={"BKCLID": comm_id_var},
                 attrs={
+<<<<<<< HEAD
                     "trainers": trainer_endpoints,
                     "trainer_id": trainer_id,
                     "nccl_comm_num": build_strategy.nccl_comm_num,
@@ -140,6 +160,19 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
                     "hierarchical_allreduce_inter_ranks": build_strategy.hierarchical_allreduce_inter_nranks,
                 },
             )
+=======
+                    "trainers":
+                    trainer_endpoints,
+                    "trainer_id":
+                    trainer_id,
+                    "nccl_comm_num":
+                    build_strategy.nccl_comm_num,
+                    "use_hierarchical_allreduce":
+                    build_strategy.use_hierarchical_allreduce,
+                    "hierarchical_allreduce_inter_ranks":
+                    build_strategy.hierarchical_allreduce_inter_nranks
+                })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             raise ValueError(
                 "comm_id must be generated in paddlepaddle-xpu or paddlepaddle-gpu."

@@ -57,9 +57,14 @@ def crop_img(im, inner_size, color=True, test=True):
       If True, crop the center of images.
     """
     if color:
+<<<<<<< HEAD
         height, width = max(inner_size, im.shape[1]), max(
             inner_size, im.shape[2]
         )
+=======
+        height, width = max(inner_size,
+                            im.shape[1]), max(inner_size, im.shape[2])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         padded_im = np.zeros((3, height, width))
         startY = (height - im.shape[1]) / 2
         startX = (width - im.shape[2]) / 2
@@ -67,9 +72,14 @@ def crop_img(im, inner_size, color=True, test=True):
         padded_im[:, startY:endY, startX:endX] = im
     else:
         im = im.astype('float32')
+<<<<<<< HEAD
         height, width = max(inner_size, im.shape[0]), max(
             inner_size, im.shape[1]
         )
+=======
+        height, width = max(inner_size,
+                            im.shape[0]), max(inner_size, im.shape[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         padded_im = np.zeros((height, width))
         startY = (height - im.shape[0]) / 2
         startX = (width - im.shape[1]) / 2
@@ -125,15 +135,25 @@ def load_meta(meta_path, mean_img_size, crop_size, color=True):
     if color:
         assert mean_img_size * mean_img_size * 3 == mean.shape[0]
         mean = mean.reshape(3, mean_img_size, mean_img_size)
+<<<<<<< HEAD
         mean = mean[
             :, border : border + crop_size, border : border + crop_size
         ].astype('float32')
+=======
+        mean = mean[:, border:border + crop_size,
+                    border:border + crop_size].astype('float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         assert mean_img_size * mean_img_size == mean.shape[0]
         mean = mean.reshape(mean_img_size, mean_img_size)
+<<<<<<< HEAD
         mean = mean[
             border : border + crop_size, border : border + crop_size
         ].astype('float32')
+=======
+        mean = mean[border:border + crop_size,
+                    border:border + crop_size].astype('float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return mean
 
 
@@ -176,10 +196,15 @@ def oversample(img, crop_dims):
     crops_ix = np.tile(crops_ix, (2, 1))
 
     # Extract crops
+<<<<<<< HEAD
     crops = np.empty(
         (10 * len(img), crop_dims[0], crop_dims[1], im_shape[-1]),
         dtype=np.float32,
     )
+=======
+    crops = np.empty((10 * len(img), crop_dims[0], crop_dims[1], im_shape[-1]),
+                     dtype=np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     ix = 0
     for im in img:
         for crop in crops_ix:
@@ -190,9 +215,18 @@ def oversample(img, crop_dims):
 
 
 class ImageTransformer:
+<<<<<<< HEAD
     def __init__(
         self, transpose=None, channel_swap=None, mean=None, is_color=True
     ):
+=======
+
+    def __init__(self,
+                 transpose=None,
+                 channel_swap=None,
+                 mean=None,
+                 is_color=True):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.is_color = is_color
         self.set_transpose(transpose)
         self.set_channel_swap(channel_swap)

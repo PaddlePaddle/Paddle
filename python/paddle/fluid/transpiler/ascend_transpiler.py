@@ -20,6 +20,7 @@ from paddle.distributed import fleet
 
 
 class AscendTranspiler(collective.Collective):
+
     def __init__(self, startup_program, main_program):
         self.nrings = 1
         super().__init__(self.nrings)
@@ -51,6 +52,7 @@ class AscendTranspiler(collective.Collective):
                     # As we search ops reversedly, we should insert c_allreduce_sum
                     # op in the same way to keep the ring_id alternate
                     ring_id = (ring_id + 1) % self.nrings
+<<<<<<< HEAD
                     block._insert_op(
                         offset + 1,
                         type='c_allreduce_sum',
@@ -71,6 +73,24 @@ class AscendTranspiler(collective.Collective):
                             self.op_role_key: OpRole.Backward,
                         },
                     )
+=======
+                    block._insert_op(offset + 1,
+                                     type='c_allreduce_sum',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'ring_id': ring_id,
+                                         self.op_role_key: OpRole.Backward
+                                     })
+                    block._insert_op(offset + 2,
+                                     type='scale',
+                                     inputs={'X': grad},
+                                     outputs={'Out': grad},
+                                     attrs={
+                                         'scale': 1.0 / fleet.worker_num(),
+                                         self.op_role_key: OpRole.Backward
+                                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if grad is None:
             return

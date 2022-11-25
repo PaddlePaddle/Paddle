@@ -28,10 +28,17 @@ class ControleMode:
     COLLECTIVE = "collective"
     PS = "ps"
     IPU = "ipu"
+<<<<<<< HEAD
     RPC = "rpc"
 
 
 class ControllerBase:
+=======
+
+
+class ControllerBase(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, ctx):
         signal.signal(signal.SIGTERM, self.signal_handler)
         signal.signal(signal.SIGABRT, self.signal_handler)
@@ -121,10 +128,15 @@ class ControllerBase:
                     return False
 
             # peer failure
+<<<<<<< HEAD
             if (
                 self.ctx.status.is_restarting()
                 and self.master.get_status() != self.ctx.status.COMPLETED
             ):
+=======
+            if self.ctx.status.is_restarting(
+            ) and self.master.get_status() != self.ctx.status.COMPLETED:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.pod.stop(timeout=30)
                 return False
 
@@ -214,9 +226,16 @@ class Controller(ControllerBase):
     ):
 
         if not container:
+<<<<<<< HEAD
             container = self.new_container(
                 entrypoint=entrypoint, envs=envs, out=log_file, err=log_file
             )
+=======
+            container = self.new_container(entrypoint=entrypoint,
+                                           envs=envs,
+                                           out=log_file,
+                                           err=log_file)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if is_init:
             self.pod.add_init_container(container)

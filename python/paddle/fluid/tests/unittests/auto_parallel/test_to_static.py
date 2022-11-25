@@ -14,11 +14,16 @@
 
 import unittest
 
+<<<<<<< HEAD
+=======
+import os
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import numpy as np
 
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+<<<<<<< HEAD
 from paddle.distributed.fleet import auto
 
 from paddle import LazyGuard
@@ -26,6 +31,15 @@ from paddle.io import Dataset
 from paddle.static import InputSpec
 from paddle.fluid.framework import _non_static_mode
 from paddle.distributed.auto_parallel.helper import ProgramHelper
+=======
+import paddle.distributed.auto_parallel as auto
+import paddle.distributed.fleet as fleet
+
+from paddle.io import Dataset
+from paddle.static import InputSpec
+from paddle.fluid.framework import _non_static_mode
+from paddle.distributed.auto_parallel.engine import Engine
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 batch_size = 4
 batch_num = 30
@@ -34,8 +48,14 @@ class_num = 10
 
 
 class MyDataset(Dataset):
+<<<<<<< HEAD
     def __init__(self, num_samples):
         super().__init__()
+=======
+
+    def __init__(self, num_samples):
+        super(MyDataset, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.num_samples = num_samples
 
     def __getitem__(self, index):
@@ -48,6 +68,7 @@ class MyDataset(Dataset):
 
 
 class MLPLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         hidden_size=1024,
@@ -68,6 +89,28 @@ class MLPLayer(nn.Layer):
         self.linear1 = nn.Linear(
             dim_feedforward, d_model, weight_attr, bias_attr=None
         )
+=======
+
+    def __init__(self,
+                 hidden_size=1024,
+                 intermediate_size=4 * 1024,
+                 dropout_ratio=0.1,
+                 initializer_range=0.02):
+        super(MLPLayer, self).__init__()
+        d_model = hidden_size
+        dim_feedforward = intermediate_size
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.Normal(mean=0.0, std=initializer_range))
+
+        self.linear0 = nn.Linear(d_model,
+                                 dim_feedforward,
+                                 weight_attr,
+                                 bias_attr=None)
+        self.linear1 = nn.Linear(dim_feedforward,
+                                 d_model,
+                                 weight_attr,
+                                 bias_attr=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.linear2 = nn.Linear(d_model, 1, weight_attr, bias_attr=None)
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
         self.dropout = nn.Dropout(dropout_ratio, mode="upscale_in_train")
@@ -83,6 +126,7 @@ class MLPLayer(nn.Layer):
         return out
 
 
+<<<<<<< HEAD
 class TestWholeProgram(unittest.TestCase):
     def test_apply_optimzier(self):
         paddle.disable_static()
@@ -181,6 +225,39 @@ class TestLazyInit(unittest.TestCase):
         vars = program_helper.startup_program.block(0).vars
         assert len(vars.keys()) == len(ops)
         program_helper.reset()
+=======
+class TestToStatic(unittest.TestCase):
+
+    def test_to_static(self):
+
+        mlp = MLPLayer(hidden_size=hidden_size,
+                       intermediate_size=4 * hidden_size,
+                       dropout_ratio=0.1,
+                       initializer_range=0.02)
+        loss = paddle.nn.CrossEntropyLoss()
+        optimizer = paddle.optimizer.SGD(learning_rate=0.00001,
+                                         parameters=mlp.parameters())
+
+        dataset = MyDataset(batch_num * batch_size)
+
+        inputs = InputSpec([batch_size, hidden_size], 'float32', 'x')
+        labels = InputSpec([batch_size], 'int64', 'label')
+
+        engine = Engine(model=mlp,
+                        inputs_spec=inputs,
+                        labels_spec=labels,
+                        strategy=None)
+        assert _non_static_mode() == True
+
+        engine.prepare(optimizer=optimizer,
+                       loss=loss,
+                       metrics=paddle.metric.Accuracy())
+
+        assert _non_static_mode() == False
+        engine.fit(dataset, batch_size=batch_size)
+        engine.evaluate(dataset, batch_size=batch_size)
+        engine.predict(dataset, batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

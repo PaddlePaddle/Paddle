@@ -24,10 +24,17 @@ class DeviceType:
     NPU = 'npu'
     MLU = 'mlu'
     IPU = 'ipu'
+<<<<<<< HEAD
     CUSTOM_DEVICE = 'custom_device'
 
 
 class Device:
+=======
+
+
+class Device(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory
@@ -74,8 +81,11 @@ class Device:
             return 'FLAGS_selected_mlus'
         if self._dtype == DeviceType.IPU:
             return 'FLAGS_selected_ipus'
+<<<<<<< HEAD
         if self._dtype == DeviceType.CUSTOM_DEVICE:
             return 'FLAGS_selected_{}s'.format(os.getenv('PADDLE_XCCL_BACKEND'))
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return 'FLAGS_selected_devices'
 
     def get_selected_devices(self, devices=''):

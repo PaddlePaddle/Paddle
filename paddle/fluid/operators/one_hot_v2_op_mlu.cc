@@ -19,8 +19,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
 using LoDTensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+using LoDTensor = framework::LoDTensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename T>
 class OneHotV2MLUKernel : public framework::OpKernel<T> {
@@ -33,8 +38,12 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
     int depth = ctx.Attr<int>("depth");
     if (ctx.HasInput("depth_tensor")) {
       std::vector<int32_t> depth_data;
+<<<<<<< HEAD
       depth_data =
           GetDataFromTensor<int>(ctx.Input<phi::DenseTensor>("depth_tensor"));
+=======
+      depth_data = GetDataFromTensor<int>(ctx.Input<Tensor>("depth_tensor"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       depth = depth_data[0];
 
       auto out_dims = out->dims();
@@ -98,6 +107,10 @@ class OneHotV2MLUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
+<<<<<<< HEAD
 REGISTER_OP_MLU_KERNEL(one_hot_v2,
                        ops::OneHotV2MLUKernel<int32_t>,
                        ops::OneHotV2MLUKernel<int64_t>);
+=======
+REGISTER_OP_MLU_KERNEL(one_hot_v2, ops::OneHotV2MLUKernel<int32_t>);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

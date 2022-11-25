@@ -34,7 +34,11 @@ def bipartite_match(distance, match_indices, match_dist):
 
     match_sorted = sorted(match_pair, key=lambda tup: tup[2], reverse=True)
 
+<<<<<<< HEAD
     row_indices = -1 * np.ones((row,), dtype=np.int_)
+=======
+    row_indices = -1 * np.ones((row, ), dtype=np.int_)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     idx = 0
     for i, j, dist in match_sorted:
@@ -91,6 +95,7 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
 
 
 class TestBipartiteMatchOpWithLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
@@ -108,6 +113,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
 
 
 class TestBipartiteMatchOpWithoutLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[8]]
@@ -125,6 +131,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
 
 
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[300]]
@@ -142,13 +149,18 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
 
 
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
         dist = np.random.random((23, 237)).astype('float32')
         match_indices, match_dist = batch_bipartite_match(
+<<<<<<< HEAD
             dist, lod[0], 'per_prediction', 0.5
         )
+=======
+            dist, lod[0], 'per_prediction', 0.5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
@@ -165,6 +177,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
 
 
 class TestBipartiteMatchOpWithEmptyLoD(OpTest):
+
     def setUp(self):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 0, 12]]

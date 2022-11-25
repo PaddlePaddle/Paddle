@@ -19,6 +19,7 @@ from op_test import OpTest
 
 
 class TestSampleLogitsOp(OpTest):
+
     def setUp(self):
         self.op_type = "sample_logits"
         self.dtype = np.float64
@@ -109,12 +110,14 @@ class TestSampleLogitsOp(OpTest):
 
 
 class TestSampleLogitsOpNoUniq(TestSampleLogitsOp):
+
     def setUp(self):
         super().setUp()
         self.attrs = {'num_samples': self.S, 'uniq': False}
 
 
 class TestSampleLogitsOpWithAccidentalHits(TestSampleLogitsOp):
+
     def setUp(self):
         super().setUp()
         self.attrs = {'num_samples': self.S, 'remove_accidental_hits': False}

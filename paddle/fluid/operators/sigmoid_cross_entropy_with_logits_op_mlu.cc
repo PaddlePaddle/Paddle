@@ -18,7 +18,11 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 const int kIgnoreIndex = -100;
 
 void CheckAttrs(const framework::ExecutionContext& ctx) {
@@ -43,10 +47,17 @@ class SigmoidCrossEntropyWithLogitsMLUKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     CheckAttrs(ctx);
 
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* label = ctx.Input<phi::DenseTensor>("Label");
 
     auto* out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* label = ctx.Input<Tensor>("Label");
+
+    auto* out = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     auto place = ctx.GetPlace();
 
@@ -77,11 +88,19 @@ class SigmoidCrossEntropyWithLogitsMLUGradKernel
   void Compute(const framework::ExecutionContext& ctx) const override {
     CheckAttrs(ctx);
 
+<<<<<<< HEAD
     auto* x = ctx.Input<phi::DenseTensor>("X");
     auto* label = ctx.Input<phi::DenseTensor>("Label");
     auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
     auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+=======
+    auto* x = ctx.Input<Tensor>("X");
+    auto* label = ctx.Input<Tensor>("Label");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     auto place = ctx.GetPlace();
 

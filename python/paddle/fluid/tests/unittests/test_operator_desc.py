@@ -22,6 +22,7 @@ main_program = default_startup_program()
 
 
 class TestOperator(unittest.TestCase):
+
     def test_error_type(self):
         block = main_program._create_block()
         try:
@@ -42,6 +43,7 @@ class TestOperator(unittest.TestCase):
     def test_op_desc_creation(self):
         program = Program()
         block = program.current_block()
+<<<<<<< HEAD
         mul_x = block.create_var(
             dtype="float32", shape=[5, 10], lod_level=0, name="mul.x"
         )
@@ -57,6 +59,27 @@ class TestOperator(unittest.TestCase):
             outputs={"Out": [mul_out]},
             attrs={"x_num_col_dims": 1},
         )
+=======
+        mul_x = block.create_var(dtype="float32",
+                                 shape=[5, 10],
+                                 lod_level=0,
+                                 name="mul.x")
+        mul_y = block.create_var(dtype="float32",
+                                 shape=[10, 8],
+                                 lod_level=0,
+                                 name="mul.y")
+        mul_out = block.create_var(dtype="float32",
+                                   shape=[5, 8],
+                                   lod_level=0,
+                                   name="mul.out")
+        mul_op = block.append_op(type="mul",
+                                 inputs={
+                                     "X": [mul_x],
+                                     "Y": mul_y
+                                 },
+                                 outputs={"Out": [mul_out]},
+                                 attrs={"x_num_col_dims": 1})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertNotEqual(str(mul_op), "")
         self.assertEqual(mul_op.type, "mul")
@@ -94,6 +117,7 @@ class TestOperator(unittest.TestCase):
     def test_mult_input(self):
         program = Program()
         block = program.current_block()
+<<<<<<< HEAD
         sum_x1 = block.create_var(
             dtype="int", shape=[3, 4], lod_level=0, name="sum.x1"
         )
@@ -111,6 +135,27 @@ class TestOperator(unittest.TestCase):
             inputs={"X": [sum_x1, sum_x2, sum_x3]},
             outputs={"Out": sum_out},
         )
+=======
+        sum_x1 = block.create_var(dtype="int",
+                                  shape=[3, 4],
+                                  lod_level=0,
+                                  name="sum.x1")
+        sum_x2 = block.create_var(dtype="int",
+                                  shape=[3, 4],
+                                  lod_level=0,
+                                  name="sum.x2")
+        sum_x3 = block.create_var(dtype="int",
+                                  shape=[3, 4],
+                                  lod_level=0,
+                                  name="sum.x3")
+        sum_out = block.create_var(dtype="int",
+                                   shape=[3, 4],
+                                   lod_level=0,
+                                   name="sum.out")
+        sum_op = block.append_op(type="sum",
+                                 inputs={"X": [sum_x1, sum_x2, sum_x3]},
+                                 outputs={"Out": sum_out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.assertEqual(sum_op.type, "sum")
         self.assertEqual(sum_op.input_names, ["X"])
         self.assertEqual(sum_op.input("X"), ["sum.x1", "sum.x2", "sum.x3"])

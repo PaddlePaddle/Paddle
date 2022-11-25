@@ -183,7 +183,10 @@ void Executor::Run(const ProgramDesc& pdesc,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc,
                    bool keep_kid_scopes) {
+<<<<<<< HEAD
   LOG_FIRST_N(INFO, 1) << "Old Executor is Running.";
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   platform::RecordEvent record_run(
       "Executor::Run", platform::TracerEventType::UserDefined, 1);
   platform::RecordBlock b(block_id);
@@ -324,7 +327,11 @@ static bool has_fetch_operators(
 
 void Executor::Run(const ProgramDesc& program,
                    Scope* scope,
+<<<<<<< HEAD
                    std::map<std::string, const phi::DenseTensor*>* feed_targets,
+=======
+                   std::map<std::string, const LoDTensor*>* feed_targets,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    std::map<std::string, FetchType*>* fetch_targets,
                    bool create_local_scope,
                    bool create_vars,
@@ -623,7 +630,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx,
     Scope* scope,
+<<<<<<< HEAD
     std::map<std::string, const phi::DenseTensor*>* feed_targets,
+=======
+    std::map<std::string, const LoDTensor*>* feed_targets,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     std::map<std::string, FetchType*>* fetch_targets,
     bool create_local_scope,
     bool create_vars,

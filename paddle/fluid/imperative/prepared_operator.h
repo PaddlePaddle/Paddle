@@ -110,7 +110,11 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                 cache_var->Var(), *tensor, tmp_var->MutableVar());
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
+<<<<<<< HEAD
             phi::DenseTensor out;
+=======
+            framework::Tensor out;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
             if (NeedTransformDataType(kernel_type_for_var,
@@ -400,26 +404,35 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
             case framework::proto::AttrType::FLOAT:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(float, attr))));
+<<<<<<< HEAD
               break;
             case framework::proto::AttrType::FLOAT64:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(double, attr))));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
               break;
             case framework::proto::AttrType::INT:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(int, attr))));
+<<<<<<< HEAD
               break;
             case framework::proto::AttrType::LONG:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(int64_t, attr))));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
               break;
             case framework::proto::AttrType::STRING:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(std::string, attr))));
+<<<<<<< HEAD
               break;
             case framework::proto::AttrType::BOOLEAN:
               kernel_ctx->EmplaceBackAttr(
                   std::move(phi::Scalar(PADDLE_GET_CONST(bool, attr))));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -545,9 +558,12 @@ void BuildDygraphPhiKernelContext(const phi::KernelSignature& kernel_signature,
         switch (attr_defs[i].type_index) {
           case phi::AttributeType::FLOAT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(float, attr));
+<<<<<<< HEAD
             break;
           case phi::AttributeType::FLOAT64:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(double, attr));
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             break;
           case phi::AttributeType::INT32:
             kernel_ctx->EmplaceBackAttr(PADDLE_GET_CONST(int, attr));

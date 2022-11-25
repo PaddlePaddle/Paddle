@@ -22,8 +22,13 @@
 namespace cub = hipcub;
 #endif
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
@@ -51,7 +56,11 @@ __device__ __inline__ void CudaAtomicAddWithWarp(T* sum, T value) {
   typedef cub::WarpReduce<T> WarpReduce;
   typename WarpReduce::TempStorage temp_storage;
   value = WarpReduce(temp_storage).Sum(value);
+<<<<<<< HEAD
   if (cub::LaneId() == 0) phi::CudaAtomicAdd(sum, value);
+=======
+  if (cub::LaneId() == 0) paddle::platform::CudaAtomicAdd(sum, value);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 template <typename T, typename AccT, int VecSize, int Num>

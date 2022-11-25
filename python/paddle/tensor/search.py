@@ -105,6 +105,7 @@ def argsort(x, axis=-1, descending=False, name=None):
     )
 
     helper = LayerHelper("argsort", **locals())
+<<<<<<< HEAD
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True
     )
@@ -117,6 +118,22 @@ def argsort(x, axis=-1, descending=False, name=None):
         outputs={'Out': out, 'Indices': ids},
         attrs={'axis': axis, 'descending': descending},
     )
+=======
+    out = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                    stop_gradient=True)
+    ids = helper.create_variable_for_type_inference(VarDesc.VarType.INT64,
+                                                    stop_gradient=True)
+    helper.append_op(type='argsort',
+                     inputs={'X': x},
+                     outputs={
+                         'Out': out,
+                         'Indices': ids
+                     },
+                     attrs={
+                         'axis': axis,
+                         'descending': descending
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return ids
 
 
@@ -207,9 +224,16 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     attrs['axis'] = axis
     attrs['flatten'] = flatten
     attrs['dtype'] = var_dtype
+<<<<<<< HEAD
     helper.append_op(
         type='arg_max', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
     )
+=======
+    helper.append_op(type='arg_max',
+                     inputs={'X': x},
+                     outputs={'Out': [out]},
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out.stop_gradient = True
     return out
 
@@ -230,13 +254,17 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
                     be int32, int64. The default value is 'int64', and it will
                     return the int64 indices.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Returns:
         Tensor, return the tensor of `int32` if set :attr:`dtype` is `int32`, otherwise return the tensor of `int64`.
 
     Examples:
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
             x =  paddle.to_tensor([[5,8,9,5],
@@ -301,9 +329,16 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     attrs['axis'] = axis
     attrs['flatten'] = flatten
     attrs['dtype'] = var_dtype
+<<<<<<< HEAD
     helper.append_op(
         type='arg_min', inputs={'X': x}, outputs={'Out': [out]}, attrs=attrs
     )
+=======
+    helper.append_op(type='arg_min',
+                     inputs={'X': x},
+                     outputs={'Out': [out]},
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out.stop_gradient = True
     return out
 
@@ -363,12 +398,22 @@ def index_select(x, index, axis=0, name=None):
 
     out = helper.create_variable_for_type_inference(x.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type='index_select',
         inputs={'X': x, 'Index': index},
         outputs={'Out': out},
         attrs={'dim': axis},
     )
+=======
+    helper.append_op(type='index_select',
+                     inputs={
+                         'X': x,
+                         'Index': index
+                     },
+                     outputs={'Out': out},
+                     attrs={'dim': axis})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -439,9 +484,15 @@ def nonzero(x, as_tuple=False):
             dtype=core.VarDesc.VarType.INT64
         )
 
+<<<<<<< HEAD
         helper.append_op(
             type='where_index', inputs={'Condition': x}, outputs={'Out': [outs]}
         )
+=======
+        helper.append_op(type='where_index',
+                         inputs={'Condition': x},
+                         outputs={'Out': [outs]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if not as_tuple:
         return outs
@@ -450,8 +501,12 @@ def nonzero(x, as_tuple=False):
     else:
         for i in range(rank):
             list_out.append(
+<<<<<<< HEAD
                 paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1])
             )
+=======
+                paddle.slice(outs, axes=[1], starts=[i], ends=[i + 1]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return tuple(list_out)
 
 
@@ -470,12 +525,17 @@ def sort(x, axis=-1, descending=False, name=None):
             algorithm will sort by descending order, else sort by
             ascending order. Default is false.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Returns:
         Tensor: sorted tensor(with the same shape and data type as ``x``).
     Examples:
 
         .. code-block:: python
+           :name: code-example1
 
             import paddle
 
@@ -521,6 +581,7 @@ def sort(x, axis=-1, descending=False, name=None):
         )
         return outs
     helper = LayerHelper("sort", **locals())
+<<<<<<< HEAD
     out = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=False
     )
@@ -533,6 +594,22 @@ def sort(x, axis=-1, descending=False, name=None):
         outputs={'Out': out, 'Indices': ids},
         attrs={'axis': axis, 'descending': descending},
     )
+=======
+    out = helper.create_variable_for_type_inference(dtype=x.dtype,
+                                                    stop_gradient=False)
+    ids = helper.create_variable_for_type_inference(VarDesc.VarType.INT64,
+                                                    stop_gradient=True)
+    helper.append_op(type='argsort',
+                     inputs={'X': x},
+                     outputs={
+                         'Out': out,
+                         'Indices': ids
+                     },
+                     attrs={
+                         'axis': axis,
+                         'descending': descending
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -581,12 +658,22 @@ def mode(x, axis=-1, keepdim=False, name=None):
     values = helper.create_variable_for_type_inference(dtype=x.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
 
+<<<<<<< HEAD
     helper.append_op(
         type="mode",
         inputs=inputs,
         outputs={"Out": [values], "Indices": [indices]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type="mode",
+                     inputs=inputs,
+                     outputs={
+                         "Out": [values],
+                         "Indices": [indices]
+                     },
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     indices.stop_gradient = True
     return values, indices
 
@@ -616,6 +703,7 @@ def where(condition, x=None, y=None, name=None):
         Tensor: A Tensor with the same shape as :attr:`condition` and same data type as :attr:`x` and :attr:`y`.
 
     Examples:
+<<<<<<< HEAD
 
         .. code-block:: python
 
@@ -628,6 +716,20 @@ def where(condition, x=None, y=None, name=None):
             print(out)
             #out: [1.0, 1.0, 3.2, 1.2]
 
+=======
+        
+        .. code-block:: python
+
+            import paddle
+            
+            x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
+            y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
+            
+            out = paddle.where(x>1, x, y)
+            print(out)
+            #out: [1.0, 1.0, 3.2, 1.2]
+            
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = paddle.where(x>1)
             print(out)
             #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
@@ -648,12 +750,21 @@ def where(condition, x=None, y=None, name=None):
 
     if not paddle.in_dynamic_mode():
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
+<<<<<<< HEAD
         check_variable_and_dtype(
             x, 'x', ['float32', 'float64', 'int32', 'int64'], 'where'
         )
         check_variable_and_dtype(
             y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where'
         )
+=======
+        check_variable_and_dtype(x, 'x',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'where')
+        check_variable_and_dtype(y, 'y',
+                                 ['float32', 'float64', 'int32', 'int64'],
+                                 'where')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     condition_shape = list(condition.shape)
     x_shape = list(x.shape)
@@ -688,6 +799,7 @@ def where(condition, x=None, y=None, name=None):
             helper = LayerHelper("where", **locals())
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type='where',
                 inputs={
@@ -697,6 +809,15 @@ def where(condition, x=None, y=None, name=None):
                 },
                 outputs={'Out': [out]},
             )
+=======
+            helper.append_op(type='where',
+                             inputs={
+                                 'Condition': broadcast_condition,
+                                 'X': broadcast_x,
+                                 'Y': broadcast_y
+                             },
+                             outputs={'Out': [out]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             return out
 
@@ -795,11 +916,20 @@ def index_sample(x, index):
             )
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+<<<<<<< HEAD
             helper.append_op(
                 type='index_sample',
                 inputs={'X': x, 'Index': index},
                 outputs={'Out': out},
             )
+=======
+            helper.append_op(type='index_sample',
+                             inputs={
+                                 'X': x,
+                                 'Index': index
+                             },
+                             outputs={'Out': out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
 
@@ -812,10 +942,17 @@ def masked_select(x, mask, name=None):
         x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+<<<<<<< HEAD
 
     Returns:
         A 1-D Tensor which is the same data type  as ``x``.
 
+=======
+
+    Returns: 
+        A 1-D Tensor which is the same data type  as ``x``.
+    
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Examples:
 
         .. code-block:: python
@@ -849,9 +986,18 @@ def masked_select(x, mask, name=None):
         mask, 'mask', ['bool'], 'paddle.tensor.search.masked_select'
     )
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='masked_select', inputs={'X': x, 'Mask': mask}, outputs={'Y': out}
     )
+=======
+    helper.append_op(type='masked_select',
+                     inputs={
+                         'X': x,
+                         'Mask': mask
+                     },
+                     outputs={'Y': out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -879,9 +1025,14 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     Examples:
 
         .. code-block:: python
-
+          :name: code-example1
             import paddle
 
+<<<<<<< HEAD
+            import paddle
+
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             data_1 = paddle.to_tensor([1, 4, 5, 7])
             value_1, indices_1 = paddle.topk(data_1, k=1)
             print(value_1) # [7]
@@ -911,6 +1062,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     if _non_static_mode():
         if axis is None:
+<<<<<<< HEAD
             out, indices = _legacy_C_ops.top_k_v2(
                 x, 'k', int(k), 'largest', largest, 'sorted', sorted
             )
@@ -926,6 +1078,13 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
                 'sorted',
                 sorted,
             )
+=======
+            out, indices = _C_ops.top_k_v2(x, 'k', int(k), 'largest', largest,
+                                           'sorted', sorted)
+        else:
+            out, indices = _C_ops.top_k_v2(x, 'k', int(k), 'axis', axis,
+                                           'largest', largest, 'sorted', sorted)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out, indices
 
     helper = LayerHelper("top_k_v2", **locals())
@@ -943,12 +1102,22 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
     values = helper.create_variable_for_type_inference(dtype=x.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
 
+<<<<<<< HEAD
     helper.append_op(
         type="top_k_v2",
         inputs=inputs,
         outputs={"Out": [values], "Indices": [indices]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type="top_k_v2",
+                     inputs=inputs,
+                     outputs={
+                         "Out": [values],
+                         "Indices": [indices]
+                     },
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     indices.stop_gradient = True
     return values, indices
 
@@ -1022,9 +1191,15 @@ def searchsorted(
         values(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
         out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
+<<<<<<< HEAD
                                The default value is False and it shows the lower bounds.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
+=======
+                               The default value is False and it shows the lower bounds.  
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+        
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Returns:
         Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
 
@@ -1079,12 +1254,25 @@ def searchsorted(
     helper = LayerHelper('searchsorted', **locals())
     out_type = 'int32' if out_int32 else 'int64'
     out = helper.create_variable_for_type_inference(dtype=out_type)
+<<<<<<< HEAD
     helper.append_op(
         type='searchsorted',
         inputs={'SortedSequence': sorted_sequence, "Values": values},
         outputs={'Out': out},
         attrs={"out_int32": out_int32, "right": right},
     )
+=======
+    helper.append_op(type='searchsorted',
+                     inputs={
+                         'SortedSequence': sorted_sequence,
+                         "Values": values
+                     },
+                     outputs={'Out': out},
+                     attrs={
+                         "out_int32": out_int32,
+                         "right": right
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return out
 
@@ -1147,11 +1335,21 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     values = helper.create_variable_for_type_inference(dtype=x.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
 
+<<<<<<< HEAD
     helper.append_op(
         type="kthvalue",
         inputs=inputs,
         outputs={"Out": [values], "Indices": [indices]},
         attrs=attrs,
     )
+=======
+    helper.append_op(type="kthvalue",
+                     inputs=inputs,
+                     outputs={
+                         "Out": [values],
+                         "Indices": [indices]
+                     },
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     indices.stop_gradient = True
     return values, indices

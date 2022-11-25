@@ -671,7 +671,11 @@ MkldnnQuantizerConfig *AnalysisConfig::mkldnn_quantizer_config() const {
 }
 
 void AnalysisConfig::EnableTensorRtEngine(
+<<<<<<< HEAD
     int64_t workspace_size,
+=======
+    int workspace_size,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int max_batch_size,
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
@@ -1067,6 +1071,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_replica_num_;
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
+<<<<<<< HEAD
   ss << ipu_enable_model_runtime_executor_;
   for (auto custom_op : ipu_custom_ops_info_)
     for (auto attr : custom_op) ss << attr;
@@ -1074,6 +1079,9 @@ std::string AnalysisConfig::SerializeInfoCache() {
   for (auto pattern : ipu_custom_patterns_)
     for (auto attr : pattern) ss << attr;
   ss << ";";
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   for (auto &op : mixed_black_list_) ss << op.c_str();
   return ss.str();
 }

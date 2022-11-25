@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/framework/tensor_util.h"
 #include "gtest/gtest.h"
+<<<<<<< HEAD
 #include "paddle/fluid/operators/isfinite_op.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 

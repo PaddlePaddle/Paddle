@@ -27,7 +27,12 @@ __all__ = [
 ]
 
 
+<<<<<<< HEAD
 class PsProgramBuilderFactory:
+=======
+class PsProgramBuilderFactory(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         pass
 

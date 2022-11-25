@@ -209,14 +209,24 @@ class HeterXpuTrainer : public TrainerBase {
   virtual void InitDumpEnv() {}
   template <typename T>
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+<<<<<<< HEAD
   void HeterMemCpy(phi::DenseTensor* tensor,
                    phi::DenseTensor* root_tensor,
+=======
+  void HeterMemCpy(LoDTensor* tensor,
+                   LoDTensor* root_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    const paddle::platform::Place& thread_place,
                    gpuStream_t stream);
 #endif
 #ifdef PADDLE_WITH_XPU
+<<<<<<< HEAD
   void HeterMemCpy(phi::DenseTensor* thread_tensor,
                    phi::DenseTensor* root_tensor,
+=======
+  void HeterMemCpy(LoDTensor* thread_tensor,
+                   LoDTensor* root_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    const paddle::platform::Place& thread_place);
 #endif
   void CreateThreadParam(const ProgramDesc& program, int num);

@@ -56,20 +56,32 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X of fc
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=5
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=5))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_shape = [2, 1]
         x_rank = len(x_shape)
         # 2. Generate attr:in_num_col_dims of fc
         in_num_col_dims = draw(st.integers(min_value=1, max_value=x_rank - 1))
         # 3. Generate legal shape of input:W/bias of fc
         w_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         w_shape[0] = int(np.prod(x_shape[in_num_col_dims:]))
         w_shape = [1, 2]
         fc_bias_shape = [
@@ -86,14 +98,26 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         axis = draw(st.integers(min_value=-1, max_value=0))
         # 5. Generate legal shape of layer_norm
         begin_norm_axis = draw(
+<<<<<<< HEAD
             st.integers(min_value=1, max_value=len(fc_out_shape) - 1)
         )
+=======
+            st.integers(min_value=1, max_value=len(fc_out_shape) - 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         layer_norm_shape = [int(np.prod(fc_out_shape[begin_norm_axis:]))]
         epsilon = 1e-5
 
         fc_op = OpConfig(
             "fc",
+<<<<<<< HEAD
             inputs={"Input": ["fc_x"], "W": ["fc_w"], "Bias": ["fc_bias"]},
+=======
+            inputs={
+                "Input": ["fc_x"],
+                "W": ["fc_w"],
+                "Bias": ["fc_bias"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["fc_out"]},
             in_num_col_dims=in_num_col_dims,
             padding_weights=False,
@@ -103,6 +127,7 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         )
         add_op = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={"X": ["fc_out"], "Y": ["add_bias"]},
             outputs={"Out": ["add_out"]},
             axis=axis,
@@ -122,6 +147,28 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
             begin_norm_axis=begin_norm_axis,
             epsilon=epsilon,
         )
+=======
+            inputs={
+                "X": ["fc_out"],
+                "Y": ["add_bias"]
+            },
+            outputs={"Out": ["add_out"]},
+            axis=axis,
+        )
+        layer_norm_op = OpConfig("layer_norm",
+                                 inputs={
+                                     "X": ["add_out"],
+                                     "Scale": ["scale"],
+                                     "Bias": ["layer_norm_bias"]
+                                 },
+                                 outputs={
+                                     "Y": ["layer_norm_out"],
+                                     "Mean": ["layer_norm_mean"],
+                                     "Variance": ["layer_norm_var"]
+                                 },
+                                 begin_norm_axis=begin_norm_axis,
+                                 epsilon=epsilon)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         ops = [fc_op, add_op, layer_norm_op]
         program_config = ProgramConfig(
@@ -146,11 +193,17 @@ class TestFCElementwiseLayerNormFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=300,
             passes=["fc_elementwise_layernorm_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=300,
+                            passes=["fc_elementwise_layernorm_fuse_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

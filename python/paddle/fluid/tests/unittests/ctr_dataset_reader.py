@@ -60,11 +60,17 @@ def load_lr_input_record(sent):
     return res
 
 
+<<<<<<< HEAD
 class CtrReader:
+=======
+class CtrReader(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         pass
 
     def _reader_creator(self, filelist):
+
         def get_rand(low=0.0, high=1.0):
             return random.random()
 
@@ -83,7 +89,9 @@ class CtrReader:
 
 
 class DatasetCtrReader(fleet.MultiSlotDataGenerator):
+
     def generate_sample(self, line):
+
         def get_rand(low=0.0, high=1.0):
             return random.random()
 
@@ -112,9 +120,13 @@ def prepare_data():
         lines = f.readlines()
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
+<<<<<<< HEAD
     assert (
         'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1]
     ), err_info
+=======
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[1], err_info
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     res = map(int, [_.split(':')[1] for _ in lines])
     res = list(res)
     dnn_input_dim = res[0]
@@ -195,8 +207,12 @@ def prepare_fake_data(file_nums=4, file_lines=500):
                 file_str += gen_fake_line()
             fin.write(file_str)
             warnings.warn(
+<<<<<<< HEAD
                 "Write done ctr_train_data_part_{}".format(file_index)
             )
+=======
+                "Write done ctr_train_data_part_{}".format(file_index))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     file_list = [os.path.join(file_dir, x) for x in os.listdir(file_dir)]
     assert len(file_list) == file_nums

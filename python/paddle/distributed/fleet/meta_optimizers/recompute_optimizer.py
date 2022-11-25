@@ -18,6 +18,7 @@ __all__ = []
 
 
 class RecomputeOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -31,12 +32,20 @@ class RecomputeOptimizer(MetaOptimizerBase):
         ]
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(RecomputeOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _init_wrapped_opt(self):
         if self.wrapped_opt is not None:
@@ -55,11 +64,17 @@ class RecomputeOptimizer(MetaOptimizerBase):
         if not self.role_maker._is_collective:
             return False
 
+<<<<<<< HEAD
         if self.user_defined_strategy.recompute:
             if (
                 len(self.user_defined_strategy.recompute_configs["checkpoints"])
                 == 0
             ):
+=======
+        if self.user_defined_strategy.recompute == True:
+            if len(self.user_defined_strategy.recompute_configs["checkpoints"]
+                   ) == 0:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return False
             else:
                 return True
@@ -90,9 +105,15 @@ class RecomputeOptimizer(MetaOptimizerBase):
         return self.wrapped_opt.apply_gradients(params_grads=params_grads)
 
     def apply_optimize(self, loss, startup_program, params_grads):
+<<<<<<< HEAD
         return self.wrapped_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
+=======
+        return self.wrapped_opt.apply_optimize(loss,
+                                               startup_program=startup_program,
+                                               params_grads=params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None

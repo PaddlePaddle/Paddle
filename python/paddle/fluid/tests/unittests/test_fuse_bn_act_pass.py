@@ -18,10 +18,12 @@ import unittest
 
 
 class TestFuseBatchNormActPass(unittest.TestCase):
+
     def build_program(self, main_program, startup_program, use_cuda, seed=1):
         with fluid.program_guard(main_program, startup_program):
             x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype='float32')
             y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+<<<<<<< HEAD
             hidden1 = fluid.layers.conv2d(
                 input=x,
                 filter_size=3,
@@ -32,12 +34,23 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
+=======
+            hidden1 = fluid.layers.conv2d(input=x,
+                                          filter_size=3,
+                                          num_filters=16,
+                                          stride=1,
+                                          padding=1,
+                                          act=None,
+                                          bias_attr=False,
+                                          data_format='NHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             param_attr = fluid.ParamAttr(
                 name='batch_norm_w',
                 initializer=fluid.initializer.Constant(value=1.0),
             )
             bias_attr = fluid.ParamAttr(
                 name='batch_norm_b',
+<<<<<<< HEAD
                 initializer=fluid.initializer.Constant(value=0.0),
             )
             hidden2 = fluid.layers.batch_norm(
@@ -51,6 +64,18 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             hidden4 = fluid.layers.batch_norm(
                 input=hidden3, act='relu', data_layout='NHWC'
             )
+=======
+                initializer=fluid.initializer.Constant(value=0.0))
+            hidden2 = fluid.layers.batch_norm(input=hidden1,
+                                              param_attr=param_attr,
+                                              bias_attr=bias_attr,
+                                              act='relu',
+                                              data_layout='NHWC')
+            hidden3 = fluid.layers.fc(input=hidden2, size=32, act='relu')
+            hidden4 = fluid.layers.batch_norm(input=hidden3,
+                                              act='relu',
+                                              data_layout='NHWC')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             prediction = fluid.layers.fc(input=hidden4, size=10, act='softmax')
             loss = fluid.layers.cross_entropy(input=prediction, label=y)
             loss = paddle.mean(loss)
@@ -77,11 +102,17 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         build_strategy = fluid.BuildStrategy()
         build_strategy.fuse_bn_act_ops = False
         binary = fluid.CompiledProgram(main_program).with_data_parallel(
+<<<<<<< HEAD
             loss_name=loss.name, build_strategy=build_strategy
         )
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
+=======
+            loss_name=loss.name, build_strategy=build_strategy)
+        train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                                    batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         loss_vals = []
         scope = fluid.Scope()
         with fluid.scope_guard(scope):
@@ -97,11 +128,17 @@ class TestFuseBatchNormActPass(unittest.TestCase):
         build_strategy_fused = fluid.BuildStrategy()
         build_strategy_fused.fuse_bn_act_ops = True
         binary_fused = fluid.CompiledProgram(main_program).with_data_parallel(
+<<<<<<< HEAD
             loss_name=loss.name, build_strategy=build_strategy_fused
         )
         train_reader_fused = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
+=======
+            loss_name=loss.name, build_strategy=build_strategy_fused)
+        train_reader_fused = paddle.batch(paddle.dataset.mnist.train(),
+                                          batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         loss_vals_fused = []
         scope_fused = fluid.Scope()
         with fluid.scope_guard(scope_fused):

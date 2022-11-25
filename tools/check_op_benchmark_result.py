@@ -57,10 +57,15 @@ def load_benchmark_result_from_logs_dir(logs_dir):
     check_path_exists(logs_dir)
 
     log_file_path = lambda log_file: os.path.join(logs_dir, log_file)
+<<<<<<< HEAD
     result_lambda = lambda log_file: (
         log_file,
         parse_log_file(log_file_path(log_file)),
     )
+=======
+    result_lambda = lambda log_file: (log_file,
+                                      parse_log_file(log_file_path(log_file)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return dict(map(result_lambda, os.listdir(logs_dir)))
 
@@ -189,6 +194,7 @@ if __name__ == "__main__":
         "--pr_logs_dir",
         type=str,
         required=True,
+<<<<<<< HEAD
         help="Specify the benchmark result directory of PR branch.",
     )
     parser.add_argument(
@@ -197,6 +203,13 @@ if __name__ == "__main__":
         required=False,
         help="Specify the api info to run benchmark test.",
     )
+=======
+        help="Specify the benchmark result directory of PR branch.")
+    parser.add_argument("--api_info_file",
+                        type=str,
+                        required=False,
+                        help="Specify the api info to run benchmark test.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     args = parser.parse_args()
 
     check_results = dict(accuracy=list(), speed=list())

@@ -56,6 +56,37 @@ class UniformRandomInplaceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
+<<<<<<< HEAD
+=======
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "UniformRandomInplaceOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Output", "Out", "UniformRandomInplaceOp");
+    PADDLE_ENFORCE_LT(
+        ctx->Attrs().Get<float>("min"),
+        ctx->Attrs().Get<float>("max"),
+        platform::errors::InvalidArgument(
+            "The uniform_random's min must less then max. But received min = "
+            "%f great than or equal max = %f.",
+            ctx->Attrs().Get<float>("min"),
+            ctx->Attrs().Get<float>("max")));
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_num"),
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The uniform_random's diag_num must greater than or "
+                          "equal 0. But recevied diag_num (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_num")));
+    PADDLE_ENFORCE_GE(ctx->Attrs().Get<int>("diag_step"),
+                      0,
+                      platform::errors::InvalidArgument(
+                          "The uniform_random's diag_step must greater than or "
+                          "equal 0. But recevied diag_step (%d) < 0.",
+                          ctx->Attrs().Get<int>("diag_step")));
+    auto xdim = ctx->GetInputDim("X");
+    ctx->SetOutputDim("Out", xdim);
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
@@ -75,6 +106,26 @@ class UniformRandomInplaceOpVarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
+<<<<<<< HEAD
+=======
+class UniformRandomInplaceGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out_Grad",
+                   "UniformRandomInplaceGradOp");
+    auto x_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+};
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 template <typename T>
 class UniformRandomInplaceGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:

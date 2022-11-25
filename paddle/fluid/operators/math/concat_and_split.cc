@@ -41,9 +41,15 @@ template <typename T>
 class ConcatFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+=======
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
+                  framework::Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     phi::funcs::ConcatFunctor<phi::CPUContext, T> functor;
     functor(context, input, axis, output);
   }
@@ -57,10 +63,17 @@ template <typename T>
 class SplitFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+=======
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     phi::funcs::SplitFunctor<phi::CPUContext, T> functor;
     functor(context, input, ref_inputs, axis, outputs);
   }
@@ -75,10 +88,16 @@ template <typename T>
 class ConcatFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
+<<<<<<< HEAD
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
     using XPUType = typename XPUTypeTrait<T>::Type;
+=======
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
+                  framework::Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -107,11 +126,16 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
     }
     context.template Alloc<T>(output);
 
+<<<<<<< HEAD
     auto r = xpu::concat<XPUType>(context.x_context(),
                                   ptrs,
                                   reinterpret_cast<XPUType*>(output->data<T>()),
                                   xdims_list,
                                   axis);
+=======
+    auto r = xpu::concat<T>(
+        context.x_context(), ptrs, output->data<T>(), xdims_list, axis);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
@@ -127,11 +151,18 @@ template <typename T>
 class SplitFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
     using XPUType = typename XPUTypeTrait<T>::Type;
+=======
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
@@ -164,6 +195,7 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
       context.template Alloc<T>(&tmp_data);
     }
 
+<<<<<<< HEAD
     auto r = xpu::split<XPUType>(
         context.x_context(),
         reinterpret_cast<const XPUType*>(tmp_data.data<T>()),
@@ -171,6 +203,14 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
         xdims_list,
         split_list,
         axis);
+=======
+    auto r = xpu::split<T>(context.x_context(),
+                           input.data<T>(),
+                           ptrs,
+                           xdims_list,
+                           split_list,
+                           axis);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(
         r,
         XPU_SUCCESS,
@@ -188,9 +228,15 @@ template <typename T>
 class ConcatFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& context,
+<<<<<<< HEAD
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+=======
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
+                  framework::Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int dev_id = context.GetPlace().GetDeviceId();
     platform::NPUDeviceGuard guard(dev_id);
 
@@ -212,10 +258,17 @@ template <typename T>
 class SplitFunctor<platform::NPUDeviceContext, T> {
  public:
   void operator()(const platform::NPUDeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+=======
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (input.numel() == 0) {
       return;
     }
@@ -266,9 +319,15 @@ template <typename T>
 class ConcatFunctor<platform::MLUDeviceContext, T> {
  public:
   void operator()(const platform::MLUDeviceContext& context,
+<<<<<<< HEAD
                   const std::vector<phi::DenseTensor>& input,
                   int axis,
                   phi::DenseTensor* output) {
+=======
+                  const std::vector<framework::Tensor>& input,
+                  int axis,
+                  framework::Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int dev_id = context.GetPlace().GetDeviceId();
     platform::MLUDeviceGuard guard(dev_id);
 
@@ -307,10 +366,17 @@ template <typename T>
 class SplitFunctor<platform::MLUDeviceContext, T> {
  public:
   void operator()(const platform::MLUDeviceContext& context,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   const std::vector<const phi::DenseTensor*>& ref_inputs,
                   const int axis,
                   std::vector<phi::DenseTensor*>* outputs) {
+=======
+                  const framework::Tensor& input,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<framework::Tensor*>* outputs) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (input.numel() == 0) {
       return;
     }

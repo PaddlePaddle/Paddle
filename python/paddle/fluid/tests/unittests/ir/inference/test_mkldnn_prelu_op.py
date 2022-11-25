@@ -23,16 +23,23 @@ import hypothesis.strategies as st
 
 
 class TestMkldnnPreluOp(MkldnnAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # if mode is channel, and in_shape is 1 rank
+<<<<<<< HEAD
         if (
             len(program_config.inputs['input_data'].shape) == 1
             and program_config.ops[0].attrs['mode'] == 'channel'
         ):
+=======
+        if len(program_config.inputs['input_data'].shape
+               ) == 1 and program_config.ops[0].attrs['mode'] == 'channel':
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
         return True
 
     def sample_program_configs(self, *args, **kwargs):
+
         def generate_input(*args, **kwargs):
             return np.random.random(kwargs['in_shape']).astype(np.float32)
 
@@ -57,6 +64,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                     return np.zeros((1)).astype(np.float32)
                 return np.random.random(kwargs['in_shape']).astype(np.float32)
 
+<<<<<<< HEAD
         prelu_op = OpConfig(
             type="prelu",
             inputs={"X": ["input_data"], "Alpha": ["alpha_weight"]},
@@ -66,6 +74,18 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
                 "data_format": kwargs['data_format'],
             },
         )
+=======
+        prelu_op = OpConfig(type="prelu",
+                            inputs={
+                                "X": ["input_data"],
+                                "Alpha": ["alpha_weight"]
+                            },
+                            outputs={"Out": ["output_data"]},
+                            attrs={
+                                "mode": kwargs['mode'],
+                                "data_format": kwargs['data_format']
+                            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         program_config = ProgramConfig(
             ops=[prelu_op],
@@ -91,6 +111,7 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
     def add_skip_pass_case(self):
         pass
 
+<<<<<<< HEAD
     @given(
         mode=st.sampled_from(['all', 'channel', 'element']),
         data_format=st.sampled_from(['NCHW', 'NHWC']),
@@ -98,6 +119,13 @@ class TestMkldnnPreluOp(MkldnnAutoScanTest):
             st.integers(min_value=1, max_value=32), min_size=1, max_size=4
         ),
     )
+=======
+    @given(mode=st.sampled_from(['all', 'channel', 'element']),
+           data_format=st.sampled_from(['NCHW', 'NHWC']),
+           in_shape=st.lists(st.integers(min_value=1, max_value=32),
+                             min_size=1,
+                             max_size=4))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test(self, *args, **kwargs):
         self.add_skip_pass_case()
         self.run_test(quant=False, *args, **kwargs)

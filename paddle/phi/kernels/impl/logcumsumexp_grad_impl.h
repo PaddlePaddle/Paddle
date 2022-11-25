@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+<<<<<<< HEAD
 #pragma once
 
 #include <limits>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+=======
+#include <limits>
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cum_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -57,6 +63,7 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   auto eigen_d_out = EigenVector<T>::Flatten(d_out);
   auto& place = *dev_ctx.eigen_device();
 
+<<<<<<< HEAD
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor output_pos;
   output_pos.Resize(d_out.dims());
@@ -90,5 +97,34 @@ void LogcumsumexpGradKernel(const Context& dev_ctx,
   auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
   eigen_d_x.device(place) =
       (eigen_output_pos - eigen_output_neg).template cast<T>();
+=======
+  DenseTensor output_pos;
+  output_pos.Resize(d_out.dims());
+  dev_ctx.template Alloc<T>(&output_pos);
+  auto eigen_output_pos = EigenVector<T>::Flatten(output_pos);
+  DenseTensor output_neg;
+  output_neg.Resize(d_out.dims());
+  dev_ctx.template Alloc<T>(&output_neg);
+  auto eigen_output_neg = EigenVector<T>::Flatten(output_neg);
+  DenseTensor tmp;
+  tmp.Resize(d_out.dims());
+  dev_ctx.template Alloc<T>(&tmp);
+  auto eigen_tmp = EigenVector<T>::Flatten(tmp);
+
+  eigen_tmp.device(place) =
+      eigen_d_out.unaryExpr(LogGradPositiveFunctor<T>()) - eigen_out;
+  LogcumsumexpKernel<T, Context>(
+      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_pos);
+  eigen_output_pos.device(place) = (eigen_output_pos + eigen_x).exp();
+
+  eigen_tmp.device(place) =
+      eigen_d_out.unaryExpr(LogGradNegativeFunctor<T>()) - eigen_out;
+  LogcumsumexpKernel<T, Context>(
+      dev_ctx, tmp, axis, flatten, exclusive, reverse, &output_neg);
+  eigen_output_neg.device(place) = (eigen_output_neg + eigen_x).exp();
+
+  auto eigen_d_x = EigenVector<T>::Flatten(*d_x);
+  eigen_d_x.device(place) = eigen_output_pos - eigen_output_neg;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 }  // namespace phi

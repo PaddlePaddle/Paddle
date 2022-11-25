@@ -44,7 +44,11 @@ static void DeepCopy(const phi::DenseTensor &src_item,
       framework::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
+<<<<<<< HEAD
               ? phi::DataLayout::kNCHW
+=======
+              ? framework::DataLayout::kNCHW
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
               : paddle::platform::MKLDNNDeviceContext::tls()
                     .get_cur_paddle_data_layout(),
           src_item,
@@ -75,7 +79,11 @@ class FetchV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name,
+<<<<<<< HEAD
       const phi::DenseTensor &tensor,
+=======
+      const framework::Tensor &tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType &expected_kernel_type) const override {
     if (!tensor.IsInitialized()) {
       return expected_kernel_type;
@@ -155,7 +163,11 @@ class FetchV2Kernel {
       if (!src_item.IsInitialized()) {
         return;
       }
+<<<<<<< HEAD
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+=======
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       bool check_place = platform::is_cpu_place(src_item.place()) ||
                          platform::is_cuda_pinned_place(src_item.place());
       PADDLE_ENFORCE_EQ(

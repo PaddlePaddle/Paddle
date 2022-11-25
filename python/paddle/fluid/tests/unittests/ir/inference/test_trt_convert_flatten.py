@@ -22,10 +22,12 @@ from typing import List
 
 
 class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch):
             return np.random.random([batch, 32]).astype(np.float32)
 
@@ -54,9 +56,15 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(generate_input, batch)
                             )
+=======
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         },
                         outputs=["output_data"],
                     )
@@ -64,8 +72,13 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
@@ -110,22 +123,31 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch):
             return np.random.random([batch, 32, 64]).astype(np.float32)
 
@@ -154,9 +176,15 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(generate_input, batch)
                             )
+=======
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         },
                         outputs=["output_data"],
                     )
@@ -164,8 +192,13 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 64]}
@@ -211,22 +244,31 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
 
@@ -255,9 +297,15 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(generate_input, batch)
                             )
+=======
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         },
                         outputs=["output_data"],
                     )
@@ -265,8 +313,13 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 4, 4, 4]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 32, 32, 32]}
@@ -312,22 +365,31 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()
 
 
 class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
 
@@ -356,9 +418,15 @@ class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(generate_input, batch)
                             )
+=======
+                            "input_data":
+                            TensorConfig(
+                                data_gen=partial(generate_input, batch))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         },
                         outputs=["output_data"],
                     )
@@ -366,8 +434,13 @@ class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {"input_data": [1, 4, 4, 4]}
             self.dynamic_shape.max_input_shape = {"input_data": [4, 16, 16, 8]}
@@ -413,12 +486,19 @@ class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-3, 1e-3)
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()

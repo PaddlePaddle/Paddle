@@ -16,7 +16,12 @@ import requests
 import time
 
 
+<<<<<<< HEAD
 class KVClient:
+=======
+class KVClient(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, endpoint='localhost:2379'):
         self.endpoint = (
             endpoint

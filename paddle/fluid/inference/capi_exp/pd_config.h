@@ -209,8 +209,12 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool autotune,
     const char* autotune_file,
     const char* precision,
+<<<<<<< HEAD
     PD_Bool adaptive_seqlen,
     PD_Bool enable_multi_stream);
+=======
+    PD_Bool adaptive_seqlen);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 ///
 /// \brief Turn on NPU.
 ///
@@ -331,7 +335,11 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigIrOptim(
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTensorRtEngine(
     __pd_keep PD_Config* pd_config,
+<<<<<<< HEAD
     int64_t workspace_size,
+=======
+    int32_t workspace_size,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     int32_t max_batch_size,
     int32_t min_subgraph_size,
     PD_PrecisionType precision,

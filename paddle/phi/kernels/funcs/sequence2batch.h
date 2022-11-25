@@ -16,6 +16,11 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"

@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 
 
 class TestApiDataError(unittest.TestCase):
+
     def test_fluid_data(self):
         with program_guard(Program(), Program()):
 
@@ -54,6 +55,7 @@ class TestApiDataError(unittest.TestCase):
 
 
 class TestApiStaticDataError(unittest.TestCase):
+
     def test_fluid_dtype(self):
         with program_guard(Program(), Program()):
             x1 = paddle.static.data(name="x1", shape=[2, 25])
@@ -98,16 +100,28 @@ class TestApiStaticDataError(unittest.TestCase):
 
 
 class TestApiErrorWithDynamicMode(unittest.TestCase):
+
     def test_error(self):
         with program_guard(Program(), Program()):
             paddle.disable_static()
             self.assertRaises(AssertionError, fluid.data, 'a', [2, 25])
+<<<<<<< HEAD
             self.assertRaises(
                 AssertionError, fluid.layers.data, 'b', shape=[2, 25]
             )
             self.assertRaises(
                 AssertionError, paddle.static.data, 'c', shape=[2, 25]
             )
+=======
+            self.assertRaises(AssertionError,
+                              fluid.layers.data,
+                              'b',
+                              shape=[2, 25])
+            self.assertRaises(AssertionError,
+                              paddle.static.data,
+                              'c',
+                              shape=[2, 25])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             paddle.enable_static()
 
 

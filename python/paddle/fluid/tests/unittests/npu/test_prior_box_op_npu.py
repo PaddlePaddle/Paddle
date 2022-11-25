@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestNPUPriorBox(OpTest):
+
     def setUp(self):
         self.op_type = "prior_box"
         self.set_npu()
@@ -94,9 +95,14 @@ class TestNPUPriorBox(OpTest):
         self.flip = True
         self.set_min_max_aspect_ratios_order()
         self.real_aspect_ratios = [1, 2.0, 1.0 / 2.0, 3.0, 1.0 / 3.0]
+<<<<<<< HEAD
         self.aspect_ratios = np.array(
             self.aspect_ratios, dtype=np.float64
         ).flatten()
+=======
+        self.aspect_ratios = np.array(self.aspect_ratios,
+                                      dtype=np.float64).flatten()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.variances = [0.1, 0.1, 0.2, 0.2]
         self.variances = np.array(self.variances, dtype=np.float64).flatten()
 
@@ -134,24 +140,40 @@ class TestNPUPriorBox(OpTest):
                             ar = self.real_aspect_ratios[r]
                             c_w = min_size * math.sqrt(ar) / 2
                             c_h = (min_size / math.sqrt(ar)) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             idx += 1
 
                         if len(self.max_sizes) > 0:
                             max_size = self.max_sizes[s]
                             # second prior: aspect_ratio = 1,
                             c_w = c_h = math.sqrt(min_size * max_size) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             idx += 1
                     else:
                         c_w = c_h = min_size / 2.0
@@ -166,12 +188,20 @@ class TestNPUPriorBox(OpTest):
                             max_size = self.max_sizes[s]
                             # second prior: aspect_ratio = 1,
                             c_w = c_h = math.sqrt(min_size * max_size) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             idx += 1
 
                         # rest of priors
@@ -181,31 +211,46 @@ class TestNPUPriorBox(OpTest):
                                 continue
                             c_w = min_size * math.sqrt(ar) / 2
                             c_h = (min_size / math.sqrt(ar)) / 2
+<<<<<<< HEAD
                             out_boxes[h, w, idx, :] = [
                                 (c_x - c_w) / self.image_w,
                                 (c_y - c_h) / self.image_h,
                                 (c_x + c_w) / self.image_w,
                                 (c_y + c_h) / self.image_h,
                             ]
+=======
+                            out_boxes[h, w,
+                                      idx, :] = [(c_x - c_w) / self.image_w,
+                                                 (c_y - c_h) / self.image_h,
+                                                 (c_x + c_w) / self.image_w,
+                                                 (c_y + c_h) / self.image_h]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             idx += 1
 
         # clip the prior's coordidate such that it is within[0, 1]
         if self.clip:
             out_boxes = np.clip(out_boxes, 0.0, 1.0)
         # set the variance.
+<<<<<<< HEAD
         out_var = np.tile(
             self.variances, (self.layer_h, self.layer_w, self.num_priors, 1)
         )
+=======
+        out_var = np.tile(self.variances,
+                          (self.layer_h, self.layer_w, self.num_priors, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.out_boxes = out_boxes.astype('float32')
         self.out_var = out_var.astype('float32')
 
 
 class TestNPUPriorBoxWithoutMaxSize(TestNPUPriorBox):
+
     def set_max_sizes(self):
         self.max_sizes = []
 
 
 class TestNPUPriorBoxWithoutSpecifiedOutOrder(TestNPUPriorBox):
+
     def set_min_max_aspect_ratios_order(self):
         self.min_max_aspect_ratios_order = False
         self.atol = 1e-1

@@ -40,6 +40,7 @@ void DiagonalKernel(const Context& dev_ctx,
                     int axis1,
                     int axis2,
                     DenseTensor* out);
+<<<<<<< HEAD
 
 template <typename T, typename Context>
 DenseTensor Diagonal(const Context& dev_ctx,
@@ -53,4 +54,6 @@ DenseTensor Diagonal(const Context& dev_ctx,
   DiagonalKernel<T, Context>(dev_ctx, x, offset, axis1, axis2, &dense_out);
   return dense_out;
 }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }  // namespace phi

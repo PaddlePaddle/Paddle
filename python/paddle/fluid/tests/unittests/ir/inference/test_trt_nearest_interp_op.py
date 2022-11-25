@@ -22,6 +22,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTNearestInterpTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
 
@@ -79,6 +80,7 @@ class TRTNearestInterpTest(InferencePassTest):
         self.data_layout = 'NCHW'
 
     def append_nearest_interp(self, data):
+<<<<<<< HEAD
         if self.scale > 0.0:
             return fluid.layers.resize_nearest(
                 data,
@@ -92,6 +94,17 @@ class TRTNearestInterpTest(InferencePassTest):
             align_corners=self.align_corners,
             data_format=self.data_layout,
         )
+=======
+        if self.scale > 0.:
+            return fluid.layers.resize_nearest(data,
+                                               scale=self.scale,
+                                               align_corners=self.align_corners,
+                                               data_format=self.data_layout)
+        return fluid.layers.resize_nearest(data,
+                                           out_shape=self.resize_shape,
+                                           align_corners=self.align_corners,
+                                           data_format=self.data_layout)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -103,6 +116,7 @@ class TRTNearestInterpTest(InferencePassTest):
 
 
 class TRTNearestInterpTest1(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -114,6 +128,7 @@ class TRTNearestInterpTest1(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest2(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = 2.0
@@ -125,6 +140,7 @@ class TRTNearestInterpTest2(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest3(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = 0
@@ -136,6 +152,7 @@ class TRTNearestInterpTest3(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest4(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -147,6 +164,7 @@ class TRTNearestInterpTest4(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest5(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -158,6 +176,7 @@ class TRTNearestInterpTest5(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest6(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = 2.0
@@ -169,6 +188,7 @@ class TRTNearestInterpTest6(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest7(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -180,6 +200,7 @@ class TRTNearestInterpTest7(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest8(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1
@@ -191,6 +212,7 @@ class TRTNearestInterpTest8(TRTNearestInterpTest):
 
 
 class TRTNearestInterpTest9(TRTNearestInterpTest):
+
     def set_params(self):
         self.bs = 4
         self.scale = -1

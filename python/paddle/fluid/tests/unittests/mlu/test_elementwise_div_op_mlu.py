@@ -27,6 +27,7 @@ SEED = 2022
 
 
 class TestElementwiseDiv(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -55,6 +56,7 @@ class TestElementwiseDiv(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X', 'Y'], 'Out', max_relative_error=0.05
         )
@@ -76,9 +78,27 @@ class TestElementwiseDiv(OpTest):
             max_relative_error=0.05,
             no_grad_set=set("Y"),
         )
+=======
+        self.check_grad_with_place(self.place, ['X', 'Y'],
+                                   'Out',
+                                   max_relative_error=0.05)
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(self.place, ['Y'],
+                                   'Out',
+                                   max_relative_error=0.05,
+                                   no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=0.05,
+                                   no_grad_set=set("Y"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestElementwiseDivFp16(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -112,6 +132,7 @@ class TestElementwiseDivFp16(OpTest):
     reason="[skip shape check] Use y_shape(1) to test broadcast."
 )
 class TestTestElementwiseDiv_scalar(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -123,6 +144,7 @@ class TestTestElementwiseDiv_scalar(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_Vector(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -134,6 +156,7 @@ class TestTestElementwiseDiv_Vector(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_broadcast_0(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -144,13 +167,19 @@ class TestTestElementwiseDiv_broadcast_0(TestElementwiseDiv):
 
         self.attrs = {'axis': 0}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.divide(
                 self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
             )
+=======
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(100, 1, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
 
 class TestTestElementwiseDiv_broadcast_1(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -161,13 +190,19 @@ class TestTestElementwiseDiv_broadcast_1(TestElementwiseDiv):
 
         self.attrs = {'axis': 1}
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.divide(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
             )
+=======
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(1, 100, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
 
 class TestTestElementwiseDiv_broadcast_2(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -177,13 +212,19 @@ class TestTestElementwiseDiv_broadcast_2(TestElementwiseDiv):
         }
 
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.divide(
                 self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
             )
+=======
+            'Out': np.divide(self.inputs['X'],
+                             self.inputs['Y'].reshape(1, 1, 100))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
 
 class TestTestElementwiseDiv_broadcast_3(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -201,6 +242,7 @@ class TestTestElementwiseDiv_broadcast_3(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_broadcast_4(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -212,6 +254,7 @@ class TestTestElementwiseDiv_broadcast_4(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_broadcast_5(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -223,6 +266,7 @@ class TestTestElementwiseDiv_broadcast_5(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_commonuse_1(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -234,6 +278,7 @@ class TestTestElementwiseDiv_commonuse_1(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_commonuse_2(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"
@@ -245,6 +290,7 @@ class TestTestElementwiseDiv_commonuse_2(TestElementwiseDiv):
 
 
 class TestTestElementwiseDiv_xsize_lessthan_ysize(TestElementwiseDiv):
+
     def setUp(self):
         self.set_mlu()
         self.op_type = "elementwise_div"

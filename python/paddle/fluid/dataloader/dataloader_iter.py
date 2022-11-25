@@ -188,8 +188,12 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         # iteration, set blocking_queue can cache "self._prefetch_factor" iteration datas
         # at most here
         self._blocking_queue_capacity = self._prefetch_factor * len(
+<<<<<<< HEAD
             self._places
         )
+=======
+            self._places)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self._init_thread()
         self._shutdown = False
@@ -222,9 +226,14 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
             self._pin_memory,
         )
 
+<<<<<<< HEAD
         self._thread = threading.Thread(
             target=self._thread_loop, args=(_current_expected_place(),)
         )
+=======
+        self._thread = threading.Thread(target=self._thread_loop,
+                                        args=(_current_expected_place(), ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._thread.daemon = True
         self._thread.start()
 
@@ -315,10 +324,16 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                         structs = [
                             self._structure_infos.pop(0)
                             for _ in range(len(self._places))
+<<<<<<< HEAD
                         ]
                         data = [
                             _restore_batch(d, s) for d, s in zip(data, structs)
                         ]
+=======
+                        ]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode
@@ -373,6 +388,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
 
 
 class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
+
     def __init__(self, loader):
         super().__init__(loader)
 
@@ -404,8 +420,12 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # output data for at least "_prefetch_factor" iterations(Note that len(_places)
         # batches will be composed as an iteration output)
         self._outstanding_capacity = self._prefetch_factor * max(
+<<<<<<< HEAD
             self._num_workers, len(self._places)
         )
+=======
+            self._num_workers, len(self._places))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # see _try_put_indices
         self._thread_lock = threading.Lock()
@@ -442,6 +462,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._indices_queues.append(indices_queue)
             worker = multiprocessing.Process(
                 target=_worker_loop,
+<<<<<<< HEAD
                 args=(
                     self._dataset,
                     self._dataset_kind,
@@ -458,6 +479,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._base_seed,
                 ),
             )
+=======
+                args=(self._dataset, self._dataset_kind, indices_queue,
+                      self._data_queue, self._workers_done_event,
+                      self._auto_collate_batch, self._collate_fn,
+                      self._drop_last, self._worker_init_fn, i,
+                      self._num_workers, self._use_shared_memory,
+                      self._base_seed))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             worker.daemon = True
             worker.start()
             self._workers.append(worker)
@@ -485,8 +514,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         ]
         # if only 1 place, do not need to keep order
         self._blocking_queue = core.init_lod_tensor_blocking_queue(
+<<<<<<< HEAD
             core.Variable(), self._outstanding_capacity, len(self._places) > 1
         )
+=======
+            core.Variable(), self._outstanding_capacity,
+            len(self._places) > 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._reader = core.create_py_reader(
             self._blocking_queue,
             self._var_names,
@@ -501,9 +535,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         self._thread_done_event = threading.Event()
         # thread event is only need in multi-processing mode
+<<<<<<< HEAD
         self._thread = threading.Thread(
             target=self._thread_loop, args=(_current_expected_place(),)
         )
+=======
+        self._thread = threading.Thread(target=self._thread_loop,
+                                        args=(_current_expected_place(), ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._thread.daemon = True
         self._thread.start()
 
@@ -553,9 +592,14 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._try_put_indices()
 
     def _shutdown_worker(self, worker_id, shutdown=False):
+<<<<<<< HEAD
         if self._worker_status[worker_id] or (
             self._persistent_workers and shutdown
         ):
+=======
+        if self._worker_status[worker_id] or (self._persistent_workers
+                                              and shutdown):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self._indices_queues[worker_id].put(None)
             self._worker_status[worker_id] = False
 
@@ -612,8 +656,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                             # serializable, cannot be create in workers
                             for slot in batch:
                                 if isinstance(
+<<<<<<< HEAD
                                     slot, (paddle.Tensor, core.eager.Tensor)
                                 ):
+=======
+                                        slot,
+                                    (paddle.Tensor, core.eager.Tensor)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                     slot = slot.value().get_tensor()
                                 elif not isinstance(slot, core.LoDTensor):
                                     tmp = core.LoDTensor()
@@ -828,10 +877,16 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         structs = [
                             self._structure_infos.pop(0)
                             for _ in range(len(self._places))
+<<<<<<< HEAD
                         ]
                         data = [
                             _restore_batch(d, s) for d, s in zip(data, structs)
                         ]
+=======
+                        ]
+                        data = [_restore_batch(d, s) \
+                                for d, s in zip(data, structs)]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         # static graph organized data on multi-device with list, if
                         # place number is 1, there is only 1 device, extra the data
                         # from list for devices to be compatible with dygraph mode

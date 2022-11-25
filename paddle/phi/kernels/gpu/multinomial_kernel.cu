@@ -279,7 +279,11 @@ void MultinomialKernel(const Context& dev_ctx,
   auto seed_offset = gen_cuda->IncrementOffset(increment);
 
   sampleMultinomialWithReplacement<T>
+<<<<<<< HEAD
       <<<grid, block, 0, dev_ctx.stream()>>>(int_num_samples,
+=======
+      <<<grid, block, 0, dev_ctx.stream()>>>(num_samples,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                              out_data,
                                              num_distributions,
                                              num_categories,

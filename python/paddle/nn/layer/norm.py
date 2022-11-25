@@ -26,11 +26,20 @@
 # limitations under the License.
 
 # TODO: define normalization api
+<<<<<<< HEAD
+=======
+
+import six
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 from ...fluid.dygraph import BatchNorm  # noqa: F401
 from ...fluid.dygraph import SpectralNorm  # noqa: F401
 
+<<<<<<< HEAD
 from ...framework import get_default_dtype
+=======
+from ...framework import get_default_dtype, set_default_dtype, _non_static_mode
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 from ..initializer import Constant
 from ...framework import ParamAttr
@@ -46,7 +55,11 @@ from .. import functional as F
 from paddle import _C_ops, _legacy_C_ops
 from .. import Layer
 from paddle import in_dynamic_mode
+<<<<<<< HEAD
 from paddle.fluid.framework import in_dygraph_mode, _in_legacy_dygraph
+=======
+from paddle.fluid.framework import in_dygraph_mode
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 __all__ = []
 
@@ -84,6 +97,7 @@ class _InstanceNormBase(Layer):
                 attr=self._weight_attr,
                 shape=[num_features],
                 default_initializer=Constant(1.0),
+<<<<<<< HEAD
                 is_bias=False,
             )
             self.bias = self.create_parameter(
@@ -92,6 +106,13 @@ class _InstanceNormBase(Layer):
                 default_initializer=Constant(0.0),
                 is_bias=True,
             )
+=======
+                is_bias=False)
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=[num_features],
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             self.scale = None
             self.bias = None
@@ -102,9 +123,16 @@ class _InstanceNormBase(Layer):
     def forward(self, input):
         self._check_input_dim(input)
 
+<<<<<<< HEAD
         return instance_norm(
             input, weight=self.scale, bias=self.bias, eps=self._epsilon
         )
+=======
+        return instance_norm(input,
+                             weight=self.scale,
+                             bias=self.bias,
+                             eps=self._epsilon)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def extra_repr(self):
         return 'num_features={}, epsilon={}'.format(
@@ -395,6 +423,7 @@ class GroupNorm(Layer):
                 and self._weight_attr.learning_rate == 0.0
             )
 
+<<<<<<< HEAD
         if bias_attr is False:
             self.bias = self.create_parameter(
                 attr=None,
@@ -432,6 +461,28 @@ class GroupNorm(Layer):
 
         if _in_legacy_dygraph():
             pre_act, _, _ = _legacy_C_ops.group_norm(
+=======
+        if bias_attr == False:
+            self.bias = self.create_parameter(attr=None,
+                                              shape=param_shape,
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              is_bias=True)
+            self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
+
+    def forward(self, input):
+        mean_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+        variance_out = self._helper.create_variable_for_type_inference(
+            dtype=input.dtype, stop_gradient=True)
+
+        if _non_static_mode():
+            pre_act, _, _ = _C_ops.group_norm(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 input,
                 self.weight,
                 self.bias,
@@ -442,7 +493,12 @@ class GroupNorm(Layer):
                 'groups',
                 self._num_groups,
             )
+<<<<<<< HEAD
             return pre_act
+=======
+            return dygraph_utils._append_activation_in_dygraph(pre_act,
+                                                               act=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         inputs = {'X': input}
         if self.bias is not None:
@@ -455,6 +511,7 @@ class GroupNorm(Layer):
             dtype=input.dtype
         )
 
+<<<<<<< HEAD
         self._helper.append_op(
             type="group_norm",
             inputs=inputs,
@@ -465,6 +522,19 @@ class GroupNorm(Layer):
             },
             attrs={"epsilon": self._epsilon, "groups": self._num_groups},
         )
+=======
+        self._helper.append_op(type="group_norm",
+                               inputs=inputs,
+                               outputs={
+                                   "Y": group_norm_out,
+                                   "Mean": mean_out,
+                                   "Variance": variance_out,
+                               },
+                               attrs={
+                                   "epsilon": self._epsilon,
+                                   "groups": self._num_groups
+                               })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return self._helper.append_activation(group_norm_out, None)
 
@@ -562,6 +632,7 @@ class LayerNorm(Layer):
         if bias_attr is False:
             self.bias = None
         else:
+<<<<<<< HEAD
             self.bias = self.create_parameter(
                 attr=self._bias_attr, shape=param_shape, is_bias=True
             )
@@ -574,6 +645,18 @@ class LayerNorm(Layer):
             bias=self.bias,
             epsilon=self._epsilon,
         )
+=======
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              is_bias=True)
+
+    def forward(self, input):
+        return layer_norm(input,
+                          normalized_shape=self._normalized_shape,
+                          weight=self.weight,
+                          bias=self.bias,
+                          epsilon=self._epsilon)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def extra_repr(self):
         return 'normalized_shape={}, epsilon={}'.format(
@@ -631,6 +714,7 @@ class _BatchNormBase(Layer):
                 and self._weight_attr.learning_rate == 0.0
             )
 
+<<<<<<< HEAD
         if bias_attr is False:
             self.bias = self.create_parameter(
                 attr=None,
@@ -651,6 +735,21 @@ class _BatchNormBase(Layer):
                 self._bias_attr is not None
                 and self._bias_attr.learning_rate == 0.0
             )
+=======
+        if bias_attr == False:
+            self.bias = self.create_parameter(attr=None,
+                                              shape=param_shape,
+                                              dtype=self._dtype,
+                                              default_initializer=Constant(0.0),
+                                              is_bias=True)
+            self.bias.stop_gradient = True
+        else:
+            self.bias = self.create_parameter(attr=self._bias_attr,
+                                              shape=param_shape,
+                                              dtype=self._dtype,
+                                              is_bias=True)
+            self.bias.stop_gradient = self._bias_attr != None and self._bias_attr.learning_rate == 0.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         moving_mean_name = None
         moving_variance_name = None
@@ -659,6 +758,7 @@ class _BatchNormBase(Layer):
             moving_mean_name = name + "_mean"
             moving_variance_name = name + "_variance"
 
+<<<<<<< HEAD
         self._mean = self.create_parameter(
             dtype=self._dtype,
             attr=ParamAttr(
@@ -681,6 +781,24 @@ class _BatchNormBase(Layer):
             ),
             shape=param_shape,
         )
+=======
+        self._mean = self.create_parameter(dtype=self._dtype,
+                                           attr=ParamAttr(
+                                               name=moving_mean_name,
+                                               initializer=Constant(0.0),
+                                               trainable=False,
+                                               do_model_average=True),
+                                           shape=param_shape)
+        self._mean.stop_gradient = True
+
+        self._variance = self.create_parameter(dtype=self._dtype,
+                                               attr=ParamAttr(
+                                                   name=moving_variance_name,
+                                                   initializer=Constant(1.0),
+                                                   trainable=False,
+                                                   do_model_average=True),
+                                               shape=param_shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._variance.stop_gradient = True
 
         self._data_format = data_format
@@ -707,6 +825,7 @@ class _BatchNormBase(Layer):
                 "When training, we now always track global mean and variance."
             )
 
+<<<<<<< HEAD
         return batch_norm(
             input,
             self._mean,
@@ -719,6 +838,18 @@ class _BatchNormBase(Layer):
             data_format=self._data_format,
             use_global_stats=self._use_global_stats,
         )
+=======
+        return batch_norm(input,
+                          self._mean,
+                          self._variance,
+                          weight=self.weight,
+                          bias=self.bias,
+                          training=self.training,
+                          momentum=self._momentum,
+                          epsilon=self._epsilon,
+                          data_format=self._data_format,
+                          use_global_stats=self._use_global_stats)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def extra_repr(self):
         main_str = 'num_features={}, momentum={}, epsilon={}'.format(
@@ -1173,6 +1304,7 @@ class SyncBatchNorm(_BatchNormBase):
         # variance and variance out share the same memory
         variance_out = self._variance
 
+<<<<<<< HEAD
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
         if in_dygraph_mode():
@@ -1220,6 +1352,26 @@ class SyncBatchNorm(_BatchNormBase):
                 variance_out,
                 *attrs
             )
+=======
+        ### train mode: use mini-batch stats, eval mode: use global stats
+        ### use_global_stats only support False in sync_batch_norm
+        if in_dygraph_mode():
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.final_state_sync_batch_norm(
+                x, self.weight, self.bias, self._mean, self._variance,
+                self._momentum, self._epsilon, self._data_format,
+                not self.training, False, False, False)
+            return sync_batch_norm_out
+
+        elif in_dynamic_mode():
+            attrs = ("momentum", self._momentum, "epsilon", self._epsilon,
+                     "is_test", not self.training, "data_layout",
+                     self._data_format, "use_mkldnn", False, "fuse_with_relu",
+                     False, "use_global_stats", False, 'trainable_statistics',
+                     False)
+            sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm(
+                x, self.weight, self.bias, self._mean, self._variance, mean_out,
+                variance_out, *attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return sync_batch_norm_out
 
         check_variable_and_dtype(
@@ -1263,9 +1415,16 @@ class SyncBatchNorm(_BatchNormBase):
             "SavedVariance": [saved_variance],
         }
 
+<<<<<<< HEAD
         self._helper.append_op(
             type="sync_batch_norm", inputs=inputs, outputs=outputs, attrs=attrs
         )
+=======
+        self._helper.append_op(type="sync_batch_norm",
+                               inputs=inputs,
+                               outputs=outputs,
+                               attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return sync_batch_norm_out
 
     @classmethod

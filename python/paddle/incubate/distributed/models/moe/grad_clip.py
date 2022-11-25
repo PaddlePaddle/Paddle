@@ -187,11 +187,17 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
                 moe_params_grads, sum_dtype
             )
             if global_norm_var_moe is not None:
+<<<<<<< HEAD
                 dist.all_reduce(
                     global_norm_var_moe,
                     op=dist.ReduceOp.SUM,
                     group=self.moe_group,
                 )
+=======
+                collective.all_reduce(global_norm_var_moe,
+                                      op=collective.ReduceOp.SUM,
+                                      group=self.moe_group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if global_norm_var_normal is None and global_norm_var_moe is None:
             return params_grads
@@ -209,6 +215,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             global_norm_var = global_norm_var_normal + global_norm_var_moe
 
         params_and_grads = []
+<<<<<<< HEAD
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm
@@ -217,6 +224,16 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var, y=max_global_norm),
         )
+=======
+        global_norm_var = layers.sqrt(global_norm_var)
+        max_global_norm = layers.fill_constant(shape=[1],
+                                               dtype=global_norm_var.dtype,
+                                               value=self.clip_norm)
+        clip_var = layers.elementwise_div(x=max_global_norm,
+                                          y=layers.elementwise_max(
+                                              x=global_norm_var,
+                                              y=max_global_norm))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for p, g in params_grads:
             if g is None:
                 continue

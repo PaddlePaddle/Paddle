@@ -33,12 +33,22 @@ __all__ = [
     'gradients',
 ]
 
+<<<<<<< HEAD
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
 class ProgramStats:
+=======
+_logger = log_helper.get_logger(__name__,
+                                logging.INFO,
+                                fmt='%(asctime)s-%(levelname)s: %(message)s')
+
+
+class ProgramStats(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, block, ops):
         self.block = block
         self.ops = ops
@@ -122,12 +132,18 @@ class ProgramStats:
         updated_min_idx = min_idx
         while idx_ > pre_segment_end_idx:
             if is_amp_cast(self.ops[idx_]):
+<<<<<<< HEAD
                 _logger.info(
                     "found amp-cast op: {}, : {}".format(
                         self.ops[idx_].desc.type(),
                         self.ops[idx_].desc.input_arg_names()[0],
                     )
                 )
+=======
+                _logger.info("found amp-cast op: {}, : {}".format(
+                    self.ops[idx_].desc.type(),
+                    self.ops[idx_].desc.input_arg_names()[0]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 updated_min_idx = idx_
                 idx_ -= 1
             else:
@@ -141,8 +157,12 @@ class ProgramStats:
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
                     self.op_deps[i]["in_ops"].extend(
+<<<<<<< HEAD
                         self.var_op_deps[name]["var_as_output_ops"]
                     )
+=======
+                        self.var_op_deps[name]["var_as_output_ops"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for j, name in enumerate(op.desc.input_arg_names()):
                 if name in self.var_op_deps:
                     self.var_op_deps[name]["var_as_input_ops"].extend([i])
@@ -218,6 +238,7 @@ class ProgramStats:
 
             # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
             # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
+<<<<<<< HEAD
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
@@ -225,6 +246,17 @@ class ProgramStats:
                 outputs={'Out': [added_var]},
                 attrs={'seed': seed, 'op_device': op_device, 'force_cpu': True},
             )
+=======
+            added_op = self.block._insert_op(index=op.idx,
+                                             type='seed',
+                                             inputs={},
+                                             outputs={'Out': [added_var]},
+                                             attrs={
+                                                 'seed': seed,
+                                                 'op_device': op_device,
+                                                 'force_cpu': True
+                                             })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
@@ -246,9 +278,17 @@ def _pretty_op_desc_(op_desc, prefix):
     return out_s
 
 
+<<<<<<< HEAD
 def _add_needed_descs_to_block(
     descs, block, main_block, in_memory_vars, grad_op_id_to_fwd_op=None
 ):
+=======
+def _add_needed_descs_to_block(descs,
+                               block,
+                               main_block,
+                               in_memory_vars,
+                               grad_op_id_to_fwd_op=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if len(descs) == 0:
         return []
     result_descs = []
@@ -306,10 +346,15 @@ def _add_descs_to_block(descs, block, grad_op_id_to_fwd_op=None):
 def _find_loss_op_(loss):
     for op in reversed(loss.block.ops):
         assert isinstance(op, framework.Operator)
+<<<<<<< HEAD
         if (
             len(op.output_arg_names) == 1
             and op.output_arg_names[0] == loss.name
         ):
+=======
+        if len(op.output_arg_names
+               ) == 1 and op.output_arg_names[0] == loss.name:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             loss.op = op
             break
     if loss.op is None:
@@ -351,21 +396,32 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
             para,
             list(
                 map(
+<<<<<<< HEAD
                     lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
                     args,
                 )
             ),
         )
     for para, args in outputs.items():
+=======
+                    lambda arg: arg.decode()
+                    if isinstance(arg, six.binary_type) else arg, args)))
+    for para, args in six.iteritems(outputs):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         op_desc.set_output(
             para,
             list(
                 map(
+<<<<<<< HEAD
                     lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
                     args,
                 )
             ),
         )
+=======
+                    lambda arg: arg.decode()
+                    if isinstance(arg, six.binary_type) else arg, args)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -391,6 +447,7 @@ def _create_loss_op_desc_(loss):
         {"Out": [_append_grad_suffix_(loss.name)]},
         {
             "shape": [1],
+<<<<<<< HEAD
             "value": 1.0,
             "dtype": loss.dtype,
             "force_cpu": False,
@@ -403,6 +460,20 @@ def _create_loss_op_desc_(loss):
             ),
         },
     )
+=======
+            "value":
+            1.0,
+            "dtype":
+            loss.dtype,
+            "force_cpu":
+            False,
+            core.op_proto_and_checker_maker.kOpRoleAttrName():
+            int(core.op_proto_and_checker_maker.OpRole.Backward)
+            | int(core.op_proto_and_checker_maker.OpRole.Loss),
+            core.op_proto_and_checker_maker.kOpDeviceAttrName():
+            loss.op.attr(core.op_proto_and_checker_maker.kOpDeviceAttrName())
+        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return op_desc
 
 
@@ -419,10 +490,15 @@ def _infer_var_data_type_shape_(grad_var_name, block):
     else:
         # TODO(jiabin): Maybe we should not to this to cause some unexpected error on dtype
         warnings.warn(
+<<<<<<< HEAD
             "Set grad var: {} dtype to default FP32, since we can't find its related forward var".format(
                 grad_var_name
             )
         )
+=======
+            "Set grad var: {} dtype to default FP32, since we can't find its related forward var"
+            .format(grad_var_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
 
@@ -479,6 +555,7 @@ def _accumulate_gradients_by_sum_op_(
     if op_idx not in pending_sum_ops.keys():
         pending_sum_ops[op_idx] = []
     pending_sum_ops[op_idx].append(
+<<<<<<< HEAD
         _create_op_desc_(
             "sum",
             {"X": renamed_vars[var_name]},
@@ -486,6 +563,13 @@ def _accumulate_gradients_by_sum_op_(
             {"use_mkldnn": False, "op_device": op_device},
         )
     )
+=======
+        _create_op_desc_("sum", {"X": renamed_vars[var_name]},
+                         {"Out": [var_name]}, {
+                             "use_mkldnn": False,
+                             "op_device": op_device
+                         }))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     renamed_vars[var_name] = [var_name]
 
 
@@ -506,6 +590,7 @@ def _accumulate_gradients_by_add_ops_(
         else:
             out_name = var_name
         pending_sum_ops[op_idx].append(
+<<<<<<< HEAD
             _create_op_desc_(
                 "grad_add",
                 {"X": [x_name], "Y": [y_name]},
@@ -519,6 +604,22 @@ def _accumulate_gradients_by_add_ops_(
 def _addup_repetitive_outputs_(
     op_descs, block_idx, grad_var_to_var=None, grad_op_id_to_fwd_op=None
 ):
+=======
+            _create_op_desc_("grad_add", {
+                "X": [x_name],
+                "Y": [y_name]
+            }, {"Out": [out_name]}, {
+                "use_mkldnn": False,
+                "op_device": op_device
+            }))
+    renamed_vars[var_name] = [var_name]
+
+
+def _addup_repetitive_outputs_(op_descs,
+                               block_idx,
+                               grad_var_to_var=None,
+                               grad_op_id_to_fwd_op=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -656,6 +757,7 @@ def _addup_repetitive_outputs_(
     for var_name, inputs in renamed_vars.items():
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
+<<<<<<< HEAD
                 _accumulate_gradients_by_sum_op_(
                     var_name,
                     renamed_vars,
@@ -671,6 +773,16 @@ def _addup_repetitive_outputs_(
                     len(op_descs),
                     var_device[var_name],
                 )
+=======
+                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                 pending_sum_ops, len(op_descs),
+                                                 var_device[var_name])
+            else:
+                _accumulate_gradients_by_add_ops_(var_name,
+                                                  renamed_vars, pending_sum_ops,
+                                                  len(op_descs),
+                                                  var_device[var_name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     op_descs_len = len(op_descs)
     # sum_op descs are sorted according to their insert position
@@ -686,6 +798,7 @@ def _addup_repetitive_outputs_(
         for i, op in enumerate(value):
             # update the mapping between fwd and bwd
             target_idx = idx - 1 if idx == op_descs_len else idx + i
+<<<<<<< HEAD
             if (
                 grad_op_id_to_fwd_op is not None
                 and grad_op_id_to_fwd_op.get(
@@ -696,14 +809,24 @@ def _addup_repetitive_outputs_(
                 grad_op_id_to_fwd_op[op.original_id()] = grad_op_id_to_fwd_op[
                     op_descs[target_idx].original_id()
                 ]
+=======
+            if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
+                    op_descs[target_idx].original_id(), None) is not None:
+                grad_op_id_to_fwd_op[op.original_id()] = grad_op_id_to_fwd_op[
+                    op_descs[target_idx].original_id()]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             op_descs.insert(idx + i, op)
 
     return op_descs
 
 
+<<<<<<< HEAD
 def _remove_no_grad_branch_(
     op_descs, no_grad_set, grad_op_id_to_fwd_op=None, target_vars=[]
 ):
+=======
+def _remove_no_grad_branch_(op_descs, no_grad_set, grad_op_id_to_fwd_op=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Remove unnecessary grad ops
     A grad op can be removed in two cases:
@@ -746,6 +869,7 @@ def _remove_no_grad_branch_(
                 x_in = _strip_grad_suffix_(arg)
                 # the reason should be: arg can be input of another grad op
                 # and the op is a not-to-remove op
+<<<<<<< HEAD
                 new_op_desc = _create_op_desc_(
                     "fill_any_like",
                     {"X": [x_in]},
@@ -761,6 +885,15 @@ def _remove_no_grad_branch_(
                     grad_op_id_to_fwd_op[
                         new_op_desc.original_id()
                     ] = grad_op_id_to_fwd_op[op_desc.original_id()]
+=======
+                new_op_desc = _create_op_desc_("fill_zeros_like", {"X": [x_in]},
+                                               {"Out": [arg]}, {})
+                # update the mapping between fwd and bwd
+                if grad_op_id_to_fwd_op is not None and grad_op_id_to_fwd_op.get(
+                        op_desc.original_id(), None) is not None:
+                    grad_op_id_to_fwd_op[new_op_desc.original_id(
+                    )] = grad_op_id_to_fwd_op[op_desc.original_id()]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 to_insert.append((new_op_desc, idx))
 
     list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
@@ -786,7 +919,12 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         (set[core.OpDesc]): A set of OpDescs which should be pruned.
     """
 
+<<<<<<< HEAD
     class Var:
+=======
+    class Var(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def __init__(self, var_name):
             self.var_name = var_name
             self.gen_op = None
@@ -801,7 +939,12 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(op, Op)
             self.pendding_ops.append(op)
 
+<<<<<<< HEAD
     class Op:
+=======
+    class Op(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def __init__(self, op_desc):
             self.op_desc = op_desc
             self.inputs = []
@@ -899,6 +1042,7 @@ def serialize_op_decs(op_desc):
     return proto.__str__()
 
 
+<<<<<<< HEAD
 def _append_backward_ops_with_checkpoints_(
     block,
     ops,
@@ -909,6 +1053,15 @@ def _append_backward_ops_with_checkpoints_(
     checkpoints,
     grad_op_id_to_fwd_op=None,
 ):
+=======
+def _append_backward_ops_with_checkpoints_(block,
+                                           ops,
+                                           target_block,
+                                           no_grad_dict,
+                                           grad_to_var,
+                                           checkpoints,
+                                           grad_op_id_to_fwd_op=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Create grad ops with forward ops, and insert them into given block
 
@@ -999,6 +1152,7 @@ def _append_backward_ops_with_checkpoints_(
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
         _logger.info("recompute segment[{}]".format(i))
+<<<<<<< HEAD
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1020,6 +1174,17 @@ def _append_backward_ops_with_checkpoints_(
                 ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
             )
         )
+=======
+        _logger.info("segment start op: [{}]: [{}]".format(
+            ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()))
+        _logger.info("segment end op: [{}]: [{}]".format(
+            ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+        _logger.info("recompute segment[{}]".format(i))
+        _logger.info("segment start op: [{}]: [{}]".format(
+            ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()))
+        _logger.info("segment end op: [{}]: [{}]".format(
+            ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
     vars_should_be_hold = []
@@ -1060,8 +1225,12 @@ def _append_backward_ops_with_checkpoints_(
                     % _pretty_op_desc_(op.desc, "with_sub_block")
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+<<<<<<< HEAD
                 op.desc, no_grad_dict[block.idx], []
             )
+=======
+                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1073,9 +1242,14 @@ def _append_backward_ops_with_checkpoints_(
                 op_device = op.desc.attr(device_attr_name)
                 for op_desc in grad_op_desc:
                     op_desc._set_attr(device_attr_name, op_device)
+<<<<<<< HEAD
             added_descs = _add_descs_to_block(
                 grad_op_desc, local_block, grad_op_id_to_fwd_op
             )
+=======
+            added_descs = _add_descs_to_block(grad_op_desc, local_block,
+                                              grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
@@ -1090,8 +1264,12 @@ def _append_backward_ops_with_checkpoints_(
                     % _pretty_op_desc_(op.desc, "with_sub_block")
                 )
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+<<<<<<< HEAD
                 op.desc, no_grad_dict[block.idx], []
             )
+=======
+                op.desc, cpt.to_text(no_grad_dict[block.idx]), [])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # record the mapping between fwd and bwd
             if grad_op_id_to_fwd_op is not None:
@@ -1103,9 +1281,14 @@ def _append_backward_ops_with_checkpoints_(
                 op_device = op.desc.attr(device_attr_name)
                 for op_desc in grad_op_desc:
                     op_desc._set_attr(device_attr_name, op_device)
+<<<<<<< HEAD
             added_descs = _add_descs_to_block(
                 grad_op_desc, local_block, grad_op_id_to_fwd_op
             )
+=======
+            added_descs = _add_descs_to_block(grad_op_desc, local_block,
+                                              grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             grad_op_descs.extend(added_descs)
             grad_to_var.update(op_grad_to_var)
 
@@ -1132,6 +1315,7 @@ def _append_backward_ops_with_checkpoints_(
 
                     # we should create the rename var in subprog, otherwise its VarType will be BOOL
                     ref_var = block.program.global_block().var(name)
+<<<<<<< HEAD
                     block.create_var(
                         name=var_name_dict[name],
                         shape=ref_var.shape,
@@ -1148,6 +1332,21 @@ def _append_backward_ops_with_checkpoints_(
         added_descs = _add_descs_to_block(
             ff_ops, local_block, grad_op_id_to_fwd_op
         )
+=======
+                    block.create_var(name=var_name_dict[name],
+                                     shape=ref_var.shape,
+                                     dtype=ref_var.dtype,
+                                     type=ref_var.type,
+                                     persistable=ref_var.persistable,
+                                     stop_gradient=ref_var.stop_gradient)
+
+        # 3.a. add ops in current recompute_segment as forward recomputation ops
+        buffer_descs = _add_needed_descs_to_block(ff_ops, buffer_block, block,
+                                                  vars_in_memory,
+                                                  grad_op_id_to_fwd_op)
+        added_descs = _add_descs_to_block(ff_ops, local_block,
+                                          grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # 3.b. rename all non-checkpoint variables in recomputation ops
         for key in var_name_dict:
@@ -1169,6 +1368,12 @@ def _append_backward_ops_with_checkpoints_(
                         g_op_desc.original_id()
                     ] = grad_op_id_to_fwd_op[op_desc.original_id()]
 
+            # record the mapping between fwd and bwd
+            if grad_op_id_to_fwd_op is not None:
+                for g_op_desc in grad_op_desc:
+                    grad_op_id_to_fwd_op[g_op_desc.original_id(
+                    )] = grad_op_id_to_fwd_op[op_desc.original_id()]
+
             # Set device for grad_op according to forward Op
             if op_desc.has_attr(device_attr_name):
                 op_device = op_desc.attr(device_attr_name)
@@ -1182,6 +1387,7 @@ def _append_backward_ops_with_checkpoints_(
 
     # 3.d. add sum op for repetitive_outputs
     grad_op_descs = _addup_repetitive_outputs_(
+<<<<<<< HEAD
         grad_op_descs, block.idx, grad_op_id_to_fwd_op=grad_op_id_to_fwd_op
     )
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
@@ -1209,6 +1415,23 @@ def _get_sub_block_path(
     op_path_dict,
     sub_block_target_names=None,
 ):
+=======
+        grad_op_descs, block.idx, grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
+    # 4) remove no grad branch as it is in _remove_no_grad_branch_
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx],
+                                            grad_op_id_to_fwd_op)
+    added_descs = _add_descs_to_block(grad_op_descs, target_block,
+                                      grad_op_id_to_fwd_op)
+    return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
+
+
+def _get_sub_block_path(sub_block,
+                        sub_block_op_desc,
+                        no_grad_set,
+                        op_path_dict,
+                        sub_block_target_names=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Get output vars in subblock which will be assigned to parent block.
     It is used to find the grad path in subblock.
@@ -1268,6 +1491,7 @@ def _rename_grad_name_(name, grad_order):
     return 'grad/' * grad_order + name
 
 
+<<<<<<< HEAD
 def _append_backward_ops_(
     block,
     ops,
@@ -1282,6 +1506,19 @@ def _append_backward_ops_(
     rename_var_map=None,
     grad_op_id_to_fwd_op=None,
 ):
+=======
+def _append_backward_ops_(block,
+                          ops,
+                          target_block,
+                          no_grad_dict,
+                          grad_to_var,
+                          callbacks=None,
+                          input_grad_names_set=None,
+                          op_path_dict=None,
+                          distop_context=None,
+                          rename_var_map=None,
+                          grad_op_id_to_fwd_op=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     Create all grad ops, and insert them into given block
 
@@ -1315,12 +1552,19 @@ def _append_backward_ops_(
             op_grad_to_var
         )
         for op_desc in grad_op_desc:
+<<<<<<< HEAD
             assert (
                 op_desc.original_id() not in distop_context.grad_op_id_to_op_id
             )
             distop_context.grad_op_id_to_op_id[
                 op_desc.original_id()
             ] = op.desc.original_id()
+=======
+            assert op_desc.original_id(
+            ) not in distop_context.grad_op_id_to_op_id
+            distop_context.grad_op_id_to_op_id[
+                op_desc.original_id()] = op.desc.original_id()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
@@ -1348,6 +1592,7 @@ def _append_backward_ops_(
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
             sub_block_path = op_path_dict[op._block_attr_id("sub_block")]
+<<<<<<< HEAD
             _append_backward_ops_(
                 sub_block,
                 sub_block_path,
@@ -1360,6 +1605,17 @@ def _append_backward_ops_(
                 op_path_dict,
                 grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
             )
+=======
+            _append_backward_ops_(sub_block,
+                                  sub_block_path,
+                                  grad_sub_block,
+                                  no_grad_dict,
+                                  grad_to_var,
+                                  callbacks,
+                                  input_grad_names_set,
+                                  op_path_dict,
+                                  grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             input_grad_names_set = pre_input_grad_names_set
 
             program._rollback()
@@ -1369,6 +1625,11 @@ def _append_backward_ops_(
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc, no_grad_dict[block.idx], grad_sub_block_list
         )
+
+        # record the mapping between fwd and bwd
+        if grad_op_id_to_fwd_op is not None:
+            for op_desc in grad_op_desc:
+                grad_op_id_to_fwd_op[op_desc.original_id()] = op
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
@@ -1439,10 +1700,15 @@ def _append_backward_ops_(
         # But this strategy is not suited for while op for some control flow,
         # for example, for while op, the grads maybe generated in next loop.
         if input_grad_names_set is not None:
+<<<<<<< HEAD
             is_grad_name = (
                 lambda name: name.find(core.grad_var_suffix()) != -1
                 or name in input_grad_names_set
             )
+=======
+            is_grad_name = lambda name: name.find(core.grad_var_suffix(
+            )) != -1 or name in input_grad_names_set
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             is_append_grad = False
             for op_desc in grad_op_desc:
                 input_grad_names = [
@@ -1478,6 +1744,7 @@ def _append_backward_ops_(
         grad_op_descs,
         block.idx,
         grad_var_to_var,
+<<<<<<< HEAD
         grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
     )
 
@@ -1489,6 +1756,15 @@ def _append_backward_ops_(
         grad_op_id_to_fwd_op,
         target_vars,
     )
+=======
+        grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
+
+    # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
+    # if all inputs of the grad op are in no_grad_set, just remove this op
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx],
+                                            grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # remove some backward ops
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
@@ -1605,9 +1881,14 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             '''
             if grad_var_ins:
                 existing_grad_var_ins = [
+<<<<<<< HEAD
                     var
                     for var in grad_var_ins
                     if block.desc.has_var_recursive(var.encode())
+=======
+                    var for var in grad_var_ins
+                    if block.desc.has_var_recursive(cpt.to_bytes(var))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
@@ -1712,10 +1993,15 @@ def _get_no_grad_set_name(no_grad_set):
                     )
         else:
             raise TypeError(
+<<<<<<< HEAD
                 "The type of no_grad_set should be set or list or tuple, but received {}".format(
                     type(no_grad_set)
                 )
             )
+=======
+                "The type of no_grad_set should be set or list or tuple, but received {}"
+                .format(type(no_grad_set)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return no_grad_set_name
 
 
@@ -1828,6 +2114,7 @@ def append_backward(
             p_g_list6 = paddle.static.append_backward(loss=avg_loss, parameter_list=all_weights, no_grad_set=set(all_weights))
 
     """
+<<<<<<< HEAD
     grad_op_id_to_fwd_op = (
         {}
     )  # for cuda graph usage, recording the mapping between grad op original id to fwd op
@@ -1835,6 +2122,13 @@ def append_backward(
     check_type(
         loss, 'loss', framework.Variable, 'paddle.static.append_backward'
     )
+=======
+    grad_op_id_to_fwd_op = {
+    }  # for cuda graph usage, recording the mapping between grad op original id to fwd op
+
+    check_type(loss, 'loss', framework.Variable,
+               'paddle.static.append_backward')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if loss.op is None:
         # the loss is from a cloned program. Find loss op manually.
@@ -1843,8 +2137,12 @@ def append_backward(
     loss.op._set_attr(
         core.op_proto_and_checker_maker.kOpRoleAttrName(),
         int(core.op_proto_and_checker_maker.OpRole.Forward)
+<<<<<<< HEAD
         | int(core.op_proto_and_checker_maker.OpRole.Loss),
     )
+=======
+        | int(core.op_proto_and_checker_maker.OpRole.Loss))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if callbacks is not None:
         check_type(
@@ -1944,6 +2242,7 @@ def append_backward(
             and len(checkpoints) > 0
         ):
             is_recompute = True
+<<<<<<< HEAD
             (
                 program_stat,
                 checkpoint_names,
@@ -1959,6 +2258,19 @@ def append_backward(
                 checkpoints,
                 grad_op_id_to_fwd_op,
             )
+=======
+            program_stat, checkpoint_names, \
+                vars_should_be_hold, \
+                recompute_segments = \
+                _append_backward_ops_with_checkpoints_(
+                    root_block,
+                    op_path,
+                    root_block,
+                    no_grad_dict,
+                    grad_to_var,
+                    checkpoints,
+                    grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             _append_backward_ops_(
                 block,  # the block where forward ops are in
@@ -1971,8 +2283,12 @@ def append_backward(
                 input_grad_names_set=input_grad_names_set,
                 op_path_dict=op_path_dict,
                 distop_context=distop_context,
+<<<<<<< HEAD
                 grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
             )
+=======
+                grad_op_id_to_fwd_op=grad_op_id_to_fwd_op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     grad_info_map = dict()
 
@@ -2011,12 +2327,18 @@ def append_backward(
         )
         parameters = []
         for i, param in enumerate(parameter_list):
+<<<<<<< HEAD
             check_type(
                 param,
                 'parameter_list[%s]' % i,
                 (framework.Variable, str),
                 'fluid.backward.append_backward',
             )
+=======
+            check_type(param, 'parameter_list[%s]' % i,
+                       (framework.Variable, six.string_types),
+                       'fluid.backward.append_backward')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if isinstance(param, framework.Variable):
                 parameters.append(param.name)
             elif isinstance(param, str):
@@ -2184,9 +2506,15 @@ def _find_op_path_(
     # All the inputs of the block are used if inputs is empty,
     if inputs:
         for i, op in enumerate(block.ops):
+<<<<<<< HEAD
             if _some_in_set_(
                 op.desc.input_arg_names(), input_names
             ) and core.has_non_empty_grad_op_maker(op.type):
+=======
+            if _some_in_set_(op.desc.input_arg_names(),
+                             input_names) and core.has_non_empty_grad_op_maker(
+                                 op.type):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
@@ -2198,6 +2526,7 @@ def _find_op_path_(
             sub_block_id = op._block_attr_id("sub_block")
             sub_block = block.program.block(sub_block_id)
             sub_block_target_names = output_names & set(op.output_arg_names)
+<<<<<<< HEAD
             sub_block_path = _get_sub_block_path(
                 sub_block, op, set(), op_path_dict, sub_block_target_names
             )
@@ -2206,6 +2535,16 @@ def _find_op_path_(
         if _some_in_set_(
             op.desc.output_arg_names(), output_names
         ) and core.has_non_empty_grad_op_maker(op.type):
+=======
+            sub_block_path = _get_sub_block_path(sub_block, op, set(),
+                                                 op_path_dict,
+                                                 sub_block_target_names)
+            op_path_dict[sub_block_id] = sub_block_path
+
+        if _some_in_set_(op.desc.output_arg_names(),
+                         output_names) and core.has_non_empty_grad_op_maker(
+                             op.type):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for name in op.desc.input_arg_names():
                 if name not in no_grad_set:
                     output_names.add(name)
@@ -2319,9 +2658,14 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
+<<<<<<< HEAD
                     "The shapes of target and grad are different: %s %s"
                     % (target.name, grad.name)
                 )
+=======
+                    "The shapes of target and grad are different: %s %s" %
+                    (target.name, grad.name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
             rename_var_map[grad_name] = grad.name
@@ -2353,6 +2697,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
+<<<<<<< HEAD
     _append_backward_ops_(
         block,
         op_path,
@@ -2364,6 +2709,16 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         op_path_dict=op_path_dict,
         rename_var_map=rename_var_map,
     )
+=======
+    _append_backward_ops_(block,
+                          op_path,
+                          block,
+                          no_grad_dict,
+                          grad_to_var,
+                          input_grad_names_set=input_grad_names_set,
+                          op_path_dict=op_path_dict,
+                          rename_var_map=rename_var_map)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have
@@ -2427,6 +2782,7 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             z = paddle.static.gradients([y], x)
             print(z) # [var x@GRAD : LOD_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
     """
+<<<<<<< HEAD
     check_type(
         targets,
         'targets',
@@ -2445,6 +2801,15 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
         (framework.Variable, list, tuple, type(None)),
         'paddle.static.gradients',
     )
+=======
+    check_type(targets, 'targets', (framework.Variable, list, tuple),
+               'paddle.static.gradients')
+    check_type(inputs, 'inputs', (framework.Variable, list, tuple),
+               'paddle.static.gradients')
+    check_type(target_gradients, 'target_gradients',
+               (framework.Variable, list, tuple, type(None)),
+               'paddle.static.gradients')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
 
@@ -2517,12 +2882,18 @@ def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
     grads = gradients(outputs, inputs)
 
     with program_guard(program, None):
+<<<<<<< HEAD
         pram_grads = [
             (pram, grad)
             for pram, grad in zip(inputs, grads)
             if isinstance(pram, paddle.fluid.framework.Parameter)
             and grad is not None
         ]
+=======
+        pram_grads = [(pram, grad) for pram, grad in zip(inputs, grads)
+                      if isinstance(pram, paddle.fluid.framework.Parameter)
+                      and grad is not None]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         optimize_ops = optimizer.apply_gradients(pram_grads)
 

@@ -54,6 +54,7 @@ def coalesce_tensor_eager_api(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAllocContinuousSpace(OpTest):
+
     def setUp(self):
         self.python_api = coalesce_tensor_eager_api
         self.op_type = "coalesce_tensor"
@@ -157,16 +158,23 @@ class TestAllocContinuousSpace(OpTest):
             )
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output_with_place(
             place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
         )
         self.verify_output(core.CUDAPlace(0))
+=======
+        self.check_output_with_place(place=core.CUDAPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
+
     def init_attr(self):
         return {
             "copy_data": False,
@@ -177,10 +185,16 @@ class TestAllocContinuousSpace2(TestAllocContinuousSpace):
         }
 
     def test_check_output(self):
+<<<<<<< HEAD
         self.check_output_with_place(
             place=core.CUDAPlace(0), no_check_set=["FusedOutput"], atol=1e-5
         )
         self.verify_output(core.CUDAPlace(0))
+=======
+        self.check_output_with_place(place=core.CUDAPlace(0),
+                                     no_check_set=["FusedOutput"],
+                                     atol=1e-5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

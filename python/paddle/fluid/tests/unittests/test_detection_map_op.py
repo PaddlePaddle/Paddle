@@ -20,6 +20,7 @@ from op_test import OpTest
 
 
 class TestDetectionMAPOp(OpTest):
+
     def set_data(self):
         self.class_num = 4
         self.init_test_case()
@@ -29,9 +30,14 @@ class TestDetectionMAPOp(OpTest):
         self.mAP = np.array(self.mAP).astype('float32')
 
         if len(self.class_pos_count) > 0:
+<<<<<<< HEAD
             self.class_pos_count = np.array(self.class_pos_count).astype(
                 'int32'
             )
+=======
+            self.class_pos_count = np.array(
+                self.class_pos_count).astype('int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.true_pos = np.array(self.true_pos).astype('float32')
             self.false_pos = np.array(self.false_pos).astype('float32')
             self.has_state = np.array([1]).astype('int32')
@@ -57,9 +63,14 @@ class TestDetectionMAPOp(OpTest):
             'class_num': self.class_num,
         }
 
+<<<<<<< HEAD
         self.out_class_pos_count = np.array(self.out_class_pos_count).astype(
             'int'
         )
+=======
+        self.out_class_pos_count = np.array(
+            self.out_class_pos_count).astype('int')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.out_true_pos = np.array(self.out_true_pos).astype('float32')
         self.out_false_pos = np.array(self.out_false_pos).astype('float32')
 
@@ -86,6 +97,7 @@ class TestDetectionMAPOp(OpTest):
 
         # label score xmin ymin xmax ymax difficult
         self.detect_lod = [[3, 4]]
+<<<<<<< HEAD
         self.detect = [
             [1, 0.3, 0.1, 0.0, 0.4, 0.3],
             [1, 0.7, 0.0, 0.1, 0.2, 0.3],
@@ -95,6 +107,15 @@ class TestDetectionMAPOp(OpTest):
             [1, 0.2, 0.8, 0.1, 1.0, 0.3],
             [3, 0.2, 0.8, 0.1, 1.0, 0.3],
         ]
+=======
+        self.detect = [[1, 0.3, 0.1, 0.0, 0.4,
+                        0.3], [1, 0.7, 0.0, 0.1, 0.2, 0.3],
+                       [1, 0.9, 0.7, 0.6, 0.8,
+                        0.8], [2, 0.8, 0.2, 0.1, 0.4, 0.4],
+                       [2, 0.1, 0.4, 0.3, 0.7,
+                        0.5], [1, 0.2, 0.8, 0.1, 1.0, 0.3],
+                       [3, 0.2, 0.8, 0.1, 1.0, 0.3]]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # label score true_pos false_pos
         self.tf_pos_lod = [[3, 4]]
@@ -270,6 +291,7 @@ class TestDetectionMAPOp(OpTest):
 
 
 class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
+
     def init_test_case(self):
         super().init_test_case()
 
@@ -288,6 +310,7 @@ class TestDetectionMAPOpSkipDiff(TestDetectionMAPOp):
 
 
 class TestDetectionMAPOpWithoutDiff(TestDetectionMAPOp):
+
     def init_test_case(self):
         super().init_test_case()
 
@@ -301,6 +324,7 @@ class TestDetectionMAPOpWithoutDiff(TestDetectionMAPOp):
 
 
 class TestDetectionMAPOp11Point(TestDetectionMAPOp):
+
     def init_test_case(self):
         super().init_test_case()
 
@@ -308,6 +332,7 @@ class TestDetectionMAPOp11Point(TestDetectionMAPOp):
 
 
 class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
+
     def init_test_case(self):
         super().init_test_case()
         self.class_pos_count = [0, 2, 1, 0]
@@ -330,6 +355,7 @@ class TestDetectionMAPOpMultiBatch(TestDetectionMAPOp):
 
 
 class TestDetectionMAPOp11PointWithClassNoTP(TestDetectionMAPOp):
+
     def init_test_case(self):
         self.overlap_threshold = 0.3
         self.evaluate_difficult = True

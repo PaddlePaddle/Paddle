@@ -132,14 +132,21 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
         if framework._non_static_mode():
             if framework.in_dygraph_mode():
+<<<<<<< HEAD
                 return _C_ops.scale(
                     param, self._regularization_coeff, 0.0, True
                 )
+=======
+                return _C_ops.final_state_scale(param,
+                                                self._regularization_coeff, 0.0,
+                                                True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 return _legacy_C_ops.scale(
                     param, "scale", self._regularization_coeff
                 )
         else:
+<<<<<<< HEAD
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
             )
@@ -151,6 +158,17 @@ class L2DecayRegularizer(WeightDecayRegularizer):
                 outputs={"Out": decay},
                 attrs={"scale": self._regularization_coeff},
             )
+=======
+            decay = block.create_var(dtype=param.dtype,
+                                     shape=param.shape,
+                                     lod_level=param.lod_level)
+
+            # Append Op to calculate decay
+            block.append_op(type='scale',
+                            inputs={"X": param},
+                            outputs={"Out": decay},
+                            attrs={"scale": self._regularization_coeff})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             return decay
 
@@ -247,6 +265,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             sign = block.create_var(dtype=param.dtype, shape=param.shape)
             decay = block.create_var(dtype=param.dtype, shape=param.shape)
         else:
+<<<<<<< HEAD
             sign = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
             )
@@ -256,17 +275,32 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         if in_dygraph_mode():
             sign = _C_ops.sign(param)
             return _C_ops.scale(sign, self._regularization_coeff, 0.0, True)
+=======
+            sign = block.create_var(dtype=param.dtype,
+                                    shape=param.shape,
+                                    lod_level=param.lod_level)
+            decay = block.create_var(dtype=param.dtype,
+                                     shape=param.shape,
+                                     lod_level=param.lod_level)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Append sign op
         block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
 
         # Append scale op to the output of sign op
+<<<<<<< HEAD
         block.append_op(
             type='scale',
             inputs={"X": sign},
             outputs={"Out": decay},
             attrs={"scale": self._regularization_coeff},
         )
+=======
+        block.append_op(type='scale',
+                        inputs={"X": sign},
+                        outputs={"Out": decay},
+                        attrs={"scale": self._regularization_coeff})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return decay
 

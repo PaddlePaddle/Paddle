@@ -30,11 +30,13 @@ paddle.enable_static()
 
 @skip_check_grad_ci(reason="XPU does not support grad op currently")
 class XPUTestElementwisePowOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'elementwise_pow'
         self.use_dynamic_create_class = False
 
     class TestElementwisePowOp(XPUOpTest):
+
         def setUp(self):
             self.op_type = "elementwise_pow"
             self.dtype = self.in_type
@@ -54,6 +56,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
                 self.check_output_with_place(place)
 
     class TestElementwisePowOp_big_shape_1(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
@@ -62,6 +65,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_big_shape_2(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(1, 2, [10, 10]).astype(self.dtype),
@@ -73,6 +77,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwisePowOp_scalar(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [3, 3, 4]).astype(self.dtype),
@@ -81,6 +86,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_tensor(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
@@ -89,6 +95,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_broadcast_0(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 1, 100]).astype(self.dtype),
@@ -97,6 +104,7 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOp_broadcast_1(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [2, 100, 1]).astype(self.dtype),
@@ -104,12 +112,18 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             }
             self.attrs = {'axis': 1}
             self.outputs = {
+<<<<<<< HEAD
                 'Out': np.power(
                     self.inputs['X'], self.inputs['Y'].reshape(100, 1)
                 )
+=======
+                'Out': np.power(self.inputs['X'],
+                                self.inputs['Y'].reshape(100, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
     class TestElementwisePowOp_broadcast_2(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
                 'X': np.random.uniform(0.1, 1, [100, 3, 1]).astype(self.dtype),
@@ -123,8 +137,10 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
             }
 
     class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
+<<<<<<< HEAD
                 'X': np.random.uniform(0.1, 1, [2, 20, 5, 1]).astype(
                     self.dtype
                 ),
@@ -135,21 +151,40 @@ class XPUTestElementwisePowOp(XPUOpTestWrapper):
                 'Out': np.power(
                     self.inputs['X'], self.inputs['Y'].reshape(1, 20, 5, 1)
                 )
+=======
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 20, 5, 1]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [20, 5]).astype(self.dtype)
+            }
+            self.attrs = {'axis': 1}
+            self.outputs = {
+                'Out':
+                np.power(self.inputs['X'],
+                         self.inputs['Y'].reshape(1, 20, 5, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
     class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
+
         def compute_input_output(self):
             self.inputs = {
+<<<<<<< HEAD
                 'X': np.random.uniform(0.1, 1, [2, 10, 3, 5]).astype(
                     self.dtype
                 ),
                 'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype(
                     self.dtype
                 ),
+=======
+                'X': np.random.uniform(0.1, 1,
+                                       [2, 10, 3, 5]).astype(self.dtype),
+                'Y': np.random.uniform(0.1, 1, [2, 10, 1, 5]).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
             self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
 
     class TestElementwisePowOpInt(OpTest):
+
         def setUp(self):
             self.op_type = "elementwise_pow"
             self.inputs = {

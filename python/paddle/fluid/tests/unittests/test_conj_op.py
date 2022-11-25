@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestConjOp(OpTest):
+
     def setUp(self):
         self.op_type = "conj"
         self.python_api = paddle.tensor.conj
@@ -56,6 +57,7 @@ class TestConjOp(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad_normal(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
@@ -63,9 +65,17 @@ class TestConjOp(OpTest):
             user_defined_grad_outputs=[self.grad_out],
             check_eager=True,
         )
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_in],
+                        user_defined_grad_outputs=[self.grad_out],
+                        check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestComplexConjOp(unittest.TestCase):
+
     def setUp(self):
         self._dtypes = ["float32", "float64"]
         self._places = [paddle.CPUPlace()]
@@ -74,9 +84,15 @@ class TestComplexConjOp(unittest.TestCase):
 
     def test_conj_api(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for place in self._places:
                 with dg.guard(place):
                     var_x = paddle.to_tensor(input)
@@ -86,9 +102,15 @@ class TestComplexConjOp(unittest.TestCase):
 
     def test_conj_operator(self):
         for dtype in self._dtypes:
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for place in self._places:
                 with dg.guard(place):
                     var_x = paddle.to_tensor(input)
@@ -97,22 +119,36 @@ class TestComplexConjOp(unittest.TestCase):
                     np.testing.assert_array_equal(result, target)
 
     def test_conj_static_mode(self):
+
         def init_input_output(dtype):
+<<<<<<< HEAD
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
                 [2, 20, 2, 3]
             ).astype(dtype)
+=======
+            input = rand([
+                2, 20, 2, 3
+            ]).astype(dtype) + 1j * rand([2, 20, 2, 3]).astype(dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return {'x': input}, np.conj(input)
 
         for dtype in self._dtypes:
             input_dict, np_res = init_input_output(dtype)
             for place in self._places:
                 with static.program_guard(static.Program()):
+<<<<<<< HEAD
                     x_dtype = (
                         np.complex64 if dtype == "float32" else np.complex128
                     )
                     x = static.data(
                         name="x", shape=[2, 20, 2, 3], dtype=x_dtype
                     )
+=======
+                    x_dtype = np.complex64 if dtype == "float32" else np.complex128
+                    x = static.data(name="x",
+                                    shape=[2, 20, 2, 3],
+                                    dtype=x_dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     out = paddle.conj(x)
 
                     exe = static.Executor(place)

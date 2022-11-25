@@ -33,7 +33,9 @@ paddle.enable_static()
 
 
 def test_class(op_type, typename):
+
     class TestSin(OpTest):
+
         def setUp(self):
             self.op_type = "sin"
             self.__class__.use_npu = True

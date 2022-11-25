@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 
 
 class TestBmmOp(OpTest):
+
     def setUp(self):
         self.op_type = "bmm"
         self.python_api = paddle.tensor.bmm
@@ -37,27 +38,46 @@ class TestBmmOp(OpTest):
 
 
 class API_TestBmm(unittest.TestCase):
+
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
+<<<<<<< HEAD
             data1 = fluid.layers.data(
                 'data1', shape=[-1, 3, 4], dtype='float64'
             )
             data2 = fluid.layers.data(
                 'data2', shape=[-1, 4, 5], dtype='float64'
             )
+=======
+            data1 = fluid.layers.data('data1',
+                                      shape=[-1, 3, 4],
+                                      dtype='float64')
+            data2 = fluid.layers.data('data2',
+                                      shape=[-1, 4, 5],
+                                      dtype='float64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result_bmm = paddle.bmm(data1, data2)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             input1 = np.random.random([10, 3, 4]).astype('float64')
             input2 = np.random.random([10, 4, 5]).astype('float64')
+<<<<<<< HEAD
             (result,) = exe.run(
                 feed={"data1": input1, "data2": input2}, fetch_list=[result_bmm]
             )
+=======
+            result, = exe.run(feed={
+                "data1": input1,
+                "data2": input2
+            },
+                              fetch_list=[result_bmm])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             expected_result = np.matmul(input1, input2)
         np.testing.assert_allclose(expected_result, result, rtol=1e-05)
 
 
 class API_TestDygraphBmm(unittest.TestCase):
+
     def test_out(self):
         input1 = np.array(
             [
@@ -81,6 +101,7 @@ class API_TestDygraphBmm(unittest.TestCase):
 
 
 class TestBmmAPIError(unittest.TestCase):
+
     def test_api_error(self):
         x_data = np.arange(24, dtype='float32').reshape((2, 3, 4))
         y_data = np.arange(16, dtype='float32').reshape((2, 4, 2))

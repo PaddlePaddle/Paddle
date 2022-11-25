@@ -43,8 +43,12 @@ def test_list_append_in_if(x):
         a.append(x)
     else:
         a.append(
+<<<<<<< HEAD
             fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int64")
         )
+=======
+            fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int64"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # TODO(Aurelius84): Currently, run_program_op doesn't support output LoDTensorArray.
     return a[0]
 
@@ -100,9 +104,15 @@ def test_list_append_in_for_loop_with_concat(x, iter_num):
 
 def test_list_append_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
+=======
+    iter_num = fluid.layers.fill_constant(shape=[1],
+                                          value=iter_num,
+                                          dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     a = []
     i = 0
     while i < iter_num:
@@ -113,9 +123,15 @@ def test_list_append_in_while_loop(x, iter_num):
 
 def test_list_append_in_while_loop_with_stack(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
+=======
+    iter_num = fluid.layers.fill_constant(shape=[1],
+                                          value=iter_num,
+                                          dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     a = []
     i = 0
     while i < iter_num.numpy()[0]:
@@ -190,9 +206,15 @@ def test_list_pop_in_for_loop(x, iter_num):
 
 def test_list_pop_in_while_loop(x, iter_num):
     x = fluid.dygraph.to_variable(x)
+<<<<<<< HEAD
     iter_num = fluid.layers.fill_constant(
         shape=[1], value=iter_num, dtype="int32"
     )
+=======
+    iter_num = fluid.layers.fill_constant(shape=[1],
+                                          value=iter_num,
+                                          dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     a = []
     b = [x]
     b.append(x)
@@ -209,12 +231,18 @@ def test_list_pop_in_while_loop(x, iter_num):
 
 
 class TestListWithoutControlFlow(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.init_data()
         self.init_dygraph_func()
@@ -259,6 +287,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
 
             self.assertEqual(len(static_res_list), len(dygraph_res_list))
             for stat_res, dy_res in zip(static_res_list, dygraph_res_list):
+<<<<<<< HEAD
                 np.testing.assert_allclose(
                     stat_res,
                     dy_res,
@@ -267,14 +296,22 @@ class TestListWithoutControlFlow(unittest.TestCase):
                         dy_res, stat_res
                     ),
                 )
+=======
+                self.assertTrue(
+                    np.allclose(stat_res, dy_res),
+                    msg='dygraph_res is {}\nstatic_res is {}'.format(
+                        stat_res, dy_res))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestListInIf(TestListWithoutControlFlow):
+
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_if]
 
 
 class TestListInWhileLoop(TestListWithoutControlFlow):
+
     def init_data(self):
         self.input = np.random.random((3)).astype('int32')
         self.iter_num = 3
@@ -297,6 +334,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
+
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [test_list_append_in_while_loop_with_stack]
 
@@ -307,6 +345,7 @@ class TestTensorArraySlice(TestListInWhileLoop):
 
 
 class TestListInForLoop(TestListInWhileLoop):
+
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
             test_list_append_in_for_loop,
@@ -315,6 +354,7 @@ class TestListInForLoop(TestListInWhileLoop):
 
 
 class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
+
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
             test_list_append_in_for_loop_with_concat,
@@ -322,6 +362,7 @@ class TestListInForLoopWithConcat(TestListInWhileLoopWithStack):
 
 
 class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
+
     def init_dygraph_func(self):
         self.all_dygraph_funcs = [
             test_list_append_in_for_subscript,
@@ -333,6 +374,7 @@ class TestListInForLoopWithSubscript(TestListWithoutControlFlow):
 
 
 class ListWithCondNet(paddle.nn.Layer):
+
     def __init__(self):
         super().__init__()
 
@@ -356,6 +398,7 @@ class ListWithCondNet(paddle.nn.Layer):
 
 
 class TestListWithCondGradInferVarType(unittest.TestCase):
+
     def test_to_static(self):
         net = ListWithCondNet()
         x = paddle.to_tensor([2, 3, 4], dtype='float32')

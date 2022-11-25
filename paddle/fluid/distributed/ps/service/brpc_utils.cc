@@ -117,7 +117,12 @@ void SerializeLodTensor(framework::Variable* var,
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
+<<<<<<< HEAD
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
+=======
+        new char[tensor->numel() *
+                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         platform::CPUPlace(),
@@ -164,7 +169,12 @@ void SerializeSelectedRows(framework::Variable* var,
   } else {
 #ifdef PADDLE_WITH_CUDA
     char* temp_ptr =
+<<<<<<< HEAD
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
+=======
+        new char[tensor->numel() *
+                 framework::DataTypeSize(tensor->dtype())];  // NOLINT
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(
         platform::CPUPlace(),
@@ -257,15 +267,26 @@ void DeserializeLodTensor(framework::Variable* var,
 #ifdef PADDLE_WITH_CUDA
     unsigned long data_len;  // NOLINT
     char* temp_ptr =
+<<<<<<< HEAD
         new char[tensor->numel() * phi::SizeOf(tensor->dtype())];  // NOLINT
     io_buffer_itr.copy_and_forward((void*)(&data_len), 8);         // NOLINT
     io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);     // NOLINT
+=======
+        new char[tensor->numel() *
+                 framework::DataTypeSize(tensor->dtype())];     // NOLINT
+    io_buffer_itr.copy_and_forward((void*)(&data_len), 8);      // NOLINT
+    io_buffer_itr.copy_and_forward((void*)temp_ptr, data_len);  // NOLINT
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto stream = reinterpret_cast<const phi::GPUContext&>(ctx).stream();
     memory::Copy(place,
                  tensor_data,
                  platform::CPUPlace(),
                  (void*)temp_ptr,  // NOLINT
+<<<<<<< HEAD
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
+=======
+                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  stream);
     delete[] temp_ptr;
 #endif
@@ -309,7 +330,11 @@ void DeserializeSelectedRows(
                  tensor_data,
                  platform::CPUPlace(),
                  temp_ptr,
+<<<<<<< HEAD
                  tensor->numel() * phi::SizeOf(tensor->dtype()),
+=======
+                 tensor->numel() * framework::DataTypeSize(tensor->dtype()),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                  stream);
     delete[] temp_ptr;
 #endif

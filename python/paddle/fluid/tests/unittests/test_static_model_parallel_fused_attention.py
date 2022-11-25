@@ -23,6 +23,7 @@ flag_name = os.path.splitext(__file__)[0]
 
 
 class TestStaticModelParallel(TestDistBase):
+
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -34,12 +35,19 @@ class TestStaticModelParallel(TestDistBase):
         import paddle.fluid as fluid
 
         if fluid.core.is_compiled_with_cuda():
+<<<<<<< HEAD
             self.check_with_place(
                 "static_model_parallel_fused_attention.py",
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
             )
+=======
+            self.check_with_place("static_model_parallel_fused_attention.py",
+                                  delta=1e-5,
+                                  check_error_log=True,
+                                  log_name=flag_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

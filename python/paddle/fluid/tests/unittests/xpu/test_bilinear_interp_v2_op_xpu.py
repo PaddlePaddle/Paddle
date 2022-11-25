@@ -20,11 +20,16 @@ sys.path.append("..")
 import paddle
 from op_test_xpu import XPUOpTest
 import unittest
+<<<<<<< HEAD
 from xpu.get_test_cover_info import (
     create_test_class,
     get_xpu_op_support_types,
     XPUOpTestWrapper,
 )
+=======
+import paddle.fluid as fluid
+from xpu.get_test_cover_info import create_test_class, get_xpu_op_support_types, XPUOpTestWrapper
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.enable_static()
 
@@ -115,11 +120,13 @@ def bilinear_interp_np(
 
 
 class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'bilinear_interp_v2'
         self.use_dynamic_create_class = False
 
     class TestBilinearInterpOp(XPUOpTest):
+
         def setUp(self):
             self.out_size = None
             self.actual_shape = None
@@ -153,6 +160,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
                 out_h = self.out_h
                 out_w = self.out_w
 
+<<<<<<< HEAD
             output_np = bilinear_interp_np(
                 input_np,
                 out_h,
@@ -165,6 +173,12 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
                 self.align_mode,
                 self.data_layout,
             )
+=======
+            output_np = bilinear_interp_np(input_np, out_h, out_w, 0, 0,
+                                           self.out_size, self.actual_shape,
+                                           self.align_corners, self.align_mode,
+                                           self.data_layout)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.inputs = {'X': input_np}
             if self.out_size is not None:
                 self.inputs['OutSize'] = self.out_size
@@ -208,6 +222,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
 
     class TestBilinearInterpCase1(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [4, 1, 7, 8]
@@ -218,6 +233,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase2(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 3, 9, 6]
@@ -228,6 +244,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase3(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [1, 1, 32, 64]
@@ -238,6 +255,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase4(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [4, 1, 7, 8]
@@ -249,6 +267,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase5(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 3, 9, 6]
@@ -260,6 +279,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase6(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [1, 1, 32, 64]
@@ -271,6 +291,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpCase7(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [1, 1, 32, 64]
@@ -281,6 +302,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpSame(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 32, 64]
@@ -291,6 +313,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpActualShape(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 2, 32, 16]
@@ -302,21 +325,25 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpOtherMethod1(TestBilinearInterpOp):
+
         def set_align_mode(self):
             self.align_corners = False
             self.align_mode = 1
 
     class TestBilinearInterpWithMethod2(TestBilinearInterpOp):
+
         def set_align_mode(self):
             self.align_corners = False
             self.align_mode = 0
 
     class TestBilinearInterpWithMethod3(TestBilinearInterpOp):
+
         def set_align_mode(self):
             self.align_corners = True
             self.align_mode = 0
 
     class TestBilinearInterpScale1(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 5, 7]
@@ -327,6 +354,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpScale2(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 5, 7]
@@ -337,6 +365,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpScale3(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 5, 7]
@@ -347,6 +376,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpScale4(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 5, 7]
@@ -357,6 +387,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 1
 
     class TestBilinearInterpZero(TestBilinearInterpOp):
+
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [2, 3, 5, 7]
@@ -367,6 +398,7 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_mode = 0
 
     class TestBilinearInterpOp_attr_tensor(XPUOpTest):
+
         def setUp(self):
             self.out_size = None
             self.actual_shape = None
@@ -451,9 +483,15 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.place = paddle.XPUPlace(0)
 
     # out_size is a 1-D tensor
+<<<<<<< HEAD
     class TestBilinearInterp_attr_tensor_Case1(
         TestBilinearInterpOp_attr_tensor
     ):
+=======
+    class TestBilinearInterp_attr_tensor_Case1(TestBilinearInterpOp_attr_tensor
+                                               ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 3, 9, 6]
@@ -464,9 +502,15 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.align_corners = True
 
     # scale is a 1-D tensor
+<<<<<<< HEAD
     class TestBilinearInterp_attr_tensor_Case2(
         TestBilinearInterpOp_attr_tensor
     ):
+=======
+    class TestBilinearInterp_attr_tensor_Case2(TestBilinearInterpOp_attr_tensor
+                                               ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 2, 32, 16]
@@ -478,9 +522,15 @@ class XPUTestBilinearInterpV2Op(XPUOpTestWrapper):
             self.shape_by_1Dtensor = True
 
     # scale is a 1-D tensor
+<<<<<<< HEAD
     class TestBilinearInterp_attr_tensor_Case3(
         TestBilinearInterpOp_attr_tensor
     ):
+=======
+    class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor
+                                               ):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.interp_method = 'bilinear'
             self.input_shape = [3, 2, 32, 16]

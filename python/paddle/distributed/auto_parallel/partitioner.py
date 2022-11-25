@@ -22,6 +22,12 @@ from paddle.distributed.auto_parallel.operators.common import (
 )
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from .dist_attribute import OperatorDistributedAttribute
+<<<<<<< HEAD
+=======
+from .process_group import new_process_group
+from .utils import set_dist_op_desc_original_id
+from .utils import print_program_with_dist_attr, is_forward_op, is_backward_op, is_loss_op, is_optimize_op
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from .operators.common import BACKWARD_ONLY_DIST_OPS
 from .utils import (
     is_backward_op,
@@ -209,9 +215,14 @@ class Partitioner:
                 for attr_name in op.all_attrs():
                     if op.attr_type(attr_name) == core.AttrType.BLOCK:
                         relative_id = op._block_attr_id(attr_name)
+<<<<<<< HEAD
                         op._set_attr(
                             attr_name, partitioned_main_prog.block(relative_id)
                         )
+=======
+                        op._set_attr(attr_name,
+                                     partitioned_main_prog.block(relative_id))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         partitioned_params_and_grads = []
         for p, g in params_and_grads:
@@ -222,8 +233,12 @@ class Partitioner:
             else:
                 assert g.name in self._serial2dist_varname_mapping
                 dist_g = self._get_dist_var_by_serial_var(
+<<<<<<< HEAD
                     g, partitioned_main_prog
                 )
+=======
+                    g, partitioned_main_prog)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             partitioned_params_and_grads.append((dist_p, dist_g))
 
         return partitioned_main_prog, partitioned_params_and_grads
@@ -247,13 +262,18 @@ class Partitioner:
         for idx in range(len(serial_ops)):
             if idx <= last_fwd_op_idx:
                 forward_op_id2forward_op[
+<<<<<<< HEAD
                     serial_ops[idx].desc.original_id()
                 ] = serial_ops[idx]
+=======
+                    serial_ops[idx].desc.original_id()] = serial_ops[idx]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # partiiton
         appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
 
+<<<<<<< HEAD
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (
                 is_forward_op(serial_ops[idx - 1])
@@ -261,6 +281,11 @@ class Partitioner:
             ):
                 if not op_dist_attr.is_recompute:
                     appended_grad_times += 1
+=======
+            if is_backward_op(op) and (is_forward_op(serial_ops[idx - 1])
+                                       or is_loss_op(serial_ops[idx - 1])):
+                appended_grad_times += 1
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # partititon input variables
             for serial_input_varname in op.desc.input_arg_names():
@@ -330,15 +355,21 @@ class Partitioner:
                     ]
                 )
                 dist_op_backward_impl.backward(
+<<<<<<< HEAD
                     self._dist_context,
                     **kinputs,
                     **koutputs,
                     **{"grad_var_to_var": grad_var_to_var}
                 )
+=======
+                    self._dist_context, **kinputs, **koutputs,
+                    **{"grad_var_to_var": grad_var_to_var})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             elif is_optimize_op(op):
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_opt_impl = _get_dist_op_backward_implement(
+<<<<<<< HEAD
                     op, self._dist_context, forward_op_id2forward_op
                 )
                 dist_op_opt_impl.backward(
@@ -353,6 +384,15 @@ class Partitioner:
                         str(op)
                     )
                 )
+=======
+                    op, self._dist_context, forward_op_id2forward_op)
+                dist_op_opt_impl.backward(self._dist_context, **kinputs,
+                                          **koutputs)
+            else:
+                raise NotImplementedError(
+                    "partitioner only support forward and backward, optimize ops, but got {}"
+                    .format(str(op)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _is_valid_annotated_program(self, program):
 
@@ -426,6 +466,7 @@ def _partition_parameter(
     copied_kwargs['do_model_average'] = src_var.do_model_average
     copied_kwargs['need_clip'] = src_var.need_clip
 
+<<<<<<< HEAD
     param = Parameter(
         block=dst_block,
         type=src_var.type,
@@ -439,10 +480,24 @@ def _partition_parameter(
         belong_to_optimizer=src_var.belong_to_optimizer,
         **copied_kwargs
     )
+=======
+    param = Parameter(block=dst_block,
+                      type=src_var.type,
+                      name=dst_varname,
+                      shape=dst_shape,
+                      dtype=src_var.dtype,
+                      lod_level=src_var.lod_level,
+                      error_clip=src_var.error_clip,
+                      stop_gradient=src_var.stop_gradient,
+                      is_data=src_var.is_data,
+                      belong_to_optimizer=src_var.belong_to_optimizer,
+                      **copied_kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return param
 
 
+<<<<<<< HEAD
 def _partition_intermediate_var(
     dist_context, src_var, dst_block, dst_varname, dst_shape
 ):
@@ -458,6 +513,20 @@ def _partition_intermediate_var(
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer,
     )
+=======
+def _partition_intermediate_var(dist_context, src_var, dst_block, dst_varname,
+                                dst_shape):
+    var = dst_block.create_var(type=src_var.type,
+                               name=dst_varname,
+                               shape=dst_shape,
+                               dtype=src_var.dtype,
+                               lod_level=src_var.lod_level,
+                               persistable=src_var.persistable,
+                               error_clip=src_var.error_clip,
+                               stop_gradient=src_var.stop_gradient,
+                               is_data=src_var.is_data,
+                               belong_to_optimizer=src_var.belong_to_optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return var
 
@@ -472,12 +541,19 @@ def _partition_var(
 
     if src_var.type in __no_shape_var_type__:
         persist = getattr(src_var, 'persistable', False)
+<<<<<<< HEAD
         new_var = dst_block.create_var(
             type=src_var.type,
             name=dst_varname,
             persistable=persist,
             stop_gradient=True,
         )
+=======
+        new_var = dst_block.create_var(type=src_var.type,
+                                       name=dst_varname,
+                                       persistable=persist,
+                                       stop_gradient=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         target_shape = None
     else:
         dist_attr = dist_context.get_tensor_dist_attr_for_program(src_var)
@@ -488,9 +564,15 @@ def _partition_var(
                 dist_context, src_var, dst_block, dst_varname, target_shape
             )
         else:
+<<<<<<< HEAD
             new_var = _partition_intermediate_var(
                 dist_context, src_var, dst_block, dst_varname, target_shape
             )
+=======
+            new_var = _partition_intermediate_var(dist_context, src_var,
+                                                  dst_block, dst_varname,
+                                                  target_shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     dist_attr = copy.deepcopy(
         dist_context.get_tensor_dist_attr_for_program(src_var)
@@ -507,8 +589,12 @@ def _get_dist_op_backward_implement(
     dist_op_context = dist_context.dist_op_context
     if backward_op.desc.original_id() in dist_op_context.grad_op_id_to_op_id:
         forward_op_id = dist_op_context.grad_op_id_to_op_id[
+<<<<<<< HEAD
             backward_op.desc.original_id()
         ]
+=======
+            backward_op.desc.original_id()]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         forward_op = forward_op_id2forward_op[forward_op_id]
         forward_op_dist_attr = dist_context.get_op_dist_attr_for_program(
             forward_op

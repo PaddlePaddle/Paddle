@@ -87,9 +87,15 @@ template <typename T>
 class Tree2ColFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &node_features,
                   phi::DenseTensor *patch,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &node_features,
+                  framework::Tensor *patch,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &feature_dims = node_features.dims();
@@ -141,9 +147,15 @@ template <typename T>
 class Col2TreeFunctor<phi::CPUContext, T> {
  public:
   void operator()(const phi::CPUContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &out_grad,
                   phi::DenseTensor *in_grad,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &out_grad,
+                  framework::Tensor *in_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth) {
     std::vector<std::vector<int>> tr;
     const auto &output_dims = out_grad.dims();

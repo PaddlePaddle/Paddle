@@ -28,6 +28,7 @@ ACTIVATION = {
 
 # LSTM with recurrent projection Layer
 def lstmp(
+<<<<<<< HEAD
     input,  # T x 4D
     lod,  # 1 x N
     h0=None,  # N x D
@@ -58,6 +59,26 @@ def lstmp(
         act_cand,
         act_proj,
     ):
+=======
+        input,  # T x 4D
+        lod,  # 1 x N
+        h0=None,  # N x D
+        c0=None,  # N x D
+        w_r=None,  # P x 4D
+        w_rh=None,  # D x P
+        w_b=None,  # 1 x 4D
+        w_c=None,  # 1 x 3D
+        is_reverse=False,
+        proj_clip=0.0,
+        cell_clip=0.0,
+        act_gate=None,
+        act_cell=None,
+        act_cand=None,
+        act_proj=None):
+
+    def _step(x, w_r, w_rh, w_c, r_pre, c_pre, proj_clip, cell_clip, act_gate,
+              act_cell, act_cand, act_proj):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         g = np.dot(r_pre, w_r)  # 1 x 4D
         g = g + x
         g = np.reshape(g, (1, g.size))
@@ -149,6 +170,7 @@ def lstmp(
 
 
 class TestLstmpOp(LstmTest.TestLstmOp):
+
     def reset_argument(self):
         pass
 
@@ -230,6 +252,7 @@ class TestLstmpOp(LstmTest.TestLstmOp):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -239,9 +262,18 @@ class TestLstmpOp(LstmTest.TestLstmOp):
             numeric_grad_delta=0.0000005,
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLstmpOpHasInitial(TestLstmpOp):
+
     def reset_argument(self):
         self.has_initial_state = True
 
@@ -250,6 +282,7 @@ class TestLstmpOpHasInitial(TestLstmpOp):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -259,11 +292,20 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             numeric_grad_delta=0.0000005,
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'H0', 'C0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_bias(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -274,11 +316,20 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('Bias'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'ProjWeight', 'Weight'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Bias'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_weight(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -289,11 +340,20 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('Weight'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'ProjWeight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Weight'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_proj_weight(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -304,11 +364,20 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('ProjWeight'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('ProjWeight'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_input(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -319,11 +388,20 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('Input'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Weight', 'ProjWeight', 'Bias'], ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('Input'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_h0(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -334,11 +412,21 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('H0'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'C0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('H0'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_grad_ingore_c0(self):
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchHidden'] = np.zeros((N, self.D)).astype('float64')
+<<<<<<< HEAD
         self.outputs['BatchCellPreAct'] = np.zeros((N, self.D)).astype(
             'float64'
         )
@@ -349,39 +437,55 @@ class TestLstmpOpHasInitial(TestLstmpOp):
             no_grad_set=set('C0'),
             check_dygraph=False,
         )
+=======
+        self.outputs['BatchCellPreAct'] = np.zeros(
+            (N, self.D)).astype('float64')
+        self.check_grad(['Input', 'Weight', 'ProjWeight', 'Bias', 'H0'],
+                        ['Projection'],
+                        numeric_grad_delta=0.0000005,
+                        no_grad_set=set('C0'),
+                        check_dygraph=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLstmpOpRerverse(TestLstmpOp):
+
     def reset_argument(self):
         self.is_reverse = True
 
 
 class TestLstmpOpNotUsePeepholes(TestLstmpOp):
+
     def reset_argument(self):
         self.use_peepholes = False
 
 
 class TestLstmpOpLinearProjection(TestLstmpOp):
+
     def reset_argument(self):
         self.act_proj = 'identity'
 
 
 class TestLstmpOpLen0Case1(TestLstmpOp):
+
     def reset_argument(self):
         self.lod = [[0, 4, 0]]
 
 
 class TestLstmpOpLen0Case2(TestLstmpOp):
+
     def reset_argument(self):
         self.lod = [[2, 0, 3]]
 
 
 class TestLstmpOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 input_data = np.random.random((1, 2048)).astype("float32")
+<<<<<<< HEAD
                 fluid.layers.dynamic_lstmp(
                     input=input_data,
                     size=2048,
@@ -391,10 +495,20 @@ class TestLstmpOpError(unittest.TestCase):
                     cell_activation="tanh",
                     proj_activation="tanh",
                 )
+=======
+                fluid.layers.dynamic_lstmp(input=input_data,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_h_0():
+<<<<<<< HEAD
                 in_data = fluid.data(
                     name="input", shape=[None, 2048], dtype="float32"
                 )
@@ -411,10 +525,27 @@ class TestLstmpOpError(unittest.TestCase):
                     h_0=h,
                     c_0=c,
                 )
+=======
+                in_data = fluid.data(name="input",
+                                     shape=[None, 2048],
+                                     dtype="float32")
+                h = fluid.data(name="h", shape=[None, 512], dtype="int32")
+                c = fluid.data(name="c", shape=[None, 512], dtype="float32")
+                fluid.layers.dynamic_lstmp(input=in_data,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh",
+                                           h_0=h,
+                                           c_0=c)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertRaises(TypeError, test_h_0)
 
             def test_c_0():
+<<<<<<< HEAD
                 in_data_ = fluid.data(
                     name="input_", shape=[None, 2048], dtype="float32"
                 )
@@ -431,6 +562,22 @@ class TestLstmpOpError(unittest.TestCase):
                     h_0=h_,
                     c_0=c_,
                 )
+=======
+                in_data_ = fluid.data(name="input_",
+                                      shape=[None, 2048],
+                                      dtype="float32")
+                h_ = fluid.data(name="h_", shape=[None, 512], dtype="float32")
+                c_ = fluid.data(name="c_", shape=[None, 512], dtype="int32")
+                fluid.layers.dynamic_lstmp(input=in_data_,
+                                           size=2048,
+                                           proj_size=256,
+                                           use_peepholes=False,
+                                           is_reverse=True,
+                                           cell_activation="tanh",
+                                           proj_activation="tanh",
+                                           h_0=h_,
+                                           c_0=c_)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertRaises(TypeError, test_c_0)
 

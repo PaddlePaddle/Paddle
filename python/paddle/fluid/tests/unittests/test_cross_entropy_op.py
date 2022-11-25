@@ -46,6 +46,7 @@ class TestCrossEntropyOp(OpTest):
         }
 
     def init_x(self):
+<<<<<<< HEAD
         self.x = randomize_probability(
             self.batch_size, self.class_num, dtype=self.dtype
         )
@@ -54,6 +55,16 @@ class TestCrossEntropyOp(OpTest):
         self.label = np.random.randint(
             0, self.class_num, (self.batch_size, 1), dtype="int64"
         )
+=======
+        self.x = randomize_probability(self.batch_size,
+                                       self.class_num,
+                                       dtype=self.dtype)
+
+    def init_label(self):
+        self.label = np.random.randint(0,
+                                       self.class_num, (self.batch_size, 1),
+                                       dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
@@ -84,15 +95,25 @@ class TestCrossEntropyOpRemoveLastDim(TestCrossEntropyOp):
     """Test cross-entropy with discrete one-hot labels with shape [batch_size]"""
 
     def init_label(self):
+<<<<<<< HEAD
         self.label = np.random.randint(
             0, self.class_num, (self.batch_size), dtype="int64"
         )
+=======
+        self.label = np.random.randint(0,
+                                       self.class_num, (self.batch_size),
+                                       dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
             [-np.log(self.x[i][self.label[i]]) for i in range(self.x.shape[0])],
+<<<<<<< HEAD
             dtype="float64",
         )
+=======
+            dtype="float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCrossEntropyOp2(TestCrossEntropyOp):
@@ -122,9 +143,16 @@ class TestCrossEntropyOp2(TestCrossEntropyOp):
         self.class_num = 37
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001
         )
+=======
+        self.check_grad(["X"],
+                        "Y",
+                        max_relative_error=0.05,
+                        numeric_grad_delta=0.001)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCrossEntropyOp3(TestCrossEntropyOp):
@@ -156,9 +184,16 @@ class TestCrossEntropyOp3(TestCrossEntropyOp):
         self.class_num = 27
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001
         )
+=======
+        self.check_grad(["X"],
+                        "Y",
+                        max_relative_error=0.05,
+                        numeric_grad_delta=0.001)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCrossEntropyOp4(TestCrossEntropyOp):
@@ -173,9 +208,15 @@ class TestCrossEntropyOp4(TestCrossEntropyOp):
         self.x = self.X_2d.reshape(self.shape + [self.class_num])
 
     def init_label(self):
+<<<<<<< HEAD
         self.label_2d = np.random.randint(
             0, self.class_num, (self.ins_num, 1), dtype="int64"
         )
+=======
+        self.label_2d = np.random.randint(0,
+                                          self.class_num, (self.ins_num, 1),
+                                          dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.label = self.label_2d.reshape(self.shape + [1])
 
     def get_cross_entropy(self):
@@ -203,9 +244,15 @@ class TestCrossEntropyOp4RemoveLastDim(TestCrossEntropyOp4):
     """Test high rank tensor cross-entropy with discrete one-hot labels with shape [batch_size]"""
 
     def init_label(self):
+<<<<<<< HEAD
         self.label_2d = np.random.randint(
             0, self.class_num, (self.ins_num, 1), dtype="int64"
         )
+=======
+        self.label_2d = np.random.randint(0,
+                                          self.class_num, (self.ins_num, 1),
+                                          dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.label = self.label_2d.reshape(self.shape)
 
     def get_cross_entropy(self):
@@ -256,9 +303,16 @@ class TestCrossEntropyOp5(TestCrossEntropyOp):
         self.class_num = 37
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001
         )
+=======
+        self.check_grad(["X"],
+                        "Y",
+                        max_relative_error=0.05,
+                        numeric_grad_delta=0.001)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCrossEntropyOp6(TestCrossEntropyOp):
@@ -273,9 +327,15 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.x = self.X_2d.reshape(self.shape + [self.class_num])
 
     def init_label(self):
+<<<<<<< HEAD
         self.label_index_2d = np.random.randint(
             0, self.class_num, (self.ins_num), dtype="int64"
         )
+=======
+        self.label_index_2d = np.random.randint(0,
+                                                self.class_num, (self.ins_num),
+                                                dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         label_2d = np.zeros(self.X_2d.shape)
         label_2d[np.arange(self.ins_num), self.label_index_2d] = 1
         self.label = label_2d.reshape(self.shape + [self.class_num]).astype(
@@ -284,6 +344,7 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
 
     def get_cross_entropy(self):
         cross_entropy_2d = np.asmatrix(
+<<<<<<< HEAD
             [
                 [-np.log(self.X_2d[i][self.label_index_2d[i]])]
                 for i in range(self.X_2d.shape[0])
@@ -294,6 +355,13 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
             .reshape(self.shape + [1])
             .astype(self.dtype)
         )
+=======
+            [[-np.log(self.X_2d[i][self.label_index_2d[i]])]
+             for i in range(self.X_2d.shape[0])])
+        self.cross_entropy = np.array(cross_entropy_2d).reshape(self.shape +
+                                                                [1]).astype(
+                                                                    self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def init_attr_type(self):
         self.soft_label = True
@@ -305,18 +373,31 @@ class TestCrossEntropyOp6(TestCrossEntropyOp):
         self.class_num = 17
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ["X"], "Y", max_relative_error=0.05, numeric_grad_delta=0.001
         )
+=======
+        self.check_grad(["X"],
+                        "Y",
+                        max_relative_error=0.05,
+                        numeric_grad_delta=0.001)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCrossEntropyOp7(TestCrossEntropyOp):
     """Test cross-entropy with ignore index."""
 
     def init_label(self):
+<<<<<<< HEAD
         self.label = np.random.randint(
             0, self.class_num, (self.batch_size, 1), dtype="int64"
         )
+=======
+        self.label = np.random.randint(0,
+                                       self.class_num, (self.batch_size, 1),
+                                       dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
@@ -344,9 +425,15 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
     """Test cross-entropy with ignore index with shape [batch_size]."""
 
     def init_label(self):
+<<<<<<< HEAD
         self.label = np.random.randint(
             0, self.class_num, (self.batch_size), dtype="int64"
         )
+=======
+        self.label = np.random.randint(0,
+                                       self.class_num, (self.batch_size),
+                                       dtype="int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def get_cross_entropy(self):
         self.cross_entropy = np.asmatrix(
@@ -366,10 +453,17 @@ class TestCrossEntropyOp7RemoveLastDim(TestCrossEntropyOp7):
 
 # Add Fp16 test
 def create_test_class(parent, cls_name):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     class TestCrossEntropyFP16Op(parent):
+
         def init_dtype_type(self):
             return np.float16
 
@@ -381,9 +475,15 @@ def create_test_class(parent, cls_name):
         def test_check_grad(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
+<<<<<<< HEAD
                 self.check_grad_with_place(
                     place, ['X'], 'Y', max_relative_error=0.9
                 )
+=======
+                self.check_grad_with_place(place, ['X'],
+                                           'Y',
+                                           max_relative_error=0.9)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     cls_name = "{0}".format(cls_name)
     TestCrossEntropyFP16Op.__name__ = cls_name
@@ -406,17 +506,25 @@ create_test_class(
 
 
 class TestCrossEntropyOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
             def test_Variable():
                 # the input of cross_entropy must be Variable.
+<<<<<<< HEAD
                 x1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
                 lab1 = fluid.create_lod_tensor(
                     np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
                 )
+=======
+                x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                             [[1, 1, 1, 1]], fluid.CPUPlace())
+                lab1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                               [[1, 1, 1, 1]], fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.cross_entropy(x1, lab1)
 
             self.assertRaises(TypeError, test_Variable)
@@ -424,12 +532,21 @@ class TestCrossEntropyOpError(unittest.TestCase):
             def test_dtype():
                 # the input dtype of cross_entropy must be float16 or float32 or float64
                 # float16 only can be set on GPU place
+<<<<<<< HEAD
                 x2 = fluid.layers.data(
                     name='x2', shape=[3, 4, 5, 6], dtype="int32"
                 )
                 lab2 = fluid.layers.data(
                     name='lab2', shape=[3, 4, 5, 6], dtype="int32"
                 )
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[3, 4, 5, 6],
+                                       dtype="int32")
+                lab2 = fluid.layers.data(name='lab2',
+                                         shape=[3, 4, 5, 6],
+                                         dtype="int32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.cross_entropy(x2, lab2)
 
             self.assertRaises(TypeError, test_dtype)

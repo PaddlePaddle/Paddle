@@ -21,6 +21,7 @@ import numpy as np
 
 
 class TestCurrentStream(unittest.TestCase):
+
     def test_current_stream(self):
         if paddle.is_compiled_with_cuda():
             s = cuda.current_stream()
@@ -38,6 +39,7 @@ class TestCurrentStream(unittest.TestCase):
 
 
 class TestSynchronize(unittest.TestCase):
+
     def test_synchronize(self):
         if paddle.is_compiled_with_cuda():
             self.assertIsNone(cuda.synchronize())
@@ -48,6 +50,7 @@ class TestSynchronize(unittest.TestCase):
 
 
 class TestCUDAStream(unittest.TestCase):
+
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             s = paddle.device.cuda.Stream()
@@ -85,6 +88,7 @@ class TestCUDAStream(unittest.TestCase):
 
 
 class TestCUDAEvent(unittest.TestCase):
+
     def test_cuda_event(self):
         if paddle.is_compiled_with_cuda():
             e = paddle.device.cuda.Event(True, False, False)
@@ -163,6 +167,7 @@ class TestStreamGuard(unittest.TestCase):
 
 
 class TestRawStream(unittest.TestCase):
+
     def test_cuda_stream(self):
         if paddle.is_compiled_with_cuda():
             cuda_stream = paddle.device.cuda.current_stream().cuda_stream

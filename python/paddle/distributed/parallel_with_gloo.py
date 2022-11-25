@@ -104,10 +104,16 @@ def gloo_init_parallel_env(rank_id, rank_num, server_endpoint):
     if rank_id == 0:
         # The scope for worker used by http server is '_worker'
         size = {'_worker': rank_num}
+<<<<<<< HEAD
         http_server_proc = Process(
             target=_start_kv_server,
             args=(int(server_endpoint.split(":")[1]), http_server_status, size),
         )
+=======
+        http_server_proc = Process(target=_start_kv_server,
+                                   args=(int(server_endpoint.split(":")[1]),
+                                         http_server_status, size))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         http_server_proc.daemon = True
         http_server_status["running"] = True
         http_server_proc.start()

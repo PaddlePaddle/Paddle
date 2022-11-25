@@ -111,7 +111,12 @@ def reference_matmul_mul_head(
 
 
 # Generator for multiple head
+<<<<<<< HEAD
 class GeneratorMulHead:
+=======
+class GeneratorMulHead(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "matmul"
         X = np.random.random(self.shape_X).astype("float32")
@@ -135,6 +140,7 @@ class GeneratorMulHead:
 def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
     test_name = (
         'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head_{}'.format(
+<<<<<<< HEAD
             dim_x, dim_y, trans_x, trans_y, head_number
         )
     )
@@ -145,13 +151,25 @@ def inject_test_multiple_head(dim_x, dim_y, trans_x, trans_y, head_number):
         test_name,
         (GeneratorMulHead, OpTest),
         {
+=======
+            dim_x, dim_y, trans_x, trans_y, head_number))
+    shape_x, shape_y = generate_compatible_shapes_mul_head(
+        dim_x, dim_y, trans_x, trans_y)
+    globals()[test_name] = type(
+        test_name, (GeneratorMulHead, OpTest), {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             'shape_X': shape_x,
             'shape_Y': shape_y,
             'transpose_X': trans_x,
             'transpose_Y': trans_y,
+<<<<<<< HEAD
             'head_number': head_number,
         },
     )
+=======
+            'head_number': head_number
+        })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def matmul_head2(X, Y, head_number=1):
@@ -232,13 +250,19 @@ def generate_compatible_shapes_mul_head2(
 
 
 # Generator for multiple head, case 2 when width of X is not same as height of Y
+<<<<<<< HEAD
 class GeneratorMulHead2:
+=======
+class GeneratorMulHead2(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "matmul"
 
         X = np.zeros(self.shape_X)
         Y = np.zeros(self.shape_Y)
         if len(self.shape_X) == 2:
+<<<<<<< HEAD
             X = np.arange(
                 0, self.shape_X[-1] * self.shape_X[-2], dtype=np.float32
             ).reshape(self.shape_X)
@@ -253,6 +277,24 @@ class GeneratorMulHead2:
                 Y[i, :, :] = np.arange(
                     0, self.shape_Y[-1] * self.shape_Y[-2], dtype=np.float32
                 ).reshape(list(self.shape_Y)[-2:])
+=======
+            X = np.arange(0,
+                          self.shape_X[-1] * self.shape_X[-2],
+                          dtype=np.float32).reshape(self.shape_X)
+            Y = np.arange(0,
+                          self.shape_Y[-1] * self.shape_Y[-2],
+                          dtype=np.float32).reshape(self.shape_Y)
+        else:
+            for i in range(0, len(self.shape_X) - 1):
+                X[i, :, :] = np.arange(0,
+                                       self.shape_X[-1] * self.shape_X[-2],
+                                       dtype=np.float32).reshape(
+                                           list(self.shape_X)[-2:])
+                Y[i, :, :] = np.arange(0,
+                                       self.shape_Y[-1] * self.shape_Y[-2],
+                                       dtype=np.float32).reshape(
+                                           list(self.shape_Y)[-2:])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         Out = reference_matmul_mul_head2(
             X, Y, 4, self.transpose_X, self.transpose_Y
@@ -273,6 +315,7 @@ class GeneratorMulHead2:
 def inject_test_multiple_head2(dim_x, dim_y, trans_x, trans_y, head_number):
     test_name = (
         'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}_head2_{}'.format(
+<<<<<<< HEAD
             dim_x, dim_y, trans_x, trans_y, head_number
         )
     )
@@ -283,16 +326,31 @@ def inject_test_multiple_head2(dim_x, dim_y, trans_x, trans_y, head_number):
         test_name,
         (GeneratorMulHead2, OpTest),
         {
+=======
+            dim_x, dim_y, trans_x, trans_y, head_number))
+    shape_x, shape_y = generate_compatible_shapes_mul_head2(
+        dim_x, dim_y, trans_x, trans_y)
+    globals()[test_name] = type(
+        test_name, (GeneratorMulHead2, OpTest), {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             'shape_X': shape_x,
             'shape_Y': shape_y,
             'transpose_X': trans_x,
             'transpose_Y': trans_y,
+<<<<<<< HEAD
             'head_number': head_number,
         },
     )
 
 
 # test case for multiple head
+=======
+            'head_number': head_number
+        })
+
+
+#test case for multiple head
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 for dim in (2, 3):
     for transose_x in (False, True):
         for transose_y in (False, True):

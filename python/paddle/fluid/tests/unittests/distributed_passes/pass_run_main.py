@@ -32,6 +32,7 @@ def parse_args():
     parser.add_argument(
         '--class_name',
         type=str,
+<<<<<<< HEAD
         help='The test class name. It is the class name that inherits the DistPassTestBase class.',
     )
     parser.add_argument(
@@ -40,6 +41,15 @@ def parse_args():
         action="store_true",
         help='Whether to apply distributed passes.',
     )
+=======
+        help=
+        'The test class name. It is the class name that inherits the DistPassTestBase class.'
+    )
+    parser.add_argument('--apply_pass',
+                        default=False,
+                        action="store_true",
+                        help='Whether to apply distributed passes.')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     parser.add_argument(
         '--input_file',
         type=str,

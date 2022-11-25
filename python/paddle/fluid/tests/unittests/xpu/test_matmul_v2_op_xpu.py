@@ -59,6 +59,7 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
 
 
 class XPUTestMatmulV2Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = "matmul_v2"
         self.use_dynamic_create_class = False
@@ -99,10 +100,15 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
+<<<<<<< HEAD
             if (
                 hasattr(self.__class__, "no_need_check_grad")
                 and self.__class__.no_need_check_grad
             ):
+=======
+            if hasattr(self.__class__, "no_need_check_grad"
+                       ) and self.__class__.no_need_check_grad == True:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return
             place = paddle.XPUPlace(0)
             self.check_grad_with_place(place, ['X', 'Y'], 'Out')

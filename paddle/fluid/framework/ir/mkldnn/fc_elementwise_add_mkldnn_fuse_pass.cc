@@ -62,7 +62,15 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
   patterns::FCMKLDNN fc_pattern{pattern, name_scope};
+<<<<<<< HEAD
   auto fc_output = fc_pattern(false /* with residual */);
+=======
+  bool fc_has_bias = true;
+  auto fc_output = fc_pattern(
+      gpd.mutable_pattern()->NewNode("fc")->AsInput()->assert_is_op_input(
+          "fc", "Input"),
+      fc_has_bias);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   patterns::ResidualElementwise elementwise_pattern{
       pattern, name_scope, fc_as_x};
@@ -90,6 +98,7 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
     GET_IR_NODE_FROM_SUBGRAPH(
         elementwise_out, elementwise_out, elementwise_pattern);
 
+<<<<<<< HEAD
     if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) {
       VLOG(4) << "Skipping fusion for " << fc_op->Name() << "(" << fc_op->id()
               << ") with " << elementwise_op->Name() << "("
@@ -112,6 +121,11 @@ GraphWithStats FCResidualConnectionMKLDNNFusePass::FuseFC(
               << elementwise_op->id() << ") because fc has activation fused";
       return;
     }
+=======
+    if (FindFuseOption(*fc_op, *elementwise_op) != FUSE_MKLDNN) return;
+    if (!IsReachable(g, residual_data, fc_output)) return;
+    if (HasFusedActivation(fc_op)) return;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING)

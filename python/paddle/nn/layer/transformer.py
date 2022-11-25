@@ -187,6 +187,7 @@ class MultiHeadAttention(Layer):
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
 
+<<<<<<< HEAD
         self.q_proj = Linear(
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
         )
@@ -199,6 +200,24 @@ class MultiHeadAttention(Layer):
         self.out_proj = Linear(
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
         )
+=======
+        self.q_proj = Linear(embed_dim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.k_proj = Linear(self.kdim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.v_proj = Linear(self.vdim,
+                             embed_dim,
+                             weight_attr,
+                             bias_attr=bias_attr)
+        self.out_proj = Linear(embed_dim,
+                               embed_dim,
+                               weight_attr,
+                               bias_attr=bias_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -418,21 +437,34 @@ class MultiHeadAttention(Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
         # scale dot product attention
+<<<<<<< HEAD
         product = paddle.matmul(
             x=q * (self.head_dim**-0.5), y=k, transpose_y=True
         )
+=======
+        product = paddle.matmul(x=q * (self.head_dim**-0.5),
+                                y=k,
+                                transpose_y=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, product.dtype)
             product = product + attn_mask
         weights = F.softmax(product)
         if self.dropout:
+<<<<<<< HEAD
             weights = F.dropout(
                 weights,
                 self.dropout,
                 training=self.training,
                 mode="upscale_in_train",
             )
+=======
+            weights = F.dropout(weights,
+                                self.dropout,
+                                training=self.training,
+                                mode="upscale_in_train")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         out = tensor.matmul(weights, v)
 
@@ -549,6 +581,7 @@ class TransformerEncoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
+<<<<<<< HEAD
         self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
@@ -563,6 +596,22 @@ class TransformerEncoderLayer(Layer):
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[1], bias_attr=bias_attrs[1]
         )
+=======
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0])
+        self.linear1 = Linear(d_model,
+                              dim_feedforward,
+                              weight_attrs[1],
+                              bias_attr=bias_attrs[1])
+        self.dropout = Dropout(act_dropout, mode="upscale_in_train")
+        self.linear2 = Linear(dim_feedforward,
+                              d_model,
+                              weight_attrs[1],
+                              bias_attr=bias_attrs[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
         self.dropout1 = Dropout(dropout, mode="upscale_in_train")
@@ -644,9 +693,14 @@ class TransformerEncoderLayer(Layer):
                 `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
+<<<<<<< HEAD
         incremental_cache = self.self_attn.gen_cache(
             src, type=self.self_attn.Cache
         )
+=======
+        incremental_cache = self.self_attn.gen_cache(src,
+                                                     type=self.self_attn.Cache)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return incremental_cache
 
 
@@ -679,6 +733,7 @@ class TransformerEncoder(Layer):
     """
 
     def __init__(self, encoder_layer, num_layers, norm=None):
+<<<<<<< HEAD
         super().__init__()
         self.layers = LayerList(
             [
@@ -690,6 +745,13 @@ class TransformerEncoder(Layer):
                 for i in range(num_layers)
             ]
         )
+=======
+        super(TransformerEncoder, self).__init__()
+        self.layers = LayerList([
+            (encoder_layer if i == 0 else type(encoder_layer)(
+                **encoder_layer._config)) for i in range(num_layers)
+        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.num_layers = num_layers
         self.norm = norm
 
@@ -875,6 +937,7 @@ class TransformerDecoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 3)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 3)
 
+<<<<<<< HEAD
         self.self_attn = MultiHeadAttention(
             d_model,
             nhead,
@@ -896,6 +959,27 @@ class TransformerDecoderLayer(Layer):
         self.linear2 = Linear(
             dim_feedforward, d_model, weight_attrs[2], bias_attr=bias_attrs[2]
         )
+=======
+        self.self_attn = MultiHeadAttention(d_model,
+                                            nhead,
+                                            dropout=attn_dropout,
+                                            weight_attr=weight_attrs[0],
+                                            bias_attr=bias_attrs[0])
+        self.cross_attn = MultiHeadAttention(d_model,
+                                             nhead,
+                                             dropout=attn_dropout,
+                                             weight_attr=weight_attrs[1],
+                                             bias_attr=bias_attrs[1])
+        self.linear1 = Linear(d_model,
+                              dim_feedforward,
+                              weight_attrs[2],
+                              bias_attr=bias_attrs[2])
+        self.dropout = Dropout(act_dropout, mode="upscale_in_train")
+        self.linear2 = Linear(dim_feedforward,
+                              d_model,
+                              weight_attrs[2],
+                              bias_attr=bias_attrs[2])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.norm1 = LayerNorm(d_model)
         self.norm2 = LayerNorm(d_model)
         self.norm3 = LayerNorm(d_model)
@@ -1013,9 +1097,14 @@ class TransformerDecoderLayer(Layer):
                 See `MultiHeadAttention.gen_cache` and `MultiHeadAttention.forward` \
                 for more details.
         """
+<<<<<<< HEAD
         incremental_cache = self.self_attn.gen_cache(
             memory, type=self.self_attn.Cache
         )
+=======
+        incremental_cache = self.self_attn.gen_cache(memory,
+                                                     type=self.self_attn.Cache)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         static_cache = self.cross_attn.gen_cache(
             memory, memory, type=self.cross_attn.StaticCache
         )
@@ -1058,6 +1147,7 @@ class TransformerDecoder(Layer):
     """
 
     def __init__(self, decoder_layer, num_layers, norm=None):
+<<<<<<< HEAD
         super().__init__()
         self.layers = LayerList(
             [
@@ -1069,6 +1159,13 @@ class TransformerDecoder(Layer):
                 for i in range(num_layers)
             ]
         )
+=======
+        super(TransformerDecoder, self).__init__()
+        self.layers = LayerList([
+            (decoder_layer if i == 0 else type(decoder_layer)(
+                **decoder_layer._config)) for i in range(num_layers)
+        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.num_layers = num_layers
         self.norm = norm
 
@@ -1441,9 +1538,16 @@ class Transformer(Layer):
 
         tgt_mask = _convert_attention_mask(tgt_mask, tgt.dtype)
         memory_mask = _convert_attention_mask(memory_mask, memory.dtype)
+<<<<<<< HEAD
         output = self.decoder(
             tgt, memory, tgt_mask=tgt_mask, memory_mask=memory_mask
         )
+=======
+        output = self.decoder(tgt,
+                              memory,
+                              tgt_mask=tgt_mask,
+                              memory_mask=memory_mask)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return output
 
     def generate_square_subsequent_mask(self, length):
@@ -1477,6 +1581,7 @@ class Transformer(Layer):
                 # [  0.   0.   0.   0.   0.]]
 
         """
+<<<<<<< HEAD
         return paddle.tensor.triu(
             paddle.full(
                 shape=[length, length],
@@ -1485,3 +1590,7 @@ class Transformer(Layer):
             ),
             1,
         )
+=======
+        return paddle.tensor.triu((paddle.ones(
+            (length, length), dtype=paddle.get_default_dtype()) * -np.inf), 1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

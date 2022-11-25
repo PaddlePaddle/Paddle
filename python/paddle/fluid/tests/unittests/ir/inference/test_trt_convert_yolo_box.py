@@ -23,11 +23,14 @@ import os
 
 
 class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch, channel):
+<<<<<<< HEAD
             if attrs[0]['iou_aware']:
                 return np.ones([batch, 3 * (channel + 6), 13, 13]).astype(
                     np.float32
@@ -36,6 +39,14 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                 return np.ones([batch, 3 * (channel + 5), 13, 13]).astype(
                     np.float32
                 )
+=======
+            if attrs[0]['iou_aware'] == True:
+                return np.ones([batch, 3 * (channel + 6), 13,
+                                13]).astype(np.float32)
+            else:
+                return np.ones([batch, 3 * (channel + 5), 13,
+                                13]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             return np.random.random([batch, 2]).astype(np.int32)
@@ -49,6 +60,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                                 for scale_x_y in [1.0, 0.9]:
                                     for iou_aware in [False, True]:
                                         for iou_aware_factor in [0.5]:
+<<<<<<< HEAD
                                             dics = [
                                                 {
                                                     "class_num": class_num,
@@ -59,6 +71,31 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                                                     "scale_x_y": scale_x_y,
                                                     "iou_aware": iou_aware,
                                                     "iou_aware_factor": iou_aware_factor,
+=======
+                                            dics = [{
+                                                "class_num":
+                                                class_num,
+                                                "anchors":
+                                                anchors,
+                                                "downsample_ratio":
+                                                downsample_ratio,
+                                                "conf_thresh":
+                                                conf_thresh,
+                                                "clip_bbox":
+                                                clip_bbox,
+                                                "scale_x_y":
+                                                scale_x_y,
+                                                "iou_aware":
+                                                iou_aware,
+                                                "iou_aware_factor":
+                                                iou_aware_factor
+                                            }, {}]
+                                            ops_config = [{
+                                                "op_type": "yolo_box",
+                                                "op_inputs": {
+                                                    "X": ["yolo_box_input"],
+                                                    "ImgSize": ["imgsize"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                                 },
                                                 {},
                                             ]
@@ -86,12 +123,19 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                                                     "yolo_box_input": TensorConfig(
                                                         data_gen=partial(
                                                             generate_input1,
+<<<<<<< HEAD
                                                             dics,
                                                             batch,
                                                             class_num,
                                                         )
                                                     ),
                                                     "imgsize": TensorConfig(
+=======
+                                                            dics, batch,
+                                                            class_num)),
+                                                    "imgsize":
+                                                    TensorConfig(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                                         data_gen=partial(
                                                             generate_input2,
                                                             dics,
@@ -105,8 +149,13 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
                                             yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if attrs[0]['iou_aware']:
                 channel = 3 * (attrs[0]['class_num'] + 6)
@@ -163,12 +212,19 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-3
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
         def teller2(program_config, predictor_config):

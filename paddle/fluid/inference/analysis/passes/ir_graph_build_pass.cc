@@ -55,8 +55,12 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         argument->model_params_path(),
         argument->scope_ptr(),
         place,
+<<<<<<< HEAD
         argument->model_from_memory_valid() && argument->model_from_memory(),
         argument->skip_load_params());
+=======
+        argument->model_from_memory_valid() && argument->model_from_memory());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -118,8 +122,12 @@ std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
     const std::string &params_path,
     framework::Scope *scope,
     const platform::Place &place,
+<<<<<<< HEAD
     bool model_from_memory,
     bool skip_load_params) {
+=======
+    bool model_from_memory) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   framework::Executor exe(place);
   if (!model_from_memory) {
     return Load(&exe, scope, program_path, params_path, !skip_load_params);

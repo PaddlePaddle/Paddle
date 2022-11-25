@@ -22,7 +22,10 @@ from paddle.utils.cpp_extension import load, get_build_directory
 from paddle.utils.cpp_extension.extension_utils import run_cmd
 from utils import paddle_includes, extra_cc_args
 from paddle.fluid.framework import _test_eager_guard
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 # Because Windows don't use docker, the shared lib already exists in the
 # cache dir, it will not be compiled again unless the shared lib is removed.
 file = '{}\\multi_out_jit\\multi_out_jit.pyd'.format(get_build_directory())
@@ -41,6 +44,7 @@ multi_out_module = load(
 
 
 class TestMultiOutputDtypes(unittest.TestCase):
+
     def setUp(self):
         self.custom_op = multi_out_module.multi_out
         self.dtypes = ['float32', 'float64']
@@ -72,6 +76,7 @@ class TestMultiOutputDtypes(unittest.TestCase):
             one_int32 = one_int32.numpy()
         # Fake_float64
         self.assertTrue('float64' in str(zero_float64.dtype))
+<<<<<<< HEAD
         np.testing.assert_array_equal(
             zero_float64, np.zeros([4, 8]).astype('float64')
         )
@@ -80,6 +85,16 @@ class TestMultiOutputDtypes(unittest.TestCase):
         np.testing.assert_array_equal(
             one_int32, np.ones([4, 8]).astype('int32')
         )
+=======
+        self.assertTrue(
+            np.array_equal(zero_float64,
+                           np.zeros([4, 8]).astype('float64')))
+        # ZFake_int32
+        self.assertTrue('int32' in str(one_int32.dtype))
+        self.assertTrue(
+            np.array_equal(one_int32,
+                           np.ones([4, 8]).astype('int32')))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_static(self):
         paddle.enable_static()

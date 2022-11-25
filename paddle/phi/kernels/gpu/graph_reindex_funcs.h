@@ -14,6 +14,10 @@
 
 #pragma once
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
@@ -23,7 +27,7 @@ namespace phi {
 
 template <typename T>
 inline __device__ size_t Hash(T id, int64_t size) {
-  return id % size;
+  return static_cast<unsigned long long int>(id) % size;
 }
 
 template <typename T>
@@ -169,7 +173,7 @@ __global__ void FillUniqueItems(const T* items,
 
 template <typename T>
 __global__ void ReindexSrcOutput(T* src_output,
-                                 int num_items,
+                                 int64_t num_items,
                                  int64_t size,
                                  const T* keys,
                                  const int* values) {

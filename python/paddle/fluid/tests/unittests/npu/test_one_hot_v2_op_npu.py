@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestOneHotOp(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -55,6 +56,7 @@ class TestOneHotOp(OpTest):
 
 
 class TestOneHotOp_non_lod(OpTest):
+
     def setUp(self):
         self.op_type = 'one_hot_v2'
         depth = 10
@@ -78,6 +80,7 @@ class TestOneHotOp_non_lod(OpTest):
 
 
 class TestOneHotOp_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -106,6 +109,7 @@ class TestOneHotOp_attr(OpTest):
 
 
 class TestOneHotOp_default_dtype(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -133,6 +137,7 @@ class TestOneHotOp_default_dtype(OpTest):
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -161,6 +166,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
 
 
 class TestOneHotOp_out_of_range(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -183,6 +189,7 @@ class TestOneHotOp_out_of_range(OpTest):
 
 
 class TestOneHotOp_dtype_int64(OpTest):
+
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -205,6 +212,7 @@ class TestOneHotOp_dtype_int64(OpTest):
 
 
 class TestOneHotOpApi(unittest.TestCase):
+
     def test_api(self):
         depth = 10
         self._run(depth)
@@ -234,6 +242,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
+<<<<<<< HEAD
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -241,6 +250,13 @@ class TestOneHotOpApi(unittest.TestCase):
             fetch_list=[one_hot_label],
             return_numpy=False,
         )
+=======
+        ret = exe.run(feed={
+            'label': label_data,
+        },
+                      fetch_list=[one_hot_label],
+                      return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

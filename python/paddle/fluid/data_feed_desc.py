@@ -175,8 +175,12 @@ class DataFeedDesc:
             )
         for name in dense_slots_name:
             self.proto_desc.multi_slot_desc.slots[
+<<<<<<< HEAD
                 self.__name_to_index[name]
             ].is_dense = True
+=======
+                self.__name_to_index[name]].is_dense = True
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def set_use_slots(self, use_slots_name):
         """
@@ -221,8 +225,12 @@ class DataFeedDesc:
             )
         for name in use_slots_name:
             self.proto_desc.multi_slot_desc.slots[
+<<<<<<< HEAD
                 self.__name_to_index[name]
             ].is_used = True
+=======
+                self.__name_to_index[name]].is_used = True
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def desc(self):
         """

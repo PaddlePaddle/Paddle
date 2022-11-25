@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 
 
 def create_tdm_travel():
+<<<<<<< HEAD
     tree_travel = [
         [1, 3, 7, 14],
         [1, 3, 7, 15],
@@ -36,6 +37,12 @@ def create_tdm_travel():
         [2, 5, 12, 25],
         [2, 6, 13, 0],
     ]
+=======
+    tree_travel = [[1, 3, 7, 14], [1, 3, 7, 15], [1, 3, 8, 16], [1, 3, 8, 17],
+                   [1, 4, 9, 18], [1, 4, 9, 19], [1, 4, 10, 20], [1, 4, 10, 21],
+                   [2, 5, 11, 22], [2, 5, 11, 23], [2, 5, 12, 24],
+                   [2, 5, 12, 25], [2, 6, 13, 0]]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return tree_travel
 
 
@@ -56,6 +63,7 @@ type_dict = {
 
 
 class TestTDMSamplerOp(OpTest):
+
     def setUp(self):
         self.__class__.op_type = "tdm_sampler"
         self.config()
@@ -83,9 +91,14 @@ class TestTDMSamplerOp(OpTest):
         layer_np = np.array(tree_layer_flat).astype(self.tree_dtype)
         layer_np = layer_np.reshape([-1, 1])
 
+<<<<<<< HEAD
         self.x_np = np.random.randint(low=0, high=13, size=self.x_shape).astype(
             self.x_type
         )
+=======
+        self.x_np = np.random.randint(low=0, high=13,
+                                      size=self.x_shape).astype(self.x_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         out = np.random.random(self.output_shape).astype(self.out_dtype)
         label = np.random.random(self.output_shape).astype(self.out_dtype)
@@ -144,8 +157,12 @@ class TestTDMSamplerOp(OpTest):
                 positive_travel.append(sampling_res_list[0])
 
                 label_sampling_res = label_res[batch_ids][
+<<<<<<< HEAD
                     start_offset:end_offset
                 ]
+=======
+                    start_offset:end_offset]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 mask_sampling_res = mask_res[batch_ids][start_offset:end_offset]
 
                 # check unique
@@ -153,12 +170,17 @@ class TestTDMSamplerOp(OpTest):
                     assert len(set(sampling_res_list)) == len(
                         sampling_res_list
                     ), "len(set(sampling_res_list)): {}, len(sampling_res_list): {} , sample_res: {}, label_res:{}, mask_res: {}".format(
+<<<<<<< HEAD
                         len(set(sampling_res_list)),
                         len(sampling_res_list),
                         sampling_res,
                         label_sampling_res,
                         mask_sampling_res,
                     )
+=======
+                        len(set(sampling_res_list)), len(sampling_res_list),
+                        sampling_res, label_sampling_res, mask_sampling_res)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # check legal
                 layer_node = self.tree_layer[layer_idx]
                 layer_node.append(0)
@@ -187,12 +209,18 @@ class TestTDMSamplerOp(OpTest):
                 )
                 start_offset = end_offset
             # check travel legal
+<<<<<<< HEAD
             assert (
                 self.tree_travel[int(self.x_np[batch_ids])] == positive_travel
             )
+=======
+            assert self.tree_travel[int(
+                self.x_np[batch_ids])] == positive_travel
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestCase1(TestTDMSamplerOp):
+
     def config(self):
         """test input int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -203,6 +231,7 @@ class TestCase1(TestTDMSamplerOp):
 
 
 class TestCase2(TestTDMSamplerOp):
+
     def config(self):
         """test dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -213,6 +242,7 @@ class TestCase2(TestTDMSamplerOp):
 
 
 class TestCase3(TestTDMSamplerOp):
+
     def config(self):
         """test all dtype int64"""
         self.neg_samples_num_list = [0, 0, 0, 0]
@@ -223,6 +253,7 @@ class TestCase3(TestTDMSamplerOp):
 
 
 class TestCase4(TestTDMSamplerOp):
+
     def config(self):
         """test one neg"""
         self.neg_samples_num_list = [1, 1, 1, 1]
@@ -233,6 +264,7 @@ class TestCase4(TestTDMSamplerOp):
 
 
 class TestCase5(TestTDMSamplerOp):
+
     def config(self):
         """test normal neg"""
         self.neg_samples_num_list = [1, 2, 3, 4]
@@ -243,6 +275,7 @@ class TestCase5(TestTDMSamplerOp):
 
 
 class TestCase6(TestTDMSamplerOp):
+
     def config(self):
         """test huge batchsize"""
         self.neg_samples_num_list = [1, 2, 3, 4]
@@ -253,6 +286,7 @@ class TestCase6(TestTDMSamplerOp):
 
 
 class TestCase7(TestTDMSamplerOp):
+
     def config(self):
         """test full neg"""
         self.neg_samples_num_list = [1, 3, 6, 11]
@@ -263,6 +297,7 @@ class TestCase7(TestTDMSamplerOp):
 
 
 class TestTDMSamplerShape(unittest.TestCase):
+
     def test_shape(self):
         x = fluid.layers.data(name='x', shape=[1], dtype='int32', lod_level=1)
         tdm_tree_travel = create_tdm_travel()
@@ -286,12 +321,18 @@ class TestTDMSamplerShape(unittest.TestCase):
             leaf_node_num,
             tree_travel_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
+<<<<<<< HEAD
                     travel_array
                 )
             ),
             tree_layer_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(layer_array)
             ),
+=======
+                    travel_array)),
+            tree_layer_attr=fluid.ParamAttr(initializer=fluid.initializer.
+                                            NumpyArrayInitializer(layer_array)),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             output_positive=True,
             output_list=True,
             seed=0,
@@ -304,6 +345,7 @@ class TestTDMSamplerShape(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         feed = {
+<<<<<<< HEAD
             'x': np.array(
                 [
                     [0],
@@ -321,6 +363,11 @@ class TestTDMSamplerShape(unittest.TestCase):
                     [12],
                 ]
             ).astype('int32')
+=======
+            'x':
+            np.array([[0], [1], [2], [3], [4], [5], [6], [7], [8], [9], [10],
+                      [11], [12]]).astype('int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         exe.run(feed=feed)
 

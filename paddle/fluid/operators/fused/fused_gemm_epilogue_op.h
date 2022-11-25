@@ -18,9 +18,12 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 
 #include <cuda_runtime_api.h>
+<<<<<<< HEAD
 #include "cuda.h"  // NOLINT
 
 #if CUDA_VERSION >= 11060
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include <algorithm>
 #include <mutex>

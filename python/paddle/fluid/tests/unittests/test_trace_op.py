@@ -22,6 +22,7 @@ import paddle
 
 
 class TestTraceOp(OpTest):
+
     def setUp(self):
         self.op_type = "trace"
         self.python_api = paddle.trace
@@ -42,32 +43,49 @@ class TestTraceOp(OpTest):
 
 
 class TestTraceOpCase1(TestTraceOp):
+
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': 1, 'axis1': 0, 'axis2': 2}
+<<<<<<< HEAD
         self.target = np.trace(
             self.inputs['Input'],
             offset=self.attrs['offset'],
             axis1=self.attrs['axis1'],
             axis2=self.attrs['axis2'],
         )
+=======
+        self.target = np.trace(self.inputs['Input'],
+                               offset=self.attrs['offset'],
+                               axis1=self.attrs['axis1'],
+                               axis2=self.attrs['axis2'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestTraceOpCase2(TestTraceOp):
+
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
+<<<<<<< HEAD
         self.target = np.trace(
             self.inputs['Input'],
             offset=self.attrs['offset'],
             axis1=self.attrs['axis1'],
             axis2=self.attrs['axis2'],
         )
+=======
+        self.target = np.trace(self.inputs['Input'],
+                               offset=self.attrs['offset'],
+                               axis1=self.attrs['axis1'],
+                               axis2=self.attrs['axis2'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestTraceAPICase(unittest.TestCase):
+
     def test_case1(self):
         case = np.random.randn(2, 20, 2, 3).astype('float32')
         data1 = fluid.data(name='data1', shape=[2, 20, 2, 3], dtype='float32')

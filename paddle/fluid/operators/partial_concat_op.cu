@@ -72,8 +72,13 @@ template <typename T>
 class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+<<<<<<< HEAD
     auto in_vars = ctx.MultiInput<phi::DenseTensor>("X");
     Tensor *out = ctx.Output<phi::DenseTensor>("Out");
+=======
+    auto in_vars = ctx.MultiInput<Tensor>("X");
+    Tensor *out = ctx.Output<Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(in_vars[0] != nullptr,
                       true,
                       platform::errors::InvalidArgument(
@@ -126,10 +131,14 @@ class PartialConcatOpCUDAKernel : public framework::OpKernel<T> {
     for (int i = 0; i < in_num; ++i)
       in_data.emplace_back(in_vars[i]->data<T>());
 
+<<<<<<< HEAD
     auto tmp_in_array = memory::Alloc(
         dev_ctx.GetPlace(),
         in_data.size() * sizeof(T *),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+=======
+    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_in_array->ptr(),
                  platform::CPUPlace(),
@@ -205,10 +214,14 @@ class PartialConcatGradOpCUDAKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < in_num; ++i) {
       out_data.emplace_back(outs[i]->data<T>());
     }
+<<<<<<< HEAD
     auto tmp_out_array = memory::Alloc(
         dev_ctx.GetPlace(),
         out_data.size() * sizeof(T *),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+=======
+    auto tmp_out_array = memory::Alloc(dev_ctx, out_data.size() * sizeof(T *));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     memory::Copy(dev_ctx.GetPlace(),
                  tmp_out_array->ptr(),

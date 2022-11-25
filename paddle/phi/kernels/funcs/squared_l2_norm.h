@@ -82,8 +82,7 @@ void SquaredL2Norm(const phi::GPUContext& ctx,
                                                          y,
                                                          numel,
                                                          cub::Sum(),
-                                                         static_cast<T2>(0),
-                                                         stream));
+                                                         static_cast<T2>(0)));
   }
 }
 #endif

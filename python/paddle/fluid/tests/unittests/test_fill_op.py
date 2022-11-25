@@ -20,6 +20,7 @@ from paddle.fluid.op import Operator
 
 
 class TestFillOp1(OpTest):
+
     def setUp(self):
         self.op_type = "fill"
         val = np.random.random(size=[100, 200])
@@ -37,6 +38,7 @@ class TestFillOp1(OpTest):
 
 
 class TestFillOp2(OpTest):
+
     def setUp(self):
         self.op_type = "fill"
         val = np.random.random(size=[100, 200])
@@ -54,6 +56,7 @@ class TestFillOp2(OpTest):
 
 
 class TestFillOp3(unittest.TestCase):
+
     def check_with_place(self, place, f_cpu):
         scope = core.Scope()
         # create Out Variable
@@ -61,6 +64,7 @@ class TestFillOp3(unittest.TestCase):
 
         # create and run fill_op operator
         val = np.random.random(size=[300, 200])
+<<<<<<< HEAD
         fill_op = Operator(
             "fill",
             value=val.flatten(),
@@ -69,6 +73,14 @@ class TestFillOp3(unittest.TestCase):
             force_cpu=f_cpu,
             Out='Out',
         )
+=======
+        fill_op = Operator("fill",
+                           value=val.flatten(),
+                           shape=[300, 200],
+                           dtype=int(core.VarDesc.VarType.FP32),
+                           force_cpu=f_cpu,
+                           Out='Out')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fill_op.run(scope, place)
 
         # get result from Out

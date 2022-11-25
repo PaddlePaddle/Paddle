@@ -16,7 +16,10 @@ limitations under the License. */
 
 #include <NvInfer.h>
 
+<<<<<<< HEAD
 #include <cstdint>
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -25,9 +28,15 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+<<<<<<< HEAD
 #include "NvInferRuntimeCommon.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+=======
+
+#include "NvInferRuntimeCommon.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -38,8 +47,11 @@ limitations under the License. */
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+<<<<<<< HEAD
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/stream.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -214,7 +226,11 @@ class TensorRTEngine {
 
   TensorRTEngine(
       int max_batch,
+<<<<<<< HEAD
       int64_t max_workspace,
+=======
+      int max_workspace,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -296,7 +312,10 @@ class TensorRTEngine {
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
   nvinfer1::ITensor* GetITensor(const std::string& name);
+<<<<<<< HEAD
   nvinfer1::ITensor* ConvertWeight2ITensor(const std::string& name);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::unordered_map<std::string, nvinfer1::ITensor*>* GetITensorMap();
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
@@ -372,6 +391,7 @@ class TensorRTEngine {
     quant_dynamic_range_[tensor] = range;
   }
 
+<<<<<<< HEAD
   // Get fp16 trt weight. If src weight is not fp16, we will cast.
   Weight GetFp16TrtWeight(const std::string& name,
                           const phi::DenseTensor& weight_tensor);
@@ -383,6 +403,15 @@ class TensorRTEngine {
   // if the src weight type is fp16, then return fp16 trt weight, etc.
   Weight GetTrtWeight(const std::string& name,
                       const phi::DenseTensor& weight_tensor);
+=======
+  // Get fp32 trt weight. If src weight is not fp32, we will cast.
+  Weight GetFp32TrtWeight(const std::string& name,
+                          const framework::Tensor& weight_tensor);
+
+  // if the src weight type is fp16, then return fp16 trt weight, etc.
+  Weight GetTrtWeight(const std::string& name,
+                      const framework::Tensor& weight_tensor);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   float GetTensorDynamicRange(nvinfer1::ITensor* tensor) {
     return quant_dynamic_range_[tensor];
@@ -750,7 +779,11 @@ class TRTEngineManager {
   TensorRTEngine* Create(
       std::string name,
       int max_batch,
+<<<<<<< HEAD
       int64_t max_workspace,
+=======
+      int max_workspace,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       AnalysisConfig::Precision precision = AnalysisConfig::Precision::kFloat32,
       TRTInt8Calibrator* calibrator = nullptr,
       int device_id = 0,
@@ -771,6 +804,7 @@ class TRTEngineManager {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+<<<<<<< HEAD
                                  min_shape_tensor,
                                  max_shape_tensor,
                                  optim_shape_tensor,
@@ -778,6 +812,11 @@ class TRTEngineManager {
                                  model_precision,
                                  logger);
     std::lock_guard<std::mutex> lock(mutex_);
+=======
+                                 disable_trt_plugin_fp16,
+                                 model_precision,
+                                 logger);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     engines_[name].reset(p);
     return p;
   }

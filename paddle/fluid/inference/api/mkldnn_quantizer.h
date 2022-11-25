@@ -85,8 +85,13 @@ class AnalysisPredictor::MkldnnQuantizer {
   std::pair<bool, phi::DenseTensor> GetKLScalingFactor(
       const phi::DenseTensor& var_tensor, bool is_unsigned) const;
 
+<<<<<<< HEAD
   std::pair<bool, phi::DenseTensor> GetMaxChScalingFactor(
       const phi::DenseTensor& var_tensor,
+=======
+  std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
+      const framework::LoDTensor& var_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       bool is_unsigned,
       bool is_transposed) const;
 
@@ -103,7 +108,11 @@ class AnalysisPredictor::MkldnnQuantizer {
 
   // Returns histogram and bin width
   std::pair<std::vector<int>, float> Histogram(
+<<<<<<< HEAD
       const phi::DenseTensor& var_tensor,
+=======
+      const framework::LoDTensor& var_tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       float min_val,
       float max_val,
       size_t num_bins = 2048) const;

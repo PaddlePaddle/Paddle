@@ -30,6 +30,7 @@ from xpu.get_test_cover_info import (
 
 
 class XPUTestAdamOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'adam'
         self.use_dynamic_create_class = False
@@ -52,6 +53,7 @@ class XPUTestAdamOp(XPUOpTestWrapper):
             )
 
             self.outputs = {
+<<<<<<< HEAD
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
                 'ParamOut': param_out,
@@ -59,6 +61,18 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 * self.beta1,
                 'Beta2PowOut': np.array([self.beta2_pow]).astype("float32")
                 * self.beta2,
+=======
+                'Moment1Out':
+                moment1_out,
+                'Moment2Out':
+                moment2_out,
+                'ParamOut':
+                param_out,
+                'Beta1PowOut':
+                np.array([self.beta1_pow]).astype("float32") * self.beta1,
+                'Beta2PowOut':
+                np.array([self.beta2_pow]).astype("float32") * self.beta2
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
         def set_xpu(self):
@@ -224,9 +238,14 @@ class XPUTestAdamOp(XPUOpTestWrapper):
                 }
 
                 # Verify output for this step
+<<<<<<< HEAD
                 self.check_output_with_place(
                     place=paddle.XPUPlace(0), atol=1e-2
                 )
+=======
+                self.check_output_with_place(place=paddle.XPUPlace(0),
+                                             atol=1e-2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 # Output of this step becomes input for next step
                 self.inputs['Param'] = param_out
@@ -304,6 +323,7 @@ def adam_step_sparse(
     param_out = np.zeros(shape=[height, row_numel])
 
     def update_row(row_id, update_value):
+<<<<<<< HEAD
         moment1_out[row_id] = (
             beta1 * moment1[row_id] + (1 - beta1) * update_value
         )
@@ -314,6 +334,15 @@ def adam_step_sparse(
         param_out[row_id] = param[row_id] - lr_t * (
             moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon)
         )
+=======
+        moment1_out[row_id] = beta1 * moment1[row_id] + (1 -
+                                                         beta1) * update_value
+        moment2_out[row_id] = beta2 * moment2[row_id] + (
+            1 - beta2) * np.square(update_value)
+        lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+        param_out[row_id] = param[row_id] - lr_t * (
+            moment1_out[row_id] / (np.sqrt(moment2_out[row_id]) + epsilon))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if lazy_mode:
         for idx, row_id in enumerate(rows):
@@ -329,6 +358,7 @@ def adam_step_sparse(
 
 
 class TestSparseAdamOp(unittest.TestCase):
+
     def setup(self, scope, place, lazy_mode):
         beta1 = 0.78
         beta2 = 0.836

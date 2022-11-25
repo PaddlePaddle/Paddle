@@ -21,7 +21,11 @@ from paddle.fluid import core
 __all__ = []
 
 
+<<<<<<< HEAD
 class LegacyPyLayerContext:
+=======
+class LegacyPyLayerContext(object):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
     The object of this class is a context that is used in PyLayer to enhance the function.
 
@@ -124,14 +128,21 @@ class LegacyPyLayerContext:
 
 
 def with_mateclass(meta, *bases):
+
     class impl(meta):
+
         def __new__(cls, name, temp_bases, attrs):
             return meta(name, bases, attrs)
 
     return type.__new__(impl, "impl", (), {})
 
 
+<<<<<<< HEAD
 class CPyLayer:
+=======
+class CPyLayer(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     @classmethod
     @dygraph_only
     def apply(cls, *args, **kwargs):
@@ -179,6 +190,10 @@ class CPyLayer:
 
 
 class PyLayerBackward(LegacyPyLayerContext):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def backward(self, *args, **kwargs):
         with paddle.fluid.dygraph.guard():
             with paddle.fluid.dygraph.no_grad():
@@ -196,6 +211,7 @@ class PyLayerBackward(LegacyPyLayerContext):
 
 
 class LayerMeta(type):
+
     def __init__(cls, name, bases, attrs):
         cls._backward_function = type(
             name + '_backward', (PyLayerBackward,), {"_forward_cls": cls}
@@ -336,7 +352,12 @@ class LegacyPyLayer(with_mateclass(LayerMeta, CPyLayer)):
         )
 
 
+<<<<<<< HEAD
 class EagerPyLayerContext:
+=======
+class EagerPyLayerContext(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def save_for_backward(self, *tensors):
         """
         Saves given tensors that backward need. Use ``saved_tensor`` in the `backward` to get the saved tensors.
@@ -542,11 +563,13 @@ class EagerPyLayerContext:
 
 
 class EagerPyLayerBackward(core.eager.PyLayer, EagerPyLayerContext):
+
     def backward(self, *args):
         return self._forward_cls.backward(self, *args)
 
 
 class EagerPyLayerMeta(type):
+
     def __init__(cls, name, bases, attrs):
         cls._backward_function = type(
             name + '_backward', (EagerPyLayerBackward,), {"_forward_cls": cls}
@@ -556,8 +579,14 @@ class EagerPyLayerMeta(type):
 
 
 class EagerPyLayer(
+<<<<<<< HEAD
     with_mateclass(EagerPyLayerMeta, core.eager.PyLayer, EagerPyLayerContext)
 ):
+=======
+        with_mateclass(EagerPyLayerMeta, core.eager.PyLayer,
+                       EagerPyLayerContext)):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     @staticmethod
     def forward(ctx, *args, **kwargs):
         """
@@ -640,6 +669,7 @@ class EagerPyLayer(
 
 
 def once_differentiable(backward):
+
     def wrapper(ctx, *args):
         with paddle.fluid.dygraph.no_grad():
             outputs = backward(ctx, *args)

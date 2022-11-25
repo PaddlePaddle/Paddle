@@ -299,6 +299,7 @@ struct GPUContext::Impl {
     PD_CHECK(allocator_ != nullptr,
              "the device allocator for gpu context is nullptr.");
     return DnnWorkspaceHandle(allocator_, stream());
+<<<<<<< HEAD
   }
 
   void SetStream(gpuStream_t stream) {
@@ -310,6 +311,19 @@ struct GPUContext::Impl {
     stream_->set_raw_stream(stream);
   }
 
+=======
+  }
+
+  void SetStream(gpuStream_t stream) {
+    if (stream_ == nullptr) {
+      auto s = Stream(reinterpret_cast<StreamId>(stream));
+      stream_ = new CUDAStream(place_, s);
+      stream_owned_ = true;
+    }
+    stream_->set_raw_stream(stream);
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   void SetCUDAStream(CUDAStream* stream, bool clear = true) {
     if (clear && stream_owned_ && stream_) {
       delete stream_;
@@ -318,6 +332,7 @@ struct GPUContext::Impl {
     stream_ = stream;
     // TODO(phi): reset related handles?
   }
+<<<<<<< HEAD
 
   gpuStream_t stream() const {
     auto s = stream_->raw_stream();
@@ -325,6 +340,15 @@ struct GPUContext::Impl {
     return s;
   }
 
+=======
+
+  gpuStream_t stream() const {
+    auto s = stream_->raw_stream();
+    PD_CHECK(s != nullptr, "the gpu stream is nullptr.");
+    return s;
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   CUDAStream* cuda_stream() const {
     PD_CHECK(stream_ != nullptr, "the gpu stream is nullptr.");
     return stream_;
@@ -581,7 +605,11 @@ struct GPUContext::Impl {
         if (!blas_tensor_core_handle_creator_) {
           phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
         } else {
+<<<<<<< HEAD
           blas_tensor_core_handle_ = blas_tensor_core_handle_creator_();
+=======
+          phi::InitBlasHandle(&blas_tensor_core_handle_, stream());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         PADDLE_RETRY_CUDA_SUCCESS(phi::dynload::cublasSetMathMode(
             blas_tensor_core_handle_, CUBLAS_TENSOR_OP_MATH));
@@ -723,6 +751,7 @@ struct GPUContext::Impl {
     }
   }
 
+<<<<<<< HEAD
   bool HasDnnAttr(const std::string& attr_name) const {
     return dnn_attrs_.count(attr_name) != 0UL;
   }
@@ -740,6 +769,8 @@ struct GPUContext::Impl {
     dnn_attrs_[attr_name] = attr;
   }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   // use one flag for all handles?
   // they should be accessed consistently
   bool owned_{false};
@@ -810,8 +841,11 @@ struct GPUContext::Impl {
   static thread_local AttributeMap dnn_attrs_;
 };
 
+<<<<<<< HEAD
 thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 GPUContext::GPUContext(GPUContext&&) = default;
 
 GPUContext& GPUContext::operator=(GPUContext&&) = default;

@@ -151,12 +151,21 @@ class TensorDescriptor {
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
+<<<<<<< HEAD
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cudnnSetTensorNdDescriptor(desc_.get(),
                                             ToCudnnDataType(tensor.dtype()),
                                             dims_with_group.size(),
                                             dims_with_group.data(),
                                             strides.data()));
+=======
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+        desc_.get(),
+        ToCudnnDataType(framework::TransToProtoVarType(tensor.dtype())),
+        dims_with_group.size(),
+        dims_with_group.data(),
+        strides.data()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   void set(const std::vector<int>& dims,
@@ -226,7 +235,11 @@ class FilterDescriptor {
                                             transformed_dims.data()));
   }
 
+<<<<<<< HEAD
   void set(const phi::DenseTensor& tensor,
+=======
+  void set(const Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            const cudnnTensorFormat_t format,
            const int groups = 1) {
     auto dims = phi::vectorize<int>(tensor.dims());

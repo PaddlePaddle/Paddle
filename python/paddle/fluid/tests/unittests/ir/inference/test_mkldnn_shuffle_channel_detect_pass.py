@@ -31,6 +31,7 @@ def product(input):
 
 
 class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         input_shape = program_config.inputs['input_data'].shape
         first_reshape2_shape = program_config.ops[0].attrs['shape']
@@ -134,9 +135,14 @@ class TestShuffleChannelMKLDNNDetectPass(PassAutoScanTest):
         yield config, ["shuffle_channel"], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False, passes=["shuffle_channel_mkldnn_detect_pass"]
         )
+=======
+        self.run_and_statis(quant=False,
+                            passes=["shuffle_channel_mkldnn_detect_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

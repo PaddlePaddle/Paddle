@@ -30,13 +30,19 @@ SEED = 2020
 
 np.random.seed(SEED)
 
+<<<<<<< HEAD
 place = (
     fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
 )
+=======
+place = fluid.CUDAPlace(
+    0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 program_translator = ProgramTranslator()
 
 
 class SimpleFcLayer(fluid.dygraph.Layer):
+
     def __init__(self, fc_size):
         super().__init__()
         self._linear = fluid.dygraph.Linear(fc_size, fc_size)
@@ -50,6 +56,7 @@ class SimpleFcLayer(fluid.dygraph.Layer):
 
 
 class TestDyToStaticSaveInferenceModel(unittest.TestCase):
+
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -76,6 +83,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
                 layer.clear_gradients()
             # test for saving model in dygraph.guard
             infer_model_prefix = os.path.join(
+<<<<<<< HEAD
                 self.temp_dir.name, "test_dy2stat_inference_in_guard/model"
             )
             infer_model_dir = os.path.join(
@@ -96,6 +104,24 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         self.check_save_inference_model(
             layer, [x_data], dygraph_out.numpy(), feed=[x]
         )
+=======
+                self.temp_dir.name, "test_dy2stat_inference_in_guard/model")
+            infer_model_dir = os.path.join(self.temp_dir.name,
+                                           "test_dy2stat_inference_in_guard")
+            fluid.dygraph.jit.save(layer=layer,
+                                   path=infer_model_prefix,
+                                   input_spec=[x],
+                                   output_spec=[pred])
+            # Check the correctness of the inference
+            dygraph_out, _ = layer(x)
+        self.check_save_inference_model(layer, [x_data], dygraph_out.numpy())
+        self.check_save_inference_model(layer, [x_data],
+                                        dygraph_out.numpy(),
+                                        fetch=[loss])
+        self.check_save_inference_model(layer, [x_data],
+                                        dygraph_out.numpy(),
+                                        feed=[x])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def check_save_inference_model(
         self, model, inputs, gt_out, feed=None, fetch=None
@@ -111,12 +137,19 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         )
         model_filename = "model" + INFER_MODEL_SUFFIX
         params_filename = "model" + INFER_PARAMS_SUFFIX
+<<<<<<< HEAD
         fluid.dygraph.jit.save(
             layer=model,
             path=infer_model_prefix,
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
+=======
+        fluid.dygraph.jit.save(layer=model,
+                               path=infer_model_prefix,
+                               input_spec=feed if feed else None,
+                               output_spec=fetch if fetch else None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # Check the correctness of the inference
         infer_out = self.load_and_run_inference(
             infer_model_dir, model_filename, params_filename, inputs
@@ -128,6 +161,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
     ):
         paddle.enable_static()
         exe = fluid.Executor(place)
+<<<<<<< HEAD
         [
             inference_program,
             feed_target_names,
@@ -143,11 +177,22 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             feed=dict(zip(feed_target_names, inputs)),
             fetch_list=fetch_targets,
         )
+=======
+        [inference_program, feed_target_names, fetch_targets
+         ] = fluid.io.load_inference_model(dirname=model_path,
+                                           executor=exe,
+                                           model_filename=model_filename,
+                                           params_filename=params_filename)
+        results = exe.run(inference_program,
+                          feed=dict(zip(feed_target_names, inputs)),
+                          fetch_list=fetch_targets)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return np.array(results[0])
 
 
 class TestPartialProgramRaiseError(unittest.TestCase):
+
     def test_param_type(self):
         program_translator = ProgramTranslator()
         program_translator.enable(True)

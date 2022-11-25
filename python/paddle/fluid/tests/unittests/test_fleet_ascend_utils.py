@@ -18,6 +18,7 @@ import unittest
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
 RANK_TABLE_JSON = {
+<<<<<<< HEAD
     "status": "completed",
     "version": "1.0",
     "server_count": "1",
@@ -30,10 +31,32 @@ RANK_TABLE_JSON = {
             ],
         }
     ],
+=======
+    "status":
+    "completed",
+    "version":
+    "1.0",
+    "server_count":
+    "1",
+    "server_list": [{
+        "server_id":
+        "127.0.0.1",
+        "device": [{
+            "device_id": "0",
+            "device_ip": "192.1.184.23",
+            "rank_id": "0"
+        }, {
+            "device_id": "1",
+            "device_ip": "192.2.21.93",
+            "rank_id": "1"
+        }]
+    }]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 
 class TestAscendUtil(unittest.TestCase):
+
     def test_get_cloud_cluster(self):
         cluster, pod = ascend_utils.get_cloud_cluster()
         self.assertTrue(cluster)

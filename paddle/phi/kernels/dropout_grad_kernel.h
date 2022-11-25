@@ -32,7 +32,11 @@ template <typename T, typename Context>
 void DropoutNdGradKernel(const Context& dev_ctx,
                          const DenseTensor& mask,
                          const DenseTensor& out_grad,
+<<<<<<< HEAD
                          const Scalar& p,
+=======
+                         float p,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          bool is_test,
                          const std::string& mode,
                          const std::vector<int>& axis,

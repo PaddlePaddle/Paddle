@@ -26,6 +26,7 @@ import paddle.nn as nn
 
 
 class NaiveGate(BaseGate):
+
     def __init__(self, d_model, num_expert, world_size, topk=2):
         super().__init__(num_expert, world_size)
         self.gate = nn.Linear(d_model, self.tot_expert)
@@ -35,9 +36,17 @@ class NaiveGate(BaseGate):
 
     def forward(self, inp, return_all_scores=False):
         gate = self.gate(inp)
+<<<<<<< HEAD
         gate_top_k_val, gate_top_k_idx = paddle.topk(
             gate, k=self.top_k, axis=-1, largest=True, sorted=False
         )
+=======
+        gate_top_k_val, gate_top_k_idx = paddle.topk(gate,
+                                                     k=self.top_k,
+                                                     axis=-1,
+                                                     largest=True,
+                                                     sorted=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if return_all_scores:
             return gate_top_k_val, gate_top_k_idx, gate

@@ -41,6 +41,7 @@ class XavierNormal(XavierInitializer):
 
     Examples:
         .. code-block:: python
+            :name: initializer_XavierNormal-example
 
             import paddle
 
@@ -63,7 +64,14 @@ class XavierNormal(XavierInitializer):
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
+<<<<<<< HEAD
         super().__init__(uniform=False, fan_in=fan_in, fan_out=fan_out, seed=0)
+=======
+        super(XavierNormal, self).__init__(uniform=False,
+                                           fan_in=fan_in,
+                                           fan_out=fan_out,
+                                           seed=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class XavierUniform(XavierInitializer):
@@ -93,6 +101,7 @@ class XavierUniform(XavierInitializer):
 
     Examples:
         .. code-block:: python
+            :name: initializer_XavierUniform-example
 
             import paddle
 
@@ -115,4 +124,11 @@ class XavierUniform(XavierInitializer):
     """
 
     def __init__(self, fan_in=None, fan_out=None, name=None):
+<<<<<<< HEAD
         super().__init__(uniform=True, fan_in=fan_in, fan_out=fan_out, seed=0)
+=======
+        super(XavierUniform, self).__init__(uniform=True,
+                                            fan_in=fan_in,
+                                            fan_out=fan_out,
+                                            seed=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

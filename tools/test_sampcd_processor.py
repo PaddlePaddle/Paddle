@@ -32,6 +32,7 @@ from sampcd_processor import is_required_match
 
 
 class Test_find_all(unittest.TestCase):
+
     def test_find_none(self):
         self.assertEqual(0, len(find_all('hello', 'world')))
 
@@ -45,6 +46,7 @@ class Test_find_all(unittest.TestCase):
 
 
 class Test_find_last_future_line_end(unittest.TestCase):
+
     def test_no_instant(self):
         samplecodes = """
                 print(10//3)
@@ -59,9 +61,14 @@ class Test_find_last_future_line_end(unittest.TestCase):
         """
         mo = re.search("print_function\n", samplecodes)
         self.assertIsNotNone(mo)
+<<<<<<< HEAD
         self.assertGreaterEqual(
             find_last_future_line_end(samplecodes), mo.end()
         )
+=======
+        self.assertGreaterEqual(find_last_future_line_end(samplecodes),
+                                mo.end())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_2_instant(self):
         samplecodes = """
@@ -72,12 +79,18 @@ class Test_find_last_future_line_end(unittest.TestCase):
         """
         mo = re.search("division\n", samplecodes)
         self.assertIsNotNone(mo)
+<<<<<<< HEAD
         self.assertGreaterEqual(
             find_last_future_line_end(samplecodes), mo.end()
         )
+=======
+        self.assertGreaterEqual(find_last_future_line_end(samplecodes),
+                                mo.end())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Test_extract_code_blocks_from_docstr(unittest.TestCase):
+
     def test_no_samplecode(self):
         docstr = """
         placeholder
@@ -152,6 +165,7 @@ print(1+1)""",
 
 
 class Test_insert_codes_into_codeblock(unittest.TestCase):
+
     def test_required_None(self):
         codeblock = {
             'codes': """print(1/0)""",
@@ -165,8 +179,12 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 print(1/0)
 print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+<<<<<<< HEAD
             insert_codes_into_codeblock(codeblock),
         )
+=======
+            insert_codes_into_codeblock(codeblock))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_required_gpu(self):
         codeblock = {
@@ -183,8 +201,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # required: gpu
 print(1+1)
 print("not-specified's sample code (name:None, id:1) is executed successfully!")""",
+<<<<<<< HEAD
             insert_codes_into_codeblock(codeblock),
         )
+=======
+            insert_codes_into_codeblock(codeblock))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_from_future(self):
         codeblock = {
@@ -205,8 +227,12 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 print(10//3)
 print("not-specified's sample code (name:future, id:1) is executed successfully!")""",
+<<<<<<< HEAD
             insert_codes_into_codeblock(codeblock),
         )
+=======
+            insert_codes_into_codeblock(codeblock))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def clear_capacity():
@@ -217,6 +243,7 @@ def clear_capacity():
 
 
 class Test_get_test_capacity(unittest.TestCase):
+
     def setUp(self):
         clear_capacity()
         get_test_capacity()
@@ -228,12 +255,18 @@ class Test_get_test_capacity(unittest.TestCase):
     def test_NoEnvVar(self):
         clear_capacity()
         get_test_capacity()
+<<<<<<< HEAD
         self.assertCountEqual(
             [
                 'cpu',
             ],
             sampcd_processor.SAMPLE_CODE_TEST_CAPACITY,
         )
+=======
+        self.assertCountEqual([
+            'cpu',
+        ], sampcd_processor.SAMPLE_CODE_TEST_CAPACITY)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_NoEnvVar_RUN_ON_DEVICE_gpu(self):
         clear_capacity()
@@ -262,6 +295,7 @@ class Test_get_test_capacity(unittest.TestCase):
 
 
 class Test_is_required_match(unittest.TestCase):
+
     def setUp(self):
         clear_capacity()
 
@@ -302,6 +336,7 @@ class Test_is_required_match(unittest.TestCase):
 
 
 class Test_execute_samplecode(unittest.TestCase):
+
     def setUp(self):
         if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
             os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
@@ -347,6 +382,7 @@ def clear_summary_info():
 
 
 class Test_sampcd_extract_to_file(unittest.TestCase):
+
     def setUp(self):
         if not os.path.exists(sampcd_processor.SAMPLECODE_TEMPDIR):
             os.mkdir(sampcd_processor.SAMPLECODE_TEMPDIR)
@@ -478,6 +514,7 @@ class Test_sampcd_extract_to_file(unittest.TestCase):
 
 
 class Test_get_api_md5(unittest.TestCase):
+
     def setUp(self):
         self.api_pr_spec_filename = os.path.abspath(
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')
@@ -518,6 +555,7 @@ class Test_get_api_md5(unittest.TestCase):
 
 
 class Test_get_incrementapi(unittest.TestCase):
+
     def setUp(self):
         self.api_pr_spec_filename = os.path.abspath(
             os.path.join(os.getcwd(), "..", 'paddle/fluid/API_PR.spec')

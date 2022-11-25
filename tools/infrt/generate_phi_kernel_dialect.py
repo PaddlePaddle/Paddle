@@ -88,6 +88,7 @@ def generate_kernel_name(op_name, place_str):
     layout_ = layout_type_converter[layout_.strip()]
     precision_ = precision_type_converter[precision_.strip()]
     class_name_ = "{}{}".format(
+<<<<<<< HEAD
         op_name.replace("_", "").title(),
         "".join(
             [
@@ -101,6 +102,18 @@ def generate_kernel_name(op_name, place_str):
         op_name,
         ".".join([target_.strip(), precision_.strip(), layout_.strip()]),
     )
+=======
+        op_name.replace("_", "").title(), "".join([
+            target_.strip().title(),
+            precision_.strip(),
+            layout_.strip().title().title()
+        ]))
+    alias_ = "{}.{}".format(
+        op_name,
+        ".".join([target_.strip(),
+                  precision_.strip(),
+                  layout_.strip()]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return alias_, class_name_
 
 
@@ -114,9 +127,14 @@ def generate_attrs_info(op_name, attrs_info):
         for index in range(len(attrs_info)):
             attr_name = kernel_attrs_names[op_name]["attrs"][index]
             attr_type = attr_type_converter[attrs_info[index]]
+<<<<<<< HEAD
             attrs_args_ += '{type_}:${name_},'.format(
                 type_=attr_type, name_=attr_name
             )
+=======
+            attrs_args_ += '{type_}:${name_},'.format(type_=attr_type,
+                                                      name_=attr_name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return attrs_args_[:-1]
 
 
@@ -139,10 +157,16 @@ def generate_arguments_info(op_name, input_info, attr_info):
     input_args = generate_inputs_info(input_info)
     attr_args = generate_attrs_info(op_name, attr_info)
     context_args = "Context:$dev_ctx"
+<<<<<<< HEAD
     argument_list = (
         [context_args] + input_args.split(",") + attr_args.split(",")
     )
     while "" in argument_list:
+=======
+    argument_list = [context_args
+                     ] + input_args.split(",") + attr_args.split(",")
+    while ("" in argument_list):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         argument_list.remove("")
     argument_ = ",".join(argument_list)
     return "let arguments = (ins {});".format(argument_.strip(","))
@@ -320,10 +344,15 @@ def main():
                         )
                         gpu_registry_ += kernel_registry
                     else:
+<<<<<<< HEAD
                         print(
                             "Unsupported backend:"
                             + get_kernel_target(kernel_alias_)
                         )
+=======
+                        print("Unsupported backend:" +
+                              get_kernel_target(kernel_alias_))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         end = "#endif  // PTEN_KERNELS"
         with open(
             "../../paddle/infrt/dialect/phi/ir/phi_cpu_kernels.td", "w"

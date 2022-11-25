@@ -34,6 +34,7 @@ __all__ = []
 
 
 class ConvPoolLayer(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self,
         input_channels,
@@ -46,6 +47,19 @@ class ConvPoolLayer(nn.Layer):
         act=None,
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 input_channels,
+                 output_channels,
+                 filter_size,
+                 stride,
+                 padding,
+                 stdv,
+                 groups=1,
+                 act=None):
+        super(ConvPoolLayer, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.relu = ReLU() if act == "relu" else None
 
@@ -75,7 +89,11 @@ class AlexNet(nn.Layer):
     <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
+<<<<<<< HEAD
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
 
     Returns:
@@ -200,10 +218,16 @@ def alexnet(pretrained=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_AlexNet>`.
+<<<<<<< HEAD
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
+    
     Examples:
         .. code-block:: python
 

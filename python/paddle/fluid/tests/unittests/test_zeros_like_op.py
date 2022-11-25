@@ -24,6 +24,7 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
 class TestZerosLikeAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = paddle.fluid.data('x', [3, 4])
@@ -35,6 +36,7 @@ class TestZerosLikeAPIError(unittest.TestCase):
 
 
 class TestZerosLikeAPI(unittest.TestCase):
+
     def test_api(self):
         shape = [3, 4]
         startup_program = Program()
@@ -58,8 +60,12 @@ class TestZerosLikeAPI(unittest.TestCase):
             fetch_list=[out1, out2, out3, out4, out5],
         )
         for (i, dtype) in enumerate(
+<<<<<<< HEAD
             [np.float32, np.bool_, np.float64, np.int32, np.int64]
         ):
+=======
+            [np.float32, np.bool_, np.float64, np.int32, np.int64]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(outs[i].dtype, dtype)
             self.assertEqual((outs[i] == np.zeros(shape, dtype)).all(), True)
 
@@ -69,6 +75,7 @@ class TestZerosLikeAPI(unittest.TestCase):
 
 
 class TestZerosLikeImpeartive(unittest.TestCase):
+
     def test_out(self):
         shape = [3, 4]
         place = (

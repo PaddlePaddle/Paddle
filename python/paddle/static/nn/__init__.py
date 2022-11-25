@@ -59,7 +59,11 @@ from ...fluid.layers.sequence_lod import sequence_scatter  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_enumerate  # noqa: F401
 from ...fluid.layers.sequence_lod import sequence_reverse  # noqa: F401
 
+<<<<<<< HEAD
 __all__ = [  # noqa
+=======
+__all__ = [  #noqa
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     'fc',
     'batch_norm',
     'embedding',

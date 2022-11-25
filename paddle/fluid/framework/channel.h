@@ -30,7 +30,11 @@
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/expect.h"
+=======
+#include "paddle/fluid/framework/expect.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 namespace framework {

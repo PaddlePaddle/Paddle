@@ -19,10 +19,14 @@ from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
 )
 from paddle.fluid.dygraph.dygraph_to_static import utils
+<<<<<<< HEAD
 from paddle.fluid.dygraph.dygraph_to_static.base_transformer import (
     BaseTransformer,
 )
 from paddle.fluid.dygraph.dygraph_to_static.utils import ast_to_source_code
+=======
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class BasicApiTransformer(BaseTransformer):

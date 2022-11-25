@@ -20,8 +20,14 @@ from paddle.device.cuda.graphs import wrap_cuda_graph, is_cuda_graph_supported
 
 
 class SimpleModel(nn.Layer):
+<<<<<<< HEAD
     def __init__(self, in_size, out_size):
         super().__init__()
+=======
+
+    def __init__(self, in_size, out_size):
+        super(SimpleModel, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.linear = nn.Linear(in_size, out_size)
         self.dropout_1 = paddle.nn.Dropout(0.1)
         self.relu = nn.ReLU()
@@ -38,6 +44,10 @@ class SimpleModel(nn.Layer):
 
 
 class TestSimpleModel(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})
 
@@ -66,9 +76,15 @@ class TestSimpleModel(unittest.TestCase):
         layer, value2 = self.run_base(func, True, "default")
         _, value3 = self.run_base(func, True, "new")
         _, value4 = self.run_base(func, True, layer)
+<<<<<<< HEAD
         np.testing.assert_array_equal(value1, value2)
         np.testing.assert_array_equal(value1, value3)
         np.testing.assert_array_equal(value1, value4)
+=======
+        self.assertTrue(np.array_equal(value1, value2))
+        self.assertTrue(np.array_equal(value1, value3))
+        self.assertTrue(np.array_equal(value1, value4))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_layer(self):
         self.check(SimpleModel(10, 20))

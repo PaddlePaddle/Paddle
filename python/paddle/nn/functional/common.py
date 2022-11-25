@@ -18,13 +18,18 @@ from paddle.fluid.layers.tensor import fill_constant
 from ...tensor import concat
 from ...tensor.creation import zeros
 from paddle.static import Variable
+<<<<<<< HEAD
 
+=======
+from ...fluid import dygraph_utils
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 # TODO: define the common functions to build a neural network
 from ...tensor.manipulation import squeeze
 from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
 from ...tensor import sum
 from ...tensor import sqrt
+<<<<<<< HEAD
 from ...fluid.data_feeder import (
     check_variable_and_dtype,
     check_dtype,
@@ -37,6 +42,14 @@ from ...fluid.framework import (
 )
 
 from paddle import _C_ops, _legacy_C_ops
+=======
+from ...fluid.data_feeder import check_variable_and_dtype, check_dtype
+from ...fluid.framework import _varbase_creator, _in_legacy_dygraph, in_dygraph_mode, _non_static_mode
+
+from ...fluid import dygraph_utils
+
+from paddle import _C_ops
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from paddle.framework import in_dynamic_mode
 from paddle.tensor.creation import full
 from paddle.framework import core
@@ -49,7 +62,11 @@ __all__ = []
 def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     r"""
 
+<<<<<<< HEAD
     Return a col buffer of sliding local blocks of input x, also known
+=======
+    This op returns a col buffer of sliding local blocks of input x, also known
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     as im2col for batched 2D image tensors. For each block under the convolution filter,
     all element will be rearranged as a column. While the convolution filter sliding over
     the input feature map, a series of such columns will be formed.
@@ -96,12 +113,22 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
 
     Returns:
+<<<<<<< HEAD
         Tensor, The tensor corresponding to the sliding local blocks.
+=======
+        The tensor corresponding to the sliding local blocks.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         The output shape is [N, Cout, Lout] as decriabled above.
         Cout is the  total number of values within each block,
         and Lout is the total number of such blocks.
         The data type of output is the same as the input :math:`x`
 
+<<<<<<< HEAD
+=======
+    Return Type:
+        Tensor
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Examples:
 
         .. code-block:: python
@@ -117,28 +144,48 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'unfold')
 
+<<<<<<< HEAD
     assert len(x.shape) == 4, "input should be the format of [N, C, H, W]"
+=======
+    assert len(x.shape) == 4, \
+            "input should be the format of [N, C, H, W]"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
+<<<<<<< HEAD
         assert isinstance(kernel_sizes, list) and (
             len(kernel_sizes) == 2
         ), "kernel_sizes should either be an integer or a list of two integers"
+=======
+        assert isinstance(kernel_sizes, list) and (len(kernel_sizes) == 2), \
+            "kernel_sizes should either be an integer or a list of two integers"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
+<<<<<<< HEAD
         assert isinstance(strides, list) and (
             len(strides) == 2
         ), "strides should either be an integer or a list of two integers"
+=======
+        assert isinstance(strides, list) and (len(strides) == 2), \
+            "strides should either be an integer or a list of two integers"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
+<<<<<<< HEAD
         assert isinstance(dilations, list) and (
             len(dilations) == 2
         ), "dilations should either be an integer or a list of two integers"
+=======
+        assert isinstance(dilations, list) and (len(dilations) == 2), \
+            "dilations should either be an integer or a list of two integers"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
@@ -154,6 +201,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     else:
         raise ValueError(
             "Unexpected type of paddings, it should be either an integer or a list"
+<<<<<<< HEAD
             "of 2 or 4 integers"
         )
 
@@ -185,6 +233,35 @@ def interpolate(
     data_format='NCHW',
     name=None,
 ):
+=======
+            "of 2 or 4 integers")
+
+    if in_dygraph_mode():
+        return _C_ops.final_state_unfold(x, kernel_sizes, strides, paddings,
+                                         dilations)
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type="unfold",
+                     inputs={"X": x},
+                     outputs={"Y": out},
+                     attrs={
+                         "kernel_sizes": kernel_sizes,
+                         "strides": strides,
+                         "paddings": paddings,
+                         "dilations": dilations
+                     })
+    return out
+
+
+def interpolate(x,
+                size=None,
+                scale_factor=None,
+                mode='nearest',
+                align_corners=False,
+                align_mode=0,
+                data_format='NCHW',
+                name=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     """
 
     This API resizes a batch of images.
@@ -517,11 +594,20 @@ def interpolate(
                     else:
                         assert isinstance(dim, int)
                         temp_out = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
                             'int32'
                         )
                         fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
+=======
+                            'int32')
+                        fill_constant([1],
+                                      'int32',
+                                      dim,
+                                      force_cpu=True,
+                                      out=temp_out)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         new_size_tensor.append(temp_out)
                         size_list.append(dim)
                 inputs['SizeTensor'] = new_size_tensor
@@ -690,12 +776,19 @@ def interpolate(
                 out = _legacy_C_ops.bicubic_interp_v2(x, *dy_attr)
         return out
     out = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
     helper.append_op(
         type='{}_interp_v2'.format(resample_type),
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs,
     )
+=======
+    helper.append_op(type='{}_interp_v2'.format(resample_type),
+                     inputs=inputs,
+                     outputs={"Out": out},
+                     attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -933,6 +1026,11 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
+<<<<<<< HEAD
+=======
+        return _C_ops.final_state_bilinear_tensor_product(x1, x2, weight, bias)
+    elif _non_static_mode():
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
     elif _non_static_mode():
         return _legacy_C_ops.bilinear_tensor_product(x1, x2, weight, bias)
@@ -947,9 +1045,15 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     helper = LayerHelper("bilinear", **locals())
     out = helper.create_variable_for_type_inference(dtype=x1.dtype)
 
+<<<<<<< HEAD
     helper.append_op(
         type="bilinear_tensor_product", inputs=inputs, outputs={"Out": out}
     )
+=======
+    helper.append_op(type="bilinear_tensor_product",
+                     inputs=inputs,
+                     outputs={"Out": out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return out
 
@@ -1141,6 +1245,7 @@ def dropout(
                 )
 
                 return out
+<<<<<<< HEAD
             out, mask = _legacy_C_ops.dropout(
                 x,
                 'dropout_prob',
@@ -1154,6 +1259,13 @@ def dropout(
                 'dropout_implementation',
                 mode,
             )
+=======
+            out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
+                                       not training, 'fix_seed', seed
+                                       is not None, 'seed',
+                                       seed if seed is not None else 0,
+                                       'dropout_implementation', mode)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
         helper = LayerHelper('dropout', **locals())
@@ -1189,12 +1301,22 @@ def dropout(
 
         attrs = get_attrs(helper.main_program, p, not training, seed)
 
+<<<<<<< HEAD
         helper.append_op(
             type='dropout',
             inputs={'X': [x]},
             outputs={'Out': [out], 'Mask': [mask]},
             attrs=attrs,
         )
+=======
+        helper.append_op(type='dropout',
+                         inputs={'X': [x]},
+                         outputs={
+                             'Out': [out],
+                             'Mask': [mask]
+                         },
+                         attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
@@ -1224,10 +1346,15 @@ def dropout(
                 )
             if len(drop_axes) > len(input_shape):
                 raise ValueError(
+<<<<<<< HEAD
                     "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}".format(
                         len(input_shape), len(drop_axes)
                     )
                 )
+=======
+                    "length of axis should not be greater than dimensions of x:{}, but get length of axis: {}"
+                    .format(len(input_shape), len(drop_axes)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             mask_shape = [1] * len(input_shape)
             if not in_dynamic_mode():
                 for i in drop_axes:
@@ -1236,10 +1363,18 @@ def dropout(
                 for i in drop_axes:
                     mask_shape[i] = input_shape[i]
 
+<<<<<<< HEAD
             # get mask
             random_tensor = paddle.uniform(
                 mask_shape, dtype='float32', min=0.0, max=1.0
             )
+=======
+            #get mask
+            random_tensor = paddle.uniform(mask_shape,
+                                           dtype='float32',
+                                           min=0.,
+                                           max=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             p = full(shape=[1], fill_value=p, dtype='float32')
             keep_mask = paddle.greater_equal(random_tensor, p)
 
@@ -1305,6 +1440,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
             "Attr(data_format): %s." % str(data_format)
         )
 
+<<<<<<< HEAD
     return dropout(
         x,
         p=p,
@@ -1313,6 +1449,14 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
         mode="upscale_in_train",
         name=name,
     )
+=======
+    return dropout(x,
+                   p=p,
+                   axis=[0, 1] if data_format == 'NCHW' else [0, 3],
+                   training=training,
+                   mode="upscale_in_train",
+                   name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
@@ -1363,6 +1507,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
             "Attr(data_format): %s." % str(data_format)
         )
 
+<<<<<<< HEAD
     return dropout(
         x,
         p=p,
@@ -1371,6 +1516,14 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
         mode="upscale_in_train",
         name=name,
     )
+=======
+    return dropout(x,
+                   p=p,
+                   axis=[0, 1] if data_format == 'NCDHW' else [0, 4],
+                   training=training,
+                   mode="upscale_in_train",
+                   name=name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def alpha_dropout(x, p=0.5, training=True, name=None):
@@ -1429,23 +1582,40 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
         dtype = x.dtype
         input_shape = x.shape
 
+<<<<<<< HEAD
         # get mask
         random_tensor = paddle.uniform(
             input_shape, dtype='float32', min=0.0, max=1.0
         )
+=======
+        #get mask
+        random_tensor = paddle.uniform(input_shape,
+                                       dtype='float32',
+                                       min=0.,
+                                       max=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         p = full(shape=[1], fill_value=p, dtype='float32')
         keep_mask = paddle.greater_equal(random_tensor, p)
         keep_mask = paddle.cast(keep_mask, dtype)
         drop_mask = paddle.subtract(
+<<<<<<< HEAD
             full(shape=input_shape, fill_value=1.0, dtype=dtype), keep_mask
         )
+=======
+            full(shape=input_shape, fill_value=1., dtype=dtype), keep_mask)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # apply mask
         b = full(shape=[1], fill_value=b, dtype=dtype)
+<<<<<<< HEAD
         y = paddle.add(
             paddle.multiply(x, keep_mask),
             paddle.scale(drop_mask, scale=alpha_p),
         )
+=======
+        y = paddle.add(paddle.multiply(x, keep_mask),
+                       paddle.scale(drop_mask, scale=alpha_p))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         res = paddle.add(paddle.scale(y, scale=a), b, name=name)
         return res
     else:  # test
@@ -1581,6 +1751,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
+<<<<<<< HEAD
     if (
         mode == "constant"
         and isinstance(pad, (list, tuple))
@@ -1611,16 +1782,36 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
         check_type(pad_value, 'pad_value', (float, int, Variable), 'pad')
         if isinstance(pad_value, int):
             pad_value = float(pad_value)
+=======
+    if mode == "constant" and isinstance(
+            pad, (list, tuple)) and len(pad) == x_dim * 2:
+        paddings = pad
+        pad_value = value
+        check_variable_and_dtype(x, 'x', [
+            'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+            'complex128'
+        ], "pad")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         helper = LayerHelper('pad', **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
         helper.append_op(
             type='pad',
             inputs={'X': x},
             outputs={'Out': out},
             attrs={'paddings': paddings, 'pad_value': pad_value},
         )
+=======
+        helper.append_op(type='pad',
+                         inputs={'X': x},
+                         outputs={'Out': out},
+                         attrs={
+                             'paddings': paddings,
+                             'pad_value': float(pad_value)
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return out
 
     assert x_dim in [
@@ -1720,9 +1911,16 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
             dtype = helper.input_dtype(input_param_name='input')
             out = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
             helper.append_op(
                 type='pad3d', inputs=inputs, outputs={"Out": out}, attrs=attrs
             )
+=======
+            helper.append_op(type='pad3d',
+                             inputs=inputs,
+                             outputs={"Out": out},
+                             attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if len(unsqueezed_dim) != 0:
         out = squeeze(out, axis=unsqueezed_dim)
@@ -1877,8 +2075,13 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
+=======
+        #TODO(jiabin): using addmm for fast forward route
+        return _C_ops.final_state_linear(x, weight, bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         if _in_legacy_dygraph():
             pre_bias = _legacy_C_ops.matmul_v2(
@@ -1903,6 +2106,7 @@ def linear(x, weight, bias=None, name=None):
             inputs = {'X': [x], 'Y': [weight]}
             attrs = {'trans_x': False, 'trans_y': False}
             tmp = helper.create_variable_for_type_inference(dtype)
+<<<<<<< HEAD
             helper.append_op(
                 type='matmul_v2',
                 inputs=inputs,
@@ -1917,6 +2121,21 @@ def linear(x, weight, bias=None, name=None):
                     outputs={'Out': [res]},
                     attrs={'axis': len(x.shape) - 1},
                 )
+=======
+            helper.append_op(type='matmul_v2',
+                             inputs=inputs,
+                             outputs={'Out': tmp},
+                             attrs=attrs)
+            if bias is not None:
+                res = helper.create_variable_for_type_inference(dtype)
+                helper.append_op(type='elementwise_add',
+                                 inputs={
+                                     'X': [tmp],
+                                     'Y': [bias]
+                                 },
+                                 outputs={'Out': [res]},
+                                 attrs={'axis': len(x.shape) - 1})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 res = tmp
             return res
@@ -1996,6 +2215,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(label.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="label_smooth",
         inputs={"X": label, "PriorDist": prior_dist}
@@ -2004,6 +2224,15 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         outputs={"Out": smooth_label},
         attrs={"epsilon": float(epsilon)},
     )
+=======
+    helper.append_op(type="label_smooth",
+                     inputs={
+                         "X": label,
+                         "PriorDist": prior_dist
+                     } if prior_dist else {"X": label},
+                     outputs={"Out": smooth_label},
+                     attrs={"epsilon": float(epsilon)})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return smooth_label
 
 
@@ -2168,6 +2397,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
+<<<<<<< HEAD
     if in_dygraph_mode():
         return _C_ops.class_center_sample(
             label,
@@ -2200,6 +2430,13 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             'seed',
             seed if seed is not None else 0,
         )
+=======
+    if in_dynamic_mode():
+        remapped_label, sampled_class_center = _C_ops.class_center_sample(
+            label, 'num_classes', num_classes, 'num_samples', num_samples,
+            'ring_id', ring_id, 'nranks', nranks, 'rank', rank, 'fix_seed', seed
+            is not None, 'seed', seed if seed is not None else 0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return remapped_label, sampled_class_center
 
     check_variable_and_dtype(
@@ -2211,6 +2448,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         dtype=label.dtype
     )
     sampled_class_center = helper.create_variable_for_type_inference(
+<<<<<<< HEAD
         dtype=label.dtype
     )
     helper.append_op(
@@ -2230,6 +2468,24 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             'seed': seed if seed is not None else 0,
         },
     )
+=======
+        dtype=label.dtype)
+    helper.append_op(type=op_type,
+                     inputs={'Label': label},
+                     outputs={
+                         'RemappedLabel': remapped_label,
+                         'SampledLocalClassCenter': sampled_class_center
+                     },
+                     attrs={
+                         'num_classes': num_classes,
+                         'num_samples': num_samples,
+                         'ring_id': ring_id,
+                         'nranks': nranks,
+                         'rank': rank,
+                         'fix_seed': seed is not None,
+                         'seed': seed if seed is not None else 0
+                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return remapped_label, sampled_class_center
 
 
@@ -2368,6 +2624,7 @@ def fold(
         )
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
+<<<<<<< HEAD
         helper.append_op(
             type="fold",
             inputs={"X": x},
@@ -2380,4 +2637,16 @@ def fold(
                 "dilations": dilations,
             },
         )
+=======
+        helper.append_op(type="fold",
+                         inputs={"X": x},
+                         outputs={"Y": out},
+                         attrs={
+                             "output_sizes": output_sizes,
+                             "kernel_sizes": kernel_sizes,
+                             "strides": strides,
+                             "paddings": paddings,
+                             "dilations": dilations
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out

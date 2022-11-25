@@ -182,7 +182,11 @@ class RandomCropKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     int64_t seed = 0;
     auto& seed_tensor = GET_DATA_SAFELY(
+<<<<<<< HEAD
         ctx.Input<phi::DenseTensor>("Seed"), "Input", "Seed", "RandomCrop");
+=======
+        ctx.Input<framework::LoDTensor>("Seed"), "Input", "Seed", "RandomCrop");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (seed_tensor.IsInitialized()) {
       if (platform::is_cpu_place(seed_tensor.place())) {
         seed = *seed_tensor.template data<int64_t>();
@@ -200,9 +204,15 @@ class RandomCropKernel : public framework::OpKernel<T> {
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto& x = GET_DATA_SAFELY(
+<<<<<<< HEAD
         ctx.Input<phi::DenseTensor>("X"), "Input", "X", "RandomCrop");
     auto& out = GET_DATA_SAFELY(
         ctx.Output<phi::DenseTensor>("Out"), "Output", "Out", "RandomCrop");
+=======
+        ctx.Input<framework::LoDTensor>("X"), "Input", "X", "RandomCrop");
+    auto& out = GET_DATA_SAFELY(
+        ctx.Output<framework::LoDTensor>("Out"), "Output", "Out", "RandomCrop");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     int num_batchsize_dims = x.dims().size() - shape.size();
     RandomCropFunctor<DeviceContext, T> functor(

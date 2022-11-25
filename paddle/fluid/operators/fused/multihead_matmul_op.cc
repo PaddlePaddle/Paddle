@@ -41,6 +41,14 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
         platform::errors::InvalidArgument(
             "Input(Bias) of MultiHeadMatMul should not be null."));
     PADDLE_ENFORCE_EQ(
+<<<<<<< HEAD
+=======
+        context->HasInput("BiasQK"),
+        true,
+        platform::errors::InvalidArgument(
+            "Input(BiasQK) of MultiHeadMatMul should not be null."));
+    PADDLE_ENFORCE_EQ(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         context->HasOutput("Out"),
         true,
         platform::errors::InvalidArgument(
@@ -64,6 +72,18 @@ class MultiHeadMatMulV2Op : public framework::OperatorWithKernel {
             "%d-D tensor now.",
             dim_bias_q.size()));
 
+<<<<<<< HEAD
+=======
+    auto dim_bias_qk = context->GetInputDim("BiasQK");
+    PADDLE_ENFORCE_GT(
+        dim_bias_qk.size(),
+        3,
+        platform::errors::InvalidArgument(
+            "Multihead input bias qk should be at least 4-D tensor, "
+            "but it's %d-D tensor now.",
+            dim_bias_qk.size()));
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto dim_input = context->GetInputDim("Input");
     context->SetOutputDim("Out", dim_input);
     context->ShareLoD("Input", /*->*/ "Out");

@@ -21,11 +21,17 @@ import paddle.fluid as fluid
 
 import config
 import utils
+<<<<<<< HEAD
+=======
+from utils import (_compute_numerical_batch_jacobian,
+                   _compute_numerical_jacobian)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 paddle.enable_static()
 
 
 @utils.place(config.DEVICES)
+<<<<<<< HEAD
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'stop_gradient'),
     (
@@ -74,8 +80,26 @@ paddle.enable_static()
         ),
     ),
 )
+=======
+@utils.parameterize((utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'stop_gradient'), (
+    ('tensor_input', utils.reduce, np.random.rand(2, 3), None, False),
+    ('tensor_sequence_input', utils.reduce, np.random.rand(2, 3), None, False),
+    ('v_not_none', utils.reduce, np.random.rand(2,
+                                                3), np.random.rand(1), False),
+    ('xs_stop_gradient', utils.reduce, np.random.rand(
+        2, 3), np.random.rand(1), True),
+    ('func_mutmul', utils.matmul,
+     (np.random.rand(3, 2), np.random.rand(2, 3)), None, False),
+    ('func_mul', utils.mul,
+     (np.random.rand(3, 3), np.random.rand(3, 3)), None, False),
+    ('func_out_two', utils.o2,
+     (np.random.rand(10), np.random.rand(10)), None, False),
+))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TestVJP(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self.dtype = (
             str(self.xs[0].dtype)
             if isinstance(self.xs, typing.Sequence)
@@ -91,6 +115,14 @@ class TestVJP(unittest.TestCase):
             .get("first_order_grad")
             .get("atol")
         )
+=======
+        self.dtype = str(self.xs[0].dtype) if isinstance(
+            self.xs, typing.Sequence) else str(self.xs.dtype)
+        self._rtol = config.TOLERANCE.get(str(
+            self.dtype)).get("first_order_grad").get("rtol")
+        self._atol = config.TOLERANCE.get(str(
+            self.dtype)).get("first_order_grad").get("atol")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _vjp(self):
         exe = paddle.static.Executor()
@@ -98,11 +130,17 @@ class TestVJP(unittest.TestCase):
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                 self.xs, self.v, stop_gradient=self.stop_gradient
             )
             ys, xs_grads = paddle.incubate.autograd.vjp(
                 self.fun, static_xs, static_v
             )
+=======
+                self.xs, self.v, stop_gradient=self.stop_gradient)
+            ys, xs_grads = paddle.incubate.autograd.vjp(self.fun, static_xs,
+                                                        static_v)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         exe.run(sp)
         return exe.run(mp, feed=feed, fetch_list=[ys, xs_grads])
 
@@ -112,6 +150,7 @@ class TestVJP(unittest.TestCase):
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                 self.xs, self.v, False
             )
             ys = (
@@ -119,6 +158,11 @@ class TestVJP(unittest.TestCase):
                 if isinstance(static_xs, typing.Sequence)
                 else self.fun(static_xs)
             )
+=======
+                self.xs, self.v, False)
+            ys = self.fun(*static_xs) if isinstance(
+                static_xs, typing.Sequence) else self.fun(static_xs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             xs_grads = paddle.static.gradients(ys, static_xs, static_v)
         exe.run(sp)
         return exe.run(mp, feed=feed, fetch_list=[ys, xs_grads])
@@ -128,14 +172,22 @@ class TestVJP(unittest.TestCase):
         expected = self._expected_vjp()
         self.assertEqual(len(actual), len(expected))
         for i in range(len(actual)):
+<<<<<<< HEAD
             np.testing.assert_allclose(
                 actual[i], expected[i], rtol=self._rtol, atol=self._atol
             )
+=======
+            np.testing.assert_allclose(actual[i],
+                                       expected[i],
+                                       rtol=self._rtol,
+                                       atol=self._atol)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @utils.place(config.DEVICES)
 @utils.parameterize(
     (utils.TEST_CASE_NAME, 'fun', 'xs', 'v', 'expected_exception'),
+<<<<<<< HEAD
     (
         (
             'v_shape_not_equal_ys',
@@ -146,7 +198,12 @@ class TestVJP(unittest.TestCase):
         ),
     ),
 )
+=======
+    (('v_shape_not_equal_ys', utils.square, np.random.rand(3),
+      np.random.rand(1), RuntimeError), ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TestVJPException(unittest.TestCase):
+
     def setUp(self):
         self.exe = paddle.static.Executor()
 
@@ -155,11 +212,17 @@ class TestVJPException(unittest.TestCase):
         mp = paddle.static.Program()
         with paddle.static.program_guard(mp, sp):
             feed, static_xs, static_v = utils.gen_static_data_and_feed(
+<<<<<<< HEAD
                 self.xs, self.v
             )
             ys, xs_grads = paddle.incubate.autograd.vjp(
                 self.fun, static_xs, static_v
             )
+=======
+                self.xs, self.v)
+            ys, xs_grads = paddle.incubate.autograd.vjp(self.fun, static_xs,
+                                                        static_v)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.exe.run(sp)
         return self.exe.run(mp, feed, fetch_list=[ys, xs_grads])
 
@@ -246,6 +309,7 @@ def prepare_data(test, input_shapes, dtype):
 
 
 class TestJacobianFloat32(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
@@ -256,9 +320,14 @@ class TestJacobianFloat32(unittest.TestCase):
         self.dtype = 'float32'
         self.np_dtype = np.float32
         prepare_data(self, all_data_shapes, self.dtype)
+<<<<<<< HEAD
         self.eps = (
             config.TOLERANCE.get(self.dtype).get('first_order_grad').get('eps')
         )
+=======
+        self.eps = config.TOLERANCE.get(
+            self.dtype).get('first_order_grad').get('eps')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # self.rtol = config.TOLERANCE.get(self.dtype).get('first_order_grad').get('rtol')
         # self.atol = config.TOLERANCE.get(self.dtype).get('first_order_grad').get('atol')
         # Do't use tolerance in config, which will cause this test case failed.
@@ -283,9 +352,17 @@ class TestJacobianFloat32(unittest.TestCase):
         else:
             feeds = {'x': inps}
         pd_jacobians = exe.run(main, feed=feeds, fetch_list=[full_jacobian])[0]
+<<<<<<< HEAD
         np_jacobians = approx_jacobian(
             np_f, inps, self.dtype, self.eps, batch=batch
         )
+=======
+        np_jacobians = approx_jacobian(np_f,
+                                       inps,
+                                       self.dtype,
+                                       self.eps,
+                                       batch=batch)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if batch:
             np_jacobians = utils._np_transpose_matrix_format(
                 np_jacobians, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM
@@ -350,6 +427,7 @@ class TestJacobianFloat32(unittest.TestCase):
             np.testing.assert_allclose(pd_entry, np_entry, self.rtol, self.atol)
 
     def test_square(self):
+
         def pd_f(x):
             return paddle.multiply(x, x)
 
@@ -361,6 +439,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, self.A)
 
     def test_mul(self):
+
         def pd_f(x, y):
             return paddle.multiply(x, y)
 
@@ -377,6 +456,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, [self.B, self.C])
 
     def test_matmul(self):
+
         def pd_f(x, y):
             return paddle.matmul(x, y)
 
@@ -389,6 +469,7 @@ class TestJacobianFloat32(unittest.TestCase):
         self.run_test_by_entries(pd_f, np_f, [self.B, self.C])
 
     def test_batch_matmul(self):
+
         def pd_f(x, y):
             return paddle.matmul(x, y)
 
@@ -402,6 +483,7 @@ class TestJacobianFloat32(unittest.TestCase):
 
 
 class TestJacobianFloat64(TestJacobianFloat32):
+
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
@@ -411,6 +493,7 @@ class TestJacobianFloat64(TestJacobianFloat32):
             self.place = fluid.CPUPlace()
         self.dtype = 'float64'
         prepare_data(self, all_data_shapes, self.dtype)
+<<<<<<< HEAD
         self.eps = (
             config.TOLERANCE.get(self.dtype).get('first_order_grad').get('eps')
         )
@@ -420,9 +503,18 @@ class TestJacobianFloat64(TestJacobianFloat32):
         self.atol = (
             config.TOLERANCE.get(self.dtype).get('first_order_grad').get('atol')
         )
+=======
+        self.eps = config.TOLERANCE.get(
+            self.dtype).get('first_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(
+            self.dtype).get('first_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(
+            self.dtype).get('first_order_grad').get('atol')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestHessianFloat32(unittest.TestCase):
+
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
@@ -432,6 +524,7 @@ class TestHessianFloat32(unittest.TestCase):
             self.place = fluid.CPUPlace()
         self.dtype = 'float32'
         prepare_data(self, all_data_shapes, self.dtype)
+<<<<<<< HEAD
         self.eps = (
             config.TOLERANCE.get(self.dtype).get('second_order_grad').get('eps')
         )
@@ -445,6 +538,14 @@ class TestHessianFloat32(unittest.TestCase):
             .get('second_order_grad')
             .get('atol')
         )
+=======
+        self.eps = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('atol')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def run_test_by_fullmatrix(self, pd_f, inps, np_hess, batch=False):
         main = fluid.Program()
@@ -464,6 +565,7 @@ class TestHessianFloat32(unittest.TestCase):
         np.testing.assert_allclose(pd_hess, np_hess, self.rtol, self.atol)
 
     def test_square(self):
+
         def pd_f(x):
             """Input is a square matrix."""
             return paddle.matmul(x, x.T).flatten().sum()
@@ -478,6 +580,7 @@ class TestHessianFloat32(unittest.TestCase):
 
 
 class TestHessianFloat64(TestHessianFloat32):
+
     @classmethod
     def setUpClass(self):
         paddle.enable_static()
@@ -487,6 +590,7 @@ class TestHessianFloat64(TestHessianFloat32):
             self.place = fluid.CPUPlace()
         self.dtype = 'float64'
         prepare_data(self, all_data_shapes, self.dtype)
+<<<<<<< HEAD
         self.eps = (
             config.TOLERANCE.get(self.dtype).get('second_order_grad').get('eps')
         )
@@ -500,6 +604,14 @@ class TestHessianFloat64(TestHessianFloat32):
             .get('second_order_grad')
             .get('atol')
         )
+=======
+        self.eps = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('eps')
+        self.rtol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('rtol')
+        self.atol = config.TOLERANCE.get(
+            self.dtype).get('second_order_grad').get('atol')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

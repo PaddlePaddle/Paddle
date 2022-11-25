@@ -29,10 +29,22 @@ from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
 from .collective import all_gather  # noqa: F401
 from .collective import all_gather_object  # noqa: F401
+<<<<<<< HEAD
+=======
+from .collective import scatter  # noqa: F401
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from .collective import barrier  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
 from .collective import wait  # noqa: F401
+from .collective import is_initialized  # noqa: F401
+from .collective import destroy_process_group  # noqa: F401
+from .collective import alltoall_single  # noqa: F401
+from .collective import isend  # noqa: F401
+from .collective import irecv  # noqa: F401
+from .collective import batch_isend_irecv  # noqa: F401
+from .collective import P2POp  # noqa: F401
+from .collective import reduce_scatter  # noqa: F401
 
 from .communication import (
     stream,
@@ -74,6 +86,7 @@ from .sharding import save_group_sharded_model  # noqa: F401
 from . import rpc
 
 __all__ = [  # noqa
+<<<<<<< HEAD
     "io",
     "spawn",
     "launch",
@@ -112,4 +125,14 @@ __all__ = [  # noqa
     "irecv",
     "reduce_scatter",
     "rpc",
+=======
+    "spawn", "launch", "scatter", "broadcast", "ParallelEnv", "new_group",
+    "init_parallel_env", "gloo_init_parallel_env", "gloo_barrier",
+    "gloo_release", "QueueDataset", "split", "CountFilterEntry",
+    "ShowClickEntry", "get_world_size", "get_group", "all_gather",
+    "all_gather_object", "InMemoryDataset", "barrier", "all_reduce", "alltoall",
+    "send", "reduce", "recv", "ReduceOp", "wait", "get_rank",
+    "ProbabilityEntry", "ParallelMode", "is_initialized", "isend", "irecv",
+    "reduce_scatter"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 ]

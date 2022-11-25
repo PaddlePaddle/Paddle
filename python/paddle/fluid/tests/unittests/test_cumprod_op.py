@@ -58,6 +58,7 @@ def cumprod_grad(x, y, dy, dx, shape, dim):
 
 # test function.
 class TestCumprod(OpTest):
+
     def init_params(self):
         self.shape = (2, 3, 4, 5)
         self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
@@ -120,6 +121,7 @@ class TestCumprod(OpTest):
                 if self.dtype == np.float64:
                     self.check_grad(['X'], 'Out', check_eager=True)
                 else:
+<<<<<<< HEAD
                     self.check_grad(
                         ['X'],
                         'Out',
@@ -127,28 +129,39 @@ class TestCumprod(OpTest):
                         user_defined_grad_outputs=[self.grad_out],
                         check_eager=True,
                     )
+=======
+                    self.check_grad(['X'],
+                                    'Out',
+                                    user_defined_grads=[self.grad_x],
+                                    user_defined_grad_outputs=[self.grad_out],
+                                    check_eager=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 # test float32 case.
 class TestCumprod_float32(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.float32
 
 
 # test complex64 case.
 class TestCumprod_complex64(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.complex64
 
 
 # test complex128 case.
 class TestCumprod_complex128(TestCumprod):
+
     def init_dtype(self):
         self.dtype = np.complex128
 
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
@@ -181,6 +194,7 @@ class TestCumprodAPI(unittest.TestCase):
 
     # test dynamic graph api.
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)

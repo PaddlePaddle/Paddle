@@ -14,9 +14,13 @@ limitations under the License. */
 
 #pragma once
 
+<<<<<<< HEAD
 #include <map>
 #include <string>
 #include <utility>
+=======
+#include <string>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -32,8 +36,11 @@ namespace platform {
 
 class RecordOpInfoSupplement {
  public:
+<<<<<<< HEAD
   static bool IsEnabled();
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   /**
    * @param type:  Operator type name.
    * @param attrs: Attribute map of op.
@@ -54,6 +61,7 @@ class RecordOpInfoSupplement {
                                   const framework::AttributeMap& attrs,
                                   const framework::InferShapeContext& shape_ctx,
                                   const phi::KernelSignature& kernel_signature);
+<<<<<<< HEAD
 
   /**
    *
@@ -62,6 +70,8 @@ class RecordOpInfoSupplement {
       const std::string& type,
       const std::vector<std::pair<const char*, std::vector<framework::DDim>>>&
           input_shapes);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 }  // namespace platform

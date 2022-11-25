@@ -22,6 +22,7 @@ from paddle import enable_static
 
 
 class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -30,6 +31,7 @@ class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOp2(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
@@ -37,6 +39,7 @@ class TestMKLDNNElementwiseAddOp2(TestMKLDNNElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
@@ -44,6 +47,7 @@ class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -58,6 +62,7 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -65,6 +70,10 @@ class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOpBroadcastXintoY(TestMKLDNNElementwiseAddOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 50, 1]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [2, 50, 160]).astype(self.dtype)
@@ -72,6 +81,7 @@ class TestMKLDNNElementwiseAddOpBroadcastXintoY(TestMKLDNNElementwiseAddOp):
 
 
 class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -82,6 +92,7 @@ class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
 
 
 class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
+
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -108,6 +119,7 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
     reason="oneDNN's int8 elementwise_ops don't implemend grad kernel."
 )
 class TestInt8(TestElementwiseAddOp):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
@@ -141,6 +153,7 @@ class TestInt8(TestElementwiseAddOp):
 
 
 class TestInt8Scales(TestInt8):
+
     def quantize(self, tensor, dt="int8"):
         max_int = 127.0 if dt == "int8" else 255.0
         scale = max_int / np.abs(np.amax(tensor))
@@ -165,10 +178,16 @@ class TestInt8Scales(TestInt8):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         int_atol = 1  # different quantization techniques
+<<<<<<< HEAD
         self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
+=======
+        self.check_output(check_dygraph=(self.use_mkldnn == False),
+                          atol=int_atol)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestUint8Scales(TestInt8Scales):
+
     def init_input_output(self):
         self.x_f = np.random.random((100,)).astype("float")
         self.y_f = np.random.random((100,)).astype("float")

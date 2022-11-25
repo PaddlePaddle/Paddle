@@ -14,7 +14,10 @@
 
 #include "paddle/fluid/pybind/inference_api.h"
 
+<<<<<<< HEAD
 #include <pybind11/functional.h>
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 
@@ -403,12 +406,15 @@ void BindInferenceApi(py::module *m) {
                new paddle_infer::Predictor(config));
            return pred;
          });
+<<<<<<< HEAD
   m->def(
       "_get_phi_kernel_name",
       [](const std::string &fluid_op_name) {
         return phi::TransToPhiKernelName(fluid_op_name);
       },
       py::return_value_policy::reference);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -601,6 +607,7 @@ void BindNativePredictor(py::module *m) {
       .def("get_input_tensor", &NativePaddlePredictor::GetInputTensor)
       .def("get_output_tensor", &NativePaddlePredictor::GetOutputTensor)
       .def("zero_copy_run", &NativePaddlePredictor::ZeroCopyRun)
+<<<<<<< HEAD
       .def("clone",
            [](NativePaddlePredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -609,6 +616,9 @@ void BindNativePredictor(py::module *m) {
              return self.Clone(stream.raw_stream());
            })
 #endif
+=======
+      .def("clone", &NativePaddlePredictor::Clone)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       .def("scope",
            &NativePaddlePredictor::scope,
            py::return_value_policy::reference);
@@ -622,6 +632,16 @@ void BindAnalysisConfig(py::module *m) {
       .value("Int8", AnalysisConfig::Precision::kInt8)
       .value("Half", AnalysisConfig::Precision::kHalf)
       .value("Bfloat16", AnalysisConfig::Precision::kBf16)
+<<<<<<< HEAD
+=======
+      .export_values();
+
+  py::enum_<AnalysisConfig::Backend>(analysis_config, "Backend")
+      .value("CPU", AnalysisConfig::Backend::kCPU)
+      .value("GPU", AnalysisConfig::Backend::kGPU)
+      .value("NPU", AnalysisConfig::Backend::kNPU)
+      .value("XPU", AnalysisConfig::Backend::kXPU)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       .export_values();
 
   analysis_config.def(py::init<>())
@@ -644,12 +664,15 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableUseGpu,
            py::arg("memory_pool_init_size_mb"),
            py::arg("device_id") = 0)
+<<<<<<< HEAD
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("set_exec_stream",
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
              self.SetExecStream(stream.raw_stream());
            })
 #endif
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       .def("enable_xpu",
            &AnalysisConfig::EnableXpu,
            py::arg("l3_workspace_size") = 16 * 1024 * 1024,
@@ -657,6 +680,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("autotune") = true,
            py::arg("autotune_file") = "",
            py::arg("precision") = "int16",
+<<<<<<< HEAD
            py::arg("adaptive_seqlen") = false,
            py::arg("enable_multi_stream") = false)
       .def("set_xpu_device_id",
@@ -665,6 +689,11 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),
+=======
+           py::arg("adaptive_seqlen") = false)
+      .def("set_xpu_device_id",
+           &AnalysisConfig::SetXpuDeviceId,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("enable_ipu",
@@ -726,7 +755,11 @@ void BindAnalysisConfig(py::module *m) {
       .def("specify_input_name", &AnalysisConfig::specify_input_name)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
+<<<<<<< HEAD
            py::arg("workspace_size") = 1 << 30,
+=======
+           py::arg("workspace_size") = 1 << 20,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
@@ -769,6 +802,7 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
+<<<<<<< HEAD
            py::arg("min_subgraph_size") = 3,
            py::arg("max_batch_size") = 1,
            py::arg("use_static_batch") = false,
@@ -779,6 +813,9 @@ void BindAnalysisConfig(py::module *m) {
                std::map<std::string, std::vector<int64_t>>(),
            py::arg("use_calib_mode") = false,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32)
+=======
+           py::arg("min_subgraph_size") = 3)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       .def("enable_lite_engine",
            &AnalysisConfig::EnableLiteEngine,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
@@ -927,6 +964,7 @@ void BindAnalysisPredictor(py::module *m) {
       .def("analysis_argument",
            &AnalysisPredictor::analysis_argument,
            py::return_value_policy::reference)
+<<<<<<< HEAD
       .def("clone", [](AnalysisPredictor &self) { return self.Clone(nullptr); })
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def("clone",
@@ -934,6 +972,9 @@ void BindAnalysisPredictor(py::module *m) {
              return self.Clone(stream.raw_stream());
            })
 #endif
+=======
+      .def("clone", &AnalysisPredictor::Clone)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       .def("scope",
            &AnalysisPredictor::scope,
            py::return_value_policy::reference)

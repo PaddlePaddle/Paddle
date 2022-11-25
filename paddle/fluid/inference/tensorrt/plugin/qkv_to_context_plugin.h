@@ -83,11 +83,18 @@ class QkvToContextPluginDynamic : public DynamicPluginTensorRT {
     SerializeValue(&buffer, with_fp16_);
   }
 
+<<<<<<< HEAD
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index,
       const nvinfer1::DimsExprs* inputs,
       int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder)  // NOLINT
+=======
+  nvinfer1::DimsExprs getOutputDimensions(int output_index,
+                                          const nvinfer1::DimsExprs* inputs,
+                                          int nb_inputs,
+                                          nvinfer1::IExprBuilder& expr_builder)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,

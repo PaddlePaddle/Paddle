@@ -14,12 +14,20 @@
 
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/float16.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_device_function.h"
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
@@ -1456,12 +1464,19 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    phi::BilinearInterpKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(nearest_interp,
+=======
+PD_REGISTER_KERNEL(nearest_interp_v2,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    GPU,
                    ALL_LAYOUT,
                    phi::NearestInterpKernel,
@@ -1474,35 +1489,56 @@ PD_REGISTER_KERNEL(nearest_interp,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(trilinear_interp,
+=======
+PD_REGISTER_KERNEL(trilinear_interp_v2,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    GPU,
                    ALL_LAYOUT,
                    phi::TrilinearInterpKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(linear_interp,
+=======
+PD_REGISTER_KERNEL(linear_interp_v2,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    GPU,
                    ALL_LAYOUT,
                    phi::LinearInterpKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(bicubic_interp,
+=======
+PD_REGISTER_KERNEL(bicubic_interp_v2,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    GPU,
                    ALL_LAYOUT,
                    phi::BicubicInterpKernel,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    int) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);

@@ -46,6 +46,9 @@ class PReluOpConverter : public OpConverter {
     auto alpha_weight =
         engine_->GetFp32TrtWeight(op_desc.Input("Alpha")[0], *alpha_tensor);
 
+    auto alpha_weight =
+        engine_->GetFp32TrtWeight(op_desc.Input("Alpha")[0], *alpha_tensor);
+
     platform::CPUPlace cpu_place;
 
     nvinfer1::ILayer* layer = nullptr;

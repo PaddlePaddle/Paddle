@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class AMPTest(unittest.TestCase):
+
     def setUp(self):
         self.bf16_list = copy.copy(amp.bf16.amp_lists.bf16_list)
         self.fp32_list = copy.copy(amp.bf16.amp_lists.fp32_list)
@@ -100,6 +101,7 @@ class AMPTest(unittest.TestCase):
 
 
 class AMPTest2(unittest.TestCase):
+
     def test_amp_lists_(self):
         # 7. w={'lstm'} b={'lstm'}
         # raise ValueError
@@ -119,12 +121,21 @@ class AMPTest2(unittest.TestCase):
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
         var3 = block.create_var(name="Z", shape=[3], dtype='float32')
+<<<<<<< HEAD
         op1 = block.append_op(
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
         )
         op2 = block.append_op(
             type="abs", inputs={"X": [var2]}, outputs={"Out": [var3]}
         )
+=======
+        op1 = block.append_op(type="abs",
+                              inputs={"X": [var1]},
+                              outputs={"Out": [var2]})
+        op2 = block.append_op(type="abs",
+                              inputs={"X": [var2]},
+                              outputs={"Out": [var3]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         amp_lists_1 = amp.bf16.AutoMixedPrecisionListsBF16(
             custom_fp32_varnames={'X'}
         )
@@ -142,12 +153,21 @@ class AMPTest2(unittest.TestCase):
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
         var3 = block.create_var(name="Z", shape=[3], dtype='float32')
+<<<<<<< HEAD
         op1 = block.append_op(
             type="abs", inputs={"X": [var1]}, outputs={"Out": [var2]}
         )
         op2 = block.append_op(
             type="abs", inputs={"X": [var2]}, outputs={"Out": [var3]}
         )
+=======
+        op1 = block.append_op(type="abs",
+                              inputs={"X": [var1]},
+                              outputs={"Out": [var2]})
+        op2 = block.append_op(type="abs",
+                              inputs={"X": [var2]},
+                              outputs={"Out": [var3]})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         res = amp.bf16.amp_utils.find_true_post_op(block.ops, op1, "Y")
         assert res == [op2]
 
@@ -158,6 +178,7 @@ class AMPTest2(unittest.TestCase):
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
+<<<<<<< HEAD
         inititializer_op = startup_block._prepend_op(
             type="fill_constant",
             outputs={"Out": var1},
@@ -175,6 +196,29 @@ class AMPTest2(unittest.TestCase):
             block.ops, inititializer_op, "X", search_all=True
         )
         assert result == [op1]
+=======
+        inititializer_op = startup_block._prepend_op(type="fill_constant",
+                                                     outputs={"Out": var1},
+                                                     attrs={
+                                                         "shape": var1.shape,
+                                                         "dtype": var1.dtype,
+                                                         "value": 1.0
+                                                     })
+
+        op1 = block.append_op(type="abs",
+                              inputs={"X": [var1]},
+                              outputs={"Out": [var2]})
+        result = amp.bf16.amp_utils.find_true_post_op(block.ops,
+                                                      inititializer_op,
+                                                      "X",
+                                                      search_all=False)
+        assert (len(result) == 0)
+        result = amp.bf16.amp_utils.find_true_post_op(block.ops,
+                                                      inititializer_op,
+                                                      "X",
+                                                      search_all=True)
+        assert (result == [op1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

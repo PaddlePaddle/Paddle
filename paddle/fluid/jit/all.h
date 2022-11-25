@@ -14,7 +14,14 @@
 
 #pragma once
 
+<<<<<<< HEAD
 #include "function.h"          //NOLINT
 #include "layer.h"             // NOLINT
 #include "serializer.h"        // NOLINT
 #include "serializer_utils.h"  // NOLINT
+=======
+#include "base_function.h"
+#include "layer.h"
+#include "serializer.h"
+#include "serializer_utils.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

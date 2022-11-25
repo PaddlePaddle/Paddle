@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestMean(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.place = paddle.device.MLUPlace(0)
@@ -54,6 +55,7 @@ class TestMean(OpTest):
 
 
 class TestMeanFP16(OpTest):
+
     def setUp(self):
         self.set_mlu()
         self.place = paddle.MLUPlace(0)

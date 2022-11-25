@@ -21,6 +21,7 @@ from paddle.fluid.framework import _in_legacy_dygraph, _test_eager_guard
 
 
 class TestImperativeNumpyBridge(unittest.TestCase):
+
     def func_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
         with fluid.dygraph.guard(fluid.CPUPlace()):

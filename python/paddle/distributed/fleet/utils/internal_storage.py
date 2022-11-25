@@ -60,6 +60,7 @@ class InternalStorage:
         """
         Move the underlying buffer
         """
+<<<<<<< HEAD
         assert (
             self.buffer is not None
         ), "Cannot move a collapsed bucket, please rebuild it"
@@ -72,6 +73,14 @@ class InternalStorage:
             if paddle.get_device() == "cpu"
             else int(paddle.get_device().split(":")[1])
         )
+=======
+        assert self.buffer is not None, "Cannot move a collapsed bucket, please rebuild it"
+        assert (dtype == Type.fp32.value
+                or Type.fp16.value), "Conversion type is not supported now"
+
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if self._device != device:
             tmp_buffer = (
@@ -165,6 +174,7 @@ class ParamStorage(InternalStorage):
         param.stop_gradient = origin_state
 
         # Copy the current param value
+<<<<<<< HEAD
         dev_id = (
             0
             if paddle.get_device() == "cpu"
@@ -174,6 +184,13 @@ class ParamStorage(InternalStorage):
             tmp_var = core.VarBase(
                 tensor=self.buffer._slice(self._fill, var_end)
             )
+=======
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
+        with device_guard(dev_id, "cpu"):
+            tmp_var = core.VarBase(
+                tensor=self.buffer._slice(self._fill, var_end))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if convert_gpu:
                 param_cpu = param.cpu()
                 param.value().get_tensor()._clear()
@@ -326,11 +343,16 @@ class GradStorage(InternalStorage):
         assert offset <= np.prod(self.buffer.shape)
 
         # Copy the current grad value to InternalStorage
+<<<<<<< HEAD
         dev_id = (
             0
             if paddle.get_device() == "cpu"
             else int(paddle.get_device().split(":")[1])
         )
+=======
+        dev_id = 0 if paddle.get_device() == "cpu" else int(
+            paddle.get_device().split(":")[1])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self._device == "cpu":
             with device_guard(dev_id, self._device):
                 tmp_var = core.VarBase(self.buffer._slice(self._fill, grad_end))

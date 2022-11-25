@@ -64,9 +64,16 @@ def get_python_info():
 
 
 def run_shell_command(cmd):
+<<<<<<< HEAD
     out, err = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
     ).communicate()
+=======
+    out, err = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                shell=True).communicate()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if err:
         return None
     else:
@@ -82,6 +89,7 @@ def get_cuda_info():
 
 
 def get_cudnn_info():
+
     def _get_cudnn_ver(cmd):
         out = run_shell_command(cmd)
         if out:
@@ -92,9 +100,14 @@ def get_cudnn_info():
     if platform.system() == "Windows":
         cudnn_dll_path = run_shell_command('where cudnn*')
         if cudnn_dll_path:
+<<<<<<< HEAD
             cudnn_header_path = (
                 cudnn_dll_path.split('bin')[0] + r'include\cudnn.h'
             )
+=======
+            cudnn_header_path = cudnn_dll_path.split(
+                'bin')[0] + r'include\cudnn.h'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             cmd = 'type "{0}" | findstr "{1}" | findstr /v "CUDNN_VERSION"'
         else:
             envs['cudnn_version'] = None
@@ -122,9 +135,14 @@ def get_cudnn_info():
 def get_driver_info():
     driver_ver = run_shell_command('nvidia-smi')
     if driver_ver:
+<<<<<<< HEAD
         driver_ver = (
             driver_ver.split('Driver Version:')[1].strip().split(' ')[0]
         )
+=======
+        driver_ver = driver_ver.split('Driver Version:')[1].strip().split(
+            ' ')[0]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         driver_ver = None
     envs['nvidia_driver_version'] = driver_ver

@@ -29,6 +29,7 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         batch_size = 100
         num_classes = 1
         self.inputs = {
+<<<<<<< HEAD
             'X': logit(
                 np.random.uniform(0, 1, (batch_size, num_classes)).astype(
                     "float64"
@@ -37,6 +38,14 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             'Label': np.random.uniform(0, 2, (batch_size, num_classes)).astype(
                 "float64"
             ),
+=======
+            'X':
+            logit(
+                np.random.uniform(0, 1,
+                                  (batch_size, num_classes)).astype("float64")),
+            'Label':
+            np.random.uniform(0, 2, (batch_size, num_classes)).astype("float64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
@@ -69,3 +78,25 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.005)
+<<<<<<< HEAD
+=======
+
+
+class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
+
+    def test_error(self):
+
+        def test_invalid_input():
+            input = [512, 1]
+            label = fluid.data(name='label', shape=[None, 1], dtype='float32')
+            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_input)
+
+        def test_invalid_label():
+            input = fluid.data(name='input1', shape=[None, 1], dtype='float32')
+            label = [512, 1]
+            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
+
+        self.assertRaises(TypeError, test_invalid_label)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

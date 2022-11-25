@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -48,6 +49,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpScaleVariable(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.place = paddle.device.MLUPlace(0)
@@ -70,6 +72,7 @@ class TestScaleOpScaleVariable(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
+
     def init_dtype_type(self):
         pass
 
@@ -129,7 +132,9 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 
 class TestScaleRaiseError(unittest.TestCase):
+
     def test_errors(self):
+
         def test_type():
             fluid.layers.scale([10])
 
@@ -141,6 +146,7 @@ class TestScaleRaiseError(unittest.TestCase):
     not core.is_compiled_with_mlu(), "core is not compiled with MLU"
 )
 class TestScaleFp16Op(TestScaleOp):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -152,6 +158,7 @@ class TestScaleFp16Op(TestScaleOp):
     not core.is_compiled_with_mlu(), "core is not compiled with MLU"
 )
 class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
+
     def init_dtype_type(self):
         self.dtype = np.float16
 
@@ -165,6 +172,7 @@ class TestScaleFp16OpSelectedRows(TestScaleOpSelectedRows):
 
 
 class TestScaleApiStatic(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -182,11 +190,13 @@ class TestScaleApiStatic(unittest.TestCase):
 
 
 class TestScaleInplaceApiStatic(TestScaleApiStatic):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 
 
 class TestScaleApiDygraph(unittest.TestCase):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return paddle.scale(x, scale, bias)
 
@@ -200,6 +210,7 @@ class TestScaleApiDygraph(unittest.TestCase):
 
 
 class TestScaleInplaceApiDygraph(TestScaleApiDygraph):
+
     def _executed_api(self, x, scale=1.0, bias=0.0):
         return x.scale_(scale, bias)
 

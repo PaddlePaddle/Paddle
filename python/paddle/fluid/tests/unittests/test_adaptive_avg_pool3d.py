@@ -75,6 +75,7 @@ def adaptive_pool3d_forward(
                 w_end = adaptive_end_index(j, W, output_size[2])
 
                 if data_format == 'NCDHW':
+<<<<<<< HEAD
                     x_masked = x[
                         :, :, d_start:d_end, h_start:h_end, w_start:w_end
                     ]
@@ -87,13 +88,27 @@ def adaptive_pool3d_forward(
                         out[:, :, k, i, j] = (
                             np.sum(x_masked, axis=(2, 3, 4)) / field_size
                         )
+=======
+                    x_masked = x[:, :, d_start:d_end, h_start:h_end,
+                                 w_start:w_end]
+                    if pool_type == 'avg':
+                        field_size = (d_end - d_start) * (h_end - h_start) * (
+                            w_end - w_start)
+                        out[:, :, k, i,
+                            j] = np.sum(x_masked, axis=(2, 3, 4)) / field_size
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     elif pool_type == 'max':
                         out[:, :, k, i, j] = np.max(x_masked, axis=(2, 3, 4))
 
                 elif data_format == 'NDHWC':
+<<<<<<< HEAD
                     x_masked = x[
                         :, d_start:d_end, h_start:h_end, w_start:w_end, :
                     ]
+=======
+                    x_masked = x[:, d_start:d_end, h_start:h_end,
+                                 w_start:w_end, :]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     if pool_type == 'avg':
                         field_size = (
                             (d_end - d_start)
@@ -109,8 +124,10 @@ def adaptive_pool3d_forward(
 
 
 class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+<<<<<<< HEAD
         self.res_1_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[3, 3, 3], pool_type="avg"
         )
@@ -133,6 +150,28 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="avg"
         )
+=======
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="avg")
+
+        self.res_4_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg",
+                                                data_format="NDHWC")
+
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="avg")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_static_graph(self):
         for use_cuda in (
@@ -140,9 +179,15 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
+<<<<<<< HEAD
             x = paddle.fluid.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
+=======
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             out_1 = paddle.nn.functional.adaptive_avg_pool3d(
                 x=x, output_size=[3, 3, 3]
@@ -163,11 +208,18 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
             )
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
+=======
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             assert np.allclose(res_1, self.res_1_np)
 
@@ -205,9 +257,15 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
                 x=x, output_size=[None, 3, None]
             )
 
+<<<<<<< HEAD
             out_6 = paddle.nn.functional.interpolate(
                 x=x, mode="area", size=[2, 3, 5]
             )
+=======
+            out_6 = paddle.nn.functional.interpolate(x=x,
+                                                     mode="area",
+                                                     size=[2, 3, 5])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             assert np.allclose(out_1.numpy(), self.res_1_np)
 
@@ -223,8 +281,10 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
 
 
 class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
+
     def setUp(self):
         self.x_np = np.random.random([2, 3, 5, 7, 7]).astype("float32")
+<<<<<<< HEAD
         self.res_1_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[3, 3, 3], pool_type="avg"
         )
@@ -247,6 +307,28 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
         self.res_5_np = adaptive_pool3d_forward(
             x=self.x_np, output_size=[None, 3, None], pool_type="avg"
         )
+=======
+        self.res_1_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg")
+
+        self.res_2_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=5,
+                                                pool_type="avg")
+
+        self.res_3_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[2, 3, 5],
+                                                pool_type="avg")
+
+        self.res_4_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[3, 3, 3],
+                                                pool_type="avg",
+                                                data_format="NDHWC")
+
+        self.res_5_np = adaptive_pool3d_forward(x=self.x_np,
+                                                output_size=[None, 3, None],
+                                                pool_type="avg")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_static_graph(self):
         for use_cuda in (
@@ -254,9 +336,15 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
+<<<<<<< HEAD
             x = paddle.fluid.data(
                 name="x", shape=[2, 3, 5, 7, 7], dtype="float32"
             )
+=======
+            x = paddle.fluid.data(name="x",
+                                  shape=[2, 3, 5, 7, 7],
+                                  dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool3D(
                 output_size=[3, 3, 3]
@@ -282,11 +370,18 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
             out_5 = adaptive_avg_pool(x=x)
 
             exe = paddle.static.Executor(place=place)
+<<<<<<< HEAD
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
                 fluid.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
+=======
+            [res_1, res_2, res_3, res_4,
+             res_5] = exe.run(fluid.default_main_program(),
+                              feed={"x": self.x_np},
+                              fetch_list=[out_1, out_2, out_3, out_4, out_5])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             assert np.allclose(res_1, self.res_1_np)
 

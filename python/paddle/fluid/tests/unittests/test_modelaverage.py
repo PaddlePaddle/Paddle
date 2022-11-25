@@ -20,6 +20,7 @@ import paddle.nn as nn
 
 
 class TestModelAverage(unittest.TestCase):
+
     def test_model_average_static(self):
         paddle.enable_static()
         place = fluid.CPUPlace()
@@ -34,9 +35,14 @@ class TestModelAverage(unittest.TestCase):
                 hidden = fluid.layers.fc(input=data, size=10)
                 loss = paddle.mean(hidden)
                 test_program = train_program.clone()
+<<<<<<< HEAD
                 optimizer = paddle.optimizer.Momentum(
                     learning_rate=0.2, momentum=0.1
                 )
+=======
+                optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
+                                                      momentum=0.1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 optimizer.minimize(loss)
                 # build ModelAverage optimizer
@@ -69,6 +75,7 @@ class TestModelAverage(unittest.TestCase):
                 ],
             )
         self.assertTrue(
+<<<<<<< HEAD
             np.equal(sum_1, np.zeros(shape=[10], dtype='float32')).all()
         )
         self.assertTrue(
@@ -87,6 +94,20 @@ class TestModelAverage(unittest.TestCase):
         average_b = (sum_1 + sum_2 + sum_3) / (
             num_accumulates + old_num_accumulates
         )
+=======
+            np.equal(sum_1, np.zeros(shape=[10], dtype='float32')).all())
+        self.assertTrue(
+            np.equal(sum_2, np.zeros(shape=[10], dtype='float32')).all())
+        self.assertTrue(
+            np.equal(num_accumulates, np.array([0], dtype='int64')).all())
+        self.assertTrue(
+            np.equal(old_num_accumulates, np.array([2], dtype='int64')).all())
+        self.assertTrue(
+            np.equal(num_updates, np.array([10], dtype='int64')).all())
+
+        average_b = (sum_1 + sum_2 + sum_3) / (num_accumulates +
+                                               old_num_accumulates)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # apply ModelAverage
         with model_average.apply(exe):
             x = np.random.random(size=(10, 1)).astype('float32')
@@ -115,6 +136,7 @@ class TestModelAverage(unittest.TestCase):
 
         # define a random dataset
         class RandomDataset(paddle.io.Dataset):
+
             def __init__(self, num_samples):
                 self.num_samples = num_samples
 
@@ -129,6 +151,7 @@ class TestModelAverage(unittest.TestCase):
                 return self.num_samples
 
         class LinearNet(nn.Layer):
+
             def __init__(self):
                 super().__init__()
                 self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
@@ -154,6 +177,7 @@ class TestModelAverage(unittest.TestCase):
             sum_2 = model_average._get_accumulator('sum_2', layer.bias)
             sum_3 = model_average._get_accumulator('sum_3', layer.bias)
             num_accumulates = model_average._get_accumulator(
+<<<<<<< HEAD
                 'num_accumulates', layer.bias
             )
             old_num_accumulates = model_average._get_accumulator(
@@ -162,6 +186,13 @@ class TestModelAverage(unittest.TestCase):
             num_updates = model_average._get_accumulator(
                 'num_updates', layer.bias
             )
+=======
+                'num_accumulates', layer.bias)
+            old_num_accumulates = model_average._get_accumulator(
+                'old_num_accumulates', layer.bias)
+            num_updates = model_average._get_accumulator(
+                'num_updates', layer.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             return (
                 (sum_1 + sum_2 + sum_3)
@@ -173,11 +204,17 @@ class TestModelAverage(unittest.TestCase):
                 out = layer(image)
                 loss = loss_fn(out, label)
                 loss.backward()
+<<<<<<< HEAD
                 self.assertAlmostEqual(
                     np.mean(layer.bias.numpy()),
                     np.mean(check_param),
                     delta=5e-3,
                 )
+=======
+                self.assertAlmostEqual(np.mean(layer.bias.numpy()),
+                                       np.mean(check_param),
+                                       delta=5e-3)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # print("Evaluate batch {}: loss = {}, bias = {}".format(
                 #     batch_id, np.mean(loss.numpy()), layer.bias.numpy()))
 
@@ -185,9 +222,15 @@ class TestModelAverage(unittest.TestCase):
 
         layer = LinearNet()
         loss_fn = nn.CrossEntropyLoss()
+<<<<<<< HEAD
         optimizer = paddle.optimizer.Momentum(
             learning_rate=0.2, momentum=0.1, parameters=layer.parameters()
         )
+=======
+        optimizer = paddle.optimizer.Momentum(learning_rate=0.2,
+                                              momentum=0.1,
+                                              parameters=layer.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # build ModelAverage optimizer
         model_average = paddle.incubate.optimizer.ModelAverage(
             0.15,
@@ -198,6 +241,7 @@ class TestModelAverage(unittest.TestCase):
 
         # create data loader
         dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+<<<<<<< HEAD
         loader = paddle.io.DataLoader(
             dataset,
             batch_size=BATCH_SIZE,
@@ -212,6 +256,18 @@ class TestModelAverage(unittest.TestCase):
             drop_last=True,
             num_workers=1,
         )
+=======
+        loader = paddle.io.DataLoader(dataset,
+                                      batch_size=BATCH_SIZE,
+                                      shuffle=True,
+                                      drop_last=True,
+                                      num_workers=2)
+        eval_loader = paddle.io.DataLoader(dataset,
+                                           batch_size=BATCH_SIZE,
+                                           shuffle=True,
+                                           drop_last=True,
+                                           num_workers=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # train
         check_param = train(layer, loader, loss_fn, optimizer, model_average)
         # print(check_param)

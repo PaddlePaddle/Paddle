@@ -121,21 +121,33 @@ class Cifar10(Dataset):
         if backend not in ['pil', 'cv2']:
             raise ValueError(
                 "Expected backend are one of ['pil', 'cv2'], but got {}".format(
+<<<<<<< HEAD
                     backend
                 )
             )
+=======
+                    backend))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.backend = backend
 
         self._init_url_md5_flag()
 
         self.data_file = data_file
         if self.data_file is None:
+<<<<<<< HEAD
             assert (
                 download
             ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
                 data_file, self.data_url, self.data_md5, 'cifar', download
             )
+=======
+            assert download, "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(data_file,
+                                                        self.data_url,
+                                                        self.data_md5, 'cifar',
+                                                        download)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.transform = transform
 
@@ -161,8 +173,14 @@ class Cifar10(Dataset):
             for name in names:
                 batch = pickle.load(f.extractfile(name), encoding='bytes')
 
+<<<<<<< HEAD
                 data = batch[b'data']
                 labels = batch.get(b'labels', batch.get(b'fine_labels', None))
+=======
+                data = batch[six.b('data')]
+                labels = batch.get(six.b('labels'),
+                                   batch.get(six.b('fine_labels'), None))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 assert labels is not None
                 for sample, label in zip(data, labels):
                     self.data.append((sample, label))

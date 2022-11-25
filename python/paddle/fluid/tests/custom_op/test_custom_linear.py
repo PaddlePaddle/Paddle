@@ -57,9 +57,15 @@ def linear_static(func, device, dtype, np_x, np_weight, np_bias):
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             x = static.data(name="x", shape=[None, np_x.shape[1]], dtype=dtype)
+<<<<<<< HEAD
             weight = static.data(
                 name="weight", shape=np_weight.shape, dtype=dtype
             )
+=======
+            weight = static.data(name="weight",
+                                 shape=np_weight.shape,
+                                 dtype=dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             bias = static.data(name="bias", shape=np_bias.shape, dtype=dtype)
             x.stop_gradient = False
             weight.stop_gradient = False
@@ -90,6 +96,7 @@ def linear_static(func, device, dtype, np_x, np_weight, np_bias):
 
 
 class TestCustomLinearJit(unittest.TestCase):
+
     def setUp(self):
         self.dtypes = ['float32', 'float64']
         self.devices = ['cpu']
@@ -100,6 +107,7 @@ class TestCustomLinearJit(unittest.TestCase):
         self.np_bias = np.ones([4], dtype="float32")
 
     def check_output(self, out, pd_out, name):
+<<<<<<< HEAD
         np.testing.assert_array_equal(
             out,
             pd_out,
@@ -107,6 +115,12 @@ class TestCustomLinearJit(unittest.TestCase):
                 name, out, name, pd_out
             ),
         )
+=======
+        self.assertTrue(
+            np.array_equal(out, pd_out),
+            "custom op {}: {},\n paddle api {}: {}".format(
+                name, out, name, pd_out))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_static(self):
         for device in self.devices:

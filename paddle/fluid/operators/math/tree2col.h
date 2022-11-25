@@ -74,18 +74,30 @@ template <typename DeviceContext, typename T>
 class Tree2ColFunctor {
  public:
   void operator()(const DeviceContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &node_features,
                   phi::DenseTensor *patch,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &node_features,
+                  framework::Tensor *patch,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth);
 };
 template <typename DeviceContext, typename T>
 class Col2TreeFunctor {
  public:
   void operator()(const DeviceContext &context,
+<<<<<<< HEAD
                   const phi::DenseTensor &EdgeSet,
                   const phi::DenseTensor &out_grad,
                   phi::DenseTensor *in_grad,
+=======
+                  const framework::Tensor &EdgeSet,
+                  const framework::Tensor &out_grad,
+                  framework::Tensor *in_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int max_depth);
 };
 }  // namespace math

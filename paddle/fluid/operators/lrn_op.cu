@@ -110,9 +110,15 @@ void CrossMapNormal(const framework::ExecutionContext& ctx,
 template <typename T>
 struct LRNFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor& input,
                   phi::DenseTensor* out,
                   phi::DenseTensor* mid,
+=======
+                  const framework::Tensor& input,
+                  framework::Tensor* out,
+                  framework::Tensor* mid,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int N,
                   int C,
                   int H,
@@ -238,11 +244,19 @@ void CrossMapNormalGrad(const framework::ExecutionContext& ctx,
 template <typename T>
 struct LRNGradFunctor<phi::GPUContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                   const phi::DenseTensor& x,
                   const phi::DenseTensor& out,
                   const phi::DenseTensor& mid,
                   phi::DenseTensor* x_g,
                   const phi::DenseTensor& out_g,
+=======
+                  const framework::Tensor& x,
+                  const framework::Tensor& out,
+                  const framework::Tensor& mid,
+                  framework::Tensor* x_g,
+                  const framework::Tensor& out_g,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   int N,
                   int C,
                   int H,

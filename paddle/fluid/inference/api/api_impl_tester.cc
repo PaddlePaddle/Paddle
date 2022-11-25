@@ -111,7 +111,11 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
 
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
 
+<<<<<<< HEAD
   auto output1_tensor = PADDLE_GET(phi::DenseTensor, output1);
+=======
+  auto output1_tensor = PADDLE_GET(paddle::framework::LoDTensor, output1);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   float* lod_data = output1_tensor.data<float>();
   for (int i = 0; i < output1_tensor.numel(); ++i) {
     EXPECT_LT(lod_data[i] - data[i], ACC_DIFF);
@@ -140,7 +144,11 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   framework::DDim input_dims = phi::make_ddim(feed_target_shapes[0]);
   SetupTensor<float>(
       &input, input_dims, static_cast<float>(0), static_cast<float>(1));
+<<<<<<< HEAD
   std::vector<phi::DenseTensor*> cpu_feeds;
+=======
+  std::vector<framework::LoDTensor*> cpu_feeds;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   cpu_feeds.push_back(&input);
 
   framework::FetchType output1;
@@ -159,7 +167,12 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length();
   float* data = static_cast<float*>(outputs[0].data.data());
+<<<<<<< HEAD
   float* lod_data = PADDLE_GET(phi::DenseTensor, output1).data<float>();
+=======
+  float* lod_data =
+      PADDLE_GET(paddle::framework::LoDTensor, output1).data<float>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   for (size_t j = 0; j < len / sizeof(float); ++j) {
     EXPECT_NEAR(lod_data[j], data[j], ACC_DIFF);
   }
@@ -215,7 +228,11 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
       }
 
       // check outputs correctness
+<<<<<<< HEAD
       auto ref_tensor = PADDLE_GET(phi::DenseTensor, refs[tid]);
+=======
+      auto ref_tensor = PADDLE_GET(paddle::framework::LoDTensor, refs[tid]);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ(ref_tensor.numel(), static_cast<int64_t>(len / sizeof(float)));
       for (int i = 0; i < ref_tensor.numel(); ++i) {
@@ -270,7 +287,11 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
       ASSERT_EQ(local_outputs.size(), 1UL);
       const size_t len = local_outputs[0].data.length();
       float* data = static_cast<float*>(local_outputs[0].data.data());
+<<<<<<< HEAD
       auto ref_tensor = PADDLE_GET(phi::DenseTensor, refs[tid]);
+=======
+      auto ref_tensor = PADDLE_GET(paddle::framework::LoDTensor, refs[tid]);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       float* ref_data = ref_tensor.data<float>();
       EXPECT_EQ((size_t)ref_tensor.numel(), len / sizeof(float));
       for (int i = 0; i < ref_tensor.numel(); ++i) {

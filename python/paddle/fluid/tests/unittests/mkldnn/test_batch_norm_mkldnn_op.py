@@ -28,6 +28,7 @@ _set_use_system_allocator(True)
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NCHW"]
@@ -56,9 +57,16 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
         mean_out = saved_mean * (1.0 - momentum) + momentum * mean
         variance_out = saved_variance * (1.0 - momentum) + momentum * variance
         # run backward
+<<<<<<< HEAD
         x_grad, scale_grad, bias_grad = _reference_grad(
             x, y_grad, scale, saved_mean, saved_variance, epsilon, data_layout
         )
+=======
+        x_grad, scale_grad, bias_grad = _reference_grad(x, y_grad, scale,
+                                                        saved_mean,
+                                                        saved_variance, epsilon,
+                                                        data_layout)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return (
             y,
@@ -73,12 +81,14 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
 
 
 class TestMKLDNNBatchNormOpTraining_NHWC(TestMKLDNNBatchNormOpTraining):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.data_formats = ["NHWC"]
 
 
 class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
+
     def init_test_case(self):
         TestMKLDNNBatchNormOpTraining.init_test_case(self)
         self.fetch_list = ['y', 'x@GRAD']
@@ -123,11 +133,16 @@ class TestMKLDNNBatchNormOpExistedPrimitives(TestMKLDNNBatchNormOpTraining):
         var_dict['scale@GRAD'] = scale_grad
         var_dict['bias@GRAD'] = bias_grad
         check_if_mkldnn_batchnorm_primitives_exist_in_bwd(
+<<<<<<< HEAD
             self, var_dict, place, shape, data_layout
         )
+=======
+            self, var_dict, place, shape, data_layout)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -138,6 +153,7 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
 
 
 class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
+
     def test_check_output(self):
         place = core.CPUPlace()
         data_format = "NHWC"
@@ -145,6 +161,7 @@ class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
 
 
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
         self.fuse_with_relu = True

@@ -15,6 +15,11 @@
 #pragma once
 #include <string>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/operators/math.h"
+#include "paddle/fluid/platform/for_range.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/math.h"

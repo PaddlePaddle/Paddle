@@ -26,6 +26,7 @@ paddle.enable_static()
 
 
 class TestMulGradCheck(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         prog = fluid.Program()
@@ -44,6 +45,7 @@ class TestMulGradCheck(unittest.TestCase):
 
 
 class TestMulDoubleGradCheck(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -60,9 +62,17 @@ class TestMulDoubleGradCheck(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, y_shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -73,6 +83,7 @@ class TestMulDoubleGradCheck(unittest.TestCase):
 
 
 class TestMatmulDoubleGradCheck(unittest.TestCase):
+
     def setUp(self):
         self.init_test()
 
@@ -87,6 +98,7 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
         typename = "float64"
+<<<<<<< HEAD
         x = layers.create_parameter(
             dtype=typename, shape=self.x_shape, name='x'
         )
@@ -102,6 +114,27 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
         )
+=======
+        x = layers.create_parameter(dtype=typename,
+                                    shape=self.x_shape,
+                                    name='x')
+        y = layers.create_parameter(dtype=typename,
+                                    shape=self.y_shape,
+                                    name='y')
+        out = layers.matmul(x,
+                            y,
+                            self.transpose_x,
+                            self.transpose_y,
+                            name='out')
+
+        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
+        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
+        gradient_checker.double_grad_check([x, y],
+                                           out,
+                                           x_init=[x_arr, y_arr],
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -112,6 +145,7 @@ class TestMatmulDoubleGradCheck(unittest.TestCase):
 
 
 def TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
+
     def init_test(self):
         self.x_shape = [2, 3]
         self.y_shape = [3, 2]
@@ -120,6 +154,7 @@ def TestMatmulDoubleGradCheckCase1(TestMatmulDoubleGradCheck):
 
 
 def TestMatmulDoubleGradCheckCase2(TestMatmulDoubleGradCheck):
+
     def init_test(self):
         self.x_shape = [2, 4, 3]
         self.y_shape = [2, 4, 5]
@@ -128,6 +163,7 @@ def TestMatmulDoubleGradCheckCase2(TestMatmulDoubleGradCheck):
 
 
 def TestMatmulDoubleGradCheckCase3(TestMatmulDoubleGradCheck):
+
     def init_test(self):
         self.x_shape = [2, 3, 4, 5]
         self.y_shape = [2, 3, 3, 5]
@@ -136,6 +172,7 @@ def TestMatmulDoubleGradCheckCase3(TestMatmulDoubleGradCheck):
 
 
 def TestMatmulDoubleGradCheckCase4(TestMatmulDoubleGradCheck):
+
     def init_test(self):
         self.x_shape = [2, 3, 4]
         self.y_shape = [4, 3]

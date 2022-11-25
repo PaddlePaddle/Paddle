@@ -23,6 +23,7 @@ os.environ['CPU_NUM'] = '1'
 
 
 def random_reader(sample_num):
+
     def __impl__():
         for _ in range(sample_num):
             yield np.random.random(size=[784]).astype(
@@ -35,6 +36,7 @@ def random_reader(sample_num):
 
 
 class TestCaseBase(unittest.TestCase):
+
     def setUp(self):
         self.batch_size = 32
         self.epoch_num = 2
@@ -54,17 +56,25 @@ class TestCaseBase(unittest.TestCase):
     def run_main(self, reader, use_sample_generator, iterable, drop_last):
         image = fluid.layers.data(name='image', dtype='float32', shape=[784])
         label = fluid.layers.data(name='label', dtype='int64', shape=[1])
+<<<<<<< HEAD
         py_reader = fluid.io.PyReader(
             feed_list=[image, label],
             capacity=16,
             iterable=iterable,
             use_double_buffer=False,
         )
+=======
+        py_reader = fluid.io.PyReader(feed_list=[image, label],
+                                      capacity=16,
+                                      iterable=iterable,
+                                      use_double_buffer=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         batch_reader = paddle.batch(reader, self.batch_size, drop_last)
         all_datas = self.generate_all_data(batch_reader)
 
         if not use_sample_generator:
+<<<<<<< HEAD
             py_reader.decorate_sample_list_generator(
                 batch_reader, places=fluid.cpu_places()
             )
@@ -72,6 +82,15 @@ class TestCaseBase(unittest.TestCase):
             py_reader.decorate_sample_generator(
                 reader, self.batch_size, drop_last, places=fluid.cpu_places()
             )
+=======
+            py_reader.decorate_sample_list_generator(batch_reader,
+                                                     places=fluid.cpu_places())
+        else:
+            py_reader.decorate_sample_generator(reader,
+                                                self.batch_size,
+                                                drop_last,
+                                                places=fluid.cpu_places())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if drop_last:
             batch_num = int(self.sample_num / self.batch_size)
@@ -119,6 +138,7 @@ class TestCaseBase(unittest.TestCase):
 
 
 class TestCase1(TestCaseBase):
+
     def setUp(self):
         self.batch_size = 32
         self.epoch_num = 10
@@ -126,6 +146,7 @@ class TestCase1(TestCaseBase):
 
 
 class TestCase2(TestCaseBase):
+
     def setUp(self):
         self.batch_size = 32
         self.epoch_num = 2
@@ -133,6 +154,7 @@ class TestCase2(TestCaseBase):
 
 
 class TestCase3(TestCaseBase):
+
     def setUp(self):
         self.batch_size = 32
         self.epoch_num = 2

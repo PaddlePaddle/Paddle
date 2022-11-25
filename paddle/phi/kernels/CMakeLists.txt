@@ -9,9 +9,12 @@ file(
 )
 file(APPEND ${kernel_declare_file}
      "#include \"paddle/phi/core/kernel_registry.h\"\n\n")
+<<<<<<< HEAD
 set(kernel_declare_file_prune
     ${PADDLE_BINARY_DIR}/paddle/phi/kernels/declarations.h.prune
     CACHE INTERNAL "declarations.h file")
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 # phi functors and functions called by kernels
 add_subdirectory(funcs)
@@ -25,17 +28,25 @@ set_property(GLOBAL PROPERTY PHI_KERNELS "")
 # [ 1. Common kernel compilation dependencies ]
 set(COMMON_KERNEL_DEPS
     dense_tensor
+<<<<<<< HEAD
     string_tensor
     sparse_coo_tensor
     sparse_csr_tensor
     tensor_array
+=======
+    sparse_coo_tensor
+    sparse_csr_tensor
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     kernel_context
     kernel_factory
     arg_map_context
     convert_utils
     lod_utils
     custom_kernel
+<<<<<<< HEAD
     string_infermeta
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     phi_tensor_utils)
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -48,9 +59,51 @@ set(COMMON_KERNEL_DEPS
     selected_rows_functor)
 # remove this dep after removing fluid deps on tensor creation
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_api_utils)
+<<<<<<< HEAD
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils
                        sparse_infermeta)
 set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
+=======
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} infermeta infermeta_utils)
+set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} switch_autotune)
+
+set(COMMON_KERNEL_DEPS
+    ${COMMON_KERNEL_DEPS}
+    threadpool
+    jit_kernel_helper
+    softmax
+    cross_entropy
+    matrix_bit_code
+    lapack_function
+    lstm_compute
+    gru_compute
+    deformable_conv_functor
+    matrix_reduce
+    segment_pooling
+    gather_scatter_kernel
+    pooling
+    maxouting
+    matrix_inverse
+    matrix_solve
+    phi_dynload_warpctc
+    sequence_padding
+    sequence_scale)
+
+set(COMMON_KERNEL_DEPS
+    ${COMMON_KERNEL_DEPS}
+    dense_tensor
+    string_tensor
+    sparse_coo_tensor
+    sparse_csr_tensor
+    kernel_context
+    kernel_factory
+    arg_map_context
+    convert_utils
+    lod_utils
+    custom_kernel
+    string_infermeta
+    utf8proc)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 set(COMMON_KERNEL_DEPS
     ${COMMON_KERNEL_DEPS}
@@ -92,6 +145,20 @@ copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
 file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
+<<<<<<< HEAD
+=======
+file(
+  GLOB
+  kernel_cc
+  "*.cc"
+  "cpu/*.cc"
+  "selected_rows/*.cc"
+  "selected_rows/cpu/*.cc"
+  "sparse/*.cc"
+  "sparse/cpu/*.cc"
+  "strings/*.cc"
+  "strings/cpu/*.cc")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 file(
   GLOB
@@ -102,6 +169,7 @@ file(
   "kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
+<<<<<<< HEAD
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
@@ -137,6 +205,15 @@ else()
 endif()
 
 file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+=======
+  "strings/*.cu"
+  "strings/gpu/*.cu")
+
+# file(GLOB kernel_cudnn "gpudnn/*.cu")
+# file(GLOB kernel_kps "kps/*.cu")
+file(GLOB kernel_xpu "xpu/*.cc")
+file(GLOB kernel_onednn "onednn/*.cc")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 add_library(phi_cpu ${kernel_cc})
 kernel_declare("${kernel_cc}")
@@ -176,8 +253,20 @@ if(WITH_XPU)
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
 endif()
 
+<<<<<<< HEAD
 set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
 
 if(NOT "${KERNEL_LIST}" STREQUAL "")
   prune_declaration_h()
 endif()
+=======
+if(WITH_MKLDNN)
+  add_library(phi_onednn ${kernel_onednn})
+  kernel_declare(${kernel_onednn})
+  set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} phi_backends)
+  target_link_libraries(phi_onednn ${COMMON_KERNEL_DEPS})
+  set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_onednn)
+endif()
+
+set_property(GLOBAL PROPERTY PHI_KERNELS ${ADD_PHI_KERNELS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

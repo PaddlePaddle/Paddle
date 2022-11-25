@@ -23,6 +23,7 @@ from trt_layer_auto_scan_test import TrtLayerAutoScanTest
 
 
 class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -30,10 +31,15 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs for i in range(len(program_config.ops))
         ]
 
+<<<<<<< HEAD
         if (
             inputs['input_data'].shape[1]
             != weights['conv2d_weight'].shape[1] * attrs[0]['groups']
         ):
+=======
+        if inputs['input_data'].shape[
+                1] != weights['conv2d_weight'].shape[1] * attrs[0]['groups']:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
 
         if attrs[0]['groups'] <= 1:
@@ -52,9 +58,14 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
+<<<<<<< HEAD
             return np.ones([batch, attrs[0]['groups'] * 3, 64, 64]).astype(
                 np.float32
             )
+=======
+            return np.ones([batch, attrs[0]['groups'] * 3, 64,
+                            64]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
@@ -62,6 +73,7 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
+<<<<<<< HEAD
         batch_options = [1, 2]
         strides_options = [[1, 2], [2, 2]]
         paddings_options = [[0, 3], [1, 2, 3, 4]]
@@ -148,6 +160,74 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+        for batch in [1, 4]:
+            for strides in [[1, 1], [2, 2], [1, 2]]:
+                for paddings in [[0, 3], [1, 2, 3, 4]]:
+                    for groups in [2, 3]:
+                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
+                            for dilations in [[1, 1], [2, 2], [1, 2]]:
+                                for data_format in ['NCHW']:
+
+                                    dics = [{
+                                        "data_fromat": data_format,
+                                        "dilations": dilations,
+                                        "padding_algorithm": padding_algorithm,
+                                        "groups": groups,
+                                        "paddings": paddings,
+                                        "strides": strides,
+                                        "data_format": data_format
+                                    }, {
+                                        "axis": 1
+                                    }]
+
+                                    ops_config = [{
+                                        "op_type": "conv2d",
+                                        "op_inputs": {
+                                            "Input": ["input_data"],
+                                            "Filter": ["conv2d_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Output": ["conv_output_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }, {
+                                        "op_type": "elementwise_add",
+                                        "op_inputs": {
+                                            "X": ["conv_output_data"],
+                                            "Y": ["elementwise_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["output_data"]
+                                        },
+                                        "op_attrs": dics[1]
+                                    }]
+
+                                    ops = self.generate_op_config(ops_config)
+
+                                    program_config = ProgramConfig(
+                                        ops=ops,
+                                        weights={
+                                            "conv2d_weight":
+                                            TensorConfig(data_gen=partial(
+                                                generate_weight1, dics)),
+                                            "elementwise_weight":
+                                            TensorConfig(data_gen=partial(
+                                                generate_weight2, dics))
+                                        },
+                                        inputs={
+                                            "input_data":
+                                            TensorConfig(data_gen=partial(
+                                                generate_input1, batch, dics))
+                                        },
+                                        outputs=["output_data"])
+
+                                    yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             input_groups = attrs[0]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
@@ -194,8 +274,12 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
+=======
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True

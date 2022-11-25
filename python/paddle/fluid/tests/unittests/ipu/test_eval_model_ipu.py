@@ -21,6 +21,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -56,12 +57,22 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[1, 3, 10, 10], dtype='float32'
                 )
                 conv1 = paddle.static.nn.conv2d(
                     image, num_filters=3, filter_size=3, bias_attr=False
                 )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[1, 3, 10, 10],
+                                           dtype='float32')
+                conv1 = paddle.static.nn.conv2d(image,
+                                                num_filters=3,
+                                                filter_size=3,
+                                                bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 loss = paddle.mean(conv1)
 
                 weight_decay = self.attrs['weight_decay']
@@ -69,6 +80,7 @@ class TestBase(IPUOpTest):
                     learning_rate=1e-1, weight_decay=weight_decay
                 )
                 if self.attrs['optimizer'] == 'adam':
+<<<<<<< HEAD
                     opt = paddle.optimizer.Adam(
                         learning_rate=1e-1, weight_decay=weight_decay
                     )
@@ -77,6 +89,14 @@ class TestBase(IPUOpTest):
                     opt = paddle.optimizer.Lamb(
                         learning_rate=1e-1, lamb_weight_decay=weight_decay
                     )
+=======
+                    opt = paddle.optimizer.Adam(learning_rate=1e-1,
+                                                weight_decay=weight_decay)
+                elif self.attrs['optimizer'] == 'lamb':
+
+                    opt = paddle.optimizer.Lamb(learning_rate=1e-1,
+                                                lamb_weight_decay=weight_decay)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 opt.minimize(loss)
 
             if run_ipu:
@@ -93,8 +113,13 @@ class TestBase(IPUOpTest):
                 ipu_strategy.set_graph_config(is_training=True)
                 ipu_strategy.set_options({"runtime_options.enable_eval": True})
                 program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                     main_prog, ipu_strategy=ipu_strategy
                 ).compile(feed_list, fetch_list)
+=======
+                    main_prog,
+                    ipu_strategy=ipu_strategy).compile(feed_list, fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 program = main_prog
 
@@ -103,11 +128,18 @@ class TestBase(IPUOpTest):
                 for epoch in range(200):
                     if epoch == 100:
                         ipu_strategy.set_options(
+<<<<<<< HEAD
                             {"runtime_options.enable_eval": False}
                         )
                     loss_res = exe.run(
                         program, feed=self.feed, fetch_list=[loss]
                     )
+=======
+                            {"runtime_options.enable_eval": False})
+                    loss_res = exe.run(program,
+                                       feed=self.feed,
+                                       fetch_list=[loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     result.append(loss_res)
             else:
                 for epoch in range(100):

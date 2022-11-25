@@ -48,6 +48,7 @@ class TestFunctionalConv2D(TestCase):
             filter_shape = tuple(self.filter_shape)
 
         self.weight = np.random.uniform(
+<<<<<<< HEAD
             -1,
             1,
             (self.in_channels, self.out_channels // self.groups) + filter_shape,
@@ -56,6 +57,13 @@ class TestFunctionalConv2D(TestCase):
             self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
                 self.dtype
             )
+=======
+            -1, 1, (self.in_channels, self.out_channels // self.groups) +
+            filter_shape).astype(self.dtype)
+        if not self.no_bias:
+            self.bias = np.random.uniform(-1, 1, (self.out_channels, )).astype(
+                self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
@@ -63,10 +71,15 @@ class TestFunctionalConv2D(TestCase):
                 (self.batch_size,) + self.spatial_shape + (self.in_channels,)
             )
         else:
+<<<<<<< HEAD
             self.input_shape = (
                 self.batch_size,
                 self.in_channels,
             ) + self.spatial_shape
+=======
+            self.input_shape = (self.batch_size,
+                                self.in_channels) + self.spatial_shape
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.input = np.random.uniform(-1, 1, self.input_shape).astype(
             self.dtype
@@ -78,6 +91,7 @@ class TestFunctionalConv2D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
+<<<<<<< HEAD
                     x = fluid.data(
                         "input",
                         (-1, -1, -1, self.in_channels),
@@ -90,6 +104,14 @@ class TestFunctionalConv2D(TestCase):
                         dtype=self.dtype,
                     )
                 y = paddle.static.nn.conv2d_transpose(
+=======
+                    x = fluid.data("input", (-1, -1, -1, self.in_channels),
+                                   dtype=self.dtype)
+                else:
+                    x = fluid.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
+                y = fluid.layers.conv2d_transpose(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     x,
                     self.out_channels,
                     output_size=self.output_size,
@@ -115,6 +137,7 @@ class TestFunctionalConv2D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
+<<<<<<< HEAD
                     x = x = fluid.data(
                         "input",
                         (-1, -1, -1, self.in_channels),
@@ -142,6 +165,27 @@ class TestFunctionalConv2D(TestCase):
                     groups=self.groups,
                     data_format=self.data_format,
                 )
+=======
+                    x = x = fluid.data("input", (-1, -1, -1, self.in_channels),
+                                       dtype=self.dtype)
+                else:
+                    x = fluid.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
+                weight = fluid.data("weight",
+                                    self.weight.shape,
+                                    dtype=self.dtype)
+                if not self.no_bias:
+                    bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
+                y = F.conv2d_transpose(x,
+                                       weight,
+                                       None if self.no_bias else bias,
+                                       output_size=self.output_size,
+                                       padding=self.padding,
+                                       stride=self.stride,
+                                       dilation=self.dilation,
+                                       groups=self.groups,
+                                       data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         exe = fluid.Executor(self.place)
         exe.run(start)
         feed_dict = {"input": self.input, "weight": self.weight}
@@ -155,6 +199,7 @@ class TestFunctionalConv2D(TestCase):
             x = dg.to_variable(self.input)
             weight = dg.to_variable(self.weight)
             bias = None if self.no_bias else dg.to_variable(self.bias)
+<<<<<<< HEAD
             y = F.conv2d_transpose(
                 x,
                 weight,
@@ -166,6 +211,17 @@ class TestFunctionalConv2D(TestCase):
                 groups=self.groups,
                 data_format=self.data_format,
             )
+=======
+            y = F.conv2d_transpose(x,
+                                   weight,
+                                   bias,
+                                   output_size=self.output_size,
+                                   padding=self.padding,
+                                   stride=self.stride,
+                                   dilation=self.dilation,
+                                   groups=self.groups,
+                                   data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = y.numpy()
         return out
 
@@ -228,11 +284,17 @@ class TestFunctionalConv2DError(TestCase):
             filter_shape = (self.filter_shape,) * 2
         else:
             filter_shape = tuple(self.filter_shape)
+<<<<<<< HEAD
         self.weight_shape = (
             self.in_channels,
             self.out_channels // self.groups,
         ) + filter_shape
         self.bias_shape = (self.out_channels,)
+=======
+        self.weight_shape = (self.in_channels,
+                             self.out_channels // self.groups) + filter_shape
+        self.bias_shape = (self.out_channels, )
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def static_graph_case(self):
         main = fluid.Program()
@@ -241,6 +303,7 @@ class TestFunctionalConv2DError(TestCase):
             with fluid.program_guard(main, start):
                 self.channel_last = self.data_format == "NHWC"
                 if self.channel_last:
+<<<<<<< HEAD
                     x = x = fluid.data(
                         "input",
                         (-1, -1, -1, self.in_channels),
@@ -268,9 +331,31 @@ class TestFunctionalConv2DError(TestCase):
                     groups=self.groups,
                     data_format=self.data_format,
                 )
+=======
+                    x = x = fluid.data("input", (-1, -1, -1, self.in_channels),
+                                       dtype=self.dtype)
+                else:
+                    x = fluid.data("input", (-1, self.in_channels, -1, -1),
+                                   dtype=self.dtype)
+                weight = fluid.data("weight",
+                                    self.weight_shape,
+                                    dtype=self.dtype)
+                if not self.no_bias:
+                    bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
+                y = F.conv2d_transpose(x,
+                                       weight,
+                                       None if self.no_bias else bias,
+                                       output_size=self.output_size,
+                                       padding=self.padding,
+                                       stride=self.stride,
+                                       dilation=self.dilation,
+                                       groups=self.groups,
+                                       data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestFunctionalConv2DCase2(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -284,6 +369,7 @@ class TestFunctionalConv2DCase2(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase3(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -297,6 +383,7 @@ class TestFunctionalConv2DCase3(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase4(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -310,6 +397,7 @@ class TestFunctionalConv2DCase4(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase5(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -323,6 +411,7 @@ class TestFunctionalConv2DCase5(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase6(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -336,6 +425,7 @@ class TestFunctionalConv2DCase6(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase7(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 4
@@ -349,6 +439,7 @@ class TestFunctionalConv2DCase7(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase8(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 4
@@ -363,6 +454,7 @@ class TestFunctionalConv2DCase8(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase9(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -376,6 +468,7 @@ class TestFunctionalConv2DCase9(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase10(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -389,6 +482,7 @@ class TestFunctionalConv2DCase10(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase11(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -402,6 +496,7 @@ class TestFunctionalConv2DCase11(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DCase12(TestFunctionalConv2D):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 6
@@ -415,6 +510,7 @@ class TestFunctionalConv2DCase12(TestFunctionalConv2D):
 
 
 class TestFunctionalConv2DErrorCase2(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -428,6 +524,7 @@ class TestFunctionalConv2DErrorCase2(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase3(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -441,6 +538,7 @@ class TestFunctionalConv2DErrorCase3(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase4(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 5
@@ -454,6 +552,7 @@ class TestFunctionalConv2DErrorCase4(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase5(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = -2
         self.out_channels = 5
@@ -467,6 +566,7 @@ class TestFunctionalConv2DErrorCase5(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase7(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 5
@@ -481,6 +581,7 @@ class TestFunctionalConv2DErrorCase7(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase8(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 4
         self.out_channels = 5
@@ -494,6 +595,7 @@ class TestFunctionalConv2DErrorCase8(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase9(TestFunctionalConv2DError):
+
     def setUp(self):
         self.in_channels = 3
         self.out_channels = 4
@@ -507,6 +609,7 @@ class TestFunctionalConv2DErrorCase9(TestFunctionalConv2DError):
 
 
 class TestFunctionalConv2DErrorCase10(TestCase):
+
     def setUp(self):
         self.input = np.array([])
         self.filter = np.array([])
@@ -525,6 +628,7 @@ class TestFunctionalConv2DErrorCase10(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 x = fluid.data("input", self.input.shape, dtype=paddle.float32)
+<<<<<<< HEAD
                 y = fluid.layers.conv2d(
                     x,
                     self.num_filters,
@@ -540,6 +644,21 @@ class TestFunctionalConv2DErrorCase10(TestCase):
                     act=None,
                     data_format=self.data_format,
                 )
+=======
+                y = fluid.layers.conv2d(x,
+                                        self.num_filters,
+                                        self.filter_size,
+                                        stride=self.stride,
+                                        padding=self.padding,
+                                        dilation=self.dilation,
+                                        groups=self.groups,
+                                        param_attr=I.NumpyArrayInitializer(
+                                            self.filter),
+                                        bias_attr=False if self.bias is None
+                                        else I.NumpyArrayInitializer(self.bias),
+                                        act=None,
+                                        data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         exe = fluid.Executor()
         exe.run(start)
         (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
@@ -549,6 +668,7 @@ class TestFunctionalConv2DErrorCase10(TestCase):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
+<<<<<<< HEAD
             b = (
                 None
                 if self.bias is None
@@ -564,6 +684,18 @@ class TestFunctionalConv2DErrorCase10(TestCase):
                 groups=self.groups,
                 data_format=self.data_format,
             )
+=======
+            b = None if self.bias is None else dg.to_variable(
+                self.bias, dtype=paddle.float32)
+            y = F.conv2d_transpose(x,
+                                   w,
+                                   b,
+                                   padding=self.padding,
+                                   stride=self.stride,
+                                   dilation=self.dilation,
+                                   groups=self.groups,
+                                   data_format=self.data_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
@@ -579,6 +711,7 @@ class TestFunctionalConv2DErrorCase10(TestCase):
 
 
 class TestFunctionalConv2DErrorCase11(TestFunctionalConv2DErrorCase10):
+
     def setUp(self):
         self.input = np.random.randn(1, 3, 3, 3)
         self.filter = np.random.randn(3, 3, 1, 1)

@@ -19,6 +19,7 @@ from sequence.test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):
+
     def set_conf(self):
         pass
 
@@ -37,8 +38,13 @@ class TestSeqConvEltAddRelu(OpTest):
         T = sum(self.lod[0])
         x = np.random.uniform(-1, 1, [T, self.in_fea_size]).astype('float32')
         w = np.random.uniform(
+<<<<<<< HEAD
             -1, 1, [self.in_fea_size * self.context_length, self.out_fea_size]
         ).astype('float32')
+=======
+            -1, 1, [self.in_fea_size * self.context_length, self.out_fea_size
+                    ]).astype('float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         b = np.random.uniform(-2, 1, [1, self.out_fea_size]).astype('float32')
         out = seqconv(x, self.lod, w, self.context_length, self.context_start)
         out = np.maximum(out + b, 0)
@@ -56,16 +62,19 @@ class TestSeqConvEltAddRelu(OpTest):
 
 
 class TestSeqConvEltAddReluBS1(TestSeqConvEltAddRelu):
+
     def set_conf(self):
         self.lod = [[10]]
 
 
 class TestSeqConvEltAddReluBS1Case2(TestSeqConvEltAddRelu):
+
     def set_conf(self):
         self.lod = [[2]]
 
 
 class TestSeqConvEltAddReluCase1(TestSeqConvEltAddRelu):
+
     def set_conf(self):
         self.lod = [[3, 5, 1, 6]]
         self.context_length = 3
@@ -73,6 +82,7 @@ class TestSeqConvEltAddReluCase1(TestSeqConvEltAddRelu):
 
 
 class TestSeqConvEltAddReluCase2(TestSeqConvEltAddRelu):
+
     def set_conf(self):
         self.lod = [[10, 1, 2, 4, 1, 5, 6]]
         self.in_fea_size = 2
@@ -81,6 +91,7 @@ class TestSeqConvEltAddReluCase2(TestSeqConvEltAddRelu):
 
 
 class TestSeqConvEltAddReluCase3(TestSeqConvEltAddRelu):
+
     def set_conf(self):
         self.lod = [[10, 1, 2, 4, 1, 5, 6]]
         self.context_length = 5

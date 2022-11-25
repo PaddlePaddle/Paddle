@@ -22,6 +22,7 @@ import hypothesis.strategies as st
 
 
 class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -46,9 +47,14 @@ class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
                 ).astype(np.float32)
 
         def generate_weight1():
+<<<<<<< HEAD
             return np.random.random([16, int(48 / groups), 3, 3, 3]).astype(
                 np.float32
             )
+=======
+            return np.random.random([16, int(48 / groups), 3, 3,
+                                     3]).astype(np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def generate_weight2():
             return np.random.random([16]).astype(np.float32)
@@ -100,10 +106,17 @@ class TestConv3dBiasMkldnnFusePass(PassAutoScanTest):
         program_config = ProgramConfig(
             ops=ops,
             weights={
+<<<<<<< HEAD
                 "conv_weight": TensorConfig(data_gen=partial(generate_weight1)),
                 "elementwise_weight": TensorConfig(
                     data_gen=partial(generate_weight2)
                 ),
+=======
+                "conv_weight":
+                TensorConfig(data_gen=partial(generate_weight1)),
+                "elementwise_weight":
+                TensorConfig(data_gen=partial(generate_weight2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             },
             inputs={
                 "input_data1": TensorConfig(

@@ -20,8 +20,13 @@ namespace math {
 
 template <typename T>
 struct MatrixBitCodeFunctorAdd {
+<<<<<<< HEAD
   const phi::DenseTensor &vec_;
   phi::DenseTensor *tmat_;
+=======
+  const framework::Tensor &vec_;
+  framework::Tensor *tmat_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   MatrixBitCodeFunctorAdd(const phi::DenseTensor &vec, phi::DenseTensor *tmat)
       : vec_(vec), tmat_(tmat) {}
@@ -52,10 +57,17 @@ void MatrixBitCodeFunctor<T>::Add(const phi::DenseTensor &vec,
 
 template <typename T>
 struct MatrixBitCodeFunctorAddGrad {
+<<<<<<< HEAD
   const phi::DenseTensor &tmat_;
   phi::DenseTensor *vec_;
   MatrixBitCodeFunctorAddGrad(const phi::DenseTensor &tmat,
                               phi::DenseTensor *vec)
+=======
+  const framework::Tensor &tmat_;
+  framework::Tensor *vec_;
+  MatrixBitCodeFunctorAddGrad(const framework::Tensor &tmat,
+                              framework::Tensor *vec)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       : tmat_(tmat), vec_(vec) {}
 
   template <typename CodeTable>
@@ -84,12 +96,21 @@ void MatrixBitCodeFunctor<T>::AddGrad(const phi::DenseTensor &tmat,
 
 template <typename T>
 struct MatrixBitCodeFunctorSum {
+<<<<<<< HEAD
   const phi::DenseTensor &tmat_;
   phi::DenseTensor *sum_;
   T scale_sum_;
 
   MatrixBitCodeFunctorSum(const phi::DenseTensor &tmat,
                           phi::DenseTensor *sum,
+=======
+  const framework::Tensor &tmat_;
+  framework::Tensor *sum_;
+  T scale_sum_;
+
+  MatrixBitCodeFunctorSum(const framework::Tensor &tmat,
+                          framework::Tensor *sum,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           T scale_sum)
       : tmat_(tmat), sum_(sum), scale_sum_(scale_sum) {}
 
@@ -117,8 +138,13 @@ struct MatrixBitCodeFunctorSum {
 };
 
 template <typename T>
+<<<<<<< HEAD
 void MatrixBitCodeFunctor<T>::Sum(const phi::DenseTensor &tmat,
                                   phi::DenseTensor *sum,
+=======
+void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor &tmat,
+                                  framework::Tensor *sum,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                   T scale_sum) {
   MatrixBitCodeFunctorSum<T> func(tmat, sum, scale_sum);
   paddle::visit(func, code_table_);
@@ -126,6 +152,7 @@ void MatrixBitCodeFunctor<T>::Sum(const phi::DenseTensor &tmat,
 
 template <typename T>
 struct MatrixBitCodeFunctorMul {
+<<<<<<< HEAD
   phi::DenseTensor *tmat_;
   const phi::DenseTensor &weight_;
   const phi::DenseTensor &input_;
@@ -133,6 +160,15 @@ struct MatrixBitCodeFunctorMul {
   MatrixBitCodeFunctorMul(phi::DenseTensor *tmat,
                           const phi::DenseTensor &weight,
                           const phi::DenseTensor &input)
+=======
+  framework::Tensor *tmat_;
+  const framework::Tensor &weight_;
+  const framework::Tensor &input_;
+
+  MatrixBitCodeFunctorMul(framework::Tensor *tmat,
+                          const framework::Tensor &weight,
+                          const framework::Tensor &input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       : tmat_(tmat), weight_(weight), input_(input) {}
 
   template <typename CodeTable>
@@ -175,12 +211,21 @@ class ReservedVector : public std::vector<T> {
 
 template <typename T>
 struct MatrixBitCodeFunctorMulGradWeight {
+<<<<<<< HEAD
   const phi::DenseTensor &tmat_;
   phi::DenseTensor *weight_;
   const phi::DenseTensor &input_;
   MatrixBitCodeFunctorMulGradWeight(const phi::DenseTensor &tmat,
                                     phi::DenseTensor *weight,
                                     const phi::DenseTensor &input)
+=======
+  const framework::Tensor &tmat_;
+  framework::Tensor *weight_;
+  const framework::Tensor &input_;
+  MatrixBitCodeFunctorMulGradWeight(const framework::Tensor &tmat,
+                                    framework::Tensor *weight,
+                                    const framework::Tensor &input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
@@ -225,7 +270,11 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const phi::DenseTensor &tmat,
 
 template <typename T>
 struct MatrixBitCodeFunctorMulGradWeightSR {
+<<<<<<< HEAD
   const phi::DenseTensor &tmat_;
+=======
+  const framework::Tensor &tmat_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   phi::SelectedRows *weight_;
   const phi::DenseTensor &input_;
 
@@ -280,6 +329,7 @@ void MatrixBitCodeFunctor<T>::MulGradWeight(const phi::DenseTensor &tmat,
 
 template <typename T>
 struct MatrixBitCodeFunctorMulGradError {
+<<<<<<< HEAD
   const phi::DenseTensor &tmat_;
   const phi::DenseTensor &weight_;
   phi::DenseTensor *input_;
@@ -287,6 +337,15 @@ struct MatrixBitCodeFunctorMulGradError {
   MatrixBitCodeFunctorMulGradError(const phi::DenseTensor &tmat,
                                    const phi::DenseTensor &weight,
                                    phi::DenseTensor *input)
+=======
+  const framework::Tensor &tmat_;
+  const framework::Tensor &weight_;
+  framework::Tensor *input_;
+
+  MatrixBitCodeFunctorMulGradError(const framework::Tensor &tmat,
+                                   const framework::Tensor &weight,
+                                   framework::Tensor *input)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       : tmat_(tmat), weight_(weight), input_(input) {}
   template <typename CodeTable>
   void operator()(const CodeTable &code_table) {
@@ -324,7 +383,11 @@ void MatrixBitCodeFunctor<T>::MulGradError(const phi::DenseTensor &tmat,
 
 template <typename T>
 struct MatrixBitCodeFunctorSub {
+<<<<<<< HEAD
   phi::DenseTensor *tmat_;
+=======
+  framework::Tensor *tmat_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   explicit MatrixBitCodeFunctorSub(phi::DenseTensor *tmat) : tmat_(tmat) {}
 

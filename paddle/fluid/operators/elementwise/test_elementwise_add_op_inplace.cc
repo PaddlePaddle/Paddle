@@ -95,8 +95,13 @@ bool TestMain(const platform::Place &place,
   op->Run(scope, place);
   platform::DeviceContextPool::Instance().Get(place)->Wait();
 
+<<<<<<< HEAD
   phi::DenseTensor cpu_out;
   auto &out_tensor = scope.FindVar(out_name)->Get<phi::DenseTensor>();
+=======
+  framework::LoDTensor cpu_out;
+  auto &out_tensor = scope.FindVar(out_name)->Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   PADDLE_ENFORCE_EQ(scope.kids().empty(),
                     true,
                     platform::errors::InvalidArgument(

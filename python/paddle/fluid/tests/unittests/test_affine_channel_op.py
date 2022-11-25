@@ -33,6 +33,7 @@ def affine_channel(x, scale, bias, layout):
 
 
 class TestAffineChannelOp(OpTest):
+
     def setUp(self):
         self.op_type = "affine_channel"
         self.init_test_case()
@@ -66,6 +67,7 @@ class TestAffineChannelOp(OpTest):
 
 
 class TestAffineChannelOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program()):
 
@@ -76,31 +78,50 @@ class TestAffineChannelOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_type)
 
             def test_x_dtype():
+<<<<<<< HEAD
                 x2 = fluid.layers.data(
                     name='x2', shape=[None, 1, 2, 2], dtype='int32'
                 )
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[None, 1, 2, 2],
+                                       dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.affine_channel(x2)
 
             self.assertRaises(TypeError, test_x_dtype)
 
             def test_scale_type():
+<<<<<<< HEAD
                 x3 = fluid.layers.data(
                     name='x3', shape=[None, 1, 2, 2], dtype='float32'
                 )
+=======
+                x3 = fluid.layers.data(name='x3',
+                                       shape=[None, 1, 2, 2],
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.affine_channel(x3, scale=1)
 
             self.assertRaises(TypeError, test_scale_type)
 
             def test_bias_type():
+<<<<<<< HEAD
                 x4 = fluid.layers.data(
                     name='x4', shape=[None, 1, 2, 2], dtype='float32'
                 )
+=======
+                x4 = fluid.layers.data(name='x4',
+                                       shape=[None, 1, 2, 2],
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.affine_channel(x4, bias=1)
 
             self.assertRaises(TypeError, test_bias_type)
 
 
 class TestAffineChannelNHWC(TestAffineChannelOp):
+
     def init_test_case(self):
         self.shape = [2, 3, 3, 100]
         self.C = 100
@@ -114,6 +135,7 @@ class TestAffineChannelNHWC(TestAffineChannelOp):
 
 
 class TestAffineChannel2D(TestAffineChannelOp):
+
     def init_test_case(self):
         self.shape = [2, 100]
         self.C = 100

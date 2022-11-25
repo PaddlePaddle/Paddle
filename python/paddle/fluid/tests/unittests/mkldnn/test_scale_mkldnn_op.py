@@ -19,6 +19,7 @@ import paddle
 
 
 class TestScaleOp(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
@@ -36,6 +37,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpBiasNotAfterScale(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.inputs = {'X': np.random.random((10, 10)).astype(np.float32)}
@@ -58,6 +60,7 @@ class TestScaleOpBiasNotAfterScale(OpTest):
 
 
 class TestScaleOpScaleTensor(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.scale = -2.3
@@ -76,6 +79,7 @@ class TestScaleOpScaleTensor(OpTest):
 
 
 class TestScaleOpScaleTensorNotBiasAfterScale(OpTest):
+
     def setUp(self):
         self.op_type = "scale"
         self.scale = -1.2

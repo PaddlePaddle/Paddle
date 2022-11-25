@@ -30,6 +30,7 @@ from xpu.get_test_cover_info import (
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'truncated_gaussian_random'
@@ -59,6 +60,12 @@ class XPUTestTruncatedGaussianRandomOp(XPUOpTestWrapper):
             self.std = 1.0
 
         def test_check_output(self):
+=======
+class TestXPUTrunctedGaussianRandomOp(TestTrunctedGaussianRandomOp):
+
+    def test_xpu(self):
+        if paddle.is_compiled_with_xpu():
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.gaussian_random_test(place=fluid.XPUPlace(0))
 
         def gaussian_random_test(self, place):

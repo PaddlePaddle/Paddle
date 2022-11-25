@@ -160,6 +160,10 @@ PD_REGISTER_KERNEL(overlap_add_grad,
                    int64_t,
                    float,
                    double,
+<<<<<<< HEAD
                    phi::dtype::float16,
+=======
+                   paddle::platform::float16,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    paddle::platform::complex<float>,
                    paddle::platform::complex<double>) {}

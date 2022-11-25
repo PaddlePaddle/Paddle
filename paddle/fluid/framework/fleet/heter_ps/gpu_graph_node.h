@@ -166,10 +166,15 @@ struct NeighborSampleQuery {
   }
 };
 struct NeighborSampleResult {
+<<<<<<< HEAD
+=======
+  // Used in deepwalk.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   uint64_t *val;
   uint64_t *actual_val;
   int *actual_sample_size, sample_size, key_size;
   int total_sample_size;
+  cudaStream_t stream=0;
   std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
   std::shared_ptr<memory::Allocation> actual_val_mem;
   uint64_t *get_val() { return val; }
@@ -179,18 +184,38 @@ struct NeighborSampleResult {
   int get_key_size() { return key_size; }
   void set_total_sample_size(int s) { total_sample_size = s; }
   int get_len() { return total_sample_size; }
+  void set_stream(cudaStream_t stream_t) {
+      stream = stream_t;
+  }
   void initialize(int _sample_size, int _key_size, int dev_id) {
     sample_size = _sample_size;
     key_size = _key_size;
     platform::CUDADeviceGuard guard(dev_id);
     platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+<<<<<<< HEAD
     val_mem =
         memory::AllocShared(place, _sample_size * _key_size * sizeof(uint64_t));
     val = (uint64_t *)val_mem->ptr();
     actual_sample_size_mem =
         memory::AllocShared(place, _key_size * sizeof(int));
+=======
+    if (stream != 0) {
+      val_mem =
+          memory::AllocShared(place, _sample_size * _key_size * sizeof(uint64_t),  phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+      actual_sample_size_mem =
+          memory::AllocShared(place, _key_size * sizeof(int),  phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
+    }
+    else {
+      val_mem =
+          memory::AllocShared(place, _sample_size * _key_size * sizeof(uint64_t));
+      actual_sample_size_mem =
+          memory::AllocShared(place, _key_size * sizeof(int));
+    }
+    val = (uint64_t *)val_mem->ptr();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     actual_sample_size = (int *)actual_sample_size_mem->ptr();
   }
+
   void display() {
     VLOG(0) << "in node sample result display ------------------";
     int64_t *res = new int64_t[sample_size * key_size];
@@ -232,6 +257,23 @@ struct NeighborSampleResult {
     delete[] ac_size;
     VLOG(0) << " ------------------";
   }
+<<<<<<< HEAD
+=======
+  void display2() {
+    VLOG(0) << "in node sample result display -----";
+    uint64_t *res = new uint64_t[total_sample_size];
+    cudaMemcpy(res, actual_val, total_sample_size * sizeof(uint64_t),
+               cudaMemcpyDeviceToHost);
+    std::string sample_str;
+    for (int i = 0; i < total_sample_size; i++) {
+       if (sample_str.size() > 0) sample_str += ";";
+       sample_str += std::to_string(res[i]);
+    }
+    VLOG(0) << "sample result: " << sample_str;
+    delete[] res;
+  }
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::vector<uint64_t> get_sampled_graph(NeighborSampleQuery q) {
     std::vector<uint64_t> graph;
     int64_t *sample_keys = new int64_t[q.len];
@@ -277,6 +319,26 @@ struct NeighborSampleResult {
   }
   NeighborSampleResult(){};
   ~NeighborSampleResult() {}
+};
+
+struct NeighborSampleResultV2 {
+  // Used in graphsage.
+  uint64_t *val;
+  int *actual_sample_size;
+  std::shared_ptr<memory::Allocation> val_mem, actual_sample_size_mem;
+
+  void initialize(int _sample_size, int _key_size, int _edge_to_id_len, int dev_id) {
+    platform::CUDADeviceGuard guard(dev_id);
+    platform::CUDAPlace place = platform::CUDAPlace(dev_id);
+    val_mem =
+        memory::AllocShared(place, _sample_size * _key_size * _edge_to_id_len * sizeof(uint64_t));
+    val = (uint64_t *)val_mem->ptr();
+    actual_sample_size_mem =
+        memory::AllocShared(place, _key_size * _edge_to_id_len * sizeof(int));
+    actual_sample_size = (int *)actual_sample_size_mem->ptr();
+  }
+  NeighborSampleResultV2() {}
+  ~NeighborSampleResultV2() {}
 };
 
 struct NodeQueryResult {
@@ -329,7 +391,11 @@ struct GpuPsCommGraphFea {
   uint8_t *slot_id_list;   // locate on both side
   GpuPsFeaInfo
       *fea_info_list;  // only locate on host side, the list of fea_info
+<<<<<<< HEAD
   uint64_t feature_size, node_size;
+=======
+  uint64_t feature_size, node_size, feature_capacity;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   // the size of feature array and graph_node_list array
   GpuPsCommGraphFea()
       : node_list(NULL),
@@ -337,7 +403,12 @@ struct GpuPsCommGraphFea {
         slot_id_list(NULL),
         fea_info_list(NULL),
         feature_size(0),
+<<<<<<< HEAD
         node_size(0) {}
+=======
+        node_size(0),
+        feature_capacity(0){}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   GpuPsCommGraphFea(uint64_t *node_list_,
                     uint64_t *feature_list_,
                     uint8_t *slot_id_list_,

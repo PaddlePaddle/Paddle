@@ -53,7 +53,12 @@ def is_optimizer_op(op):
     ) & int(OpRole.Optimize)
 
 
+<<<<<<< HEAD
 class CollectiveHelper:
+=======
+class CollectiveHelper(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, role_maker, nrings=1, wait_port=True):
         self.nrings = nrings
         self.wait_port = wait_port
@@ -67,6 +72,7 @@ class CollectiveHelper:
         endpoints = self.role_maker._get_trainer_endpoints()
         current_endpoint = endpoints[self.role_maker._worker_index()]
         for ring_id in range(self.nrings):
+<<<<<<< HEAD
             self._init_communicator(
                 self.startup_program,
                 current_endpoint,
@@ -75,6 +81,12 @@ class CollectiveHelper:
                 ring_id,
                 self.wait_port,
             )
+=======
+            self._init_communicator(self.startup_program,
+                                    current_endpoint, endpoints,
+                                    self.role_maker._worker_index(), ring_id,
+                                    self.wait_port)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._broadcast_params()
 
     def _init_communicator(
@@ -99,6 +111,7 @@ class CollectiveHelper:
             wait_server_ready(other_endpoints)
 
         def _add_sync_by_allreduce(block):
+<<<<<<< HEAD
             sync_var = block.create_var(
                 name=unique_name.generate('sync_var'),
                 dtype=core.VarDesc.VarType.INT32,
@@ -133,6 +146,34 @@ class CollectiveHelper:
                 outputs={'Out': sync_var},
                 attrs={OP_ROLE_KEY: OpRole.Forward},
             )
+=======
+            sync_var = block.create_var(name=unique_name.generate('sync_var'),
+                                        dtype=core.VarDesc.VarType.INT32,
+                                        persistable=False,
+                                        stop_gradient=True)
+            block.append_op(type='fill_constant',
+                            inputs={},
+                            outputs={'Out': [sync_var]},
+                            attrs={
+                                'shape': [1],
+                                'dtype': sync_var.dtype,
+                                'value': 1,
+                                'force_cpu': False,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+            block.append_op(type='c_allreduce_sum',
+                            inputs={'X': [sync_var]},
+                            outputs={'Out': [sync_var]},
+                            attrs={
+                                'ring_id': global_ring_id,
+                                'use_calc_stream': True,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+            block.append_op(type='c_sync_calc_stream',
+                            inputs={'X': sync_var},
+                            outputs={'Out': sync_var},
+                            attrs={OP_ROLE_KEY: OpRole.Forward})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         block = program.global_block()
         if current_endpoint is None:
@@ -141,6 +182,7 @@ class CollectiveHelper:
             _add_sync_by_allreduce(block)
             return
 
+<<<<<<< HEAD
         comm_id_var = block.create_var(
             name=unique_name.generate('comm_id'),
             persistable=True,
@@ -219,6 +261,73 @@ class CollectiveHelper:
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
+=======
+        comm_id_var = block.create_var(name=unique_name.generate('comm_id'),
+                                       persistable=True,
+                                       type=core.VarDesc.VarType.RAW)
+        if core.is_compiled_with_cuda():
+            block.append_op(type='c_gen_nccl_id',
+                            inputs={},
+                            outputs={'Out': comm_id_var},
+                            attrs={
+                                'rank': rank,
+                                'endpoint': current_endpoint,
+                                'other_endpoints': other_endpoints,
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+            block.append_op(type='c_comm_init',
+                            inputs={'X': comm_id_var},
+                            outputs={},
+                            attrs={
+                                'nranks': nranks,
+                                'rank': rank,
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+        elif core.is_compiled_with_xpu():
+            block.append_op(type='c_gen_bkcl_id',
+                            inputs={},
+                            outputs={'Out': comm_id_var},
+                            attrs={
+                                'rank': rank,
+                                'endpoint': current_endpoint,
+                                'other_endpoints': other_endpoints,
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+            block.append_op(type='c_comm_init',
+                            inputs={'X': comm_id_var},
+                            outputs={},
+                            attrs={
+                                'nranks': nranks,
+                                'rank': rank,
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+        elif core.is_compiled_with_npu():
+            block.append_op(type='c_gen_hccl_id',
+                            inputs={},
+                            outputs={'Out': comm_id_var},
+                            attrs={
+                                'rank': rank,
+                                'endpoint': current_endpoint,
+                                'other_endpoints': other_endpoints,
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+            block.append_op(type='c_comm_init_hccl',
+                            inputs={'X': comm_id_var},
+                            outputs={},
+                            attrs={
+                                'rank': rank,
+                                'ring_id': ring_id,
+                                'device_id':
+                                int(os.getenv("FLAGS_selected_npus")),
+                                'rank_ids': nranks,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             raise ValueError(
                 "comm_id must be generated in paddlepaddle-xpu or paddlepaddle-xpu."
@@ -240,6 +349,7 @@ class CollectiveHelper:
                 continue
 
             ring_id = (ring_id + 1) % self.nrings
+<<<<<<< HEAD
             block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -258,3 +368,22 @@ class CollectiveHelper:
                 outputs={'Out': param},
                 attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
             )
+=======
+            block.append_op(type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                'root': 0,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+
+        for ring_id in range(self.nrings):
+            block.append_op(type='c_sync_comm_stream',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': ring_id,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

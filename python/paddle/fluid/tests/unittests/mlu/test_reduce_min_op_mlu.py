@@ -134,9 +134,15 @@ class TestReduceMinOpWithOutDtype_fp16(TestMLUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.inputs['X']
             .min(axis=tuple(self.attrs['dim']))
             .astype(np.float16)
+=======
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float16)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_dtype(self):
@@ -164,9 +170,15 @@ class TestReduceMinOpWithOutDtype_fp32(TestMLUReduceMinOp):
             'out_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.outputs = {
+<<<<<<< HEAD
             'Out': self.inputs['X']
             .min(axis=tuple(self.attrs['dim']))
             .astype(np.float32)
+=======
+            'Out':
+            self.inputs['X'].min(axis=tuple(self.attrs['dim'])).astype(
+                np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_dtype(self):

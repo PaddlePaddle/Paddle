@@ -140,10 +140,17 @@ void MaxOutFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 template <typename DeviceContext, typename T>
 void MaxOutGradFunctor<DeviceContext, T>::operator()(
     const DeviceContext& context,
+<<<<<<< HEAD
     const phi::DenseTensor& input,
     phi::DenseTensor* input_grad,
     const phi::DenseTensor& output,
     const phi::DenseTensor& output_grad,
+=======
+    const framework::Tensor& input,
+    framework::Tensor* input_grad,
+    const framework::Tensor& output,
+    const framework::Tensor& output_grad,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const int groups,
     const int axis) {
   const int batch_size = input.dims()[0];

@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class TestDistGeoCtr_2x2(TestFleetBase):
+
     def _setup_config(self):
         self._mode = "geo"
         self._reader = "pyreader"
@@ -55,12 +56,19 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs)
 
     def test_dist_train(self):
+<<<<<<< HEAD
         self.check_with_place(
             "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
         )
+=======
+        self.check_with_place("dist_fleet_ctr.py",
+                              delta=1e-5,
+                              check_error_log=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
+
     def test_pserver(self):
         role = role_maker.UserDefinedRoleMaker(
             current_id=0,

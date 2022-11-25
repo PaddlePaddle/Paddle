@@ -37,6 +37,7 @@ def ref_selu(
 
 
 class SeluTest(OpTest):
+
     def setUp(self):
         self.op_type = "selu"
         self.python_api = paddle.nn.functional.selu
@@ -129,6 +130,7 @@ class TestSeluAPI(unittest.TestCase):
             # The input type must be Variable.
             self.assertRaises(TypeError, F.selu, 1)
             # The input dtype must be float16, float32, float64.
+<<<<<<< HEAD
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32'
             )
@@ -137,13 +139,29 @@ class TestSeluAPI(unittest.TestCase):
             x_fp32 = paddle.fluid.data(
                 name='x_fp32', shape=[12, 10], dtype='float32'
             )
+=======
+            x_int32 = paddle.fluid.data(name='x_int32',
+                                        shape=[12, 10],
+                                        dtype='int32')
+            self.assertRaises(TypeError, F.selu, x_int32)
+            # The scale must be greater than 1.0
+            x_fp32 = paddle.fluid.data(name='x_fp32',
+                                       shape=[12, 10],
+                                       dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertRaises(ValueError, F.selu, x_fp32, -1.0)
             # The alpha must be no less than 0
             self.assertRaises(ValueError, F.selu, x_fp32, 1.6, -1.0)
             # support the input dtype is float16
+<<<<<<< HEAD
             x_fp16 = paddle.fluid.data(
                 name='x_fp16', shape=[12, 10], dtype='float16'
             )
+=======
+            x_fp16 = paddle.fluid.data(name='x_fp16',
+                                       shape=[12, 10],
+                                       dtype='float16')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             F.selu(x_fp16)
 
 

@@ -11,13 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+<<<<<<< HEAD
 import functools
 import math
 import operator
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import typing
 
 import paddle
 
+<<<<<<< HEAD
 from . import primops
 from .primops import (
     add,
@@ -68,6 +72,17 @@ from .primreg import (
     op_position_output,
 )
 from .utils import INT_DTYPE_2_STRING, get_output_var_list
+=======
+from .primops import (add, broadcast, concat, cos, div, exp, fill_const, gather,
+                      matmul, mul, neg, reduce, reshape, scatter_add, set_value,
+                      sin, slice_assign, slice_select, split, sqrt, sub, tanh,
+                      transpose)
+from .primreg import (REGISTER_JVP, REGISTER_ORIG2PRIM, REGISTER_PRIM2ORIG,
+                      REGISTER_TRANSPOSE, lookup_fn, lookup_jvp,
+                      lookup_orig2prim, lookup_prim2orig, lookup_transpose,
+                      op_position_inputs, op_position_output)
+from .utils import INT_DTYPE_2_STRING, get_input_var_list, get_output_var_list
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _orig2prim(op, *args):
@@ -133,6 +148,7 @@ def elementwise_add_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x') - 1.0 > 1e-5:
+<<<<<<< HEAD
         scale_x = fill_const(
             shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x')
         )
@@ -147,6 +163,22 @@ def elementwise_add_orig2prim(op, x, y):
         scale_out = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out')
         )
+=======
+        scale_x = fill_const(shape=x.shape,
+                             dtype=x.dtype,
+                             value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        scale_y = fill_const(shape=y.shape,
+                             dtype=y.dtype,
+                             value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
+    z = add(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        scale_out = fill_const(shape=z.shape,
+                               dtype=z.dtype,
+                               value=op.attr('Scale_out'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         z = mul(z, scale_out)
     return z
 
@@ -156,6 +188,7 @@ def elementwise_sub_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x') - 1.0 > 1e-5:
+<<<<<<< HEAD
         scale_x = fill_const(
             shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x')
         )
@@ -170,6 +203,22 @@ def elementwise_sub_orig2prim(op, x, y):
         scale_out = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out')
         )
+=======
+        scale_x = fill_const(shape=x.shape,
+                             dtype=x.dtype,
+                             value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        scale_y = fill_const(shape=y.shape,
+                             dtype=y.dtype,
+                             value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
+    z = sub(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        scale_out = fill_const(shape=z.shape,
+                               dtype=z.dtype,
+                               value=op.attr('Scale_out'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         z = mul(z, scale_out)
     return z
 
@@ -179,6 +228,7 @@ def elementwise_mul_orig2prim(op, x, y):
     if x.shape != y.shape:
         y = broadcast(y, shape=x.shape)
     if op.attr('Scale_x') - 1.0 > 1e-5:
+<<<<<<< HEAD
         scale_x = fill_const(
             shape=x.shape, dtype=x.dtype, value=op.attr('Scale_x')
         )
@@ -193,6 +243,22 @@ def elementwise_mul_orig2prim(op, x, y):
         scale_out = fill_const(
             shape=z.shape, dtype=z.dtype, value=op.attr('Scale_out')
         )
+=======
+        scale_x = fill_const(shape=x.shape,
+                             dtype=x.dtype,
+                             value=op.attr('Scale_x'))
+        x = mul(x, scale_x)
+    if op.attr('Scale_y') - 1.0 > 1e-5:
+        scale_y = fill_const(shape=y.shape,
+                             dtype=y.dtype,
+                             value=op.attr('Scale_y'))
+        y = mul(y, scale_y)
+    z = mul(x, y)
+    if op.attr('Scale_out') - 1.0 > 1e-5:
+        scale_out = fill_const(shape=z.shape,
+                               dtype=z.dtype,
+                               value=op.attr('Scale_out'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         z = mul(z, scale_out)
     return z
 
@@ -224,6 +290,7 @@ def exp_orig2prim(op, x):
     return exp(x)
 
 
+<<<<<<< HEAD
 @REGISTER_ORIG2PRIM('erf')
 def erf_orig2prim(op, x):
     return erf(x)
@@ -239,6 +306,8 @@ def log_orig2prim(op, x):
     return log(x)
 
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 @REGISTER_ORIG2PRIM('fill_zeros_like')
 def fill_zeros_like_orig2prim(op, x):
     return fill_const(value=0.0, shape=x.shape, dtype=x.dtype)
@@ -286,9 +355,15 @@ def index_select_orig2prim(op, index_t, x):
 @REGISTER_ORIG2PRIM('scale')
 def scale_orig2prim(op, scale_t, x):
     if scale_t is None:
+<<<<<<< HEAD
         scale_t = fill_const(
             shape=x.shape, dtype=x.dtype, value=op.attr('scale')
         )
+=======
+        scale_t = fill_const(shape=x.shape,
+                             dtype=x.dtype,
+                             value=op.attr('scale'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     bias_t = fill_const(shape=x.shape, dtype=x.dtype, value=op.attr('bias'))
     if op.attr('bias_after_scale'):
         return add(mul(x, scale_t), bias_t)
@@ -314,6 +389,7 @@ def rsqrt_orig2prim(op, x):
 
 @REGISTER_ORIG2PRIM('matmul_v2')
 def matmul_v2_orig2prim(op, x, y):
+
     def trans(shape):
         ret = [i for i in range(len(shape))]
         ret[-1], ret[-2] = ret[-2], ret[-1]
@@ -344,9 +420,15 @@ def reshape2_orig2prim(op, shape_t, shape_tl, x):
         shape_tl is None
     ), 'Can not lower reshape2 into prim ops with shapetensorlist.'
     y, xshape = get_output_var_list(op)
+<<<<<<< HEAD
     return reshape(x, shape=y.shape), fill_const(
         shape=xshape.shape, dtype=xshape.dtype, value=0.0
     )
+=======
+    return reshape(x, shape=y.shape), fill_const(shape=xshape.shape,
+                                                 dtype=xshape.dtype,
+                                                 value=0.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_ORIG2PRIM('concat')
@@ -387,6 +469,7 @@ def sigmoid_orig2prim(op, x):
 
 @REGISTER_ORIG2PRIM('p_norm')
 def p_norm_orig2prim(op, x):
+
     def num_el(shape):
         n = 1
         for s in shape:
@@ -662,6 +745,7 @@ def exp_prim2orig(op, x):
     return paddle.exp(x)
 
 
+<<<<<<< HEAD
 @REGISTER_PRIM2ORIG('erf_p')
 def erf_prim2orig(op, x):
     return paddle.erf(x)
@@ -677,6 +761,8 @@ def log_prim2orig(op, x):
     return paddle.log(x)
 
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 @REGISTER_PRIM2ORIG('reshape_p')
 def reshape_prim2orig(op, x):
     return paddle.reshape(x, shape=op.attr('shape'))
@@ -697,9 +783,15 @@ def split_prim2orig(op, x):
     num_or_sections = op.attr('num_or_sections')
     if len(num_or_sections) == 1:
         num_or_sections = num_or_sections[0]
+<<<<<<< HEAD
     return paddle.split(
         x, num_or_sections=num_or_sections, axis=op.attr('axis')
     )
+=======
+    return paddle.split(x,
+                        num_or_sections=num_or_sections,
+                        axis=op.attr('axis'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_PRIM2ORIG('concat_p')
@@ -719,6 +811,7 @@ def matmul_prim2orig(op, x, y):
 
 @REGISTER_PRIM2ORIG('slice_select_p')
 def slice_select_prim2orig(op, x):
+<<<<<<< HEAD
     return paddle.strided_slice(
         x,
         axes=op.attr('axis'),
@@ -726,11 +819,19 @@ def slice_select_prim2orig(op, x):
         ends=op.attr('ends'),
         strides=op.attr('strides'),
     )
+=======
+    return paddle.strided_slice(x,
+                                axes=op.attr('axis'),
+                                starts=op.attr('starts'),
+                                ends=op.attr('ends'),
+                                strides=op.attr('strides'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_PRIM2ORIG('slice_assign_p')
 def slice_assign_prim2orig(op, x, y):
     x_copy = paddle.assign(x)
+<<<<<<< HEAD
     return set_value(
         x_copy,
         y,
@@ -740,6 +841,15 @@ def slice_assign_prim2orig(op, x, y):
         strides=op.attr('strides'),
         out=x_copy,
     )
+=======
+    return set_value(x_copy,
+                     y,
+                     axis=op.attr('axis'),
+                     starts=op.attr('starts'),
+                     ends=op.attr('ends'),
+                     strides=op.attr('strides'),
+                     out=x_copy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_PRIM2ORIG('gather_p')
@@ -757,6 +867,7 @@ def scatter_add_prim2orig(op, index_t, x, y):
 
 @REGISTER_PRIM2ORIG('fill_constant_p')
 def fill_constant_prim2orig(op):
+<<<<<<< HEAD
     return paddle.full(
         shape=op.attr('shape'),
         fill_value=op.attr('value'),
@@ -803,6 +914,11 @@ def gt_prim2orig(op, x, y):
 @REGISTER_PRIM2ORIG('ge_p')
 def ge_prim2orig(op, x, y):
     return paddle.greater_equal(x, y)
+=======
+    return paddle.full(shape=op.attr('shape'),
+                       fill_value=op.attr('value'),
+                       dtype=INT_DTYPE_2_STRING[op.attr('dtype')])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_PRIM2ORIG('ne_p')
@@ -900,7 +1016,11 @@ def tanh_jvp(op, x_dot):
 def sin_jvp(op, x_dot):
     if x_dot is None:
         return None
+<<<<<<< HEAD
     (x,) = op_position_inputs(op)
+=======
+    x, = op_position_inputs(op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return mul(x_dot, cos(x))
 
 
@@ -908,7 +1028,11 @@ def sin_jvp(op, x_dot):
 def cos_jvp(op, x_dot):
     if x_dot is None:
         return None
+<<<<<<< HEAD
     (x,) = op_position_inputs(op)
+=======
+    x, = op_position_inputs(op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return mul(x_dot, neg(sin(x)))
 
 
@@ -920,6 +1044,7 @@ def exp_jvp(op, x_dot):
     return mul(x_dot, y)
 
 
+<<<<<<< HEAD
 @REGISTER_JVP('erf_p')
 def erf_jvp(op, x_dot):
     if x_dot is None:
@@ -947,6 +1072,8 @@ def log_jvp(op, x_dot):
     return div(x_dot, x)
 
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 @REGISTER_JVP('reshape_p')
 def reshape_jvp(op, x_dot):
     if x_dot is None:
@@ -1020,9 +1147,18 @@ def slice_select_jvp(op, x_dot):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
+<<<<<<< HEAD
     return linear_jvp(
         op, x_dot, axis=axis, starts=starts, ends=ends, strides=strides
     )
+=======
+    return linear_jvp(op,
+                      x_dot,
+                      axis=axis,
+                      starts=starts,
+                      ends=ends,
+                      strides=strides)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_JVP('slice_assign_p')
@@ -1035,6 +1171,7 @@ def slice_assign_jvp(op, x_dot, y_dot):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
+<<<<<<< HEAD
     if x_dot is None:
         return linear_jvp(
             op,
@@ -1075,6 +1212,15 @@ def slice_assign_jvp(op, x_dot, y_dot):
             strides=strides,
         ),
     )
+=======
+    return linear_jvp(op,
+                      x_dot,
+                      y_dot,
+                      axis=axis,
+                      starts=starts,
+                      ends=ends,
+                      strides=strides)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_JVP('gather_p')
@@ -1294,7 +1440,11 @@ def split_transpose(op, check_dot, ys_bar):
 
 @REGISTER_TRANSPOSE('concat_p')
 def concat_transpose(op, check_dot, y_bar):
+<<<<<<< HEAD
     (xs,) = op_position_inputs(op)
+=======
+    xs, = op_position_inputs(op)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if not isinstance(xs, typing.Sequence):
         xs = [xs]
     for x in xs:
@@ -1340,9 +1490,18 @@ def slice_select_transpose(op, check_dot, y_bar):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
+<<<<<<< HEAD
     return slice_assign(
         zeros, y_bar, axis=axis, starts=starts, ends=ends, strides=strides
     )
+=======
+    return slice_assign(zeros,
+                        y_bar,
+                        axis=axis,
+                        starts=starts,
+                        ends=ends,
+                        strides=strides)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_TRANSPOSE('slice_assign_p')
@@ -1357,6 +1516,7 @@ def slice_assign_transpose(op, check_dot, z_bar):
     starts = op.attr('starts')
     ends = op.attr('ends')
     strides = op.attr('strides')
+<<<<<<< HEAD
     if check_dot(x):
         return (
             slice_assign(
@@ -1372,6 +1532,20 @@ def slice_assign_transpose(op, check_dot, z_bar):
     return None, slice_select(
         z_bar, axis=axis, starts=starts, ends=ends, strides=strides
     )
+=======
+    x_bar = slice_assign(z_bar,
+                         zeros,
+                         axis=axis,
+                         starts=starts,
+                         ends=ends,
+                         strides=strides)
+    y_bar = slice_select(z_bar,
+                         axis=axis,
+                         starts=starts,
+                         ends=ends,
+                         strides=strides)
+    return x_bar, y_bar
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 @REGISTER_TRANSPOSE('gather_p')

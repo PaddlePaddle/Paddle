@@ -84,6 +84,7 @@ def channel_shuffle(x, groups):
 
 
 class InvertedResidual(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, in_channels, out_channels, stride, activation_layer=nn.ReLU
     ):
@@ -106,6 +107,29 @@ class InvertedResidual(nn.Layer):
             groups=out_channels // 2,
             activation_layer=None,
         )
+=======
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 stride,
+                 activation_layer=nn.ReLU):
+        super(InvertedResidual, self).__init__()
+        self._conv_pw = ConvNormActivation(in_channels=in_channels // 2,
+                                           out_channels=out_channels // 2,
+                                           kernel_size=1,
+                                           stride=1,
+                                           padding=0,
+                                           groups=1,
+                                           activation_layer=activation_layer)
+        self._conv_dw = ConvNormActivation(in_channels=out_channels // 2,
+                                           out_channels=out_channels // 2,
+                                           kernel_size=3,
+                                           stride=stride,
+                                           padding=1,
+                                           groups=out_channels // 2,
+                                           activation_layer=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._conv_linear = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -130,6 +154,7 @@ class InvertedResidual(nn.Layer):
 
 
 class InvertedResidualDS(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, in_channels, out_channels, stride, activation_layer=nn.ReLU
     ):
@@ -145,6 +170,24 @@ class InvertedResidualDS(nn.Layer):
             groups=in_channels,
             activation_layer=None,
         )
+=======
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 stride,
+                 activation_layer=nn.ReLU):
+        super(InvertedResidualDS, self).__init__()
+
+        # branch1
+        self._conv_dw_1 = ConvNormActivation(in_channels=in_channels,
+                                             out_channels=in_channels,
+                                             kernel_size=3,
+                                             stride=stride,
+                                             padding=1,
+                                             groups=in_channels,
+                                             activation_layer=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._conv_linear_1 = ConvNormActivation(
             in_channels=in_channels,
             out_channels=out_channels // 2,
@@ -155,6 +198,7 @@ class InvertedResidualDS(nn.Layer):
             activation_layer=activation_layer,
         )
         # branch2
+<<<<<<< HEAD
         self._conv_pw_2 = ConvNormActivation(
             in_channels=in_channels,
             out_channels=out_channels // 2,
@@ -173,6 +217,22 @@ class InvertedResidualDS(nn.Layer):
             groups=out_channels // 2,
             activation_layer=None,
         )
+=======
+        self._conv_pw_2 = ConvNormActivation(in_channels=in_channels,
+                                             out_channels=out_channels // 2,
+                                             kernel_size=1,
+                                             stride=1,
+                                             padding=0,
+                                             groups=1,
+                                             activation_layer=activation_layer)
+        self._conv_dw_2 = ConvNormActivation(in_channels=out_channels // 2,
+                                             out_channels=out_channels // 2,
+                                             kernel_size=3,
+                                             stride=stride,
+                                             padding=1,
+                                             groups=out_channels // 2,
+                                             activation_layer=None)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._conv_linear_2 = ConvNormActivation(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -201,7 +261,11 @@ class ShuffleNetV2(nn.Layer):
     Args:
         scale (float, optional): Scale of output channels. Default: True.
         act (str, optional): Activation function of neural network. Default: "relu".
+<<<<<<< HEAD
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -246,6 +310,7 @@ class ShuffleNetV2(nn.Layer):
                 "This scale size:[" + str(scale) + "] is not implemented!"
             )
         # 1. conv1
+<<<<<<< HEAD
         self._conv1 = ConvNormActivation(
             in_channels=3,
             out_channels=stage_out_channels[1],
@@ -254,6 +319,14 @@ class ShuffleNetV2(nn.Layer):
             padding=1,
             activation_layer=activation_layer,
         )
+=======
+        self._conv1 = ConvNormActivation(in_channels=3,
+                                         out_channels=stage_out_channels[1],
+                                         kernel_size=3,
+                                         stride=2,
+                                         padding=1,
+                                         activation_layer=activation_layer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self._max_pool = MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         # 2. bottleneck sequences
@@ -261,6 +334,7 @@ class ShuffleNetV2(nn.Layer):
         for stage_id, num_repeat in enumerate(stage_repeats):
             for i in range(num_repeat):
                 if i == 0:
+<<<<<<< HEAD
                     block = self.add_sublayer(
                         sublayer=InvertedResidualDS(
                             in_channels=stage_out_channels[stage_id + 1],
@@ -280,6 +354,23 @@ class ShuffleNetV2(nn.Layer):
                         ),
                         name=str(stage_id + 2) + "_" + str(i + 1),
                     )
+=======
+                    block = self.add_sublayer(sublayer=InvertedResidualDS(
+                        in_channels=stage_out_channels[stage_id + 1],
+                        out_channels=stage_out_channels[stage_id + 2],
+                        stride=2,
+                        activation_layer=activation_layer),
+                                              name=str(stage_id + 2) + "_" +
+                                              str(i + 1))
+                else:
+                    block = self.add_sublayer(sublayer=InvertedResidual(
+                        in_channels=stage_out_channels[stage_id + 2],
+                        out_channels=stage_out_channels[stage_id + 2],
+                        stride=1,
+                        activation_layer=activation_layer),
+                                              name=str(stage_id + 2) + "_" +
+                                              str(i + 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._block_list.append(block)
         # 3. last_conv
         self._last_conv = ConvNormActivation(
@@ -362,9 +453,16 @@ def shufflenet_v2_x0_25(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x0_25", scale=0.25, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x0_25",
+                          scale=0.25,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_x0_33(pretrained=False, **kwargs):
@@ -397,9 +495,16 @@ def shufflenet_v2_x0_33(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x0_33", scale=0.33, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x0_33",
+                          scale=0.33,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_x0_5(pretrained=False, **kwargs):
@@ -432,9 +537,16 @@ def shufflenet_v2_x0_5(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x0_5", scale=0.5, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x0_5",
+                          scale=0.5,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_x1_0(pretrained=False, **kwargs):
@@ -467,9 +579,16 @@ def shufflenet_v2_x1_0(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x1_0", scale=1.0, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x1_0",
+                          scale=1.0,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_x1_5(pretrained=False, **kwargs):
@@ -502,9 +621,16 @@ def shufflenet_v2_x1_5(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x1_5", scale=1.5, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x1_5",
+                          scale=1.5,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_x2_0(pretrained=False, **kwargs):
@@ -537,9 +663,16 @@ def shufflenet_v2_x2_0(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_x2_0", scale=2.0, pretrained=pretrained, **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_x2_0",
+                          scale=2.0,
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def shufflenet_v2_swish(pretrained=False, **kwargs):
@@ -572,6 +705,7 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     return _shufflenet_v2(
         "shufflenet_v2_swish",
         scale=1.0,
@@ -579,3 +713,10 @@ def shufflenet_v2_swish(pretrained=False, **kwargs):
         pretrained=pretrained,
         **kwargs
     )
+=======
+    return _shufflenet_v2("shufflenet_v2_swish",
+                          scale=1.0,
+                          act="swish",
+                          pretrained=pretrained,
+                          **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

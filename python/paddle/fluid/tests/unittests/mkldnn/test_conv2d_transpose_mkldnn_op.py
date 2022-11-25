@@ -30,6 +30,7 @@ def conv2d_bias_naive(out, bias):
 
 
 class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
+
     def test_check_grad(self):
         return
 
@@ -88,6 +89,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
 
 
 class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -96,6 +98,7 @@ class TestMKLDNNFuseBias(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -103,6 +106,7 @@ class TestMKLDNNWithPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -111,6 +115,7 @@ class TestMKLDNNWithStride(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0, 1, 2]
@@ -118,6 +123,7 @@ class TestMKLDNNWithAsymPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [0, 0]
@@ -125,6 +131,7 @@ class TestMKLDNNWithSamePad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -132,6 +139,7 @@ class TestMKLDNNWithValidPad(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
+
     def init_test_case(self):
         super().init_test_case()
         self.data_format = "NHWC"
@@ -140,8 +148,13 @@ class TestMKLDNNWithValidPad_NHWC(TestMKLDNNWithValidPad):
 
 
 class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
+<<<<<<< HEAD
     TestConv2DTransposeMKLDNNOp
 ):
+=======
+        TestConv2DTransposeMKLDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.stride = [2, 1]
@@ -155,6 +168,7 @@ class TestConv2DTransposeMKLDNNWithDilationsExplicitPad(
 
 
 class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]
@@ -165,6 +179,7 @@ class TestMKLDNNWithGroups(TestConv2DTransposeMKLDNNOp):
 
 
 class TestMKLDNNWithGroups_NHWC(TestConv2DTransposeMKLDNNOp):
+
     def init_test_case(self):
         TestConv2DTransposeMKLDNNOp.init_test_case(self)
         self.pad = [1, 1]

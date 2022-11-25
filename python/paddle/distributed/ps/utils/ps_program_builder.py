@@ -19,7 +19,12 @@ from paddle.distributed.fleet.base.private_helper_function import (
 from paddle.distributed.passes import new_pass
 
 
+<<<<<<< HEAD
 class PsProgramBuilder:
+=======
+class PsProgramBuilder(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, pass_ctx):
         self.pass_ctx = pass_ctx
         self.attrs = self.pass_ctx._attrs
@@ -76,11 +81,16 @@ class PsProgramBuilder:
         if self.attrs['is_worker']:
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
+<<<<<<< HEAD
             print(
                 "fluid.default_startup_program: {}".format(
                     fluid.default_startup_program
                 )
             )
+=======
+            print("fluid.default_startup_program: {}".format(
+                fluid.default_startup_program))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # print("ps_program_build before =", id(self.loss.block.program))
             self._build_trainer_desc()
             self.loss.block.program = self.cloned_main
@@ -95,13 +105,22 @@ class PsProgramBuilder:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
             fluid.framework.switch_startup_program(
+<<<<<<< HEAD
                 self.attrs['_startup_server']
             )
+=======
+                self.attrs['_startup_server'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
+
     def __init__(self, pass_ctx):
+<<<<<<< HEAD
         super().__init__(pass_ctx)
+=======
+        super(GeoPsProgramBuilder, self).__init__(pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self.ps_mode != DistributedMode.GEO:
             raise ValueError(
                 "ps mode: {} not matched {}",
@@ -118,6 +137,7 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
             wait_server_ready(self.server_endpoints)
 
     def _build_pserver_programs(self):
+<<<<<<< HEAD
         add_listen_and_serv_pass = new_pass(
             'add_listen_and_serv_pass', self.attrs
         )
@@ -173,11 +193,19 @@ class NuPsProgramBuilder(PsProgramBuilder):
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
 
+=======
+        add_listen_and_serv_pass = new_pass('add_listen_and_serv_pass',
+                                            self.attrs)
+        add_listen_and_serv_pass.apply([self.attrs['_main_server']], [None],
+                                       self.pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return
 
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
+<<<<<<< HEAD
         super().__init__(pass_ctx)
         if (
             self.ps_mode != DistributedMode.SYNC
@@ -187,6 +215,12 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
                 "ps mode: {} not matched {}",
                 format(self.ps_mode, "PsProgramBuilder"),
             )
+=======
+        super(CpuSyncPsProgramBuilder, self).__init__(pass_ctx)
+        if self.ps_mode != DistributedMode.SYNC and self.ps_mode != DistributedMode.ASYNC:
+            raise ValueError("ps mode: {} not matched {}",
+                             format(self.ps_mode, "PsProgramBuilder"))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _build_trainer_programs(self):
         # print("build trainer program entry")
@@ -229,8 +263,13 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
 
 class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
+
     def __init__(self, pass_ctx):
+<<<<<<< HEAD
         super().__init__(pass_ctx)
+=======
+        super(CpuAsyncPsProgramBuilder, self).__init__(pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _build_trainer_desc(self):
         opt_info = self.loss.block.program._fleet_opt
@@ -266,8 +305,13 @@ class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
 
 
 class GpuPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
+<<<<<<< HEAD
         super().__init__(pass_ctx)
+=======
+        super(GpuPsProgramBuilder, self).__init__(pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _build_trainer_programs(self):
 
@@ -300,8 +344,13 @@ class GpuPsProgramBuilder(PsProgramBuilder):
 
 
 class HeterAsyncPsProgramBuilder(PsProgramBuilder):
+
     def __init__(self, pass_ctx):
+<<<<<<< HEAD
         super().__init__(pass_ctx)
+=======
+        super(HeterAsyncPsProgramBuilder, self).__init__(pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _build_trainer_programs(self):
         add_lr_decay_table_pass = new_pass(
@@ -361,44 +410,73 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
         if self.attrs['is_worker'] or self.attrs['is_heter_worker']:
             self._build_trainer_programs()
             ps_set_heter_pipeline_opt_pass = new_pass(
+<<<<<<< HEAD
                 "set_heter_pipeline_opt_pass", self.attrs
             )
             ps_set_heter_pipeline_opt_pass.apply(
                 [self.cloned_main], [self.cloned_startup], self.pass_ctx
             )
+=======
+                "set_heter_pipeline_opt_pass", self.attrs)
+            ps_set_heter_pipeline_opt_pass.apply([self.cloned_main],
+                                                 [self.cloned_startup],
+                                                 self.pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         elif self.attrs['is_server']:
             self._build_pserver_programs()
             self.loss.block.program = self.attrs['_main_server']
             fluid.framework.switch_startup_program(
+<<<<<<< HEAD
                 self.attrs['_startup_server']
             )
+=======
+                self.attrs['_startup_server'])
 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
+
+<<<<<<< HEAD
+class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, pass_ctx):
         super().__init__(pass_ctx)
 
     def _build_trainer_programs(self):
         _main_file = ps_log_root_dir + '0_fl_worker_main_program.prototxt'
+<<<<<<< HEAD
         # debug_program(_main_file, self.cloned_main)
+=======
+        #debug_program(_main_file, self.cloned_main)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         distributed_ops_pass = new_pass("distributed_ops_pass", self.attrs)
         distributed_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '1_fl_worker_main_program.prototxt'
+<<<<<<< HEAD
         # debug_program(_main_file, self.cloned_main)
+=======
+        #debug_program(_main_file, self.cloned_main)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         delete_optimizer_pass = new_pass("delete_optimizer_pass", self.attrs)
         delete_optimizer_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '2_fl_worker_main_program.prototxt'
+<<<<<<< HEAD
         # debug_program(_main_file, self.cloned_main)
+=======
+        #debug_program(_main_file, self.cloned_main)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         append_send_ops_pass = new_pass("append_send_ops_pass", self.attrs)
         append_send_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
 
         _main_file = ps_log_root_dir + '3_fl_worker_main_program.prototxt'
+<<<<<<< HEAD
         # debug_program(_main_file, self.cloned_main)
 
         delete_extra_optimizer_pass = new_pass(
@@ -418,6 +496,23 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
 
         _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
         # debug_program(_main_file, self.cloned_main)
+=======
+        #debug_program(_main_file, self.cloned_main)
+
+        delete_extra_optimizer_pass = new_pass("delete_extra_optimizer_pass",
+                                               self.attrs)
+        delete_extra_optimizer_pass.apply([self.attrs['origin_main_program']],
+                                          [self.cloned_startup], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '4_fl_worker_main_program.prototxt'
+        #debug_program(_main_file, self.cloned_main)
+
+        fake_init_ops_pass = new_pass("fake_init_ops_pass", self.attrs)
+        fake_init_ops_pass.apply([None], [self.cloned_startup], self.pass_ctx)
+
+        _main_file = ps_log_root_dir + '5_fl_worker_main_program.prototxt'
+        #debug_program(_main_file, self.cloned_main)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         split_trainer_ops_pass = new_pass("split_fl_ops_pass", self.attrs)
         split_trainer_ops_pass.apply([self.cloned_main], [None], self.pass_ctx)
@@ -433,12 +528,19 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             _main_file = ps_log_root_dir + '8_fl_B_main_program.prototxt'
             debug_program(_main_file, self.cloned_main)
 
+<<<<<<< HEAD
         set_heter_pipeline_opt_pass = new_pass(
             'set_heter_pipeline_opt_pass', self.attrs
         )
         set_heter_pipeline_opt_pass.apply(
             [self.cloned_main], [self.cloned_startup], self.pass_ctx
         )
+=======
+        set_heter_pipeline_opt_pass = new_pass('set_heter_pipeline_opt_pass',
+                                               self.attrs)
+        set_heter_pipeline_opt_pass.apply([self.cloned_main],
+                                          [self.cloned_startup], self.pass_ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.attrs['origin_startup_program'] = self.cloned_startup
         self.attrs['origin_main_program'] = self.cloned_main
@@ -446,6 +548,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
         if not self.is_heter_worker:
             _main_file = ps_log_root_dir + 'final_fl_A_main_program.prototxt'
             debug_program(
+<<<<<<< HEAD
                 _main_file,
                 self.attrs['origin_main_program']._heter_pipeline_opt[
                     'section_program'
@@ -459,6 +562,15 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
                     'section_program'
                 ],
             )
+=======
+                _main_file, self.attrs['origin_main_program'].
+                _heter_pipeline_opt['section_program'])
+        else:
+            _main_file = ps_log_root_dir + 'final_fl_B_main_program.prototxt'
+            debug_program(
+                _main_file, self.attrs['origin_main_program'].
+                _heter_pipeline_opt['section_program'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return
 
@@ -470,6 +582,7 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             self._build_trainer_programs()
             fluid.framework.switch_startup_program(self.cloned_startup)
             fluid.framework.switch_main_program(self.cloned_main)
+<<<<<<< HEAD
             print(
                 "fluid.default_startup_program: {}".format(
                     fluid.default_startup_program()._heter_pipeline_opt
@@ -480,4 +593,12 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
             fluid.framework.switch_startup_program(
                 self.attrs['_startup_server']
             )
+=======
+            print("fluid.default_startup_program: {}".format(
+                fluid.default_startup_program()._heter_pipeline_opt))
+        else:
+            self._build_pserver_programs()
+            fluid.framework.switch_startup_program(
+                self.attrs['_startup_server'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             fluid.framework.switch_main_program(self.attrs['_main_server'])

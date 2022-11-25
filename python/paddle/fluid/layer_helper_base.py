@@ -89,6 +89,7 @@ class LayerHelperBase:
         """
         if isinstance(value, np.ndarray):
             if _in_eager_without_dygraph_check():
+<<<<<<< HEAD
                 return core.eager.Tensor(
                     value,
                     _current_expected_place(),
@@ -105,6 +106,17 @@ class LayerHelperBase:
                     place=_current_expected_place(),
                     zero_copy=False,
                 )
+=======
+                return core.eager.Tensor(value, _current_expected_place(),
+                                         False, False, name if name else None,
+                                         True)
+            else:
+                py_var = core.VarBase(value=value,
+                                      name=name if name else '',
+                                      persistable=False,
+                                      place=_current_expected_place(),
+                                      zero_copy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return py_var
         elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
             return value
@@ -140,16 +152,24 @@ class LayerHelperBase:
                     ".".join([self.name, 'weight_norm_abs'])
                 ),
                 dtype=dtype,
+<<<<<<< HEAD
                 persistable=False,
             )
             block.append_op(
                 type='abs', inputs={'X': x}, outputs={'Out': abs_out}
             )
+=======
+                persistable=False)
+            block.append_op(type='abs',
+                            inputs={'X': x},
+                            outputs={'Out': abs_out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             pow_out = block.create_var(
                 name=unique_name.generate_with_ignorable_key(
                     ".".join([self.name, 'weight_norm_pow'])
                 ),
                 dtype=dtype,
+<<<<<<< HEAD
                 persistable=False,
             )
             block.append_op(
@@ -158,11 +178,19 @@ class LayerHelperBase:
                 outputs={'Out': pow_out},
                 attrs={'factor': float(p)},
             )
+=======
+                persistable=False)
+            block.append_op(type='pow',
+                            inputs={'X': abs_out},
+                            outputs={'Out': pow_out},
+                            attrs={'factor': float(p)})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             sum_out = block.create_var(
                 name=unique_name.generate_with_ignorable_key(
                     ".".join([self.name, 'weight_norm_sum'])
                 ),
                 dtype=dtype,
+<<<<<<< HEAD
                 persistable=False,
             )
             block.append_op(
@@ -181,6 +209,21 @@ class LayerHelperBase:
                 outputs={'Out': out},
                 attrs={'factor': 1.0 / p},
             )
+=======
+                persistable=False)
+            block.append_op(type='reduce_sum',
+                            inputs={'X': pow_out},
+                            outputs={'Out': sum_out},
+                            attrs={
+                                'dim': dim,
+                                'keep_dim': keep_dim,
+                                'reduce_all': True if dim is None else False
+                            })
+            block.append_op(type='pow',
+                            inputs={'X': sum_out},
+                            outputs={'Out': out},
+                            attrs={'factor': 1. / p})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
         def __reshape_op(
@@ -192,6 +235,7 @@ class LayerHelperBase:
                         ".".join([self.name, 'weight_norm_reshape'])
                     ),
                     dtype=dtype,
+<<<<<<< HEAD
                     persistable=False,
                 )
             x_shape = block.create_var(name="Xshape", dtype=x.dtype)
@@ -201,6 +245,13 @@ class LayerHelperBase:
                 attrs={'shape': shape},
                 outputs={"Out": out, "XShape": x_shape},
             )
+=======
+                    persistable=False)
+            block.append_op(type='reshape',
+                            inputs={'X': x},
+                            outputs={'Out': out},
+                            attrs={'shape': shape})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
         def __transpose_op(
@@ -212,6 +263,7 @@ class LayerHelperBase:
                         ".".join([self.name, 'weight_norm_transpose'])
                     ),
                     dtype=dtype,
+<<<<<<< HEAD
                     persistable=False,
                 )
             block.append_op(
@@ -220,6 +272,13 @@ class LayerHelperBase:
                 outputs={'Out': out},
                 attrs={'axis': axis},
             )
+=======
+                    persistable=False)
+            block.append_op(type='transpose',
+                            inputs={'X': x},
+                            outputs={'Out': out},
+                            attrs={'axis': axis})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return out
 
         def __norm_except_dim(
@@ -250,12 +309,20 @@ class LayerHelperBase:
                 perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
+<<<<<<< HEAD
                 out_shape = [transpose.shape[0]] + [1] * (
                     len(transpose.shape) - 1
                 )
                 reshape = __reshape_op(
                     transpose, shape=[transpose.shape[0], -1], block=block
                 )
+=======
+                out_shape = [transpose.shape[0]
+                             ] + [1] * (len(transpose.shape) - 1)
+                reshape = __reshape_op(transpose,
+                                       shape=[transpose.shape[0], -1],
+                                       block=block)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 norm = __norm_op(reshape, dim=[1], block=block)
                 reshape2 = __reshape_op(norm, shape=out_shape, block=block)
                 __transpose_op(reshape2, perm, out=out, block=block)
@@ -263,15 +330,22 @@ class LayerHelperBase:
 
         def __weight_normalize(g, v, dim):
             """Calculations for weight normalization"""
+<<<<<<< HEAD
             norm = __norm_except_dim(
                 v, dim=dim, block=self.main_program.current_block()
             )
+=======
+            norm = __norm_except_dim(v,
+                                     dim=dim,
+                                     block=self.main_program.current_block())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             scale = elementwise_div(
                 x=g, y=norm
             )  # The shapes of g and norm are the same.
             # Currently, elementwise_mul only support broadcast when the shape
             # of y is a subset of the shape of x. Thus, we reshape y to squeeze
             # to achieve the subset.
+<<<<<<< HEAD
             w = elementwise_mul(
                 x=v,
                 y=scale
@@ -279,6 +353,12 @@ class LayerHelperBase:
                 else paddle.reshape(x=scale, shape=[v.shape[dim]]),
                 axis=-1 if dim is None else dim,
             )
+=======
+            w = elementwise_mul(x=v,
+                                y=scale if dim is None else reshape(
+                                    x=scale, shape=[v.shape[dim]]),
+                                axis=-1 if dim is None else dim)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # To serialize the original parameter for inference, maybe a
             # parameter rather than a variable should be returned.
             return w
@@ -307,6 +387,7 @@ class LayerHelperBase:
         v_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=v_param_shape,
+<<<<<<< HEAD
             **v_param_attr._to_kwargs(with_initializer=True)
         )
         __norm_except_dim(
@@ -323,6 +404,19 @@ class LayerHelperBase:
             out=g_param,
             block=self.startup_program.global_block(),
         )
+=======
+            **v_param_attr._to_kwargs(with_initializer=True))
+        __norm_except_dim(x=v_param,
+                          out=g_param,
+                          dim=attr.dim,
+                          block=self.startup_program.global_block())
+
+        # keep g_param shape to be consistent with that in main_program
+        __reshape_op(g_param,
+                     g_param_shape,
+                     out=g_param,
+                     block=self.startup_program.global_block())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Add weight normalization to main_program
         g_param = self.main_program.global_block().create_parameter(
@@ -363,10 +457,16 @@ class LayerHelperBase:
             return None
         assert isinstance(attr, ParamAttr)
         for i, size in enumerate(shape):
+<<<<<<< HEAD
             assert size > 0, (
                 "Expected every dim's size to be larger than 0, "
                 "but the size of the {}-th dim is {}".format(i, size)
             )
+=======
+            assert size > 0, ("Expected every dim's size to be larger than 0, "
+                              "but the size of the {}-th dim is {}".format(
+                                  i, size))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # set global dtype
         if not dtype:
             dtype = self.__dtype
@@ -399,9 +499,14 @@ class LayerHelperBase:
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )
             else:
+<<<<<<< HEAD
                 if not (
                     dtype.startswith("float") or dtype in ["double", "uint16"]
                 ):
+=======
+                if not (dtype.startswith("float")
+                        or dtype in ["double", "uint16"]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     raise TypeError(
                         "Can not create parameter with default initializer when dtype is not float type. Set default_initializer to fit the parameter dtype!"
                     )

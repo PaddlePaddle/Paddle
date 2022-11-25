@@ -38,6 +38,7 @@ def stable_softmax(x):
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
+
     def get_x_shape(self):
         return [10, 10]
 
@@ -72,26 +73,31 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
 
 
 class TestSoftmaxMKLDNNOp2(TestSoftmaxOp2):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp3(TestSoftmaxOp3):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp4(TestSoftmaxOp4):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp5(TestSoftmaxOp5):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
 
 class TestSoftmaxMKLDNNOp6(TestSoftmaxOp6):
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 

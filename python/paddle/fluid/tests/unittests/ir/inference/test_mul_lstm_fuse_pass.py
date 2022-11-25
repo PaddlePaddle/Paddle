@@ -22,6 +22,7 @@ import hypothesis.strategies as st
 
 
 class TestMulLstmFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -44,6 +45,7 @@ class TestMulLstmFusePass(PassAutoScanTest):
         def generate_weight(shape):
             return np.full(shape, 0.0001).astype(np.float32)
 
+<<<<<<< HEAD
         im2sequence_op = OpConfig(
             type="im2sequence",
             inputs={"X": ["input_data"]},
@@ -85,6 +87,49 @@ class TestMulLstmFusePass(PassAutoScanTest):
                 'is_test': True,
             },
         )
+=======
+        im2sequence_op = OpConfig(type="im2sequence",
+                                  inputs={"X": ["input_data"]},
+                                  outputs={"Out": ["seq_out"]},
+                                  attrs={
+                                      "kernels": [6, 1],
+                                      "out_stride": [1, 1],
+                                      "paddings": [0, 0, 0, 0],
+                                      "strides": [1, 1]
+                                  })
+
+        mul_op = OpConfig(type="mul",
+                          inputs={
+                              "X": ["seq_out"],
+                              "Y": ["mul_weight"]
+                          },
+                          outputs={"Out": ["mul_out"]},
+                          attrs={
+                              "x_num_col_dims": x_col,
+                              "y_num_col_dims": y_col
+                          })
+
+        lstm_op = OpConfig(type="lstm",
+                           inputs={
+                               "Input": ["mul_out"],
+                               "Weight": ["lstm_weight"],
+                               "Bias": ["lstm_bias"]
+                           },
+                           outputs={
+                               "Hidden": ["lstm_hidden"],
+                               "Cell": ["lstm_cell"],
+                               "BatchGate": ["lstm_gate"],
+                               "BatchCellPreAct": ["lstm_batch_cell"]
+                           },
+                           attrs={
+                               'use_peepholes': use_peepholes,
+                               'is_reverse': is_reverse,
+                               'gate_activation': gate_activation,
+                               'cell_activation': cell_activation,
+                               'candidate_activation': candidate_activation,
+                               'is_test': True
+                           })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         model_net = [im2sequence_op, mul_op, lstm_op]
 
@@ -119,9 +164,15 @@ class TestMulLstmFusePass(PassAutoScanTest):
         yield config, ["im2sequence", "fusion_lstm"], (1e-5, 1e-5)
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False, max_duration=300, passes=["mul_lstm_fuse_pass"]
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_duration=300,
+                            passes=["mul_lstm_fuse_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

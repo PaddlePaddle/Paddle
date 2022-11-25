@@ -440,6 +440,7 @@ class DGCMomentumOptimizer(Optimizer):
 
 
 class DGCOptimizer(MetaOptimizerBase):
+
     def __init__(self, optimizer):
         super().__init__(optimizer)
         self.inner_opt = optimizer
@@ -448,12 +449,20 @@ class DGCOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = []
         self.meta_optimizers_black_list = []
 
+<<<<<<< HEAD
     def _set_basic_info(
         self, loss, role_maker, user_defined_optimizer, user_defined_strategy
     ):
         super()._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy
         )
+=======
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(DGCOptimizer,
+              self)._set_basic_info(loss, role_maker, user_defined_optimizer,
+                                    user_defined_strategy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _init_dgc_opt(self):
         if self.dgc_opt is not None:
@@ -529,9 +538,15 @@ class DGCOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         self._init_dgc_opt()
+<<<<<<< HEAD
         return self.dgc_opt.apply_optimize(
             loss, startup_program=startup_program, params_grads=params_grads
         )
+=======
+        return self.dgc_opt.apply_optimize(loss,
+                                           startup_program=startup_program,
+                                           params_grads=params_grads)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def minimize_impl(
         self, loss, startup_program=None, parameter_list=None, no_grad_set=None

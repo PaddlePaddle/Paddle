@@ -25,6 +25,7 @@ np.random.seed(2022)
 @param.place(config.DEVICES)
 @param.param_cls(
     (param.TEST_CASE_NAME, 'base', 'reinterpreted_batch_rank'),
+<<<<<<< HEAD
     [
         (
             'base_beta',
@@ -33,7 +34,12 @@ np.random.seed(2022)
         )
     ],
 )
+=======
+    [('base_beta',
+      paddle.distribution.Beta(paddle.rand([1, 2]), paddle.rand([1, 2])), 1)])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TestIndependent(unittest.TestCase):
+
     def setUp(self):
         self._t = paddle.distribution.Independent(
             self.base, self.reinterpreted_batch_rank
@@ -108,6 +114,7 @@ class TestIndependent(unittest.TestCase):
     ],
 )
 class TestIndependentException(unittest.TestCase):
+
     def test_init(self):
         with self.assertRaises(self.expected_exception):
             paddle.distribution.IndependentTransform(

@@ -44,7 +44,12 @@ void GroupNormGradKernel(const Context& dev_ctx,
                          DenseTensor* d_x,
                          DenseTensor* d_scale,
                          DenseTensor* d_bias) {
+<<<<<<< HEAD
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
   const auto& x_dims = y.dims();

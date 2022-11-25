@@ -31,11 +31,13 @@ import paddle.nn as nn
 
 
 class SimpleReturnLayer(nn.Layer):
+
     def forward(self, x):
         return x
 
 
 class AddAttrLayer(nn.Layer):
+
     def __init__(self):
         super().__init__()
         self.attr = None
@@ -46,6 +48,7 @@ class AddAttrLayer(nn.Layer):
 
 
 class IsInstanceLayer(nn.Layer):
+
     def __init__(self, layer):
         super().__init__()
         self.layer = layer
@@ -59,6 +62,7 @@ class IsInstanceLayer(nn.Layer):
 
 
 class SequentialLayer(nn.Layer):
+
     def __init__(self, layers):
         super().__init__()
         self.layers = nn.LayerList(layers)
@@ -84,6 +88,7 @@ def train(model, to_static):
 
 
 class TestIsinstance(unittest.TestCase):
+
     def test_isinstance_simple_return_layer(self):
         model = IsInstanceLayer(SimpleReturnLayer())
         self._test_model(model)
@@ -103,12 +108,17 @@ class TestIsinstance(unittest.TestCase):
     def _test_model(self, model):
         st_out = train(model, to_static=True)
         dy_out = train(model, to_static=False)
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dy_out,
             st_out,
             rtol=1e-05,
             err_msg='dy_out:\n {}\n st_out:\n{}'.format(dy_out, st_out),
         )
+=======
+        self.assertTrue(np.allclose(dy_out, st_out),
+                        msg="dy_out:\n {}\n st_out:\n{}".format(dy_out, st_out))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

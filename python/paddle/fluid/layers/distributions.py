@@ -219,6 +219,7 @@ class Uniform(Distribution):
         if self.batch_size_unknown:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
+<<<<<<< HEAD
                 self.low + self.high, batch_shape + shape, self.low.dtype, 0.0
             )
             uniform_random_tmp = (
@@ -241,6 +242,19 @@ class Uniform(Distribution):
                 )
                 + self.low
             )
+=======
+                self.low + self.high, batch_shape + shape, self.low.dtype, 0.)
+            uniform_random_tmp = nn.uniform_random_batch_size_like(
+                zero_tmp, zero_tmp.shape, min=0., max=1., seed=seed)
+            output = uniform_random_tmp * (zero_tmp + self.high -
+                                           self.low) + self.low
+            return nn.reshape(output, output_shape)
+        else:
+            output_shape = shape + batch_shape
+            output = nn.uniform_random(output_shape, seed=seed) * (
+                tensor.zeros(output_shape, dtype=self.low.dtype) +
+                (self.high - self.low)) + self.low
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape)
             else:
@@ -380,9 +394,16 @@ class Normal(Distribution):
                 self.loc + self.scale, batch_shape + shape, self.loc.dtype, 0.0
             )
             zero_tmp_shape = nn.shape(zero_tmp)
+<<<<<<< HEAD
             normal_random_tmp = nn.gaussian_random(
                 zero_tmp_shape, mean=0.0, std=1.0, seed=seed
             )
+=======
+            normal_random_tmp = nn.gaussian_random(zero_tmp_shape,
+                                                   mean=0.,
+                                                   std=1.,
+                                                   seed=seed)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             output = normal_random_tmp * (zero_tmp + self.scale) + self.loc
             return paddle.reshape(output, output_shape)
         else:
@@ -408,12 +429,20 @@ class Normal(Distribution):
 
         """
         batch_shape = list((self.loc + self.scale).shape)
+<<<<<<< HEAD
         zero_tmp = tensor.fill_constant_batch_size_like(
             self.loc + self.scale, batch_shape, self.loc.dtype, 0.0
         )
         return (
             0.5 + 0.5 * math.log(2 * math.pi) + nn.log((self.scale + zero_tmp))
         )
+=======
+        zero_tmp = tensor.fill_constant_batch_size_like(self.loc + self.scale,
+                                                        batch_shape,
+                                                        self.loc.dtype, 0.)
+        return 0.5 + 0.5 * math.log(2 * math.pi) + nn.log(
+            (self.scale + zero_tmp))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def log_prob(self, value):
         """Log probability density/mass function.
@@ -431,11 +460,17 @@ class Normal(Distribution):
 
         var = self.scale * self.scale
         log_scale = nn.log(self.scale)
+<<<<<<< HEAD
         return (
             -1.0 * ((value - self.loc) * (value - self.loc)) / (2.0 * var)
             - log_scale
             - math.log(math.sqrt(2.0 * math.pi))
         )
+=======
+        return -1. * ((value - self.loc) *
+                      (value - self.loc)) / (2. * var) - log_scale - math.log(
+                          math.sqrt(2. * math.pi))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def kl_divergence(self, other):
         """The KL-divergence between two normal distributions.
@@ -660,9 +695,14 @@ class MultivariateNormalDiag(Distribution):
         batch_shape = list(value.shape)
         one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
+<<<<<<< HEAD
             tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         det_diag = paddle.prod(value + one_all - one_diag)
+=======
+            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype))
+        det_diag = nn.reduce_prod(value + one_all - one_diag)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return det_diag
 
@@ -671,9 +711,14 @@ class MultivariateNormalDiag(Distribution):
         batch_shape = list(value.shape)
         one_all = tensor.ones(shape=batch_shape, dtype=self.loc.dtype)
         one_diag = tensor.diag(
+<<<<<<< HEAD
             tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype)
         )
         inv_diag = paddle.pow(value, (one_all - 2 * one_diag))
+=======
+            tensor.ones(shape=[batch_shape[0]], dtype=self.loc.dtype))
+        inv_diag = nn.elementwise_pow(value, (one_all - 2 * one_diag))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return inv_diag
 
@@ -684,10 +729,15 @@ class MultivariateNormalDiag(Distribution):
           Variable: Shannon entropy of Multivariate Normal distribution. The data type is float32.
 
         """
+<<<<<<< HEAD
         entropy = 0.5 * (
             self.scale.shape[0] * (1.0 + math.log(2 * math.pi))
             + nn.log(self._det(self.scale))
         )
+=======
+        entropy = 0.5 * (self.scale.shape[0] * (1.0 + math.log(2 * math.pi)) +
+                         nn.log(self._det(self.scale)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return entropy
 

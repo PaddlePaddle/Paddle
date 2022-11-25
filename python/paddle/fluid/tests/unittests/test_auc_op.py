@@ -21,6 +21,7 @@ import paddle
 
 
 class TestAucOp(OpTest):
+
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
@@ -29,11 +30,17 @@ class TestAucOp(OpTest):
         slide_steps = 1
 
         stat_pos = np.zeros(
+<<<<<<< HEAD
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
         stat_neg = np.zeros(
             (1 + slide_steps) * (num_thresholds + 1) + 1,
         ).astype("int64")
+=======
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+        stat_neg = np.zeros(
+            (1 + slide_steps) * (num_thresholds + 1) + 1, ).astype("int64")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {
             'Predict': pred,
@@ -67,6 +74,7 @@ class TestAucOp(OpTest):
 
 
 class TestGlobalAucOp(OpTest):
+
     def setUp(self):
         self.op_type = "auc"
         pred = np.random.random((128, 2)).astype("float32")
@@ -136,6 +144,7 @@ class TestAucAPI(unittest.TestCase):
 
 
 class TestAucOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
@@ -152,9 +161,15 @@ class TestAucOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type1)
 
             def test_type2():
+<<<<<<< HEAD
                 data2 = fluid.data(
                     name="input2", shape=[-1, 2], dtype="float32"
                 )
+=======
+                data2 = fluid.data(name="input2",
+                                   shape=[-1, 2],
+                                   dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
                 result2 = fluid.layers.auc(input=data2, label=label2)
 

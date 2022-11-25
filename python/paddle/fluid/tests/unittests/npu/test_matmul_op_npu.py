@@ -269,7 +269,9 @@ class TestMatMulOp13(TestMatMulOp):
 
 # --------------------test matmul alpha--------------------
 def create_test_alpha_class(parent):
+
     class TestMatMulOpAlphaCase(parent):
+
         def init_alpha(self):
             self.alpha = 0.125
 
@@ -294,7 +296,9 @@ create_test_alpha_class(TestMatMulOp13)
 
 # --------------------test matmul fp16--------------------
 def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
+
     class TestMatMulOpFp16Case(parent):
+
         def init_kernel_type(self):
             self.dtype = np.float16
 
@@ -302,12 +306,18 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
             self.check_output_with_place(self.place, atol=atol)
 
         def test_check_grad(self):
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 ['X', 'Y'],
                 'Out',
                 max_relative_error=max_relative_error,
             )
+=======
+            self.check_grad_with_place(self.place, ['X', 'Y'],
+                                       'Out',
+                                       max_relative_error=max_relative_error)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
     TestMatMulOpFp16Case.__name__ = cls_name

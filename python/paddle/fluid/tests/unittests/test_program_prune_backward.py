@@ -36,9 +36,16 @@ def lstm_net(use_feed):
     hid_dim2 = 96
     class_dim = 2
     emb_lr = 30.0
+<<<<<<< HEAD
     data = fluid.layers.data(
         name="words", shape=[1], dtype="int64", lod_level=1
     )
+=======
+    data = fluid.layers.data(name="words",
+                             shape=[1],
+                             dtype="int64",
+                             lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     emb = fluid.layers.embedding(
         input=data,
@@ -46,9 +53,15 @@ def lstm_net(use_feed):
         param_attr=fluid.ParamAttr(learning_rate=emb_lr),
     )
     fc0 = fluid.layers.fc(input=emb, size=hid_dim * 4)
+<<<<<<< HEAD
     lstm_h, c = fluid.layers.dynamic_lstm(
         input=fc0, size=hid_dim * 4, is_reverse=False
     )
+=======
+    lstm_h, c = fluid.layers.dynamic_lstm(input=fc0,
+                                          size=hid_dim * 4,
+                                          is_reverse=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     lstm_max = fluid.layers.sequence_pool(input=lstm_h, pool_type='max')
     lstm_max_tanh = paddle.tanh(lstm_max)
     fc1 = fluid.layers.fc(input=lstm_max_tanh, size=hid_dim2, act='tanh')
@@ -68,10 +81,15 @@ def simple_fc_net_with_accuracy(use_feed):
             hidden,
             size=200,
             act='relu',
+<<<<<<< HEAD
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)
             ),
         )
+=======
+            bias_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+                value=1.0)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = paddle.mean(loss)
@@ -135,6 +153,7 @@ def optimization_in_cond_net(with_optimize=False):
 
 
 class TestProgramPruneBackward(unittest.TestCase):
+
     def program_compare(self, program_a, program_b):
         assert isinstance(
             program_a, fluid.framework.Program
@@ -183,6 +202,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             self.assertEqual(loss_data_orig, loss_data_prune)
 
     def test_simple_fc_net(self):
+
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
@@ -192,13 +212,23 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         with self.program_scope_guard():
             img, label = init_data()
+<<<<<<< HEAD
             self.check_prune_correctness(
                 method=simple_fc_net,
                 feed_dict={"image": img, "label": label},
                 optimizer=optimizer,
             )
+=======
+            self.check_prune_correctness(method=simple_fc_net,
+                                         feed_dict={
+                                             "image": img,
+                                             "label": label
+                                         },
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_simple_fc_net_with_accuracy(self):
+
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
@@ -208,13 +238,23 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         with self.program_scope_guard():
             img, label = init_data()
+<<<<<<< HEAD
             self.check_prune_correctness(
                 method=simple_fc_net_with_accuracy,
                 feed_dict={"image": img, "label": label},
                 optimizer=optimizer,
             )
+=======
+            self.check_prune_correctness(method=simple_fc_net_with_accuracy,
+                                         feed_dict={
+                                             "image": img,
+                                             "label": label
+                                         },
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_batchnorm_fc(self):
+
         def optimizer():
             optimizer = fluid.optimizer.SGD(
                 learning_rate=0.001,
@@ -224,11 +264,20 @@ class TestProgramPruneBackward(unittest.TestCase):
 
         with self.program_scope_guard():
             img, label = init_data()
+<<<<<<< HEAD
             self.check_prune_correctness(
                 method=fc_with_batchnorm,
                 feed_dict={"image": img, "label": label},
                 optimizer=optimizer,
             )
+=======
+            self.check_prune_correctness(method=fc_with_batchnorm,
+                                         feed_dict={
+                                             "image": img,
+                                             "label": label
+                                         },
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_seresnet(self):
         with self.program_scope_guard():
@@ -239,6 +288,7 @@ class TestProgramPruneBackward(unittest.TestCase):
             )
 
     def test_transformer(self):
+
         def optimizer():
             optimizer = fluid.optimizer.Adam(
                 learning_rate=0.001,
@@ -249,13 +299,21 @@ class TestProgramPruneBackward(unittest.TestCase):
         with self.program_scope_guard():
             # the program argument is used to distinguish Program and CompiledProgram
             feed_dict = get_feed_data_reader().get_next(
+<<<<<<< HEAD
                 fluid.Executor(core.CPUPlace()), fluid.default_main_program()
             )
             self.check_prune_correctness(
                 method=transformer, feed_dict=feed_dict, optimizer=optimizer
             )
+=======
+                fluid.Executor(core.CPUPlace()), fluid.default_main_program())
+            self.check_prune_correctness(method=transformer,
+                                         feed_dict=feed_dict,
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_lstm(self):
+
         def optimizer():
             optimizer = fluid.optimizer.Adagrad(
                 learning_rate=0.001,
@@ -266,6 +324,7 @@ class TestProgramPruneBackward(unittest.TestCase):
         with self.program_scope_guard():
             word_dict_size = 5147
             reader = fake_imdb_reader(word_dict_size, 1)
+<<<<<<< HEAD
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1
             )
@@ -277,8 +336,22 @@ class TestProgramPruneBackward(unittest.TestCase):
             self.check_prune_correctness(
                 method=lstm_net, feed_dict=feed_data, optimizer=optimizer
             )
+=======
+            data = fluid.layers.data(name="words",
+                                     shape=[1],
+                                     dtype="int64",
+                                     lod_level=1)
+            label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+            feeder = fluid.DataFeeder(feed_list=[data, label],
+                                      place=core.CPUPlace())
+            feed_data = feeder.feed(reader())
+            self.check_prune_correctness(method=lstm_net,
+                                         feed_dict=feed_data,
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_cond(self):
+
         def optimizer():
             optimizer = fluid.optimizer.SGD(learning_rate=0.01)
             return optimizer
@@ -287,9 +360,15 @@ class TestProgramPruneBackward(unittest.TestCase):
             x_in = np.random.random(size=(10, 4)).astype('float32')
             label_in = np.random.randint(1, size=(10, 1)).astype('int64')
             feed_dict = {'x': x_in, 'label': label_in}
+<<<<<<< HEAD
             self.check_prune_correctness(
                 method=cond_net, feed_dict=feed_dict, optimizer=optimizer
             )
+=======
+            self.check_prune_correctness(method=cond_net,
+                                         feed_dict=feed_dict,
+                                         optimizer=optimizer)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_optimization_in_cond(self):
         x_in = np.random.random(size=(10, 4)).astype('float32')

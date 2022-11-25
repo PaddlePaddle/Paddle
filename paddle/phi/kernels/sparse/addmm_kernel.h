@@ -27,8 +27,13 @@ void AddmmCooCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& input,
                        const SparseCooTensor& x,
                        const SparseCooTensor& y,
+<<<<<<< HEAD
                        float beta,
                        float alpha,
+=======
+                       float alpha,
+                       float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        SparseCooTensor* out);
 
 /* DENSE + COO @ DENSE -> DENSE */
@@ -37,8 +42,13 @@ void AddmmCooDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCooTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float beta,
                          float alpha,
+=======
+                         float alpha,
+                         float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          DenseTensor* out);
 
 // TODO(zhouwei25): implement " CSR + CSR @ CSR -> CSR"
@@ -47,8 +57,13 @@ void AddmmCsrCsrKernel(const Context& dev_ctx,
                        const SparseCsrTensor& input,
                        const SparseCsrTensor& x,
                        const SparseCsrTensor& y,
+<<<<<<< HEAD
                        float beta,
                        float alpha,
+=======
+                       float alpha,
+                       float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        SparseCsrTensor* out);
 
 /* DENSE + CSR @ DENSE -> DENSE */
@@ -57,8 +72,13 @@ void AddmmCsrDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCsrTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float beta,
                          float alpha,
+=======
+                         float alpha,
+                         float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          DenseTensor* out);
 
 }  // namespace sparse

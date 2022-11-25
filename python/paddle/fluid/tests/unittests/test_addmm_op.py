@@ -62,6 +62,7 @@ class TestAddMMOpError(unittest.TestCase):
         with program_guard(Program(), Program()):
             # The input type of addmm_op must be Variable.
 
+<<<<<<< HEAD
             input = fluid.create_lod_tensor(
                 np.array([[-1, -1], [-1, -1]]), [[2]], fluid.CPUPlace()
             )
@@ -178,6 +179,93 @@ class TestAddMMOpError(unittest.TestCase):
                 dtype="float32",
                 append_batch_size=False,
             )
+=======
+            input = fluid.create_lod_tensor(np.array([[-1, -1], [-1, -1]]),
+                                            [[2]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([[-1, -1], [-1, -1]]), [[2]],
+                                         fluid.CPUPlace())
+            x2 = fluid.create_lod_tensor(np.array([[-1, -1], [-1, -1]]), [[2]],
+                                         fluid.CPUPlace())
+            self.assertRaises(TypeError, paddle.addmm, input, x1, x2)
+
+            # The input dtype of mul_op must be float32 or float64.
+            input = fluid.layers.data(name='input',
+                                      shape=[4, 4],
+                                      dtype="int32",
+                                      append_batch_size=False)
+            x3 = fluid.layers.data(name='x3',
+                                   shape=[4, 4],
+                                   dtype="int32",
+                                   append_batch_size=False)
+            x4 = fluid.layers.data(name='x4',
+                                   shape=[4, 4],
+                                   dtype="int32",
+                                   append_batch_size=False)
+            self.assertRaises(TypeError, paddle.addmm, input, x3, x4)
+            # x and y dimension mismatch
+            x5 = fluid.layers.data(name='x5',
+                                   shape=[4, 5],
+                                   dtype="float32",
+                                   append_batch_size=False)
+            x6 = fluid.layers.data(name='x6',
+                                   shape=[4, 4],
+                                   dtype="float32",
+                                   append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input, x5, x6)
+            # input and x are not broadcastable
+            x7 = fluid.layers.data(name='x7',
+                                   shape=[4, 4],
+                                   dtype="float32",
+                                   append_batch_size=False)
+            x8 = fluid.layers.data(name='x8',
+                                   shape=[4, 4],
+                                   dtype="float32",
+                                   append_batch_size=False)
+            input1 = fluid.layers.data(name='input1',
+                                       shape=[2, 4],
+                                       dtype="float32",
+                                       append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input1, x7, x8)
+            # input and x are not broadcastable
+            x9 = fluid.layers.data(name='x9',
+                                   shape=[4, 4],
+                                   dtype="float32",
+                                   append_batch_size=False)
+            x10 = fluid.layers.data(name='x10',
+                                    shape=[4, 4],
+                                    dtype="float32",
+                                    append_batch_size=False)
+            input2 = fluid.layers.data(name='input2',
+                                       shape=[1, 2],
+                                       dtype="float32",
+                                       append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input2, x9, x10)
+            x11 = fluid.layers.data(name='x11',
+                                    shape=[4, 4],
+                                    dtype="float32",
+                                    append_batch_size=False)
+            x12 = fluid.layers.data(name='x12',
+                                    shape=[4, 4],
+                                    dtype="float32",
+                                    append_batch_size=False)
+            input3 = fluid.layers.data(name='input3',
+                                       shape=[4, 2],
+                                       dtype="float32",
+                                       append_batch_size=False)
+            self.assertRaises(ValueError, paddle.addmm, input3, x11, x12)
+            x13 = fluid.layers.data(name='x13',
+                                    shape=[4, 4],
+                                    dtype="float32",
+                                    append_batch_size=False)
+            x14 = fluid.layers.data(name='x14',
+                                    shape=[4, 4],
+                                    dtype="float32",
+                                    append_batch_size=False)
+            input4 = fluid.layers.data(name='input4',
+                                       shape=[3, 1],
+                                       dtype="float32",
+                                       append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertRaises(ValueError, paddle.addmm, input4, x13, x14)
 
 
@@ -257,10 +345,15 @@ class TestAddMMOp4(OpTest):
             'Alpha': 0.5,
             'Beta': 2.0,
         }
+<<<<<<< HEAD
         self.outputs = {
             'Out': self.attrs['Beta'] * self.inputs['Input']
             + self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])
         }
+=======
+        self.outputs = {'Out': self.attrs['Beta'] * self.inputs['Input'] + \
+                        self.attrs['Alpha'] * np.dot(self.inputs['X'], self.inputs['Y'])}
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def init_dtype_type(self):
         pass
@@ -282,6 +375,10 @@ class TestAddMMOp4(OpTest):
 
 
 class TestAddMMOp5(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_api_with_dygraph(self):
         np_input = np.random.random((20, 30)).astype(np.float32)
         np_x = np.random.random((20, 6)).astype(np.float32)
@@ -296,6 +393,7 @@ class TestAddMMOp5(unittest.TestCase):
 
 
 class TestAddMMAPI(unittest.TestCase):
+
     def test_api_error(self):
         data_x = np.ones((2, 2)).astype(np.float32)
         data_y = np.ones((2, 2)).astype(np.float32)
@@ -308,9 +406,17 @@ class TestAddMMAPI(unittest.TestCase):
             x = paddle.to_tensor(data_x_wrong)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input)
+<<<<<<< HEAD
             out = paddle.tensor.addmm(
                 input=input, x=x, y=y, beta=0.5, alpha=5.0
             )
+=======
+            out = paddle.tensor.addmm(input=input,
+                                      x=x,
+                                      y=y,
+                                      beta=0.5,
+                                      alpha=5.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, test_error1)
 
@@ -319,9 +425,17 @@ class TestAddMMAPI(unittest.TestCase):
             x = paddle.to_tensor(data_x_wrong)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input)
+<<<<<<< HEAD
             out = paddle.tensor.addmm(
                 input=input, x=x, y=y, beta=0.5, alpha=5.0
             )
+=======
+            out = paddle.tensor.addmm(input=input,
+                                      x=x,
+                                      y=y,
+                                      beta=0.5,
+                                      alpha=5.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, test_error2)
 
@@ -330,9 +444,17 @@ class TestAddMMAPI(unittest.TestCase):
             x = paddle.to_tensor(data_x)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input_wrong)
+<<<<<<< HEAD
             out = paddle.tensor.addmm(
                 input=input, x=x, y=y, beta=0.5, alpha=5.0
             )
+=======
+            out = paddle.tensor.addmm(input=input,
+                                      x=x,
+                                      y=y,
+                                      beta=0.5,
+                                      alpha=5.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, test_error3)
 
@@ -341,9 +463,17 @@ class TestAddMMAPI(unittest.TestCase):
             x = paddle.to_tensor(data_x)
             y = paddle.to_tensor(data_y)
             input = paddle.to_tensor(data_input_wrong)
+<<<<<<< HEAD
             out = paddle.tensor.addmm(
                 input=input, x=x, y=y, beta=0.5, alpha=5.0
             )
+=======
+            out = paddle.tensor.addmm(input=input,
+                                      x=x,
+                                      y=y,
+                                      beta=0.5,
+                                      alpha=5.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.assertRaises(ValueError, test_error4)
 
@@ -361,6 +491,7 @@ class TestAddMMAPI(unittest.TestCase):
         x = paddle.to_tensor(data_x)
         y = paddle.to_tensor(data_y)
         input = paddle.to_tensor(data_input)
+<<<<<<< HEAD
         paddle_output = paddle.tensor.addmm(
             input=input, x=x, y=y, beta=data_beta, alpha=data_alpha
         )
@@ -371,6 +502,17 @@ class TestAddMMAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
+=======
+        paddle_output = paddle.tensor.addmm(input=input,
+                                            x=x,
+                                            y=y,
+                                            beta=data_beta,
+                                            alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         paddle.enable_static()
 
@@ -386,6 +528,7 @@ class TestAddMMAPI(unittest.TestCase):
         x = paddle.to_tensor(data_x)
         y = paddle.to_tensor(data_y)
         input = paddle.to_tensor(data_input)
+<<<<<<< HEAD
         paddle_output = paddle.tensor.addmm(
             input=input, x=x, y=y, beta=data_beta, alpha=data_alpha
         )
@@ -396,6 +539,17 @@ class TestAddMMAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
+=======
+        paddle_output = paddle.tensor.addmm(input=input,
+                                            x=x,
+                                            y=y,
+                                            beta=data_beta,
+                                            alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         paddle.enable_static()
 
@@ -411,6 +565,7 @@ class TestAddMMAPI(unittest.TestCase):
         x = paddle.to_tensor(data_x)
         y = paddle.to_tensor(data_y)
         input = paddle.to_tensor(data_input)
+<<<<<<< HEAD
         paddle_output = paddle.tensor.addmm(
             input=input, x=x, y=y, beta=data_beta, alpha=data_alpha
         )
@@ -421,6 +576,17 @@ class TestAddMMAPI(unittest.TestCase):
         np.testing.assert_allclose(
             numpy_output, paddle_output.numpy(), rtol=1e-05
         )
+=======
+        paddle_output = paddle.tensor.addmm(input=input,
+                                            x=x,
+                                            y=y,
+                                            beta=data_beta,
+                                            alpha=data_alpha)
+        numpy_output = data_beta * data_input + data_alpha * np.dot(
+            data_x, data_y)
+
+        self.assertEqual(np.allclose(numpy_output, paddle_output.numpy()), True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         paddle.enable_static()
 

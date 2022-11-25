@@ -36,6 +36,7 @@ class TestGeneratorSeed(unittest.TestCase):
         x = fluid.layers.uniform_random([10], dtype="float32", min=0.0, max=1.0)
 
         st1 = gen.get_state()
+<<<<<<< HEAD
         x1 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0
         )
@@ -50,6 +51,25 @@ class TestGeneratorSeed(unittest.TestCase):
         x3 = fluid.layers.uniform_random(
             [10], dtype="float32", min=0.0, max=1.0
         )
+=======
+        x1 = fluid.layers.uniform_random([10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+
+        gen.set_state(st1)
+        print(gen.get_state())
+        x2 = fluid.layers.uniform_random([10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+
+        paddle.seed(12312321111)
+        x3 = fluid.layers.uniform_random([10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         x_np = x.numpy()
         x1_np = x1.numpy()
@@ -100,6 +120,7 @@ class TestGeneratorSeed(unittest.TestCase):
         gen = paddle.seed(111111111)
         st = gen.get_state()
         # x = np.arange(1,101).reshape(2,50).astype("float32")
+<<<<<<< HEAD
         x = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
@@ -109,6 +130,19 @@ class TestGeneratorSeed(unittest.TestCase):
         x1 = fluid.layers.uniform_random(
             [2, 10], dtype="float32", min=0.0, max=1.0
         )
+=======
+        x = fluid.layers.uniform_random([2, 10],
+                                        dtype="float32",
+                                        min=0.0,
+                                        max=1.0)
+        y = fluid.layers.dropout(x, 0.5)
+        gen.manual_seed(111111111)
+        #gen.set_state(st)
+        x1 = fluid.layers.uniform_random([2, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         y1 = fluid.layers.dropout(x1, 0.5)
         y_np = y.numpy()
         y1_np = y1.numpy()
@@ -378,6 +412,7 @@ class TestGeneratorSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen.manual_seed(12312321111)
+<<<<<<< HEAD
         x = fluid.layers.uniform_random(
             [10, 10], dtype="float32", min=0.0, max=1.0
         )
@@ -399,6 +434,33 @@ class TestGeneratorSeed(unittest.TestCase):
         x3 = fluid.layers.uniform_random(
             [10, 10], dtype="float32", min=0.0, max=1.0
         )
+=======
+        x = fluid.layers.uniform_random([10, 10],
+                                        dtype="float32",
+                                        min=0.0,
+                                        max=1.0)
+        y = fluid.layers.sampling_id(x)
+
+        st1 = gen.get_state()
+        x1 = fluid.layers.uniform_random([10, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+        y1 = fluid.layers.sampling_id(x)
+
+        gen.set_state(st1)
+        x2 = fluid.layers.uniform_random([10, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+        y2 = fluid.layers.sampling_id(x)
+
+        gen.manual_seed(12312321111)
+        x3 = fluid.layers.uniform_random([10, 10],
+                                         dtype="float32",
+                                         min=0.0,
+                                         max=1.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         y3 = fluid.layers.sampling_id(x)
 
         x_np = y.numpy()
@@ -463,6 +525,7 @@ class TestGeneratorSeed(unittest.TestCase):
             result_1 = fluid.layers.fc(
                 input=x,
                 size=10,
+<<<<<<< HEAD
                 param_attr=fluid.initializer.TruncatedNormal(
                     loc=0.0, scale=2.0
                 ),
@@ -474,6 +537,15 @@ class TestGeneratorSeed(unittest.TestCase):
                     loc=0.0, scale=2.0
                 ),
             )
+=======
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
+            result_2 = fluid.layers.fc(
+                input=x,
+                size=10,
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0,
+                                                             scale=2.0))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             exe = fluid.Executor(fluid.CPUPlace())
             exe.run(startup_program)

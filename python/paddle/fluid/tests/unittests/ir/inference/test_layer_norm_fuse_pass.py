@@ -76,17 +76,27 @@ class TestFcFusePass(PassAutoScanTest):
     def sample_program_config(self, draw):
         # 1. Generate shape of input:X
         x_shape = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=8), min_size=4, max_size=5
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=8),
+                     min_size=4,
+                     max_size=5))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_shape_rank = len(x_shape)
         # 2. Generate attrs of reduce_mean
         keep_dim = draw(st.booleans())
         reduce_all = False
         begin_norm_axis = draw(
+<<<<<<< HEAD
             st.integers(min_value=1, max_value=x_shape_rank - 1)
         )
+=======
+            st.integers(min_value=1, max_value=x_shape_rank - 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if begin_norm_axis == x_shape_rank - 1 and draw(st.booleans()):
             reduce_mean_dim = [-1]
         else:
@@ -110,16 +120,23 @@ class TestFcFusePass(PassAutoScanTest):
         pow_axis = -1
 
         def generate_pow_data():
+<<<<<<< HEAD
             return np.array(
                 [
                     2,
                 ],
                 dtype="float32",
             )
+=======
+            return np.array([
+                2,
+            ], dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # 5. Generate attrs of elementwise_add
         if keep_dim:
             add_axis = draw(
+<<<<<<< HEAD
                 st.integers(min_value=-1, max_value=x_shape_rank - 1)
             )
         else:
@@ -134,6 +151,17 @@ class TestFcFusePass(PassAutoScanTest):
                 ],
                 dtype="float32",
             )
+=======
+                st.integers(min_value=-1, max_value=x_shape_rank - 1))
+        else:
+            add_axis = draw(
+                st.integers(min_value=-1, max_value=begin_norm_axis - 1))
+
+        def generate_epsilon_data():
+            return np.array([
+                1e-5,
+            ], dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # 6. Generate attrs of elementwise_div
         div_axis = 0
@@ -161,13 +189,27 @@ class TestFcFusePass(PassAutoScanTest):
         )
         sub_op = OpConfig(
             "elementwise_sub",
+<<<<<<< HEAD
             inputs={"X": ["x"], "Y": ["mean_out"]},
+=======
+            inputs={
+                "X": ["x"],
+                "Y": ["mean_out"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["sub_out"]},
             axis=sub_axis,
         )
         pow_op = OpConfig(
             "elementwise_pow",
+<<<<<<< HEAD
             inputs={"X": ["sub_out"], "Y": ["pow_y"]},
+=======
+            inputs={
+                "X": ["sub_out"],
+                "Y": ["pow_y"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["pow_out"]},
             axis=pow_axis,
         )
@@ -183,7 +225,14 @@ class TestFcFusePass(PassAutoScanTest):
         )
         add_op = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={"X": ["mean_out2"], "Y": ["epsilon_var"]},
+=======
+            inputs={
+                "X": ["mean_out2"],
+                "Y": ["epsilon_var"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["add_out"]},
             axis=add_axis,
         )
@@ -196,19 +245,40 @@ class TestFcFusePass(PassAutoScanTest):
         )
         div_op = OpConfig(
             "elementwise_div",
+<<<<<<< HEAD
             inputs={"X": ["sub_out"], "Y": ["sqrt_out"]},
+=======
+            inputs={
+                "X": ["sub_out"],
+                "Y": ["sqrt_out"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["div_out"]},
             axis=div_axis,
         )
         mul_op = OpConfig(
             "elementwise_mul",
+<<<<<<< HEAD
             inputs={"X": ["div_out"], "Y": ["gamma_var"]},
+=======
+            inputs={
+                "X": ["div_out"],
+                "Y": ["gamma_var"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["mul_out"]},
             axis=mul_axis,
         )
         add_op2 = OpConfig(
             "elementwise_add",
+<<<<<<< HEAD
             inputs={"X": ["mul_out"], "Y": ["beta_var"]},
+=======
+            inputs={
+                "X": ["mul_out"],
+                "Y": ["beta_var"]
+            },
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             outputs={"Out": ["add_out2"]},
             axis=add_axis2,
         )

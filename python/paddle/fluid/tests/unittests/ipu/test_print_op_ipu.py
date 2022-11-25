@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest, IPUD2STest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -48,11 +49,17 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0],
             shape=self.feed_shape[0],
             dtype=self.feed_dtype[0],
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype=self.feed_dtype[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = paddle.fluid.layers.conv2d(x, num_filters=3, filter_size=3)
         out = paddle.fluid.layers.Print(out, **self.attrs)
 
@@ -75,11 +82,13 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {"message": "input_data"}
 
 
 class TestTrainCase1(TestBase):
+
     def set_op_attrs(self):
         # "forward" : print forward
         # "backward" : print forward and backward
@@ -93,6 +102,7 @@ class TestTrainCase1(TestBase):
 
 @unittest.skip("attrs are not supported")
 class TestCase2(TestBase):
+
     def set_op_attrs(self):
         self.attrs = {
             "first_n": 10,
@@ -106,11 +116,21 @@ class TestCase2(TestBase):
 
 
 class SimpleLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
         self.conv = paddle.nn.Conv2D(
             in_channels=3, out_channels=1, kernel_size=2, stride=1
         )
+=======
+
+    def __init__(self):
+        super(SimpleLayer, self).__init__()
+        self.conv = paddle.nn.Conv2D(in_channels=3,
+                                     out_channels=1,
+                                     kernel_size=2,
+                                     stride=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @to_static()
     def forward(self, x, target=None):
@@ -126,6 +146,10 @@ class SimpleLayer(paddle.nn.Layer):
 
 
 class TestD2S(IPUD2STest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.set_data_feed()
 
@@ -137,19 +161,31 @@ class TestD2S(IPUD2STest):
         paddle.seed(self.SEED)
         np.random.seed(self.SEED)
         model = SimpleLayer()
+<<<<<<< HEAD
         optim = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=model.parameters()
         )
+=======
+        optim = paddle.optimizer.Adam(learning_rate=0.01,
+                                      parameters=model.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if use_ipu:
             paddle.set_device('ipu')
             ipu_strategy = paddle.static.IpuStrategy()
+<<<<<<< HEAD
             ipu_strategy.set_graph_config(
                 num_ipus=1,
                 is_training=True,
                 micro_batch_size=1,
                 enable_manual_shard=False,
             )
+=======
+            ipu_strategy.set_graph_config(num_ipus=1,
+                                          is_training=True,
+                                          micro_batch_size=1,
+                                          enable_manual_shard=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ipu_strategy.set_optimizer(optim)
 
         result = []
@@ -170,7 +206,11 @@ class TestD2S(IPUD2STest):
     def test_training(self):
         ipu_loss = self._test(True).flatten()
         cpu_loss = self._test(False).flatten()
+<<<<<<< HEAD
         np.testing.assert_allclose(ipu_loss, cpu_loss, rtol=1e-05, atol=1e-4)
+=======
+        self.assertTrue(np.allclose(ipu_loss, cpu_loss, atol=1e-4))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

@@ -107,12 +107,18 @@ class UCIHousing(Dataset):
     def _load_data(self, feature_num=14, ratio=0.8):
         data = np.fromfile(self.data_file, sep=' ')
         data = data.reshape(data.shape[0] // feature_num, feature_num)
+<<<<<<< HEAD
         maximums, minimums, avgs = (
             data.max(axis=0),
             data.min(axis=0),
             data.sum(axis=0) / data.shape[0],
         )
         for i in range(feature_num - 1):
+=======
+        maximums, minimums, avgs = data.max(axis=0), data.min(
+            axis=0), data.sum(axis=0) / data.shape[0]
+        for i in six.moves.range(feature_num - 1):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
         offset = int(data.shape[0] * ratio)
         if self.mode == 'train':

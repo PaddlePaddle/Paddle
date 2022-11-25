@@ -22,6 +22,7 @@ from typing import Any, Dict, List
 
 
 class TrtConvertConcatTest(TrtLayerAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         inputs = program_config.inputs
         weights = program_config.weights
@@ -37,6 +38,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
+
         def generate_input1(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
@@ -77,6 +79,7 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         self.num_input = num_input
                         self.dims = dims
                         dics = [{"axis": axis}, {}]
+<<<<<<< HEAD
                         dics_intput = [
                             {
                                 "X": [
@@ -85,6 +88,45 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                                     "concat_input3",
                                 ],
                                 "AxisTensor": ["AxisTensor"],
+=======
+                        dics_intput = [{
+                            "X":
+                            ["concat_input1", "concat_input2", "concat_input3"],
+                            "AxisTensor": ["AxisTensor"],
+                        }, {
+                            "X":
+                            ["concat_input1", "concat_input2", "concat_input3"]
+                        }]
+                        dics_inputs = [{
+                            "concat_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "concat_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "concat_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch)),
+                            "AxisTensor":
+                            TensorConfig(
+                                data_gen=partial(generate_weight1, dics))
+                        }, {
+                            "concat_input1":
+                            TensorConfig(
+                                data_gen=partial(generate_input1, dics, batch)),
+                            "concat_input2":
+                            TensorConfig(
+                                data_gen=partial(generate_input2, dics, batch)),
+                            "concat_input3":
+                            TensorConfig(
+                                data_gen=partial(generate_input3, dics, batch))
+                        }]
+                        ops_config = [{
+                            "op_type": "concat",
+                            "op_inputs": dics_intput[num_input],
+                            "op_outputs": {
+                                "Out": ["concat_output"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             },
                             {
                                 "X": [
@@ -152,8 +194,13 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if self.num_input == 0:
                 if self.dims == 4:
@@ -330,14 +377,22 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def add_skip_trt_case(self):
+
         def teller1(program_config, predictor_config):
             if len(program_config.inputs) == 4:
                 return True

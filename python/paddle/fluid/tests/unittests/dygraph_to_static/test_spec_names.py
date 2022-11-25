@@ -18,6 +18,7 @@ import unittest
 
 
 class Net(Layer):
+
     def __init__(self):
         super().__init__()
         self.fc = paddle.nn.Linear(16, 3)
@@ -35,6 +36,7 @@ class Net(Layer):
 
 
 class TestArgsSpecName(unittest.TestCase):
+
     def read_from_dataset(self):
         self.x = paddle.randn([4, 2, 8])
         self.y = paddle.randn([4, 2, 8])

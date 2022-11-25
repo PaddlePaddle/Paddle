@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import unittest
 import numpy as np
 import math
@@ -35,6 +40,10 @@ paddle.enable_static()
 
 
 class TestRNNOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def get_weight_names(self):
         weight_names = []
         for i in range(self.num_layers):
@@ -63,17 +72,25 @@ class TestRNNOp(OpTest):
         self.direction_num = 2 if self.is_bidirec else 1
         direction = "bidirectional" if self.is_bidirec else "forward"
 
+<<<<<<< HEAD
         input = np.random.uniform(
             low=-0.1,
             high=0.1,
             size=(self.seq_length, self.batch_size, self.input_size),
         ).astype(self.dtype)
+=======
+        input = np.random.uniform(low=-0.1,
+                                  high=0.1,
+                                  size=(self.seq_length, self.batch_size,
+                                        self.input_size)).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         input[11][1:][:] = 0
         input[10][2:][:] = 0
         input[9][3:][:] = 0
         input[8][4:][:] = 0
 
+<<<<<<< HEAD
         rnn1 = LSTM(
             self.input_size,
             self.hidden_size,
@@ -103,13 +120,37 @@ class TestRNNOp(OpTest):
                 self.hidden_size,
             )
         ).astype(self.dtype)
+=======
+        rnn1 = LSTM(self.input_size,
+                    self.hidden_size,
+                    num_layers=self.num_layers,
+                    time_major=True,
+                    direction=direction,
+                    dropout=self.dropout,
+                    dtype=self.dtype)
+
+        flat_w = get_params_for_net(rnn1)
+        output, (last_hidden,
+                 last_cell) = rnn1(input, sequence_length=self.sequence_length)
+
+        init_h = np.zeros(
+            (self.num_layers * self.direction_num, self.batch_size,
+             self.hidden_size)).astype(self.dtype)
+        init_c = np.zeros(
+            (self.num_layers * self.direction_num, self.batch_size,
+             self.hidden_size)).astype(self.dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         state_out = np.ndarray((300)).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
             'PreState': [('init_h', init_h), ('init_c', init_c)],
+<<<<<<< HEAD
             'SequenceLength': self.sequence_length,
+=======
+            'SequenceLength': self.sequence_length
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -124,13 +165,21 @@ class TestRNNOp(OpTest):
             'hidden_size': self.hidden_size,
             'num_layers': self.num_layers,
             'mode': self.mode,
+<<<<<<< HEAD
             'is_test': self.is_test,
+=======
+            'is_test': self.is_test
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.outputs = {
             'Out': output,
             "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
             'Reserve': np.ndarray((400)).astype("uint8"),
+<<<<<<< HEAD
             'DropoutState': state_out,
+=======
+            'DropoutState': state_out
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_dtype(self):
@@ -146,8 +195,12 @@ class TestRNNOp(OpTest):
         self.check_output_with_place(
             self.place,
             atol=1e-4,
+<<<<<<< HEAD
             no_check_set=['Reserve', 'DropoutState', 'State'],
         )
+=======
+            no_check_set=['Reserve', 'DropoutState', 'State'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def set_attrs(self):
         pass
@@ -158,6 +211,7 @@ class TestRNNOp(OpTest):
             var_name_list = self.get_weight_names()
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
+<<<<<<< HEAD
             self.check_grad_with_place(
                 self.place,
                 set(grad_check_list),
@@ -166,30 +220,54 @@ class TestRNNOp(OpTest):
 
 
 class TestRNNOp1(TestRNNOp):
+=======
+            self.check_grad_with_place(self.place, set(grad_check_list),
+                                       ['Out', 'last_hidden', 'last_cell'])
+
+
+class TestRNNOp1(TestRNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_attrs(self):
         self.sequence_length = None
 
 
 class TestRNNOp2(TestRNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_attrs(self):
         self.sequence_length = None
         self.is_bidirec = True
 
 
 class TestRNNOp3(TestRNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
 
 
 class TestRNNOp4(TestRNNOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_attrs(self):
         self.is_test = True
         self.sequence_length = None
         self.is_bidirec = True
 
 
+<<<<<<< HEAD
 # TODO(chenxiao): cnnl doesn't support num_layers > 1 case
+=======
+#TODO(chenxiao): cnnl doesn't support num_layers > 1 case
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 # class TestRNNOp5(TestRNNOp):
 
 #     def set_attrs(self):

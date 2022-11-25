@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+<<<<<<< HEAD
+=======
+#include <vector>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/phi/core/tensor_array.h"

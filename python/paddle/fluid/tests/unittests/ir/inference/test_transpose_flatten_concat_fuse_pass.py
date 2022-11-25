@@ -94,6 +94,7 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
             if draw(st.booleans()):
                 trans_axis[j], trans_axis[-1] = trans_axis[-1], trans_axis[j]
         #  Generate axis of flatten
+<<<<<<< HEAD
         flatten_axis = draw(
             st.integers(min_value=0, max_value=x_shape_rank - 1)
         )
@@ -106,6 +107,16 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
                     max_size=x_shape_rank,
                 )
             )
+=======
+        flatten_axis = draw(st.integers(min_value=0,
+                                        max_value=x_shape_rank - 1))
+        for i in range(times):
+            #  Generate x_shape of transpose
+            x_shape = draw(
+                st.lists(st.integers(min_value=1, max_value=10),
+                         min_size=x_shape_rank,
+                         max_size=x_shape_rank))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             str_i = str(i)
             transpose_op = OpConfig(
@@ -116,7 +127,11 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
                 axis=trans_axis,
                 outputs={
                     "Out": ["trans_out" + str_i],
+<<<<<<< HEAD
                     "XShape": ["trans_shape" + str_i],
+=======
+                    "XShape": ["trans_shape" + str_i]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 },
             )
             ops.append(transpose_op)
@@ -128,7 +143,11 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
                 axis=flatten_axis,
                 outputs={
                     "Out": ["flatten2_out" + str_i],
+<<<<<<< HEAD
                     "XShape": ["xshape" + str_i],
+=======
+                    "XShape": ["xshape" + str_i]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 },
             )
             concat_input.append("flatten2_out" + str_i)
@@ -156,11 +175,17 @@ class TestTransposeFlattenConcatFusePass(PassAutoScanTest):
         return program_config
 
     def test(self):
+<<<<<<< HEAD
         self.run_and_statis(
             quant=False,
             max_examples=300,
             passes=["transpose_flatten_concat_fuse_pass"],
         )
+=======
+        self.run_and_statis(quant=False,
+                            max_examples=300,
+                            passes=["transpose_flatten_concat_fuse_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

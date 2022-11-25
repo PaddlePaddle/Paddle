@@ -49,7 +49,11 @@ void ConvertConv2d(TensorRTEngine* engine,
       Y_v,
       platform::errors::NotFound("Can not find %s presistale var in scope.",
                                  filter_var_name));
+<<<<<<< HEAD
   auto* Y_t = Y_v->GetMutable<phi::DenseTensor>();
+=======
+  auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
@@ -77,12 +81,15 @@ void ConvertConv2d(TensorRTEngine* engine,
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("strides"));
   std::vector<int> paddings =
       PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+<<<<<<< HEAD
   // for conv2d_transpose
   std::vector<int> output_padding;
   if (op_desc.HasAttr("output_padding")) {
     output_padding =
         PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("output_padding"));
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::string padding_algorithm = "EXPLICIT";
   if (op_desc.HasAttr("padding_algorithm"))
     padding_algorithm =
@@ -118,7 +125,11 @@ void ConvertConv2d(TensorRTEngine* engine,
   bias.SetValues(nullptr);
   if (op_desc.Type() == "conv2d_fusion") {
     auto* bias_tensor = scope.GetVar(op_desc.Input("Bias").front());
+<<<<<<< HEAD
     auto* bias_tensor_data = bias_tensor->GetMutable<phi::DenseTensor>();
+=======
+    auto* bias_tensor_data = bias_tensor->GetMutable<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     bias =
         engine->GetTrtWeight(op_desc.Input("Bias").front(), *bias_tensor_data);
   }

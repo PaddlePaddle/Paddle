@@ -16,17 +16,27 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_utils.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/funcs/diagonal.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 
 template <typename T>
+<<<<<<< HEAD
 static int64_t NMS(const T* boxes_data,
                    int64_t* output_data,
                    float threshold,
                    int64_t num_boxes) {
+=======
+static void NMS(const T* boxes_data,
+                int64_t* output_data,
+                float threshold,
+                int64_t num_boxes) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto num_masks = CeilDivide(num_boxes, 64);
   std::vector<uint64_t> masks(num_masks, 0);
 
@@ -55,6 +65,7 @@ static int64_t NMS(const T* boxes_data,
     output_data[output_data_idx++] = i;
   }
 
+<<<<<<< HEAD
   int64_t num_keep_boxes = output_data_idx;
 
   for (; output_data_idx < num_boxes; ++output_data_idx) {
@@ -62,6 +73,11 @@ static int64_t NMS(const T* boxes_data,
   }
 
   return num_keep_boxes;
+=======
+  for (; output_data_idx < num_boxes; ++output_data_idx) {
+    output_data[output_data_idx] = 0;
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 template <typename T, typename Context>
@@ -69,6 +85,7 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
+<<<<<<< HEAD
   int64_t num_boxes = boxes.dims()[0];
   DenseTensor output_tmp;
   output_tmp.Resize(phi::make_ddim({num_boxes}));
@@ -78,6 +95,10 @@ void NMSKernel(const Context& dev_ctx,
       NMS<T>(boxes.data<T>(), output_tmp_data, threshold, num_boxes);
   auto slice_out = output_tmp.Slice(0, num_keep_boxes);
   phi::Copy(dev_ctx, slice_out, dev_ctx.GetPlace(), false, output);
+=======
+  auto output_data = dev_ctx.template Alloc<int64_t>(output);
+  NMS<T>(boxes.data<T>(), output_data, threshold, boxes.dims()[0]);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 }  // namespace phi

@@ -52,9 +52,12 @@ int GetMLURuntimeVersion(int id);
 //! Get the cnnl version of the ith MLU.
 int GetMLUCnnlVersion(int id);
 
+<<<<<<< HEAD
 //! Get the mluOp version of the ith MLU.
 int GetMLUOpVersion(int id);
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 //! Get the total number of MLU devices in system.
 int GetMLUDeviceCount();
 

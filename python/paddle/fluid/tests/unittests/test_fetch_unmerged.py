@@ -22,7 +22,9 @@ os.environ["CPU_NUM"] = "2"
 
 
 class TestFetchUnmerged(unittest.TestCase):
+
     def conv_net(self, img, label):
+<<<<<<< HEAD
         conv_pool_1 = fluid.nets.simple_img_conv_pool(
             input=img,
             filter_size=5,
@@ -42,6 +44,23 @@ class TestFetchUnmerged(unittest.TestCase):
             pool_type='avg',
             act="relu",
         )
+=======
+        conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                      filter_size=5,
+                                                      num_filters=8,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      pool_type='max',
+                                                      act="relu")
+        conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+        conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                      filter_size=5,
+                                                      num_filters=16,
+                                                      pool_size=2,
+                                                      pool_stride=2,
+                                                      pool_type='avg',
+                                                      act="relu")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         hidden = fluid.layers.fc(input=conv_pool_2, size=32, act='relu')
         prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
         loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -51,12 +70,21 @@ class TestFetchUnmerged(unittest.TestCase):
     def build_program(self, main, startup, is_test):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                 img = fluid.layers.data(
                     name='image', shape=[1, 28, 28], dtype='float32'
                 )
                 label = fluid.layers.data(
                     name='label', shape=[1], dtype='int64'
                 )
+=======
+                img = fluid.layers.data(name='image',
+                                        shape=[1, 28, 28],
+                                        dtype='float32')
+                label = fluid.layers.data(name='label',
+                                          shape=[1],
+                                          dtype='int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 loss, prediction = self.conv_net(img, label)
                 if not is_test:
                     opt = fluid.optimizer.Adam(learning_rate=0.001)
@@ -81,10 +109,16 @@ class TestFetchUnmerged(unittest.TestCase):
 
         iters = 2
         batch_size = 16
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
+=======
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
 
         device_num = fluid.core.get_cuda_device_count() if use_cuda else 2

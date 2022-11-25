@@ -32,6 +32,7 @@ class DistributedTensor:
     """
 
     @staticmethod
+<<<<<<< HEAD
     def _validate_sizes_and_dist_attr(
         sizes, dims_mapping, topology, processes, rank=None, shard_sizes=None
     ):
@@ -71,6 +72,34 @@ class DistributedTensor:
                     topology
                 )
             )
+=======
+    def _validate_sizes_and_dist_attr(sizes,
+                                      dims_mapping,
+                                      topology,
+                                      processes,
+                                      rank=None,
+                                      shard_sizes=None):
+        if not (isinstance(sizes, (list, tuple))
+                and all(map(lambda x: isinstance(x, int) and x >= 0, sizes))):
+            raise ValueError(
+                "The sizes must be list or tuple and item in sizes must be non-negative integer, but got {}"
+                .format(sizes))
+        if not (isinstance(dims_mapping, (list, tuple)) and all(
+                map(lambda x: isinstance(x, int) and x >= -1, dims_mapping))):
+            raise ValueError(
+                "The dims_mapping must be list or tuple and item in dims_mapping must >= -1, but got {}"
+                .format(dims_mapping))
+        if not (isinstance(processes, (list, tuple)) and all(
+                map(lambda x: isinstance(x, int) and x >= 0, processes))):
+            raise ValueError(
+                "The processes must be list or tuple and item in processes must be integer, but got {}"
+                .format(processes))
+        if not (isinstance(topology, (list, tuple))
+                and all(map(lambda x: isinstance(x, int) and x > 0, topology))):
+            raise ValueError(
+                "The topology must be list or tuple and item in topology must be non-negative integer, but got {}"
+                .format(topology))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if rank is not None and not (isinstance(rank, int) and rank >= 0):
             raise ValueError("The rank must >= 0, but got {}".format(rank))
 
@@ -79,6 +108,7 @@ class DistributedTensor:
             raise ValueError("Only support even sharding now.")
 
     @staticmethod
+<<<<<<< HEAD
     def get_local_sizes(
         global_sizes,
         dims_mapping,
@@ -90,6 +120,18 @@ class DistributedTensor:
         DistributedTensor._validate_sizes_and_dist_attr(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
+=======
+    def get_local_sizes(global_sizes,
+                        dims_mapping,
+                        topology,
+                        processes,
+                        rank=None,
+                        shard_sizes=None):
+        DistributedTensor._validate_sizes_and_dist_attr(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         local_sizes = []
         # for even sharding, the local sizes of every rank are equal
@@ -105,12 +147,25 @@ class DistributedTensor:
         return local_sizes
 
     @staticmethod
+<<<<<<< HEAD
     def get_local_offsets(
         global_sizes, dims_mapping, topology, processes, rank, shard_sizes=None
     ):
         local_sizes = DistributedTensor.get_local_sizes(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
+=======
+    def get_local_offsets(global_sizes,
+                          dims_mapping,
+                          topology,
+                          processes,
+                          rank,
+                          shard_sizes=None):
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         local_offsets = []
         rank_relatvie = processes.index(rank)
         coordinate = _linear_idx2coordinate(topology, rank_relatvie)
@@ -125,6 +180,7 @@ class DistributedTensor:
         return local_offsets
 
     @staticmethod
+<<<<<<< HEAD
     def get_global_sizes(
         local_sizes,
         dims_mapping,
@@ -136,6 +192,18 @@ class DistributedTensor:
         DistributedTensor._validate_sizes_and_dist_attr(
             local_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
+=======
+    def get_global_sizes(local_sizes,
+                         dims_mapping,
+                         topology,
+                         processes,
+                         rank=None,
+                         shard_sizes=None):
+        DistributedTensor._validate_sizes_and_dist_attr(local_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         global_sizes = []
         for idx, item in enumerate(local_sizes):
             if dims_mapping[idx] == -1:
@@ -149,11 +217,19 @@ class DistributedTensor:
         global_sizes, dims_mapping, topology, processes, rank, shard_sizes=None
     ):
         local_offsets = DistributedTensor.get_local_offsets(
+<<<<<<< HEAD
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
         local_sizes = DistributedTensor.get_local_sizes(
             global_sizes, dims_mapping, topology, processes, rank, shard_sizes
         )
+=======
+            global_sizes, dims_mapping, topology, processes, rank, shard_sizes)
+        local_sizes = DistributedTensor.get_local_sizes(global_sizes,
+                                                        dims_mapping, topology,
+                                                        processes, rank,
+                                                        shard_sizes)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         assert len(local_sizes) == len(
             local_offsets
         ), "The length of local_sizes must be equal to local_offsets, but got {} and {}.".format(

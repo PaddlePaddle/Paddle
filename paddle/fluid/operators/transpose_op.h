@@ -17,7 +17,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_utils.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -29,8 +32,13 @@ enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
 template <typename DeviceContext, typename T>
 inline void TransCompute(const int dim,
                          const DeviceContext& dev_ctx,
+<<<<<<< HEAD
                          const phi::DenseTensor& in,
                          phi::DenseTensor* out,
+=======
+                         const framework::Tensor& in,
+                         framework::Tensor* out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          const std::vector<int>& axis) {
   switch (dim) {
     case 0:
@@ -71,11 +79,16 @@ enum PermuteType {
   kCopy = 1,
   kTranspose = 2,
   kVecPermute = 3,
+<<<<<<< HEAD
   kGeneralPermute = 4
+=======
+  kNormalPermute = 4
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 constexpr int kBlockRows = 16;
 constexpr int kTileSize = 32;
+<<<<<<< HEAD
 
 // Simplify the input dims and permute dims if possible.
 template <typename T>
@@ -103,10 +116,38 @@ class TranposeTypeClassifier {
   }
 
   int GetRank() const { return rank_; }
+=======
+// To avoid bank conflict.
+constexpr int kShareCol = kTileSize + 1;
+
+// Simplify the input dims and permute dims if possible.
+template <typename T>
+class DimsSimplifier {
+ public:
+  explicit DimsSimplifier(const int sm_count,
+                          const int rank,
+                          const std::vector<int32_t>& perm,
+                          const std::vector<size_t>& dims,
+                          const T* src,
+                          T* dst)
+      : perm_(rank), dims_(rank) {
+    SimplifyPermAndDims(rank, dims, perm);
+    count_ = std::accumulate(
+        dims.begin(), dims.end(), size_t{1}, std::multiplies<size_t>());
+    if (rank_ > 1) {
+      vec_size_ = GetPermVecSize(sm_count, src, dst);
+      perm_.resize(rank_);
+      dims_.resize(rank_);
+    }
+  }
+
+  size_t GetCount() const { return count_; }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   int GetVecSize() const { return vec_size_; }
   PermuteType GetPermType() const { return type_; }
 
   std::vector<int> GetPerm() const { return perm_; }
+<<<<<<< HEAD
   std::vector<int64_t> GetSrcDims() const { return src_dims; }
   std::vector<int64_t> GetDstDims() const { return dst_dims; }
 
@@ -137,6 +178,37 @@ class TranposeTypeClassifier {
       while (end_perm_idx < rank &&
              perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
         const int end_dim_idx = perm[end_perm_idx];
+=======
+  std::vector<size_t> GetDims() const { return dims_; }
+
+ private:
+  size_t rank_{1};
+  size_t count_{0};
+  int vec_size_{1};
+  std::vector<int> perm_;
+  std::vector<size_t> dims_;
+  PermuteType type_{kCopy};
+
+  void SimplifyPermAndDims(const size_t rank,
+                           const std::vector<size_t>& in_dims,
+                           const std::vector<int32_t>& perm) {
+    size_t combined_dims[phi::DDim::kMaxRank];
+    int valid_map[phi::DDim::kMaxRank];
+
+    // Merge consecutive dims to the fist one of this these dims,
+    // and leave the origin dim value to be 1. Example below :
+    // perm: [2, 3, 0, 1], origin_dims : [4, 8, 2, 5]
+    // new_dims: [4, 8, 2, 5] -> [32, 1, 10, 1]
+    size_t start_perm_idx = 0;
+    while (start_perm_idx < rank) {
+      const size_t start_dim_idx = perm[start_perm_idx];
+      combined_dims[start_dim_idx] = in_dims[start_dim_idx];
+      size_t end_perm_idx = start_perm_idx + 1;
+
+      while (end_perm_idx < rank &&
+             perm[end_perm_idx] == perm[end_perm_idx - 1] + 1) {
+        const size_t end_dim_idx = perm[end_perm_idx];
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         combined_dims[start_dim_idx] *= in_dims[end_dim_idx];
         combined_dims[end_dim_idx] = 1;
         end_perm_idx += 1;
@@ -148,22 +220,36 @@ class TranposeTypeClassifier {
     // for example, if combined dims is [32, 1, 10, 1],
     // valid_map is [0, -1, 1, -1] and generate simplified
     // dims as [32, 10]
+<<<<<<< HEAD
     int valid_dim_idx = 0;
     bool sequential_flag = false;
     for (auto i = 0; i < rank; ++i) {
+=======
+    size_t valid_dim_idx = 0;
+    bool sequential_flag = false;
+    for (size_t i = 0; i < rank; ++i) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const int src_dim = combined_dims[i];
       if (src_dim == 1) {
         valid_map[i] = -1;
       } else {
         sequential_flag = true;
         valid_map[i] = valid_dim_idx;
+<<<<<<< HEAD
         src_dims[valid_dim_idx] = src_dim;
+=======
+        dims_[valid_dim_idx] = src_dim;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         valid_dim_idx += 1;
       }
     }
 
     if (valid_dim_idx == 0) {
+<<<<<<< HEAD
       src_dims[0] = 1;
+=======
+      dims_[0] = 1;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       perm_[0] = 0;
       return;
     } else if (valid_dim_idx == 1) {
@@ -172,8 +258,13 @@ class TranposeTypeClassifier {
 
     // Acquire simplified perm with help of combined dims
     // and original perm, finally simplified perm is [1, 0]
+<<<<<<< HEAD
     int perm_idx = 0;
     for (auto i = 0; i < rank; ++i) {
+=======
+    size_t perm_idx = 0;
+    for (size_t i = 0; i < rank; ++i) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const int mapped = valid_map[perm[i]];
       if (mapped >= 0) {
         perm_[perm_idx] = mapped;
@@ -186,17 +277,32 @@ class TranposeTypeClassifier {
   int GetPermVecSize(const int sm_count, const T* src, T* dst) {
     // For gerneal_permute kernel, there is good chance for
     // vectorized write.
+<<<<<<< HEAD
     type_ = PermuteType::kGeneralPermute;
     int vec_size = phi::GetVectorizedSize<T>(dst);
+=======
+    int vec_size = phi::GetVectorizedSize<T>(dst);
+    type_ = PermuteType::kNormalPermute;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     // While the last dim is fixed, there is good chance for
     // both vectorized read and write.
     if (perm_[rank_ - 1] == rank_ - 1) {
       int tmp_size = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+<<<<<<< HEAD
       tmp_size = GetDimVesSize(tmp_size, src_dims[rank_ - 1]);
       if (tmp_size > 1) {
         type_ = kVecPermute;
         vec_size = tmp_size;
+=======
+      tmp_size = GetDimVesSize(tmp_size, dims_[rank_ - 1]);
+      if (tmp_size > 1) {
+        type_ = kVecPermute;
+        vec_size = tmp_size;
+
+        // For stride calculation of src_data index.
+        dims_[rank_ - 1] /= vec_size;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       }
     }
 
@@ -205,11 +311,39 @@ class TranposeTypeClassifier {
     if ((rank_ == 2 && perm_[1] == 0 && perm_[0] == 1) ||
         (rank_ == 3 && perm_[2] == 1 && perm_[1] == 2)) {
       type_ = PermuteType::kTranspose;
+<<<<<<< HEAD
       int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
       // With bytes limitation of shared_memory, the VecSize shall be
       // restricted for the type whose byte-size is less than 8 (double).
       vec_size =
           sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, src_dims[rank_ - 1]);
+=======
+
+      // Compared with vectorized load or read, set config to let more
+      // sm work simultaneously affect more according to performance.
+      constexpr int threads = kTileSize * kTileSize;
+      int blocks = count_ / threads;
+      if (blocks < sm_count) {
+        vec_size = 1;
+      } else {
+        int tmp_vec = std::min(vec_size, phi::GetVectorizedSize<T>(src));
+        // With bytes limitation of shared_memory, the VecSize shall be
+        // restricted for the type whose byte-size is less than 8 (double).
+        int type_vec =
+            sizeof(T) > 8 ? 1 : GetDimVesSize(tmp_vec, dims_[rank_ - 1]);
+        for (int i = type_vec; i > 0; i /= 2) {
+          if (blocks / i >= sm_count) {
+            break;
+          }
+          // When blocks is smaller than sm_count, a test shown that decrease
+          // vec_size to make blocks close to sm_count would gain performance.
+          vec_size = i;
+        }
+      }
+
+      dims_[rank_ - 1] /= vec_size;
+      count_ /= vec_size;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
     return vec_size;
   }

@@ -30,10 +30,21 @@ model_urls = {
 
 
 class InvertedResidual(nn.Layer):
+<<<<<<< HEAD
     def __init__(
         self, inp, oup, stride, expand_ratio, norm_layer=nn.BatchNorm2D
     ):
         super().__init__()
+=======
+
+    def __init__(self,
+                 inp,
+                 oup,
+                 stride,
+                 expand_ratio,
+                 norm_layer=nn.BatchNorm2D):
+        super(InvertedResidual, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.stride = stride
         assert stride in [1, 2]
 
@@ -43,6 +54,7 @@ class InvertedResidual(nn.Layer):
         layers = []
         if expand_ratio != 1:
             layers.append(
+<<<<<<< HEAD
                 ConvNormActivation(
                     inp,
                     hidden_dim,
@@ -65,6 +77,23 @@ class InvertedResidual(nn.Layer):
                 norm_layer(oup),
             ]
         )
+=======
+                ConvNormActivation(inp,
+                                   hidden_dim,
+                                   kernel_size=1,
+                                   norm_layer=norm_layer,
+                                   activation_layer=nn.ReLU6))
+        layers.extend([
+            ConvNormActivation(hidden_dim,
+                               hidden_dim,
+                               stride=stride,
+                               groups=hidden_dim,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6),
+            nn.Conv2D(hidden_dim, oup, 1, 1, 0, bias_attr=False),
+            norm_layer(oup),
+        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.conv = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -80,7 +109,11 @@ class MobileNetV2(nn.Layer):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
+<<<<<<< HEAD
         num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+=======
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
 
@@ -127,6 +160,7 @@ class MobileNetV2(nn.Layer):
             last_channel * max(1.0, scale), round_nearest
         )
         features = [
+<<<<<<< HEAD
             ConvNormActivation(
                 3,
                 input_channel,
@@ -134,6 +168,13 @@ class MobileNetV2(nn.Layer):
                 norm_layer=norm_layer,
                 activation_layer=nn.ReLU6,
             )
+=======
+            ConvNormActivation(3,
+                               input_channel,
+                               stride=2,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
 
         for t, c, n, s in inverted_residual_setting:
@@ -141,6 +182,7 @@ class MobileNetV2(nn.Layer):
             for i in range(n):
                 stride = s if i == 0 else 1
                 features.append(
+<<<<<<< HEAD
                     block(
                         input_channel,
                         output_channel,
@@ -160,6 +202,21 @@ class MobileNetV2(nn.Layer):
                 activation_layer=nn.ReLU6,
             )
         )
+=======
+                    block(input_channel,
+                          output_channel,
+                          stride,
+                          expand_ratio=t,
+                          norm_layer=norm_layer))
+                input_channel = output_channel
+
+        features.append(
+            ConvNormActivation(input_channel,
+                               self.last_channel,
+                               kernel_size=1,
+                               norm_layer=norm_layer,
+                               activation_layer=nn.ReLU6))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.features = nn.Sequential(*features)
 
@@ -204,7 +261,11 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV2 from
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
@@ -235,7 +296,14 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
             print(out.shape)
             # [1, 1000]
     """
+<<<<<<< HEAD
     model = _mobilenet(
         'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs
     )
+=======
+    model = _mobilenet('mobilenetv2_' + str(scale),
+                       pretrained,
+                       scale=scale,
+                       **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return model

@@ -22,6 +22,7 @@ from paddle.fluid.core import AnalysisConfig
 
 
 class TRTScaleTest(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(name="data", shape=[-1, 512], dtype="float32")
@@ -38,9 +39,16 @@ class TRTScaleTest(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
+<<<<<<< HEAD
         return fluid.layers.scale(
             x=data, scale=2.0, bias=-1.0, bias_after_scale=False
         )
+=======
+        return fluid.layers.scale(x=data,
+                                  scale=2.0,
+                                  bias=-1.0,
+                                  bias_after_scale=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
@@ -52,11 +60,18 @@ class TRTScaleTest(InferencePassTest):
 
 
 class TRTScaleShape2Test(InferencePassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 512, 512], dtype="float32"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 512, 512],
+                              dtype="float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             scale_out = self.append_scale(data)
             out = fluid.layers.batch_norm(scale_out, is_test=True)
 
@@ -70,9 +85,16 @@ class TRTScaleShape2Test(InferencePassTest):
         self.fetch_list = [out]
 
     def append_scale(self, data):
+<<<<<<< HEAD
         return fluid.layers.scale(
             x=data, scale=2.0, bias=-1.0, bias_after_scale=False
         )
+=======
+        return fluid.layers.scale(x=data,
+                                  scale=2.0,
+                                  bias=-1.0,
+                                  bias_after_scale=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

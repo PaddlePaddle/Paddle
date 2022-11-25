@@ -44,14 +44,26 @@ KernelSignature DepthwiseConv2dGradOpArgumentMapping(
 
 KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+<<<<<<< HEAD
   return KernelSignature("depthwise_conv2d_double_grad",
+=======
+  return KernelSignature("depthwise_conv2d_grad_grad",
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
+<<<<<<< HEAD
                           "data_format"},
+=======
+                          "data_format",
+                          "use_addto",
+                          "workspace_size_MB",
+                          "exhaustive_search",
+                          "fuse_relu_before_depthwise_conv"},
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          {"DInput", "DFilter", "DDOutput"});
 }
 

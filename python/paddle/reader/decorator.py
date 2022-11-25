@@ -343,6 +343,7 @@ def buffered(reader, size):
     def data_reader():
         r = reader()
         q = Queue(maxsize=size)
+<<<<<<< HEAD
         t = Thread(
             target=read_worker,
             args=(
@@ -350,6 +351,12 @@ def buffered(reader, size):
                 q,
             ),
         )
+=======
+        t = Thread(target=read_worker, args=(
+            r,
+            q,
+        ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         t.daemon = True
         t.start()
         e = q.get()
@@ -473,11 +480,16 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         t.start()
         # start several handle_workers
         target = order_handle_worker if order else handle_worker
+<<<<<<< HEAD
         args = (
             (in_queue, out_queue, mapper, out_order)
             if order
             else (in_queue, out_queue, mapper)
         )
+=======
+        args = (in_queue, out_queue, mapper,
+                out_order) if order else (in_queue, out_queue, mapper)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         workers = []
         for i in range(process_num):
             worker = Thread(target=target, args=args)
@@ -616,9 +628,14 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     def queue_reader():
         queue = fork_context.Queue(queue_size)
         for reader in readers:
+<<<<<<< HEAD
             p = fork_context.Process(
                 target=_read_into_queue, args=(reader, queue)
             )
+=======
+            p = fork_context.Process(target=_read_into_queue,
+                                     args=(reader, queue))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             p.start()
 
         reader_num = len(readers)
@@ -659,9 +676,14 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         for reader in readers:
             parent_conn, child_conn = fork_context.Pipe()
             conns.append(parent_conn)
+<<<<<<< HEAD
             p = fork_context.Process(
                 target=_read_into_pipe, args=(reader, child_conn)
             )
+=======
+            p = fork_context.Process(target=_read_into_pipe,
+                                     args=(reader, child_conn))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             p.start()
 
         reader_num = len(readers)

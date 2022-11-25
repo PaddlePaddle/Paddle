@@ -16,10 +16,15 @@ import unittest
 
 import numpy
 import paddle
+<<<<<<< HEAD
+=======
+import paddle.fluid.core as core
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
+
     def net(self):
         lr = fluid.data(name="lr", shape=[1], dtype='float32')
         x = fluid.data(name="x", shape=[None, 1], dtype='float32')
@@ -44,6 +49,7 @@ class TestExecutor(unittest.TestCase):
                 exe = fluid.Executor(cpu)
                 lr, cost = self.net()
                 exe.run(startup_program)
+<<<<<<< HEAD
                 train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
                     'float32'
                 )
@@ -56,6 +62,20 @@ class TestExecutor(unittest.TestCase):
                     fetch_list=[lr, cost],
                     return_numpy=False,
                 )
+=======
+                train_data = numpy.array([[1.0], [2.0], [3.0],
+                                          [4.0]]).astype('float32')
+                y_true = numpy.array([[2.0], [4.0], [6.0],
+                                      [8.0]]).astype('float32')
+                a = 0.01
+                _lr, _ = exe.run(feed={
+                    'x': train_data,
+                    'y': y_true,
+                    'lr': a
+                },
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(_lr._dtype(), lr.dtype)
             self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
             self.assertEqual(type(a), float)
@@ -70,6 +90,7 @@ class TestExecutor(unittest.TestCase):
                 exe = fluid.Executor(cpu)
                 lr, cost = self.net()
                 exe.run(startup_program)
+<<<<<<< HEAD
                 train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
                     'float32'
                 )
@@ -82,6 +103,20 @@ class TestExecutor(unittest.TestCase):
                     fetch_list=[lr, cost],
                     return_numpy=False,
                 )
+=======
+                train_data = numpy.array([[1.0], [2.0], [3.0],
+                                          [4.0]]).astype('float32')
+                y_true = numpy.array([[2.0], [4.0], [6.0],
+                                      [8.0]]).astype('float32')
+                a = 0
+                _lr, _ = exe.run(feed={
+                    'x': train_data,
+                    'y': y_true,
+                    'lr': a
+                },
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(_lr._dtype(), lr.dtype)
             self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
             self.assertEqual(type(a), int)
@@ -99,11 +134,21 @@ class TestExecutor(unittest.TestCase):
                 train_data = [[1.0], [2.0], [3.0], [4.0]]
                 y_true = [[2.0], [4.0], [6.0], [8.0]]
                 a = 0
+<<<<<<< HEAD
                 _lr, _ = exe.run(
                     feed={'x': train_data, 'y': y_true, 'lr': a},
                     fetch_list=[lr, cost],
                     return_numpy=False,
                 )
+=======
+                _lr, _ = exe.run(feed={
+                    'x': train_data,
+                    'y': y_true,
+                    'lr': a
+                },
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertEqual(_lr._dtype(), lr.dtype)
             self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
             self.assertEqual(type(y_true), list)
@@ -119,6 +164,7 @@ class TestExecutor(unittest.TestCase):
                 exe = fluid.Executor(cpu)
                 exe.run(startup_program)
                 compiled_prog = fluid.CompiledProgram(
+<<<<<<< HEAD
                     main_program
                 ).with_data_parallel(loss_name=cost.name)
                 train_data = numpy.array([[1.0], [2.0], [3.0], [4.0]]).astype(
@@ -134,12 +180,29 @@ class TestExecutor(unittest.TestCase):
                     fetch_list=[lr, cost],
                     return_numpy=False,
                 )
+=======
+                    main_program).with_data_parallel(loss_name=cost.name)
+                train_data = numpy.array([[1.0], [2.0], [3.0],
+                                          [4.0]]).astype('float32')
+                y_true = numpy.array([[2.0], [4.0], [6.0],
+                                      [8.0]]).astype('float32')
+                a = 0.01
+                _lr, _ = exe.run(compiled_prog,
+                                 feed={
+                                     'x': train_data,
+                                     'y': y_true,
+                                     'lr': a
+                                 },
+                                 fetch_list=[lr, cost],
+                                 return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertEqual(_lr._dtype(), lr.dtype)
                 self.assertEqual(_lr._dtype(), fluid.core.VarDesc.VarType.FP32)
                 self.assertEqual(type(a), float)
 
 
 class TestAsLodTensor(unittest.TestCase):
+
     def test_as_lodtensor_int32(self):
         cpu = fluid.CPUPlace()
         tensor = fluid.executor._as_lodtensor(

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 set(INTERPRETER_SRCS data_transfer.cc dependency_builder.cc event_manager.cc
                      execution_config.cc interpreter_util.cc)
 
@@ -35,3 +36,9 @@ cc_library(
   interpreter
   SRCS ${INTERPRETER_SRCS}
   DEPS ${INTERPRETER_DEPS})
+=======
+cc_library(
+  dependency_builder
+  SRCS dependency_builder.cc
+  DEPS operator)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

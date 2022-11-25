@@ -37,6 +37,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   set_tests_properties(test_high_order_grad
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 50)
+<<<<<<< HEAD
   py_test_modules(test_iterable_dataset MODULES test_iterable_dataset ENVS
                   ${dist_ENVS})
   set_tests_properties(test_iterable_dataset
@@ -74,6 +75,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_parallel_tuner_predict PROPERTIES TIMEOUT 120)
   py_test_modules(test_selective_recompute MODULES test_selective_recompute)
   set_tests_properties(test_selective_recompute PROPERTIES TIMEOUT 50)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   py_test_modules(test_while_op_completion MODULES test_while_op_completion
                   ENVS ${dist_ENVS})
@@ -89,10 +92,14 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   ${dist_ENVS})
   py_test_modules(test_dist_reshape MODULES test_dist_reshape ENVS ${dist_ENVS})
   py_test_modules(test_dist_pnorm MODULES test_dist_pnorm ENVS ${dist_ENVS})
+<<<<<<< HEAD
   py_test_modules(test_dist_embedding MODULES test_dist_embedding ENVS
                   ${dist_ENVS})
   py_test_modules(test_dist_slice MODULES test_dist_slice ENVS ${dist_ENVS})
   py_test_modules(test_dist_split MODULES test_dist_split ENVS ${dist_ENVS})
+=======
+  py_test_modules(test_dist_slice MODULES test_dist_slice ENVS ${dist_ENVS})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   py_test_modules(test_cluster MODULES test_cluster ENVS ${dist_ENVS})
   py_test_modules(test_comm_cost MODULES test_comm_cost ENVS ${dist_ENVS})
   py_test_modules(test_comp_cost MODULES test_comp_cost ENVS ${dist_ENVS})
@@ -101,6 +108,7 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_prim_dist_op MODULES test_prim_dist_op ENVS ${dist_ENVS})
   py_test_modules(test_to_static MODULES test_to_static ENVS ${dist_ENVS})
   py_test_modules(test_dist_op_cost MODULES test_dist_op_cost ENVS ${dist_ENVS})
+<<<<<<< HEAD
 
   py_test_modules(test_cluster_v2 MODULES test_cluster_v2)
   py_test_modules(test_process_mesh_v2 MODULES test_process_mesh_v2)
@@ -120,4 +128,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_fp16_assign MODULES test_fp16_assign)
   py_test_modules(test_group_operators MODULES test_group_operators)
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 endif()

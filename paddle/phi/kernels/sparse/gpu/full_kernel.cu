@@ -23,11 +23,19 @@ limitations under the License. */
 namespace phi {
 
 template <typename InT, typename OutT = InT>
+<<<<<<< HEAD
 struct FullFunctor {
   OutT value;
 
   template <typename VType>
   explicit inline FullFunctor(VType val) {
+=======
+struct FullFuctor {
+  OutT value;
+
+  template <typename VType>
+  explicit inline FullFuctor(VType val) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     value = static_cast<OutT>(val);
   }
 
@@ -37,16 +45,31 @@ struct FullFunctor {
 };
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FullLikeCooKernel(const Context& dev_ctx,
+=======
+void CooFullLikeKernel(const Context& dev_ctx,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        const SparseCooTensor& x,
                        const Scalar& val,
                        DataType dtype,
                        SparseCooTensor* out) {
+<<<<<<< HEAD
   phi::Copy<Context>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, out->mutable_indices());
 
   DenseTensor* values = out->mutable_values();
   values->Resize(x.values().dims());
+=======
+  phi::Copy<Context>(dev_ctx,
+                     x.non_zero_indices(),
+                     dev_ctx.GetPlace(),
+                     false,
+                     out->mutable_non_zero_indices());
+
+  DenseTensor* values = out->mutable_non_zero_elements();
+  values->Resize(x.non_zero_elements().dims());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -54,17 +77,26 @@ void FullLikeCooKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
+<<<<<<< HEAD
         dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+=======
+        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   out->set_dims(x.dims());
 }
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void FullLikeCsrKernel(const Context& dev_ctx,
+=======
+void CsrFullLikeKernel(const Context& dev_ctx,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        const SparseCsrTensor& x,
                        const Scalar& val,
                        DataType dtype,
                        SparseCsrTensor* out) {
+<<<<<<< HEAD
   phi::Copy<Context>(
       dev_ctx, x.crows(), dev_ctx.GetPlace(), false, out->mutable_crows());
 
@@ -73,6 +105,22 @@ void FullLikeCsrKernel(const Context& dev_ctx,
 
   DenseTensor* values = out->mutable_values();
   values->Resize(x.values().dims());
+=======
+  phi::Copy<Context>(dev_ctx,
+                     x.non_zero_crows(),
+                     dev_ctx.GetPlace(),
+                     false,
+                     out->mutable_non_zero_crows());
+
+  phi::Copy<Context>(dev_ctx,
+                     x.non_zero_cols(),
+                     dev_ctx.GetPlace(),
+                     false,
+                     out->mutable_non_zero_cols());
+
+  DenseTensor* values = out->mutable_non_zero_elements();
+  values->Resize(x.non_zero_elements().dims());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   dev_ctx.template Alloc<T>(values);
 
   std::vector<const DenseTensor*> inputs = {};
@@ -80,17 +128,28 @@ void FullLikeCsrKernel(const Context& dev_ctx,
   int numel = values->numel();
   if (numel > 0) {
     phi::funcs::ElementwiseKernel<T>(
+<<<<<<< HEAD
         dev_ctx, inputs, &outputs, FullFunctor<T>(val.to<T>()));
+=======
+        dev_ctx, inputs, &outputs, FullFuctor<T>(val.to<T>()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   out->set_dims(x.dims());
 }
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(full_like_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullLikeCooKernel,
+=======
+PD_REGISTER_KERNEL(coo_full_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CooFullLikeKernel,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    float,
                    double,
                    uint8_t,
@@ -105,10 +164,17 @@ PD_REGISTER_KERNEL(full_like_coo,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(full_like_csr,
                    GPU,
                    ALL_LAYOUT,
                    phi::FullLikeCsrKernel,
+=======
+PD_REGISTER_KERNEL(csr_full_like,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CsrFullLikeKernel,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                    float,
                    double,
                    uint8_t,

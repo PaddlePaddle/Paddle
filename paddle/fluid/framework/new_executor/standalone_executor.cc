@@ -13,7 +13,11 @@
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 
+<<<<<<< HEAD
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+=======
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -28,8 +32,13 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     const std::vector<std::string>& fetch_names) {
   platform::RecordEvent record_event(
       "StandaloneExecutor::run", platform::TracerEventType::UserDefined, 1);
+<<<<<<< HEAD
   auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
 
+=======
+
+  auto core = GetInterpreterCore(scope, prog_, feed_names, fetch_names, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   VLOG(4) << "StandaloneExecutor: " << this << ", InterpreterCore: " << core;
   return core->Run(feed_names);
 }
@@ -37,7 +46,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 framework::interpreter::CostInfo StandaloneExecutor::DryRun(
     Scope* scope,
     const std::vector<std::string>& feed_names,
+<<<<<<< HEAD
     const std::vector<phi::DenseTensor>& feed_tensors) {
+=======
+    const std::vector<framework::LoDTensor>& feed_tensors) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto core = GetInterpreterCore(scope, prog_, feed_names, {}, true);
 
   return core->DryRun(feed_names, feed_tensors);

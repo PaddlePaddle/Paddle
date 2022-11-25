@@ -30,6 +30,7 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                           DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
   x_grad->mutable_data<T>(dev_ctx.GetPlace());
+<<<<<<< HEAD
   paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
                                                    is_test,
                                                    p.to<float>(),
@@ -38,19 +39,28 @@ void DropoutGradRawKernel(const Context& dev_ctx,
                                                    mask,
                                                    x_grad,
                                                    false);
+=======
+  paddle::operators::DropoutGradGPUKernelDriver<T>(
+      dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, false);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 template <typename T, typename Context>
 void DropoutNdGradKernel(const Context& dev_ctx,
                          const DenseTensor& mask,
                          const DenseTensor& out_grad,
+<<<<<<< HEAD
                          const Scalar& p,
+=======
+                         float p,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          bool is_test,
                          const std::string& mode,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
   bool upscale_in_train = (mode == "upscale_in_train");
   dev_ctx.template Alloc<T>(x_grad);
+<<<<<<< HEAD
   paddle::operators::DropoutGradGPUKernelDriver<T>(dev_ctx,
                                                    is_test,
                                                    p.to<float>(),
@@ -59,6 +69,10 @@ void DropoutNdGradKernel(const Context& dev_ctx,
                                                    mask,
                                                    x_grad,
                                                    true);
+=======
+  paddle::operators::DropoutGradGPUKernelDriver<T>(
+      dev_ctx, is_test, p, upscale_in_train, out_grad, mask, x_grad, true);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 }  // namespace phi

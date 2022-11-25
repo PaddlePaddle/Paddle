@@ -25,6 +25,7 @@ from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -39,9 +40,16 @@ class TestSimpleRNNCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
                 rnn2 = paddle.nn.SimpleRNNCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
                 )
+=======
+                rnn2 = paddle.nn.SimpleRNNCell(16,
+                                               32,
+                                               bias_ih_attr=self.bias,
+                                               bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -127,6 +135,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -141,9 +150,16 @@ class TestGRUCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
                 rnn2 = paddle.nn.GRUCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
                 )
+=======
+                rnn2 = paddle.nn.GRUCell(16,
+                                         32,
+                                         bias_ih_attr=self.bias,
+                                         bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = self.place
         exe = paddle.static.Executor(place)
@@ -230,6 +246,7 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -244,9 +261,16 @@ class TestLSTMCell(unittest.TestCase):
         sp = paddle.static.Program()
         with paddle.fluid.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
+<<<<<<< HEAD
                 rnn2 = paddle.nn.LSTMCell(
                     16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
                 )
+=======
+                rnn2 = paddle.nn.LSTMCell(16,
+                                          32,
+                                          bias_ih_attr=self.bias,
+                                          bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = self.place
         exe = paddle.static.Executor(place)

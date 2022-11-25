@@ -16,8 +16,13 @@
 
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+=======
+#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -59,14 +64,22 @@ void NMSKernel(const Context& dev_ctx,
                const DenseTensor& boxes,
                float threshold,
                DenseTensor* output) {
+<<<<<<< HEAD
+=======
+  auto* output_data = dev_ctx.template Alloc<int64_t>(output);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const int64_t num_boxes = boxes.dims()[0];
   const auto blocks_per_line = CeilDivide(num_boxes, threadsPerBlock);
   dim3 block(threadsPerBlock);
   dim3 grid(blocks_per_line, blocks_per_line);
   auto mask_data = paddle::memory::Alloc(
+<<<<<<< HEAD
       dev_ctx.GetPlace(),
       num_boxes * blocks_per_line * sizeof(uint64_t),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+=======
+      dev_ctx, num_boxes * blocks_per_line * sizeof(uint64_t));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   uint64_t* mask_dev = reinterpret_cast<uint64_t*>(mask_data->ptr());
   NMS<T><<<grid, block, 0, dev_ctx.stream()>>>(
       boxes.data<T>(), threshold, num_boxes, mask_dev);
@@ -92,13 +105,20 @@ void NMSKernel(const Context& dev_ctx,
       }
     }
   }
+<<<<<<< HEAD
   output->Resize(phi::make_ddim({last_box_num}));
   auto* output_data = dev_ctx.template Alloc<int64_t>(output);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   paddle::memory::Copy(dev_ctx.GetPlace(),
                        output_data,
                        phi::CPUPlace(),
                        output_host,
+<<<<<<< HEAD
                        sizeof(int64_t) * last_box_num,
+=======
+                       sizeof(int64_t) * num_boxes,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                        dev_ctx.stream());
 }
 }  // namespace phi

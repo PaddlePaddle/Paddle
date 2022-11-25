@@ -26,7 +26,11 @@ PD_List PD_IntArrayGetDataPointer(PD_IntArray* int_array) {
   return list;
 }
 
+<<<<<<< HEAD
 size_t PD_IntArrayGetElementCount(PD_IntArray* int_array) {
+=======
+size_t PD_IntArrayGetSize(PD_IntArray* int_array) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto cc_int_array = reinterpret_cast<phi::IntArray*>(int_array);
   return cc_int_array->size();
 }

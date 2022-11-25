@@ -17,7 +17,11 @@ from paddle.incubate.nn import functional as F
 
 
 class FusedLinear(Layer):
+<<<<<<< HEAD
     r"""
+=======
+    """
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     Linear layer takes only one multi-dimensional tensor as input with the
     shape :math:`[batch\_size, *, in\_features]` , where :math:`*` means any
     number of additional dimensions. It multiplies input tensor with the weight
@@ -34,7 +38,11 @@ class FusedLinear(Layer):
             initialized to zero. For detailed information, please refer to
             paddle.ParamAttr.
         transpose_weight (bool): Whether to transpose the `weight` Tensor before
+<<<<<<< HEAD
             multiplication.
+=======
+            multiplication. 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         bias_attr (ParamAttr|bool, optional): The attribute for the learnable bias
             of this layer. If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
@@ -55,11 +63,16 @@ class FusedLinear(Layer):
 
     Examples:
         .. code-block:: python
+<<<<<<< HEAD
 
+=======
+       
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # required: gpu
             import paddle
             from paddle.incubate.nn import FusedLinear
 
+<<<<<<< HEAD
             x = paddle.randn([3, 4])
             linear = FusedLinear(4, 5)
             y = linear(x)
@@ -76,21 +89,53 @@ class FusedLinear(Layer):
         name=None,
     ):
         super().__init__()
+=======
+            x = paddle.randn([3, 4]) 
+            linear = FusedLinear(4, 5)
+            y = linear(x)            
+            print(y.shape) # [3, 5]
+    """
+
+    def __init__(self,
+                 in_features,
+                 out_features,
+                 weight_attr=None,
+                 bias_attr=None,
+                 transpose_weight=False,
+                 name=None):
+        super(FusedLinear, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if transpose_weight:
             weight_shape = [out_features, in_features]
         else:
             weight_shape = [in_features, out_features]
         dtype = self._helper.get_default_dtype()
+<<<<<<< HEAD
         self.weight = self.create_parameter(
             shape=weight_shape, attr=weight_attr, dtype=dtype, is_bias=False
         )
         self.bias = self.create_parameter(
             shape=[out_features], attr=bias_attr, dtype=dtype, is_bias=True
         )
+=======
+        self.weight = self.create_parameter(shape=weight_shape,
+                                            attr=weight_attr,
+                                            dtype=dtype,
+                                            is_bias=False)
+        self.bias = self.create_parameter(shape=[out_features],
+                                          attr=bias_attr,
+                                          dtype=dtype,
+                                          is_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.transpose_weight = transpose_weight
         self.name = name
 
     def forward(self, input):
+<<<<<<< HEAD
         return F.fused_linear(
             input, self.weight, self.bias, self.transpose_weight, self.name
         )
+=======
+        return F.fused_linear(input, self.weight, self.bias,
+                              self.transpose_weight, self.name)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

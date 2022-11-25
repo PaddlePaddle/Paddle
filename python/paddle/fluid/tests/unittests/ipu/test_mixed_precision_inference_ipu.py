@@ -22,6 +22,7 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+
     def setUp(self):
         self.set_atol()
         self.set_data_feed()
@@ -50,9 +51,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # using fp32
         x = paddle.static.nn.conv2d(input=x, num_filters=3, filter_size=3)
@@ -106,8 +113,14 @@ class TestBase(IPUOpTest):
                 batches_per_step=self.batches_per_step,
             )
             program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                 self.main_prog, ipu_strategy=ipu_strategy
             ).compile(self.feed_list, self.fetch_list)
+=======
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             program = self.main_prog
 
@@ -124,14 +137,21 @@ class TestBase(IPUOpTest):
 
 
 class TestPipline(TestBase):
+
     @IPUOpTest.static_graph
     def build_model(self, exec_mode):
         feed_shape = list(self.feed_shape[0])
         if self.is_ipu_mode(exec_mode):
             feed_shape[0] = 1
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=feed_shape, dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=feed_shape,
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         with paddle.static.ipu_shard_guard(index=0, stage=0):
             # using fp32
             x = paddle.static.nn.conv2d(input=x, num_filters=3, filter_size=3)
@@ -141,9 +161,15 @@ class TestPipline(TestBase):
         with paddle.static.ipu_shard_guard(index=1, stage=1):
             # using fp16
             with paddle.static.amp.fp16_guard():
+<<<<<<< HEAD
                 x = paddle.static.nn.conv2d(
                     input=x, num_filters=6, filter_size=3
                 )
+=======
+                x = paddle.static.nn.conv2d(input=x,
+                                            num_filters=6,
+                                            filter_size=3)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 x = paddle.static.nn.batch_norm(x, act='relu')
                 x = F.max_pool2d(x, kernel_size=2, stride=2)
 

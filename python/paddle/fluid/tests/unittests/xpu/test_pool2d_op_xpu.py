@@ -47,6 +47,7 @@ def max_pool2D_forward_naive(
     if adaptive:
         H_out, W_out = ksize
     else:
+<<<<<<< HEAD
         H_out = (
             (H - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
             if ceil_mode
@@ -57,6 +58,14 @@ def max_pool2D_forward_naive(
             if ceil_mode
             else (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
         )
+=======
+        H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] -
+                 1) // strides[0] + 1 if ceil_mode else (
+                     H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] -
+                 1) // strides[1] + 1 if ceil_mode else (
+                     W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
         for j in range(W_out):
@@ -93,6 +102,7 @@ def avg_pool2D_forward_naive(
     if adaptive:
         H_out, W_out = ksize
     else:
+<<<<<<< HEAD
         H_out = (
             (H - ksize[0] + 2 * paddings[0] + strides[0] - 1) // strides[0] + 1
             if ceil_mode
@@ -103,6 +113,14 @@ def avg_pool2D_forward_naive(
             if ceil_mode
             else (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
         )
+=======
+        H_out = (H - ksize[0] + 2 * paddings[0] + strides[0] -
+                 1) // strides[0] + 1 if ceil_mode else (
+                     H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+        W_out = (W - ksize[1] + 2 * paddings[1] + strides[1] -
+                 1) // strides[1] + 1 if ceil_mode else (
+                     W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     out = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
         for j in range(W_out):
@@ -128,9 +146,15 @@ def avg_pool2D_forward_naive(
                 field_size = (r_end - r_start) * (c_end - c_start)
 
             if data_type == np.int8 or data_type == np.uint8:
+<<<<<<< HEAD
                 out[:, :, i, j] = (
                     np.rint(np.sum(x_masked, axis=(2, 3)) / field_size)
                 ).astype(data_type)
+=======
+                out[:, :, i,
+                    j] = (np.rint(np.sum(x_masked, axis=(2, 3)) /
+                                  field_size)).astype(data_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             else:
                 out[:, :, i, j] = (
                     np.sum(x_masked, axis=(2, 3)) / field_size
@@ -160,8 +184,12 @@ def pool2D_forward_naive(
         ):
             out_size = int((input_size + stride_size - 1) / stride_size)
             pad_sum = np.max(
+<<<<<<< HEAD
                 ((out_size - 1) * stride_size + filter_size - input_size, 0)
             )
+=======
+                ((out_size - 1) * stride_size + filter_size - input_size, 0))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             pad_0 = int(pad_sum / 2)
             pad_1 = int(pad_sum - pad_0)
             padding.append(pad_0)
@@ -261,10 +289,17 @@ def pool2D_forward_naive(
             if data_format == 'NCHW':
                 x_masked = x[:, :, in_h_start:in_h_end, in_w_start:in_w_end]
                 if pool_type == 'avg':
+<<<<<<< HEAD
                     if exclusive or adaptive:
                         field_size = (in_h_end - in_h_start) * (
                             in_w_end - in_w_start
                         )
+=======
+                    if (exclusive or adaptive):
+                        field_size = (in_h_end - in_h_start) * (in_w_end -
+                                                                in_w_start)
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     #                         if (exclusive or adaptive) else (ksize[0] * ksize[1])
                     out[:, :, i, j] = np.sum(x_masked, axis=(2, 3)) / field_size
@@ -273,10 +308,16 @@ def pool2D_forward_naive(
             elif data_format == 'NHWC':
                 x_masked = x[:, in_h_start:in_h_end, in_w_start:in_w_end, :]
                 if pool_type == 'avg':
+<<<<<<< HEAD
                     if exclusive or adaptive:
                         field_size = (in_h_end - in_h_start) * (
                             in_w_end - in_w_start
                         )
+=======
+                    if (exclusive or adaptive):
+                        field_size = (in_h_end - in_h_start) * (in_w_end -
+                                                                in_w_start)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     out[:, i, j, :] = np.sum(x_masked, axis=(1, 2)) / field_size
                 elif pool_type == 'max':
                     out[:, i, j, :] = np.max(x_masked, axis=(1, 2))
@@ -284,11 +325,13 @@ def pool2D_forward_naive(
 
 
 class XPUTestPool2D_Op(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'pool2d'
         self.use_dynamic_create_class = False
 
     class TestPool2D_Op(XPUOpTest):
+
         def setUp(self):
             self.op_type = "pool2d"
             self.dtype = self.in_type
@@ -336,7 +379,11 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
                 'exclusive': self.exclusive,
                 'adaptive': self.adaptive,
                 "padding_algorithm": self.padding_algorithm,
+<<<<<<< HEAD
                 'ceil_mode': self.ceil_mode,
+=======
+                'ceil_mode': self.ceil_mode
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
             self.outputs = {'Out': output}
@@ -397,6 +444,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.paddings = [0, 0, 0, 0]
 
     class TestCase1(TestPool2D_Op):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -415,6 +463,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCase2(TestPool2D_Op):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -433,21 +482,25 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCase3(TestPool2D_Op):
+
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
 
     class TestCase4(TestCase1):
+
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
 
     class TestCase5(TestCase2):
+
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
 
     class TestPool2D_AsyPadding(TestPool2D_Op):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -457,6 +510,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 5, 5]
 
     class TestCase1_AsyPadding(TestCase1):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -466,6 +520,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCase2_AsyPadding(TestCase2):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -475,6 +530,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCase3_AsyPadding(TestCase3):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -484,6 +540,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 5, 5]
 
     class TestCase4_AsyPadding(TestCase4):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -493,6 +550,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCase5_AsyPadding(TestCase5):
+
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -502,6 +560,7 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestAvgInclude_AsyPadding(TestCase2):
+
         def init_exclusive(self):
             self.exclusive = False
 
@@ -514,6 +573,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.shape = [2, 3, 7, 7]
 
     class TestCaseCeil1(TestPool2D_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -535,6 +598,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.ceil_mode = True
 
     class TestCaseCeil2(TestPool2D_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.ksize = [3, 3]
             self.strides = [1, 1]
@@ -556,6 +623,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.ceil_mode = True
 
     class TestCaseCeil3(TestPool2D_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -564,6 +635,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.ceil_mode = True
 
     class TestCaseCeil4(TestCaseCeil1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -572,6 +647,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.ceil_mode = True
 
     class TestCaseCeil5(TestCaseCeil2):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_pool_type(self):
             self.pool_type = "max"
             self.pool2D_forward_naive = max_pool2D_forward_naive
@@ -580,6 +659,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.ceil_mode = True
 
     class TestCaseAdaptiveAvg(TestPool2D_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.ksize = [2, 2]
             self.strides = [2, 2]
@@ -601,6 +684,10 @@ class XPUTestPool2D_Op(XPUOpTestWrapper):
             self.adaptive = True
 
     class TestCaseAdaptiveMax(TestPool2D_Op):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def init_test_case(self):
             self.ksize = [2, 2]
             self.strides = [2, 2]

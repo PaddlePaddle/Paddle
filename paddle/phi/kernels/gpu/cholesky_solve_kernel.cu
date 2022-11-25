@@ -15,6 +15,10 @@
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/backends/dynload/cusolver.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"

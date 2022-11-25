@@ -113,10 +113,18 @@ void BasicEngine::Init(
       grad_var->mutable_data(fwd_var.place(), fwd_var.type());
       phi::funcs::set_constant(*dev_ctx, grad_var, 1.0);
     } else {
+<<<<<<< HEAD
       paddle::framework::TensorCopy(grad_tensor->Var().Get<phi::DenseTensor>(),
                                     fwd_var.place(),
                                     *dev_ctx,
                                     grad_var);
+=======
+      paddle::framework::TensorCopy(
+          grad_tensor->Var().Get<framework::LoDTensor>(),
+          fwd_var.place(),
+          *dev_ctx,
+          grad_var);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();

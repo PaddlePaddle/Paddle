@@ -16,7 +16,10 @@
 
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+<<<<<<< HEAD
 #include "paddle/phi/core/tensor_array.h"
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/infermeta/unary.h"
 
 namespace phi {
@@ -32,6 +35,7 @@ void SliceRawKernel(const Context& ctx,
                     DenseTensor* out);
 
 template <typename T, typename Context>
+<<<<<<< HEAD
 void SliceArrayKernel(const Context& dev_ctx,
                       const TensorArray& input,
                       const IntArray& starts,
@@ -45,6 +49,8 @@ void SliceArrayDenseKernel(const Context& dev_ctx,
                            DenseTensor* out);
 
 template <typename T, typename Context>
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 DenseTensor SliceKernel(const Context& ctx,
                         const DenseTensor& input,
                         const std::vector<int64_t>& axes,

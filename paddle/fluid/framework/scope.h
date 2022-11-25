@@ -38,6 +38,22 @@ class Variable;
 
 namespace paddle {
 namespace framework {
+<<<<<<< HEAD
+=======
+
+// TODO(zhiqiu): add more function in base class
+class ScopeBase {
+ public:
+  /// Find a variable in the scope or any of its ancestors.  Returns
+  /// nullptr if cannot find.
+  /// Caller doesn't own the returned Variable.
+  virtual Variable* FindVar(const std::string& name) const = 0;
+  virtual ~ScopeBase() {}
+};
+
+class Scope;
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 /**
  * @brief Scope that manage all variables.
  *
@@ -121,11 +137,14 @@ class Scope {
   // Rename variable to a new name and return the new name
   std::string Rename(const std::string& origin_name) const;
 
+<<<<<<< HEAD
   // only for dygraph_to_static
   bool CanReuesd() const { return can_reused_; }
 
   void SetCanReuesd(bool can_reused) { can_reused_ = can_reused; }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
  protected:
   struct KeyHasher {
     std::size_t operator()(const std::string& key) const {

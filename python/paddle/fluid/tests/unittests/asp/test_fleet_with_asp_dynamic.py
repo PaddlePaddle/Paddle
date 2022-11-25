@@ -14,8 +14,15 @@
 # limitations under the License.
 
 import paddle.distributed.fleet as fleet
+<<<<<<< HEAD
 import unittest
 import paddle
+=======
+import paddle.distributed.fleet.base.role_maker as role_maker
+import unittest
+import paddle
+import paddle.fluid as fluid
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle.fluid.core as core
 import os
 from paddle.fluid.contrib.sparsity.asp import ASPHelper
@@ -29,8 +36,14 @@ else:
 
 
 class MyLayer(paddle.nn.Layer):
+<<<<<<< HEAD
     def __init__(self):
         super().__init__()
+=======
+
+    def __init__(self):
+        super(MyLayer, self).__init__()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.linear1 = paddle.nn.Linear(32, 32)
         self.linear2 = paddle.nn.Linear(32, 10)
 
@@ -41,6 +54,10 @@ class MyLayer(paddle.nn.Layer):
 
 
 class TestFleetWithASPDynamic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -54,8 +71,12 @@ class TestFleetWithASPDynamic(unittest.TestCase):
             self.place = paddle.CUDAPlace(0)
 
         self.optimizer = paddle.optimizer.SGD(
+<<<<<<< HEAD
             learning_rate=0.01, parameters=self.layer.parameters()
         )
+=======
+            learning_rate=0.01, parameters=self.layer.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_with_asp(self):
         fleet.init(is_collective=True)
@@ -66,6 +87,7 @@ class TestFleetWithASPDynamic(unittest.TestCase):
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
 
+<<<<<<< HEAD
         imgs = paddle.to_tensor(
             np.random.randn(64, 32),
             dtype='float32',
@@ -78,6 +100,16 @@ class TestFleetWithASPDynamic(unittest.TestCase):
             place=self.place,
             stop_gradient=False,
         )
+=======
+        imgs = paddle.to_tensor(np.random.randn(64, 32),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(64, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
 
@@ -89,6 +121,7 @@ class TestFleetWithASPDynamic(unittest.TestCase):
 
         for param in self.layer.parameters():
             if ASPHelper._is_supported_layer(
+<<<<<<< HEAD
                 paddle.static.default_main_program(), param.name
             ):
                 mat = param.numpy()
@@ -109,6 +142,26 @@ class TestFleetWithASPDynamic(unittest.TestCase):
 
 
 class TestFleetWithASPAMPDynamic(unittest.TestCase):
+=======
+                    paddle.static.default_main_program(), param.name):
+                mat = param.numpy()
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+
+
+class TestFleetWithASPAMPDynamic(unittest.TestCase):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -122,8 +175,12 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
             self.place = paddle.CUDAPlace(0)
 
         self.optimizer = paddle.optimizer.SGD(
+<<<<<<< HEAD
             learning_rate=0.01, parameters=self.layer.parameters()
         )
+=======
+            learning_rate=0.01, parameters=self.layer.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_with_asp(self):
         fleet.init(is_collective=True)
@@ -134,6 +191,7 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
         self.optimizer = fleet.distributed_optimizer(self.optimizer)
         self.layer = fleet.distributed_model(self.layer)
 
+<<<<<<< HEAD
         imgs = paddle.to_tensor(
             np.random.randn(64, 32),
             dtype='float32',
@@ -146,6 +204,16 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
             place=self.place,
             stop_gradient=False,
         )
+=======
+        imgs = paddle.to_tensor(np.random.randn(64, 32),
+                                dtype='float32',
+                                place=self.place,
+                                stop_gradient=False)
+        labels = paddle.to_tensor(np.random.randint(10, size=(64, 1)),
+                                  dtype='float32',
+                                  place=self.place,
+                                  stop_gradient=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         loss_fn = paddle.nn.MSELoss(reduction='mean')
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -160,6 +228,7 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
 
         for param in self.layer.parameters():
             if ASPHelper._is_supported_layer(
+<<<<<<< HEAD
                 paddle.static.default_main_program(), param.name
             ):
                 mat = param.numpy()
@@ -177,6 +246,22 @@ class TestFleetWithASPAMPDynamic(unittest.TestCase):
                             mat.T, n=2, m=4
                         )
                     )
+=======
+                    paddle.static.default_main_program(), param.name):
+                mat = param.numpy()
+                if (len(param.shape) == 4
+                        and param.shape[1] < 4) or (len(param.shape) == 2
+                                                    and param.shape[0] < 4):
+                    self.assertFalse(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+                else:
+                    self.assertTrue(
+                        paddle.fluid.contrib.sparsity.check_sparsity(mat.T,
+                                                                     n=2,
+                                                                     m=4))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

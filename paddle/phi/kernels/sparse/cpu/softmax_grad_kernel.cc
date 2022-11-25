@@ -62,7 +62,11 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
   T* dx_data = dx_values->data<T>();
 
   // dx = (dout - sum(dout * out)) * out
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       out.non_zero_crows().dtype(), "SoftmaxCsrGradKernel", ([&] {
         const data_t* out_crows_data = out_crows.data<data_t>();
         for (int i = 0; i < batch_size; ++i) {

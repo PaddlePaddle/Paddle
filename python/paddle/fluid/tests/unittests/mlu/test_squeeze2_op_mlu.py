@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import unittest
 import sys
 
@@ -25,6 +29,10 @@ paddle.enable_static()
 
 # Correct: General.
 class TestSqueezeOp(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.init_test_case()
         self.set_mlu()
@@ -33,7 +41,11 @@ class TestSqueezeOp(OpTest):
         self.init_attrs()
         self.outputs = {
             "Out": self.inputs["X"].reshape(self.new_shape),
+<<<<<<< HEAD
             "XShape": np.random.random(self.ori_shape).astype("float32"),
+=======
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def set_mlu(self):
@@ -57,6 +69,10 @@ class TestSqueezeOp(OpTest):
 
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = (0, -2)
@@ -65,6 +81,10 @@ class TestSqueezeOp1(TestSqueezeOp):
 
 # Correct: No axes input.
 class TestSqueezeOp2(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.ori_shape = (1, 20, 1, 5)
         self.axes = ()
@@ -73,6 +93,10 @@ class TestSqueezeOp2(TestSqueezeOp):
 
 # Correct: Just part of axes be squeezed.
 class TestSqueezeOp3(TestSqueezeOp):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_test_case(self):
         self.ori_shape = (6, 1, 5, 1, 4, 1)
         self.axes = (1, -1)

@@ -20,7 +20,12 @@ namespace paddle {
 namespace operators {
 
 using framework::ExecutionContext;
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using framework::LoDTensor;
+using framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 class MultiGRUOp : public framework::OperatorWithKernel {
  public:

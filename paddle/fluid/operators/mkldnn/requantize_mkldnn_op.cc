@@ -45,7 +45,11 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto scale_out = ctx.Attr<float>("Scale_out");
     auto shift_out = ctx.Attr<float>("Shift_out");
     bool with_shift = shift_in != 0.0f || shift_out != 0.0f;
+<<<<<<< HEAD
     auto* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    auto* output = ctx.Output<Tensor>("Output");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     PADDLE_ENFORCE_NE(
         scale_in,
@@ -71,6 +75,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     auto src_paddle_dt = input->dtype();
     auto dst_paddle_dt = with_shift ? DataType::UINT8 : src_paddle_dt;
 
+<<<<<<< HEAD
     auto xstrides = input->mem_desc().data.format_desc.blocking.strides;
     std::vector<dnnl_dim_t> vstrides(xstrides,
                                      xstrides + input->mem_desc().data.ndims);
@@ -84,6 +89,77 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
           clip_to_uint8(shift_out - reorder_scale * shift_in);
       attrs.set_zero_points(
           DNNL_ARG_DST, mask, {static_cast<int32_t>(reorder_shift)});
+=======
+    std::string key = platform::CreateKey(
+        dev_ctx, src_tz, scale_in, scale_out, ctx.OutputName("Output"));
+    key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
+    const std::string key_prim = key + "@r";
+    const std::string key_src_mem = key + "@s";
+    const std::string key_dst_mem = key + "@d";
+
+    std::shared_ptr<dnnl::memory> src_memory;
+    std::shared_ptr<dnnl::memory> dst_memory;
+    std::shared_ptr<reorder> reorder_p;
+    reorder_p = std::static_pointer_cast<reorder>(dev_ctx.GetBlob(key_prim));
+
+    const T* input_data = input->data<T>();
+
+    if (reorder_p == nullptr) {
+      auto dst_tz = phi::vectorize(output->dims());
+      auto src_dt = framework::ToMKLDNNDataType(
+          framework::TransToProtoVarType(input->dtype()));
+      auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
+
+      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
+      src_memory = std::make_shared<dnnl::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
+      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
+
+      dnnl::primitive_attr attri;
+      int mask = 0;
+      attri.set_output_scales(mask, {reorder_scale});
+      if (with_shift) {
+        dnnl::post_ops post_operations;
+        post_operations.append_sum();
+        attri.set_post_ops(post_operations);
+        uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+        uint8_t reorder_shift =
+            clip_to_uint8(shift_out - reorder_scale * shift_in);
+        std::memset(output_data, reorder_shift, output->numel());
+        dst_memory = std::make_shared<dnnl::memory>(
+            dst_md, engine, to_void_cast<uint8_t>(output_data));
+      } else {
+        T* output_data = output->mutable_data<T>(ctx.GetPlace());
+        dst_memory = std::make_shared<dnnl::memory>(
+            dst_md, engine, to_void_cast<T>(output_data));
+      }
+
+      auto reorder_pd =
+          reorder::primitive_desc(*src_memory, *dst_memory, attri);
+      reorder_p = std::make_shared<reorder>(reorder_pd);
+
+      dev_ctx.SetBlob(key_prim, reorder_p);
+      dev_ctx.SetBlob(key_src_mem, src_memory);
+      dev_ctx.SetBlob(key_dst_mem, dst_memory);
+    } else {
+      src_memory =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_src_mem));
+      src_memory->set_data_handle(to_void_cast<T>(input_data));
+
+      dst_memory =
+          std::static_pointer_cast<dnnl::memory>(dev_ctx.GetBlob(key_dst_mem));
+      if (with_shift) {
+        uint8_t* output_data = output->mutable_data<uint8_t>(ctx.GetPlace());
+        uint8_t reorder_shift =
+            clip_to_uint8(shift_out - reorder_scale * shift_in);
+        std::memset(output_data, reorder_shift, output->numel());
+        dst_memory->set_data_handle(output_data);
+
+      } else {
+        T* output_data = output->mutable_data<T>(ctx.GetPlace());
+        dst_memory->set_data_handle(output_data);
+      }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     }
 
     phi::funcs::ReorderOneDNNHandler reorder_handler(

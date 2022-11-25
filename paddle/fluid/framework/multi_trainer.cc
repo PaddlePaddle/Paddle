@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+extern Barrier g_barrier;
+
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
   thread_num_ = trainer_desc.thread_num();
@@ -46,6 +48,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     places_.push_back(place);
   }
 #endif
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -61,7 +64,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
         thread_num_);
   }
 #endif
-
+  g_barrier.reset(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -73,6 +76,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetThreadNum(thread_num_);
   }
 
   // set debug here
@@ -216,7 +220,11 @@ void MultiTrainer::MergeDenseParam() {
       Variable* root_var = root_scope_->FindVar(name);
       phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       Variable* var = thread_scope->FindVar(name);
+<<<<<<< HEAD
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       TensorCopySync((*tensor), root_tensor->place(), root_tensor);
     }
   } else {
@@ -226,10 +234,16 @@ void MultiTrainer::MergeDenseParam() {
       for (auto& name : varnames) {
         VLOG(2) << "merge var " << name << " to root scope";
         Variable* root_var = root_scope_->FindVar(name);
+<<<<<<< HEAD
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
         Variable* var = thread_scope->FindVar(name);
         phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+=======
+        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        Variable* var = thread_scope->FindVar(name);
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         TensorCopySync((*tensor), root_tensor->place(), root_tensor);
       }
     }
@@ -264,6 +278,12 @@ void MultiTrainer::Finalize() {
     }
     phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
 
+<<<<<<< HEAD
+=======
+#ifdef PADDLE_WITH_HETERPS
+    for (int j = 0; j < thread_num_; j++) {
+#else
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =

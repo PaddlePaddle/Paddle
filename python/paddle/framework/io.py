@@ -270,8 +270,13 @@ def _pickle_save(obj, f, protocol):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
+<<<<<<< HEAD
             "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
         )
+=======
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def reduce_varbase(self):
         data = self.numpy()
@@ -367,6 +372,7 @@ def _is_state_dict(obj):
 
         def condition(obj):
             return isinstance(
+<<<<<<< HEAD
                 obj,
                 (
                     fluid.Layer,
@@ -377,6 +383,10 @@ def _is_state_dict(obj):
                     core.SelectedRows,
                 ),
             )
+=======
+                obj, (fluid.Layer, Program, core.VarBase, core.eager.Tensor,
+                      core.LoDTensor, core.SelectedRows))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # If the value of a dict is a core.VarBase/LoDTensor or a dict
         # that does not contain a paddle type(Layer, Program, VarBase, LoDTensor, SelectedRows),
@@ -387,8 +397,12 @@ def _is_state_dict(obj):
                     if _contain_x(v, condition):
                         return False
             elif not isinstance(
+<<<<<<< HEAD
                 value, (core.VarBase, core.eager.Tensor, core.LoDTensor)
             ):
+=======
+                    value, (core.VarBase, core.eager.Tensor, core.LoDTensor)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 return False
         return True
 
@@ -482,14 +496,20 @@ def _parse_every_object(obj, condition_func, convert_func):
             (str, np.ndarray, core.VarBase, core.eager.Tensor, core.LoDTensor),
         ):
             raise NotImplementedError(
+<<<<<<< HEAD
                 "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}.".format(
                     type(obj)
                 )
             )
+=======
+                "The iteratable objects supported are tuple, list, dict, OrderedDict, string. But received {}."
+                .format(type(obj)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return obj
 
 
 def _parse_load_result(obj, return_numpy):
+
     def is_layer(obj):
         return isinstance(obj, fluid.Layer)
 
@@ -515,9 +535,14 @@ def _parse_load_result(obj, return_numpy):
     # tuple(name, ndarry) was converted from varbase of paddle2.1,
     # and all tuple(name, ndarry) are converted to tensor.
     if _contain_x(obj, _transformed_from_varbase):
+<<<<<<< HEAD
         return _parse_every_object(
             obj, _transformed_from_varbase, tuple_to_tensor
         )
+=======
+        return _parse_every_object(obj, _transformed_from_varbase,
+                                   tuple_to_tensor)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # If there is no tuple(name, ndary), it is considered to be saved by paddle2.0
     # or converted from LoDTensor, and all ndarrays are converted to tensor.
     else:
@@ -628,10 +653,15 @@ def _save_binary_var(obj, path):
     else:
         # Since the concept of 'Tensor' is only exposed to users, the error message can only contain tensor instead of 'LoDTensor' or 'SelectedRows'
         raise NotImplementedError(
+<<<<<<< HEAD
             "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}.".format(
                 type(obj)
             )
         )
+=======
+            "When use_binary_format = True, `paddle.save`  expected Tensor, but received {}."
+            .format(type(obj)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def save(obj, path, protocol=4, **configs):
@@ -839,8 +869,13 @@ def _legacy_save(obj, path, protocol=2):
 
     if protocol < 2 or protocol > 4:
         raise ValueError(
+<<<<<<< HEAD
             "Expected 1<'protocol'<5, but received protocol={}".format(protocol)
         )
+=======
+            "Expected 1<'protocol'<5, but received protocol={}".format(
+                protocol))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if _is_file_path(path):
         filename = os.path.basename(path)
@@ -1076,8 +1111,12 @@ def load(path, **configs):
                     else:
                         # paddle2.1 static.save/load
                         load_result = _parse_load_result(
+<<<<<<< HEAD
                             load_result, config.return_numpy
                         )
+=======
+                            load_result, config.return_numpy)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 else:
                     load_result = _parse_load_result(
@@ -1151,8 +1190,12 @@ def _legacy_load(path, **configs):
             # the user to configure the `use_structured_name` argument when `set_state_dict`
             # NOTE(chenweihang): `jit.save` doesn't save optimizer state
             load_result = _load_state_dict_from_save_inference_model(
+<<<<<<< HEAD
                 model_path, config
             )
+=======
+                model_path, config)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             # load state dict by `io.save_params/persistables` save format
             # TODO(chenweihang): [ Now only supports loading parameters separately ]

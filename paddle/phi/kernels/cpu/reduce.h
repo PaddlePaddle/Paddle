@@ -16,10 +16,21 @@
 
 #include <set>
 
+<<<<<<< HEAD
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 
+=======
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/operators/eigen/eigen_function.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 namespace phi {
 
 template <typename DeviceContext, typename T, typename Functor>

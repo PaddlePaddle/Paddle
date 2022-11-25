@@ -45,9 +45,15 @@ class TestL2LossOp(OpTest):
         self.check_output_with_place(place=self.place)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad_with_place(
             self.place, ['X'], 'Out', max_relative_error=self.max_relative_error
         )
+=======
+        self.check_grad_with_place(self.place, ['X'],
+                                   'Out',
+                                   max_relative_error=self.max_relative_error)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

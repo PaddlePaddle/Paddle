@@ -22,7 +22,9 @@ import unittest
 
 
 class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
+
     def sample_program_configs(self):
+
         def generate_input(attrs: List[Dict[str, Any]], batch, shape):
             gen_shape = shape.copy()
             gen_shape.insert(0, batch)
@@ -58,6 +60,7 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                     ops=ops,
                     weights={},
                     inputs={
+<<<<<<< HEAD
                         "yolo_box_head_input": TensorConfig(
                             data_gen=partial(
                                 generate_input,
@@ -66,6 +69,11 @@ class TrtConvertYoloBoxHeadTest(TrtLayerAutoScanTest):
                                 input_shape[i],
                             )
                         )
+=======
+                        "yolo_box_head_input":
+                        TensorConfig(data_gen=partial(
+                            generate_input, attrs_dict, batch, input_shape[i]))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     },
                     outputs=["yolo_box_head_output"],
                 )

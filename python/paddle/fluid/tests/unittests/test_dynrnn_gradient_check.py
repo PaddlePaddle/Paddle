@@ -21,7 +21,12 @@ import unittest
 from decorator_helper import prog_scope
 
 
+<<<<<<< HEAD
 class Memory:
+=======
+class Memory(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, shape, dtype='float32'):
         self.ex = np.zeros(shape=shape, dtype=dtype)
         self.cur = None
@@ -43,7 +48,12 @@ class Memory:
         self.cur = None
 
 
+<<<<<<< HEAD
 class Output:
+=======
+class Output(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.outs = []
 
@@ -57,7 +67,12 @@ class Output:
         return self.outs[-1][-1]
 
 
+<<<<<<< HEAD
 class BaseRNN:
+=======
+class BaseRNN(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, ins, mems, params, outs, num_seq=5, max_seq_len=15):
         self.num_seq = num_seq
         self.inputs = collections.defaultdict(list)
@@ -211,6 +226,7 @@ class BaseRNN:
 
 
 class SeedFixedTestCase(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         """Fix random seeds to remove randomness from tests"""
@@ -235,8 +251,10 @@ class TestSimpleMul(SeedFixedTestCase):
     OUT_NAME = 'Out'
 
     class SimpleMul(BaseRNN):
+
         def __init__(self):
             base = TestSimpleMul
+<<<<<<< HEAD
             super().__init__(
                 {base.DATA_NAME: {'shape': [base.DATA_WIDTH]}},
                 {},
@@ -247,6 +265,16 @@ class TestSimpleMul(SeedFixedTestCase):
                 },
                 [base.OUT_NAME],
             )
+=======
+            super(base.SimpleMul,
+                  self).__init__({base.DATA_NAME: {
+                      'shape': [base.DATA_WIDTH]
+                  }}, {}, {
+                      base.PARAM_NAME: {
+                          'shape': [base.DATA_WIDTH, base.HIDDEN_WIDTH]
+                      }
+                  }, [base.OUT_NAME])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def step(self, X, W, Out):
             Out.out(np.matmul(X, W))
@@ -256,9 +284,15 @@ class TestSimpleMul(SeedFixedTestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMul.SimpleMul()
+<<<<<<< HEAD
         dat = fluid.layers.data(
             name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1
         )
+=======
+        dat = fluid.layers.data(name=self.DATA_NAME,
+                                shape=[self.DATA_WIDTH],
+                                lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         dat.stop_gradient = False
 
         rnn = fluid.layers.DynamicRNN()
@@ -282,6 +316,7 @@ class TestSimpleMul(SeedFixedTestCase):
         exe = fluid.Executor(cpu)
         out, w_g, i_g = list(
             map(
+<<<<<<< HEAD
                 np.array,
                 exe.run(
                     feed=py_rnn.to_feed(cpu),
@@ -294,6 +329,15 @@ class TestSimpleMul(SeedFixedTestCase):
                 ),
             )
         )
+=======
+                numpy.array,
+                exe.run(feed=py_rnn.to_feed(cpu),
+                        fetch_list=[
+                            out, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
+                        ],
+                        return_numpy=False)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out_by_python = py_rnn.exe()[self.OUT_NAME]
         np.testing.assert_allclose(out, out_by_python, rtol=1e-05)
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
@@ -312,12 +356,18 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     PARAM_NAME = 'W'
 
     class SimpleMulWithMemory(BaseRNN):
+
         def __init__(self):
+<<<<<<< HEAD
             super().__init__(
+=======
+            super(TestSimpleMulWithMemory.SimpleMulWithMemory, self).__init__(
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 {
                     TestSimpleMulWithMemory.DATA_NAME: {
                         'shape': [TestSimpleMulWithMemory.DATA_WIDTH]
                     }
+<<<<<<< HEAD
                 },
                 {'Mem': {'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]}},
                 {
@@ -330,6 +380,18 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
                 },
                 ['Out'],
             )
+=======
+                }, {'Mem': {
+                    'shape': [TestSimpleMulWithMemory.HIDDEN_WIDTH]
+                }}, {
+                    TestSimpleMulWithMemory.PARAM_NAME: {
+                        'shape': [
+                            TestSimpleMulWithMemory.DATA_WIDTH,
+                            TestSimpleMulWithMemory.HIDDEN_WIDTH
+                        ]
+                    }
+                }, ['Out'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         def step(self, X, Mem, W, Out):
             o = np.matmul(X, W)
@@ -344,9 +406,15 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
     @prog_scope()
     def test_forward_backward(self):
         py_rnn = TestSimpleMulWithMemory.SimpleMulWithMemory()
+<<<<<<< HEAD
         data = fluid.layers.data(
             name=self.DATA_NAME, shape=[self.DATA_WIDTH], lod_level=1
         )
+=======
+        data = fluid.layers.data(name=self.DATA_NAME,
+                                 shape=[self.DATA_WIDTH],
+                                 lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         data.stop_gradient = False
         rnn = fluid.layers.DynamicRNN()
         with rnn.block():
@@ -373,6 +441,7 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
         feed = py_rnn.to_feed(cpu)
         last_np, w_g, i_g = list(
             map(
+<<<<<<< HEAD
                 np.array,
                 exe.run(
                     feed=feed,
@@ -386,6 +455,16 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
             )
         )
         (last_by_py,) = list(py_rnn.exe().values())
+=======
+                numpy.array,
+                exe.run(feed=feed,
+                        fetch_list=[
+                            last, self.PARAM_NAME + "@GRAD",
+                            self.DATA_NAME + "@GRAD"
+                        ],
+                        return_numpy=False)))
+        last_by_py, = list(py_rnn.exe().values())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
         np.testing.assert_allclose(last_np, last_by_py, rtol=1e-05)
 

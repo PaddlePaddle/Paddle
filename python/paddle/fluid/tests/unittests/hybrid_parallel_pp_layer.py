@@ -23,6 +23,7 @@ import paddle.nn.functional as F
 
 
 class ReshapeHelp(Layer):
+
     def __init__(self, shape):
         super().__init__()
         self.shape = shape
@@ -32,6 +33,7 @@ class ReshapeHelp(Layer):
 
 
 class AlexNet(Layer):
+
     def __init__(self, num_classes=10):
         super().__init__()
         self.features = Sequential(
@@ -62,6 +64,7 @@ class AlexNet(Layer):
 
 
 class AlexNetPipe(AlexNet):
+
     def to_layers(self):
         feat = [self.features[i] for i in range(len(self.features))]
         loss_fn = [self.reshape_layer, self.classifier]
@@ -70,6 +73,7 @@ class AlexNetPipe(AlexNet):
 
 
 class AlexNetPipeDesc(PipelineLayer):
+
     def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         decs = [
@@ -89,10 +93,17 @@ class AlexNetPipeDesc(PipelineLayer):
             LayerDesc(ReshapeHelp, shape=[-1, 256]),
             LayerDesc(nn.Linear, 256, self.num_classes),  # classifier
         ]
+<<<<<<< HEAD
         super().__init__(layers=decs, loss_fn=nn.CrossEntropyLoss(), **kwargs)
+=======
+        super(AlexNetPipeDesc, self).__init__(layers=decs,
+                                              loss_fn=nn.CrossEntropyLoss(),
+                                              **kwargs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestPipeLayerAPI(unittest.TestCase):
+
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.pipeline_parallel_size = 2
@@ -110,11 +121,17 @@ class TestPipeLayerAPI(unittest.TestCase):
 
     def test_pipelayer_sequential(self):
         init_net = AlexNetPipe()
+<<<<<<< HEAD
         pipe_model = PipelineLayer(
             layers=init_net.to_layers(),
             num_stages=self.pipeline_parallel_size,
             loss_fn=nn.CrossEntropyLoss(),
         )
+=======
+        pipe_model = PipelineLayer(layers=init_net.to_layers(),
+                                   num_stages=self.pipeline_parallel_size,
+                                   loss_fn=nn.CrossEntropyLoss())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         stage_id = self.hcg.get_stage_id()
         init_parameters = init_net.parameters()
         pipe_parameters = pipe_model.parameters()

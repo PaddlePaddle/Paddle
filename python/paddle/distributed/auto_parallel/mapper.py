@@ -181,9 +181,15 @@ def build_process_graph(distributed_program):
         ) = analyze_requirements_for_program(src_info, src_rank)
         graph.add_node(src_rank, resource_requirements=resource_requirements)
         for tgt_rank, comm_requirements in comm_requirements_to_ranks.items():
+<<<<<<< HEAD
             graph.add_edge(
                 src_rank, tgt_rank, comm_requirements=comm_requirements
             )
+=======
+            graph.add_edge(src_rank,
+                           tgt_rank,
+                           comm_requirements=comm_requirements)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return graph
 
 
@@ -206,9 +212,15 @@ def build_cluster_graph(cluster):
             else:
                 graph.nodes[device.global_id]["occupied"] = False
         for link in machine.links.values():
+<<<<<<< HEAD
             graph.add_edge(
                 link.source.global_id, link.target.global_id, link=link
             )
+=======
+            graph.add_edge(link.source.global_id,
+                           link.target.global_id,
+                           link=link)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return graph
 
 
@@ -249,9 +261,14 @@ def mapping(distributed_program, cluster):
             device_type = cur_rank_node["resource_requirements"]["device_type"]
             cur_device_node = None
             for device_node in cluster_graph.nodes.values():
+<<<<<<< HEAD
                 if (device_node["device"].type == device_type) and (
                     not device_node["occupied"]
                 ):
+=======
+                if (device_node["device"].type
+                        == device_type) and (not device_node["occupied"]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     device_node["occupied"] = True
                     cur_rank_node["visited"] = True
                     cur_rank_node["device"] = device_node["device"]
@@ -281,9 +298,14 @@ def mapping(distributed_program, cluster):
             nbr_device_edges.sort(key=sort_by_comm_bandwidth)
 
             for nbr_rank_edge in nbr_rank_edges:
+<<<<<<< HEAD
                 src_rank_node = process_graph.nodes[nbr_rank_edge.src_id][
                     "visited"
                 ]
+=======
+                src_rank_node = process_graph.nodes[
+                    nbr_rank_edge.src_id]["visited"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if src_rank_node:
                     continue
                 device_type = src_rank_node["resource_requirements"][

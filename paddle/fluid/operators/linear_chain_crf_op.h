@@ -47,7 +47,12 @@ struct ScalarMul {
 };
 
 using framework::LoD;
+<<<<<<< HEAD
 using LoDTensor = phi::DenseTensor;
+=======
+using framework::LoDTensor;
+using framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename DeviceContext, typename T>
 class LinearChainCRFOpKernel : public framework::OpKernel<T> {
@@ -161,6 +166,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
         log_likelihood[i] = 0.;
         continue;
       }
+<<<<<<< HEAD
       const phi::DenseTensor one_seq =
           emission_weights_tmp.Slice(start_pos, end_pos);
       phi::DenseTensor one_seq_row_max =
@@ -170,6 +176,13 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
       const phi::DenseTensor one_seq_label =
           label_tmp.Slice(start_pos, end_pos);
       phi::DenseTensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
+=======
+      const Tensor one_seq = emission_weights_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_row_max = emission_row_max.Slice(start_pos, end_pos);
+      Tensor one_seq_exps = emission_exps_tmp.Slice(start_pos, end_pos);
+      const Tensor one_seq_label = label_tmp.Slice(start_pos, end_pos);
+      Tensor one_seq_alpha = alpha_tmp.Slice(start_pos, end_pos);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       log_likelihood[i] = ForwardOneSequence(one_seq,
                                              one_seq_row_max,
                                              one_seq_exps,
@@ -181,6 +194,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
   };
 
  private:
+<<<<<<< HEAD
   T ForwardOneSequence(const phi::DenseTensor& emission,
                        const phi::DenseTensor& emission_row_max,
                        const phi::DenseTensor& emission_exps,
@@ -188,6 +202,15 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
                        const phi::DenseTensor& trans_weight_exps,
                        const phi::DenseTensor& label,
                        phi::DenseTensor* alpha) const {
+=======
+  T ForwardOneSequence(const Tensor& emission,
+                       const Tensor& emission_row_max,
+                       const Tensor& emission_exps,
+                       const Tensor& trans_weights,
+                       const Tensor& trans_weight_exps,
+                       const Tensor& label,
+                       Tensor* alpha) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const T* x = emission.data<T>();
     const T* x_row_max = emission_row_max.data<T>();
     const T* x_exps = emission_exps.data<T>();
@@ -353,6 +376,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
  private:
   void BackwardOneSequence(const phi::CPUContext& ctx,
                            const T ll_grad,
+<<<<<<< HEAD
                            const phi::DenseTensor& emission_exps,
                            const phi::DenseTensor& transition_exps,
                            const phi::DenseTensor& alpha,
@@ -360,6 +384,15 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
                            phi::DenseTensor* beta,
                            phi::DenseTensor* transition_grad,
                            phi::DenseTensor* emission_grad) const {
+=======
+                           const Tensor& emission_exps,
+                           const Tensor& transition_exps,
+                           const Tensor& alpha,
+                           const Tensor& label,
+                           Tensor* beta,
+                           Tensor* transition_grad,
+                           Tensor* emission_grad) const {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     const T* w_exps = transition_exps.data<T>();
     const T* x_exps = emission_exps.data<T>();
     const int64_t* label_value = label.data<int64_t>();

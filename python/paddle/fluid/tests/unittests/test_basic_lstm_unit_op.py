@@ -57,18 +57,28 @@ def step(step_in, pre_hidden, pre_cell, gate_w, gate_b, forget_bias=1.0):
 
 
 class TestBasicGRUUnit(unittest.TestCase):
+
     def setUp(self):
         self.hidden_size = 5
         self.batch_size = 5
 
     def test_run(self):
         x = layers.data(name='x', shape=[-1, self.hidden_size], dtype='float32')
+<<<<<<< HEAD
         pre_hidden = layers.data(
             name="pre_hidden", shape=[-1, self.hidden_size], dtype='float32'
         )
         pre_cell = layers.data(
             name="pre_cell", shape=[-1, self.hidden_size], dtype='float32'
         )
+=======
+        pre_hidden = layers.data(name="pre_hidden",
+                                 shape=[-1, self.hidden_size],
+                                 dtype='float32')
+        pre_cell = layers.data(name="pre_cell",
+                               shape=[-1, self.hidden_size],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         lstm_unit = BasicLSTMUnit("lstm_unit", self.hidden_size)
 
@@ -93,6 +103,7 @@ class TestBasicGRUUnit(unittest.TestCase):
         gate_b_name = "lstm_unit/BasicLSTMUnit_0.b_0"
 
         gate_w = np.array(
+<<<<<<< HEAD
             fluid.global_scope().find_var(gate_w_name).get_tensor()
         )
         gate_w = np.random.uniform(-0.1, 0.1, size=gate_w.shape).astype(
@@ -130,6 +141,31 @@ class TestBasicGRUUnit(unittest.TestCase):
             },
             fetch_list=[new_hidden, new_cell],
         )
+=======
+            fluid.global_scope().find_var(gate_w_name).get_tensor())
+        gate_w = np.random.uniform(-0.1, 0.1,
+                                   size=gate_w.shape).astype('float32')
+        fluid.global_scope().find_var(gate_w_name).get_tensor().set(
+            gate_w, place)
+
+        gate_b = np.array(
+            fluid.global_scope().find_var(gate_b_name).get_tensor())
+        gate_b = np.random.uniform(-0.1, 0.1,
+                                   size=gate_b.shape).astype('float32')
+        fluid.global_scope().find_var(gate_b_name).get_tensor().set(
+            gate_b, place)
+
+        step_input_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+        pre_hidden_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+        pre_cell_np = np.random.uniform(
+            -0.1, 0.1, (self.batch_size, self.hidden_size)).astype('float32')
+
+        out = exe.run( feed={ 'x' : step_input_np, 'pre_hidden' : pre_hidden_np, \
+                              'pre_cell' : pre_cell_np },
+                fetch_list=[ new_hidden, new_cell])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         api_hidden_out = out[0]
         api_cell_out = out[1]
@@ -138,12 +174,19 @@ class TestBasicGRUUnit(unittest.TestCase):
             step_input_np, pre_hidden_np, pre_cell_np, gate_w, gate_b
         )
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             api_hidden_out, np_hidden_out, rtol=0.0001, atol=0
         )
         np.testing.assert_allclose(
             api_cell_out, np_cell_out, rtol=0.0001, atol=0
         )
+=======
+        self.assertTrue(
+            np.allclose(api_hidden_out, np_hidden_out, rtol=1e-4, atol=0))
+        self.assertTrue(
+            np.allclose(api_cell_out, np_cell_out, rtol=1e-4, atol=0))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

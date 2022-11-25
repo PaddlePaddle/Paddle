@@ -63,6 +63,7 @@ def reference_matmul(X, Y, transpose_x=False, transpose_y=False):
 
 
 class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
+
     def config(self):
         self.x_shape = (100,)
         self.y_shape = (100,)
@@ -106,8 +107,13 @@ class TestMatMulV2VectorXVectorOneDNNOp(OpTest):
 
 
 class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (100,)
         self.y_shape = (1, 3, 2, 100)
@@ -116,6 +122,7 @@ class TestMatMulV2VectorXMatrixTransposeYOneDNNOp(
 
 
 class TestMatMulV2VectorXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (100,)
         self.y_shape = (1, 1, 100, 2)
@@ -124,8 +131,13 @@ class TestMatMulV2VectorXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (1, 1, 100, 1)
         self.y_shape = (100,)
@@ -134,6 +146,7 @@ class TestMatMulV2MatrixXVectorTransposeXOneDNNOp(
 
 
 class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (1, 2, 1, 100)
         self.y_shape = (100,)
@@ -142,6 +155,7 @@ class TestMatMulV2MatrixXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (1, 1, 2, 100)
         self.y_shape = (1, 1, 100, 1)
@@ -150,8 +164,13 @@ class TestMatMulV2MatrixXMatrixOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (1, 1, 1, 100)
         self.y_shape = (2, 1, 2, 100)
@@ -160,6 +179,7 @@ class TestMatMulV2MatrixXMatrixTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (2, 1, 12, 9)
         self.y_shape = (1, 3, 9, 12)
@@ -168,6 +188,7 @@ class TestMatMulV2MatrixXMatrix2OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (2, 1, 2, 100)
         self.y_shape = (1, 1, 100, 2)
@@ -176,8 +197,13 @@ class TestMatMulV2MatrixXMatrix3OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (2, 1, 4, 25)
         self.y_shape = (1, 1, 4, 25)
@@ -186,8 +212,13 @@ class TestMatMulV2MatrixXMatrixTranposeXOneDNNOp2(
 
 
 class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (2, 2, 7, 4)
         self.y_shape = (2, 2, 7, 5)
@@ -196,8 +227,13 @@ class TestMatMulV2MatrixXMatrixTranposeX2OneDNNOp3(
 
 
 class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (3, 1, 6, 7)
         self.y_shape = (1, 2, 6, 9)
@@ -206,6 +242,7 @@ class TestMatMulV2MatrixXMatrixTransposeX3OneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (3, 1, 6, 6)
         self.y_shape = (1, 2, 6, 9)
@@ -214,6 +251,7 @@ class TestMatMulV2MatrixXMatrix4OneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = 100
         self.y_shape = (1, 2, 2, 100, 2)
@@ -222,6 +260,7 @@ class TestMatMulV2VectorXMatrix5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (2, 1, 100)
         self.y_shape = 100
@@ -230,8 +269,13 @@ class TestMatMulV2Matrix3DXVectorOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (3, 1, 10, 8)
         self.y_shape = (1, 2, 9, 10)
@@ -240,8 +284,13 @@ class TestMatMulV2MatrixXMatrixTransposeXTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (3, 1, 10, 10)
         self.y_shape = (1, 2, 9, 10)
@@ -250,8 +299,13 @@ class TestMatMulV2MatrixXMatrixTransposeY2OneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (1, 3, 1, 10, 10)
         self.y_shape = (3, 1, 2, 9, 10)
@@ -260,6 +314,7 @@ class TestMatMulV2MatrixXMatrix5DTranposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (1, 1, 2, 1, 8, 9)
         self.y_shape = (9, 12)
@@ -268,6 +323,7 @@ class TestMatMulV2MatrixXMatrix6Dx2DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (20, 5)
         self.y_shape = (1, 2, 1, 5, 11)
@@ -276,8 +332,13 @@ class TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 
 class TestMatMulV2MatrixXMatrix4Dx3DTransposeXOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (5, 4, 15, 10)
         self.y_shape = (1, 15, 20)
@@ -286,8 +347,13 @@ class TestMatMulV2MatrixXMatrix4Dx3DTransposeXOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix3Dx4DTransposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (2, 10, 15)
         self.y_shape = (4, 2, 20, 15)
@@ -296,8 +362,13 @@ class TestMatMulV2MatrixXMatrix3Dx4DTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
+<<<<<<< HEAD
     TestMatMulV2VectorXVectorOneDNNOp
 ):
+=======
+        TestMatMulV2VectorXVectorOneDNNOp):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def config(self):
         self.x_shape = (4, 3, 2, 15, 10)
         self.y_shape = (1, 20, 15)
@@ -306,6 +377,7 @@ class TestMatMulV2MatrixXMatrix5Dx3DTransposeXTransposeYOneDNNOp(
 
 
 class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
+
     def config(self):
         self.x_shape = (1, 1, 32, 16)
         self.y_shape = (16, 16, 16)
@@ -315,8 +387,10 @@ class TestMatMulV2MatrixXMatrix3Dx4DOneDNNOp(TestMatMulV2VectorXVectorOneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
+
     @OpTestTool.skip_if_not_cpu_bf16()
     class TestMatMulV2Bf16OneDNNOp(parent):
+
         def set_inputs(self, x, y):
             self.inputs = {
                 'X': convert_float_to_uint16(x),
@@ -373,6 +447,7 @@ def create_bf16_test_class(parent):
             x_transpose_axes = self.shape_transpose_axes[self.x_fp32.ndim]
             y_transpose_axes = self.shape_transpose_axes[self.y_fp32.ndim]
 
+<<<<<<< HEAD
             x = (
                 np.transpose(self.x_fp32, x_transpose_axes)
                 if self.attrs['trans_x'] is True
@@ -383,6 +458,12 @@ def create_bf16_test_class(parent):
                 if self.attrs['trans_y'] is True
                 else self.y_fp32
             )
+=======
+            x = np.transpose(self.x_fp32, x_transpose_axes
+                             ) if self.attrs['trans_x'] is True else self.x_fp32
+            y = np.transpose(self.y_fp32, y_transpose_axes
+                             ) if self.attrs['trans_y'] is True else self.y_fp32
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             dout = np.matmul(x, y)
 
@@ -417,14 +498,22 @@ def create_bf16_test_class(parent):
                 x_reduce_axis = []
                 y_reduce_axis = []
                 for index, (first, second) in enumerate(
+<<<<<<< HEAD
                     zip(x_shape[0:-2], self.dx.shape[0:-2])
                 ):
+=======
+                        zip(x_shape[0:-2], self.dx.shape[0:-2])):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     if first != second:
                         x_reduce_axis.append(index)
 
                 for index, (first, second) in enumerate(
+<<<<<<< HEAD
                     zip(y_shape[0:-2], self.dy.shape[0:-2])
                 ):
+=======
+                        zip(y_shape[0:-2], self.dy.shape[0:-2])):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     if first != second:
                         y_reduce_axis.append(index)
 
@@ -472,83 +561,134 @@ create_bf16_test_class(TestMatMulV2MatrixXMatrix2Dx5DOneDNNOp)
 
 
 class TestMatMulV2OpTransposeReshapeEmptyFloat(
+<<<<<<< HEAD
     TestMatMulOpTransposeReshapeEmptyFloat
 ):
+=======
+        TestMatMulOpTransposeReshapeEmptyFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpTransposeReshapeBasicFloat(
+<<<<<<< HEAD
     TestMatMulOpTransposeReshapeBasicFloat
 ):
+=======
+        TestMatMulOpTransposeReshapeBasicFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpTransposeReshapeOtherDimFloat(
+<<<<<<< HEAD
     TestMatMulOpTransposeReshapeOtherDimFloat
 ):
+=======
+        TestMatMulOpTransposeReshapeOtherDimFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type(self):
         self.op_type = "matmul_v2"
 
 
 class TestMatMulV2OpReshapeTranspose(TestReshapeTransposeMatMulOp):
+
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DXFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp4DXFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp4DXFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DYFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp4DYFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp4DYFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose4DXYFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp4DXYFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp4DXYFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose2DXFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp2DXFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp2DXFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose2DYFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp2DYFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp2DYFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose3DXFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp3DXFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp3DXFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"
 
 
 class TestMatMulV2OpReshapeTranspose3DYFloat(
+<<<<<<< HEAD
     TestReshapeTransposeMatMulOp3DYFloat
 ):
+=======
+        TestReshapeTransposeMatMulOp3DYFloat):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_type_and_transpose_y_name(self):
         self.op_type = "matmul_v2"
         self.transpose_y_name = "trans_y"

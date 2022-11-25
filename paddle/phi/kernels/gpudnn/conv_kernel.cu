@@ -33,6 +33,7 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -41,6 +42,8 @@
 // clang-format on
 #endif
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 namespace phi {
 
 template <typename T, typename Context>
@@ -550,6 +553,7 @@ void ConvCudnnKernel(const Context& ctx,
                              groups,
                              &transformed_output);
 #else
+<<<<<<< HEAD
   ConvCudnnKernelImplV7<T>(&transformed_input,
                            &transformed_filter_channel,
                            ctx,
@@ -562,6 +566,75 @@ void ConvCudnnKernel(const Context& ctx,
                            deterministic,
                            groups,
                            &transformed_output);
+=======
+  paddle::operators::SearchResult<cudnnConvolutionFwdAlgo_t> fwd_result;
+  using search =
+      paddle::operators::SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t>;
+  fwd_result = search::Find<T>(args, exhaustive_search, deterministic, ctx);
+  workspace_size = search::GetWorkspaceSize(args, fwd_result.algo);
+#endif
+
+#if defined(PADDLE_WITH_CUDA) && CUDNN_VERSION_MIN(7, 0, 1)
+  // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
+    // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
+  // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
+    // FWD_ALGO_IMPLICIT_GEMM manually.
+  if (groups > 1) {
+    fwd_result.algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+  }
+#endif
+
+  // ------------------- cudnn conv forward ---------------------
+  paddle::operators::ScalingParamType<T> alpha = 1.0f;
+  paddle::operators::ScalingParamType<T> beta = 0.0f;
+
+  // NOTE(zhiqiu): inplace addto is not supportted in double grad yet.
+  // ScalingParamType<T> beta = ctx.Attr<bool>("use_addto") ? 1.0f : 0.0f;
+  // VLOG(4) << "Conv: use_addto = " << ctx.Attr<bool>("use_addto");
+
+#ifdef PADDLE_WITH_HIP
+  workspace_handle.RunFunc(
+      [&](void* workspace_ptr) {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            paddle::platform::dynload::miopenConvolutionForward(
+                handle,
+                &alpha,
+                args.idesc.desc(),
+                input_data,
+                args.wdesc.desc(),
+                filter_data,
+                args.cdesc.desc(),
+                fwd_result.algo,
+                &beta,
+                args.odesc.desc(),
+                output_data,
+                workspace_ptr,
+                workspace_size));
+      },
+      workspace_size);
+#else
+  for (int i = 0; i < groups; i++) {
+    workspace_handle.RunFunc(
+        [&](void* workspace_ptr) {
+          PADDLE_ENFORCE_GPU_SUCCESS(
+              paddle::platform::dynload::cudnnConvolutionForward(
+                  handle,
+                  &alpha,
+                  args.idesc.desc(),
+                  input_data + i * group_offset_in,
+                  args.wdesc.desc(),
+                  filter_data + i * group_offset_filter,
+                  args.cdesc.desc(),
+                  fwd_result.algo,
+                  workspace_ptr,
+                  workspace_size,
+                  &beta,
+                  args.odesc.desc(),
+                  output_data + i * group_offset_out));
+        },
+        workspace_size);
+  }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #endif
 
   if (channel_last && compute_format == paddle::platform::DataLayout::kNCHW) {

@@ -49,7 +49,11 @@ class ScaleLoDTensorFunctor {
  public:
   void operator()(const DeviceContext& context,
                   const T* scales,
+<<<<<<< HEAD
                   phi::DenseTensor* seq);
+=======
+                  framework::LoDTensor* seq);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 }  // namespace math

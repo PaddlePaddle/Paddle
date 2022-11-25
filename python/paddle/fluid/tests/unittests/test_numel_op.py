@@ -20,6 +20,7 @@ import paddle
 
 
 class TestNumelOp(OpTest):
+
     def setUp(self):
         self.op_type = "size"
         self.init()
@@ -27,7 +28,10 @@ class TestNumelOp(OpTest):
         self.inputs = {
             'Input': x,
         }
+<<<<<<< HEAD
         # TODO(zhouwei): will change shape [1] to [] to support zero-dim
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.outputs = {'Out': np.array([np.size(x)])}
 
     def test_check_output(self):
@@ -38,16 +42,19 @@ class TestNumelOp(OpTest):
 
 
 class TestNumelOp1(TestNumelOp):
+
     def init(self):
         self.shape = (11, 66)
 
 
 class TestNumelOp2(TestNumelOp):
+
     def init(self):
         self.shape = (0,)
 
 
 class TestNumelAPI(unittest.TestCase):
+
     def test_numel_static(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
@@ -61,6 +68,7 @@ class TestNumelAPI(unittest.TestCase):
             out_1 = paddle.numel(x_1)
             out_2 = paddle.numel(x_2)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
+<<<<<<< HEAD
             res_1, res_2 = exe.run(
                 feed={
                     "x_1": input_1,
@@ -75,6 +83,19 @@ class TestNumelAPI(unittest.TestCase):
             assert np.array_equal(
                 res_2, np.array([np.size(input_2)]).astype("int64")
             )
+=======
+            res_1, res_2 = exe.run(feed={
+                "x_1": input_1,
+                "x_2": input_2,
+            },
+                                   fetch_list=[out_1, out_2])
+            assert (np.array_equal(res_1,
+                                   np.array([np.size(input_1)
+                                             ]).astype("int64")))
+            assert (np.array_equal(res_2,
+                                   np.array([np.size(input_2)
+                                             ]).astype("int64")))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_numel_imperative(self):
         paddle.disable_static(paddle.CPUPlace())

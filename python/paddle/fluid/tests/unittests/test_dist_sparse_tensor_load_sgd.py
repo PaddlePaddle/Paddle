@@ -46,9 +46,15 @@ class TestSparseLoadProgram(unittest.TestCase):
             with fluid.program_guard(train_program, startup_program):
                 with fluid.unique_name.guard():
                     inputs = fluid.data('input', shape=[None, 1], dtype="int64")
+<<<<<<< HEAD
                     emb = fluid.layers.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )
+=======
+                    emb = fluid.layers.embedding(inputs,
+                                                 is_sparse=True,
+                                                 size=[10000, 128])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     fc1 = fluid.layers.fc(input=emb, size=128, act="relu")
                     fc2 = fluid.layers.fc(input=fc1, size=64, act="relu")
                     loss = fluid.layers.reduce_mean(fc2)
@@ -56,6 +62,7 @@ class TestSparseLoadProgram(unittest.TestCase):
 
 
 class TestSparseLoadProgramSGD(TestSparseLoadProgram):
+
     def test_server_init(self):
         scope, train_program, startup_program, loss = self.net()
         with fluid.scope_guard(scope):

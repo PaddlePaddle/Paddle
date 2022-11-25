@@ -55,6 +55,7 @@ class ExecutionMode(IntEnum):
 
 
 class IPUTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         # Get random seeds
@@ -82,29 +83,53 @@ class IPUTest(unittest.TestCase):
             if flag.upper() in ['1', "TRUE"]:
                 return True
 
+<<<<<<< HEAD
 
 @unittest.skipIf(
     not paddle.is_compiled_with_ipu(), "core is not compiled with IPU"
 )
 class IPUD2STest(IPUTest):
+=======
+
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class IPUD2STest(IPUTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
 
         # Disable paddle static graph mode
         paddle.disable_static()
+<<<<<<< HEAD
+=======
+
+    def tearDown(self):
+        # Manual reset when using ipumodel
+        if self.use_ipumodel():
+            paddle.framework.core.IpuBackend.get_instance().reset()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def tearDown(self):
         # Manual reset when using ipumodel
         if self.use_ipumodel():
             paddle.framework.core.IpuBackend.get_instance().reset()
 
+<<<<<<< HEAD
 
 @unittest.skipIf(
     not paddle.is_compiled_with_ipu(), "core is not compiled with IPU"
 )
 class IPUOpTest(IPUTest):
     """Base Class for single op unit tests using static graph on IPU."""
+=======
+@unittest.skipIf(not paddle.is_compiled_with_ipu(),
+                 "core is not compiled with IPU")
+class IPUOpTest(IPUTest):
+    """Base Class for single op unit tests using static graph on IPU.
+    """
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @classmethod
     def setUpClass(cls):
@@ -158,6 +183,10 @@ class IPUOpTest(IPUTest):
 
     # Decorator for static graph building
     def static_graph(builder):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def wrapper(self, *args, **kwargs):
             self.scope = paddle.static.Scope()
             self.main_prog = paddle.static.Program()
@@ -166,11 +195,17 @@ class IPUOpTest(IPUTest):
             self.startup_prog.random_seed = self.SEED
             with paddle.static.scope_guard(self.scope):
                 with paddle.utils.unique_name.guard(
+<<<<<<< HEAD
                     paddle.utils.unique_name.generate('')
                 ):
                     with paddle.static.program_guard(
                         self.main_prog, self.startup_prog
                     ):
+=======
+                        paddle.utils.unique_name.generate('')):
+                    with paddle.static.program_guard(self.main_prog,
+                                                     self.startup_prog):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         builder(self, *args, **kwargs)
 
         return wrapper
@@ -181,11 +216,19 @@ class IPUOpTest(IPUTest):
         amp_list = paddle.static.amp.CustomOpLists()
         amp_list.unsupported_list = {'scale'}
         to_fp16_var_names = paddle.static.amp.cast_model_to_fp16(
+<<<<<<< HEAD
             main_program, amp_list, use_fp16_guard=False
         )
         paddle.static.amp.cast_parameters_to_fp16(
             paddle.CPUPlace(), main_program, to_fp16_var_names=to_fp16_var_names
         )
+=======
+            main_program, amp_list, use_fp16_guard=False)
+        paddle.static.amp.cast_parameters_to_fp16(
+            paddle.CPUPlace(),
+            main_program,
+            to_fp16_var_names=to_fp16_var_names)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def run_op_test(self, exec_mode, ipu_strategy=None):
         # NOTE: some op has no inputs
@@ -212,8 +255,14 @@ class IPUOpTest(IPUTest):
             )
 
             program = paddle.static.IpuCompiledProgram(
+<<<<<<< HEAD
                 self.main_prog, ipu_strategy=ipu_strategy
             ).compile(self.feed_list, self.fetch_list)
+=======
+                self.main_prog,
+                ipu_strategy=ipu_strategy).compile(self.feed_list,
+                                                   self.fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             program = self.main_prog
 
@@ -243,24 +292,39 @@ class IPUOpTest(IPUTest):
             raise ValueError("output_dict is empty")
         cpu_fp32 = output_dict[ExecutionMode.CPU_FP32]
         ipu_fp32 = output_dict[ExecutionMode.IPU_FP32]
+<<<<<<< HEAD
         # Convert 0-dim tensor
         if isinstance(cpu_fp32, np.ndarray) and cpu_fp32.shape == ():
             cpu_fp32 = cpu_fp32.reshape(1)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if len(cpu_fp32) != len(ipu_fp32):
             raise ValueError("different outputs number between ipu and cpu.")
         for cpu_fp32_res, ipu_fp32_res in zip(cpu_fp32, ipu_fp32):
             cpu_fp32_res = np.asarray(cpu_fp32_res).astype(np.float32).flatten()
             ipu_fp32_res = np.asarray(ipu_fp32_res).astype(np.float32).flatten()
+<<<<<<< HEAD
             pass_check = np.allclose(
                 ipu_fp32_res, cpu_fp32_res, rtol=self.rtol, atol=self.atol
             )
+=======
+            pass_check = np.allclose(ipu_fp32_res,
+                                     cpu_fp32_res,
+                                     rtol=self.rtol,
+                                     atol=self.atol)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if not pass_check:
                 max_atol = np.abs(ipu_fp32_res - cpu_fp32_res).max()
                 cpu_fp32_abs = np.abs(cpu_fp32_res)
                 cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
+<<<<<<< HEAD
                 max_rtol = (
                     np.abs(ipu_fp32_res - cpu_fp32_res) / cpu_fp32_abs
                 ).max()
+=======
+                max_rtol = (np.abs(ipu_fp32_res - cpu_fp32_res) /
+                            cpu_fp32_abs).max()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 raise AssertionError(
                     f"ipu_fp32 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
                 )
@@ -272,6 +336,7 @@ class IPUOpTest(IPUTest):
             ipu_fp16 = output_dict[ExecutionMode.IPU_FP16]
             if len(cpu_fp32) != len(ipu_fp16):
                 raise ValueError(
+<<<<<<< HEAD
                     "different outputs number between ipu and cpu."
                 )
             for cpu_fp32_res, ipu_fp16_res in zip(cpu_fp32, ipu_fp16):
@@ -287,13 +352,30 @@ class IPUOpTest(IPUTest):
                     rtol=self.rtol_fp16,
                     atol=self.atol_fp16,
                 )
+=======
+                    "different outputs number between ipu and cpu.")
+            for cpu_fp32_res, ipu_fp16_res in zip(cpu_fp32, ipu_fp16):
+                cpu_fp32_res = np.asarray(cpu_fp32_res).astype(
+                    np.float32).flatten()
+                ipu_fp16_res = np.asarray(ipu_fp16_res).astype(
+                    np.float32).flatten()
+                pass_check = np.allclose(ipu_fp16_res,
+                                         cpu_fp32_res,
+                                         rtol=self.rtol_fp16,
+                                         atol=self.atol_fp16)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if not pass_check:
                     max_atol = np.abs(ipu_fp16_res - cpu_fp32_res).max()
                     cpu_fp32_abs = np.abs(cpu_fp32_res)
                     cpu_fp32_abs[cpu_fp32_abs == 0.0] = 1e-20
+<<<<<<< HEAD
                     max_rtol = (
                         np.abs(ipu_fp16_res - cpu_fp32_res) / cpu_fp32_abs
                     ).max()
+=======
+                    max_rtol = (np.abs(ipu_fp16_res - cpu_fp32_res) /
+                                cpu_fp32_abs).max()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     raise AssertionError(
                         f"ipu_fp16 check failed. max_atol is {max_atol}, max_rtol is {max_rtol}"
                     )

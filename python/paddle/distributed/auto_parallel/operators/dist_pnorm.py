@@ -18,6 +18,11 @@ from .common import DistributedOperatorImplContainer
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator_impl_container
 from .common import register_distributed_operator_impl
+<<<<<<< HEAD
+=======
+from .common import set_comm_op_dist_attr_for_program
+from .dist_default import DistributedDefaultImpl0
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from ..process_group import new_process_group
 from ..utils import is_dim_shard, is_dim_replicate, _get_corresponding_rank
 from ..utils import (
@@ -36,6 +41,7 @@ from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 
 
 class DistributedPNorm(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -43,8 +49,35 @@ class DistributedPNorm(DistributedOperatorImplContainer):
 register_distributed_operator_impl_container(DistributedPNorm("p_norm"))
 
 
+<<<<<<< HEAD
+=======
+def _insert_fill_constant_op(block, op_role):
+    """Insert fill constant op into block at the given index."""
+    helper = LayerHelper("fill_constant", **locals())
+    with paddle.static.program_guard(block.program):
+        out = helper.create_variable_for_type_inference(dtype="int32")
+    inputs = {}
+    attrs = {'force_cpu': False}
+    attrs['str_value'] = str(int("1"))
+    attrs['value'] = int("1")
+    attrs['dtype'] = out.dtype
+    attrs['op_role'] = op_role
+    utils.get_shape_tensor_inputs(inputs=inputs,
+                                  attrs=attrs,
+                                  shape=[0],
+                                  op_type='fill_constant')
+    fill_constant_op = block.append_op(type='fill_constant',
+                                       inputs=inputs,
+                                       outputs={'Out': [out]},
+                                       attrs=attrs)
+    out.stop_gradient = True
+    return out, fill_constant_op
+
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 # Row Parallel
 class DistributedPNormImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -167,12 +200,45 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         )
         group = new_process_group(group_ranks)
 
+<<<<<<< HEAD
         check_variable_and_dtype(
             X_var, 'x', ['float16', 'float32', 'float64'], 'norm'
         )
         check_dtype(
             X_var.dtype, 'dtype', ['float16', 'float32', 'float64'], 'norm'
         )
+=======
+        check_variable_and_dtype(X_var, 'x', ['float16', 'float32', 'float64'],
+                                 'norm')
+        check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'norm')
+
+        # 1. insert barrier op
+        ref_process_mesh = op_dist_attr.process_mesh
+        constant_out_dims_mapping = [-1]
+        fill_constant_out, fill_constant_op = _insert_fill_constant_op(
+            main_block, src_op.attr('op_role'))
+        # set fill_constant_out tensor dist_attr
+        constant_out_dist_attr = TensorDistributedAttribute()
+        constant_out_dist_attr.process_mesh = ref_process_mesh
+        constant_out_dist_attr.dims_mapping = constant_out_dims_mapping
+        ctx.set_tensor_dist_attr_for_program(fill_constant_out,
+                                             constant_out_dist_attr)
+        # set fill_constant op dist_attr
+        constant_op_dist_attr = OperatorDistributedAttribute()
+        constant_op_dist_attr.process_mesh = ref_process_mesh
+        constant_op_dist_attr.set_output_dims_mapping(
+            fill_constant_out.name, constant_out_dims_mapping)
+        ctx.set_op_dist_attr_for_program(fill_constant_op,
+                                         constant_op_dist_attr)
+        barrier_op = main_block.append_op(type='barrier',
+                                          inputs={'X': [fill_constant_out]},
+                                          outputs={'Out': [fill_constant_out]},
+                                          attrs={'ring_id': group.id})
+        # set barrier op dist attr
+        set_comm_op_dist_attr_for_program(barrier_op, ref_process_mesh,
+                                          constant_out_dist_attr, ctx)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # 2. insert c_allgather op
         # create c_allgather output var
@@ -190,6 +256,7 @@ class DistributedPNormImpl(DistributedOperatorImpl):
         allgather_out_dist_attr.dims_mapping = [
             -1 for i in range(len(allgather_out.shape))
         ]
+<<<<<<< HEAD
         ctx.set_tensor_dist_attr_for_program(
             allgather_out, allgather_out_dist_attr
         )
@@ -204,6 +271,20 @@ class DistributedPNormImpl(DistributedOperatorImpl):
                 'op_role': src_op.attr('op_role'),
             },
         )
+=======
+        ctx.set_tensor_dist_attr_for_program(allgather_out,
+                                             allgather_out_dist_attr)
+        c_allgather_op = main_block.append_op(type='c_allgather',
+                                              inputs={'X': [X_var]},
+                                              outputs={'Out': [allgather_out]},
+                                              attrs={
+                                                  'ring_id': group.id,
+                                                  'use_calc_stream': True,
+                                                  'nranks': group.nranks,
+                                                  'op_role':
+                                                  src_op.attr('op_role')
+                                              })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # set c_allgather op dist_attr
         allgather_op_dist_attr = OperatorDistributedAttribute()
         allgather_op_dist_attr.process_mesh = op_dist_attr.process_mesh
@@ -325,12 +406,19 @@ class DistributedPNormImpl(DistributedOperatorImpl):
             "infer_flags": infer_flags,
             "op_role": backward_op.attr('op_role'),
         }
+<<<<<<< HEAD
         slice_op = main_block.append_op(
             type='slice',
             inputs={'Input': [new_X_grad]},
             outputs={'Out': [X_grad_var]},
             attrs=attrs,
         )
+=======
+        slice_op = main_block.append_op(type='slice',
+                                        inputs={'Input': [new_X_grad]},
+                                        outputs={'Out': [X_grad_var]},
+                                        attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         X_grad_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
             X_grad_var.name
         )

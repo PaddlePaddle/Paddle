@@ -79,8 +79,14 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
 
   int half_kernel_size = kernel_size / 2;
   auto blas = phi::funcs::GetBlas<GPUContext, T>(dev_ctx);
+<<<<<<< HEAD
   DenseTensor x_grad_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.values());
+=======
+  DenseTensor x_grad_indices =
+      phi::EmptyLike<IntT>(dev_ctx, x.non_zero_indices());
+  DenseTensor x_grad_values = phi::EmptyLike<T>(dev_ctx, x.non_zero_elements());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   T* x_grad_values_ptr = x_grad_values.data<T>();
   phi::backends::gpu::GpuMemsetAsync(x_grad_values_ptr,
                                      0,
@@ -88,8 +94,16 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                      dev_ctx.stream());
   phi::backends::gpu::GpuMemsetAsync(
       d_x_features_ptr, 0, sizeof(T) * d_x_features.numel(), dev_ctx.stream());
+<<<<<<< HEAD
   phi::Copy<GPUContext>(
       dev_ctx, x.indices(), dev_ctx.GetPlace(), false, &x_grad_indices);
+=======
+  phi::Copy<GPUContext>(dev_ctx,
+                        x.non_zero_indices(),
+                        dev_ctx.GetPlace(),
+                        false,
+                        &x_grad_indices);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   x_grad->SetMember(x_grad_indices, x_grad_values, x.dims(), true);
 
   std::vector<int> offsets(kernel_size + 1);
@@ -105,6 +119,7 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
   offsets[kernel_size] = offset;
 
   if (subm) {
+<<<<<<< HEAD
     phi::funcs::sparse::SubmPreProcess<T, GPUContext>(dev_ctx,
                                                       x,
                                                       kernel,
@@ -114,6 +129,18 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                                       half_kernel_size,
                                                       kernel_grad,
                                                       &x_grad_values);
+=======
+    phi::funcs::sparse::SubmPreProcess<T, GPUContext>(
+        dev_ctx,
+        x,
+        kernel,
+        out_grad.non_zero_elements(),
+        in_channels,
+        out_channels,
+        half_kernel_size,
+        kernel_grad,
+        &x_grad_values);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (max_count == 0) {
       return;
     }
@@ -142,7 +169,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                                       unique_value_ptr);
 
   GatherV2<T, IntT>(dev_ctx,
+<<<<<<< HEAD
                     x.values().data<T>(),
+=======
+                    x.non_zero_elements().data<T>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     out_index_ptr,
                     unique_value_ptr,
                     x.nnz(),
@@ -152,7 +183,11 @@ void Conv3dCooGradGPUKernel(const GPUContext& dev_ctx,
                     in_features_ptr);
 
   Gather<T, IntT>(dev_ctx,
+<<<<<<< HEAD
                   out_grad.values().data<T>(),
+=======
+                  out_grad.non_zero_elements().data<T>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   rulebook_ptr + rulebook_len,
                   rulebook_len,
                   out_channels,
@@ -228,8 +263,13 @@ void Conv3dCooGradKernel(const Context& dev_ctx,
                          const std::string& key,
                          SparseCooTensor* x_grad,
                          DenseTensor* kernel_grad) {
+<<<<<<< HEAD
   PD_VISIT_BASE_INTEGRAL_TYPES(
       x.indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
+=======
+  PD_VISIT_INTEGRAL_TYPES(
+      x.non_zero_indices().dtype(), "Conv3dCooGradGPUKernel", ([&] {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         Conv3dCooGradGPUKernel<T, data_t>(dev_ctx,
                                           x,
                                           kernel,

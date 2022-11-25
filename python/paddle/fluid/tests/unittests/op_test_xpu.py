@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
+<<<<<<< HEAD
 from paddle.fluid.framework import Program, convert_np_dtype_to_dtype_
 from testsuite import append_loss_ops, create_op, set_input
 from white_list import op_threshold_white_list, no_grad_set_white_list
@@ -27,9 +28,21 @@ from xpu.get_test_cover_info import (
     get_xpu_op_support_types,
     type_dict_str_to_numpy,
 )
+=======
+from paddle.fluid.op import Operator
+from paddle.fluid.executor import Executor
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, convert_np_dtype_to_dtype_
+from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from paddle.fluid import unique_name
+from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list
+from white_list import op_threshold_white_list, no_grad_set_white_list
+from op_test import OpTest, _set_use_system_allocator, get_numeric_gradient
+from xpu.get_test_cover_info import is_empty_grad_op_type, get_xpu_op_support_types, type_dict_str_to_numpy
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class XPUOpTest(OpTest):
+
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
@@ -103,6 +116,7 @@ class XPUOpTest(OpTest):
 
         if self.dtype == np.float16:
             atol = 0.1
+<<<<<<< HEAD
         return super().check_output_with_place(
             place, atol, no_check_set, equal_nan, check_dygraph, inplace_atol
         )
@@ -121,6 +135,24 @@ class XPUOpTest(OpTest):
         numeric_place=None,
         check_eager=False,
     ):
+=======
+        return super().check_output_with_place(place, atol, no_check_set,
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
+
+    def check_grad(self,
+                   inputs_to_check,
+                   output_names,
+                   no_grad_set=None,
+                   numeric_grad_delta=0.005,
+                   in_place=False,
+                   max_relative_error=0.005,
+                   user_defined_grads=None,
+                   user_defined_grad_outputs=None,
+                   check_dygraph=True,
+                   numeric_place=None,
+                   check_eager=False):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         place = paddle.XPUPlace(0)
         self.check_grad_with_place(
             place,
@@ -165,7 +197,11 @@ class XPUOpTest(OpTest):
         for ctype in cast_grad_op_types:
             cast_grad_op_types_np.append(type_dict_str_to_numpy[ctype])
 
+<<<<<<< HEAD
         if self.dtype not in cast_grad_op_types_np:
+=======
+        if (self.dtype not in cast_grad_op_types_np):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return
 
         if self.dtype == np.float64:
@@ -263,6 +299,7 @@ class XPUOpTest(OpTest):
         for mtype in mean_grad_op_types:
             mean_grad_op_types_np.append(type_dict_str_to_numpy[mtype])
 
+<<<<<<< HEAD
         self.op = create_op(
             self.scope,
             self.op_type,
@@ -271,6 +308,14 @@ class XPUOpTest(OpTest):
             op_attrs,
             cache_list=cache_list,
         )
+=======
+        self.op = create_op(self.scope,
+                            self.op_type,
+                            op_inputs,
+                            op_outputs,
+                            op_attrs,
+                            cache_list=cache_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if use_onednn:
             op_attrs["use_mkldnn"] = True
@@ -278,6 +323,7 @@ class XPUOpTest(OpTest):
         if no_grad_set is None:
             no_grad_set = set()
         else:
+<<<<<<< HEAD
             if (
                 (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST)
                 and (
@@ -290,6 +336,14 @@ class XPUOpTest(OpTest):
                     + self.op_type
                     + " Op."
                 )
+=======
+            if (self.op_type not in no_grad_set_white_list.NEED_TO_FIX_OP_LIST
+                ) and (self.op_type
+                       not in no_grad_set_white_list.NOT_CHECK_OP_LIST) and (
+                           not self.is_bfloat16_op()):
+                raise AssertionError("no_grad_set must be None, op_type is " +
+                                     self.op_type + " Op.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
@@ -297,7 +351,11 @@ class XPUOpTest(OpTest):
         if not type(output_names) is list:
             output_names = [output_names]
 
+<<<<<<< HEAD
         if self.dtype not in mean_grad_op_types_np:
+=======
+        if (self.dtype not in mean_grad_op_types_np):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             prog = Program()
             block = prog.global_block()
@@ -308,6 +366,7 @@ class XPUOpTest(OpTest):
             outputs = self._get_outputs(block)
             feed_dict = self.feed_var(inputs, place)
             cast_inputs = list(map(block.var, output_names))
+<<<<<<< HEAD
             cast_outputs = block.create_var(
                 dtype="float32", shape=cast_inputs[0].shape
             )
@@ -320,6 +379,20 @@ class XPUOpTest(OpTest):
                     "out_dtype": core.VarDesc.VarType.FP32,
                 },
             )
+=======
+            cast_outputs = block.create_var(dtype="float32",
+                                            shape=cast_inputs[0].shape)
+            cast_op = block.append_op(type="cast",
+                                      inputs={"X": cast_inputs},
+                                      outputs={"Out": cast_outputs},
+                                      attrs={
+                                          "in_dtype":
+                                          convert_np_dtype_to_dtype_(
+                                              self.dtype),
+                                          "out_dtype":
+                                          core.VarDesc.VarType.FP32
+                                      })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             cast_op.desc.infer_var_type(block.desc)
             cast_op.desc.infer_shape(block.desc)
 
@@ -328,6 +401,7 @@ class XPUOpTest(OpTest):
             loss = append_loss_ops(block, output_names)
             loss_names = [loss.name]
             recast_inputs = list(map(block.var, loss_names))
+<<<<<<< HEAD
             recast_loss = block.create_var(
                 dtype=self.dtype, shape=recast_inputs[0].shape
             )
@@ -349,12 +423,34 @@ class XPUOpTest(OpTest):
                 parameter_list=[input_to_check],
                 no_grad_set=no_grad_set,
             )
+=======
+            recast_loss = block.create_var(dtype=self.dtype,
+                                           shape=recast_inputs[0].shape)
+
+            recast_op = block.append_op(type="cast",
+                                        inputs={"X": recast_inputs},
+                                        outputs={"Out": recast_loss},
+                                        attrs={
+                                            "in_dtype":
+                                            core.VarDesc.VarType.FP32,
+                                            "out_dtype":
+                                            convert_np_dtype_to_dtype_(
+                                                self.dtype)
+                                        })
+            recast_op.desc.infer_var_type(block.desc)
+            recast_op.desc.infer_shape(block.desc)
+
+            param_grad_list = append_backward(loss=recast_loss,
+                                              parameter_list=[input_to_check],
+                                              no_grad_set=no_grad_set)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             fetch_list = [g for p, g in param_grad_list]
 
             executor = fluid.Executor(place)
             return list(
                 map(
                     np.array,
+<<<<<<< HEAD
                     executor.run(
                         prog,
                         feed_dict,
@@ -364,6 +460,13 @@ class XPUOpTest(OpTest):
                     ),
                 )
             )
+=======
+                    executor.run(prog,
+                                 feed_dict,
+                                 fetch_list,
+                                 scope=scope,
+                                 return_numpy=False)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         analytic_grads = self._get_gradient(
             inputs_to_check,

@@ -52,8 +52,12 @@ class MultiClassNMSOpConverter : public OpConverter {
         PADDLE_GET_CONST(float, op_desc.GetAttr("nms_threshold"));
     int keep_top_k = PADDLE_GET_CONST(int, op_desc.GetAttr("keep_top_k"));
     bool normalized = PADDLE_GET_CONST(bool, op_desc.GetAttr("normalized"));
+<<<<<<< HEAD
     int class_index = engine_->with_dynamic_shape() ? 1 : 0;
     int num_classes = scores_tensor->getDimensions().d[class_index];
+=======
+    int num_classes = scores_tensor->getDimensions().d[0];
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     auto bboxes_dims = bboxes_tensor->getDimensions();
     nvinfer1::IShuffleLayer* bboxes_expand_layer = nullptr;

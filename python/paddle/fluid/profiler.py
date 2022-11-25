@@ -42,8 +42,13 @@ NVPROF_CONFIG = [
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason="Please use new profiler tool, this profiler tool is no longer maintained.",
 )
+=======
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 @signature_safe_contextmanager
 def cuda_profiler(output_file, output_mode=None, config=None):
     """
@@ -121,8 +126,13 @@ def npu_profiler(output_file, config=None):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason="Please use new profiler tool, this profiler tool is no longer maintained.",
 )
+=======
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 def reset_profiler():
     """
     Clear the previous time record. It works for
@@ -149,8 +159,13 @@ def reset_profiler():
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason="Please use new profiler tool, this profiler tool is no longer maintained.",
 )
+=======
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 def start_profiler(state, tracer_option='Default'):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -224,8 +239,13 @@ def start_profiler(state, tracer_option='Default'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason="Please use new profiler tool, this profiler tool is no longer maintained.",
 )
+=======
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     """
     Stop the profiler. Uers can use `fluid.profiler.start_profiler` and
@@ -289,8 +309,13 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
     since="2.3.0",
     update_to="paddle.profiler.Profiler",
     level=1,
+<<<<<<< HEAD
     reason="Please use new profiler tool, this profiler tool is no longer maintained.",
 )
+=======
+    reason=
+    "Please use new profiler tool, this profiler tool is no longer maintained.")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 @signature_safe_contextmanager
 def profiler(
     state, sorted_key=None, profile_path='/tmp/profile', tracer_option='Default'

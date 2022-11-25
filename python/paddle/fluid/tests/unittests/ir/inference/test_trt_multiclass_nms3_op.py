@@ -130,6 +130,7 @@ def multiclass_nms(
                                             return_index=True)
     """
     if in_dygraph_mode():
+<<<<<<< HEAD
         attrs = (
             'background_label',
             background_label,
@@ -149,6 +150,14 @@ def multiclass_nms(
         output, index, nms_rois_num = core.ops.multiclass_nms3(
             bboxes, scores, rois_num, *attrs
         )
+=======
+        attrs = ('background_label', background_label, 'score_threshold',
+                 score_threshold, 'nms_top_k', nms_top_k, 'nms_threshold',
+                 nms_threshold, 'keep_top_k', keep_top_k, 'nms_eta', nms_eta,
+                 'normalized', normalized)
+        output, index, nms_rois_num = core.ops.multiclass_nms3(
+            bboxes, scores, rois_num, *attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if not return_index:
             index = None
         return output, nms_rois_num, index
@@ -170,6 +179,7 @@ def multiclass_nms(
             )
             outputs['NmsRoisNum'] = nms_rois_num
 
+<<<<<<< HEAD
         helper.append_op(
             type="multiclass_nms3",
             inputs=inputs,
@@ -184,6 +194,20 @@ def multiclass_nms(
             },
             outputs=outputs,
         )
+=======
+        helper.append_op(type="multiclass_nms3",
+                         inputs=inputs,
+                         attrs={
+                             'background_label': background_label,
+                             'score_threshold': score_threshold,
+                             'nms_top_k': nms_top_k,
+                             'nms_threshold': nms_threshold,
+                             'keep_top_k': keep_top_k,
+                             'nms_eta': nms_eta,
+                             'normalized': normalized
+                         },
+                         outputs=outputs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output.stop_gradient = True
         index.stop_gradient = True
         if not return_index:
@@ -195,6 +219,7 @@ def multiclass_nms(
 
 
 class TensorRTMultiClassNMS3Test(InferencePassTest):
+
     def setUp(self):
         self.enable_trt = True
         self.enable_tensorrt_varseqlen = True
@@ -216,6 +241,7 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
 
     def build(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             boxes = fluid.data(
                 name='bboxes', shape=[-1, self.num_boxes, 4], dtype='float32'
             )
@@ -224,6 +250,14 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
                 shape=[-1, self.num_classes, self.num_boxes],
                 dtype='float32',
             )
+=======
+            boxes = fluid.data(name='bboxes',
+                               shape=[-1, self.num_boxes, 4],
+                               dtype='float32')
+            scores = fluid.data(name='scores',
+                                shape=[-1, self.num_classes, self.num_boxes],
+                                dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             multiclass_nms_out, _, _ = multiclass_nms(
                 bboxes=boxes,
                 scores=scores,
@@ -277,11 +311,18 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         dynamic_shape_opt = [
             None,
             InferencePassTest.DynamicShapeParam(
+<<<<<<< HEAD
                 {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
                 max_shape,
                 opt_shape,
                 False,
             ),
+=======
+                {
+                    'bboxes': [1, 1, 4],
+                    'scores': [1, 1, 1]
+                }, max_shape, opt_shape, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ]
         for precision, serialize, dynamic_shape in itertools.product(
             precision_opt, serialize_opt, dynamic_shape_opt
@@ -318,11 +359,18 @@ class TensorRTMultiClassNMS3Test(InferencePassTest):
         }
         opt_shape = max_shape
         self.dynamic_shape_params = InferencePassTest.DynamicShapeParam(
+<<<<<<< HEAD
             {'bboxes': [1, 1, 4], 'scores': [1, 1, 1]},
             max_shape,
             opt_shape,
             False,
         )
+=======
+            {
+                'bboxes': [1, 1, 4],
+                'scores': [1, 1, 1]
+            }, max_shape, opt_shape, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.run_test()
 
     def test_background(self):

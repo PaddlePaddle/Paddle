@@ -96,15 +96,26 @@ DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(LeakyRelu, LeakyReluFunctor, alpha)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(ThresholdedRelu,
                                      ThresholdedReluFunctor,
                                      threshold)
+<<<<<<< HEAD
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6Raw, Relu6Functor, threshold)
+=======
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Relu6, Relu6Functor, threshold)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(HardShrink, HardShrinkFunctor, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SoftShrink, SoftShrinkFunctor, lambda)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Elu, ELUFunctor, alpha)
+<<<<<<< HEAD
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishFunctor, beta)
 DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
 
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardTanh, HardTanhFunctor, t_min, t_max)
+=======
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Swish, SwishFunctor, beta)
+DEFINE_CPU_ACT_KERNEL_WITH_ONE_ATTRS(Celu, CELUFunctor, alpha)
+
+DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(BRelu, BReluFunctor, t_min, t_max)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(STanh, STanhFunctor, scale_a, scale_b)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(Softplus, SoftplusFunctor, beta, threshold)
 DEFINE_CPU_ACT_KERNEL_WITH_TWO_ATTRS(HardSigmoid,
@@ -149,7 +160,11 @@ PD_REGISTER_ACTIVATION_KERNEL(tanh, TanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_tanh, HardTanhKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(thresholded_relu, ThresholdedReluKernel)
+<<<<<<< HEAD
 PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
+=======
+PD_REGISTER_ACTIVATION_KERNEL(relu6, Relu6Kernel)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 PD_REGISTER_ACTIVATION_KERNEL(hard_shrink, HardShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softshrink, SoftShrinkKernel)
 PD_REGISTER_ACTIVATION_KERNEL(tanh_shrink, TanhShrinkKernel)

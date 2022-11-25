@@ -208,8 +208,12 @@ def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
             for i in range(0, len(items), items_per_line)
         ]
         s = (',\n' + ' ' * (indent + 1)).join(
+<<<<<<< HEAD
             [', '.join(line) for line in lines]
         )
+=======
+            [', '.join(line) for line in lines])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return '[' + s + ']'
     else:
         # recursively handle all dimensions
@@ -270,6 +274,7 @@ def to_string(var, prefix='Tensor'):
 
     max_width, signed = _get_max_width(_to_summary(np_var))
 
+<<<<<<< HEAD
     data = _format_tensor(
         np_var, summary, indent=indent, max_width=max_width, signed=signed
     )
@@ -283,6 +288,21 @@ def to_string(var, prefix='Tensor'):
         indent=' ' * indent,
         data=data,
     )
+=======
+    data = _format_tensor(np_var,
+                          summary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
+
+    return _template.format(prefix=prefix,
+                            shape=var.shape,
+                            dtype=dtype,
+                            place=var._place_str,
+                            stop_gradient=var.stop_gradient,
+                            indent=' ' * indent,
+                            data=data)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _format_dense_tensor(tensor, indent):
@@ -304,9 +324,17 @@ def _format_dense_tensor(tensor, indent):
 
     max_width, signed = _get_max_width(_to_summary(np_tensor))
 
+<<<<<<< HEAD
     data = _format_tensor(
         np_tensor, sumary, indent=indent, max_width=max_width, signed=signed
     )
+=======
+    data = _format_tensor(np_tensor,
+                          sumary,
+                          indent=indent,
+                          max_width=max_width,
+                          signed=signed)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return data
 
 
@@ -317,6 +345,7 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
         indices_tensor = tensor.indices()
         values_tensor = tensor.values()
         indices_data = 'indices=' + _format_dense_tensor(
+<<<<<<< HEAD
             indices_tensor, indent + len('indices=')
         )
         values_data = 'values=' + _format_dense_tensor(
@@ -332,11 +361,25 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             indices=indices_data,
             values=values_data,
         )
+=======
+            indices_tensor, indent + len('indices='))
+        values_data = 'values=' + _format_dense_tensor(values_tensor,
+                                                       indent + len('values='))
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                indices=indices_data,
+                                values=values_data)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         _template = "{prefix}(shape={shape}, dtype={dtype}, place={place}, stop_gradient={stop_gradient}, \n{indent}{crows}, \n{indent}{cols}, \n{indent}{values})"
         crows_tensor = tensor.crows()
         cols_tensor = tensor.cols()
         elements_tensor = tensor.values()
+<<<<<<< HEAD
         crows_data = 'crows=' + _format_dense_tensor(
             crows_tensor, indent + len('crows=')
         )
@@ -358,6 +401,24 @@ def sparse_tensor_to_string(tensor, prefix='Tensor'):
             cols=cols_data,
             values=values_data,
         )
+=======
+        crows_data = 'crows=' + _format_dense_tensor(crows_tensor,
+                                                     indent + len('crows='))
+        cols_data = 'cols=' + _format_dense_tensor(cols_tensor,
+                                                   indent + len('cols='))
+        values_data = 'values=' + _format_dense_tensor(elements_tensor,
+                                                       indent + len('values='))
+
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=tensor.dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                crows=crows_data,
+                                cols=cols_data,
+                                values=values_data)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def tensor_to_string(tensor, prefix='Tensor'):
@@ -376,6 +437,7 @@ def tensor_to_string(tensor, prefix='Tensor'):
         return "Tensor(Not initialized)"
     else:
         data = _format_dense_tensor(tensor, indent)
+<<<<<<< HEAD
         return _template.format(
             prefix=prefix,
             shape=tensor.shape,
@@ -385,3 +447,12 @@ def tensor_to_string(tensor, prefix='Tensor'):
             indent=' ' * indent,
             data=data,
         )
+=======
+        return _template.format(prefix=prefix,
+                                shape=tensor.shape,
+                                dtype=dtype,
+                                place=tensor._place_str,
+                                stop_gradient=tensor.stop_gradient,
+                                indent=' ' * indent,
+                                data=data)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

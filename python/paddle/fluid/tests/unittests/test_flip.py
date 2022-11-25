@@ -46,10 +46,15 @@ class TestFlipOp_API(unittest.TestCase):
             )
             out_np = np.array(res[0])
             out_ref = np.array([[3, 2, 1], [6, 5, 4]]).astype(np.float32)
+<<<<<<< HEAD
             self.assertTrue(
                 (out_np == out_ref).all(),
                 msg='flip output is wrong, out =' + str(out_np),
             )
+=======
+            self.assertTrue((out_np == out_ref).all(),
+                            msg='flip output is wrong, out =' + str(out_np))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dygraph(self):
         img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
@@ -67,6 +72,7 @@ class TestFlipOp_API(unittest.TestCase):
 
 
 class TestFlipOp(OpTest):
+
     def setUp(self):
         self.op_type = 'flip'
         self.python_api = paddle.tensor.flip
@@ -98,36 +104,42 @@ class TestFlipOp(OpTest):
 
 
 class TestFlipOpAxis1(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (2, 4, 4)
         self.axis = [0]
 
 
 class TestFlipOpAxis2(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (4, 4, 6, 3)
         self.axis = [0, 2]
 
 
 class TestFlipOpAxis3(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (4, 3, 1)
         self.axis = [0, 1, 2]
 
 
 class TestFlipOpAxis4(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [0, 1, 2, 3]
 
 
 class TestFlipOpEmptyAxis(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = []
 
 
 class TestFlipOpNegAxis(TestFlipOp):
+
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [-1]

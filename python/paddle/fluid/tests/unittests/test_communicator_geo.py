@@ -31,6 +31,7 @@ paddle.enable_static()
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
+
     def net(self):
         x = fluid.layers.data(name='x', shape=[13], dtype='float32')
         x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
@@ -55,6 +56,7 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         return avg_cost, x, x1, y
 
     def fake_reader(self):
+
         def reader():
             for i in range(10000):
                 x = numpy.random.random((1, 13)).astype('float32')
@@ -168,11 +170,17 @@ half_run_server.run_ut()
 
         ps_cmd = "{} {}".format(_python, server_file)
 
+<<<<<<< HEAD
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        ps_proc = subprocess.Popen(ps_cmd.strip().split(" "),
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         time.sleep(5)
 

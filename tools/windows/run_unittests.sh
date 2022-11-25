@@ -181,7 +181,11 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_parallel_executor_seresnext_with_reduce_gpu$|\
 ^test_api_impl$|\
 ^test_tensordot$|\
+<<<<<<< HEAD
 ^disable_win_inference_test$"
+=======
+^disable_wingpu_test$"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 # /*==========Fixed Disabled Windows CPU OPENBLAS((PR-CI-Windows-OPENBLAS)) unittests==============================*/
@@ -280,7 +284,11 @@ rm -rf $PADDLE_ROOT/tools/check_added_ut_win.sh
 if [ -f "$PADDLE_ROOT/added_ut" ];then
     added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
     ctest -R "(${added_uts})" -E "${disable_win_inference_test}" --output-on-failure -C Release --repeat-until-fail 3;added_ut_error=$?
+<<<<<<< HEAD
     #rm -f $PADDLE_ROOT/added_ut
+=======
+    rm -f $PADDLE_ROOT/added_ut
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if [ "$added_ut_error" != 0 ];then
         echo "========================================"
         echo "Added UT should pass three additional executions"
@@ -443,6 +451,7 @@ set +e
 export FLAGS_call_stack_level=2
 if [ "${WITH_GPU:-OFF}" == "ON" ];then
 
+<<<<<<< HEAD
     single_ut_mem_0_startTime_s=`date +%s`
     while read line
     do
@@ -452,6 +461,36 @@ if [ "${WITH_GPU:-OFF}" == "ON" ];then
     single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
     echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
 
+=======
+# if nvcc --version | grep 11.2; then
+#     echo "Only test added_ut and inference_api_test temporarily when running in CI-Windows-inference of CUDA 11.2."
+#     export CUDA_VISIBLE_DEVICES=0
+#     tmpfile=$tmp_dir/$RANDOM
+#     inference_api_test=^$(ls "paddle/fluid/inference/tests/api" | sed -n 's/\.exe$//pg' | awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' | sed 's/|\^$//g')
+#     (ctest -R "$inference_api_test" -E "$disable_win_inference_api_test" --output-on-failure -C Release -j 2 | tee $tmpfile ) &
+#     wait;
+#     collect_failed_tests
+#     set -e
+#     rm -f $tmp_dir/*
+#     if [[ "$failed_test_lists" != "" ]]; then
+#         unittests_retry
+#         show_ut_retry_result
+#     fi
+#     exit 0;
+# fi
+
+if [ "${WITH_GPU:-OFF}" == "ON" ];then
+
+    single_ut_mem_0_startTime_s=`date +%s`
+    while read line
+    do
+        run_unittest_gpu "$line" 16
+    done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+    single_ut_mem_0_endTime_s=`date +%s`
+    single_ut_mem_0_Time_s=`expr $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s`
+    echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $single_ut_mem_0_Time_s s" 
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     single_ut_startTime_s=`date +%s`
     while read line
     do

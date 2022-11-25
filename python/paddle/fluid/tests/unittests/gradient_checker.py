@@ -89,11 +89,16 @@ def make_jacobian(x, y_size, np_dtype):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
+<<<<<<< HEAD
             filter(
                 lambda t: t is not None,
                 (make_jacobian(item, y_size, np_dtype) for item in x),
             )
         )
+=======
+            filter(lambda t: t is not None,
+                   (make_jacobian(item, y_size, np_dtype) for item in x)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         return jacobians
     else:
         None
@@ -181,9 +186,16 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
 
     np_type = dtype_to_np_dtype(y.dtype)
     # create dy Variable in Program
+<<<<<<< HEAD
     dy = program.global_block().create_var(
         name=dy_name, shape=y.shape, dtype=np_type, persistable=True
     )
+=======
+    dy = program.global_block().create_var(name=dy_name,
+                                           shape=y.shape,
+                                           dtype=np_type,
+                                           persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # append backward
     dx = fluid.gradients(y, x, dy)
 
@@ -213,9 +225,14 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
             if dx_res[j] is not None:
                 jacobian[dx_idx][:, i] = dx_res[j].flatten()
             else:
+<<<<<<< HEAD
                 jacobian[dx_idx][:, i] = np.zeros(
                     dx[dx_idx].shape, dtype=np_type
                 ).flatten()
+=======
+                jacobian[dx_idx][:, i] = np.zeros(dx[dx_idx].shape,
+                                                  dtype=np_type).flatten()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         _set_item(dy_t, i, 0, np_type, place)
 
@@ -319,8 +336,12 @@ def grad_check(
         )
 
     for i, (x_idx, y_idx) in enumerate(
+<<<<<<< HEAD
         product(*[range(len(x)), range(len(y))])
     ):
+=======
+            product(*[range(len(x)), range(len(y))])):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -386,9 +407,16 @@ def double_grad_check(
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
+<<<<<<< HEAD
             dy = program.global_block().create_var(
                 name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
             )
+=======
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -471,9 +499,16 @@ def triple_grad_check(
         for yi in y:
             dyi_name = _append_grad_suffix_(yi.name)
             np_type = dtype_to_np_dtype(yi.dtype)
+<<<<<<< HEAD
             dy = program.global_block().create_var(
                 name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
             )
+=======
+            dy = program.global_block().create_var(name=dyi_name,
+                                                   shape=yi.shape,
+                                                   dtype=np_type,
+                                                   persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dy.stop_gradient = False
             v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
@@ -495,9 +530,16 @@ def triple_grad_check(
         for dxi in target_grads:
             ddxi_name = _append_grad_suffix_(dxi.name)
             np_type = dtype_to_np_dtype(dxi.dtype)
+<<<<<<< HEAD
             ddx = program.global_block().create_var(
                 name=ddxi_name, shape=dxi.shape, dtype=np_type, persistable=True
             )
+=======
+            ddx = program.global_block().create_var(name=ddxi_name,
+                                                    shape=dxi.shape,
+                                                    dtype=np_type,
+                                                    persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             ddx.stop_gradient = False
             v = np.random.random(size=dxi.shape).astype(np_type)
             set_var_in_scope(scope, place, ddxi_name, v)
@@ -526,6 +568,7 @@ def triple_grad_check(
     x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
+<<<<<<< HEAD
     grad_check(
         x=x,
         y=filted_target_grads_grads,
@@ -536,6 +579,16 @@ def triple_grad_check(
         atol=atol,
         rtol=rtol,
     )
+=======
+    grad_check(x=x,
+               y=filted_target_grads_grads,
+               x_init=x_init,
+               place=place,
+               program=program,
+               eps=eps,
+               atol=atol,
+               rtol=rtol)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def get_static_double_grad(
@@ -564,9 +617,16 @@ def get_static_double_grad(
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
+<<<<<<< HEAD
         dy = program.global_block().create_var(
             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
         )
+=======
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -622,9 +682,16 @@ def get_static_double_grad(
         np_type = dtype_to_np_dtype(yi.dtype)
         dy_name = _append_grad_suffix_(yi.name)
         # create dy Variable in Program
+<<<<<<< HEAD
         dy = program.global_block().create_var(
             name=dy_name, shape=yi.shape, dtype=np_type, persistable=True
         )
+=======
+        dy = program.global_block().create_var(name=dy_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # init dy tensor in scope
         value = np.ones(yi.shape, dtype=np_type)
         dy_t = set_var_in_scope(scope, place, dy_name, value)
@@ -678,6 +745,7 @@ def get_eager_double_grad(
         dys.append(dy_tensor)
     # calculate first derivative
     outputs = func(inputs)
+<<<<<<< HEAD
     d_inputs = paddle.grad(
         outputs=outputs,
         inputs=inputs,
@@ -685,6 +753,13 @@ def get_eager_double_grad(
         create_graph=True,
         allow_unused=True,
     )
+=======
+    d_inputs = paddle.grad(outputs=outputs,
+                           inputs=inputs,
+                           grad_outputs=dys,
+                           create_graph=True,
+                           allow_unused=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
 
     # calcluate second derivative
@@ -701,6 +776,7 @@ def get_eager_double_grad(
         ddy.stop_gradient = False
         ddys.append(ddy)
 
+<<<<<<< HEAD
     dd_inputs = paddle.grad(
         outputs=d_inputs,
         inputs=inputs,
@@ -708,6 +784,13 @@ def get_eager_double_grad(
         create_graph=create_graph,
         allow_unused=True,
     )
+=======
+    dd_inputs = paddle.grad(outputs=d_inputs,
+                            inputs=inputs,
+                            grad_outputs=ddys,
+                            create_graph=create_graph,
+                            allow_unused=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if return_mid_result:
         return [
@@ -824,9 +907,16 @@ def get_static_triple_grad(
         yi = y[i]
         dyi_name = _append_grad_suffix_(yi.name)
         np_type = dtype_to_np_dtype(yi.dtype)
+<<<<<<< HEAD
         dy = program.global_block().create_var(
             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
         )
+=======
+        dy = program.global_block().create_var(name=dyi_name,
+                                               shape=yi.shape,
+                                               dtype=np_type,
+                                               persistable=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         dy.stop_gradient = False
         set_var_in_scope(scope, place, dyi_name, dy_init[i])
         y_grads.append(dy)
@@ -846,9 +936,18 @@ def get_static_triple_grad(
         value = np.ones(dxi.shape, dtype=np_type)
         x_grads_grads_init.append(value)
 
+<<<<<<< HEAD
     return get_static_double_grad(
         x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program
     )
+=======
+    return get_static_double_grad(x,
+                                  y,
+                                  x_init,
+                                  dy_init=x_grads_grads_init,
+                                  place=place,
+                                  program=program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def get_eager_triple_grad(
@@ -866,9 +965,17 @@ def get_eager_triple_grad(
     Returns:
         A list of numpy array that stores second derivative result calulated by dygraph
     """
+<<<<<<< HEAD
     dd_y, dd_x = get_eager_double_grad(
         func, x_init, dy_init, place, return_mid_result=True
     )
+=======
+    dd_y, dd_x = get_eager_double_grad(func,
+                                       x_init,
+                                       dy_init,
+                                       place,
+                                       return_mid_result=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # calcluate third derivative
     dddys = []

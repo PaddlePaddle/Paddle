@@ -21,6 +21,7 @@ import paddle.distributed as dist
 
 
 class LinearNet(nn.Layer):
+
     def __init__(self):
         super().__init__()
         self._linear1 = nn.Linear(10, 10)
@@ -57,6 +58,7 @@ def train(print_result=False):
 
 
 class TestSpawn(unittest.TestCase):
+
     def test_spawn(self):
         dist.spawn(train, backend='gloo', nprocs=4)
 

@@ -54,10 +54,14 @@ static std::unordered_set<std::string> ops_to_fill_zero_for_empty_grads = {
 static std::unordered_set<std::string> black_ops_list = {"run_program",
                                                          "fused_gate_attention",
                                                          "fused_feedforward",
+<<<<<<< HEAD
                                                          "fused_attention",
                                                          "fused_gemm_epilogue",
                                                          "sparse_divide_scalar",
                                                          "sparse_scale"};
+=======
+                                                         "fused_attention"};
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 static std::string LegalizeVariableName(const std::string& var_name) {
   std::string ret = var_name;
@@ -1729,8 +1733,13 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
             "{ \"%s\", egr::EagerUtils::CreateVars(%s) },";
         outs_contents_str += paddle::string::Sprintf(
             FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
+<<<<<<< HEAD
         core_ops_legacy_args_info[op_type].push_back(outnum);
         core_ops_legacy_args_type_info[op_type].push_back("int");
+=======
+        core_ops_args_info[op_type].push_back(outnum);
+        core_ops_args_type_info[op_type].push_back("int");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       } else {
         const char* FWD_OUTS_CONTENT_TEMPLATE =
             "{ \"%s\", "
@@ -2167,7 +2176,11 @@ static std::string GenerateSingleOpBase(
         size_t fwd_output_position = fwd_outputs_name_pos_map.at(
             grad_ins_grad_slotname_map.at(grad_input_name));
         const char* FILL_ZERO_TEMPLATE =
+<<<<<<< HEAD
             "  egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[%d], "
+=======
+            "egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[%d], "
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             "this->InputMeta()[%d]);\n";
         fill_zero_str += paddle::string::Sprintf(
             FILL_ZERO_TEMPLATE, fwd_output_position, fwd_output_position);
@@ -2400,9 +2413,15 @@ static std::string GenerateSingleOpBase(
         size_t grads_position = fwd_outputs_name_pos_map.at(fwd_name);
 
         const char* GRAD_OUTS_CONTENT_TEMPLATE =
+<<<<<<< HEAD
             "  if((!out_metas[%d].empty()) && "
             "(!(out_metas[%d][0].IsStopGradient()))){ %s.insert({ \"%s\", "
             "egr::EagerUtils::TrySyncToVars(%s[%d])});}\n";
+=======
+            " if((!out_metas[%d].empty()) && "
+            "(!(out_metas[%d][0].IsStopGradient()))){ \n %s.insert({ \"%s\", "
+            "egr::EagerUtils::TrySyncToVars(%s[%d])});} \n ";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         outs_contents_str += paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE,
                                                      grads_position,
                                                      grads_position,
@@ -2421,7 +2440,11 @@ static std::string GenerateSingleOpBase(
             !is_op_base_per_duplicable_input) {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               " if(!out_metas[%d].empty()){ %s.insert({ \"%s\", "
+<<<<<<< HEAD
               "egr::EagerUtils::CreateVars(out_metas[%d].size())});}\n";
+=======
+              "egr::EagerUtils::CreateVars(out_metas[%d].size())});} \n ";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           outs_contents_str +=
               paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE,
                                       fwd_input_position,
@@ -2430,10 +2453,17 @@ static std::string GenerateSingleOpBase(
                                       fwd_input_position);
         } else {
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
+<<<<<<< HEAD
               "  if((!out_metas[%d].empty()) && "
               "(!(out_metas[%d][0].IsStopGradient()))){ %s.insert({ \"%s\", "
               "{std::make_shared<egr::EagerVariable>(egr::Controller::Instance("
               ").GenerateUniqueName())}});}\n";
+=======
+              " if((!out_metas[%d].empty()) && "
+              "(!(out_metas[%d][0].IsStopGradient()))){ %s.insert({ \"%s\", "
+              "{std::make_shared<egr::EagerVariable>(egr::Controller::Instance("
+              ").GenerateUniqueName())}});} \n ";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           outs_contents_str +=
               paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE,
                                       fwd_input_position,
@@ -2580,7 +2610,11 @@ static std::string GenerateSingleOpBase(
       size_t fwd_input_position = fwd_inputs_name_pos_map.at(fwd_name);
       if (!is_op_base_per_duplicable_input) {
         const char* BWD_OUTPUT_TEMPLATE =
+<<<<<<< HEAD
             "  if (%s.find(\"%s\") != %s.end()) { outputs[%d] = "
+=======
+            " if (%s.find(\"%s\") != %s.end()) { outputs[%d] = "
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             "egr::EagerUtils::GetOutputs(%s[\"%s\"]); }\n";
         outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE,
                                                outs_name,
@@ -2832,6 +2866,7 @@ static std::string GenerateGradNodeHeaderContents(
       "%s\n"
       "    SetIsTensorWrappersCleared(true);\n"
       "  }\n"
+<<<<<<< HEAD
       "  std::string name() override { return \"%sGradNodeCompat\"; }\n"
       "\n"
       "std::shared_ptr<GradNodeBase> Copy() const override {{\n"
@@ -2839,6 +2874,15 @@ static std::string GenerateGradNodeHeaderContents(
       "%sGradNodeCompat(*this));\n"
       "    return copied_node;\n"
       "}}\n"
+=======
+      "  std::string name() override { return \"%sGradNodeCompat\"; } \n "
+      "\n"
+      "std::shared_ptr<GradNodeBase> Copy() const override {{\n "
+      "    auto copied_node = std::shared_ptr<%sGradNodeCompat>(new "
+      "%sGradNodeCompat(*this));\n "
+      "    return copied_node;\n "
+      "}}\n "
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       "\n"
       "  // SetX, SetY, ...\n"
       "%s\n"
@@ -2950,7 +2994,11 @@ static std::string GenerateGradNodeHeaderContents(
             CLEAR_TENSOR_WRAPPER_TEMPLATE, struct_tensor_wrapper_name);
       }
       const char* SET_TENSOR_WRAPPER_TEMPLATE =
+<<<<<<< HEAD
           "   void SetTensorWrapper%s(%s) {\n    %s\n  }\n";
+=======
+          "   void SetTensorWrapper%s(%s) {\n     %s\n   }\n";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       set_tensor_wrappers_str +=
           paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE,
                                   tensor_wrapper_name,
@@ -3103,10 +3151,17 @@ static std::string ConvertCoreOpsInfosToString(
 static std::string GenerateCoreOpsArgsInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
+<<<<<<< HEAD
       "core_ops_legacy_args_info = { %s };\n";
 
   std::string core_ops_args_info_init_str =
       ConvertCoreOpsInfosToString(core_ops_legacy_args_info);
+=======
+      "core_ops_args_info = { %s };\n";
+
+  std::string core_ops_args_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_args_info);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::string core_ops_info_str = paddle::string::Sprintf(
       Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_info_init_str);
@@ -3117,6 +3172,7 @@ static std::string GenerateCoreOpsArgsInfo() {
 static std::string GenerateCoreOpsArgsTypeInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
+<<<<<<< HEAD
       "core_ops_legacy_args_type_info = { %s };\n";
 
   std::string core_ops_args_type_info_init_str =
@@ -3124,10 +3180,34 @@ static std::string GenerateCoreOpsArgsTypeInfo() {
 
   std::string core_ops_info_str = paddle::string::Sprintf(
       Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_type_info_init_str);
+=======
+      "core_ops_args_type_info = { %s };\n";
+
+  std::string core_ops_args_type_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_args_type_info);
+
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_args_type_info_init_str);
 
   return core_ops_info_str;
 }
 
+static std::string GenerateCoreOpsReturnsInfo() {
+  const char* Core_Ops_Returns_MAP_TEMPLATE =
+      "std::unordered_map<std::string, std::vector<std::string>> "
+      "core_ops_returns_info = { %s };\n";
+
+  std::string core_ops_returns_info_init_str =
+      ConvertCoreOpsInfosToString(core_ops_returns_info);
+
+  std::string core_ops_info_str = paddle::string::Sprintf(
+      Core_Ops_Returns_MAP_TEMPLATE, core_ops_returns_info_init_str);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
+
+  return core_ops_info_str;
+}
+
+<<<<<<< HEAD
 static std::string GenerateCoreOpsReturnsInfo() {
   const char* Core_Ops_Returns_MAP_TEMPLATE =
       "std::unordered_map<std::string, std::vector<std::string>> "
@@ -3142,6 +3222,8 @@ static std::string GenerateCoreOpsReturnsInfo() {
   return core_ops_info_str;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 static void DygraphCodeGeneration(const std::string& output_dir,
                                   int split_count) {
   std::string dygraph_forward_api_str = GenerateDygraphHFileIncludes();
@@ -3163,12 +3245,15 @@ static void DygraphCodeGeneration(const std::string& output_dir,
       continue;
     }
 
+<<<<<<< HEAD
     // Skip the sparse op
     if (op_type.compare(0, 7, "sparse_") == 0 && op_type != "sparse_momentum" &&
         op_type != "sparse_attention") {
       continue;
     }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     GradNodeGenerationInfo bwd_info;
 
     bool is_available = CollectGradInformationFromOpInfo(op_info, &bwd_info);

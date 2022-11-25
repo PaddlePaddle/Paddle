@@ -83,8 +83,12 @@ def _update_padding_nd(padding, channel_last, num_dims):
                 )
             padding_algorithm = "EXPLICIT"
             padding = _exclude_padding_in_batch_and_channel(
+<<<<<<< HEAD
                 padding, channel_last
             )
+=======
+                padding, channel_last)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if _is_symmetric_padding(padding, num_dims):
                 padding = padding[0::2]
         # for padding like [pad_before, pad_after, pad_before, pad_after, ...]
@@ -105,10 +109,15 @@ def _update_padding_nd(padding, channel_last, num_dims):
         padding = convert_to_list(padding, num_dims, 'padding')
     if not all([p >= 0 for p in padding]):
         raise ValueError(
+<<<<<<< HEAD
             "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
                 padding
             )
         )
+=======
+            "Invalid padding, all value should be larger than or equal to 0, but received: {}"
+            .format(padding))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return padding, padding_algorithm
 
 
@@ -131,6 +140,7 @@ def _conv_nd(
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
     if in_dygraph_mode() and op_type == "conv2d":
+<<<<<<< HEAD
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -210,6 +220,58 @@ def _conv_nd(
         else:
             return pre_bias
 
+=======
+        pre_bias = _C_ops.final_state_conv2d(x, weight, stride, padding,
+                                             padding_algorithm, groups,
+                                             dilation, data_format, False, -1,
+                                             False)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            if isinstance(x, tuple):
+                x = x[0]
+            if isinstance(bias, tuple):
+                bias = bias[0]
+            if len(bias.shape) < len(x.shape):
+                tmp_bias = _C_ops.final_state_reshape(
+                    bias, bias.shape +
+                    [1 for i in range(len(x.shape) - channel_dim - 1)])
+                return _C_ops.final_state_add(pre_bias, tmp_bias)
+            else:
+                return _C_ops.final_state_add(pre_bias, bias)
+        else:
+            return pre_bias
+
+    if in_dygraph_mode() and op_type == "depthwise_conv2d":
+        pre_bias = _C_ops.final_state_depthwise_conv2d(
+            x, weight, stride, padding, padding_algorithm, groups, dilation,
+            data_format, False, -1, False, False, use_cudnn)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.final_state_reshape(
+                bias,
+                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
+            return _C_ops.final_state_add(pre_bias, tmp_bias)
+        else:
+            return pre_bias
+
+    if in_dygraph_mode() and op_type == "conv3d":
+        pre_bias = _C_ops.final_state_conv3d(x, weight, stride, padding,
+                                             padding_algorithm, groups,
+                                             dilation, data_format, False, -1,
+                                             False)
+        if bias is not None:
+            channel_dim = channel_dim + len(
+                x.shape) if channel_dim < 0 else channel_dim
+            tmp_bias = _C_ops.final_state_reshape(
+                bias,
+                bias.shape + [1 for i in range(len(x.shape) - channel_dim - 1)])
+            return _C_ops.final_state_add(pre_bias, tmp_bias)
+        else:
+            return pre_bias
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if in_dynamic_mode():
         attrs = (
             'strides',
@@ -256,6 +318,7 @@ def _conv_nd(
         dtype = helper.input_dtype(input_param_name='x')
         pre_bias = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [pre_bias]}
+<<<<<<< HEAD
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
@@ -267,6 +330,24 @@ def _conv_nd(
                 outputs={'Out': [out]},
                 attrs={'axis': channel_dim, 'use_mkldnn': use_mkldnn},
             )
+=======
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+        if bias is not None:
+            out = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(type='elementwise_add',
+                             inputs={
+                                 'X': [pre_bias],
+                                 'Y': [bias]
+                             },
+                             outputs={'Out': [out]},
+                             attrs={
+                                 'axis': channel_dim,
+                                 'use_mkldnn': use_mkldnn
+                             })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             out = pre_bias
     return out
@@ -414,10 +495,15 @@ def conv1d(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv1d should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv1d should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -440,10 +526,15 @@ def conv1d(
         padding = [0] + padding
     else:
         raise ValueError(
+<<<<<<< HEAD
             "The size of padding's dimension should be 1 or 2. But got padding={}".format(
                 padding
             )
         )
+=======
+            "The size of padding's dimension should be 1 or 2. But got padding={}"
+            .format(padding))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
     weight = unsqueeze(weight, axis=[-2])
@@ -451,12 +542,17 @@ def conv1d(
     l_type = "conv2d"
 
     # When "groups==num_channels and num_filters% num_channels == 0" using depthwise_conv2d has better performance
+<<<<<<< HEAD
     if (
         is_compiled_with_cuda()
         and num_channels == groups
         and num_channels != 1
         and num_filters % num_channels == 0
     ):
+=======
+    if (is_compiled_with_cuda() and num_channels == groups and num_channels != 1
+            and num_filters % num_channels == 0):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         l_type = 'depthwise_conv2d'
         use_cudnn = False
 
@@ -543,9 +639,16 @@ def conv1d(
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
+<<<<<<< HEAD
         helper.append_op(
             type=l_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
+=======
+        helper.append_op(type=l_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
     out = squeeze(out, axis=[squeeze_aixs])
@@ -693,10 +796,15 @@ def conv2d(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv2d should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv2d should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -712,11 +820,16 @@ def conv2d(
 
     cudnn_version = get_cudnn_version()
 
+<<<<<<< HEAD
     use_cudnn = (
         True
         if (is_compiled_with_cuda() and cudnn_version is not None)
         else False
     )
+=======
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -724,11 +837,16 @@ def conv2d(
     dilation = convert_to_list(dilation, 2, 'dilation')
 
     l_type = "conv2d"
+<<<<<<< HEAD
     if (
         num_channels == groups
         and num_channels != 1
         and num_filters % num_channels == 0
     ):
+=======
+    if (num_channels == groups and num_channels != 1
+            and num_filters % num_channels == 0):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         l_type = 'depthwise_conv2d'
         if is_compiled_with_rocm():
             use_cudnn = True
@@ -736,6 +854,7 @@ def conv2d(
             use_cudnn = False
     else:
         if in_dygraph_mode():
+<<<<<<< HEAD
             pre_bias = _C_ops.conv2d(
                 x,
                 weight,
@@ -746,6 +865,12 @@ def conv2d(
                 groups,
                 data_format,
             )
+=======
+            pre_bias = _C_ops.final_state_conv2d(x, weight, stride, padding,
+                                                 padding_algorithm, groups,
+                                                 dilation, data_format, False,
+                                                 -1, False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if bias is not None:
                 out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
                 return out
@@ -761,12 +886,17 @@ def conv2d(
         else:
             l_type = 'conv2d'
 
+<<<<<<< HEAD
     if (
         is_compiled_with_cuda()
         and get_flags("FLAGS_conv2d_disable_cudnn")[
             "FLAGS_conv2d_disable_cudnn"
         ]
     ):
+=======
+    if (is_compiled_with_cuda() and get_flags("FLAGS_conv2d_disable_cudnn")
+        ["FLAGS_conv2d_disable_cudnn"]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         use_cudnn = False
 
     return _conv_nd(
@@ -944,10 +1074,15 @@ def conv1d_transpose(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv1d_transpose should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv1d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -998,6 +1133,7 @@ def conv1d_transpose(
         raise ValueError(
             "The size of output_padding should not be greater than stride."
             "But got output_padding={} and stride={}".format(
+<<<<<<< HEAD
                 output_padding[0], stride[0]
             )
         )
@@ -1010,6 +1146,14 @@ def conv1d_transpose(
         and num_filters == 1
         and not use_cudnn
     ):
+=======
+                output_padding[0], stride[0]))
+
+    op_type = 'conv2d_transpose'
+    num_filters = weight.shape[1]
+    if (num_channels == groups and num_channels != 1 and num_filters == 1
+            and not use_cudnn):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
@@ -1078,9 +1222,16 @@ def conv1d_transpose(
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
         outputs = {"Output": [out]}
+<<<<<<< HEAD
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
+=======
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if bias is not None:
             out = nn.elementwise_add(out, bias, axis=channel_dim)
 
@@ -1248,10 +1399,15 @@ def conv2d_transpose(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv2d_transpose should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv2d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -1261,11 +1417,16 @@ def conv2d_transpose(
 
     cudnn_version = get_cudnn_version()
 
+<<<<<<< HEAD
     use_cudnn = (
         True
         if (is_compiled_with_cuda() and cudnn_version is not None)
         else False
     )
+=======
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # update attrs
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
@@ -1387,9 +1548,16 @@ def conv2d_transpose(
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
         outputs = {"Output": [pre_bias]}
+<<<<<<< HEAD
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
+=======
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
@@ -1462,10 +1630,17 @@ def conv3d(
             where M is the number of filters(output channels), g is the number of groups,
             kD, kH, kW are the filter's depth, height and width respectively.
         bias (Tensor, optional): The bias, a Tensor of shape [M, ].
+<<<<<<< HEAD
         stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
             list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width).
             Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
         padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
+=======
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a 
+            list/tuple, it must contain three integers, (stride_depth, stride_height, stride_width). 
+            Otherwise, stride_depth = stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             on both sides for each dimension. If `padding` is a string, either 'VALID' or
             'SAME' which is the padding algorithm. If padding size is a tuple or list,
             it could be in three forms: `[pad_depth, pad_height, pad_width]` or
@@ -1475,7 +1650,11 @@ def conv3d(
             when `data_format` is `"NDHWC"`, `padding` can be in the form
             `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
             Default: padding = 0.
+<<<<<<< HEAD
         dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+=======
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points. 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             If dilation is a list/tuple, it must contain three integers, (dilation_depth, dilation_height,
             dilation_width). Otherwise, dilation_depth = dilation_height = dilation_width = dilation.
             Default: dilation = 1.
@@ -1484,12 +1663,21 @@ def conv3d(
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
             connected to the second half of the input channels. Default: groups=1
+<<<<<<< HEAD
         data_format (str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
             The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_depth, input_height, input_width]`.
         name(str|None, optional): For detailed information, please refer
            to :ref:`api_guide_Name`. Usually name is no need to set and
+=======
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        name(str|None, optional): For detailed information, please refer 
+           to :ref:`api_guide_Name`. Usually name is no need to set and 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            None by default.
 
     Returns:
@@ -1537,21 +1725,31 @@ def conv3d(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv3d should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv3d should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
             "Received: number of channels({}), groups({}).".format(
+<<<<<<< HEAD
                 num_channels, groups
             )
         )
+=======
+                num_channels, groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_filters % groups != 0:
         raise ValueError(
             "The number of filters must be divisible by Attr(groups). "
             "Received: number of filters({}), groups({}).".format(
+<<<<<<< HEAD
                 num_filters, groups
             )
         )
@@ -1562,6 +1760,13 @@ def conv3d(
         if (is_compiled_with_cuda() and cudnn_version is not None)
         else False
     )
+=======
+                num_filters, groups))
+
+    cudnn_version = get_cudnn_version()
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = convert_to_list(stride, 3, 'stride')
@@ -1752,17 +1957,26 @@ def conv3d_transpose(
         )
     if groups <= 0:
         raise ValueError(
+<<<<<<< HEAD
             "The groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
                 groups
             )
         )
+=======
+            "The groups of conv3d_transpose should be greater than 0. Received groups: {}"
+            .format(groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
             "Received: number of channels({}), groups({}).".format(
+<<<<<<< HEAD
                 num_channels, groups
             )
         )
+=======
+                num_channels, groups))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 3)
     stride = convert_to_list(stride, 3, 'stride')
@@ -1789,12 +2003,18 @@ def conv3d_transpose(
 
     cudnn_version = get_cudnn_version()
 
+<<<<<<< HEAD
     # TODO(LielinJiang): whether to use cudnn according to the version of cudnn
     use_cudnn = (
         True
         if (is_compiled_with_cuda() and cudnn_version is not None)
         else False
     )
+=======
+    #TODO(LielinJiang): whether to use cudnn according to the version of cudnn
+    use_cudnn = True if (is_compiled_with_cuda()
+                         and cudnn_version is not None) else False
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
@@ -1864,9 +2084,16 @@ def conv3d_transpose(
         pre_bias = helper.create_variable_for_type_inference(x.dtype)
         outputs = {"Output": [pre_bias]}
 
+<<<<<<< HEAD
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs
         )
+=======
+        helper.append_op(type=op_type,
+                         inputs=inputs,
+                         outputs=outputs,
+                         attrs=attrs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=channel_dim)
         else:

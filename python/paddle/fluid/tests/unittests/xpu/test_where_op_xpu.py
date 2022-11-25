@@ -33,10 +33,12 @@ paddle.enable_static()
 
 
 class XPUTestWhereOp(XPUOpTestWrapper):
+
     def __init__(self):
         self.op_name = 'where'
 
     class TestXPUWhereOp(XPUOpTest):
+
         def setUp(self):
             self.init_config()
             self.init_data()
@@ -58,18 +60,25 @@ class XPUTestWhereOp(XPUOpTestWrapper):
             self.check_output_with_place(self.place)
 
     class TestXPUWhereOp2(TestXPUWhereOp):
+
         def init_data(self):
             self.x = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
             self.y = np.random.uniform(-5, 5, (60, 2)).astype(self.dtype)
             self.cond = np.ones((60, 2)).astype("bool")
 
     class TestXPUWhereOp3(TestXPUWhereOp):
+
         def init_data(self):
             self.x = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
             self.y = np.random.uniform(-3, 5, (20, 2, 4)).astype(self.dtype)
+<<<<<<< HEAD
             self.cond = np.array(
                 np.random.randint(2, size=(20, 2, 4)), dtype=bool
             )
+=======
+            self.cond = np.array(np.random.randint(2, size=(20, 2, 4)),
+                                 dtype=bool)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 support_types = get_xpu_op_support_types('where')
@@ -78,6 +87,7 @@ for stype in support_types:
 
 
 class TestXPUWhereAPI(unittest.TestCase):
+
     def setUp(self):
         self.__class__.use_xpu = True
         self.place = paddle.XPUPlace(0)
@@ -102,9 +112,15 @@ class TestXPUWhereAPI(unittest.TestCase):
                 train_prog = fluid.Program()
                 startup = fluid.Program()
                 with fluid.program_guard(train_prog, startup):
+<<<<<<< HEAD
                     cond = fluid.data(
                         name='cond', shape=self.shape, dtype='bool'
                     )
+=======
+                    cond = fluid.data(name='cond',
+                                      shape=self.shape,
+                                      dtype='bool')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     x = fluid.data(name='x', shape=self.shape, dtype='float32')
                     y = fluid.data(name='y', shape=self.shape, dtype='float32')
 
@@ -122,11 +138,21 @@ class TestXPUWhereAPI(unittest.TestCase):
                         fetch_list.append(x.grad_name)
                     if y_stop_gradient is False:
                         fetch_list.append(y.grad_name)
+<<<<<<< HEAD
                     out = exe.run(
                         train_prog,
                         feed={'cond': self.cond, 'x': self.x, 'y': self.y},
                         fetch_list=fetch_list,
                     )
+=======
+                    out = exe.run(train_prog,
+                                  feed={
+                                      'cond': self.cond,
+                                      'x': self.x,
+                                      'y': self.y
+                                  },
+                                  fetch_list=fetch_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     assert np.array_equal(out[0], self.out)
 
                     if x_stop_gradient is False:
@@ -149,21 +175,36 @@ class TestXPUWhereAPI(unittest.TestCase):
             x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32')
             y = fluid.layers.data(name='y', shape=[4, 2], dtype='float32')
             x_i = np.array([[0.9383, 0.1983, 3.2, 1.2]]).astype("float32")
+<<<<<<< HEAD
             y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0, 1.0]]).astype(
                 "float32"
             )
+=======
+            y_i = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 1.0, 1.0,
+                                                   1.0]]).astype("float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = paddle.where(x > 1, x=x, y=y)
 
             exe = fluid.Executor(self.place)
             exe.run(startup)
 
+<<<<<<< HEAD
             out = exe.run(
                 train_prog, feed={'x': x_i, 'y': y_i}, fetch_list=[result]
             )
+=======
+            out = exe.run(train_prog,
+                          feed={
+                              'x': x_i,
+                              'y': y_i
+                          },
+                          fetch_list=[result])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert np.array_equal(out[0], np.where(x_i > 1, x_i, y_i))
 
 
 class TestWhereDygraphAPI(unittest.TestCase):
+
     def test_api(self):
         with fluid.dygraph.guard(paddle.XPUPlace(0)):
             x_i = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float32")

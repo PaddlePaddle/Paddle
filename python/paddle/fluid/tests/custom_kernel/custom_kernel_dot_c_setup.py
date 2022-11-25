@@ -24,10 +24,18 @@ from setuptools.command.build_ext import build_ext
 # cc1plus: warning: command line option ‘-Wstrict-prototypes’ is valid
 # for C/ObjC but not for C++
 class BuildExt(build_ext):
+<<<<<<< HEAD
     def build_extensions(self):
         if '-Wstrict-prototypes' in self.compiler.compiler_so:
             self.compiler.compiler_so.remove('-Wstrict-prototypes')
         super().build_extensions()
+=======
+
+    def build_extensions(self):
+        if '-Wstrict-prototypes' in self.compiler.compiler_so:
+            self.compiler.compiler_so.remove('-Wstrict-prototypes')
+        super(BuildExt, self).build_extensions()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 # cc flags
@@ -47,9 +55,14 @@ paddle_custom_kernel_include = [
     os.path.join(site_packages_path, 'paddle', 'include'),
 ]
 # include path third_party
+<<<<<<< HEAD
 compile_third_party_path = os.path.join(
     os.environ['PADDLE_BINARY_DIR'], 'third_party'
 )
+=======
+compile_third_party_path = os.path.join(os.environ['PADDLE_BINARY_DIR'],
+                                        'third_party')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 paddle_custom_kernel_include += [
     os.path.join(compile_third_party_path, 'install/gflags/include'),  # gflags
     os.path.join(compile_third_party_path, 'install/glog/include'),  # glog
@@ -61,7 +74,13 @@ paddle_custom_kernel_library_dir = [
 ]
 
 # libs
+<<<<<<< HEAD
 libs = [':libpaddle.so']
+=======
+libs = [':core_avx.so']
+if not core.has_avx_core and core.has_noavx_core:
+    libs = [':core_noavx.so']
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 custom_kernel_dot_module = Extension(
     'custom_kernel_dot',
@@ -69,6 +88,7 @@ custom_kernel_dot_module = Extension(
     include_dirs=paddle_custom_kernel_include,
     library_dirs=paddle_custom_kernel_library_dir,
     libraries=libs,
+<<<<<<< HEAD
     extra_compile_args=paddle_extra_compile_args,
 )
 
@@ -79,3 +99,12 @@ setup(
     cmdclass={'build_ext': BuildExt},
     ext_modules=[custom_kernel_dot_module],
 )
+=======
+    extra_compile_args=paddle_extra_compile_args)
+
+setup(name='custom_kernel_dot_c',
+      version='1.0',
+      description='custom kernel fot compiling',
+      cmdclass={'build_ext': BuildExt},
+      ext_modules=[custom_kernel_dot_module])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf

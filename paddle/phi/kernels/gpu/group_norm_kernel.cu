@@ -122,7 +122,12 @@ void GroupNormKernel(const Context& dev_ctx,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
+<<<<<<< HEAD
   const DataLayout data_layout = phi::StringToDataLayout(data_layout_str);
+=======
+  const DataLayout data_layout =
+      paddle::framework::StringToDataLayout(data_layout_str);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   const auto scale_ptr = scale.get_ptr();
   const auto bias_ptr = bias.get_ptr();
 
@@ -227,6 +232,7 @@ void GroupNormKernel(const Context& dev_ctx,
                    data_layout);
 }
 
+<<<<<<< HEAD
 template <typename T>
 void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
                                                const T* input,
@@ -319,6 +325,8 @@ void GroupNormDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
       data_layout);  // for now, we only support nchw for group norm
 }
 template class GroupNormDirectCUDAFunctor<float>;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }  // namespace phi
 
 PD_REGISTER_KERNEL(

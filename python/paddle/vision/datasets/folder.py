@@ -217,12 +217,19 @@ class DatasetFolder(Dataset):
             self.root, class_to_idx, extensions, is_valid_file
         )
         if len(samples) == 0:
+<<<<<<< HEAD
             raise (
                 RuntimeError(
                     "Found 0 directories in subfolders of: " + self.root + "\n"
                     "Supported extensions are: " + ",".join(extensions)
                 )
             )
+=======
+            raise (RuntimeError("Found 0 directories in subfolders of: " +
+                                self.root + "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions
@@ -429,6 +436,7 @@ class ImageFolder(Dataset):
                 # <class 'paddle.Tensor'> [3, 64, 64]
 
             shutil.rmtree(fake_data_dir)
+<<<<<<< HEAD
     """
 
     def __init__(
@@ -439,6 +447,16 @@ class ImageFolder(Dataset):
         transform=None,
         is_valid_file=None,
     ):
+=======
+     """
+
+    def __init__(self,
+                 root,
+                 loader=None,
+                 extensions=None,
+                 transform=None,
+                 is_valid_file=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.root = root
         if extensions is None:
             extensions = IMG_EXTENSIONS
@@ -458,12 +476,19 @@ class ImageFolder(Dataset):
                     samples.append(f)
 
         if len(samples) == 0:
+<<<<<<< HEAD
             raise (
                 RuntimeError(
                     "Found 0 files in subfolders of: " + self.root + "\n"
                     "Supported extensions are: " + ",".join(extensions)
                 )
             )
+=======
+            raise (RuntimeError("Found 0 files in subfolders of: " + self.root +
+                                "\n"
+                                "Supported extensions are: " +
+                                ",".join(extensions)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.loader = default_loader if loader is None else loader
         self.extensions = extensions

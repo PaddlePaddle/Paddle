@@ -285,7 +285,11 @@ class ScopedDropoutDescriptor {
                                               const platform::Place& place,
                                               bool initialized,
                                               float dropout_prob_,
+<<<<<<< HEAD
                                               phi::DenseTensor* dropout_state_,
+=======
+                                              framework::Tensor* dropout_state_,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                               int seed,
                                               size_t state_size) {
     if (dropout_state_ == nullptr) {  // for no dropout or test
@@ -553,6 +557,21 @@ class ScopedActivationDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
+<<<<<<< HEAD
+=======
+inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_HIP
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<phi::GPUContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
+  return use_cudnn;
+}
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class ScopedCTCLossDescriptor {
  public:
   ScopedCTCLossDescriptor() {

@@ -18,11 +18,22 @@ import sys
 
 sys.path.append("..")
 
+<<<<<<< HEAD
 import paddle.fluid as fluid
+=======
+from op_test import OpTest
+import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid.op import Operator
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import paddle
 
 
 class TestSamplingIdShape(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_shape(self):
         paddle.enable_static()
         x = fluid.layers.data(name='x', shape=[3], dtype='float32')

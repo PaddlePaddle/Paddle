@@ -262,9 +262,12 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+<<<<<<< HEAD
   if (IsEnabled() == false) {
     return;
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto it = ctx.inputs.begin(); it != ctx.inputs.end(); it++) {
@@ -292,9 +295,12 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
   if (FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+<<<<<<< HEAD
   if (IsEnabled() == false) {
     return;
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::map<std::string, std::vector<framework::DDim>> input_shapes;
   std::map<std::string, std::vector<framework::proto::VarType::Type>> dtypes;
   for (auto it = kernel_signature.input_names.begin();
@@ -318,6 +324,7 @@ RecordOpInfoSupplement::RecordOpInfoSupplement(
       PosixInNsec(), type, input_shapes, dtypes, callstack);
 }
 
+<<<<<<< HEAD
 RecordOpInfoSupplement::RecordOpInfoSupplement(
     const std::string &type,
     const std::vector<std::pair<const char *, std::vector<framework::DDim>>>
@@ -345,6 +352,8 @@ bool RecordOpInfoSupplement::IsEnabled() {
 
 bool RecordMemEvent::IsEnabled() { return FLAGS_enable_record_memory; }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 std::map<const char *, std::map<uint64_t, std::vector<uint64_t>>>
     RecordMemEvent::size_cache;
 
@@ -359,11 +368,14 @@ RecordMemEvent::RecordMemEvent(const void *ptr,
       FLAGS_enable_host_event_recorder_hook == false) {
     return;
   }
+<<<<<<< HEAD
 
   if (IsEnabled() == false) {
     return;
   }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (type == TracerMemEventType::Allocate) {
     uint64_t current_allocated;
     uint64_t peak_allocated;

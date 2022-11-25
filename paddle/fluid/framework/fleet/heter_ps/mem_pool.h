@@ -81,6 +81,8 @@ class HBMMemoryPool : public managed {
     capacity_ = capacity;
     CUDA_CHECK(cudaMalloc(&mem_, (block_size_ * capacity / 8 + 1) * 8));
     CUDA_CHECK(cudaMemset(mem_, 0, block_size_ * capacity));
+<<<<<<< HEAD
+=======
   }
 
   char* mem() { return mem_; }
@@ -94,6 +96,54 @@ class HBMMemoryPool : public managed {
   char* mem_ = NULL;
   size_t capacity_;
   size_t block_size_;
+};
+
+class HBMMemoryPoolFix : public managed {
+ public:
+  HBMMemoryPoolFix() {
+    capacity_ = 0;
+    size_ = 0 ;
+    block_size_ = 0;
+    max_byte_capacity_ = 0;
+  }
+
+  ~HBMMemoryPoolFix() {
+    VLOG(3) << "delete hbm memory pool";
+    cudaFree(mem_);
+  }
+
+  size_t block_size() { return block_size_; }
+
+  void clear(void) { cudaMemset(mem_, 0, block_size_ * capacity_); }
+
+  void reset(size_t capacity, size_t block_size) {
+    if (max_byte_capacity_ < capacity * block_size) {
+      if (mem_ != NULL) {
+        cudaFree(mem_);
+      }
+      max_byte_capacity_ = (block_size * capacity / 8 + 1) * 8;
+      CUDA_CHECK(cudaMalloc(&mem_, max_byte_capacity_));
+    }
+    size_ = capacity;
+    block_size_ = block_size;
+    capacity_ = max_byte_capacity_ / block_size;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
+  }
+
+  char* mem() { return mem_; }
+
+  size_t capacity() { return capacity_; }
+  size_t size() { return size_; }
+  __forceinline__ __device__ void* mem_address(const uint32_t& idx) {
+    return (void*)&mem_[(idx)*block_size_];
+  }
+
+ private:
+  char* mem_ = NULL;
+  size_t capacity_;
+  size_t size_;
+  size_t block_size_;
+  size_t max_byte_capacity_;
 };
 
 }  // end namespace framework

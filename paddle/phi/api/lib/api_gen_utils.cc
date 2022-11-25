@@ -39,6 +39,7 @@ std::unique_ptr<std::vector<phi::DenseTensor*>> TensorToDenseTensor(
   for (const auto& t : tensors) {
     pt_tensors->push_back(
         std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()).get());
+<<<<<<< HEAD
   }
 
   return pt_tensors;
@@ -67,6 +68,8 @@ TensorToConstDenseTensorPtr(
       pt_tensors->at(i) =
           static_cast<phi::DenseTensor*>(tensors->at(i).impl().get());
     }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   return pt_tensors;
@@ -98,6 +101,7 @@ phi::MetaTensor MakeMetaTensor(const phi::TensorBase& tensor) {
   return phi::MetaTensor(tensor);
 }
 
+<<<<<<< HEAD
 std::vector<phi::MetaTensor> MakeMetaTensor(
     const std::vector<const phi::TensorBase*>& tensors) {
   std::vector<phi::MetaTensor> meta_tensors;
@@ -108,6 +112,8 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
   return meta_tensors;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::DenseTensor>& tensor) {
   if (tensor) {
@@ -148,6 +154,7 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SelectedRows>& tensor) {
+<<<<<<< HEAD
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
   }
@@ -156,10 +163,13 @@ phi::MetaTensor MakeMetaTensor(
 
 phi::MetaTensor MakeMetaTensor(
     const paddle::optional<phi::SparseCooTensor>& tensor) {
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (tensor) {
     return {phi::MetaTensor(*tensor)};
   }
   return phi::MetaTensor();
+<<<<<<< HEAD
 }
 
 phi::MetaTensor MakeMetaTensor(
@@ -180,6 +190,8 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
     }
   }
   return meta_tensors;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 /* ------------------ for output ----------------------- */

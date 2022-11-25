@@ -141,6 +141,7 @@ def check_embedding_dim(accessor, varname, o_main_program):
     fea_dim = accessor.fea_dim
     if fea_dim != embedding_dim:
         raise ValueError(
+<<<<<<< HEAD
             "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}".format(
                 embedding_dim, fea_dim
             )
@@ -152,9 +153,19 @@ def check_embedding_dim(accessor, varname, o_main_program):
                 embedding_dim - 3, embedx_dim
             )
         )
+=======
+            "The fea_dim is wrong, it will be sparse_embedding_dim: {}, but got {}"
+            .format(embedding_dim, fea_dim))
+    embedx_dim = accessor.embedx_dim
+    if embedx_dim != embedding_dim - 3:
+        raise ValueError(
+            "The embedx_dim is wrong, it will be sparse_embedding_dim - 3: {}, but got {}"
+            .format(embedding_dim - 3, embedx_dim))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Accessor:
+
     def __init__(self):
         self.accessor_class = ""
         self.optimizer = None
@@ -171,12 +182,18 @@ class Accessor:
         attrs += "\n"
         if self.optimizer is not None:
             attrs += self.optimizer.to_string(indent)
+<<<<<<< HEAD
         return accessor_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
         )
+=======
+        return accessor_str.format(conv_indent(indent), attrs,
+                                   conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class CommonAccessor:
+
     def __init__(self):
         self.accessor_class = ""
         self.table_name = None
@@ -197,6 +214,7 @@ class CommonAccessor:
     def define_optimize_map(self):
         opt_input_map = {}
         opt_input_map["sgd"] = [("Param", None), ("LearningRate", 1)]
+<<<<<<< HEAD
         opt_input_map["adam"] = [
             ("Param", None),
             ("Moment1", None),
@@ -215,6 +233,16 @@ class CommonAccessor:
             ("AdaEpsilon", 1),
             ("LearningRate", 1),
         ]
+=======
+        opt_input_map["adam"] = [("Param", None), ("Moment1", None),
+                                 ("Moment2", None), ("Beta1Pow", 1),
+                                 ("Beta2Pow", 1), ("LearningRate", 1)]
+        opt_input_map["adam_d2sum"] = [("Param", None), ("D2Sum", None),
+                                       ("G2Sum", None), ("Moment", None),
+                                       ("MomentDecayRate", 1),
+                                       ("AdaDecayRate", 1), ("AdaEpsilon", 1),
+                                       ("LearningRate", 1)]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [
             ("Param", None),
@@ -319,9 +347,14 @@ class CommonAccessor:
         oop = None
 
         for op in optimizer_ops:
+<<<<<<< HEAD
             if ("Param" in op.input_names) and (
                 op.input("Param")[0] == param_name
             ):
+=======
+            if ("Param" in op.input_names) and (op.input("Param")[0]
+                                                == param_name):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 oop = op
                 break
 
@@ -380,6 +413,7 @@ class CommonAccessor:
                         and param.name != "learning_rate_0"
                     ):
                         warnings.warn("will support decay soon")
+<<<<<<< HEAD
                         param = main_program.global_block().vars[
                             "learning_rate_0"
                         ]
@@ -387,6 +421,13 @@ class CommonAccessor:
                     initializer = self.get_initializer_attr(
                         param.name, startup_program
                     )
+=======
+                        param = main_program.global_block(
+                        ).vars["learning_rate_0"]
+
+                    initializer = self.get_initializer_attr(
+                        param.name, startup_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 elif formal_name == "MomentDecayRate":
                     initializer = "fill_constant&0.99"
                 elif formal_name == "AdaDecayRate":
@@ -410,9 +451,14 @@ class CommonAccessor:
                         and param.name != "learning_rate_0"
                     ):
                         warnings.warn("will support decay soon")
+<<<<<<< HEAD
                         param = main_program.global_block().vars[
                             "learning_rate_0"
                         ]
+=======
+                        param = main_program.global_block(
+                        ).vars["learning_rate_0"]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     if shape is None:
                         if is_sparse:
@@ -424,8 +470,12 @@ class CommonAccessor:
                     dims.append(shape)
 
                     initializer = self.get_initializer_attr(
+<<<<<<< HEAD
                         param.name, startup_program
                     )
+=======
+                        param.name, startup_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
@@ -464,12 +514,18 @@ class CommonAccessor:
             attrs += "initializers: \"{}\" ".format(initializer)
 
         attrs += "\n"
+<<<<<<< HEAD
         return accessor_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
         )
+=======
+        return accessor_str.format(conv_indent(indent), attrs,
+                                   conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Tensor:
+
     def __init__(self):
         self.main_program_id = None
         self.startup_program_id = None
@@ -488,12 +544,18 @@ class Tensor:
             str(self.tensor_table_class)
         )
         attrs += "\n"
+<<<<<<< HEAD
         return program_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
         )
+=======
+        return program_str.format(conv_indent(indent), attrs,
+                                  conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Table:
+
     def __init__(self):
         self.id = -1
         self.table_class = None
@@ -522,9 +584,15 @@ class Table:
 
         if self.accessor_proto is not None:
             accessor_str = "{}accessor {{{}\n{}}}"
+<<<<<<< HEAD
             accessor_str = accessor_str.format(
                 conv_indent(indent), self.accessor_proto, conv_indent(indent)
             )
+=======
+            accessor_str = accessor_str.format(conv_indent(indent),
+                                               self.accessor_proto,
+                                               conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             attrs += accessor_str + "\n"
         elif self.accessor is not None:
             attrs += self.accessor.to_string(indent)
@@ -542,6 +610,7 @@ class Table:
 
 
 class Service:
+
     def __init__(self):
         self.server_class = "BrpcPsServer"
         self.client_class = "BrpcPsClient"
@@ -559,12 +628,18 @@ class Service:
         attrs += "start_server_port: {} ".format(self.start_server_port)
         attrs += "server_thread_num: {} ".format(self.server_thread_num)
 
+<<<<<<< HEAD
         return service_str.format(
             conv_indent(indent), attrs, conv_indent(indent)
         )
+=======
+        return service_str.format(conv_indent(indent), attrs,
+                                  conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class DownpourServer:
+
     def __init__(self):
         self.service = None
         self.tables = []
@@ -589,12 +664,18 @@ class DownpourServer:
         for table in self.tables:
             table_strs += "\n"
             table_strs += table.to_string(indent)
+<<<<<<< HEAD
         return server_str.format(
             conv_indent(indent), table_strs, conv_indent(indent)
         )
+=======
+        return server_str.format(conv_indent(indent), table_strs,
+                                 conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Server:
+
     def __init__(self):
         self.servers = []
 
@@ -615,6 +696,7 @@ class Server:
 
 
 class DownpourWorker:
+
     def __init__(self):
         self.tables = []
 
@@ -631,12 +713,18 @@ class DownpourWorker:
             table_strs += "\n"
             table_strs += table.to_string(indent)
 
+<<<<<<< HEAD
         return worker_str.format(
             conv_indent(indent), table_strs, conv_indent(indent)
         )
+=======
+        return worker_str.format(conv_indent(indent), table_strs,
+                                 conv_indent(indent))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class Worker:
+
     def __init__(self):
         self.workers = []
 
@@ -657,6 +745,7 @@ class Worker:
 
 
 class fsClient:
+
     def __init__(self, proto):
         self.proto = proto
         self.uri = proto.uri
@@ -676,6 +765,7 @@ class fsClient:
 
 
 class TheOnePSRuntime(RuntimeBase):
+
     def __init__(self):
         super().__init__()
         self._communicator = None
@@ -723,12 +813,19 @@ class TheOnePSRuntime(RuntimeBase):
             CompileTimeStrategy,
         )
 
+<<<<<<< HEAD
         compiled_config = CompileTimeStrategy(
             self.origin_main_program,
             self.origin_main_program,
             self.async_strategy,
             self.role_maker,
         )
+=======
+        compiled_config = CompileTimeStrategy(self.origin_main_program,
+                                              self.origin_main_program,
+                                              self.async_strategy,
+                                              self.role_maker)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if self.async_strategy.use_ps_gpu:
             compiled_config.use_ps_gpu = True
         return compiled_config
@@ -903,9 +1000,13 @@ class TheOnePSRuntime(RuntimeBase):
                 if heter_device_type not in ["GPU", "XPU", "CPU"]:
                     raise ValueError(
                         "Heter Worker Not Support Device {}".format(
+<<<<<<< HEAD
                             heter_device_type
                         )
                     )
+=======
+                            device_type))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if heter_device_type == "GPU":
                     executor = Executor(
                         fluid.CUDAPlace(
@@ -921,6 +1022,7 @@ class TheOnePSRuntime(RuntimeBase):
         return executor
 
     def _get_fleet_proto(self, is_server, is_sync, **kwargs):
+
         def _build_merge_accessor(ctx):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
@@ -954,8 +1056,12 @@ class TheOnePSRuntime(RuntimeBase):
             trainer_num = self.compiled_strategy.get_trainers()
             if self.role_maker._is_heter_parameter_server_mode:
                 trainer_num += len(
+<<<<<<< HEAD
                     self.role_maker._get_heter_worker_endpoints()
                 )
+=======
+                    self.role_maker._get_heter_worker_endpoints())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             common.trainer_num = trainer_num
             common.attrs = ""
             common.dims = []
@@ -1001,14 +1107,21 @@ class TheOnePSRuntime(RuntimeBase):
             for table_name in tensor_table_dict:
                 if tensor_table_dict[table_name]["startup_program"] is not None:
                     tensor_table_dict[table_name][
+<<<<<<< HEAD
                         "startup_program_id"
                     ] = program_idx
                     self._server_sub_program.append(
                         tensor_table_dict[table_name]["startup_program"].desc
                     )
+=======
+                        "startup_program_id"] = program_idx
+                    self._server_sub_program.append(
+                        tensor_table_dict[table_name]["startup_program"].desc)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     program_idx += 1
                 if tensor_table_dict[table_name]["main_program"] is not None:
                     tensor_table_dict[table_name][
+<<<<<<< HEAD
                         "main_program_id"
                     ] = program_idx
                     self._server_sub_program.append(
@@ -1019,6 +1132,15 @@ class TheOnePSRuntime(RuntimeBase):
                 new_table = _build_tensor_table(
                     len(tables), tensor_table_dict[table_name]
                 )
+=======
+                        "main_program_id"] = program_idx
+                    self._server_sub_program.append(
+                        tensor_table_dict[table_name]["main_program"].desc)
+                    program_idx += 1
+                # Todo: Hard code for lr_decay table apply table id
+                new_table = _build_tensor_table(len(tables),
+                                                tensor_table_dict[table_name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 tables.append(new_table)
             return tables
 
@@ -1105,6 +1227,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(
+<<<<<<< HEAD
                     ctx.origin_varnames()[0],
                     ctx.is_sparse(),
                     ctx.sections()[0],
@@ -1112,6 +1235,12 @@ class TheOnePSRuntime(RuntimeBase):
                     self.compiled_strategy,
                     adam_d2sum,
                 )
+=======
+                    ctx.origin_varnames()[0], ctx.is_sparse(),
+                    ctx.sections()[0],
+                    ctx.sections()[1] if ctx.is_sparse() else 1,
+                    self.compiled_strategy, adam_d2sum)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 if ctx.is_sparse():
                     common.parse_entry(
@@ -1175,8 +1304,12 @@ class TheOnePSRuntime(RuntimeBase):
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
         fs_client = fsClient(
+<<<<<<< HEAD
             self.context["user_defined_strategy"].fs_client_param
         )
+=======
+            self.context["user_defined_strategy"].fs_client_param)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         proto_txt = proto_txt + "\n" + fs_client.to_string()
 
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
@@ -1209,10 +1342,15 @@ class TheOnePSRuntime(RuntimeBase):
             for var_name in var_names:
                 if var_name not in distributed_varnames:
                     raise ValueError(
+<<<<<<< HEAD
                         "fleet.init server can only load sparse variables in {}".format(
                             distributed_varnames
                         )
                     )
+=======
+                        "fleet.init server can only load sparse variables in {}"
+                        .format(distributed_varnames))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             load_varnames = var_names
 
         if dirname is None or not load_varnames:
@@ -1251,6 +1389,7 @@ class TheOnePSRuntime(RuntimeBase):
 
     @staticmethod
     def __exclude_vars(exclude_var_names=[]):
+
         def is_valid(var):
             if var.name in exclude_var_names:
                 return False
@@ -1335,11 +1474,16 @@ class TheOnePSRuntime(RuntimeBase):
         saved_varnames = sparse_varnames
 
         remaining_vars = list(
+<<<<<<< HEAD
             filter(
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars(),
             )
         )
+=======
+            filter(TheOnePSRuntime.__exclude_vars(saved_varnames),
+                   main_program.list_vars()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         import paddle
 
@@ -1347,6 +1491,7 @@ class TheOnePSRuntime(RuntimeBase):
             # if var.name not in recv_dense_varnames:
             #     continue
             tensor = var.get_value()
+<<<<<<< HEAD
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True
             )
@@ -1354,6 +1499,18 @@ class TheOnePSRuntime(RuntimeBase):
     def _ps_inference_save_persistables(
         self, executor, dirname, main_program=None, mode=0, **kwargs
     ):
+=======
+            paddle.save(tensor,
+                        os.path.join(dirname, var.name),
+                        use_binary_format=True)
+
+    def _ps_inference_save_persistables(self,
+                                        executor,
+                                        dirname,
+                                        main_program=None,
+                                        mode=0,
+                                        **kwargs):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         """
         This function filters out all variables with `persistable==True` from the
         give `main_program` and then saves these variables to the folder `dirname`
@@ -1461,6 +1618,7 @@ class TheOnePSRuntime(RuntimeBase):
         ].trainer_desc_configs["stat_var_names"]
         generate_vars = [var for var in generate_vars]
         remaining_vars = list(
+<<<<<<< HEAD
             filter(
                 TheOnePSRuntime.__exclude_vars(sparse_names),
                 infer_program.list_vars(),
@@ -1474,6 +1632,16 @@ class TheOnePSRuntime(RuntimeBase):
                 os.path.join(model_path, var.name),
                 use_binary_format=True,
             )
+=======
+            filter(TheOnePSRuntime.__exclude_vars(sparse_names),
+                   infer_program.list_vars()))
+
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(tensor,
+                        os.path.join(model_path, var.name),
+                        use_binary_format=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _save_inference_model(self, *args, **kwargs):
         self._ps_inference_save_inference_model(*args, **kwargs)
@@ -1532,11 +1700,16 @@ class TheOnePSRuntime(RuntimeBase):
         loaded_varnames = sparse_varnames
 
         remaining_vars = list(
+<<<<<<< HEAD
             filter(
                 TheOnePSRuntime.__exclude_vars(loaded_varnames),
                 main_program.list_vars(),
             )
         )
+=======
+            filter(TheOnePSRuntime.__exclude_vars(loaded_varnames),
+                   main_program.list_vars()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
             model_path = "./dnn_plugin"

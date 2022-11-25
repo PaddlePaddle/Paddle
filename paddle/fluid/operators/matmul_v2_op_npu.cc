@@ -27,9 +27,15 @@ using NPUDeviceContext = platform::NPUDeviceContext;
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
+<<<<<<< HEAD
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -44,9 +50,15 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 template <typename T>
 static void MatMulND(const framework::ExecutionContext& ctx,
                      const aclrtStream& stream,
+<<<<<<< HEAD
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -114,8 +126,13 @@ static void ReduceDims(const framework::ExecutionContext& ctx,
                        const aclrtStream& stream,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& brd_dims,
+<<<<<<< HEAD
                        const phi::DenseTensor& in,
                        phi::DenseTensor* out) {
+=======
+                       const Tensor& in,
+                       Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::vector<int64_t> axes;
   int64_t size = brd_dims.size();
   int64_t diff = brd_dims.size() - dims.size();

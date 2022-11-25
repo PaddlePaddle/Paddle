@@ -49,7 +49,11 @@ TEST(LodTensor, PrintLodTensor) {
   res = PrintLodTensor(&tensor3, 0, 2);
   ASSERT_EQ(res, "0.1,0.2");
 
+<<<<<<< HEAD
   phi::DenseTensor tensor4;
+=======
+  LoDTensor tensor4;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   tensor4.Resize({2});
   tensor4.mutable_data<double>(platform::CPUPlace());
   tensor4.data<double>()[0] = 0.1;
@@ -58,7 +62,11 @@ TEST(LodTensor, PrintLodTensor) {
   PrintLodTensor(&tensor4, 0, 2, res);
   // ASSERT_EQ(res, "0.1,0.2");
 
+<<<<<<< HEAD
   phi::DenseTensor tensor5;
+=======
+  LoDTensor tensor5;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   tensor5.Resize({2});
   tensor5.mutable_data<int64_t>(platform::CPUPlace());
   tensor5.data<int64_t>()[0] = 1;
@@ -70,7 +78,11 @@ TEST(LodTensor, PrintLodTensor) {
   PrintLodTensor(&tensor5, 0, 2, res);
   ASSERT_EQ(res, "1,2");
 
+<<<<<<< HEAD
   phi::DenseTensor tensor6;
+=======
+  LoDTensor tensor6;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   tensor6.Resize({2});
   tensor6.mutable_data<float>(platform::CPUPlace());
   tensor6.data<float>()[0] = 0.2;

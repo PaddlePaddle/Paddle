@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+<<<<<<< HEAD
 using FeedType =
     paddle::variant<phi::DenseTensor, Strings, phi::SparseCooTensor>;
 using FeedList = std::vector<FeedType>;
@@ -30,6 +31,12 @@ using FetchType = paddle::variant<phi::DenseTensor,
                                   LoDTensorArray,
                                   framework::Vocab,
                                   phi::SparseCooTensor>;
+=======
+using FeedType = paddle::variant<LoDTensor, Strings>;
+using FeedList = std::vector<FeedType>;
+
+using FetchType = paddle::variant<LoDTensor, LoDTensorArray, framework::Vocab>;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;

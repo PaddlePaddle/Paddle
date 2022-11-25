@@ -77,7 +77,10 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
                               data_dims,
                               strides,
                               ksize);
+<<<<<<< HEAD
 #if (CANN_VERSION_CODE < 512000)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]),
         ksize[0],
@@ -92,7 +95,11 @@ class NPUPoolOpKernel : public framework::OpKernel<T> {
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
             ksize[1],
             std::max(paddings[2], paddings[3])));
+<<<<<<< HEAD
 #endif
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (adaptive) {
       std::string pooling_mode = "AdaptiveAvgPool2d";
       if (pooling_type == "max") {
@@ -231,7 +238,11 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
                               data_dims,
                               strides,
                               ksize);
+<<<<<<< HEAD
 #if (CANN_VERSION_CODE < 512000)
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_LT(
         std::max(paddings[0], paddings[1]),
         ksize[0],
@@ -246,7 +257,11 @@ class NPUPoolGradOpKernel : public framework::OpKernel<T> {
             "Paddings should be less than %d, but max(pads[2], pads[3]) is %d.",
             ksize[1],
             std::max(paddings[2], paddings[3])));
+<<<<<<< HEAD
 #endif
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     if (adaptive || (global_pooling && pooling_type == "max")) {
       PADDLE_ENFORCE_EQ(data_dims[0] % out_data_dims[0],
                         0,

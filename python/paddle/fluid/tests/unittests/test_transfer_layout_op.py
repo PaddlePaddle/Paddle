@@ -25,6 +25,7 @@ from op_test import OpTest
 
 # default kNCHW
 class TestTransferLayoutOpkNCHWTokNHWC(OpTest):
+
     def setUp(self):
         ipt = np.random.random(size=[2, 3, 10, 10])
         self.inputs = {'X': ipt.astype('float32')}

@@ -128,8 +128,12 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(const OpDesc& op_desc) {
   return CreateOp(op_desc.Type(),
                   op_desc.Inputs(),
                   op_desc.Outputs(),
+<<<<<<< HEAD
                   op_desc.GetAttrMap(),
                   op_desc.GetRuntimeAttrMap());
+=======
+                  op_desc.GetAttrMap());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 }  // namespace framework

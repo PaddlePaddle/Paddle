@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestSum1(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.init_dtype()
@@ -53,6 +54,7 @@ class TestSum1(OpTest):
 
 
 class TestSum2(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.init_dtype()
@@ -91,6 +93,7 @@ class TestSum2(OpTest):
 
 
 class TestSum3(OpTest):
+
     def setUp(self):
         self.set_npu()
         self.init_dtype()

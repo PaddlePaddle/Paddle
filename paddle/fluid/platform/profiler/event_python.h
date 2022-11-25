@@ -99,6 +99,35 @@ struct MemPythonNode {
   uint64_t peak_reserved;
 };
 
+struct MemPythonNode {
+  MemPythonNode() = default;
+  ~MemPythonNode() {}
+
+  // timestamp of the record
+  uint64_t timestamp_ns;
+  // memory addr of allocation or free
+  uint64_t addr;
+  // memory manipulation type
+  TracerMemEventType type;
+  // process id of the record
+  uint64_t process_id;
+  // thread id of the record
+  uint64_t thread_id;
+  // increase bytes after this manipulation, allocation for sign +, free for
+  // sign -
+  int64_t increase_bytes;
+  // place
+  std::string place;
+  // current total allocated memory
+  uint64_t current_allocated;
+  // current total reserved memory
+  uint64_t current_reserved;
+  // peak  allocated memory
+  uint64_t peak_allocated;
+  // peak  reserved memory
+  uint64_t peak_reserved;
+};
+
 struct HostPythonNode {
   HostPythonNode() = default;
   ~HostPythonNode();
@@ -114,8 +143,11 @@ struct HostPythonNode {
   uint64_t process_id;
   // thread id of the record
   uint64_t thread_id;
+<<<<<<< HEAD
   // correlation id, used for correlating async activities happened on device
   uint32_t correlation_id;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   // input shapes
   std::map<std::string, std::vector<std::vector<int64_t>>> input_shapes;
   std::map<std::string, std::vector<std::string>> dtypes;

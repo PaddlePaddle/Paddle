@@ -22,6 +22,14 @@
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS
+
+enum GpuGraphStorageMode {
+  WHOLE_HBM = 1,
+  MEM_EMB_AND_GPU_GRAPH,
+  MEM_EMB_FEATURE_AND_GPU_GRAPH,
+  SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH
+};
+
 class GraphGpuWrapper {
  public:
   static std::shared_ptr<GraphGpuWrapper> GetInstance() {
@@ -31,6 +39,8 @@ class GraphGpuWrapper {
     return s_instance_;
   }
   static std::shared_ptr<GraphGpuWrapper> s_instance_;
+  void init_conf(const std::string& first_node_type,
+                 const std::string& meta_path);
   void initialize();
   void finalize();
   void set_device(std::vector<int> ids);
@@ -42,16 +52,35 @@ class GraphGpuWrapper {
                     int slice_num,
                     const std::string& edge_type);
   void upload_batch(int type, int slice_num, int slot_num);
+<<<<<<< HEAD
+=======
+  std::vector<GpuPsCommGraphFea> get_sub_graph_fea(std::vector<std::vector<uint64_t>> &node_ids, int slot_num);
+  void build_gpu_graph_fea(GpuPsCommGraphFea &sub_graph_fea, int i);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
                            int feat_shape);
   void load_edge_file(std::string name, std::string filepath, bool reverse);
+  void load_edge_file(std::string etype2files,
+                      std::string graph_data_local_path,
+                      int part_num,
+                      bool reverse);
+
   void load_node_file(std::string name, std::string filepath);
+<<<<<<< HEAD
   void load_node_and_edge(std::string etype,
                           std::string ntype,
                           std::string epath,
                           std::string npath,
+=======
+  void load_node_file(std::string ntype2files,
+                      std::string graph_data_local_path,
+                      int part_num);
+  void load_node_and_edge(std::string etype2files,
+                          std::string ntype2files,
+                          std::string graph_data_local_path,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           int part_num,
                           bool reverse);
   int32_t load_next_partition(int idx);
@@ -81,26 +110,71 @@ class GraphGpuWrapper {
                           int idx,
                           int slice_num,
                           std::vector<std::vector<uint64_t>>* output);
+<<<<<<< HEAD
+=======
+  int get_node_embedding_ids(int slice_num,
+                             std::vector<std::vector<uint64_t>>* output);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   NodeQueryResult query_node_list(int gpu_id,
                                   int idx,
                                   int start,
                                   int query_size);
   NeighborSampleResult graph_neighbor_sample_v3(NeighborSampleQuery q,
+<<<<<<< HEAD
                                                 bool cpu_switch);
+=======
+                                                bool cpu_switch,
+                                                bool compress);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   NeighborSampleResult graph_neighbor_sample(int gpu_id,
                                              uint64_t* device_keys,
                                              int walk_degree,
                                              int len);
+<<<<<<< HEAD
+=======
+  NeighborSampleResultV2 graph_neighbor_sample_all_edge_type(
+      int gpu_id, int edge_type_len, uint64_t* key, int sample_size, int len,
+      std::vector<std::shared_ptr<phi::Allocation>> edge_type_graphs);
+  gpuStream_t get_local_stream(int gpuid);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::vector<uint64_t> graph_neighbor_sample(int gpu_id,
                                               int idx,
                                               std::vector<uint64_t>& key,
                                               int sample_size);
+<<<<<<< HEAD
   void set_feature_separator(std::string ch);
+=======
+  std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
+      int gpu_id, int edge_type_len);
+  std::vector<int> slot_feature_num_map() const ;
+  void set_feature_separator(std::string ch);
+  void set_slot_feature_separator(std::string ch);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   int get_feature_of_nodes(int gpu_id,
                            uint64_t* d_walk,
                            uint64_t* d_offset,
                            uint32_t size,
+<<<<<<< HEAD
                            int slot_num);
+=======
+                           int slot_num,
+                           int* d_slot_feature_num_map,
+                           int fea_num_per_node);
+  int get_feature_info_of_nodes(int gpu_id,
+                                uint64_t* d_nodes,
+                                int node_num,
+                                uint32_t * size_list,
+                                uint32_t * size_list_prefix_sum,
+                                std::shared_ptr<phi::Allocation> & feature_list,
+                                std::shared_ptr<phi::Allocation> & slot_list);
+  void release_graph();
+  void release_graph_edge();
+  void release_graph_node();
+  void init_type_keys();
+  std::vector<uint64_t>& get_graph_total_keys();
+  std::vector<std::vector<uint64_t>>& get_graph_type_keys();
+  std::unordered_map<int, int>& get_graph_type_to_index();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::unordered_map<std::string, int> edge_to_id, feature_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
@@ -115,6 +189,22 @@ class GraphGpuWrapper {
   int upload_num = 8;
   std::shared_ptr<::ThreadPool> upload_task_pool;
   std::string feature_separator_ = std::string(" ");
+<<<<<<< HEAD
+=======
+  bool conf_initialized_ = false;
+  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> meta_path_;
+
+  std::vector<std::set<int>> finish_node_type_;
+  std::vector<std::unordered_map<int, size_t>> node_type_start_;
+  std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
+  std::vector<size_t> infer_cursor_;
+  std::vector<size_t> cursor_;
+  std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
+      d_graph_all_type_total_keys_;
+  std::vector<std::vector<uint64_t>> h_graph_all_type_keys_len_;
+  std::string slot_feature_separator_ = std::string(" ");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 #endif
 }  // namespace framework

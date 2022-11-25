@@ -19,13 +19,21 @@ from paddle.fluid import Program
 
 
 class TestLoDAppendAPI(unittest.TestCase):
+
     def test_api(self, use_cuda=False):
         main_program = Program()
         with fluid.program_guard(main_program):
             x = fluid.layers.data(name='x', shape=[6], dtype='float32')
+<<<<<<< HEAD
             level = fluid.layers.data(
                 name='level', shape=[3], dtype='int32', lod_level=0
             )
+=======
+            level = fluid.layers.data(name='level',
+                                      shape=[3],
+                                      dtype='int32',
+                                      lod_level=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             result = fluid.layers.lod_append(x, level)
 
             x_i = np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0]).astype("float32")
@@ -36,16 +44,27 @@ class TestLoDAppendAPI(unittest.TestCase):
                     return
                 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
                 exe = fluid.Executor(place)
+<<<<<<< HEAD
                 [out] = exe.run(
                     fluid.default_main_program(),
                     feed={'x': x_i, 'level': level_i},
                     fetch_list=[result],
                     return_numpy=False,
                 )
+=======
+                [out] = exe.run(fluid.default_main_program(),
+                                feed={
+                                    'x': x_i,
+                                    'level': level_i
+                                },
+                                fetch_list=[result],
+                                return_numpy=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.assertEqual(out.recursive_sequence_lengths(), [[2, 4]])
 
 
 class TestLodAppendOpError(unittest.TestCase):
+
     def test_error(self):
         # The input(x) must be Variable.
         x1 = np.array([0.9383, 0.1983, 3.2, 1.2]).astype("float64")
@@ -59,9 +78,16 @@ class TestLodAppendOpError(unittest.TestCase):
         # Input(x) dtype must be float32 or float64 or int32 or int64
         for dtype in ["bool", "float16"]:
             x3 = fluid.layers.data(name='x3_' + dtype, shape=[4], dtype=dtype)
+<<<<<<< HEAD
             level3 = fluid.layers.data(
                 name='level3' + dtype, shape=[4], dtype='int32', lod_level=2
             )
+=======
+            level3 = fluid.layers.data(name='level3' + dtype,
+                                       shape=[4],
+                                       dtype='int32',
+                                       lod_level=2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertRaises(TypeError, fluid.layers.lod_append, x3, level3)
 
 

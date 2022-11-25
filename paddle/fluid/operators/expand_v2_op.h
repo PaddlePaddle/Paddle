@@ -96,6 +96,13 @@ inline std::vector<int> get_expand_shape(
         vec_epxand_shape.push_back(*temp.data<int32_t>());
       }
 #endif
+#ifdef PADDLE_WITH_MLU
+      else if (platform::is_mlu_place(tensor->place())) {  // NOLINT
+        framework::Tensor temp;
+        paddle::framework::TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_shape.push_back(*temp.data<int32_t>());
+      }
+#endif
       else {  // NOLINT
         vec_epxand_shape.push_back(*tensor->data<int32_t>());
       }

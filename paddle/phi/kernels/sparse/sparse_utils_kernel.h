@@ -170,7 +170,12 @@ void SparseCooTensorKernel(const Context& dev_ctx,
                            const DenseTensor& indices,
                            const std::vector<int64_t>& shape,
                            SparseCooTensor* out) {
+<<<<<<< HEAD
   *out = SparseCooTensor(indices, values, phi::make_ddim(shape));
+=======
+  *out =
+      SparseCooTensor(indices, values, phi::make_ddim(dense_shape.GetData()));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 }  // namespace sparse

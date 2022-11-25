@@ -25,8 +25,13 @@ void AddmmCooDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCooTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float beta,
                          float alpha,
+=======
+                         float alpha,
+                         float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          DenseTensor* out) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));
@@ -38,8 +43,13 @@ void AddmmCsrDenseKernel(const Context& dev_ctx,
                          const DenseTensor& input,
                          const SparseCsrTensor& x,
                          const DenseTensor& y,
+<<<<<<< HEAD
                          float beta,
                          float alpha,
+=======
+                         float alpha,
+                         float beta,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                          DenseTensor* out) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));

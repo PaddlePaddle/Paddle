@@ -36,7 +36,13 @@
 #endif
 
 USE_INT_STAT(STAT_total_feasign_num_in_mem);
+<<<<<<< HEAD
 DECLARE_bool(graph_get_neighbor_id);
+=======
+USE_INT_STAT(STAT_epoch_finish);
+DECLARE_bool(graph_get_neighbor_id);
+DECLARE_int32(gpugraph_storage_mode);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace paddle {
 namespace framework {
@@ -457,6 +463,7 @@ void DatasetImpl<T>::LoadIntoMemory() {
   if (gpu_graph_mode_) {
     VLOG(0) << "in gpu_graph_mode";
 #ifdef PADDLE_WITH_HETERPS
+<<<<<<< HEAD
     graph_all_type_total_keys_.clear();
     auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
     auto node_to_id = gpu_graph_ptr->feature_to_id;
@@ -530,6 +537,57 @@ void DatasetImpl<T>::LoadIntoMemory() {
         }
       }
     }
+=======
+    for (size_t i = 0; i < readers_.size(); i++) {
+      readers_[i]->SetGpuGraphMode(gpu_graph_mode_);
+    }
+    
+    if (STAT_GET(STAT_epoch_finish) == 1) {
+      VLOG(0) << "get epoch finish true";
+      STAT_RESET(STAT_epoch_finish, 0);
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->ResetPathNum();
+        readers_[i]->ResetEpochFinish();
+      }
+      return;
+    }
+
+    for (int64_t i = 0; i < thread_num_; ++i) {
+      load_threads.push_back(
+          std::thread(&paddle::framework::DataFeed::DoWalk, readers_[i].get()));
+    }
+    for (std::thread& t : load_threads) {
+      t.join();
+    }
+    uint64_t node_num = 0;
+    for (int i = 0; i < thread_num_; i++) {
+      auto& host_vec = readers_[i]->GetHostVec();
+      node_num += host_vec.size();
+    }
+    gpu_graph_total_keys_.reserve(node_num);
+    for (int i = 0; i < thread_num_; i++) {
+      auto& host_vec = readers_[i]->GetHostVec();
+      for (size_t j = 0; j < host_vec.size(); j++) {
+        gpu_graph_total_keys_.push_back(host_vec[j]);
+      }
+    }
+
+    if (GetEpochFinish() == true) {
+      VLOG(0) << "epoch finish, set stat and clear sample stat!";
+      STAT_RESET(STAT_epoch_finish, 1);
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->ClearSampleState();
+      }
+    }
+    if (FLAGS_gpugraph_storage_mode != GpuGraphStorageMode::WHOLE_HBM) {
+      for (size_t i = 0; i < readers_.size(); i++) {
+        readers_[i]->clear_gpu_mem();
+      }
+    }
+
+    VLOG(2) << "end add edge into gpu_graph_total_keys_ size["
+            << gpu_graph_total_keys_.size() << "]";
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #endif
   } else {
     for (int64_t i = 0; i < thread_num_; ++i) {
@@ -1126,7 +1184,26 @@ void DatasetImpl<T>::DestroyPreLoadReaders() {
 
 template <typename T>
 int64_t DatasetImpl<T>::GetMemoryDataSize() {
-  return input_channel_->Size();
+  if (gpu_graph_mode_) {
+    int64_t total_path_num = 0;
+    for (int i = 0; i < thread_num_; i++) {
+      total_path_num += readers_[i]->GetGraphPathNum();
+    }
+    return total_path_num;
+  } else {
+    return input_channel_->Size();
+  }
+}
+
+template <typename T>
+bool DatasetImpl<T>::GetEpochFinish() {
+  bool is_epoch_finish = true;
+  if (gpu_graph_mode_) {
+    for (int i = 0; i < thread_num_; i++) {
+      is_epoch_finish = is_epoch_finish && readers_[i]->get_epoch_finish();
+    }
+  }
+  return is_epoch_finish;
 }
 
 template <typename T>
@@ -1783,6 +1860,7 @@ void SlotRecordDataset::CreateReaders() {
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
     readers_[i]->SetCurrentPhase(current_phase_);
+    readers_[i]->InitGraphResource();
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }

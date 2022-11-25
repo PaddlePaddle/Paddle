@@ -14,6 +14,10 @@
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/eigen.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -32,6 +36,7 @@
 #include "paddle/phi/kernels/funcs/padding.h"
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 // clang-format off
 #include "paddle/phi/backends/dynload/cudnn_frontend.h"
@@ -39,6 +44,8 @@
 // clang-format on
 #endif
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 namespace phi {
 
 template <typename T, typename Context>

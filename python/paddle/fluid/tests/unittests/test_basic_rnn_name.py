@@ -20,6 +20,7 @@ from test_imperative_base import new_program_scope
 
 
 class TestBasicGRUApiName(unittest.TestCase):
+
     def setUp(self):
         self.name_set = set(
             [
@@ -44,6 +45,7 @@ class TestBasicGRUApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
+<<<<<<< HEAD
             input = layers.data(
                 name="input",
                 shape=[-1, batch_size, input_size],
@@ -69,6 +71,22 @@ class TestBasicGRUApiName(unittest.TestCase):
                 bias_attr=fluid.ParamAttr(name="test1"),
                 name="basic_gru",
             )
+=======
+            input = layers.data(name="input",
+                                shape=[-1, batch_size, input_size],
+                                dtype='float32')
+            pre_hidden = layers.data(name="pre_hidden",
+                                     shape=[-1, hidden_size],
+                                     dtype='float32')
+            sequence_length = layers.data(name="sequence_length",
+                                          shape=[-1],
+                                          dtype='int32')
+
+
+            rnn_out, last_hidden = basic_gru( input, pre_hidden, hidden_size, num_layers = num_layers, \
+                sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                batch_first = batch_first, param_attr=fluid.ParamAttr( name ="test1"), bias_attr=fluid.ParamAttr( name="test1"), name="basic_gru")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             var_list = fluid.io.get_program_parameter(
                 fluid.default_main_program()
@@ -79,6 +97,7 @@ class TestBasicGRUApiName(unittest.TestCase):
 
 
 class TestBasicLSTMApiName(unittest.TestCase):
+
     def setUp(self):
         self.name_set = set(
             [
@@ -103,6 +122,7 @@ class TestBasicLSTMApiName(unittest.TestCase):
         batch_first = False
 
         with new_program_scope():
+<<<<<<< HEAD
             input = layers.data(
                 name="input",
                 shape=[-1, batch_size, input_size],
@@ -131,6 +151,26 @@ class TestBasicLSTMApiName(unittest.TestCase):
                 bias_attr=fluid.ParamAttr(name="test1"),
                 batch_first=batch_first,
             )
+=======
+            input = layers.data(name="input",
+                                shape=[-1, batch_size, input_size],
+                                dtype='float32')
+            pre_hidden = layers.data(name="pre_hidden",
+                                     shape=[-1, hidden_size],
+                                     dtype='float32')
+            pre_cell = layers.data(name="pre_cell",
+                                   shape=[-1, hidden_size],
+                                   dtype='float32')
+            sequence_length = layers.data(name="sequence_length",
+                                          shape=[-1],
+                                          dtype='int32')
+
+            rnn_out, last_hidden, last_cell = basic_lstm( input, pre_hidden, pre_cell, \
+                hidden_size, num_layers = num_layers, \
+                sequence_length = sequence_length, dropout_prob=dropout, bidirectional = bidirectional, \
+                param_attr=fluid.ParamAttr( name ="test1"), bias_attr=fluid.ParamAttr( name = "test1"),  \
+                batch_first = batch_first)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             var_list = fluid.io.get_program_parameter(
                 fluid.default_main_program()

@@ -42,12 +42,18 @@ def len_with_lod_tensor_array(x):
 
 
 class TestLen(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.x_data = np.random.random([10, 16]).astype('float32')
         self.init_func()
 
@@ -72,6 +78,7 @@ class TestLen(unittest.TestCase):
 
 
 class TestLenWithTensorArray(TestLen):
+
     def init_func(self):
         self.func = len_with_lod_tensor_array
 
@@ -81,6 +88,7 @@ class TestLenWithTensorArray(TestLen):
 def len_with_selected_rows(place):
     block = fluid.default_main_program().global_block()
     # create selected_rows variable
+<<<<<<< HEAD
     var = block.create_var(
         name="X",
         dtype="float32",
@@ -88,6 +96,12 @@ def len_with_selected_rows(place):
         persistable=True,
         type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
     )
+=======
+    var = block.create_var(name="X",
+                           dtype="float32",
+                           persistable=True,
+                           type=fluid.core.VarDesc.VarType.SELECTED_ROWS)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # y is Variable(SelectedRows)
     y = fluid.layers.merge_selected_rows(var)
     y_len = convert_call(len)(y)
@@ -113,12 +127,18 @@ def len_with_selected_rows(place):
 
 
 class TestLenWithSelectedRows(unittest.TestCase):
+
     def setUp(self):
+<<<<<<< HEAD
         self.place = (
             fluid.CUDAPlace(0)
             if fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        self.place = fluid.CUDAPlace(
+            0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_len(self):
         selected_rows_var_len, var_tensor_len = len_with_selected_rows(

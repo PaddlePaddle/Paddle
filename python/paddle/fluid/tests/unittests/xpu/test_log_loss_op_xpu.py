@@ -26,6 +26,7 @@ def sigmoid_array(x):
 
 
 class TestXPULogLossOp(OpTest):
+
     def setUp(self):
         self.op_type = 'log_loss'
         samples_num = 100

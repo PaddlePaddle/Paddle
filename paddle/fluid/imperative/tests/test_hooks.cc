@@ -133,18 +133,30 @@ TEST(TestHooks, TestGradVarLeafBackwardHook) {
   engine.Execute();
 
   // verify VariableWrapper hook result
+<<<<<<< HEAD
   phi::DenseTensor x_grad;
   framework::TensorCopySync(
       x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
+=======
+  framework::LoDTensor x_grad;
+  framework::TensorCopySync(
+      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 8.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 10);
 
+<<<<<<< HEAD
   phi::DenseTensor y_grad;
   framework::TensorCopySync(
       y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
+=======
+  framework::LoDTensor y_grad;
+  framework::TensorCopySync(
+      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
@@ -245,26 +257,44 @@ void GradVarLeafBackwardHookWithGradAccmulatedTest() {
   engine.Execute();
 
   // verify VariableWrapper hook result
+<<<<<<< HEAD
   phi::DenseTensor x_grad;
   framework::TensorCopySync(
       x->GradVar().Get<phi::DenseTensor>(), place, &x_grad);
+=======
+  framework::LoDTensor x_grad;
+  framework::TensorCopySync(
+      x->GradVar().Get<framework::LoDTensor>(), place, &x_grad);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 16.0);
   }
   // verify Void hook result
   ASSERT_EQ(hook_value, 100);
 
+<<<<<<< HEAD
   phi::DenseTensor y_grad;
   framework::TensorCopySync(
       y->GradVar().Get<phi::DenseTensor>(), place, &y_grad);
+=======
+  framework::LoDTensor y_grad;
+  framework::TensorCopySync(
+      y->GradVar().Get<framework::LoDTensor>(), place, &y_grad);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 4.0);
   }
 
+<<<<<<< HEAD
   phi::DenseTensor z_grad;
   framework::TensorCopySync(
       z->GradVar().Get<phi::DenseTensor>(), place, &z_grad);
+=======
+  framework::LoDTensor z_grad;
+  framework::TensorCopySync(
+      z->GradVar().Get<framework::LoDTensor>(), place, &z_grad);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   for (int i = 0; i < z_grad.numel(); ++i) {
     ASSERT_EQ(z_grad.data<float>()[i], 4.0);

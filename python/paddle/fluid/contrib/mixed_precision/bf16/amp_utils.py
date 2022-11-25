@@ -40,9 +40,15 @@ __all__ = [
     "convert_float_to_uint16",
 ]
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 _valid_types = [
     core.VarDesc.VarType.LOD_TENSOR,
@@ -114,6 +120,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                         stop_gradient=in_var.stop_gradient,
                     )
 
+<<<<<<< HEAD
                     block._insert_op(
                         idx,
                         type="cast",
@@ -124,6 +131,16 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                             "out_dtype": out_var.dtype,
                         },
                     )
+=======
+                    block._insert_op(idx,
+                                     type="cast",
+                                     inputs={"X": in_var},
+                                     outputs={"Out": out_var},
+                                     attrs={
+                                         "in_dtype": in_var.dtype,
+                                         "out_dtype": out_var.dtype
+                                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
@@ -168,6 +185,7 @@ def _insert_cast_post_op(
     cast_name = target_var.name + '.cast_' + _dtype_to_str(dest_dtype)
     cast_var = block.vars.get(cast_name)
     if cast_var is None or cast_var.dtype != dest_dtype:
+<<<<<<< HEAD
         cast_var = block.create_var(
             name=cast_name,
             dtype=dest_dtype,
@@ -181,6 +199,20 @@ def _insert_cast_post_op(
             outputs={"Out": cast_var},
             attrs={"in_dtype": target_var.dtype, "out_dtype": cast_var.dtype},
         )
+=======
+        cast_var = block.create_var(name=cast_name,
+                                    dtype=dest_dtype,
+                                    persistable=False,
+                                    stop_gradient=target_var.stop_gradient)
+        block._insert_op(idx,
+                         type="cast",
+                         inputs={"X": target_var},
+                         outputs={"Out": cast_var},
+                         attrs={
+                             "in_dtype": target_var.dtype,
+                             "out_dtype": cast_var.dtype
+                         })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         num_cast_ops += 1
         op_var_rename_map[block.idx][target_var.name] = cast_var.name
 
@@ -407,10 +439,15 @@ def cast_model_to_bf16(
                         out_var.desc.set_dtype(core.VarDesc.VarType.BF16)
 
                     _logger.debug(
+<<<<<<< HEAD
                         "-- op type: {}, out var name: {}, out var dtype: {} --".format(
                             op.type, out_var_name, out_var.dtype
                         )
                     )
+=======
+                        "-- op type: {}, out var name: {}, out var dtype: {} --"
+                        .format(op.type, out_var_name, out_var.dtype))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             for attr_name in ['in_dtype', 'out_dtype', 'dtype']:
                 if (
                     op.has_attr(attr_name)

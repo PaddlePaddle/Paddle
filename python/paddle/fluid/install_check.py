@@ -37,6 +37,7 @@ __all__ = ['run_check']
 
 
 class SimpleLayer(Layer):
+
     def __init__(self, input_size):
         super().__init__()
         self._linear1 = nn.Linear(
@@ -105,11 +106,16 @@ def run_check():
                     simple_layer = SimpleLayer(input_size=2)
                     out = simple_layer(inp)
                     exe = executor.Executor(
+<<<<<<< HEAD
                         core.CUDAPlace(0)
                         if core.is_compiled_with_cuda()
                         and (core.get_cuda_device_count() > 0)
                         else core.CPUPlace()
                     )
+=======
+                        core.CUDAPlace(0) if core.is_compiled_with_cuda() and
+                        (core.get_cuda_device_count() > 0) else core.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     loss = paddle.mean(out)
                     loss.persistable = True
                     optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -136,9 +142,15 @@ def run_check():
         with executor.scope_guard(scope):
             with program_guard(train_prog, startup_prog):
                 with unique_name.guard():
+<<<<<<< HEAD
                     inp0 = layers.data(
                         name="inp", shape=[2, 2], append_batch_size=False
                     )
+=======
+                    inp0 = layers.data(name="inp",
+                                       shape=[2, 2],
+                                       append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     simple_layer0 = SimpleLayer(input_size=2)
                     out0 = simple_layer0(inp0)
                     param_grads = backward.append_backward(

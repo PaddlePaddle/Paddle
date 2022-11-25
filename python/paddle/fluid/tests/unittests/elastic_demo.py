@@ -15,6 +15,7 @@
 import os, sys
 import time
 
+<<<<<<< HEAD
 sys.stderr.write(
     "{}-DISTRIBUTED_TRAINER_ENDPOINTS={}\n".format(
         os.environ['PADDLE_TRAINER_ID'],
@@ -26,5 +27,12 @@ sys.stderr.write(
         os.environ['PADDLE_TRAINER_ID'], os.environ['PADDLE_TRAINERS']
     )
 )
+=======
+sys.stderr.write("{}-DISTRIBUTED_TRAINER_ENDPOINTS={}\n".format(
+    os.environ['PADDLE_TRAINER_ID'],
+    os.environ['DISTRIBUTED_TRAINER_ENDPOINTS']))
+sys.stderr.write("{}-PADDLE_TRAINERS={}\n".format(
+    os.environ['PADDLE_TRAINER_ID'], os.environ['PADDLE_TRAINERS']))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 time.sleep(600)

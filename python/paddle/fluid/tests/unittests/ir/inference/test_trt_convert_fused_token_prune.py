@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
+<<<<<<< HEAD
 from typing import Any, Dict, List
+=======
+from typing import Optional, List, Callable, Dict, Any, Set
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import unittest
 
 
 class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -39,6 +51,7 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
 
         for keep_first_token in [True, False]:
             for keep_order in [True, False]:
+<<<<<<< HEAD
                 dics = [
                     {
                         "keep_first_token": keep_first_token,
@@ -61,11 +74,32 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
                         "op_attrs": dics[0],
                     }
                 ]
+=======
+                dics = [{
+                    "keep_first_token": keep_first_token,
+                    "keep_order": keep_order
+                }]
+                ops_config = [{
+                    "op_type": "fused_token_prune",
+                    "op_inputs": {
+                        "Attn": ["attn"],
+                        "X": ["x"],
+                        "Mask": ["mask"],
+                        "NewMask": ["new_mask"]
+                    },
+                    "op_outputs": {
+                        "SlimmedX": ["slimmed_x"],
+                        "CLSInds": ["cls_inds"]
+                    },
+                    "op_attrs": dics[0]
+                }]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 ops = self.generate_op_config(ops_config)
                 program_config = ProgramConfig(
                     ops=ops,
                     weights={},
                     inputs={
+<<<<<<< HEAD
                         "attn": TensorConfig(
                             data_gen=partial(generate_attn_or_mask, dics)
                         ),
@@ -79,30 +113,61 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
                     },
                     outputs=["slimmed_x", "cls_inds"],
                 )
+=======
+                        "attn":
+                        TensorConfig(
+                            data_gen=partial(generate_attn_or_mask, dics)),
+                        "x":
+                        TensorConfig(data_gen=partial(generate_x, dics)),
+                        "mask":
+                        TensorConfig(
+                            data_gen=partial(generate_attn_or_mask, dics)),
+                        "new_mask":
+                        TensorConfig(data_gen=partial(generate_new_mask, dics))
+                    },
+                    outputs=["slimmed_x", "cls_inds"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
                 "attn": [4, 12, 64, 64],
                 "x": [4, 64, 76],
                 "mask": [4, 12, 64, 64],
+<<<<<<< HEAD
                 "new_mask": [4, 12, 32, 32],
+=======
+                "new_mask": [4, 12, 32, 32]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
             self.dynamic_shape.max_input_shape = {
                 "attn": [4, 12, 64, 64],
                 "x": [4, 64, 76],
                 "mask": [4, 12, 64, 64],
+<<<<<<< HEAD
                 "new_mask": [4, 12, 32, 32],
+=======
+                "new_mask": [4, 12, 32, 32]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
             self.dynamic_shape.opt_input_shape = {
                 "attn": [4, 12, 64, 64],
                 "x": [4, 64, 76],
                 "mask": [4, 12, 64, 64],
+<<<<<<< HEAD
                 "new_mask": [4, 12, 32, 32],
+=======
+                "new_mask": [4, 12, 32, 32]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             }
 
         def clear_dynamic_shape():
@@ -120,12 +185,19 @@ class TrtConvertFusedTokenPruneTest(TrtLayerAutoScanTest):
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, True
         ), (1e-2, 1e-2)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), (1e-1, 1e-2)
+=======
+            attrs, True), (1e-5, 1e-5, 1e-5, 1e-5)
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5, 1e-5, 1e-5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()

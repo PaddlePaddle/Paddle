@@ -37,7 +37,11 @@ static void DataCopy(const phi::DenseTensor &src_item,
       framework::innerTransDataLayoutFromMKLDNN(
           src_item.layout(),
           fetch_var_name == framework::GradVarName("Filter")
+<<<<<<< HEAD
               ? phi::DataLayout::kNCHW
+=======
+              ? framework::DataLayout::kNCHW
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
               : paddle::platform::MKLDNNDeviceContext::tls()
                     .get_cur_paddle_data_layout(),
           src_item,
@@ -115,9 +119,15 @@ class FetchOp : public framework::OperatorBase {
       fetch_list->resize(col + 1);
     }
 
+<<<<<<< HEAD
     if (fetch_var->IsType<phi::DenseTensor>()) {
       auto &src_item = fetch_var->Get<phi::DenseTensor>();
       auto *dst_item = &(PADDLE_GET(phi::DenseTensor, fetch_list->at(col)));
+=======
+    if (fetch_var->IsType<framework::LoDTensor>()) {
+      auto &src_item = fetch_var->Get<framework::LoDTensor>();
+      auto *dst_item = &(PADDLE_GET(framework::LoDTensor, fetch_list->at(col)));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       DataCopy(src_item, fetch_var_name, dst_item);
     } else if (fetch_var->IsType<framework::Vocab>()) {
       auto &src_item = fetch_var->Get<framework::Vocab>();

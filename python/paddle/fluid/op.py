@@ -129,6 +129,7 @@ class OpDescCreationMethod:
                     new_attr.float64 = user_defined_attr
                 else:
                     raise NotImplementedError(
+<<<<<<< HEAD
                         "A not supported attribute type: %s." % (str(attr.type))
                     )
         for attr_name, defalut_val in self.__extra_attrs__.items():
@@ -166,6 +167,10 @@ class OpDescCreationMethod:
                     raise NotImplementedError(
                         "A not supported attribute type: %s." % (str(attr_type))
                     )
+=======
+                        "A not supported attribute type: %s." %
+                        (str(attr.type)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return op_desc
 
@@ -181,8 +186,14 @@ class OpDescCreationMethod:
         return False
 
 
+<<<<<<< HEAD
 class OpInfo:
     def __init__(self, name, method, inputs, outputs, attrs, extra_attrs):
+=======
+class OpInfo(object):
+
+    def __init__(self, name, method, inputs, outputs, attrs):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.name = name
         self.method = method
         self.inputs = inputs
@@ -201,6 +212,7 @@ def create_op_creation_method(op_proto):
         opdesc = method(*args, **kwargs)
         return core.Operator.create(opdesc.SerializeToString())
 
+<<<<<<< HEAD
     extra_attrs_map = core.get_op_extra_attrs(op_proto.type)
 
     return OpInfo(
@@ -214,6 +226,19 @@ def create_op_creation_method(op_proto):
 
 
 class OperatorFactory:
+=======
+    return OpInfo(method=__impl__,
+                  name=op_proto.type,
+                  inputs=[(var.name, var.duplicable)
+                          for var in op_proto.inputs],
+                  outputs=[(var.name, var.duplicable)
+                           for var in op_proto.outputs],
+                  attrs=[attr.name for attr in op_proto.attrs])
+
+
+class OperatorFactory(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.op_methods = dict()
 

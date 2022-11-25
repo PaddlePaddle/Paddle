@@ -67,7 +67,16 @@ class PartialAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     if (map->has(rid)) {
       // Use ProcessGroup
       distributed::ProcessGroup* pg = map->get(rid);
+<<<<<<< HEAD
       auto task = pg->AllGather(out, *in, offset, send_numel, /*sync_op*/ true);
+=======
+      std::vector<phi::DenseTensor> in_tensors;
+      std::vector<phi::DenseTensor> out_tensors;
+      in_tensors.push_back(*in);
+      out_tensors.push_back(*out);
+      auto task =
+          pg->AllGather_Partial(in_tensors, out_tensors, offset, send_numel);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       task->Wait();
     } else {
       const T* send_buff = in->data<T>() + offset;

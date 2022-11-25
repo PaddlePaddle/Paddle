@@ -31,7 +31,12 @@ from paddle.fluid.transpiler.distribute_transpiler import (
 from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
 
 
+<<<<<<< HEAD
 class TrainerRuntimeConfig:
+=======
+class TrainerRuntimeConfig(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.mode = None
         num_threads = os.getenv("CPU_NUM", "1")
@@ -63,8 +68,12 @@ class TrainerRuntimeConfig:
 
         # not used
         self.runtime_configs['rpc_deadline'] = os.getenv(
+<<<<<<< HEAD
             "FLAGS_rpc_deadline", "180000"
         )
+=======
+            "FLAGS_rpc_deadline", "180000")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.runtime_configs['rpc_retry_times'] = os.getenv(
             "FLAGS_rpc_retry_times", "3"
         )
@@ -109,6 +118,7 @@ class TrainerRuntimeConfig:
                 'communicator_send_queue_size'
             ]
             if max_merge_var_num != num_threads:
+<<<<<<< HEAD
                 print(
                     'WARNING: In {} mode, communicator_max_merge_var_num '
                     'must be equal to CPU_NUM. But received, '
@@ -117,10 +127,19 @@ class TrainerRuntimeConfig:
                         mode_str, max_merge_var_num, num_threads, num_threads
                     )
                 )
+=======
+                print('WARNING: In {} mode, communicator_max_merge_var_num '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_max_merge_var_num = {}, CPU_NUM = '
+                      '{}. communicator_max_merge_var_num will be fored to {}.'.
+                      format(mode_str, max_merge_var_num, num_threads,
+                             num_threads))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.runtime_configs[
                     'communicator_max_merge_var_num'
                 ] = num_threads
             if send_queue_size != num_threads:
+<<<<<<< HEAD
                 print(
                     'WARNING: In {} mode, communicator_send_queue_size '
                     'must be equal to CPU_NUM. But received, '
@@ -129,6 +148,14 @@ class TrainerRuntimeConfig:
                         mode_str, send_queue_size, num_threads, num_threads
                     )
                 )
+=======
+                print('WARNING: In {} mode, communicator_send_queue_size '
+                      'must be equal to CPU_NUM. But received, '
+                      'communicator_send_queue_size = {}, CPU_NUM = '
+                      '{}. communicator_send_queue_size will be fored to {}.'.
+                      format(mode_str, send_queue_size, num_threads,
+                             num_threads))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self.runtime_configs[
                     'communicator_send_queue_size'
                 ] = num_threads
@@ -160,7 +187,12 @@ class TrainerRuntimeConfig:
         return self.display(self.get_communicator_flags())
 
 
+<<<<<<< HEAD
 class PSLibRuntimeConfig:
+=======
+class PSLibRuntimeConfig(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self.runtime_configs = {}
 
@@ -168,7 +200,12 @@ class PSLibRuntimeConfig:
         return self.runtime_configs
 
 
+<<<<<<< HEAD
 class DistributedStrategy:
+=======
+class DistributedStrategy(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self):
         self._program_config = DistributeTranspilerConfig()
         self._trainer_runtime_config = TrainerRuntimeConfig()
@@ -340,6 +377,7 @@ class DistributedStrategy:
 
 
 class SyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super().__init__()
         self.check_program_config()
@@ -368,6 +406,7 @@ class SyncStrategy(DistributedStrategy):
 
 
 class AsyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super().__init__()
         self.check_program_config()
@@ -394,6 +433,7 @@ class AsyncStrategy(DistributedStrategy):
 
 
 class HalfAsyncStrategy(DistributedStrategy):
+
     def __init__(self):
         super().__init__()
         self.check_program_config()
@@ -421,6 +461,7 @@ class HalfAsyncStrategy(DistributedStrategy):
 
 
 class GeoStrategy(DistributedStrategy):
+
     def __init__(self, update_frequency=100):
         super().__init__()
         self._program_config.geo_sgd_need_push_nums = update_frequency
@@ -456,7 +497,12 @@ class GeoStrategy(DistributedStrategy):
         self._build_strategy.async_mode = True
 
 
+<<<<<<< HEAD
 class StrategyFactory:
+=======
+class StrategyFactory(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init_(self):
         pass
 

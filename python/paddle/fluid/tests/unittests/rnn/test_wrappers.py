@@ -25,6 +25,7 @@ from rnn_numpy import GRUCell, RNN, BiRNN
 
 
 class TestRNNWrapper(unittest.TestCase):
+
     def __init__(self, time_major=True, direction="forward", place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major
@@ -108,6 +109,7 @@ class TestRNNWrapper(unittest.TestCase):
 
 
 class TestBiRNNWrapper(unittest.TestCase):
+
     def __init__(self, time_major=True, place="cpu"):
         super().__init__("runTest")
         self.time_major = time_major

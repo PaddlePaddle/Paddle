@@ -368,6 +368,12 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("set_gpu_graph_mode",
            &framework::Dataset::SetGpuGraphMode,
+<<<<<<< HEAD
+=======
+           py::call_guard<py::gil_scoped_release>())
+      .def("set_pass_id",
+           &framework::Dataset::SetPassId,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
            py::call_guard<py::gil_scoped_release>());
 
   py::class_<IterableDatasetWrapper>(*m, "IterableDatasetWrapper")

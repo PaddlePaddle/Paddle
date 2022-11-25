@@ -25,8 +25,13 @@ namespace operators {
 
 template <typename T>
 static void PullGpuPSSparseFunctor(const framework::ExecutionContext &ctx) {
+<<<<<<< HEAD
   auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
   auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
+=======
+  auto inputs = ctx.MultiInput<framework::Tensor>("Ids");
+  auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto embedding_size_vec = ctx.Attr<std::vector<int>>("size");
   const auto slot_size = inputs.size();
   std::vector<const uint64_t *> all_keys(slot_size);

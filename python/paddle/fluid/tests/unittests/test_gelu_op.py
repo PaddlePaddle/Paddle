@@ -24,6 +24,7 @@ from paddle.fluid.framework import _test_eager_guard
 
 def gelu(x, approximate):
     if approximate:
+<<<<<<< HEAD
         y_ref = (
             0.5
             * x
@@ -32,12 +33,17 @@ def gelu(x, approximate):
                 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))
             )
         )
+=======
+        y_ref = 0.5 * x * (
+            1.0 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     else:
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
     return y_ref.astype(x.dtype)
 
 
 class TestGeluOp(unittest.TestCase):
+
     def _test_case1_cpu(self, approximate):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = gelu(x, approximate)
@@ -92,9 +98,14 @@ class TestGeluOp(unittest.TestCase):
         y_ref, x_g_ref = run_gelu_op(True)
         np.testing.assert_allclose(y_ref, y_fast_math, rtol=1e-05, atol=0.0005)
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             x_g_ref, x_g_fast_math, rtol=1e-05, atol=0.0005
         )
+=======
+        self.assertTrue(
+            np.allclose(x_g_ref, x_g_fast_math, rtol=1e-5, atol=5e-4))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_fast_math_eager(self):
         with _test_eager_guard():

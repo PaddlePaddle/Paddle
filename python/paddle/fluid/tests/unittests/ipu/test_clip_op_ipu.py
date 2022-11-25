@@ -21,6 +21,10 @@ from paddle.fluid.tests.unittests.ipu.op_test_ipu import IPUOpTest
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.set_atol()
         self.set_training()
@@ -47,9 +51,15 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, **self.attrs)
         self.fetch_list = [x.name]
 
@@ -65,23 +75,36 @@ class TestBase(IPUOpTest):
 
 
 class TestNoMin(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['max'] = 3.4
 
 
 class TestNoMax(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_attrs(self):
         self.attrs = {}
         self.attrs['min'] = 0.1
 
 
 class TestNoMinNoMax(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_op_attrs(self):
         self.attrs = {}
 
 
 class TestMinMaxTensor(TestBase):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
@@ -94,11 +117,29 @@ class TestMinMaxTensor(TestBase):
         max = paddle.fluid.layers.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+
+        min = paddle.fluid.layers.fill_constant(name="min",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=0.1)
+        max = paddle.fluid.layers.fill_constant(name="max",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=3.4)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, min=min, max=max)
         self.fetch_list = [x.name]
 
 
 class TestMinTensor(TestBase):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
@@ -108,11 +149,25 @@ class TestMinTensor(TestBase):
         min = paddle.fluid.layers.fill_constant(
             name="min", shape=[1], dtype='float32', value=0.1
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+
+        min = paddle.fluid.layers.fill_constant(name="min",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=0.1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, min=min)
         self.fetch_list = [x.name]
 
 
 class TestMaxTensor(TestBase):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
@@ -122,11 +177,25 @@ class TestMaxTensor(TestBase):
         max = paddle.fluid.layers.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+
+        max = paddle.fluid.layers.fill_constant(name="max",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=3.4)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, max=max)
         self.fetch_list = [x.name]
 
 
 class TestCombine1(TestBase):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
@@ -136,11 +205,25 @@ class TestCombine1(TestBase):
         min = paddle.fluid.layers.fill_constant(
             name="min", shape=[1], dtype='float32', value=0.1
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+
+        min = paddle.fluid.layers.fill_constant(name="min",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=0.1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, min=min, max=3.4)
         self.fetch_list = [x.name]
 
 
 class TestCombine2(TestBase):
+<<<<<<< HEAD
     @IPUOpTest.static_graph
     def build_model(self):
         x = paddle.static.data(
@@ -150,11 +233,28 @@ class TestCombine2(TestBase):
         max = paddle.fluid.layers.fill_constant(
             name="max", shape=[1], dtype='float32', value=3.4
         )
+=======
+
+    @IPUOpTest.static_graph
+    def build_model(self):
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+
+        max = paddle.fluid.layers.fill_constant(name="max",
+                                                shape=[1],
+                                                dtype='float32',
+                                                value=3.4)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, min=0.1, max=max)
         self.fetch_list = [x.name]
 
 
 class TestIntInput(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_feed(self):
         data = np.random.uniform(size=[5, 5])
         self.feed_fp32 = {'x': data.astype(np.int32)}
@@ -164,15 +264,25 @@ class TestIntInput(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         x = paddle.clip(x, min=0.1, max=3.4)
         self.fetch_list = [x.name]
 
 
 class TestIntMinMax(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_feed(self):
         data = np.random.uniform(size=[5, 5])
         self.feed_fp32 = {'x': data.astype(np.int32)}
@@ -182,6 +292,7 @@ class TestIntMinMax(TestBase):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='int32'
         )
@@ -191,6 +302,19 @@ class TestIntMinMax(TestBase):
         max = paddle.fluid.layers.fill_constant(
             name="max", shape=[1], dtype='int32', value=3
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='int32')
+        min = paddle.fluid.layers.fill_constant(name="min",
+                                                shape=[1],
+                                                dtype='int32',
+                                                value=1)
+        max = paddle.fluid.layers.fill_constant(name="max",
+                                                shape=[1],
+                                                dtype='int32',
+                                                value=3)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x = paddle.clip(x, min=min, max=max)
         self.fetch_list = [x.name]
 

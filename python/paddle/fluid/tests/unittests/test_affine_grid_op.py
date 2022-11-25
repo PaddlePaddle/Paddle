@@ -26,6 +26,7 @@ def AffineGrid4D(theta, size, align_corners):
     if not align_corners:
         h_factor = (h - 1) / float(h)
         w_factor = (w - 1) / float(w)
+<<<<<<< HEAD
     h_idx = (
         np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w, axis=0).T[
             :, :, np.newaxis
@@ -41,12 +42,26 @@ def AffineGrid4D(theta, size, align_corners):
     grid = np.concatenate(
         [w_idx, h_idx, np.ones([h, w, 1])], axis=2
     )  # h * w * 3
+=======
+    h_idx = np.repeat(np.linspace(-1, 1, h)[np.newaxis, :], w,
+                      axis=0).T[:, :, np.newaxis] * h_factor
+    w_idx = np.repeat(np.linspace(-1, 1, w)[np.newaxis, :], h,
+                      axis=0)[:, :, np.newaxis] * w_factor
+    grid = np.concatenate([w_idx, h_idx, np.ones([h, w, 1])],
+                          axis=2)  # h * w * 3
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     grid = np.repeat(grid[np.newaxis, :], size[0], axis=0)  # n * h * w *3
 
     ret = np.zeros([n, h * w, 2])
     theta = theta.transpose([0, 2, 1])
     for i in range(len(theta)):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
+<<<<<<< HEAD
+=======
+
+
+#    print ret.reshape([h * w, 2]).astype("float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return ret.reshape([n, h, w, 2]).astype("float32")
 
 
@@ -103,6 +118,7 @@ def AffineGrid5D(theta, size, align_corners):
 
 
 class TestAffineGridOp(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = "affine_grid"
@@ -147,6 +163,7 @@ class TestAffineGridOp(OpTest):
 
 
 class TestAffineGridOpCase1(TestAffineGridOp):
+
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
@@ -160,6 +177,7 @@ class TestAffineGridOpCase1(TestAffineGridOp):
 
 
 class TestAffineGridOpCase2(TestAffineGridOp):
+
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
@@ -169,6 +187,7 @@ class TestAffineGridOpCase2(TestAffineGridOp):
 
 
 class TestAffineGridOpCase3(TestAffineGridOp):
+
     def initTestCase(self):
         self.theta_shape = (20, 2, 3)
         self.output_shape = np.array([20, 2, 5, 7]).astype("int32")
@@ -178,6 +197,7 @@ class TestAffineGridOpCase3(TestAffineGridOp):
 
 
 class TestAffineGridOpCase4(TestAffineGridOp):
+
     def initTestCase(self):
         self.theta_shape = (25, 2, 3)
         self.output_shape = np.array([25, 2, 5, 6]).astype("int32")

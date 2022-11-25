@@ -27,6 +27,7 @@ class InterpreterCoreEventGarbageCollector
   InterpreterCoreEventGarbageCollector(
       const std::vector<Instruction>& vec_instruction);
   ~InterpreterCoreEventGarbageCollector();
+<<<<<<< HEAD
   void Add(Variable* var, const Instruction& instruction) override;
 
  private:
@@ -37,6 +38,22 @@ class InterpreterCoreEventGarbageCollector
            platform::DeviceEvent* event,
            const platform::DeviceContext* ctx);
 
+=======
+
+  void Add(Variable* var) override;
+
+  virtual void Add(Variable* var,
+                   platform::DeviceEvent* event,
+                   const platform::DeviceContext* ctx);
+
+ private:
+  void Add(Garbage garbage,
+           platform::DeviceEvent* event,
+           const platform::DeviceContext* ctx);
+  void Free(GarbageQueue* garbages,
+            platform::DeviceEvent* event,
+            const platform::DeviceContext* ctx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   void Free(const Garbage& garbage,
             platform::DeviceEvent* event,
             const platform::DeviceContext* ctx);

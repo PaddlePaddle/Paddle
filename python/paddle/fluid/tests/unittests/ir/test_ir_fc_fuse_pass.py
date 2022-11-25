@@ -21,14 +21,26 @@ import paddle.fluid.core as core
 
 
 class FCFusePassTest(PassTest):
+
     def setUp(self):
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[32, 128], dtype="float32", lod_level=0
             )
             tmp_0 = fluid.layers.fc(
                 input=data, size=128, num_flatten_dims=1, act="relu"
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[32, 128],
+                              dtype="float32",
+                              lod_level=0)
+            tmp_0 = fluid.layers.fc(input=data,
+                                    size=128,
+                                    num_flatten_dims=1,
+                                    act="relu")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             tmp_1 = fluid.layers.fc(input=tmp_0, size=32, num_flatten_dims=1)
             tmp_2 = fluid.layers.softmax(input=tmp_1)
 

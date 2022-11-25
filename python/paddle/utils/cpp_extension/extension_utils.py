@@ -218,10 +218,15 @@ def custom_write_stub(resource, pyfile):
 
     with open(pyfile, 'w') as f:
         f.write(
+<<<<<<< HEAD
             _stub_template.format(
                 resource=resource, custom_api='\n\n'.join(api_content)
             )
         )
+=======
+            _stub_template.format(resource=resource,
+                                  custom_api='\n\n'.join(api_content)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 OpInfo = collections.namedtuple('OpInfo', ['so_name', 'so_path'])
@@ -272,6 +277,7 @@ VersionFields = collections.namedtuple(
 
 
 class VersionManager:
+
     def __init__(self, version_field):
         self.version_field = version_field
         self.version = self.hasher(version_field)
@@ -289,10 +295,15 @@ class VersionManager:
                 md5 = combine_hash(md5, tuple(flat_elem))
             else:
                 raise RuntimeError(
+<<<<<<< HEAD
                     "Support types with list, tuple and dict, but received {} with {}.".format(
                         type(elem), elem
                     )
                 )
+=======
+                    "Support types with list, tuple and dict, but received {} with {}."
+                    .format(type(elem), elem))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return md5.hexdigest()
 
@@ -346,10 +357,15 @@ def clean_object_if_change_cflags(so_path, extension):
         # delete shared library file if version is changed to re-compile it.
         if so_version is not None and so_version != versioner.version:
             log_v(
+<<<<<<< HEAD
                 "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}.".format(
                     so_name, versioner.version, version_file
                 )
             )
+=======
+                "Re-Compiling {}, because specified cflags have been changed. New signature {} has been saved into {}."
+                .format(so_name, versioner.version, version_file))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             os.remove(so_path)
             # update new version information
             new_version_info = versioner.details
@@ -482,8 +498,12 @@ def _reset_so_rpath(so_path):
         origin_runtime_path = "@loader_path/../libs/"
         rpath = "@rpath/{}".format(_get_core_name())
         cmd = 'install_name_tool -change {} {} {}'.format(
+<<<<<<< HEAD
             origin_runtime_path, rpath, so_path
         )
+=======
+            origin_runtime_path, rpath, so_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         run_cmd(cmd)
 
@@ -616,6 +636,7 @@ def create_sym_link_if_not_exist():
             except Exception:
                 warnings.warn(
                     "Failed to create soft symbol link for {}.\n You can run prompt as administrator and execute the "
+<<<<<<< HEAD
                     "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly.".format(
                         raw_core_name,
                         new_dll_core_path,
@@ -623,6 +644,11 @@ def create_sym_link_if_not_exist():
                         raw_core_name,
                     )
                 )
+=======
+                    "following command manually: `mklink {} {}`. Now it will create hard link for {} trickly."
+                    .format(raw_core_name, new_dll_core_path, core_path,
+                            raw_core_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 run_cmd('mklink /H {} {}'.format(new_dll_core_path, core_path))
         # libpaddle with lib suffix
         assert os.path.exists(new_dll_core_path)
@@ -637,10 +663,15 @@ def create_sym_link_if_not_exist():
                 assert os.path.exists(new_lib_core_path)
             except Exception:
                 raise RuntimeError(
+<<<<<<< HEAD
                     "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`".format(
                         raw_core_name, core_path, new_lib_core_path
                     )
                 )
+=======
+                    "Failed to create soft symbol link for {}.\n Please execute the following command manually: `ln -s {} {}`"
+                    .format(raw_core_name, core_path, new_lib_core_path))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # libpaddle without suffix
         return raw_core_name[:-3]
@@ -658,9 +689,14 @@ def find_cuda_home():
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
             with open(os.devnull, 'w') as devnull:
+<<<<<<< HEAD
                 nvcc_path = subprocess.check_output(
                     [which_cmd, 'nvcc'], stderr=devnull
                 )
+=======
+                nvcc_path = subprocess.check_output([which_cmd, 'nvcc'],
+                                                    stderr=devnull)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 nvcc_path = nvcc_path.decode()
                 # Multi CUDA, select the first
                 nvcc_path = nvcc_path.split('\r\n')[0]
@@ -700,9 +736,14 @@ def find_rocm_home():
         which_cmd = 'where' if IS_WINDOWS else 'which'
         try:
             with open(os.devnull, 'w') as devnull:
+<<<<<<< HEAD
                 hipcc_path = subprocess.check_output(
                     [which_cmd, 'hipcc'], stderr=devnull
                 )
+=======
+                hipcc_path = subprocess.check_output([which_cmd, 'hipcc'],
+                                                     stderr=devnull)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 hipcc_path = hipcc_path.decode()
                 hipcc_path = hipcc_path.rstrip('\r\n')
 
@@ -783,9 +824,14 @@ def find_clang_cpp_include(compiler='clang'):
             if "InstalledDir" in info:
                 v1_path = info.split(':')[-1].strip()
                 if v1_path and os.path.exists(v1_path):
+<<<<<<< HEAD
                     std_v1_includes = os.path.join(
                         os.path.dirname(v1_path), 'include/c++/v1'
                     )
+=======
+                    std_v1_includes = os.path.join(os.path.dirname(v1_path),
+                                                   'include/c++/v1')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     except Exception:
         # Just raise warnings because the include dir is not required.
         warnings.warn(
@@ -885,6 +931,7 @@ def get_build_directory(verbose=False):
     root_extensions_directory = os.environ.get('PADDLE_EXTENSION_DIR')
     if root_extensions_directory is None:
         dir_name = "paddle_extensions"
+<<<<<<< HEAD
         root_extensions_directory = os.path.join(
             os.path.expanduser('~/.cache'), dir_name
         )
@@ -899,6 +946,17 @@ def get_build_directory(verbose=False):
             ),
             verbose,
         )
+=======
+        root_extensions_directory = os.path.join(os.path.expanduser('~/.cache'),
+                                                 dir_name)
+        if IS_WINDOWS:
+            root_extensions_directory = os.path.normpath(
+                root_extensions_directory)
+
+        log_v(
+            "$PADDLE_EXTENSION_DIR is not set, using path: {} by default.".
+            format(root_extensions_directory), verbose)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if not os.path.exists(root_extensions_directory):
         os.makedirs(root_extensions_directory)
@@ -913,10 +971,15 @@ def parse_op_info(op_name):
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
+<<<<<<< HEAD
             "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
                 op_name
             )
         )
+=======
+            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
+            .format(op_name))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
     in_names = [x.name for x in op_proto.inputs]
@@ -941,8 +1004,12 @@ def _import_module_from_library(module_name, build_directory, verbose=False):
     ext_path = os.path.join(build_directory, module_name + dynamic_suffix)
     if not os.path.exists(ext_path):
         raise FileNotFoundError(
+<<<<<<< HEAD
             "Extension path: {} does not exist.".format(ext_path)
         )
+=======
+            "Extension path: {} does not exist.".format(ext_path))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # load custom op_info and kernels from .so shared library
     log_v('loading shared library from: {}'.format(ext_path), verbose)
@@ -1061,8 +1128,12 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
     """
     if not os.path.exists(api_file_path):
         raise FileNotFoundError(
+<<<<<<< HEAD
             "File : {} does not exist.".format(api_file_path)
         )
+=======
+            "File : {} does not exist.".format(api_file_path))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # Unique readable module name to place custom api.
     log_v('import module from file: {}'.format(api_file_path), verbose)
@@ -1087,6 +1158,7 @@ def _get_api_inputs_str(op_name):
     # input name by `@`, and only use first substr as argument
     params_str = ','.join([p.split("@")[0].lower() for p in param_names])
     # e.g: {'X': x, 'Y': y, 'Z': z}
+<<<<<<< HEAD
     ins_str = "{%s}" % ','.join(
         [
             "'{}' : {}".format(in_name, in_name.split("@")[0].lower())
@@ -1100,6 +1172,19 @@ def _get_api_inputs_str(op_name):
             for attr_name in attr_names
         ]
     )
+=======
+    ins_str = "{%s}" % ','.join([
+        "'{}' : {}".format(in_name,
+                           in_name.split("@")[0].lower())
+        for in_name in in_names
+    ])
+    # e.g: {'num': n}
+    attrs_str = "{%s}" % ",".join([
+        "'{}' : {}".format(attr_name,
+                           attr_name.split("@")[0].lower())
+        for attr_name in attr_names
+    ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     # e.g: ['Out', 'Index']
     outs_str = "[%s]" % ','.join(["'{}'".format(name) for name in out_names])
     return params_str, ins_str, attrs_str, outs_str, in_names, attr_names
@@ -1145,6 +1230,7 @@ def _write_setup_file(
         with_cuda = True
     log_v("with_cuda: {}".format(with_cuda), verbose)
 
+<<<<<<< HEAD
     content = template.format(
         name=name,
         prefix='CUDA' if with_cuda else 'Cpp',
@@ -1155,6 +1241,16 @@ def _write_setup_file(
         extra_link_args=list2str(link_args),
         build_dir=build_dir,
     )
+=======
+    content = template.format(name=name,
+                              prefix='CUDA' if with_cuda else 'Cpp',
+                              sources=list2str(sources),
+                              include_dirs=list2str(include_dirs),
+                              extra_cxx_cflags=list2str(extra_cxx_cflags),
+                              extra_cuda_cflags=list2str(extra_cuda_cflags),
+                              extra_link_args=list2str(link_args),
+                              build_dir=build_dir)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     log_v('write setup.py into {}'.format(file_path), verbose)
     with open(file_path, 'w') as f:
@@ -1187,10 +1283,14 @@ def _jit_compile(file_path, verbose=False):
         py_version = py_version.decode()
         log_v(
             "Using Python interpreter: {}, version: {}".format(
+<<<<<<< HEAD
                 interpreter, py_version.strip()
             ),
             verbose,
         )
+=======
+                interpreter, py_version.strip()), verbose)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(
@@ -1244,9 +1344,15 @@ def run_cmd(command, verbose=False):
     # execute command
     try:
         if verbose:
+<<<<<<< HEAD
             return subprocess.check_call(
                 command, shell=True, stderr=subprocess.STDOUT
             )
+=======
+            return subprocess.check_call(command,
+                                         shell=True,
+                                         stderr=subprocess.STDOUT)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         else:
             return subprocess.check_call(command, shell=True, stdout=DEVNULL)
     except Exception:
@@ -1265,9 +1371,14 @@ def check_abi_compatibility(compiler, verbose=False):
         return True
 
     if not IS_WINDOWS:
+<<<<<<< HEAD
         cmd_out = subprocess.check_output(
             ['which', compiler], stderr=subprocess.STDOUT
         )
+=======
+        cmd_out = subprocess.check_output(['which', compiler],
+                                          stderr=subprocess.STDOUT)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         compiler_path = os.path.realpath(cmd_out.decode()).strip()
         # if not found any suitable compiler, raise warning
         if not any(
@@ -1297,9 +1408,14 @@ def check_abi_compatibility(compiler, verbose=False):
             version = version_info.strip().split('.')
         elif IS_WINDOWS:
             mini_required_version = MSVC_MINI_VERSION
+<<<<<<< HEAD
             compiler_info = subprocess.check_output(
                 compiler, stderr=subprocess.STDOUT
             )
+=======
+            compiler_info = subprocess.check_output(compiler,
+                                                    stderr=subprocess.STDOUT)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             try:
                 compiler_info = compiler_info.decode('UTF-8')
             except UnicodeDecodeError:
@@ -1322,10 +1438,15 @@ def check_abi_compatibility(compiler, verbose=False):
     if tuple(map(int, version)) >= mini_required_version:
         return True
     warnings.warn(
+<<<<<<< HEAD
         ABI_INCOMPATIBILITY_WARNING.format(
             user_compiler=compiler, version='.'.join(version)
         )
     )
+=======
+        ABI_INCOMPATIBILITY_WARNING.format(user_compiler=compiler,
+                                           version='.'.join(version)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return False
 
 

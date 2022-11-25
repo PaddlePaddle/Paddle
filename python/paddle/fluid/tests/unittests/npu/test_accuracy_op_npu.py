@@ -27,6 +27,7 @@ SEED = 2021
 
 
 class TestAccuracy(OpTest):
+
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -61,6 +62,7 @@ class TestAccuracy(OpTest):
 
 
 class TestAccuracy2(TestAccuracy):
+
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -85,6 +87,7 @@ class TestAccuracy2(TestAccuracy):
 
 
 class TestAccuracyType(TestAccuracy):
+
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()
@@ -109,6 +112,7 @@ class TestAccuracyType(TestAccuracy):
 
 
 class TestAccuracyType2(TestAccuracy):
+
     def setUp(self):
         self.op_type = "accuracy"
         self.set_npu()

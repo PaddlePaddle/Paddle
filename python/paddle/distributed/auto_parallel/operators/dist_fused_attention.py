@@ -24,6 +24,7 @@ from ..process_group import new_process_group
 
 
 class DistributedFusedAttention(DistributedOperatorImplContainer):
+
     def __init__(self, op_type):
         super().__init__(op_type)
 
@@ -34,6 +35,7 @@ register_distributed_operator_impl_container(
 
 
 class DistributedFusedAttentionImpl(DistributedOperatorImpl):
+
     def __init__(self, name):
         super().__init__(name)
         self._forward_implemented = True
@@ -59,8 +61,12 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
             if is_dim_shard(mapping):
                 return False
         if len(qkv_w_dims_mapping) != 4 or is_dim_replicate(
+<<<<<<< HEAD
             qkv_w_dims_mapping[head_axis]
         ):
+=======
+                qkv_w_dims_mapping[head_axis]):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return False
         if len(qkv_bias_dims_mapping) != 3 or is_dim_replicate(
             qkv_bias_dims_mapping[head_axis]
@@ -158,6 +164,7 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         # infer logic comm presentation
         head_axis = 1
         qkv_w = src_op.input('QKVW')[0]
+<<<<<<< HEAD
         qkv_w_col_dim_mapping = op_dist_attr.get_input_dims_mapping(qkv_w)[
             head_axis
         ]
@@ -166,6 +173,12 @@ class DistributedFusedAttentionImpl(DistributedOperatorImpl):
         ), "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
             qkv_w_col_dim_mapping
         )
+=======
+        qkv_w_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
+            qkv_w)[head_axis]
+        assert qkv_w_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
+            qkv_w_col_dim_mapping)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         process_mesh_shape = op_dist_attr.process_mesh.topology
         process_mesh_group = op_dist_attr.process_mesh.processes
 

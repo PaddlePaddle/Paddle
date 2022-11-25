@@ -97,10 +97,15 @@ def minimize_bfgs(
 
     if dtype not in ['float32', 'float64']:
         raise ValueError(
+<<<<<<< HEAD
             "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
                 dtype
             )
         )
+=======
+            "The dtype must be 'float32' or 'float64', but the specified is {}."
+            .format(dtype))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     op_name = 'minimize_bfgs'
     check_input_type(initial_position, 'initial_position', op_name)
@@ -146,10 +151,15 @@ def minimize_bfgs(
             )
         else:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'".format(
                     line_search_fn
                 )
             )
+=======
+                "Currently only support line_search_fn = 'strong_wolfe', but the specified is '{}'"
+                .format(line_search_fn))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         num_func_calls += ls_func_calls
 
         # --------------   update Hk   -------------- #
@@ -164,10 +174,16 @@ def minimize_bfgs(
 
         rhok_inv = paddle.dot(yk, sk)
         rhok = paddle.static.nn.cond(
+<<<<<<< HEAD
             rhok_inv == 0.0,
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
             lambda: 1.0 / rhok_inv,
         )
+=======
+            rhok_inv == 0.,
+            lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
+            lambda: 1. / rhok_inv)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         Vk_transpose = I - rhok * sk * yk.t()
         Vk = I - rhok * yk * sk.t()
@@ -182,8 +198,13 @@ def minimize_bfgs(
         gnorm = paddle.linalg.norm(g1, p=np.inf)
         pk_norm = paddle.linalg.norm(pk, p=np.inf)
         paddle.assign(
+<<<<<<< HEAD
             done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change), done
         )
+=======
+            done | (gnorm < tolerance_grad) | (pk_norm < tolerance_change),
+            done)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         paddle.assign(done, is_converge)
         # when alpha=0, there is no chance to get xk change.
         paddle.assign(done | (alpha == 0.0), done)

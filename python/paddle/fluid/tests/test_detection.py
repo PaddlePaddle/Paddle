@@ -28,6 +28,7 @@ paddle.enable_static()
 
 
 class LayerTest(unittest.TestCase):
+
     @classmethod
     def setUpClass(cls):
         cls.seed = 111
@@ -75,9 +76,11 @@ class LayerTest(unittest.TestCase):
 
 
 class TestDetection(unittest.TestCase):
+
     def test_detection_output(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             pb = layers.data(
                 name='prior_box',
                 shape=[10, 4],
@@ -112,6 +115,33 @@ class TestDetection(unittest.TestCase):
                 prior_box_var=pbv,
                 return_index=True,
             )
+=======
+            pb = layers.data(name='prior_box',
+                             shape=[10, 4],
+                             append_batch_size=False,
+                             dtype='float32')
+            pbv = layers.data(name='prior_box_var',
+                              shape=[10, 4],
+                              append_batch_size=False,
+                              dtype='float32')
+            loc = layers.data(name='target_box',
+                              shape=[2, 10, 4],
+                              append_batch_size=False,
+                              dtype='float32')
+            scores = layers.data(name='scores',
+                                 shape=[2, 10, 20],
+                                 append_batch_size=False,
+                                 dtype='float32')
+            out = layers.detection_output(scores=scores,
+                                          loc=loc,
+                                          prior_box=pb,
+                                          prior_box_var=pbv)
+            out2, index = layers.detection_output(scores=scores,
+                                                  loc=loc,
+                                                  prior_box=pb,
+                                                  prior_box_var=pbv,
+                                                  return_index=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(out)
             self.assertIsNotNone(out2)
             self.assertIsNotNone(index)
@@ -123,12 +153,19 @@ class TestDetection(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[4], dtype='float32')
             y = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
+<<<<<<< HEAD
             bcoder = layers.box_coder(
                 prior_box=x,
                 prior_box_var=[0.1, 0.2, 0.1, 0.2],
                 target_box=y,
                 code_type='encode_center_size',
             )
+=======
+            bcoder = layers.box_coder(prior_box=x,
+                                      prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                                      target_box=y,
+                                      code_type='encode_center_size')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(bcoder)
         print(str(program))
 
@@ -136,6 +173,7 @@ class TestDetection(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x1 = fluid.data(name='x1', shape=[10, 4], dtype='int32')
+<<<<<<< HEAD
             y1 = fluid.data(
                 name='y1', shape=[10, 4], dtype='float32', lod_level=1
             )
@@ -160,6 +198,30 @@ class TestDetection(unittest.TestCase):
                 target_box=y2,
                 code_type='encode_center_size',
             )
+=======
+            y1 = fluid.data(name='y1',
+                            shape=[10, 4],
+                            dtype='float32',
+                            lod_level=1)
+            x2 = fluid.data(name='x2', shape=[10, 4], dtype='float32')
+            y2 = fluid.data(name='y2',
+                            shape=[10, 4],
+                            dtype='int32',
+                            lod_level=1)
+
+            self.assertRaises(TypeError,
+                              layers.box_coder,
+                              prior_box=x1,
+                              prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                              target_box=y1,
+                              code_type='encode_center_size')
+            self.assertRaises(TypeError,
+                              layers.box_coder,
+                              prior_box=x2,
+                              prior_box_var=[0.1, 0.2, 0.1, 0.2],
+                              target_box=y2,
+                              code_type='encode_center_size')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_detection_api(self):
         program = Program()
@@ -168,12 +230,19 @@ class TestDetection(unittest.TestCase):
             y = layers.data(name='y', shape=[4], dtype='float32')
             z = layers.data(name='z', shape=[4], dtype='float32', lod_level=1)
             iou = layers.iou_similarity(x=x, y=y)
+<<<<<<< HEAD
             bcoder = layers.box_coder(
                 prior_box=x,
                 prior_box_var=y,
                 target_box=z,
                 code_type='encode_center_size',
             )
+=======
+            bcoder = layers.box_coder(prior_box=x,
+                                      prior_box_var=y,
+                                      target_box=z,
+                                      code_type='encode_center_size')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(iou)
             self.assertIsNotNone(bcoder)
 
@@ -181,6 +250,7 @@ class TestDetection(unittest.TestCase):
             self.assertIsNotNone(matched_indices)
             self.assertIsNotNone(matched_dist)
 
+<<<<<<< HEAD
             gt = layers.data(
                 name='gt', shape=[1, 1], dtype='int32', lod_level=1
             )
@@ -196,6 +266,25 @@ class TestDetection(unittest.TestCase):
             trg, trg_weight = layers.target_assign(
                 gt2, matched_indices, mismatch_value=0
             )
+=======
+            gt = layers.data(name='gt',
+                             shape=[1, 1],
+                             dtype='int32',
+                             lod_level=1)
+            trg, trg_weight = layers.target_assign(gt,
+                                                   matched_indices,
+                                                   mismatch_value=0)
+            self.assertIsNotNone(trg)
+            self.assertIsNotNone(trg_weight)
+
+            gt2 = layers.data(name='gt2',
+                              shape=[10, 4],
+                              dtype='float32',
+                              lod_level=1)
+            trg, trg_weight = layers.target_assign(gt2,
+                                                   matched_indices,
+                                                   mismatch_value=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(trg)
             self.assertIsNotNone(trg_weight)
 
@@ -204,6 +293,7 @@ class TestDetection(unittest.TestCase):
     def test_ssd_loss(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             pb = layers.data(
                 name='prior_box',
                 shape=[10, 4],
@@ -224,6 +314,26 @@ class TestDetection(unittest.TestCase):
             gt_label = layers.data(
                 name='gt_label', shape=[1], lod_level=1, dtype='int32'
             )
+=======
+            pb = layers.data(name='prior_box',
+                             shape=[10, 4],
+                             append_batch_size=False,
+                             dtype='float32')
+            pbv = layers.data(name='prior_box_var',
+                              shape=[10, 4],
+                              append_batch_size=False,
+                              dtype='float32')
+            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
+            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
+            gt_box = layers.data(name='gt_box',
+                                 shape=[4],
+                                 lod_level=1,
+                                 dtype='float32')
+            gt_label = layers.data(name='gt_label',
+                                   shape=[1],
+                                   lod_level=1,
+                                   dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
             self.assertIsNotNone(loss)
             self.assertEqual(loss.shape[-1], 1)
@@ -231,10 +341,12 @@ class TestDetection(unittest.TestCase):
 
 
 class TestPriorBox(unittest.TestCase):
+
     def test_prior_box(self):
         program = Program()
         with program_guard(program):
             data_shape = [3, 224, 224]
+<<<<<<< HEAD
             images = fluid.layers.data(
                 name='pixel', shape=data_shape, dtype='float32'
             )
@@ -247,18 +359,32 @@ class TestPriorBox(unittest.TestCase):
                 flip=True,
                 clip=True,
             )
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=data_shape,
+                                       dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.prior_box(input=conv1,
+                                        image=images,
+                                        min_sizes=[100.0],
+                                        aspect_ratios=[1.],
+                                        flip=True,
+                                        clip=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert len(box.shape) == 4
             assert box.shape == var.shape
             assert box.shape[3] == 4
 
 
 class TestPriorBox2(unittest.TestCase):
+
     def test_prior_box(self):
         program = Program()
         with program_guard(program):
             data_shape = [None, 3, None, None]
             images = fluid.data(name='pixel', shape=data_shape, dtype='float32')
             conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+<<<<<<< HEAD
             box, var = layers.prior_box(
                 input=conv1,
                 image=images,
@@ -267,16 +393,26 @@ class TestPriorBox2(unittest.TestCase):
                 flip=True,
                 clip=True,
             )
+=======
+            box, var = layers.prior_box(input=conv1,
+                                        image=images,
+                                        min_sizes=[100.0],
+                                        aspect_ratios=[1.],
+                                        flip=True,
+                                        clip=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert len(box.shape) == 4
             assert box.shape == var.shape
             assert box.shape[3] == 4
 
 
 class TestDensityPriorBox(unittest.TestCase):
+
     def test_density_prior_box(self):
         program = Program()
         with program_guard(program):
             data_shape = [3, 224, 224]
+<<<<<<< HEAD
             images = fluid.layers.data(
                 name='pixel', shape=data_shape, dtype='float32'
             )
@@ -289,17 +425,36 @@ class TestDensityPriorBox(unittest.TestCase):
                 fixed_ratios=[1.0],
                 clip=True,
             )
+=======
+            images = fluid.layers.data(name='pixel',
+                                       shape=data_shape,
+                                       dtype='float32')
+            conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+            box, var = layers.density_prior_box(input=conv1,
+                                                image=images,
+                                                densities=[3, 4],
+                                                fixed_sizes=[50., 60.],
+                                                fixed_ratios=[1.0],
+                                                clip=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             assert len(box.shape) == 4
             assert box.shape == var.shape
             assert box.shape[-1] == 4
 
 
 class TestAnchorGenerator(unittest.TestCase):
+
     def test_anchor_generator(self):
         data_shape = [3, 224, 224]
+<<<<<<< HEAD
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32'
         )
+=======
+        images = fluid.layers.data(name='pixel',
+                                   shape=data_shape,
+                                   dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conv1 = fluid.layers.conv2d(images, 3, 3, 2)
         anchor, var = fluid.layers.anchor_generator(
             input=conv1,
@@ -315,6 +470,7 @@ class TestAnchorGenerator(unittest.TestCase):
 
 
 class TestGenerateProposalLabels(unittest.TestCase):
+
     def check_out(self, outs):
         rois = outs[0]
         labels_int32 = outs[1]
@@ -336,6 +492,7 @@ class TestGenerateProposalLabels(unittest.TestCase):
     def test_generate_proposal_labels(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             rpn_rois = fluid.data(
                 name='rpn_rois', shape=[4, 4], dtype='float32', lod_level=1
             )
@@ -352,6 +509,29 @@ class TestGenerateProposalLabels(unittest.TestCase):
             max_overlap = fluid.data(
                 name='max_overlap', shape=[4], dtype='float32', lod_level=1
             )
+=======
+            rpn_rois = fluid.data(name='rpn_rois',
+                                  shape=[4, 4],
+                                  dtype='float32',
+                                  lod_level=1)
+            gt_classes = fluid.data(name='gt_classes',
+                                    shape=[6],
+                                    dtype='int32',
+                                    lod_level=1)
+            is_crowd = fluid.data(name='is_crowd',
+                                  shape=[6],
+                                  dtype='int32',
+                                  lod_level=1)
+            gt_boxes = fluid.data(name='gt_boxes',
+                                  shape=[6, 4],
+                                  dtype='float32',
+                                  lod_level=1)
+            im_info = fluid.data(name='im_info', shape=[1, 3], dtype='float32')
+            max_overlap = fluid.data(name='max_overlap',
+                                     shape=[4],
+                                     dtype='float32',
+                                     lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.class_nums = 5
             outs = fluid.layers.generate_proposal_labels(
                 rpn_rois=rpn_rois,
@@ -391,9 +571,11 @@ class TestGenerateProposalLabels(unittest.TestCase):
 
 
 class TestGenerateMaskLabels(unittest.TestCase):
+
     def test_generate_mask_labels(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             im_info = layers.data(
                 name='im_info',
                 shape=[1, 3],
@@ -448,12 +630,55 @@ class TestGenerateMaskLabels(unittest.TestCase):
                 num_classes=num_classes,
                 resolution=resolution,
             )
+=======
+            im_info = layers.data(name='im_info',
+                                  shape=[1, 3],
+                                  dtype='float32',
+                                  lod_level=1,
+                                  append_batch_size=False)
+            gt_classes = layers.data(name='gt_classes',
+                                     shape=[2, 1],
+                                     dtype='int32',
+                                     lod_level=1,
+                                     append_batch_size=False)
+            is_crowd = layers.data(name='is_crowd',
+                                   shape=[2, 1],
+                                   dtype='int32',
+                                   lod_level=1,
+                                   append_batch_size=False)
+            gt_segms = layers.data(name='gt_segms',
+                                   shape=[20, 2],
+                                   dtype='float32',
+                                   lod_level=3,
+                                   append_batch_size=False)
+            rois = layers.data(name='rois',
+                               shape=[4, 4],
+                               dtype='float32',
+                               lod_level=1,
+                               append_batch_size=False)
+            labels_int32 = layers.data(name='labels_int32',
+                                       shape=[4, 1],
+                                       dtype='int32',
+                                       lod_level=1,
+                                       append_batch_size=False)
+            num_classes = 5
+            resolution = 14
+            outs = fluid.layers.generate_mask_labels(im_info=im_info,
+                                                     gt_classes=gt_classes,
+                                                     is_crowd=is_crowd,
+                                                     gt_segms=gt_segms,
+                                                     rois=rois,
+                                                     labels_int32=labels_int32,
+                                                     num_classes=num_classes,
+                                                     resolution=resolution)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             mask_rois, roi_has_mask_int32, mask_int32 = outs
             assert mask_rois.shape[1] == 4
             assert mask_int32.shape[1] == num_classes * resolution * resolution
 
 
 class TestMultiBoxHead(unittest.TestCase):
+
     def test_multi_box_head(self):
         data_shape = [3, 224, 224]
         mbox_locs, mbox_confs, box, var = self.multi_box_head_output(data_shape)
@@ -464,9 +689,15 @@ class TestMultiBoxHead(unittest.TestCase):
         assert mbox_locs.shape[1] == mbox_confs.shape[1]
 
     def multi_box_head_output(self, data_shape):
+<<<<<<< HEAD
         images = fluid.layers.data(
             name='pixel', shape=data_shape, dtype='float32'
         )
+=======
+        images = fluid.layers.data(name='pixel',
+                                   shape=data_shape,
+                                   dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         conv1 = fluid.layers.conv2d(images, 3, 3, 2)
         conv2 = fluid.layers.conv2d(conv1, 3, 3, 2)
         conv3 = fluid.layers.conv2d(conv2, 3, 3, 2)
@@ -497,9 +728,11 @@ class TestMultiBoxHead(unittest.TestCase):
 
 
 class TestDetectionMAP(unittest.TestCase):
+
     def test_detection_map(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             detect_res = layers.data(
                 name='detect_res',
                 shape=[10, 6],
@@ -512,6 +745,16 @@ class TestDetectionMAP(unittest.TestCase):
                 append_batch_size=False,
                 dtype='float32',
             )
+=======
+            detect_res = layers.data(name='detect_res',
+                                     shape=[10, 6],
+                                     append_batch_size=False,
+                                     dtype='float32')
+            label = layers.data(name='label',
+                                shape=[10, 6],
+                                append_batch_size=False,
+                                dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             map_out = detection.detection_map(detect_res, label, 21)
             self.assertIsNotNone(map_out)
@@ -520,6 +763,7 @@ class TestDetectionMAP(unittest.TestCase):
 
 
 class TestRpnTargetAssign(unittest.TestCase):
+
     def test_rpn_target_assign(self):
         program = Program()
         with program_guard(program):
@@ -527,6 +771,7 @@ class TestRpnTargetAssign(unittest.TestCase):
             cls_logits_shape = [10, 50, 2]
             anchor_shape = [50, 4]
 
+<<<<<<< HEAD
             bbox_pred = layers.data(
                 name='bbox_pred',
                 shape=bbox_pred_shape,
@@ -583,6 +828,51 @@ class TestRpnTargetAssign(unittest.TestCase):
                 rpn_negative_overlap=0.3,
                 use_random=False,
             )
+=======
+            bbox_pred = layers.data(name='bbox_pred',
+                                    shape=bbox_pred_shape,
+                                    append_batch_size=False,
+                                    dtype='float32')
+            cls_logits = layers.data(name='cls_logits',
+                                     shape=cls_logits_shape,
+                                     append_batch_size=False,
+                                     dtype='float32')
+            anchor_box = layers.data(name='anchor_box',
+                                     shape=anchor_shape,
+                                     append_batch_size=False,
+                                     dtype='float32')
+            anchor_var = layers.data(name='anchor_var',
+                                     shape=anchor_shape,
+                                     append_batch_size=False,
+                                     dtype='float32')
+            gt_boxes = layers.data(name='gt_boxes',
+                                   shape=[4],
+                                   lod_level=1,
+                                   dtype='float32')
+            is_crowd = layers.data(name='is_crowd',
+                                   shape=[1, 10],
+                                   dtype='int32',
+                                   lod_level=1,
+                                   append_batch_size=False)
+            im_info = layers.data(name='im_info',
+                                  shape=[1, 3],
+                                  dtype='float32',
+                                  lod_level=1,
+                                  append_batch_size=False)
+            outs = layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                            cls_logits=cls_logits,
+                                            anchor_box=anchor_box,
+                                            anchor_var=anchor_var,
+                                            gt_boxes=gt_boxes,
+                                            is_crowd=is_crowd,
+                                            im_info=im_info,
+                                            rpn_batch_size_per_im=256,
+                                            rpn_straddle_thresh=0.0,
+                                            rpn_fg_fraction=0.5,
+                                            rpn_positive_overlap=0.7,
+                                            rpn_negative_overlap=0.3,
+                                            use_random=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             pred_scores = outs[0]
             pred_loc = outs[1]
             tgt_lbl = outs[2]
@@ -601,6 +891,7 @@ class TestRpnTargetAssign(unittest.TestCase):
 
 
 class TestGenerateProposals(LayerTest):
+
     def test_generate_proposals(self):
         scores_np = np.random.rand(2, 3, 4, 4).astype('float32')
         bbox_deltas_np = np.random.rand(2, 12, 4, 4).astype('float32')
@@ -611,6 +902,7 @@ class TestGenerateProposals(LayerTest):
         variances_np = np.ones((4, 4, 3, 4)).astype('float32')
 
         with self.static_graph():
+<<<<<<< HEAD
             scores = fluid.data(
                 name='scores', shape=[2, 3, 4, 4], dtype='float32'
             )
@@ -624,6 +916,21 @@ class TestGenerateProposals(LayerTest):
             variances = fluid.data(
                 name='var', shape=[4, 4, 3, 4], dtype='float32'
             )
+=======
+            scores = fluid.data(name='scores',
+                                shape=[2, 3, 4, 4],
+                                dtype='float32')
+            bbox_deltas = fluid.data(name='bbox_deltas',
+                                     shape=[2, 12, 4, 4],
+                                     dtype='float32')
+            im_info = fluid.data(name='im_info', shape=[2, 3], dtype='float32')
+            anchors = fluid.data(name='anchors',
+                                 shape=[4, 4, 3, 4],
+                                 dtype='float32')
+            variances = fluid.data(name='var',
+                                   shape=[4, 4, 3, 4],
+                                   dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             rois, roi_probs, rois_num = fluid.layers.generate_proposals(
                 scores,
                 bbox_deltas,
@@ -676,6 +983,7 @@ class TestGenerateProposals(LayerTest):
 
 
 class TestYoloDetection(unittest.TestCase):
+
     def test_yolov3_loss(self):
         program = Program()
         with program_guard(program):
@@ -683,6 +991,7 @@ class TestYoloDetection(unittest.TestCase):
             gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
             gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
             gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
+<<<<<<< HEAD
             loss = layers.yolov3_loss(
                 x,
                 gt_box,
@@ -695,6 +1004,16 @@ class TestYoloDetection(unittest.TestCase):
                 gt_score=gt_score,
                 use_label_smooth=False,
             )
+=======
+            loss = layers.yolov3_loss(x,
+                                      gt_box,
+                                      gt_label, [10, 13, 30, 13], [0, 1],
+                                      10,
+                                      0.7,
+                                      32,
+                                      gt_score=gt_score,
+                                      use_label_smooth=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertIsNotNone(loss)
 
@@ -716,6 +1035,7 @@ class TestYoloDetection(unittest.TestCase):
             gt_box = layers.data(name='gt_box', shape=[10, 4], dtype='float32')
             gt_label = layers.data(name='gt_label', shape=[10], dtype='int32')
             gt_score = layers.data(name='gt_score', shape=[10], dtype='float32')
+<<<<<<< HEAD
             loss = layers.yolov3_loss(
                 x,
                 gt_box,
@@ -729,6 +1049,17 @@ class TestYoloDetection(unittest.TestCase):
                 use_label_smooth=False,
                 scale_x_y=1.2,
             )
+=======
+            loss = layers.yolov3_loss(x,
+                                      gt_box,
+                                      gt_label, [10, 13, 30, 13], [0, 1],
+                                      10,
+                                      0.7,
+                                      32,
+                                      gt_score=gt_score,
+                                      use_label_smooth=False,
+                                      scale_x_y=1.2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertIsNotNone(loss)
 
@@ -737,32 +1068,56 @@ class TestYoloDetection(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[30, 7, 7], dtype='float32')
             img_size = layers.data(name='img_size', shape=[2], dtype='int32')
+<<<<<<< HEAD
             boxes, scores = layers.yolo_box(
                 x, img_size, [10, 13, 30, 13], 10, 0.01, 32, scale_x_y=1.2
             )
+=======
+            boxes, scores = layers.yolo_box(x,
+                                            img_size, [10, 13, 30, 13],
+                                            10,
+                                            0.01,
+                                            32,
+                                            scale_x_y=1.2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(boxes)
             self.assertIsNotNone(scores)
 
 
 class TestBoxClip(unittest.TestCase):
+
     def test_box_clip(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             input_box = layers.data(
                 name='input_box', shape=[7, 4], dtype='float32', lod_level=1
             )
+=======
+            input_box = layers.data(name='input_box',
+                                    shape=[7, 4],
+                                    dtype='float32',
+                                    lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             im_info = layers.data(name='im_info', shape=[3], dtype='float32')
             out = layers.box_clip(input_box, im_info)
             self.assertIsNotNone(out)
 
 
 class TestMulticlassNMS(unittest.TestCase):
+
     def test_multiclass_nms(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             bboxes = layers.data(
                 name='bboxes', shape=[-1, 10, 4], dtype='float32'
             )
+=======
+            bboxes = layers.data(name='bboxes',
+                                 shape=[-1, 10, 4],
+                                 dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
             output = layers.multiclass_nms(bboxes, scores, 0.3, 400, 200, 0.7)
             self.assertIsNotNone(output)
@@ -770,6 +1125,7 @@ class TestMulticlassNMS(unittest.TestCase):
     def test_multiclass_nms_error(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             bboxes1 = fluid.data(
                 name='bboxes1', shape=[10, 10, 4], dtype='int32'
             )
@@ -798,12 +1154,40 @@ class TestMulticlassNMS(unittest.TestCase):
                 nms_top_k=400,
                 keep_top_k=200,
             )
+=======
+            bboxes1 = fluid.data(name='bboxes1',
+                                 shape=[10, 10, 4],
+                                 dtype='int32')
+            scores1 = fluid.data(name='scores1',
+                                 shape=[10, 10],
+                                 dtype='float32')
+            bboxes2 = fluid.data(name='bboxes2',
+                                 shape=[10, 10, 4],
+                                 dtype='float32')
+            scores2 = fluid.data(name='scores2', shape=[10, 10], dtype='int32')
+            self.assertRaises(TypeError,
+                              layers.multiclass_nms,
+                              bboxes=bboxes1,
+                              scores=scores1,
+                              score_threshold=0.5,
+                              nms_top_k=400,
+                              keep_top_k=200)
+            self.assertRaises(TypeError,
+                              layers.multiclass_nms,
+                              bboxes=bboxes2,
+                              scores=scores2,
+                              score_threshold=0.5,
+                              nms_top_k=400,
+                              keep_top_k=200)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestMulticlassNMS2(unittest.TestCase):
+
     def test_multiclass_nms2(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             bboxes = layers.data(
                 name='bboxes', shape=[-1, 10, 4], dtype='float32'
             )
@@ -814,12 +1198,28 @@ class TestMulticlassNMS2(unittest.TestCase):
             output2, index = fluid.contrib.multiclass_nms2(
                 bboxes, scores, 0.3, 400, 200, 0.7, return_index=True
             )
+=======
+            bboxes = layers.data(name='bboxes',
+                                 shape=[-1, 10, 4],
+                                 dtype='float32')
+            scores = layers.data(name='scores', shape=[-1, 10], dtype='float32')
+            output = fluid.contrib.multiclass_nms2(bboxes, scores, 0.3, 400,
+                                                   200, 0.7)
+            output2, index = fluid.contrib.multiclass_nms2(bboxes,
+                                                           scores,
+                                                           0.3,
+                                                           400,
+                                                           200,
+                                                           0.7,
+                                                           return_index=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(output)
             self.assertIsNotNone(output2)
             self.assertIsNotNone(index)
 
 
 class TestCollectFpnPropsals(LayerTest):
+
     def test_collect_fpn_proposals(self):
         multi_bboxes_np = []
         multi_scores_np = []
@@ -837,6 +1237,7 @@ class TestCollectFpnPropsals(LayerTest):
             multi_scores = []
             rois_num_per_level = []
             for i in range(4):
+<<<<<<< HEAD
                 bboxes = fluid.data(
                     name='rois' + str(i),
                     shape=[5, 4],
@@ -852,6 +1253,19 @@ class TestCollectFpnPropsals(LayerTest):
                 rois_num = fluid.data(
                     name='rois_num' + str(i), shape=[None], dtype='int32'
                 )
+=======
+                bboxes = fluid.data(name='rois' + str(i),
+                                    shape=[5, 4],
+                                    dtype='float32',
+                                    lod_level=1)
+                scores = fluid.data(name='scores' + str(i),
+                                    shape=[5, 1],
+                                    dtype='float32',
+                                    lod_level=1)
+                rois_num = fluid.data(name='rois_num' + str(i),
+                                      shape=[None],
+                                      dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 multi_bboxes.append(bboxes)
                 multi_scores.append(scores)
@@ -902,10 +1316,12 @@ class TestCollectFpnPropsals(LayerTest):
         np.testing.assert_array_equal(rois_num_stat, rois_num_dy)
 
     def test_collect_fpn_proposals_error(self):
+
         def generate_input(bbox_type, score_type, name):
             multi_bboxes = []
             multi_scores = []
             for i in range(4):
+<<<<<<< HEAD
                 bboxes = fluid.data(
                     name='rois' + name + str(i),
                     shape=[10, 4],
@@ -918,12 +1334,23 @@ class TestCollectFpnPropsals(LayerTest):
                     dtype=score_type,
                     lod_level=1,
                 )
+=======
+                bboxes = fluid.data(name='rois' + name + str(i),
+                                    shape=[10, 4],
+                                    dtype=bbox_type,
+                                    lod_level=1)
+                scores = fluid.data(name='scores' + name + str(i),
+                                    shape=[10, 1],
+                                    dtype=score_type,
+                                    lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 multi_bboxes.append(bboxes)
                 multi_scores.append(scores)
             return multi_bboxes, multi_scores
 
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             bbox1 = fluid.data(
                 name='rois', shape=[5, 10, 4], dtype='float32', lod_level=1
             )
@@ -949,9 +1376,35 @@ class TestCollectFpnPropsals(LayerTest):
                 max_level=5,
                 post_nms_top_n=2000,
             )
+=======
+            bbox1 = fluid.data(name='rois',
+                               shape=[5, 10, 4],
+                               dtype='float32',
+                               lod_level=1)
+            score1 = fluid.data(name='scores',
+                                shape=[5, 10, 1],
+                                dtype='float32',
+                                lod_level=1)
+            bbox2, score2 = generate_input('int32', 'float32', '2')
+            self.assertRaises(TypeError,
+                              layers.collect_fpn_proposals,
+                              multi_rois=bbox1,
+                              multi_scores=score1,
+                              min_level=2,
+                              max_level=5,
+                              post_nms_top_n=2000)
+            self.assertRaises(TypeError,
+                              layers.collect_fpn_proposals,
+                              multi_rois=bbox2,
+                              multi_scores=score2,
+                              min_level=2,
+                              max_level=5,
+                              post_nms_top_n=2000)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestDistributeFpnProposals(LayerTest):
+
     def test_distribute_fpn_proposals(self):
         rois_np = np.random.rand(10, 4).astype('float32')
         rois_num_np = np.array([4, 6]).astype('int32')
@@ -971,11 +1424,20 @@ class TestDistributeFpnProposals(LayerTest):
                 rois_num=rois_num,
             )
             fetch_list = multi_rois + [restore_ind] + rois_num_per_level
+<<<<<<< HEAD
             output_stat = self.get_static_graph_result(
                 feed={'rois': rois_np, 'rois_num': rois_num_np},
                 fetch_list=fetch_list,
                 with_lod=True,
             )
+=======
+            output_stat = self.get_static_graph_result(feed={
+                'rois': rois_np,
+                'rois_num': rois_num_np
+            },
+                                                       fetch_list=fetch_list,
+                                                       with_lod=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             output_stat_np = []
             for output in output_stat:
                 output_np = np.array(output)
@@ -1011,6 +1473,7 @@ class TestDistributeFpnProposals(LayerTest):
     def test_distribute_fpn_proposals_error(self):
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             fpn_rois = fluid.data(
                 name='data_error', shape=[10, 4], dtype='int32', lod_level=1
             )
@@ -1023,14 +1486,29 @@ class TestDistributeFpnProposals(LayerTest):
                 refer_level=4,
                 refer_scale=224,
             )
+=======
+            fpn_rois = fluid.data(name='data_error',
+                                  shape=[10, 4],
+                                  dtype='int32',
+                                  lod_level=1)
+            self.assertRaises(TypeError,
+                              layers.distribute_fpn_proposals,
+                              fpn_rois=fpn_rois,
+                              min_level=2,
+                              max_level=5,
+                              refer_level=4,
+                              refer_scale=224)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestBoxDecoderAndAssign(unittest.TestCase):
+
     def test_box_decoder_and_assign(self):
         program = Program()
         with program_guard(program):
             pb = fluid.data(name='prior_box', shape=[None, 4], dtype='float32')
             pbv = fluid.data(name='prior_box_var', shape=[4], dtype='float32')
+<<<<<<< HEAD
             loc = fluid.data(
                 name='target_box', shape=[None, 4 * 81], dtype='float32'
             )
@@ -1041,11 +1519,23 @@ class TestBoxDecoderAndAssign(unittest.TestCase):
                 decoded_box,
                 output_assign_box,
             ) = fluid.layers.box_decoder_and_assign(pb, pbv, loc, scores, 4.135)
+=======
+            loc = fluid.data(name='target_box',
+                             shape=[None, 4 * 81],
+                             dtype='float32')
+            scores = fluid.data(name='scores',
+                                shape=[None, 81],
+                                dtype='float32')
+            decoded_box, output_assign_box = fluid.layers.box_decoder_and_assign(
+                pb, pbv, loc, scores, 4.135)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertIsNotNone(decoded_box)
             self.assertIsNotNone(output_assign_box)
 
     def test_box_decoder_and_assign_error(self):
+
         def generate_input(pb_type, pbv_type, loc_type, score_type, name):
+<<<<<<< HEAD
             pb = fluid.data(
                 name='prior_box' + name, shape=[None, 4], dtype=pb_type
             )
@@ -1058,10 +1548,25 @@ class TestBoxDecoderAndAssign(unittest.TestCase):
             scores = fluid.data(
                 name='scores' + name, shape=[None, 81], dtype=score_type
             )
+=======
+            pb = fluid.data(name='prior_box' + name,
+                            shape=[None, 4],
+                            dtype=pb_type)
+            pbv = fluid.data(name='prior_box_var' + name,
+                             shape=[4],
+                             dtype=pbv_type)
+            loc = fluid.data(name='target_box' + name,
+                             shape=[None, 4 * 81],
+                             dtype=loc_type)
+            scores = fluid.data(name='scores' + name,
+                                shape=[None, 81],
+                                dtype=score_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             return pb, pbv, loc, scores
 
         program = Program()
         with program_guard(program):
+<<<<<<< HEAD
             pb1, pbv1, loc1, scores1 = generate_input(
                 'int32', 'float32', 'float32', 'float32', '1'
             )
@@ -1098,6 +1603,35 @@ class TestBoxDecoderAndAssign(unittest.TestCase):
                 box_score=scores3,
                 box_clip=4.0,
             )
+=======
+            pb1, pbv1, loc1, scores1 = generate_input('int32', 'float32',
+                                                      'float32', 'float32', '1')
+            pb2, pbv2, loc2, scores2 = generate_input('float32', 'float32',
+                                                      'int32', 'float32', '2')
+            pb3, pbv3, loc3, scores3 = generate_input('float32', 'float32',
+                                                      'float32', 'int32', '3')
+            self.assertRaises(TypeError,
+                              layers.box_decoder_and_assign,
+                              prior_box=pb1,
+                              prior_box_var=pbv1,
+                              target_box=loc1,
+                              box_score=scores1,
+                              box_clip=4.0)
+            self.assertRaises(TypeError,
+                              layers.box_decoder_and_assign,
+                              prior_box=pb2,
+                              prior_box_var=pbv2,
+                              target_box=loc2,
+                              box_score=scores2,
+                              box_clip=4.0)
+            self.assertRaises(TypeError,
+                              layers.box_decoder_and_assign,
+                              prior_box=pb3,
+                              prior_box_var=pbv3,
+                              target_box=loc3,
+                              box_score=scores3,
+                              box_clip=4.0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

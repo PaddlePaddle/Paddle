@@ -22,6 +22,7 @@ paddle.enable_static()
 
 
 class TestSeedOpFixSeed(OpTest):
+
     def setUp(self):
         self.op_type = "seed"
         self.inputs = {}
@@ -33,6 +34,7 @@ class TestSeedOpFixSeed(OpTest):
 
 
 class TestSeedOpDiffSeed(OpTest):
+
     def setUp(self):
         self.op_type = "seed"
         self.inputs = {}
@@ -44,6 +46,7 @@ class TestSeedOpDiffSeed(OpTest):
 
 
 class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
+
     def setUp(self):
         paddle.framework.random.set_random_seed_generator('seed0', 123)
         paddle.framework.random.set_random_seed_generator('seed1', 123)

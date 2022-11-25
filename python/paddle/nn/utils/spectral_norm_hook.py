@@ -26,15 +26,24 @@ def normal_(x, mean=0.0, std=1.0):
     return x
 
 
+<<<<<<< HEAD
 class SpectralNorm:
+=======
+class SpectralNorm(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, name='weight', n_power_iterations=1, dim=0, eps=1e-12):
         self.name = name
         self.dim = dim
         if n_power_iterations <= 0:
             raise ValueError(
                 'Expected n_power_iterations to be positive, but '
+<<<<<<< HEAD
                 'got n_power_iterations={}'.format(n_power_iterations)
             )
+=======
+                'got n_power_iterations={}'.format(n_power_iterations))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.n_power_iterations = n_power_iterations
         self.eps = eps
 
@@ -43,9 +52,14 @@ class SpectralNorm:
         if self.dim != 0:
             # transpose dim to front
             weight_mat = weight_mat.transpose(
+<<<<<<< HEAD
                 [self.dim]
                 + [d for d in range(weight_mat.dim()) if d != self.dim]
             )
+=======
+                [self.dim] +
+                [d for d in range(weight_mat.dim()) if d != self.dim])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         height = weight_mat.shape[0]
 
@@ -62,6 +76,7 @@ class SpectralNorm:
                 for _ in range(self.n_power_iterations):
                     v.set_value(
                         F.normalize(
+<<<<<<< HEAD
                             paddle.matmul(
                                 weight_mat,
                                 u,
@@ -72,14 +87,27 @@ class SpectralNorm:
                             epsilon=self.eps,
                         )
                     )
+=======
+                            paddle.matmul(weight_mat,
+                                          u,
+                                          transpose_x=True,
+                                          transpose_y=False),
+                            axis=0,
+                            epsilon=self.eps,
+                        ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     u.set_value(
                         F.normalize(
                             paddle.matmul(weight_mat, v),
                             axis=0,
                             epsilon=self.eps,
+<<<<<<< HEAD
                         )
                     )
+=======
+                        ))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if self.n_power_iterations > 0:
                     u = u.clone()
                     v = v.clone()
@@ -89,11 +117,16 @@ class SpectralNorm:
         return weight
 
     def __call__(self, layer, inputs):
+<<<<<<< HEAD
         setattr(
             layer,
             self.name,
             self.compute_weight(layer, do_power_iteration=layer.training),
         )
+=======
+        setattr(layer, self.name,
+                self.compute_weight(layer, do_power_iteration=layer.training))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @staticmethod
     def apply(layer, name, n_power_iterations, dim, eps):
@@ -206,8 +239,13 @@ def spectral_norm(
 
     if dim is None:
         if isinstance(
+<<<<<<< HEAD
             layer, (Conv1DTranspose, Conv2DTranspose, Conv3DTranspose, Linear)
         ):
+=======
+                layer,
+            (Conv1DTranspose, Conv2DTranspose, Conv3DTranspose, Linear)):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             dim = 1
         else:
             dim = 0

@@ -448,7 +448,11 @@ void VarBase::_CopyGradientFrom(const VarBase& src) {
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
+<<<<<<< HEAD
     auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+=======
+    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
                       true,
                       platform::errors::InvalidArgument(
@@ -583,7 +587,11 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
+<<<<<<< HEAD
       PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
+=======
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));

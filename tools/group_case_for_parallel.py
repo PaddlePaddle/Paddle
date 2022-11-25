@@ -19,6 +19,7 @@ import sys
 def group_case_for_parallel(rootPath):
     """group cases"""
 
+<<<<<<< HEAD
     # wget file
     for filename in [
         'nightly_case',
@@ -35,6 +36,19 @@ def group_case_for_parallel(rootPath):
         )
 
     # get nightly tests
+=======
+    #wget file
+    for filename in [
+            'nightly_case', 'single_card_tests', 'single_card_tests_mem0',
+            'multiple_card_tests', 'multiple_card_tests_mem0',
+            'exclusive_card_tests', 'exclusive_card_tests_mem0'
+    ]:
+        os.system(
+            'cd %s/tools && wget --no-proxy https://paddle-docker-tar.bj.bcebos.com/pre_test_bak/%s --no-check-certificate'
+            % (rootPath, filename))
+
+    #get nightly tests
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     nightly_tests_file = open('%s/tools/nightly_case' % rootPath, 'r')
     nightly_tests = nightly_tests_file.read().strip().split('\n')
     nightly_tests_file.close()
@@ -45,7 +59,11 @@ def group_case_for_parallel(rootPath):
         '%s/tools/multiple_card_tests_mem0' % rootPath,
         '%s/tools/multiple_card_tests' % rootPath,
         '%s/tools/exclusive_card_tests_mem0' % rootPath,
+<<<<<<< HEAD
         '%s/tools/exclusive_card_tests' % rootPath,
+=======
+        '%s/tools/exclusive_card_tests' % rootPath
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     ]
     case_file = '%s/build/ut_list' % rootPath
     if os.path.exists(case_file):
@@ -72,14 +90,22 @@ def group_case_for_parallel(rootPath):
         for line in lines:
             case_line_list = line.replace('^', '').replace('|', '').split('$')
             new_case_line_list = list(
+<<<<<<< HEAD
                 set(all_need_run_cases).intersection(set(case_line_list))
             )
+=======
+                set(all_need_run_cases).intersection(set(case_line_list)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             if len(new_case_line_list) != 0:
                 new_case_file_list.append(new_case_line_list)
                 all_group_case += new_case_line_list
                 all_need_run_cases = list(
+<<<<<<< HEAD
                     set(all_need_run_cases).difference(set(all_group_case))
                 )
+=======
+                    set(all_need_run_cases).difference(set(all_group_case)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         for line in new_case_file_list:
             cases = '$|^'.join(case for case in line)
@@ -88,7 +114,11 @@ def group_case_for_parallel(rootPath):
         fi.close()
         new_f.close()
 
+<<<<<<< HEAD
     # no parallel cases
+=======
+    #no parallel cases
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     cases = '^job'
     if len(all_need_run_cases) != 0:
         for case in all_need_run_cases:

@@ -18,7 +18,11 @@ import math
 import shutil
 import logging
 import numpy as np
+<<<<<<< HEAD
 
+=======
+import shutil
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 try:
     from tqdm import tqdm
 except:
@@ -50,9 +54,15 @@ __all__ = [
     'PostTrainingQuantizationProgram',
 ]
 
+<<<<<<< HEAD
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+=======
+_logger = get_logger(__name__,
+                     logging.INFO,
+                     fmt='%(asctime)s-%(levelname)s: %(message)s')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 def _all_persistable_var_names(program):
@@ -424,6 +434,7 @@ class PostTrainingQuantization:
         if self._algo in ["KL", "hist"]:
             batch_id = 0
             with tqdm(
+<<<<<<< HEAD
                 total=self._batch_nums,
                 bar_format='Preparation stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
                 ncols=80,
@@ -436,6 +447,18 @@ class PostTrainingQuantization:
                         return_numpy=False,
                         scope=self._scope,
                     )
+=======
+                    total=self._batch_nums,
+                    bar_format=
+                    'Preparation stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                    ncols=80) as t:
+                for data in self._data_loader():
+                    self._executor.run(program=self._program,
+                                       feed=data,
+                                       fetch_list=self._fetch_list,
+                                       return_numpy=False,
+                                       scope=self._scope)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     self._collect_activation_abs_min_max()
                     batch_id += 1
                     t.update()
@@ -444,6 +467,7 @@ class PostTrainingQuantization:
             self._init_sampling_act_histogram()
 
         batch_id = 0
+<<<<<<< HEAD
         with tqdm(
             total=self._batch_nums,
             bar_format='Sampling stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
@@ -457,6 +481,18 @@ class PostTrainingQuantization:
                     return_numpy=False,
                     scope=self._scope,
                 )
+=======
+        with tqdm(total=self._batch_nums,
+                  bar_format=
+                  'Sampling stage, Run batch:|{bar}| {n_fmt}/{total_fmt}',
+                  ncols=80) as t:
+            for data in self._data_loader():
+                self._executor.run(program=self._program,
+                                   feed=data,
+                                   fetch_list=self._fetch_list,
+                                   return_numpy=False,
+                                   scope=self._scope)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._sampling()
                 batch_id += 1
                 t.update()
@@ -507,6 +543,7 @@ class PostTrainingQuantization:
             scale_dict = self._quantized_var_threshold
         else:
             scale_dict = self._quantized_threshold
+<<<<<<< HEAD
         run_adaround(
             self._data_loader,
             self._program,
@@ -521,6 +558,20 @@ class PostTrainingQuantization:
             bias_correction=self._bias_correction,
             lr=self._learning_rate,
         )
+=======
+        run_adaround(self._data_loader,
+                     self._program,
+                     self._fetch_list,
+                     self._executor,
+                     self._scope,
+                     self._place,
+                     self._quantized_op_pairs,
+                     self._weight_op_pairs,
+                     scale_dict,
+                     num_iterations=self._batch_nums,
+                     bias_correction=self._bias_correction,
+                     lr=self._learning_rate)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def save_quantized_model(
         self, save_model_path, model_filename=None, params_filename=None
@@ -539,6 +590,7 @@ class PostTrainingQuantization:
         Returns:
             None
         '''
+<<<<<<< HEAD
         io.save_inference_model(
             dirname=save_model_path,
             model_filename=model_filename,
@@ -549,6 +601,17 @@ class PostTrainingQuantization:
             main_program=self._program,
             clip_extra=self._clip_extra,
         )
+=======
+        clip_extra = True if self._onnx_format else False
+        io.save_inference_model(dirname=save_model_path,
+                                model_filename=model_filename,
+                                params_filename=params_filename,
+                                feeded_var_names=self._feed_list,
+                                target_vars=self._fetch_list,
+                                executor=self._executor,
+                                main_program=self._program,
+                                clip_extra=clip_extra)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         _logger.info("The quantized model is saved in " + save_model_path)
 
     def _load_model_data(self):
@@ -581,6 +644,7 @@ class PostTrainingQuantization:
                 self._batch_nums if self._batch_nums else len(self._data_loader)
             )
             return
+<<<<<<< HEAD
         self._data_loader = io.DataLoader.from_generator(
             feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True
         )
@@ -600,6 +664,20 @@ class PostTrainingQuantization:
             if self._batch_nums
             else len(list(self._data_loader))
         )
+=======
+        self._data_loader = io.DataLoader.from_generator(feed_list=feed_vars,
+                                                         capacity=3 *
+                                                         self._batch_size,
+                                                         iterable=True)
+        if self._sample_generator is not None:
+            self._data_loader.set_sample_generator(self._sample_generator,
+                                                   batch_size=self._batch_size,
+                                                   drop_last=True,
+                                                   places=self._place)
+        elif self._batch_generator is not None:
+            self._data_loader.set_batch_generator(self._batch_generator,
+                                                  places=self._place)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _optimize_fp32_model(self):
         '''
@@ -654,6 +732,7 @@ class PostTrainingQuantization:
                     )
                 # For quantized ops, sample inputs and outputs
                 if op_type in self._quantizable_op_type:
+<<<<<<< HEAD
                     collect_var_name(
                         utils._get_op_input_var_names(op),
                         persistable_var_names,
@@ -664,6 +743,12 @@ class PostTrainingQuantization:
                         persistable_var_names,
                         op_type,
                     )
+=======
+                    collect_var_name(utils._get_op_input_var_names(op),
+                                     persistable_var_names, op_type)
+                    collect_var_name(utils._get_op_output_var_names(op),
+                                     persistable_var_names, op_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     # collect quanted op output var name
                     for out_var_name in utils._get_op_output_var_names(op):
                         for in_var_name in utils._get_op_input_var_names(op):
@@ -673,11 +758,16 @@ class PostTrainingQuantization:
                                 ] = out_var_name
                 # For other op, only sample output scale
                 elif op_type in self._out_scale_op_list:
+<<<<<<< HEAD
                     collect_var_name(
                         utils._get_op_output_var_names(op),
                         persistable_var_names,
                         op_type,
                     )
+=======
+                    collect_var_name(utils._get_op_output_var_names(op),
+                                     persistable_var_names, op_type)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _set_activation_persistable(self):
         '''
@@ -751,6 +841,7 @@ class PostTrainingQuantization:
             while s <= 1.0:
                 scale = s * abs_max_value
                 s += 0.02
+<<<<<<< HEAD
                 bins = 2 ** (self._activation_bits - 1) - 1
                 if self._onnx_format:
                     quant_var = np.clip(
@@ -764,6 +855,18 @@ class PostTrainingQuantization:
                         * scale
                     )
                 mse_loss = ((var_tensor - quant_dequant_var) ** 2).mean()
+=======
+                bins = 2**(self._activation_bits - 1) - 1
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
+                mse_loss = ((var_tensor - quant_dequant_var)**2).mean()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 if mse_loss <= self._best_calibration_loss[var_name]:
                     self._best_calibration_loss[var_name] = mse_loss
                     self._quantized_threshold[var_name] = scale
@@ -802,6 +905,7 @@ class PostTrainingQuantization:
             while s <= 1.0:
                 scale = s * abs_max_value
                 s += 0.02
+<<<<<<< HEAD
                 bins = 2 ** (self._activation_bits - 1) - 1
                 if self._onnx_format:
                     quant_var = np.clip(
@@ -814,6 +918,17 @@ class PostTrainingQuantization:
                         / bins
                         * scale
                     )
+=======
+                bins = 2**(self._activation_bits - 1) - 1
+                if self._onnx_format:
+                    quant_var = np.clip(np.round(var_tensor / scale * bins),
+                                        -bins - 1, bins)
+                    quant_dequant_var = quant_var / bins * scale
+                else:
+                    quant_dequant_var = np.round(
+                        np.clip(var_tensor, 0.0, scale) / scale *
+                        bins) / bins * scale
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 emd_loss = np.abs(
                     np.mean(var_tensor) - np.mean(quant_dequant_var)
                 ) + np.abs(np.std(var_tensor) - np.std(quant_dequant_var))
@@ -1026,8 +1141,12 @@ class PostTrainingQuantization:
             max_value = float(np.max(var_tensor))
             if var_name not in self._sampling_act_abs_min_max:
                 self._sampling_act_abs_min_max[var_name] = [
+<<<<<<< HEAD
                     min_value,
                     max_value,
+=======
+                    min_value, max_value
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 ]
             else:
                 if min_value < self._sampling_act_abs_min_max[var_name][0]:
@@ -1043,9 +1162,15 @@ class PostTrainingQuantization:
             if var_name not in self._sampling_act_histogram:
                 min_val = self._sampling_act_abs_min_max[var_name][0]
                 max_val = self._sampling_act_abs_min_max[var_name][1]
+<<<<<<< HEAD
                 hist, hist_edeges = np.histogram(
                     [], bins=self._histogram_bins, range=(min_val, max_val)
                 )
+=======
+                hist, hist_edeges = np.histogram([],
+                                                 bins=self._histogram_bins,
+                                                 range=(min_val, max_val))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 self._sampling_act_histogram[var_name] = [hist, hist_edeges]
 
     def _calculate_kl_hist_threshold(self):
@@ -1154,6 +1279,7 @@ class PostTrainingQuantization:
             add_quant_dequant_pass.apply(sub_graph)
 
         # save threshold to scale var node
+<<<<<<< HEAD
         if self._scale_dict is None:
             if self._algo in ["KL", "hist"]:
                 scale_dict = self._quantized_var_threshold
@@ -1229,6 +1355,18 @@ class PostTrainingQuantization:
                 key + ".quant_dequant@scale",
                 np.array([val], dtype=np.float32),
             )
+=======
+        if self._algo in ["KL", "hist"]:
+            scale_dict = self._quantized_var_threshold
+        else:
+            scale_dict = self._quantized_threshold
+        for key, val in scale_dict.items():
+            utils.set_variable_data(self._scope, self._place, key + "@scale",
+                                    np.array([val], dtype=np.float32))
+            utils.set_variable_data(self._scope, self._place,
+                                    key + ".quant_dequant@scale",
+                                    np.array([val], dtype=np.float32))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if not self._onnx_format:
             # apply QuantizationFreezePass, and obtain the final quant model
@@ -1352,9 +1490,14 @@ class PostTrainingQuantization:
 
         for block_id in range(len(self._program.blocks)):
             for op in self._program.blocks[block_id].ops:
+<<<<<<< HEAD
                 if op.type in (
                     self._quantizable_op_type + self._out_scale_op_list
                 ):
+=======
+                if op.type in (self._quantizable_op_type +
+                               self._out_scale_op_list):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     out_var_names = utils._get_op_output_var_names(op)
                     for var_name in out_var_names:
                         analysis_and_save_info(op, var_name)
@@ -1580,6 +1723,7 @@ class WeightQuantization:
 
         if generate_test_model:
             test_model_dir = os.path.join(save_model_dir, "test_model")
+<<<<<<< HEAD
             self._quantize_weight_to_int(
                 test_model_dir,
                 save_model_filename,
@@ -1590,6 +1734,13 @@ class WeightQuantization:
                 True,
                 threshold_rate,
             )
+=======
+            self._quantize_weight_to_int(test_model_dir, save_model_filename,
+                                         save_params_filename,
+                                         quantizable_op_type, weight_bits,
+                                         weight_quantize_type, True,
+                                         threshold_rate)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def convert_weight_to_fp16(self, save_model_dir):
         """
@@ -1631,6 +1782,7 @@ class WeightQuantization:
             if self._params_filename is not None:
                 save_var_map[new_var.name] = new_var
             else:
+<<<<<<< HEAD
                 save_file_path = os.path.join(
                     os.path.normpath(save_model_dir), new_var.name
                 )
@@ -1643,6 +1795,19 @@ class WeightQuantization:
                         'save_as_fp16': True,
                     },
                 )
+=======
+                save_file_path = os.path.join(os.path.normpath(save_model_dir),
+                                              new_var.name)
+                save_block.append_op(type='save',
+                                     inputs={'X': [new_var]},
+                                     outputs={},
+                                     attrs={
+                                         'file_path':
+                                         os.path.normpath(save_file_path),
+                                         'save_as_fp16':
+                                         True
+                                     })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if self._params_filename is not None:
             save_var_list = []
@@ -1655,6 +1820,7 @@ class WeightQuantization:
             )
             saved_params_var.desc.set_persistable(True)
 
+<<<<<<< HEAD
             save_path = os.path.join(
                 os.path.normpath(save_model_dir), self._params_filename
             )
@@ -1664,6 +1830,17 @@ class WeightQuantization:
                 outputs={'Y': saved_params_var},
                 attrs={'file_path': save_path, 'save_as_fp16': True},
             )
+=======
+            save_path = os.path.join(os.path.normpath(save_model_dir),
+                                     self._params_filename)
+            save_block.append_op(type='save_combine',
+                                 inputs={'X': save_var_list},
+                                 outputs={'Y': saved_params_var},
+                                 attrs={
+                                     'file_path': save_path,
+                                     'save_as_fp16': True
+                                 })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         save_program._sync_with_cpp()
         exe.run(save_program)
@@ -1730,6 +1907,7 @@ class WeightQuantization:
                             scope, place, weight_bits, op, var_name, for_test
                         )
 
+<<<<<<< HEAD
         io.save_inference_model(
             dirname=save_model_dir,
             feeded_var_names=feed_list,
@@ -1739,6 +1917,15 @@ class WeightQuantization:
             model_filename=save_model_filename,
             params_filename=save_params_filename,
         )
+=======
+        io.save_inference_model(dirname=save_model_dir,
+                                feeded_var_names=feed_list,
+                                target_vars=fetch_list,
+                                executor=exe,
+                                main_program=program,
+                                model_filename=save_model_filename,
+                                params_filename=save_params_filename)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _weight_abs_max_quantization(
         self, scope, place, weight_bits, threshold_rate, op, var_name, for_test
@@ -1783,10 +1970,17 @@ class WeightQuantization:
         op._set_attr(var_name + "_quant_scale", [scale])  # Save as list
         op._set_attr("with_quant_attr", True)
 
+<<<<<<< HEAD
     def _weight_channel_wise_abs_max_quantization(
         self, scope, place, weight_bits, op, var_name, for_test
     ):
         '''
+=======
+    def _weight_channel_wise_abs_max_quantization(self, scope, place,
+                                                  weight_bits, op, var_name,
+                                                  for_test):
+        ''' 
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         Use channel_wise_abs_max method to quantize weight.
         '''
         quantize_range = (1 << (weight_bits - 1)) - 1
@@ -1846,9 +2040,14 @@ class WeightQuantization:
         and quantize the weights.
         '''
         scales = []
+<<<<<<< HEAD
         quantized_weight_data = np.zeros_like(
             weight_data, dtype=save_weight_dtype
         )
+=======
+        quantized_weight_data = np.zeros_like(weight_data,
+                                              dtype=save_weight_dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         channel_num = weight_data.shape[0]
         for i in range(channel_num):
             scale = np.max(np.abs(weight_data[i])) / quantize_range
@@ -1862,9 +2061,14 @@ class WeightQuantization:
         '''
         For conv2d and depthwise_conv2d, dequantize the weights to fp32.
         '''
+<<<<<<< HEAD
         dequantized_weight_data = np.zeros_like(
             quantized_weight_data, dtype=np.float32
         )
+=======
+        dequantized_weight_data = np.zeros_like(quantized_weight_data,
+                                                dtype=np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for i in range(len(scales)):
             dequantized_weight_data[i] = (
                 quantized_weight_data[i] * scales[i]
@@ -1879,9 +2083,14 @@ class WeightQuantization:
         and quantize the weights.
         '''
         scales = []
+<<<<<<< HEAD
         quantized_weight_data = np.zeros_like(
             weight_data, dtype=save_weight_dtype
         )
+=======
+        quantized_weight_data = np.zeros_like(weight_data,
+                                              dtype=save_weight_dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         channel_num = weight_data.shape[-1]
         for i in range(channel_num):
             scale = np.max(np.abs(weight_data[:, i])) / quantize_range
@@ -1895,9 +2104,14 @@ class WeightQuantization:
         '''
         For mul, dequantize the weights to fp32.
         '''
+<<<<<<< HEAD
         dequantized_weight_data = np.zeros_like(
             quantized_weight_data, dtype=np.float32
         )
+=======
+        dequantized_weight_data = np.zeros_like(quantized_weight_data,
+                                                dtype=np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         for i in range(len(scales)):
             dequantized_weight_data[:, i] = (
                 quantized_weight_data[:, i] * scales[i]
@@ -1906,9 +2120,15 @@ class WeightQuantization:
 
     def _calculate_threshold(self, input, threshold_rate, histogram_bins=5000):
         input_abs = np.abs(input)
+<<<<<<< HEAD
         hist, hist_edeges = np.histogram(
             input_abs, bins=histogram_bins, range=(0, np.max(input_abs))
         )
+=======
+        hist, hist_edeges = np.histogram(input_abs,
+                                         bins=histogram_bins,
+                                         range=(0, np.max(input_abs)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         hist = hist / float(sum(hist))
         hist_sum = 0
         hist_index = 0

@@ -48,7 +48,11 @@ TEST(selected_rows_functor, cpu_add) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAdd<phi::CPUContext, float> add_functor;
+=======
+  paddle::operators::math::SelectedRowsAdd<phi::CPUContext, float> add_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   add_functor(ctx, *selected_rows1, *selected_rows2, output.get());
 
   auto out_height = output->height();
@@ -86,7 +90,12 @@ TEST(selected_rows_functor, cpu_add) {
   std::unique_ptr<phi::DenseTensor> tensor2{new phi::DenseTensor()};
   tensor2->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddTensor<phi::CPUContext, float> add_tensor_functor;
+=======
+  paddle::operators::math::SelectedRowsAddTensor<phi::CPUContext, float>
+      add_tensor_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   add_tensor_functor(ctx, *output, *tensor1, tensor2.get());
 
   auto* tensor2_data = tensor2->data<float>();
@@ -138,7 +147,12 @@ TEST(selected_rows_functor, cpu_add_to) {
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddTo<phi::CPUContext, float> add_to_functor;
+=======
+  paddle::operators::math::SelectedRowsAddTo<phi::CPUContext, float>
+      add_to_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   add_to_functor(ctx, *selected_rows1, 0, output.get());
   add_to_functor(ctx, *selected_rows2, in1_value->numel(), output.get());
 
@@ -174,7 +188,11 @@ TEST(selected_rows_functor, cpu_add_to) {
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
 
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, float>
+=======
+  paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, float>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
 
@@ -211,7 +229,11 @@ TEST(selected_rows_functor, cpu_merge_average_float) {
       cpu_place);
   functor(ctx, in_value, 1.0);
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAverage<phi::CPUContext, float>
+=======
+  paddle::operators::math::scatter::MergeAverage<phi::CPUContext, float>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       merge_average_functor;
   phi::SelectedRows output = merge_average_functor(ctx, *selected_rows);
 
@@ -248,7 +270,12 @@ TEST(selected_rows_functor, cpu_merge_add_float) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   merge_add_functor(ctx, *selected_rows, output.get());
 
   auto out_height = output->height();
@@ -284,7 +311,12 @@ TEST(selected_rows_functor, cpu_merge_add_int) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
 
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, int> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, int>
+      merge_add_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   merge_add_functor(ctx, *selected_rows, output.get());
 
   auto out_height = output->height();
@@ -330,7 +362,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
@@ -379,7 +416,12 @@ TEST(selected_rows_functor, cpu_merge_add_multi_noduplicated) {
 
   std::unique_ptr<phi::SelectedRows> output{new phi::SelectedRows()};
   output->set_height(height);
+<<<<<<< HEAD
   phi::funcs::scatter::MergeAdd<phi::CPUContext, float> merge_add_functor;
+=======
+  paddle::operators::math::scatter::MergeAdd<phi::CPUContext, float>
+      merge_add_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   std::vector<const phi::SelectedRows*> inputs;
   inputs.push_back(selected_rows1.get());
@@ -435,7 +477,12 @@ TEST(selected_rows_functor, cpu_sum_to) {
   auto* out_value = output->mutable_value();
   // simplely concat two SelectedRows
   out_value->mutable_data<float>(phi::make_ddim({7, 10}), cpu_place);
+<<<<<<< HEAD
   phi::funcs::SelectedRowsSumTo<phi::CPUContext, float> sum_to_functor;
+=======
+  paddle::operators::math::SelectedRowsSumTo<phi::CPUContext, float>
+      sum_to_functor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   sum_to_functor(ctx,
                  std::vector<phi::SelectedRows*>(
                      {selected_rows1.get(), selected_rows2.get()}),
@@ -468,7 +515,11 @@ TEST(selected_rows_functor, cpu_sum_to) {
   std::unique_ptr<phi::DenseTensor> tensor1{new phi::DenseTensor()};
   tensor1->mutable_data<float>(phi::make_ddim({height, row_numel}), cpu_place);
   functor(ctx, tensor1.get(), 3.0);
+<<<<<<< HEAD
   phi::funcs::SelectedRowsAddToTensor<phi::CPUContext, float>
+=======
+  paddle::operators::math::SelectedRowsAddToTensor<phi::CPUContext, float>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       add_to_tensor_functor;
   add_to_tensor_functor(ctx, *output, tensor1.get());
   auto* tensor1_data = tensor1->data<float>();

@@ -20,9 +20,11 @@ from paddle.fluid.core import PassVersionChecker
 
 
 class ConvActivationMkldnnFusePassTest(InferencePassTest):
+
     def setUp(self):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             data = fluid.data(
                 name="data", shape=[-1, 3, 100, 100], dtype="float32"
             )
@@ -33,6 +35,16 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
                 bias_attr=self.conv_bias_attr,
                 act=self.act,
             )
+=======
+            data = fluid.data(name="data",
+                              shape=[-1, 3, 100, 100],
+                              dtype="float32")
+            conv_out = fluid.layers.conv2d(data,
+                                           num_filters=self.conv_num_filters,
+                                           filter_size=self.conv_filter_size,
+                                           bias_attr=self.conv_bias_attr,
+                                           act=self.act)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.feeds = {
             "data": np.random.random((1, 3, 100, 100)).astype("float32")
@@ -56,6 +68,7 @@ class ConvActivationMkldnnFusePassTest(InferencePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_1(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
@@ -64,6 +77,7 @@ class ConvActivationMkldnnFusePassTest_1(ConvActivationMkldnnFusePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_2(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
@@ -72,6 +86,7 @@ class ConvActivationMkldnnFusePassTest_2(ConvActivationMkldnnFusePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_3(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
@@ -80,6 +95,7 @@ class ConvActivationMkldnnFusePassTest_3(ConvActivationMkldnnFusePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 3
         self.conv_filter_size = 3
@@ -88,6 +104,7 @@ class ConvActivationMkldnnFusePassTest_4(ConvActivationMkldnnFusePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
@@ -96,6 +113,7 @@ class ConvActivationMkldnnFusePassTest_5(ConvActivationMkldnnFusePassTest):
 
 
 class ConvActivationMkldnnFusePassTest_6(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5
@@ -104,6 +122,7 @@ class ConvActivationMkldnnFusePassTest_6(ConvActivationMkldnnFusePassTest):
 
 
 class ConvHardSigmoidOneDNNFusePassTest(ConvActivationMkldnnFusePassTest):
+
     def set_params(self):
         self.conv_num_filters = 5
         self.conv_filter_size = 5

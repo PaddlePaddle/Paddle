@@ -12,16 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from trt_layer_auto_scan_test import TrtLayerAutoScanTest
+=======
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from program_config import TensorConfig, ProgramConfig
 import unittest
 import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
+<<<<<<< HEAD
 from typing import Any, Dict, List
 
 
 class TrtConvertActivationTest(TrtLayerAutoScanTest):
+=======
+from typing import Optional, List, Callable, Dict, Any, Set
+
+
+class TrtConvertActivationTest(TrtLayerAutoScanTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -43,6 +55,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 for k in [1, 3]:
                     self.dims = dims
                     dics = [{"k": k}]
+<<<<<<< HEAD
                     ops_config = [
                         {
                             "op_type": "top_k",
@@ -54,12 +67,26 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                             "op_attrs": dics[0],
                         }
                     ]
+=======
+                    ops_config = [{
+                        "op_type": "top_k",
+                        "op_inputs": {
+                            "X": ["input_data"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"],
+                            "Indices": ["indices_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     ops = self.generate_op_config(ops_config)
 
                     program_config = ProgramConfig(
                         ops=ops,
                         weights={},
                         inputs={
+<<<<<<< HEAD
                             "input_data": TensorConfig(
                                 data_gen=partial(
                                     generate_input1, dims, batch, dics
@@ -68,12 +95,24 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         },
                         outputs=["output_data", "indices_data"],
                     )
+=======
+                            "input_data":
+                            TensorConfig(data_gen=partial(
+                                generate_input1, dims, batch, dics))
+                        },
+                        outputs=["output_data", "indices_data"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     yield program_config
 
     def sample_predictor_configs(
+<<<<<<< HEAD
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
+=======
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def generate_dynamic_shape(attrs):
             if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
@@ -116,6 +155,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
@@ -133,6 +173,21 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-3
+=======
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+
+        ## for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), 1e-5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test(self):
         self.run_test()

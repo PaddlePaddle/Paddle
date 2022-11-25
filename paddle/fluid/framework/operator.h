@@ -183,6 +183,7 @@ class OperatorBase {
   }
   template <typename T>
   inline const T& Attr(const std::string& name) const {
+<<<<<<< HEAD
     auto it = attrs_.find(name);
     if (it == attrs_.end()) {
       it = runtime_attrs_.find(name);
@@ -194,6 +195,13 @@ class OperatorBase {
               name));
     }
     return PADDLE_GET_CONST(T, it->second);
+=======
+    PADDLE_ENFORCE_NE(
+        attrs_.find(name),
+        attrs_.end(),
+        platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
+    return PADDLE_GET_CONST(T, attrs_.at(name));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
   void SetAttr(const std::string& name, const Attribute& v) {
     PADDLE_ENFORCE_EQ(
@@ -456,12 +464,37 @@ class ExecutionContext {
 #endif
 
   template <typename T, typename DevContext>
+<<<<<<< HEAD
   phi::DenseTensor AllocateTmpTensor(const framework::DDim& dim,
                                      const DevContext& dev_ctx) const {
     phi::DenseTensor tmp;
     tmp.Resize(dim);
     dev_ctx.template Alloc<T>(&tmp);
     return tmp;
+=======
+  Tensor AllocateTmpTensor(const framework::DDim& dim,
+                           const DevContext& dev_ctx) const {
+    auto tmp_allocation_ptr = memory::Alloc(dev_ctx, product(dim) * sizeof(T));
+    auto& deleter = tmp_allocation_ptr.get_deleter();
+    auto* allocation_ptr = tmp_allocation_ptr.release();
+    auto shared_allocation =
+        std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
+
+    PADDLE_ENFORCE_GE(
+        allocation_ptr->size(),
+        phi::product(dim) * sizeof(T),
+        platform::errors::PreconditionNotMet(
+            "The data memory size(%d) is less than the tensor needed memory "
+            "size(%d).",
+            allocation_ptr->size(),
+            phi::product(dim) * sizeof(T)));
+
+    paddle::framework::Tensor temp_tensor(framework::TransToPhiDataType(
+        framework::ToDataType(std::type_index(typeid(T)))));
+    temp_tensor.Resize(dim);
+    temp_tensor.ResetHolder(std::move(shared_allocation));
+    return temp_tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   const RuntimeContext Context() const { return ctx_; }
@@ -632,10 +665,14 @@ class OperatorWithKernel : public OperatorBase {
 
   bool SupportsMKLDNN(proto::VarType::Type data_type) const;
 
+<<<<<<< HEAD
   bool SupportsCUDNN(proto::VarType::Type data_type) const;
 
   bool SupportsKernelType(const OpKernelType& kernel_type,
                           const ExecutionContext& exe_ctx) const;
+=======
+  bool SupportsKernelType(const OpKernelType& kernel_type) const;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx,
                        proto::VarType::Type data_type) const;
@@ -663,7 +700,11 @@ class OperatorWithKernel : public OperatorBase {
   // need transform data
   virtual OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const OpKernelType& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
@@ -672,6 +713,7 @@ class OperatorWithKernel : public OperatorBase {
   }
 
   /* member functions for adapting to phi lib */
+<<<<<<< HEAD
   /** In the phi::DenseTensor calculation library, the new Kernel adopts a
    * clearer and more streamlined design. The arguments of the Kernel and the
    * input and output arguments registered in the original OpMaker do not match
@@ -679,6 +721,14 @@ class OperatorWithKernel : public OperatorBase {
    * kernel. When selecting Kernel during Op execution, select the arguments of
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
+=======
+  /** In the Tensor calculation library, the new Kernel adopts a clearer and
+   * more streamlined design. The arguments of the Kernel and the input and
+   * output arguments registered in the original OpMaker do not match in some
+   * cases, so we use map to record the arguments required by the kernel.
+   * When selecting Kernel during Op execution, select the arguments of the
+   * original Op according to the GetExpectedPhiKernelArgs returned arguments.
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
    */
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;

@@ -31,6 +31,7 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
+<<<<<<< HEAD
 class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -162,6 +163,8 @@ TEST_F(TensorRTDynamicShapeValueEngineTest, test_trt_dynamic_shape_value) {
   return;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 class TensorRTDynamicEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -198,9 +201,12 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+<<<<<<< HEAD
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                  false,
                                  phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
@@ -225,8 +231,13 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   phi::DenseTensor input_;
   phi::DenseTensor output_;
+=======
+  framework::Tensor input_;
+  framework::Tensor output_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
@@ -375,9 +386,12 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
                                  min_input_shape,
                                  max_input_shape,
                                  optim_input_shape,
+<<<<<<< HEAD
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
                                  std::map<std::string, std::vector<int>>(),
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                                  false,
                                  phi::DataType::FLOAT32,
                                  NaiveLogger::Global());
@@ -413,15 +427,23 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
   }
 
  protected:
+<<<<<<< HEAD
   std::vector<phi::DenseTensor> inputs_;
   std::vector<phi::DenseTensor> outputs_;
+=======
+  std::vector<framework::Tensor> inputs_;
+  std::vector<framework::Tensor> outputs_;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   TensorRTEngine *engine_;
   phi::GPUContext *ctx_;
 };
 
 TEST_F(TensorRTDynamicTestFusedTokenPrune, test_fused_token_prune) {
 #if IS_TRT_VERSION_GE(8000)
+<<<<<<< HEAD
   tensorrt::plugin::TrtPluginRegistry::Global()->RegistToTrt();
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   auto *attn = engine_->DeclareInput(
       "attn", nvinfer1::DataType::kHALF, nvinfer1::Dims4{-1, 1, 4, 4});
   auto *x = engine_->DeclareInput(

@@ -52,7 +52,12 @@ class ElasticStatus:
     EXIT = "exit"
 
 
+<<<<<<< HEAD
 class LauncherInterface:
+=======
+class LauncherInterface(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, args):
         self.args = args
         self.procs = []
@@ -104,10 +109,15 @@ class LauncherInterface:
                     return ret
                 logger.error("ABORT!!! ABORT!!! ABORT!!!")
                 logger.error(
+<<<<<<< HEAD
                     "ERROR rank {} error with exit code {}, check log for detail.".format(
                         p.rank, ret
                     )
                 )
+=======
+                    "ERROR rank {} error with exit code {}, check log for detail."
+                    .format(p.rank, ret))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 result = ret
         if not alive and result is None:
             return 0
@@ -124,7 +134,12 @@ class LauncherInterface:
         raise NotImplementedError
 
 
+<<<<<<< HEAD
 class ElasticManager:
+=======
+class ElasticManager(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def __init__(self, args, etcd_client):
 
         self.args = args
@@ -253,8 +268,12 @@ class ElasticManager:
             self.elastic_startup_time = None
 
         host_watch = self.etcd.add_watch_prefix_callback(
+<<<<<<< HEAD
             self.node_prefix, host_call_back
         )
+=======
+            self.node_prefix, host_call_back)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         host_lease = self.etcd.lease(elastic_ttl)
 
         # register etcd lease heartbeat
@@ -283,6 +302,7 @@ class ElasticManager:
                 except Exception as e:
                     logger.error(
                         "[lease_heartbeat] internal error:{} {}".format(
+<<<<<<< HEAD
                             e, traceback.format_exc()
                         )
                     )
@@ -292,6 +312,15 @@ class ElasticManager:
         keepalived_thread = threading.Thread(
             name='lease_heartbeat', target=lease_heartbeat, daemon=True
         )
+=======
+                            e, traceback.format_exc()))
+                    break
+                time.sleep(elastic_ttl / 3)
+
+        keepalived_thread = threading.Thread(name='lease_heartbeat',
+                                             target=lease_heartbeat,
+                                             daemon=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         keepalived_thread.start()
 
         self.etcd.put(
@@ -326,9 +355,16 @@ class ElasticManager:
         self.watches = [host_watch, endpoints_watch]
         self.launcher = None
 
+<<<<<<< HEAD
     def _host_to_endpoints(
         self, ip_port_list: list, devices_per_proc: list, start_port: int = 6170
     ) -> str:
+=======
+    def _host_to_endpoints(self,
+                           ip_port_list: list,
+                           devices_per_proc: list,
+                           start_port: int = 6170) -> str:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         endpoint_list = []
         for ip_port in ip_port_list:
             endpoints = ip_port.split(":")
@@ -371,6 +407,7 @@ class ElasticManager:
             return
         logger.info("execute pre_hook...")
         current_env = copy.copy(os.environ.copy())
+<<<<<<< HEAD
         out, err = subprocess.Popen(
             self.args.elastic_pre_hook,
             env=current_env,
@@ -378,6 +415,13 @@ class ElasticManager:
             stderr=subprocess.PIPE,
             shell=True,
         ).communicate()
+=======
+        out, err = subprocess.Popen(self.args.elastic_pre_hook,
+                                    env=current_env,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    shell=True).communicate()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         if err:
             logger.warning("pre_hook exec failed")
         else:
@@ -595,9 +639,14 @@ class ElasticManager:
                 logger.info('ready with hosts {}'.format(self.hosts))
                 self._update_hosts()
                 return
+<<<<<<< HEAD
             logger.info(
                 'not ready for np {} with hosts {}'.format(self.np, self.hosts)
             )
+=======
+            logger.info('not ready for np {} with hosts {}'.format(
+                self.np, self.hosts))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             idx += 1
             time.sleep(2)
         return

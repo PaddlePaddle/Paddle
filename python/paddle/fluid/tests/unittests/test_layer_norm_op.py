@@ -82,6 +82,7 @@ def _reference_layer_norm_grad(
     # dx
     if scale is not None:
         dx_end = scale * np.sqrt(1.0 / var) * grad_y
+<<<<<<< HEAD
         d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale, axis=1).reshape(
             [N, 1]
         )  # the second part equals to zero.
@@ -102,11 +103,39 @@ def _reference_layer_norm_grad(
         ).reshape([N, 1]) * (
             1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) * (x - mean)
         )
+=======
+        d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * scale,
+                          axis=1).reshape([N, 1
+                                           ])  # the second part equals to zero.
+        d_mean = 1.0 / D * d_mean_0
+        d_std = np.sum(-(1.0 / var) *
+                       (x - mean) * grad_y * scale, axis=1).reshape([N, 1]) * (
+                           1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) *
+                           (x - mean))
+    else:
+        dx_end = 1.0 * np.sqrt(1.0 / var) * grad_y
+        d_mean_0 = np.sum(-np.sqrt(1.0 / var) * grad_y * 1.0,
+                          axis=1).reshape([N, 1
+                                           ])  # the second part equals to zero.
+        d_mean = 1.0 / D * d_mean_0
+        d_std = np.sum(-(1.0 / var) *
+                       (x - mean) * grad_y * 1.0, axis=1).reshape([N, 1]) * (
+                           1.0 / D * np.sqrt(1.0 / var).reshape([N, 1]) *
+                           (x - mean))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     grad_x = dx_end + d_mean + d_std
 
     grad_x.shape, x.shape, grad_y.shape = x_shape, x_shape, x_shape
+<<<<<<< HEAD
     var.shape, mean.shape = [N], [N]
+=======
+    var.shape, mean.shape = [
+        N,
+    ], [
+        N,
+    ]
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     if scale is not None:
         scale.shape = scale_shape
@@ -114,12 +143,14 @@ def _reference_layer_norm_grad(
 
 
 class TestLayerNormOp(unittest.TestCase):
+
     def setUp(self):
         self.use_cudnn = True
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
+<<<<<<< HEAD
     def check_forward_backward(
         self,
         shape,
@@ -132,6 +163,20 @@ class TestLayerNormOp(unittest.TestCase):
         def test_with_place(
             place, shape, begin_norm_axis, use_mkldnn=use_mkldnn
         ):
+=======
+    def check_forward_backward(self,
+                               shape,
+                               begin_norm_axis,
+                               has_scale=True,
+                               has_bias=True,
+                               y_grad_scale=1.0,
+                               use_mkldnn=False):
+
+        def test_with_place(place,
+                            shape,
+                            begin_norm_axis,
+                            use_mkldnn=use_mkldnn):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # attr
             epsilon = 0.00001
             x_shape = shape
@@ -140,6 +185,7 @@ class TestLayerNormOp(unittest.TestCase):
 
             np.random.seed(123)
             x = np.random.random_sample(x_shape).astype(np.float32)
+<<<<<<< HEAD
             scale = (
                 np.random.random_sample(scale_shape).astype(np.float32)
                 if has_scale
@@ -153,6 +199,14 @@ class TestLayerNormOp(unittest.TestCase):
             y_grad = (np.random.random_sample(x_shape) * y_grad_scale).astype(
                 np.float32
             )
+=======
+            scale = np.random.random_sample(scale_shape).astype(
+                np.float32) if has_scale else None
+            bias = np.random.random_sample(scale_shape).astype(
+                np.float32) if has_bias else None
+            y_grad = (np.random.random_sample(x_shape) * y_grad_scale).astype(
+                np.float32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # reference forward & backward
             y, mean, variance = _reference_layer_norm_naive(
@@ -175,11 +229,17 @@ class TestLayerNormOp(unittest.TestCase):
             with fluid.program_guard(program):
                 block = program.global_block()
                 for name in ground_truth:
+<<<<<<< HEAD
                     block.create_var(
                         name=name,
                         dtype='float32',
                         shape=ground_truth[name].shape,
                     )
+=======
+                    block.create_var(name=name,
+                                     dtype='float32',
+                                     shape=ground_truth[name].shape)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 inputs = {"X": block.var('x')}
                 fetch_list = [
                     'y',
@@ -268,6 +328,7 @@ class TestLayerNormOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[1, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
+<<<<<<< HEAD
         self.check_forward_backward(
             shape=[2, 3, 4, 5],
             begin_norm_axis=1,
@@ -330,10 +391,61 @@ class TestLayerNormOp(unittest.TestCase):
             has_scale=True,
             has_bias=True,
         )
+=======
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=False,
+                                    has_bias=True)
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=True,
+                                    has_bias=False)
+        self.check_forward_backward(shape=[2, 3, 4, 5],
+                                    begin_norm_axis=1,
+                                    has_scale=False,
+                                    has_bias=False)
+        self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+        self.check_forward_backward(shape=[92, 513, 129],
+                                    begin_norm_axis=2,
+                                    y_grad_scale=0.1)
+        self.check_forward_backward(shape=[3, 34, 1134], begin_norm_axis=2)
+        self.check_forward_backward(shape=[92, 513, 1134],
+                                    begin_norm_axis=2,
+                                    y_grad_scale=0.1)
+        self.check_forward_backward(shape=[92, 513, 1134],
+                                    begin_norm_axis=2,
+                                    has_scale=False,
+                                    has_bias=True,
+                                    y_grad_scale=0.1)
+        self.check_forward_backward(shape=[92, 513, 1134],
+                                    begin_norm_axis=2,
+                                    has_scale=True,
+                                    has_bias=False,
+                                    y_grad_scale=0.1)
+        self.check_forward_backward(shape=[92, 513, 1134],
+                                    begin_norm_axis=2,
+                                    has_scale=False,
+                                    has_bias=False,
+                                    y_grad_scale=0.1)
+        self.check_forward_backward(shape=[512, 1024],
+                                    begin_norm_axis=1,
+                                    has_scale=True,
+                                    has_bias=True)
+        self.check_forward_backward(shape=[1, 128, 256, 256],
+                                    begin_norm_axis=3,
+                                    has_scale=True,
+                                    has_bias=True)
+        self.check_forward_backward(shape=[1, 256, 384],
+                                    begin_norm_axis=2,
+                                    has_scale=True,
+                                    has_bias=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLayerNormAPI(unittest.TestCase):
+
     def test_case(self):
+<<<<<<< HEAD
         x = fluid.layers.data(
             name='x',
             shape=[64, 32, 256],
@@ -367,9 +479,37 @@ class TestLayerNormAPI(unittest.TestCase):
             param_attr="scale",
             bias_attr="shift",
         )
+=======
+        x = fluid.layers.data(name='x',
+                              shape=[64, 32, 256],
+                              dtype='float32',
+                              append_batch_size=False)
+        x = fluid.layers.layer_norm(x,
+                                    scale=True,
+                                    shift=True,
+                                    begin_norm_axis=1,
+                                    epsilon=1e-05,
+                                    param_attr=None,
+                                    bias_attr=None)
+        x = fluid.layers.layer_norm(x,
+                                    scale=False,
+                                    shift=False,
+                                    begin_norm_axis=1,
+                                    epsilon=1e-05,
+                                    param_attr=None,
+                                    bias_attr=None)
+        x = fluid.layers.layer_norm(x,
+                                    scale=False,
+                                    shift=False,
+                                    begin_norm_axis=1,
+                                    epsilon=1e-05,
+                                    param_attr="scale",
+                                    bias_attr="shift")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestDygraphLayerNormAPIError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             paddle.enable_static()
@@ -386,6 +526,7 @@ class TestDygraphLayerNormAPIError(unittest.TestCase):
 
 
 class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
+
     def check_main(self, x_np, weight_np, bias_np, dtype):
         paddle.disable_static()
 
@@ -432,6 +573,7 @@ class TestFP16ScaleBiasLayerNorm(unittest.TestCase):
 
 
 class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
+
     def check_main(self, x_np, weight_np, bias_np, dtype):
         paddle.disable_static()
 
@@ -485,6 +627,7 @@ class TestBF16ScaleBiasLayerNorm(unittest.TestCase):
 
 
 class TestGetSetKeepLayerNormScaleBiasFP32Flag(unittest.TestCase):
+
     def test_main(self):
         self.assertTrue(_keep_layer_norm_scale_bias_to_fp32())
         _keep_layer_norm_scale_bias_to_fp32(False)

@@ -23,11 +23,20 @@ SEED = 2020
 
 
 class Pool2D(fluid.dygraph.Layer):
+
     def __init__(self):
+<<<<<<< HEAD
         super().__init__()
         self.pool2d = fluid.dygraph.Pool2D(
             pool_size=2, pool_type='avg', pool_stride=1, global_pooling=False
         )
+=======
+        super(Pool2D, self).__init__()
+        self.pool2d = fluid.dygraph.Pool2D(pool_size=2,
+                                           pool_type='avg',
+                                           pool_stride=1,
+                                           global_pooling=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     @declarative
     def forward(self, x):
@@ -40,6 +49,7 @@ class Pool2D(fluid.dygraph.Layer):
 
 
 class Linear(fluid.dygraph.Layer):
+
     def __init__(self, input_dim=10, output_dim=5):
         super().__init__()
         self.fc = fluid.dygraph.Linear(
@@ -62,6 +72,7 @@ class Linear(fluid.dygraph.Layer):
 
 
 class TestPool2D(unittest.TestCase):
+
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
@@ -89,6 +100,7 @@ class TestPool2D(unittest.TestCase):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
+<<<<<<< HEAD
         np.testing.assert_allclose(
             dygraph_res,
             static_res,
@@ -97,9 +109,15 @@ class TestPool2D(unittest.TestCase):
                 dygraph_res, static_res
             ),
         )
+=======
+        self.assertTrue(np.allclose(dygraph_res, static_res),
+                        msg='dygraph_res is {}\n static_res is \n{}'.format(
+                            dygraph_res, static_res))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestLinear(TestPool2D):
+
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')

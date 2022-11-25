@@ -366,6 +366,7 @@ class BuildExtension(build_ext):
         """
 
         class cls_with_options(cls):
+
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -410,9 +411,14 @@ class BuildExtension(build_ext):
         # cflags have changed and delete the built shared library to re-compile the source
         # even though source file content keep unchanged.
         so_name = self.get_ext_fullpath(self.extensions[0].name)
+<<<<<<< HEAD
         clean_object_if_change_cflags(
             os.path.abspath(so_name), self.extensions[0]
         )
+=======
+        clean_object_if_change_cflags(os.path.abspath(so_name),
+                                      self.extensions[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # Consider .cu, .cu.cc as valid source extensions.
         self.compiler.src_extensions += ['.cu', '.cu.cc']
@@ -486,9 +492,15 @@ class BuildExtension(build_ext):
                     else:
                         cflags.append('-DPADDLE_WITH_CUDA')
 
+<<<<<<< HEAD
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True
                 )
+=======
+                add_std_without_repeat(cflags,
+                                       self.compiler.compiler_type,
+                                       use_std14=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
             finally:
                 # restore original_compiler
@@ -668,6 +680,7 @@ class BuildExtension(build_ext):
         """
         compiler_infos = ['clang'] + CLANG_COMPILE_FLAGS
         linker_infos = ['clang'] + CLANG_LINK_FLAGS
+<<<<<<< HEAD
         self.compiler.set_executables(
             compiler=compiler_infos,
             compiler_so=compiler_infos,
@@ -675,6 +688,13 @@ class BuildExtension(build_ext):
             linker_exe=['clang'],
             linker_so=linker_infos,
         )
+=======
+        self.compiler.set_executables(compiler=compiler_infos,
+                                      compiler_so=compiler_infos,
+                                      compiler_cxx=['clang'],
+                                      linker_exe=['clang'],
+                                      linker_so=linker_infos)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _check_abi(self):
         """
@@ -774,6 +794,7 @@ class BuildCommand(build):
         """
 
         class cls_with_options(cls):
+
             def __init__(self, *args, **kwargs):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
@@ -916,10 +937,14 @@ def load(
 
     log_v(
         "additional extra_cxx_cflags: [{}], extra_cuda_cflags: [{}]".format(
+<<<<<<< HEAD
             ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)
         ),
         verbose,
     )
+=======
+            ' '.join(extra_cxx_cflags), ' '.join(extra_cuda_cflags)), verbose)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     # write setup.py file and compile it
     build_base_dir = os.path.join(build_directory, name)

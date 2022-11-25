@@ -18,17 +18,29 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 template <typename T>
 class DeformableConvMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto* offset = ctx.Input<phi::DenseTensor>("Offset");
     auto* mask = ctx.Input<phi::DenseTensor>("Mask");
     auto* filter = ctx.Input<phi::DenseTensor>("Filter");
     auto* output = ctx.Output<phi::DenseTensor>("Output");
+=======
+    auto* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
+    auto* output = ctx.Output<Tensor>("Output");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     output->mutable_data<T>(ctx.GetPlace());
 
     const int groups = ctx.Attr<int>("groups");
@@ -125,6 +137,7 @@ template <typename T>
 class DeformableConvGradMLUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
     const phi::DenseTensor* output_grad =
         ctx.Input<phi::DenseTensor>(framework::GradVarName("Output"));
     auto* input_grad =
@@ -140,6 +153,19 @@ class DeformableConvGradMLUKernel : public framework::OpKernel<T> {
     auto* offset = ctx.Input<phi::DenseTensor>("Offset");
     auto* mask = ctx.Input<phi::DenseTensor>("Mask");
     auto* filter = ctx.Input<phi::DenseTensor>("Filter");
+=======
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto* offset_grad = ctx.Output<Tensor>(framework::GradVarName("Offset"));
+    auto* mask_grad = ctx.Output<Tensor>(framework::GradVarName("Mask"));
+
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    auto* offset = ctx.Input<Tensor>("Offset");
+    auto* mask = ctx.Input<Tensor>("Mask");
+    auto* filter = ctx.Input<Tensor>("Filter");
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     int groups = ctx.Attr<int>("groups");
     int deformable_groups = ctx.Attr<int>("deformable_groups");

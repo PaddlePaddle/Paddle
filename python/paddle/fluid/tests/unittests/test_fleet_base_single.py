@@ -28,6 +28,7 @@ import paddle.nn as nn
 
 
 class LinearNet(nn.Layer):
+
     def __init__(self):
         super().__init__()
         self._linear1 = nn.Linear(10, 10)
@@ -38,6 +39,7 @@ class LinearNet(nn.Layer):
 
 
 class TestFleetDygraphSingle(unittest.TestCase):
+
     def setUp(self):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
@@ -50,9 +52,14 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
         layer = LinearNet()
         loss_fn = nn.MSELoss()
+<<<<<<< HEAD
         adam = paddle.optimizer.Adam(
             learning_rate=0.001, parameters=layer.parameters()
         )
+=======
+        adam = paddle.optimizer.Adam(learning_rate=0.001,
+                                     parameters=layer.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         adam = fleet.distributed_optimizer(adam)
         dp_layer = fleet.distributed_model(layer)
@@ -67,13 +74,18 @@ class TestFleetDygraphSingle(unittest.TestCase):
 
 
 class TestFleetBaseSingleRunCollective(unittest.TestCase):
+
     def setUp(self):
         pass
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def test_single_run_collective_minimize(self):
@@ -91,11 +103,16 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
         optimizer.minimize(avg_cost)
 
+<<<<<<< HEAD
         place = (
             fluid.CUDAPlace(0)
             if paddle.fluid.is_compiled_with_cuda()
             else fluid.CPUPlace()
         )
+=======
+        place = fluid.CUDAPlace(
+            0) if paddle.fluid.is_compiled_with_cuda() else fluid.CPUPlace()
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         exe = fluid.Executor(place)
         exe.run(paddle.static.default_startup_program())
@@ -106,13 +123,18 @@ class TestFleetBaseSingleRunCollective(unittest.TestCase):
 
 
 class TestFleetBaseSingleRunPS(unittest.TestCase):
+
     def setUp(self):
         pass
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
+<<<<<<< HEAD
             "y": np.random.randint(2, size=(128, 1)).astype('int64'),
+=======
+            "y": np.random.randint(2, size=(128, 1)).astype('int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def test_single_run_ps_minimize(self):

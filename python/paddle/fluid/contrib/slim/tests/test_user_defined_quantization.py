@@ -17,6 +17,10 @@ import unittest
 import json
 import random
 import numpy as np
+<<<<<<< HEAD
+=======
+import six
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import tempfile
 import paddle.fluid as fluid
 import paddle
@@ -36,6 +40,7 @@ os.environ["CPU_NUM"] = "1"
 
 
 def conv_net(img, label):
+<<<<<<< HEAD
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
@@ -55,6 +60,23 @@ def conv_net(img, label):
         pool_type='avg',
         act="relu",
     )
+=======
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(input=img,
+                                                  filter_size=5,
+                                                  num_filters=20,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='max',
+                                                  act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(input=conv_pool_1,
+                                                  filter_size=5,
+                                                  num_filters=50,
+                                                  pool_size=2,
+                                                  pool_stride=2,
+                                                  pool_type='avg',
+                                                  act="relu")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     hidden = fluid.layers.fc(input=conv_pool_2, size=100, act='relu')
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
@@ -84,6 +106,7 @@ def pact(x, name=None):
 
 
 class TestUserDefinedQuantization(unittest.TestCase):
+<<<<<<< HEAD
     def quantization_scale(
         self,
         use_cuda,
@@ -96,11 +119,26 @@ class TestUserDefinedQuantization(unittest.TestCase):
         act_quantize_func=None,
         weight_quantize_func=None,
     ):
+=======
+
+    def quantization_scale(self,
+                           use_cuda,
+                           seed,
+                           activation_quant_type,
+                           weight_quant_type='abs_max',
+                           for_ci=False,
+                           act_preprocess_func=None,
+                           weight_preprocess_func=None,
+                           act_quantize_func=None,
+                           weight_quantize_func=None):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         def build_program(main, startup, is_test):
             main.random_seed = seed
             startup.random_seed = seed
             with fluid.unique_name.guard():
                 with fluid.program_guard(main, startup):
+<<<<<<< HEAD
                     img = fluid.layers.data(
                         name='image', shape=[1, 28, 28], dtype='float32'
                     )
@@ -108,6 +146,15 @@ class TestUserDefinedQuantization(unittest.TestCase):
                     label = fluid.layers.data(
                         name='label', shape=[1], dtype='int64'
                     )
+=======
+                    img = fluid.layers.data(name='image',
+                                            shape=[1, 28, 28],
+                                            dtype='float32')
+                    img.stop_gradient = False
+                    label = fluid.layers.data(name='label',
+                                              shape=[1],
+                                              dtype='int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     loss = conv_net(img, label)
                     if not is_test:
                         opt = fluid.optimizer.SGD(learning_rate=0.0001)
@@ -194,10 +241,16 @@ class TestUserDefinedQuantization(unittest.TestCase):
         iters = 5
         batch_size = 8
 
+<<<<<<< HEAD
         train_reader = paddle.batch(
             paddle.reader.shuffle(paddle.dataset.mnist.train(), buf_size=500),
             batch_size=batch_size,
         )
+=======
+        train_reader = paddle.batch(paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+                                    batch_size=batch_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         feeder = fluid.DataFeeder(feed_list=feeds, place=place)
         with fluid.scope_guard(scope):
             for _ in range(iters):

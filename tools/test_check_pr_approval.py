@@ -22,6 +22,7 @@ import sys
 
 
 class Test_check_approval(unittest.TestCase):
+
     def setUp(self):
         self.codeset = 'UTF-8'
         # only key info in it
@@ -73,23 +74,37 @@ class Test_check_approval(unittest.TestCase):
 
     def test_ids(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', '26408901']
+<<<<<<< HEAD
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        subprc = subprocess.Popen(cmd,
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_logins(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', 'pangyoki']
+<<<<<<< HEAD
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        subprc = subprocess.Popen(cmd,
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
@@ -101,12 +116,19 @@ class Test_check_approval(unittest.TestCase):
             'pangyoki',
             '13469016',
         ]
+<<<<<<< HEAD
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        subprc = subprocess.Popen(cmd,
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output, error = subprc.communicate(input=self.jsonstr)
         # self.assertEqual('', error.rstrip())
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
@@ -119,12 +141,19 @@ class Test_check_approval(unittest.TestCase):
             'wadefelix',
             ' 13469016',
         ]
+<<<<<<< HEAD
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+=======
+        subprc = subprocess.Popen(cmd,
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('FALSE', output.decode(self.codeset).rstrip())
 

@@ -26,6 +26,12 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/float16.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -279,11 +285,34 @@ template struct RowwiseMean<phi::CPUContext, float>;
 template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
+<<<<<<< HEAD
 struct RowwiseAdd<phi::CPUContext, T> {
   void operator()(const phi::CPUContext& context,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {
+=======
+struct ElementwiseAddTo<phi::CPUContext, T> {
+  void operator()(phi::CPUContext* ctx,
+                  const paddle::framework::Tensor& src,
+                  paddle::framework::Tensor* dst) {
+    auto in = paddle::framework::EigenVector<T>::Flatten(src);
+    auto out = paddle::framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+};
+
+template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::float16>;
+template struct ElementwiseAddTo<phi::CPUContext, phi::dtype::bfloat16>;
+
+template <typename T>
+struct RowwiseAdd<phi::CPUContext, T> {
+  void operator()(const phi::CPUContext& context,
+                  const paddle::framework::Tensor& input,
+                  const paddle::framework::Tensor& vector,
+                  paddle::framework::Tensor* output) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     auto size = input.numel() / in_dims[0];

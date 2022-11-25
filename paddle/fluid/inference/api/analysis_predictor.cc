@@ -93,7 +93,11 @@
 namespace paddle {
 
 using inference::Singleton;
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_TENSORRT
+=======
+#if PADDLE_WITH_TENSORRT
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 using inference::tensorrt::TRTCalibratorEngine;
 using inference::tensorrt::TRTCalibratorEngineManager;
 using inference::tensorrt::TRTInt8Calibrator;
@@ -130,6 +134,7 @@ phi::DataType ConvertPrecision(AnalysisConfig::Precision precision) {
   }
 }
 
+<<<<<<< HEAD
 phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
   switch (backend) {
     case paddle_infer::PlaceType::kGPU:
@@ -143,6 +148,19 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CPU;
     case paddle_infer::PlaceType::kIPU:
       return phi::Backend::IPU;
+=======
+phi::Backend ConvertBackend(AnalysisConfig::Backend backend) {
+  switch (backend) {
+    case AnalysisConfig::Backend::kGPU:
+      // NOTE: phi also support phi::Backend::GPUDNN.
+      return phi::Backend::GPU;
+    case AnalysisConfig::Backend::kNPU:
+      return phi::Backend::NPU;
+    case AnalysisConfig::Backend::kXPU:
+      return phi::Backend::XPU;
+    case AnalysisConfig::Backend::kCPU:
+      return phi::Backend::CPU;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Paddle Inference not support backend, we now only support GPU, XPU, "
@@ -153,7 +171,11 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
 }  // namespace
 
 bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
+<<<<<<< HEAD
                              phi::DenseTensor *t,
+=======
+                             framework::LoDTensor *t,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                              const platform::Place &place) {
   framework::DDim ddim = phi::make_ddim(pt.shape);
   void *input_ptr;
@@ -192,10 +214,15 @@ bool PaddleTensorToLoDTensor(const PaddleTensor &pt,
 
   if (platform::is_cpu_place(place)) {
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+<<<<<<< HEAD
     if (input_ptr != nullptr) {
       std::memcpy(
           static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
     }
+=======
+    std::memcpy(
+        static_cast<void *>(input_ptr), pt.data.data(), pt.data.length());
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   } else if (platform::is_ipu_place(place)) {
 #ifdef PADDLE_WITH_IPU
     std::memcpy(
@@ -308,7 +335,10 @@ bool AnalysisPredictor::Init(
     }
   }
 #endif
+<<<<<<< HEAD
   inference::DisplayMemoryInfo(place_, "Init predictor");
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   return true;
 }
 
@@ -427,10 +457,13 @@ void AnalysisPredictor::InitDeviceContexts() {
               memory::allocation::AllocatorFacade::Instance()
                   .GetZeroAllocator(place_)
                   .get());
+<<<<<<< HEAD
           gpu_context->SetHostZeroAllocator(
               memory::allocation::AllocatorFacade::Instance()
                   .GetZeroAllocator(platform::CPUPlace())
                   .get());
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           gpu_context->SetGenerator(
               framework::DefaultCUDAGenerator(place_.GetDeviceId()).get());
           gpu_context->SetHostGenerator(framework::DefaultCPUGenerator().get());
@@ -547,11 +580,14 @@ bool AnalysisPredictor::PrepareProgram(
     // If the program is passed from external, no need to optimize it, this
     // logic is used in the clone scenario.
     inference_program_ = program;
+<<<<<<< HEAD
     if (config_.apply_optim_) {
       VLOG(3)
           << "apply_optim is enabled, will call OptimizeInferenceProgram().";
       OptimizeInferenceProgram();
     }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   executor_->CreateVariables(*inference_program_, 0, false, sub_scope_);
@@ -1047,7 +1083,11 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
             i));
     framework::FetchType &fetch_var =
         framework::GetFetchVariable(*scope, "fetch", idx);
+<<<<<<< HEAD
     auto &fetch = PADDLE_GET(phi::DenseTensor, fetch_var);
+=======
+    auto &fetch = PADDLE_GET(framework::LoDTensor, fetch_var);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     auto type = framework::TransToProtoVarType(fetch.dtype());
     auto output = &(outputs->at(i));
     output->name = fetches_[idx]->Input("X")[0];
@@ -1128,6 +1168,7 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "Dlnne subgraph is enabled";
     argument_.SetUseDlnne(true);
     argument_.SetDlnneMinSubgraphSize(config_.dlnne_min_subgraph_size_);
+<<<<<<< HEAD
     argument_.SetDlnneMaxBatchSize(config_.dlnne_max_batchsize_);
     argument_.SetDlnneUseStaticBatch(config_.dlnne_use_static_batch_);
     argument_.SetDlnneWeightShareMode(config_.dlnne_weight_share_mode_);
@@ -1136,6 +1177,8 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
     argument_.SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
     argument_.SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   if (config_.lite_engine_enabled()) {
@@ -1395,6 +1438,7 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         process_level_allocator_enabled = true;
       }
 
+<<<<<<< HEAD
       // support set flags from enviorment.
       const platform::ExportedFlagInfoMap &env_map =
           platform::GetExportedFlagInfoMap();
@@ -1406,6 +1450,8 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
       auto tryfromenv_str = os.str();
       gflags.push_back(os.str().substr(0, tryfromenv_str.size() - 1));
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       if (framework::InitGflags(gflags)) {
         VLOG(3) << "The following gpu analysis configurations only take effect "
                    "for the first predictor: ";
@@ -1828,6 +1874,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
   std::map<std::string, std::vector<int32_t>> min_shapes;
   std::map<std::string, std::vector<int32_t>> max_shapes;
   std::map<std::string, std::vector<int32_t>> opt_shapes;
+<<<<<<< HEAD
   std::map<std::string, std::vector<int32_t>> min_values;
   std::map<std::string, std::vector<int32_t>> max_values;
   std::map<std::string, std::vector<int32_t>> opt_values;
@@ -1867,6 +1914,37 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
             }
             opt_shape[d] = ShapeMaxFreq(counter);
           }
+=======
+  for (auto it : shape_info_) {
+    auto name = it.first;
+    auto shapes = it.second;
+
+    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
+
+    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
+      std::vector<std::pair<int32_t, int32_t>> counter;
+      for (auto &it : m) counter.push_back(it);
+      std::sort(
+          counter.begin(),
+          counter.end(),
+          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
+            return a.second > b.second;
+          });
+      return counter[0].first;
+    };
+
+    for (size_t d = 0; d < shapes[0].size(); ++d) {
+      std::map<int32_t, int32_t> counter;
+      for (size_t i = 0; i < shapes.size(); ++i) {
+        counter[shapes[i][d]] += 1;
+        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
+        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+      }
+      opt_shape[d] = ShapeMaxFreq(counter);
+    }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
           min_data[name] = min_shape;
           max_data[name] = max_shape;
@@ -1876,6 +1954,7 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
   extract_min_max_opt(min_shapes, max_shapes, opt_shapes, shape_info_);
   extract_min_max_opt(min_values, max_values, opt_values, shape_tensor_value_);
 
+<<<<<<< HEAD
   inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
                                      min_shapes,
                                      max_shapes,
@@ -1883,6 +1962,10 @@ void AnalysisPredictor::StatisticShapeRangeInfo() {
                                      min_values,
                                      max_values,
                                      opt_values);
+=======
+  inference::SerializeShapeRangeInfo(
+      config_.shape_range_info_path(), min_shapes, max_shapes, opt_shapes);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -2115,6 +2198,7 @@ AnalysisPredictor::~AnalysisPredictor() {
     memory::Release(place_);
   }
   device_contexts_.clear();
+<<<<<<< HEAD
 
 #ifdef PADDLE_WITH_TENSORRT
   if (config_.trt_engine_memory_sharing()) {
@@ -2122,6 +2206,8 @@ AnalysisPredictor::~AnalysisPredictor() {
         .releaseContextMemory(predictor_id_);
   }
 #endif
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone(void *stream) {
@@ -2315,8 +2401,11 @@ USE_TRT_CONVERTER(preln_residual_bias)
 USE_TRT_CONVERTER(c_allreduce_sum)
 USE_TRT_CONVERTER(roll)
 USE_TRT_CONVERTER(strided_slice)
+<<<<<<< HEAD
 USE_TRT_CONVERTER(rnn)
 USE_TRT_CONVERTER(fill_constant_batch_size_like)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 USE_TRT_CONVERTER(transformer_input_convert)
 USE_TRT_CONVERTER(cast)
 USE_TRT_CONVERTER(recover_padding)
@@ -2330,6 +2419,7 @@ USE_TRT_CONVERTER(sum)
 USE_TRT_CONVERTER(shape)
 USE_TRT_CONVERTER(fill_constant)
 USE_TRT_CONVERTER(fused_token_prune)
+<<<<<<< HEAD
 USE_TRT_CONVERTER(celu)
 USE_TRT_CONVERTER(layernorm_shift_partition)
 USE_TRT_CONVERTER(preln_layernorm_shift_partition)
@@ -2341,6 +2431,8 @@ USE_TRT_CONVERTER(tanh_shrink)
 USE_TRT_CONVERTER(logsigmoid)
 USE_TRT_CONVERTER(lookup_table)
 USE_TRT_CONVERTER(expand_v2)
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
 USE_TRT_CONVERTER(sparse_multihead_matmul)
@@ -2415,10 +2507,13 @@ void Predictor::ClearIntermediateTensor() {
 
 uint64_t Predictor::TryShrinkMemory() { return predictor_->TryShrinkMemory(); }
 
+<<<<<<< HEAD
 void Predictor::RegisterOutputHook(const Exp_OutputHookFunc &hookfunc) {
   predictor_->RegisterOutputHook(hookfunc);
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 void *Predictor::GetExecStream() const { return predictor_->GetExecStream(); }
 
 int GetNumBytesOfDataType(DataType dtype) {
@@ -2464,7 +2559,11 @@ void ConvertToMixedPrecision(const std::string &model_file,
                              const std::string &mixed_model_file,
                              const std::string &mixed_params_file,
                              PrecisionType mixed_precision,
+<<<<<<< HEAD
                              paddle_infer::PlaceType backend,
+=======
+                             BackendType backend,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                              bool keep_io_types,
                              std::unordered_set<std::string> black_list) {
   auto phi_backend = paddle::ConvertBackend(backend);

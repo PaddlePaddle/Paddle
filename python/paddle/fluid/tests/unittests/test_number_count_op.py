@@ -33,6 +33,7 @@ def count(x, upper_num):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountOpInt64(op_test.OpTest):
+
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
@@ -49,11 +50,17 @@ class TestNumberCountOpInt64(op_test.OpTest):
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestNumberCountAPI(unittest.TestCase):
+
     def setUp(self):
         self.upper_num = 320
+<<<<<<< HEAD
         self.x = np.random.randint(-1, self.upper_num, size=(6000, 200)).astype(
             'int64'
         )
+=======
+        self.x = np.random.randint(-1, self.upper_num,
+                                   size=(6000, 200)).astype('int64')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.out = count(self.x, self.upper_num)
         self.place = paddle.CUDAPlace(0)
 

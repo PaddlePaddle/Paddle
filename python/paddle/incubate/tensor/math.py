@@ -66,22 +66,43 @@ def segment_sum(data, segment_ids, name=None):
         )
         return out
 
+<<<<<<< HEAD
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
     )
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     helper = LayerHelper("segment_sum", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
         outputs={"Out": out, "SummedIds": summed_ids},
         attrs={"pooltype": "SUM"},
     )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "SUM"})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -132,22 +153,43 @@ def segment_mean(data, segment_ids, name=None):
         )
         return out
 
+<<<<<<< HEAD
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
     )
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     helper = LayerHelper("segment_mean", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
         outputs={"Out": out, "SummedIds": summed_ids},
         attrs={"pooltype": "MEAN"},
     )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MEAN"})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -198,22 +240,43 @@ def segment_min(data, segment_ids, name=None):
         )
         return out
 
+<<<<<<< HEAD
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
     )
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     helper = LayerHelper("segment_min", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
         outputs={"Out": out, "SummedIds": summed_ids},
         attrs={"pooltype": "MIN"},
     )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MIN"})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out
 
 
@@ -265,20 +328,41 @@ def segment_max(data, segment_ids, name=None):
         )
         return out
 
+<<<<<<< HEAD
     check_variable_and_dtype(
         data, "X", ("float32", "float64", "int32", "int64"), "segment_pool"
     )
     check_variable_and_dtype(
         segment_ids, "SegmentIds", ("int32", "int64"), "segment_pool"
     )
+=======
+    check_variable_and_dtype(data, "X",
+                             ("float32", "float64", "int32", "int64"),
+                             "segment_pool")
+    check_variable_and_dtype(segment_ids, "SegmentIds", ("int32", "int64"),
+                             "segment_pool")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     helper = LayerHelper("segment_max", **locals())
     out = helper.create_variable_for_type_inference(dtype=data.dtype)
     summed_ids = helper.create_variable_for_type_inference(dtype=data.dtype)
+<<<<<<< HEAD
     helper.append_op(
         type="segment_pool",
         inputs={"X": data, "SegmentIds": segment_ids},
         outputs={"Out": out, "SummedIds": summed_ids},
         attrs={"pooltype": "MAX"},
     )
+=======
+    helper.append_op(type="segment_pool",
+                     inputs={
+                         "X": data,
+                         "SegmentIds": segment_ids
+                     },
+                     outputs={
+                         "Out": out,
+                         "SummedIds": summed_ids
+                     },
+                     attrs={"pooltype": "MAX"})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return out

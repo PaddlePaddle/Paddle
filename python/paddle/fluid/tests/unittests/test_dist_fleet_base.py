@@ -103,6 +103,7 @@ class FleetDistRunnerBase:
         debug = int(os.getenv("Debug", "0"))
         # TODO(update strategy to support dump params)
         if False:  # debug:
+<<<<<<< HEAD
             self.strategy.set_debug_opt(
                 {
                     "dump_param": self.dump_param,
@@ -110,6 +111,16 @@ class FleetDistRunnerBase:
                     "dump_fields_path": self.dump_fields_path,
                 }
             )
+=======
+            self.strategy.set_debug_opt({
+                "dump_param":
+                self.dump_param,
+                "dump_fields":
+                self.dump_fields,
+                "dump_fields_path":
+                self.dump_fields_path
+            })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return self.strategy
 
@@ -241,6 +252,7 @@ class TestFleetBase(unittest.TestCase):
         self._setup_config()
 
     def _find_free_port(self):
+
         def __free_port():
             with closing(
                 socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -274,6 +286,7 @@ class TestFleetBase(unittest.TestCase):
         ps0_out = open(ps0_out_log, "wb+")
         ps1_out = open(ps1_out_log, "wb+")
 
+<<<<<<< HEAD
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
             stdout=ps0_out,
@@ -287,6 +300,17 @@ class TestFleetBase(unittest.TestCase):
             stderr=ps1_err,
             env=required_envs,
         )
+=======
+        ps0_proc = subprocess.Popen(ps0_cmd.strip().split(" "),
+                                    stdout=ps0_out,
+                                    stderr=ps0_err,
+                                    env=required_envs)
+
+        ps1_proc = subprocess.Popen(ps1_cmd.strip().split(" "),
+                                    stdout=ps1_out,
+                                    stderr=ps1_err,
+                                    env=required_envs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return (
             (ps0_proc, ps0_out, ps0_err, ps0_out_log, ps0_err_log),
@@ -313,6 +337,7 @@ class TestFleetBase(unittest.TestCase):
         tr0_out = open(tr0_out_log, "wb+")
         tr1_out = open(tr1_out_log, "wb+")
 
+<<<<<<< HEAD
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
             stdout=tr0_out,
@@ -326,6 +351,17 @@ class TestFleetBase(unittest.TestCase):
             stderr=tr1_err,
             env=required_envs,
         )
+=======
+        tr0_proc = subprocess.Popen(tr0_cmd.strip().split(" "),
+                                    stdout=tr0_out,
+                                    stderr=tr0_err,
+                                    env=required_envs)
+
+        tr1_proc = subprocess.Popen(tr1_cmd.strip().split(" "),
+                                    stdout=tr1_out,
+                                    stderr=tr1_err,
+                                    env=required_envs)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         return (
             (tr0_proc, tr0_out, tr0_err, tr0_out_log, tr0_err_log),
@@ -443,12 +479,19 @@ class TestFleetBase(unittest.TestCase):
                 print("find parameter server port bind failed, skip the error")
                 tr0_ret, tr1_ret = 0, 0
             else:
+<<<<<<< HEAD
                 for out, err in [
                     (ps0_out_log, ps0_err_log),
                     (ps1_out_log, ps1_err_log),
                     (tr0_out_log, tr0_err_log),
                     (tr1_out_log, tr1_err_log),
                 ]:
+=======
+                for out, err in [(ps0_out_log, ps0_err_log),
+                                 (ps1_out_log, ps1_err_log),
+                                 (tr0_out_log, tr0_err_log),
+                                 (tr1_out_log, tr1_err_log)]:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     catlog(out)
                     catlog(err)
 
@@ -493,6 +536,7 @@ class TestFleetBase(unittest.TestCase):
 
 def runtime_main(test_class):
     parser = argparse.ArgumentParser(description='Run Fleet test.')
+<<<<<<< HEAD
     parser.add_argument(
         '--role', type=str, required=True, choices=['pserver', 'trainer']
     )
@@ -500,13 +544,31 @@ def runtime_main(test_class):
     parser.add_argument(
         '--trainer_endpoints', type=str, required=False, default=""
     )
+=======
+    parser.add_argument('--role',
+                        type=str,
+                        required=True,
+                        choices=['pserver', 'trainer'])
+    parser.add_argument('--endpoints', type=str, required=False, default="")
+    parser.add_argument('--trainer_endpoints',
+                        type=str,
+                        required=False,
+                        default="")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     parser.add_argument('--gloo_path', type=str, required=False, default="")
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--mode', type=str, required=False, default='geo')
+<<<<<<< HEAD
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2
     )
+=======
+    parser.add_argument('--geo_sgd_need_push_nums',
+                        type=int,
+                        required=False,
+                        default=2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     parser.add_argument('--reader', type=str, required=False, default='dataset')
     parser.add_argument('--test', type=int, required=False, default=0)
     parser.add_argument('--model_dir', type=str, required=False, default="")
@@ -519,12 +581,19 @@ def runtime_main(test_class):
     if args.test and args.model_dir != "":
         avg_cost = model.net(args, is_train=False)
         dist_infer = DistributedInfer()
+<<<<<<< HEAD
         dist_infer.init_distributed_infer_env(
             exe=model.get_executor(),
             loss=model.avg_cost,
             role_maker=role,
             dirname=args.model_dir,
         )
+=======
+        dist_infer.init_distributed_infer_env(exe=model.get_executor(),
+                                              loss=model.avg_cost,
+                                              role_maker=role,
+                                              dirname=args.model_dir)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         if fleet.is_worker():
             with paddle.static.program_guard(
@@ -559,10 +628,15 @@ def runtime_main(test_class):
             ):
                 with paddle.utils.unique_name.guard():
                     avg_cost = model.net(args, is_train=False)
+<<<<<<< HEAD
             dist_infer = DistributedInfer(
                 main_program=test_origin_program,
                 startup_program=test_startup_program,
             )
+=======
+            dist_infer = DistributedInfer(main_program=test_origin_program,
+                                          startup_program=test_startup_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             with paddle.static.program_guard(
                 main_program=dist_infer.get_dist_infer_program()
             ):

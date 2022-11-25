@@ -49,8 +49,13 @@ static void CheckTensor(const paddle::experimental::Tensor& pre,
         paddle::platform::errors::PermissionDenied(
             "The dtype of tensor before(%s) and after(%s) hook are not "
             "consistent",
+<<<<<<< HEAD
             phi::DataTypeToString(pre.dtype()),
             phi::DataTypeToString(post.dtype())));
+=======
+            paddle::framework::DataType2String(pre.dtype()),
+            paddle::framework::DataType2String(post.dtype())));
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     PADDLE_ENFORCE_EQ(pre.place(),
                       post.place(),
                       paddle::platform::errors::PermissionDenied(

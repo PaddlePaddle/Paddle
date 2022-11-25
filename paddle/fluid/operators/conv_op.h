@@ -29,7 +29,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+<<<<<<< HEAD
 using Tensor = phi::DenseTensor;
+=======
+using Tensor = framework::Tensor;
+constexpr int kConvMKLDNNFP32 = 1;
+constexpr int kConvMKLDNNINT8 = 2;
+constexpr int kConvMKLDNNINT8WS8 = 3;
+constexpr int MaxKeyLength = 256;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
@@ -203,7 +211,11 @@ class ConvOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 
@@ -218,7 +230,11 @@ class ConvOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name,
+<<<<<<< HEAD
       const phi::DenseTensor& tensor,
+=======
+      const Tensor& tensor,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       const framework::OpKernelType& expected_kernel_type) const override;
 };
 

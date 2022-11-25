@@ -31,8 +31,13 @@ typedef paddle::variant<int,
                         float,
                         double,
                         std::string,
+<<<<<<< HEAD
                         phi::DenseTensor,
                         phi::DenseTensor /*, ChannelHolder*/>
+=======
+                        Tensor,
+                        LoDTensor /*, ChannelHolder*/>
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     ElementVar;
 
 class Tuple {

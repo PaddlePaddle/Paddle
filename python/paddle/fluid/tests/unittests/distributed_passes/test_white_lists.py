@@ -24,6 +24,7 @@ from paddle.distributed.passes.pass_base import (
 
 
 class TestConcretePass(PassBase):
+
     def __init__(self):
         super().__init__()
 
@@ -39,35 +40,41 @@ class TestConcretePass(PassBase):
 
 @register_pass("A")
 class A(TestConcretePass):
+
     def __init__(self):
         super().__init__()
 
 
 @register_pass("B")
 class B(TestConcretePass):
+
     def __init__(self):
         super().__init__()
 
 
 @register_pass("C")
 class C(TestConcretePass):
+
     def __init__(self):
         super().__init__()
 
 
 @register_pass("D")
 class D(TestConcretePass):
+
     def __init__(self):
         super().__init__()
 
 
 @register_pass("E")
 class E(TestConcretePass):
+
     def __init__(self):
         super().__init__()
 
 
 class TestMakeWhiteListsRule(unittest.TestCase):
+
     def test_main(self):
         before_white_lists = {"A": ["B", "C"]}
         after_white_lists = {"D": ["C"]}

@@ -23,10 +23,12 @@ from paddle.fluid.framework import (
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
 
     def test_uniform_random_inplace_op_dtype(self):
+
         def test_fp32():
             tensor_fp32 = paddle.ones(self.shape, dtype=paddle.float32)
             tensor_fp32.uniform_()
@@ -47,6 +49,7 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpIsInplace(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
 
@@ -57,6 +60,7 @@ class TestUniformRandomInplaceOpIsInplace(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpSeedIsZero(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
         self.seed = 0
@@ -71,6 +75,7 @@ class TestUniformRandomInplaceOpSeedIsZero(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpSeedIsNotZero(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
         self.seed = 10
@@ -85,6 +90,7 @@ class TestUniformRandomInplaceOpSeedIsNotZero(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpWithinRange(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
         self.min = -2
@@ -95,12 +101,18 @@ class TestUniformRandomInplaceOpWithinRange(unittest.TestCase):
         tensor = paddle.ones(self.shape)
         tensor.uniform_(min=self.min, max=self.max, seed=self.seed)
         tensor_data = tensor.numpy()
+<<<<<<< HEAD
         self.assertTrue(
             (tensor_data > self.min).all() and (tensor_data < self.max).all()
         )
+=======
+        self.assertTrue((tensor_data > self.min).all()
+                        and (tensor_data < self.max).all())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestUniformRandomInplaceOpShape(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
 
@@ -113,6 +125,7 @@ class TestUniformRandomInplaceOpShape(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
         self.min = -3
@@ -131,10 +144,12 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpError(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
 
     def test_uniform_random_inplace_op_error(self):
+
         def test_attr_error():
             tensor = paddle.ones(self.shape)
             tensor.uniform_(shape=self.shape, min=-2, max=2)
@@ -143,6 +158,7 @@ class TestUniformRandomInplaceOpError(unittest.TestCase):
 
 
 class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
+
     def test_uniform_random_inplace_op_empty_tensor(self):
         places = ['cpu']
         if fluid.core.is_compiled_with_cuda():
@@ -159,10 +175,15 @@ class TestUniformRandomInplaceOpEmptyTensor(unittest.TestCase):
 
 
 class TestUniformRandomInplaceGrad(unittest.TestCase):
+
     def setUp(self):
         self.shape = (1000, 784)
 
+<<<<<<< HEAD
     def run_(self):
+=======
+    def test_uniform_random_inplace_grad(self):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
         def test_grad():
@@ -182,6 +203,7 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
             paddle.set_device(place)
             test_grad()
         fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": False})
+<<<<<<< HEAD
 
     def test_uniform_random_inplace_grad(self):
         self.run_()
@@ -190,6 +212,8 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
         _enable_legacy_dygraph()
         self.run_()
         _disable_legacy_dygraph()
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

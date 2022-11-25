@@ -20,6 +20,7 @@ from paddle.utils.download import get_path_from_url
 
 
 class TestDownload(unittest.TestCase):
+
     def download(self, url, md5sum):
         get_weights_path_from_url(url, md5sum)
 

@@ -25,6 +25,7 @@ from decorator_helper import prog_scope
 
 
 class TestConvDoubleGradCheck(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]
@@ -38,9 +39,17 @@ class TestConvDoubleGradCheck(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -52,6 +61,7 @@ class TestConvDoubleGradCheck(unittest.TestCase):
 
 
 class TestConvDoubleGradCheckTest0(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]
@@ -65,9 +75,17 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -78,6 +96,7 @@ class TestConvDoubleGradCheckTest0(unittest.TestCase):
 
 
 class TestConvDoubleGradCheckTest1(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 3, 3, 3]
@@ -91,9 +110,17 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -104,6 +131,7 @@ class TestConvDoubleGradCheckTest1(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 4, 2]
@@ -117,9 +145,17 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         # places = [fluid.CPUPlace()]
@@ -131,6 +167,7 @@ class TestConv3DDoubleGradCheck(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 5, 3, 2]
@@ -144,9 +181,17 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -157,12 +202,14 @@ class TestConv3DDoubleGradCheckTest1(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = layers.conv2d(
             input=x,
             num_filters=2,
@@ -171,15 +218,31 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv2d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 0, 0, 1],
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -190,12 +253,14 @@ class TestConv2DoubleGradCheck_AsyPadding(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = layers.conv2d(
             input=x,
             num_filters=2,
@@ -204,15 +269,31 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv2d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding="SAME",
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -223,12 +304,14 @@ class TestConv2DoubleGradCheck_PaddingSAME(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = layers.conv2d(
             input=x,
             num_filters=2,
@@ -237,15 +320,31 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv2d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding="VALID",
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -256,12 +355,14 @@ class TestConv2DoubleGradCheck_PaddingVALID(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = layers.conv2d(
             input=x,
             num_filters=2,
@@ -272,15 +373,33 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
             groups=1,
             data_format="NHWC",
         )
+=======
+        y = layers.conv2d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 1],
+                          bias_attr=False,
+                          use_cudnn=True,
+                          groups=1,
+                          data_format="NHWC")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -291,12 +410,14 @@ class TestConv2DoubleGradCheck_ChannelLast(unittest.TestCase):
 
 
 class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = layers.conv2d(
             input=x,
             num_filters=2,
@@ -307,15 +428,33 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
             groups=1,
             data_format="NHWC",
         )
+=======
+        y = layers.conv2d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 0, 1, 0],
+                          bias_attr=False,
+                          use_cudnn=True,
+                          groups=1,
+                          data_format="NHWC")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -326,12 +465,14 @@ class TestConv2DoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = paddle.static.nn.conv3d(
             input=x,
             num_filters=2,
@@ -340,15 +481,31 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv3d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 0, 0, 1, 1, 2],
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -359,12 +516,14 @@ class TestConv3DDoubleGradCheck_AsyPadding(unittest.TestCase):
 
 
 class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 2]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = paddle.static.nn.conv3d(
             input=x,
             num_filters=2,
@@ -374,15 +533,32 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv3d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding="SAME",
+                          groups=1,
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -393,12 +569,14 @@ class TestConv3DoubleGradCheck_PaddingSAME(unittest.TestCase):
 
 
 class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 3, 3, 2]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = paddle.static.nn.conv3d(
             input=x,
             num_filters=2,
@@ -407,15 +585,31 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
             bias_attr=False,
             use_cudnn=True,
         )
+=======
+        y = layers.conv3d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding="VALID",
+                          bias_attr=False,
+                          use_cudnn=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -426,12 +620,14 @@ class TestConv3DoubleGradCheck_PaddingVALID(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = paddle.static.nn.conv3d(
             input=x,
             num_filters=2,
@@ -442,15 +638,33 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
             groups=1,
             data_format="NDHWC",
         )
+=======
+        y = layers.conv3d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 1, 1],
+                          bias_attr=False,
+                          use_cudnn=True,
+                          groups=1,
+                          data_format="NDHWC")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -461,12 +675,14 @@ class TestConv3DDoubleGradCheck_ChannelLast(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 2, 2, 2, 3]
         eps = 0.005
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
+<<<<<<< HEAD
         y = paddle.static.nn.conv3d(
             input=x,
             num_filters=2,
@@ -477,15 +693,33 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
             groups=1,
             data_format="NDHWC",
         )
+=======
+        y = layers.conv3d(input=x,
+                          num_filters=2,
+                          filter_size=1,
+                          padding=[1, 0, 1, 0, 1, 0],
+                          bias_attr=False,
+                          use_cudnn=True,
+                          groups=1,
+                          data_format="NDHWC")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
@@ -496,6 +730,7 @@ class TestConv3DDoubleGradCheck_ChannelLast_AsyPadding(unittest.TestCase):
 
 
 class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
+
     @prog_scope()
     def func(self, place):
         shape = [2, 4, 3, 3]
@@ -507,18 +742,35 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
         # use_cudnn == False
         # groups == filters
         # num_filters % num_channels == 0
+<<<<<<< HEAD
         y = layers.conv2d(
             x, shape[1], 1, groups=shape[1], bias_attr=False, use_cudnn=False
         )
+=======
+        y = layers.conv2d(x,
+                          shape[1],
+                          1,
+                          groups=shape[1],
+                          bias_attr=False,
+                          use_cudnn=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         w = fluid.default_main_program().global_block().all_parameters()
         w_arr = []
         for p in w:
             w_arr.append(np.random.uniform(-1, 1, p.shape).astype(dtype))
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x] + w, y, x_init=[x_arr] + w_arr, place=place, eps=eps
         )
+=======
+        gradient_checker.double_grad_check([x] + w,
+                                           y,
+                                           x_init=[x_arr] + w_arr,
+                                           place=place,
+                                           eps=eps)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = []
@@ -529,6 +781,10 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
 
 
 class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def depthwise_conv2d_wrapper(self, x):
         return paddle.nn.functional.conv2d(x[0], x[1], groups=4)
 
@@ -550,6 +806,7 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
         w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
         )
@@ -560,6 +817,18 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
             x_init=[x_arr, w_arr],
             place=place,
         )
+=======
+        gradient_checker.double_grad_check([x, w],
+                                           y,
+                                           x_init=[x_arr, w_arr],
+                                           place=place,
+                                           eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(
+            self.depthwise_conv2d_wrapper, [x, w],
+            y,
+            x_init=[x_arr, w_arr],
+            place=place)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = []
@@ -570,6 +839,10 @@ class TestDepthWiseConvDoubleGradCheckCase1(unittest.TestCase):
 
 
 class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def conv3d_wrapper(self, x):
         return paddle.nn.functional.conv3d(x[0], x[1])
 
@@ -587,12 +860,25 @@ class TestConv3DDoubleGradCheck_NN(unittest.TestCase):
         x_arr = np.random.uniform(-1, 1, x_shape).astype(dtype)
         w_arr = np.random.uniform(-1, 1, w_shape).astype(dtype)
 
+<<<<<<< HEAD
         gradient_checker.double_grad_check(
             [x, w], y, x_init=[x_arr, w_arr], place=place, eps=eps
         )
         gradient_checker.double_grad_check_for_dygraph(
             self.conv3d_wrapper, [x, w], y, x_init=[x_arr, w_arr], place=place
         )
+=======
+        gradient_checker.double_grad_check([x, w],
+                                           y,
+                                           x_init=[x_arr, w_arr],
+                                           place=place,
+                                           eps=eps)
+        gradient_checker.double_grad_check_for_dygraph(self.conv3d_wrapper,
+                                                       [x, w],
+                                                       y,
+                                                       x_init=[x_arr, w_arr],
+                                                       place=place)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_grad(self):
         places = []

@@ -18,6 +18,7 @@ from paddle.fluid.framework import Program
 
 
 class TestOpDesc(unittest.TestCase):
+
     def test_op_desc(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
@@ -78,6 +79,7 @@ class TestOpDesc(unittest.TestCase):
 
 
 class TestProgramDesc(unittest.TestCase):
+
     def test_instance(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)
@@ -105,6 +107,7 @@ class TestProgramDesc(unittest.TestCase):
 
 
 class TestVarDesc(unittest.TestCase):
+
     def test_shape(self):
         program_desc = core.ProgramDesc()
         block = program_desc.block(0)
@@ -162,6 +165,7 @@ class TestVarDesc(unittest.TestCase):
 
 
 class TestBlockDesc(unittest.TestCase):
+
     def test_add_var(self):
         program_desc = core.ProgramDesc()
         self.assertIsNotNone(program_desc)

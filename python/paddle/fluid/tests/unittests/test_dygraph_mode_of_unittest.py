@@ -17,10 +17,15 @@ import paddle
 
 
 class TestDygraphModeOfUnittest(unittest.TestCase):
+
     def test_dygraph_mode(self):
         self.assertTrue(
             paddle.in_dynamic_mode(),
+<<<<<<< HEAD
             'Default Mode of Unittest should be dygraph mode, but get static mode.',
+=======
+            'Default Mode of Unittest should be dygraph mode, but get static mode.'
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         )
 
 

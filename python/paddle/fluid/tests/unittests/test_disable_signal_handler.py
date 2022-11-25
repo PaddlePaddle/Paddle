@@ -27,9 +27,11 @@ SignalsToTest = {
 
 
 class TestSignOpError(unittest.TestCase):
+
     def test_errors(self):
         try:
             for sig in SignalsToTest:
+<<<<<<< HEAD
                 output = subprocess.check_output(
                     [
                         "python",
@@ -38,6 +40,13 @@ class TestSignOpError(unittest.TestCase):
                     ],
                     stderr=subprocess.STDOUT,
                 )
+=======
+                output = subprocess.check_output([
+                    "python", "-c",
+                    f"import paddle; import signal,os; paddle.disable_signal_handler(); os.kill(os.getpid(), {sig})"
+                ],
+                                                 stderr=subprocess.STDOUT)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except Exception as e:
             # If paddle signal handler is enabled
             # One would expect "paddle::framework::SignalHandle" in STDERR

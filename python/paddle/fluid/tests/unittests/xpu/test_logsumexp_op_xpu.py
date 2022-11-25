@@ -35,6 +35,7 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
 
 
 class XPUTestLogsumexp(XPUOpTest):
+
     def setUp(self):
         self.op_type = 'logsumexp'
         self.shape = [2, 3, 4, 5]
@@ -69,26 +70,31 @@ class XPUTestLogsumexp(XPUOpTest):
 
 
 class TestLogsumexp_shape(XPUTestLogsumexp):
+
     def set_attrs(self):
         self.shape = [4, 5, 6]
 
 
 class TestLogsumexp_axis(XPUTestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, -1]
 
 
 class TestLogsumexp_axis_all(XPUTestLogsumexp):
+
     def set_attrs(self):
         self.axis = [0, 1, 2, 3]
 
 
 class TestLogsumexp_keepdim(XPUTestLogsumexp):
+
     def set_attrs(self):
         self.keepdim = True
 
 
 class TestLogsumexp_reduce_all(XPUTestLogsumexp):
+
     def set_attrs(self):
         self.reduce_all = True
 

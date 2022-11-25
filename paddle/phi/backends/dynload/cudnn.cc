@@ -14,7 +14,11 @@ limitations under the License. */
 
 #include "paddle/phi/backends/dynload/cudnn.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/core/enforce.h"
+=======
+#include "paddle/fluid/platform/enforce.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 namespace dynload {

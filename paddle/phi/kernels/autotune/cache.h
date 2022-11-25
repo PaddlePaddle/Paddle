@@ -16,6 +16,41 @@
 
 #include <algorithm>
 #include <numeric>
+<<<<<<< HEAD
+=======
+#include <unordered_map>
+#include <vector>
+
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+
+inline void HashCombine(std::size_t* seed) {}
+
+// combine hash value
+// https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+template <typename T, typename... Rest>
+inline void HashCombine(std::size_t* seed, const T& v, Rest... rest) {
+  std::hash<T> hasher;
+  *seed ^= hasher(v) + 0x9e3779b9 + (*seed << 6) + (*seed >> 2);
+  HashCombine(seed, rest...);
+}
+
+// custom specialization of std::hash can be injected in namespace std
+// ref: https://en.cppreference.com/w/cpp/utility/hash
+namespace std {
+template <typename T>
+struct hash<std::vector<T>> {
+  std::size_t operator()(std::vector<T> const& vec) const noexcept {
+    std::size_t seed = 0;
+    for (auto val : vec) {
+      HashCombine(&seed, val);
+    }
+    return seed;
+  }
+};
+}  // namespace std
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
@@ -25,10 +60,73 @@
 namespace phi {
 namespace autotune {
 
+<<<<<<< HEAD
 struct ConvAutoTuneResult {
   ConvAutoTuneResult() {}
   ConvAutoTuneResult(int64_t a, size_t size, bool search)
       : algo(a), workspace_size(size), exhaustive_search(search) {}
+=======
+template <typename... Args>
+size_t GetKey(Args&&... args) {
+  size_t seed = 0;
+  HashCombine(&seed, std::forward<Args>(args)...);
+  return seed;
+}
+
+// Define the cache key of operator
+size_t ConvKey(const std::vector<int64_t>& x_dims,
+               const std::vector<int64_t>& w_dims,
+               const std::vector<int>& strides,
+               const std::vector<int>& paddings,
+               const std::vector<int>& dilations,
+               phi::DataType dtype);
+
+size_t TransposeKey(const std::vector<int64_t>& x_dims,
+                    const std::vector<int32_t>& perm,
+                    phi::DataType dtype);
+
+template <typename AlgorithmT>
+class AlgorithmsCache {
+ public:
+  AlgorithmsCache() : cache_mutex_(new std::mutex()) { hash_.clear(); }
+
+  AlgorithmT Get(size_t key) {
+    std::lock_guard<std::mutex> lock(*cache_mutex_);
+    PADDLE_ENFORCE_NE(
+        hash_.find(key),
+        hash_.end(),
+        phi::errors::PreconditionNotMet("The key does not exist."));
+    return hash_[key];
+  }
+
+  bool Find(size_t key) {
+    bool ret = false;
+    std::lock_guard<std::mutex> lock(*cache_mutex_);
+    if (hash_.find(key) != hash_.end()) {
+      cache_hits_++;
+      ret = true;
+    } else {
+      cache_misses_++;
+    }
+    return ret;
+  }
+
+  void Clean() {
+    std::lock_guard<std::mutex> lock(*cache_mutex_);
+    hash_.clear();
+    cache_hits_ = 0;
+    cache_misses_ = 0;
+  }
+
+  void Set(size_t key, AlgorithmT algo) {
+    std::lock_guard<std::mutex> lock(*cache_mutex_);
+    hash_[key] = algo;
+  }
+
+  int64_t CacheMisses() const { return cache_misses_; }
+
+  int64_t CacheHits() const { return cache_hits_; }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   int64_t algo;
   size_t workspace_size = 0;
@@ -43,6 +141,7 @@ enum class AlgorithmType {
   kConvForward = 1,
   kConvBackwardData = 2,
   kConvBackwardFilter = 3,
+<<<<<<< HEAD
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
   kConvForwardV8 = 4,
   kConvBackwardDataV8 = 5,
@@ -53,6 +152,10 @@ enum class AlgorithmType {
   kTranspose = 4,
   kAlgorithmCount = 5
 #endif
+=======
+  kTranspose = 4,
+  kAlgorithmCount = 5
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 };
 
 // AlgorithmsConfigKey -> AlgorithmsID
@@ -87,6 +190,8 @@ class AutoTuneCache {
     return cudnn_v8_auto_tune_map_[static_cast<int64_t>(algo_type)];
   }
 #endif
+
+  AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 
   AlgorithmsCacheMap& GetTranspose() { return Get(AlgorithmType::kTranspose); }
 

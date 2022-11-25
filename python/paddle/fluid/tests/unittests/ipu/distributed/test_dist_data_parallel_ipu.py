@@ -27,6 +27,10 @@ mpi_comm = None
 
 @unittest.skip('Disable distributed tests on auto CI.')
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_attrs(self, enable_ipu, optimizer, log, onchip=False, rts=False):
         self.ipu_options = {
             "enable_pipelining": True,
@@ -37,8 +41,13 @@ class TestBase(IPUOpTest):
             "replicated_graph_count": 2,
             "location_optimizer": {
                 "on_chip": onchip,
+<<<<<<< HEAD
                 "use_replicated_tensor_sharding": rts,
             },
+=======
+                "use_replicated_tensor_sharding": rts
+            }
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
         self.cpu_bs = 16
@@ -62,6 +71,7 @@ class TestBase(IPUOpTest):
 
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
+<<<<<<< HEAD
                 image = paddle.static.data(
                     name='image', shape=[bs, 3, 10, 10], dtype='float32'
                 )
@@ -73,6 +83,21 @@ class TestBase(IPUOpTest):
                     conv2 = paddle.static.nn.conv2d(
                         conv1, num_filters=3, filter_size=3, bias_attr=False
                     )
+=======
+                image = paddle.static.data(name='image',
+                                           shape=[bs, 3, 10, 10],
+                                           dtype='float32')
+                with paddle.static.ipu_shard_guard(index=0, stage=0):
+                    conv1 = paddle.static.nn.conv2d(image,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
+                with paddle.static.ipu_shard_guard(index=1, stage=1):
+                    conv2 = paddle.static.nn.conv2d(conv1,
+                                                    num_filters=3,
+                                                    filter_size=3,
+                                                    bias_attr=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     # should consider influence of bs
                     loss = paddle.mean(conv2)
 
@@ -101,6 +126,7 @@ class TestBase(IPUOpTest):
                     ipu_strategy.set_graph_config(
                         num_ipus=2 * self.ipu_options['replicated_graph_count'],
                         is_training=True,
+<<<<<<< HEAD
                         enable_manual_shard=True,
                     )
                     ipu_strategy.set_options(self.ipu_options)
@@ -130,6 +156,30 @@ class TestBase(IPUOpTest):
                                 1,
                             ],
                         )
+=======
+                        enable_manual_shard=True)
+                    ipu_strategy.set_options(self.ipu_options)
+                    ipu_strategy.set_options({
+                        "enable_distribution":
+                        True,
+                        "enable_distributed_replicated_graphs":
+                        True,
+                        "global_replica_offset":
+                        int(os.environ.get("PADDLE_TRAINER_ID")) * 2,
+                        "global_replication_factor":
+                        4
+                    })
+                    program = paddle.static.IpuCompiledProgram(
+                        main_prog, ipu_strategy=ipu_strategy).compile(
+                            feed_list, fetch_list)
+                    feed = {
+                        "image":
+                        np.tile(data, [
+                            self.ipu_options['replicated_graph_count'] *
+                            self.ipu_options['batches_per_step'] *
+                            self.ipu_options['accumulation_factor'], 1, 1, 1
+                        ])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     }
 
                 else:
@@ -180,6 +230,7 @@ if __name__ == "__main__":
         onchip = True if sys.argv[3] == "True" else False
         rts = True if sys.argv[4] == "True" else False
         test = TestBase()
+<<<<<<< HEAD
         test.set_attrs(
             enable_ipu=True,
             optimizer=optimizer,
@@ -187,6 +238,13 @@ if __name__ == "__main__":
             onchip=onchip,
             rts=rts,
         )
+=======
+        test.set_attrs(enable_ipu=True,
+                       optimizer=optimizer,
+                       log=log,
+                       onchip=onchip,
+                       rts=rts)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         test.test()
     # Run cpu tests for compare
     elif len(sys.argv) == 3:

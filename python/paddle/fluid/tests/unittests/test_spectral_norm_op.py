@@ -50,6 +50,7 @@ def spectral_norm(weight, u, v, dim, power_iters, eps):
     "which cannot be checked by python grad unittests"
 )
 class TestSpectralNormOpNoGrad(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.op_type = 'spectral_norm'
@@ -92,6 +93,7 @@ class TestSpectralNormOpNoGrad(OpTest):
     "which cannot be checked by python grad unittests"
 )
 class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
+
     def initTestCase(self):
         self.weight_shape = (2, 3, 3, 3)
         self.u_shape = (3,)
@@ -102,6 +104,7 @@ class TestSpectralNormOpNoGrad2(TestSpectralNormOpNoGrad):
 
 
 class TestSpectralNormOp(TestSpectralNormOpNoGrad):
+
     def test_check_grad_ignore_uv(self):
         self.check_grad(
             ['Weight'],
@@ -119,6 +122,7 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
 
 
 class TestSpectralNormOp2(TestSpectralNormOp):
+
     def initTestCase(self):
         self.weight_shape = (2, 6, 3, 3)
         self.u_shape = (6,)
@@ -129,6 +133,7 @@ class TestSpectralNormOp2(TestSpectralNormOp):
 
 
 class TestSpectralNormOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
 
@@ -148,12 +153,19 @@ class TestSpectralNormOpError(unittest.TestCase):
 
 
 class TestDygraphSpectralNormOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             shape = (2, 4, 3, 3)
+<<<<<<< HEAD
             spectralNorm = fluid.dygraph.nn.SpectralNorm(
                 shape, dim=1, power_iters=2
             )
+=======
+            spectralNorm = fluid.dygraph.nn.SpectralNorm(shape,
+                                                         dim=1,
+                                                         power_iters=2)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             def test_Variable():
                 weight_1 = np.random.random((2, 4)).astype("float32")

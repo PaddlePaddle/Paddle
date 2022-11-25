@@ -27,6 +27,7 @@ paddle.enable_static()
 
 
 class TestTransposeOp(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -57,65 +58,76 @@ class TestTransposeOp(OpTest):
 
 
 class TestCase0(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
 
 
 class TestCase1(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
 class TestCase2(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
 
 
 class TestCase3(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
 
 
 class TestCase4(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
 class TestCase5(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 16, 96)
         self.axis = (0, 2, 1)
 
 
 class TestCase6(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 10, 12, 16)
         self.axis = (3, 1, 2, 0)
 
 
 class TestCase7(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 10, 2, 16)
         self.axis = (0, 1, 3, 2)
 
 
 class TestCase8(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6, 7)
 
 
 class TestCase9(TestTransposeOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+<<<<<<< HEAD
 class TestCase_ZeroDim(TestTransposeOp):
     def initTestCase(self):
         self.shape = ()
@@ -123,6 +135,10 @@ class TestCase_ZeroDim(TestTransposeOp):
 
 
 class TestAutoTuneTransposeOp(OpTest):
+=======
+class TestAutoTuneTransposeOp(OpTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -134,7 +150,11 @@ class TestAutoTuneTransposeOp(OpTest):
         }
         self.outputs = {
             'XShape': np.random.random(self.shape).astype("float64"),
+<<<<<<< HEAD
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'Out': self.inputs['X'].transpose(self.axis)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def initTestCase(self):
@@ -157,6 +177,7 @@ class TestAutoTuneTransposeOp(OpTest):
 
 
 class TestTransposeBF16Op(OpTest):
+
     def setUp(self):
         self.init_op_type()
         self.initTestCase()
@@ -169,10 +190,18 @@ class TestTransposeBF16Op(OpTest):
             'use_mkldnn': self.use_mkldnn,
         }
         self.outputs = {
+<<<<<<< HEAD
             'XShape': convert_float_to_uint16(
                 np.random.random(self.shape).astype("float32")
             ),
             'Out': self.inputs['X'].transpose(self.axis),
+=======
+            'XShape':
+            convert_float_to_uint16(
+                np.random.random(self.shape).astype("float32")),
+            'Out':
+            self.inputs['X'].transpose(self.axis)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def init_op_type(self):
@@ -191,11 +220,13 @@ class TestTransposeBF16Op(OpTest):
 
 
 class TestTransposeOpBool(TestTransposeOp):
+
     def test_check_grad(self):
         pass
 
 
 class TestTransposeOpBool1D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (100,)
         self.axis = (0,)
@@ -207,6 +238,7 @@ class TestTransposeOpBool1D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool2D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (3, 40)
         self.axis = (1, 0)
@@ -218,6 +250,7 @@ class TestTransposeOpBool2D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool3D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
@@ -229,6 +262,7 @@ class TestTransposeOpBool3D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool4D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.axis = (0, 2, 3, 1)
@@ -240,6 +274,7 @@ class TestTransposeOpBool4D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool5D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.axis = (4, 2, 3, 1, 0)
@@ -251,6 +286,7 @@ class TestTransposeOpBool5D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool6D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
         self.axis = (4, 2, 3, 1, 0, 5)
@@ -262,6 +298,7 @@ class TestTransposeOpBool6D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool7D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3)
         self.axis = (0, 1, 3, 2, 4, 5, 6)
@@ -273,6 +310,7 @@ class TestTransposeOpBool7D(TestTransposeOpBool):
 
 
 class TestTransposeOpBool8D(TestTransposeOpBool):
+
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
@@ -284,6 +322,7 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
 
 
 class TestTransposeOpError(unittest.TestCase):
+
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -297,10 +336,17 @@ class TestTransposeOpError(unittest.TestCase):
 
             def test_x_dtype_check():
                 # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
+<<<<<<< HEAD
                 x1 = fluid.layers.data(
                     name='x1', shape=[10, 5, 3], dtype='int8'
                 )
                 paddle.transpose(x1, perm=[1, 0, 2])
+=======
+                x1 = fluid.layers.data(name='x1',
+                                       shape=[10, 5, 3],
+                                       dtype='int8')
+                fluid.layers.transpose(x1, perm=[1, 0, 2])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             self.assertRaises(TypeError, test_x_dtype_check)
 
@@ -325,6 +371,7 @@ class TestTransposeOpError(unittest.TestCase):
 
 
 class TestTransposeApi(unittest.TestCase):
+
     def test_static_out(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -362,6 +409,7 @@ class TestTransposeApi(unittest.TestCase):
 
 
 class TestTAPI(unittest.TestCase):
+
     def test_out(self):
         with fluid.program_guard(fluid.Program()):
             data = fluid.data(shape=[10], dtype="float64", name="data")
@@ -428,6 +476,7 @@ class TestTAPI(unittest.TestCase):
 
 
 class TestMoveAxis(unittest.TestCase):
+
     def test_moveaxis1(self):
         x_np = np.random.randn(2, 3, 4, 5, 7)
         expected = np.moveaxis(x_np, [0, 4, 3, 2], [1, 3, 2, 0])
@@ -470,9 +519,14 @@ class TestMoveAxis(unittest.TestCase):
 
     def test_moveaxis3(self):
         paddle.disable_static()
+<<<<<<< HEAD
         x = paddle.to_tensor(
             [[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j]]
         )
+=======
+        x = paddle.to_tensor([[1 + 1j, -1 - 1j], [1 + 1j, -1 - 1j],
+                              [1 + 1j, -1 - 1j]])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = x.moveaxis(0, 1)
         self.assertEqual(out.shape, [2, 3])
         paddle.enable_static()

@@ -20,6 +20,7 @@ from model_zoo import resnet_model
 
 
 class TestBuildCINNPass(DistPassTestBase):
+
     def init(self):
         self.atol = 0.5
         self.rtol = 0.0

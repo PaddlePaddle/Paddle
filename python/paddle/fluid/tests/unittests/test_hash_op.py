@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 
 class TestHashOp(OpTest):
+
     def setUp(self):
         self.op_type = "hash"
         self.init_test_case()
@@ -47,6 +48,7 @@ class TestHashOp(OpTest):
 
 
 class TestHashNotLoDOp(TestHashOp):
+
     def setUp(self):
         self.op_type = "hash"
         self.init_test_case()
@@ -110,15 +112,21 @@ class TestHashOp3(TestHashOp):
 
     def init_test_case(self):
         self.in_seq = np.array([10, 5]).reshape((2, 1)).astype("int64")
+<<<<<<< HEAD
         self.out_seq = np.array(
             [1204014882, 393011615, 3586283837, 2814821595]
         ).reshape((2, 2, 1))
+=======
+        self.out_seq = np.array([1204014882, 393011615, 3586283837,
+                                 2814821595]).reshape((2, 2, 1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_check_output(self):
         self.check_output()
 
 
 class TestHashOpError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             input_data = np.random.randint(0, 10, (8, 1)).astype("int32")
@@ -131,27 +139,48 @@ class TestHashOpError(unittest.TestCase):
 
             def test_type():
                 # dtype must be int32, int64.
+<<<<<<< HEAD
                 x2 = fluid.layers.data(
                     name='x2', shape=[1], dtype="float32", lod_level=1
                 )
+=======
+                x2 = fluid.layers.data(name='x2',
+                                       shape=[1],
+                                       dtype="float32",
+                                       lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.hash(input=x2, hash_size=2**32)
 
             self.assertRaises(TypeError, test_type)
 
             def test_hash_size_type():
                 # hash_size dtype must be int32, int64.
+<<<<<<< HEAD
                 x3 = fluid.layers.data(
                     name='x3', shape=[1], dtype="int32", lod_level=1
                 )
+=======
+                x3 = fluid.layers.data(name='x3',
+                                       shape=[1],
+                                       dtype="int32",
+                                       lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.hash(input=x3, hash_size=1024.5)
 
             self.assertRaises(TypeError, test_hash_size_type)
 
             def test_num_hash_type():
                 # num_hash dtype must be int32, int64.
+<<<<<<< HEAD
                 x4 = fluid.layers.data(
                     name='x4', shape=[1], dtype="int32", lod_level=1
                 )
+=======
+                x4 = fluid.layers.data(name='x4',
+                                       shape=[1],
+                                       dtype="int32",
+                                       lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 fluid.layers.hash(input=x4, hash_size=2**32, num_hash=2.5)
 
             self.assertRaises(TypeError, test_num_hash_type)

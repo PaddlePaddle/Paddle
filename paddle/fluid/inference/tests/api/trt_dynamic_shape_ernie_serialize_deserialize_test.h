@@ -139,8 +139,11 @@ static void trt_ernie(bool with_fp16, std::vector<float> result) {
 #if defined _WIN32
 #else
   config.EnableTensorRtEngine(1 << 30, 1, 5, precision, true, false);
+<<<<<<< HEAD
 #endif
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   config.SetTRTDynamicShapeInfo(
       min_input_shape, max_input_shape, opt_input_shape);
   AnalysisConfig* config_deser = new AnalysisConfig(config);

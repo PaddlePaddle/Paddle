@@ -23,14 +23,20 @@ from paddle.fluid.framework import program_guard, Program
 
 
 class TestGRUUnitAPIError(unittest.TestCase):
+
     def test_errors(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             D = 5
             layer = fluid.dygraph.nn.GRUUnit(size=D * 3)
             # the input must be Variable.
+<<<<<<< HEAD
             x0 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
             )
+=======
+            x0 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.assertRaises(TypeError, layer, x0)
             # the input dtype must be float32 or float64
             x = fluid.data(name='x', shape=[-1, D * 3], dtype='float16')
@@ -62,16 +68,26 @@ def relu(x):
 
 
 class TestGRUUnitOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             batch_size = 5
             hidden_dim = 40
+<<<<<<< HEAD
             input = fluid.data(
                 name='input', shape=[None, hidden_dim * 3], dtype='float32'
             )
             pre_hidden = fluid.data(
                 name='pre_hidden', shape=[None, hidden_dim], dtype='float32'
             )
+=======
+            input = fluid.data(name='input',
+                               shape=[None, hidden_dim * 3],
+                               dtype='float32')
+            pre_hidden = fluid.data(name='pre_hidden',
+                                    shape=[None, hidden_dim],
+                                    dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             np_input = np.random.uniform(
                 -0.1, 0.1, (batch_size, hidden_dim * 3)
             ).astype('float64')
@@ -90,21 +106,33 @@ class TestGRUUnitOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_pre_hidden_Variable)
 
             def test_input_type():
+<<<<<<< HEAD
                 error_input = fluid.data(
                     name='error_input',
                     shape=[None, hidden_dim * 3],
                     dtype='int32',
                 )
+=======
+                error_input = fluid.data(name='error_input',
+                                         shape=[None, hidden_dim * 3],
+                                         dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 gru_unit(error_input, pre_hidden, hidden_dim * 3)
 
             self.assertRaises(TypeError, test_input_type)
 
             def test_pre_hidden_type():
+<<<<<<< HEAD
                 error_pre_hidden = fluid.data(
                     name='error_pre_hidden',
                     shape=[None, hidden_dim],
                     dtype='int32',
                 )
+=======
+                error_pre_hidden = fluid.data(name='error_pre_hidden',
+                                              shape=[None, hidden_dim],
+                                              dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 gru_unit(input, error_pre_hidden, hidden_dim * 3)
 
             self.assertRaises(TypeError, test_pre_hidden_type)
@@ -125,6 +153,7 @@ class TestGRUUnitOp(OpTest):
         frame_size = self.frame_size
         self.op_type = 'gru_unit'
         self.inputs = {
+<<<<<<< HEAD
             'Input': np.random.uniform(
                 -0.1, 0.1, (batch_size, frame_size * 3)
             ).astype(self.dtype),
@@ -136,6 +165,18 @@ class TestGRUUnitOp(OpTest):
                 1.0 / math.sqrt(frame_size),
                 (frame_size, frame_size * 3),
             ).astype(self.dtype),
+=======
+            'Input':
+            np.random.uniform(-0.1, 0.1,
+                              (batch_size, frame_size * 3)).astype(self.dtype),
+            'HiddenPrev':
+            np.random.uniform(-0.1, 0.1,
+                              (batch_size, frame_size)).astype(self.dtype),
+            'Weight':
+            np.random.uniform(-1. / math.sqrt(frame_size),
+                              1. / math.sqrt(frame_size),
+                              (frame_size, frame_size * 3)).astype(self.dtype),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
         self.attrs = {
             'activation': GRUActivationType.tanh,
@@ -156,12 +197,20 @@ class TestGRUUnitOp(OpTest):
             else np.zeros((1, frame_size * 3))
         )
         g = x + np.tile(b, (batch_size, 1))
+<<<<<<< HEAD
         w_u_r = w.flatten()[: frame_size * frame_size * 2].reshape(
             (frame_size, frame_size * 2)
         )
         u_r = self.activate[self.attrs['gate_activation']](
             np.dot(h_p, w_u_r) + g[:, : frame_size * 2]
         )
+=======
+        w_u_r = w.flatten()[:frame_size * frame_size * 2].reshape(
+            (frame_size, frame_size * 2))
+        u_r = self.activate[self.attrs['gate_activation']](np.dot(h_p, w_u_r) +
+                                                           g[:, :frame_size *
+                                                             2])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         u = u_r[:, :frame_size]
         r = u_r[:, frame_size : frame_size * 2]
         r_h_p = r * h_p
@@ -197,6 +246,7 @@ class TestGRUUnitOp(OpTest):
 
 
 class TestGRUUnitOpOriginMode(TestGRUUnitOp):
+
     def setUp(self):
         self.dtype = (
             'float32' if fluid.core.is_compiled_with_rocm() else 'float64'
@@ -206,6 +256,7 @@ class TestGRUUnitOpOriginMode(TestGRUUnitOp):
 
 
 class TestGRUUnitOpWithBias(TestGRUUnitOp):
+
     def set_inputs(self, origin_mode=False):
         batch_size = self.batch_size
         frame_size = self.frame_size
@@ -223,14 +274,20 @@ class TestGRUUnitOpWithBias(TestGRUUnitOp):
         self.check_grad(['Input', 'HiddenPrev', 'Weight', 'Bias'], ['Hidden'])
 
     def test_check_grad_ingore_input(self):
+<<<<<<< HEAD
         self.check_grad(
             ['HiddenPrev', 'Weight', 'Bias'],
             ['Hidden'],
             no_grad_set=set('Input'),
         )
+=======
+        self.check_grad(['HiddenPrev', 'Weight', 'Bias'], ['Hidden'],
+                        no_grad_set=set('Input'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestGRUUnitOpWithBiasOriginMode(TestGRUUnitOpWithBias):
+
     def setUp(self):
         self.dtype = (
             'float32' if fluid.core.is_compiled_with_rocm() else 'float64'

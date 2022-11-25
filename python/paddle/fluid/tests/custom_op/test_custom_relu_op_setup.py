@@ -18,6 +18,11 @@ import site
 import unittest
 import paddle
 import paddle.static as static
+<<<<<<< HEAD
+=======
+import tempfile
+import subprocess
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import numpy as np
 from paddle.vision.transforms import Compose, Normalize
 from paddle.utils.cpp_extension.extension_utils import run_cmd
@@ -84,11 +89,19 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
 
             # in static mode, x data has been covered by out
             compiled_prog = static.CompiledProgram(
+<<<<<<< HEAD
                 static.default_main_program()
             ).with_data_parallel(loss_name=out.name, places=places)
             out_v = exe.run(
                 compiled_prog, feed={'X': np_x}, fetch_list=[out.name]
             )
+=======
+                static.default_main_program()).with_data_parallel(
+                    loss_name=out.name, places=places)
+            out_v = exe.run(compiled_prog,
+                            feed={'X': np_x},
+                            fetch_list=[out.name])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     paddle.disable_static()
     return out_v
@@ -100,9 +113,15 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
     with static.scope_guard(static.Scope()):
         with static.program_guard(static.Program()):
             # simple module
+<<<<<<< HEAD
             data = static.data(
                 name='data', shape=[None, 1, 28, 28], dtype='float32'
             )
+=======
+            data = static.data(name='data',
+                               shape=[None, 1, 28, 28],
+                               dtype='float32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             label = static.data(name='label', shape=[None, 1], dtype='int64')
 
             hidden = static.nn.fc(data, size=128)
@@ -121,21 +140,39 @@ def custom_relu_static_inference(func, device, np_data, np_label, path_prefix):
 
             # train
             for i in range(4):
+<<<<<<< HEAD
                 avg_loss_v = exe.run(
                     static.default_main_program(),
                     feed={'data': np_data, 'label': np_label},
                     fetch_list=[avg_loss],
                 )
+=======
+                avg_loss_v = exe.run(static.default_main_program(),
+                                     feed={
+                                         'data': np_data,
+                                         'label': np_label
+                                     },
+                                     fetch_list=[avg_loss])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # save inference model
             static.save_inference_model(path_prefix, [data], [predict], exe)
 
             # get train predict value
+<<<<<<< HEAD
             predict_v = exe.run(
                 static.default_main_program(),
                 feed={'data': np_data, 'label': np_label},
                 fetch_list=[predict],
             )
+=======
+            predict_v = exe.run(static.default_main_program(),
+                                feed={
+                                    'data': np_data,
+                                    'label': np_label
+                                },
+                                fetch_list=[predict])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     return predict_v
 
@@ -148,9 +185,16 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
     out = func(t) if use_func else paddle.nn.functional.relu(t)
     out.stop_gradient = False
 
+<<<<<<< HEAD
     dx = paddle.grad(
         outputs=[out], inputs=[t], create_graph=True, retain_graph=True
     )
+=======
+    dx = paddle.grad(outputs=[out],
+                     inputs=[t],
+                     create_graph=True,
+                     retain_graph=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     dx[0].backward()
 
@@ -159,6 +203,7 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
+
     def setUp(self):
         cur_dir = os.path.dirname(os.path.abspath(__file__))
         # compile, install the custom op egg into site-packages under background
@@ -185,9 +230,14 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         custom_egg_path = [
             x for x in os.listdir(site_dir) if 'custom_relu_module_setup' in x
         ]
+<<<<<<< HEAD
         assert len(custom_egg_path) == 1, "Matched egg number is %d." % len(
             custom_egg_path
         )
+=======
+        assert len(custom_egg_path
+                   ) == 1, "Matched egg number is %d." % len(custom_egg_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         sys.path.append(os.path.join(site_dir, custom_egg_path[0]))
 
         # usage: import the package directly
@@ -256,6 +306,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     continue
                 x = np.random.uniform(-1, 1, [4, 8]).astype(dtype)
                 for custom_op in self.custom_ops:
+<<<<<<< HEAD
                     out, x_grad = custom_relu_dynamic(
                         custom_op, device, dtype, x
                     )
@@ -276,6 +327,20 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                             x_grad, pd_x_grad
                         ),
                     )
+=======
+                    out, x_grad = custom_relu_dynamic(custom_op, device, dtype,
+                                                      x)
+                    pd_out, pd_x_grad = custom_relu_dynamic(
+                        custom_op, device, dtype, x, False)
+                    self.assertTrue(
+                        np.array_equal(out, pd_out),
+                        "custom op out: {},\n paddle api out: {}".format(
+                            out, pd_out))
+                    self.assertTrue(
+                        np.array_equal(x_grad, pd_x_grad),
+                        "custom op x grad: {},\n paddle api x grad: {}".format(
+                            x_grad, pd_x_grad))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_dynamic(self):
         with _test_eager_guard():
@@ -288,9 +353,15 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         np_label = np.random.random((1, 1)).astype("int64")
         path_prefix = "custom_op_inference/custom_relu"
         for device in self.devices:
+<<<<<<< HEAD
             predict = custom_relu_static_inference(
                 self.custom_ops[0], device, np_data, np_label, path_prefix
             )
+=======
+            predict = custom_relu_static_inference(self.custom_ops[0], device,
+                                                   np_data, np_label,
+                                                   path_prefix)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # load inference model
             with static.scope_guard(static.Scope()):
                 exe = static.Executor()
@@ -322,17 +393,27 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         from paddle.inference import create_predictor
 
         for device in self.devices:
+<<<<<<< HEAD
             predict = custom_relu_static_inference(
                 self.custom_ops[0], device, np_data, np_label, path_prefix
             )
+=======
+            predict = custom_relu_static_inference(self.custom_ops[0], device,
+                                                   np_data, np_label,
+                                                   path_prefix)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             # load inference model
             config = Config(
                 path_prefix + ".pdmodel", path_prefix + ".pdiparams"
             )
             predictor = create_predictor(config)
             input_tensor = predictor.get_input_handle(
+<<<<<<< HEAD
                 predictor.get_input_names()[0]
             )
+=======
+                predictor.get_input_names()[0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             input_tensor.reshape(np_data.shape)
             input_tensor.copy_from_cpu(np_data.copy())
             predictor.run()
@@ -358,6 +439,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                     self.custom_ops[0], device, dtype, x
                 )
                 pd_out, pd_dx_grad = custom_relu_double_grad_dynamic(
+<<<<<<< HEAD
                     self.custom_ops[0], device, dtype, x, False
                 )
                 np.testing.assert_array_equal(
@@ -374,12 +456,24 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         dx_grad, pd_dx_grad
                     ),
                 )
+=======
+                    self.custom_ops[0], device, dtype, x, False)
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(
+                        out, pd_out))
+                self.assertTrue(
+                    np.array_equal(dx_grad, pd_dx_grad),
+                    "custom op dx grad: {},\n paddle api dx grad: {}".format(
+                        dx_grad, pd_dx_grad))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_with_dataloader(self):
         for device in self.devices:
             paddle.set_device(device)
             # data loader
             transform = Compose(
+<<<<<<< HEAD
                 [Normalize(mean=[127.5], std=[127.5], data_format='CHW')]
             )
             train_dataset = paddle.vision.datasets.MNIST(
@@ -392,10 +486,21 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                 drop_last=True,
                 num_workers=0,
             )
+=======
+                [Normalize(mean=[127.5], std=[127.5], data_format='CHW')])
+            train_dataset = paddle.vision.datasets.MNIST(mode='train',
+                                                         transform=transform)
+            train_loader = paddle.io.DataLoader(train_dataset,
+                                                batch_size=64,
+                                                shuffle=True,
+                                                drop_last=True,
+                                                num_workers=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             for batch_id, (image, _) in enumerate(train_loader()):
                 out = self.custom_ops[0](image)
                 pd_out = paddle.nn.functional.relu(image)
+<<<<<<< HEAD
                 np.testing.assert_array_equal(
                     out,
                     pd_out,
@@ -403,6 +508,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
                         out, pd_out
                     ),
                 )
+=======
+                self.assertTrue(
+                    np.array_equal(out, pd_out),
+                    "custom op out: {},\n paddle api out: {}".format(
+                        out, pd_out))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                 if batch_id == 5:
                     break

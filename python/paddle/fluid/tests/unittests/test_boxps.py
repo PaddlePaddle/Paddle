@@ -34,6 +34,7 @@ class TestTranspile(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         t = self.get_transpile("single_process_multi_thread")
+<<<<<<< HEAD
         t.transpile(
             trainer_id=0,
             startup_program=startup_program,
@@ -48,12 +49,25 @@ class TestTranspile(unittest.TestCase):
                 trainers="127.0.0.1:6174",
                 program=main_program,
             )
+=======
+        t.transpile(trainer_id=0,
+                    startup_program=startup_program,
+                    trainers="127.0.0.1:6174",
+                    program=main_program)
+        t = self.get_transpile("grad_allreduce")
+        try:
+            t.transpile(trainer_id=0,
+                        startup_program=startup_program,
+                        trainers="127.0.0.1:6174",
+                        program=main_program)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except ValueError as e:
             print(e)
 
     def test_single_trainers(self):
         transpiler = collective.GradAllReduce(0)
         try:
+<<<<<<< HEAD
             transpiler.transpile(
                 startup_program=fluid.Program(),
                 main_program=fluid.Program(),
@@ -62,10 +76,19 @@ class TestTranspile(unittest.TestCase):
                 current_endpoint="127.0.0.1:6174",
                 wait_port="6174",
             )
+=======
+            transpiler.transpile(startup_program=fluid.Program(),
+                                 main_program=fluid.Program(),
+                                 rank=1,
+                                 endpoints="127.0.0.1:6174",
+                                 current_endpoint="127.0.0.1:6174",
+                                 wait_port="6174")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except ValueError as e:
             print(e)
         transpiler = collective.LocalSGD(0)
         try:
+<<<<<<< HEAD
             transpiler.transpile(
                 startup_program=fluid.Program(),
                 main_program=fluid.Program(),
@@ -74,6 +97,14 @@ class TestTranspile(unittest.TestCase):
                 current_endpoint="127.0.0.1:6174",
                 wait_port="6174",
             )
+=======
+            transpiler.transpile(startup_program=fluid.Program(),
+                                 main_program=fluid.Program(),
+                                 rank=1,
+                                 endpoints="127.0.0.1:6174",
+                                 current_endpoint="127.0.0.1:6174",
+                                 wait_port="6174")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except ValueError as e:
             print(e)
 
@@ -95,12 +126,23 @@ class TestPullBoxSparseOP(unittest.TestCase):
         paddle.enable_static()
         program = fluid.Program()
         with fluid.program_guard(program):
+<<<<<<< HEAD
             x = fluid.layers.data(
                 name='x', shape=[1], dtype='int64', lod_level=0
             )
             y = fluid.layers.data(
                 name='y', shape=[1], dtype='int64', lod_level=0
             )
+=======
+            x = fluid.layers.data(name='x',
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=0)
+            y = fluid.layers.data(name='y',
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=0)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             emb_x, emb_y = _pull_box_sparse([x, y], size=1)
 
 

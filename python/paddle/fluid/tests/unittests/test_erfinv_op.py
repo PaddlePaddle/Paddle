@@ -24,6 +24,7 @@ np.random.seed(0)
 
 
 class TestErfinv(OpTest):
+
     def setUp(self):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
@@ -45,20 +46,29 @@ class TestErfinv(OpTest):
         self.check_output(check_eager=True)
 
     def test_check_grad(self):
+<<<<<<< HEAD
         self.check_grad(
             ['X'],
             'Out',
             user_defined_grads=[self.gradient],
             user_defined_grad_outputs=self.grad_out,
         )
+=======
+        self.check_grad(['X'],
+                        'Out',
+                        user_defined_grads=[self.gradient],
+                        user_defined_grad_outputs=self.grad_out)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestErfinvFP32(TestErfinv):
+
     def init_dtype(self):
         self.dtype = np.float32
 
 
 class TestErfinvAPI(unittest.TestCase):
+
     def init_dtype(self):
         self.dtype = 'float32'
 
@@ -86,6 +96,7 @@ class TestErfinvAPI(unittest.TestCase):
             run(place)
 
     def test_dygraph_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
@@ -97,6 +108,7 @@ class TestErfinvAPI(unittest.TestCase):
             run(place)
 
     def test_inplace_api(self):
+
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)

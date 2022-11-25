@@ -33,8 +33,10 @@ np.random.seed(0)
 
 
 class TestPostTrainingQuantization(unittest.TestCase):
+
     def setUp(self):
         self.root_path = tempfile.TemporaryDirectory()
+<<<<<<< HEAD
         self.int8_model_path = os.path.join(
             self.root_path.name, "post_training_quantization"
         )
@@ -50,6 +52,18 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     self.int8_model_path, str(e)
                 )
             )
+=======
+        self.int8_model_path = os.path.join(self.root_path.name,
+                                            "post_training_quantization")
+        self.download_path = 'int8/download'
+        self.cache_folder = os.path.expanduser('~/.cache/paddle/dataset/' +
+                                               self.download_path)
+        try:
+            os.system("mkdir -p " + self.int8_model_path)
+        except Exception as e:
+            print("Failed to create {} due to {}".format(
+                self.int8_model_path, str(e)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             sys.exit(-1)
 
     def tearDown(self):
@@ -58,8 +72,12 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
             cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
+<<<<<<< HEAD
                 target_folder, zip_path
             )
+=======
+                target_folder, zip_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             os.system(cmd)
 
     def download_model(self, data_url, data_md5, folder_name):
@@ -88,9 +106,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         cnt = 0
         periods = []
         for batch_id, data in enumerate(val_reader()):
+<<<<<<< HEAD
             image = np.array([x[0].reshape(img_shape) for x in data]).astype(
                 "float32"
             )
+=======
+            image = np.array([x[0].reshape(img_shape)
+                              for x in data]).astype("float32")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             input_label = np.array([x[1] for x in data]).astype("int64")
 
             t1 = time.time()
@@ -116,6 +139,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         acc1 = np.sum(test_info) / cnt
         return (throughput, latency, acc1)
 
+<<<<<<< HEAD
     def generate_quantized_model(
         self,
         model_path,
@@ -131,11 +155,27 @@ class TestPostTrainingQuantization(unittest.TestCase):
         skip_tensor_list=None,
         bias_correction=False,
     ):
+=======
+    def generate_quantized_model(self,
+                                 model_path,
+                                 algo="KL",
+                                 round_type="round",
+                                 quantizable_op_type=["conv2d"],
+                                 is_full_quantize=False,
+                                 is_use_cache_file=False,
+                                 is_optimize_model=False,
+                                 batch_size=10,
+                                 batch_nums=10,
+                                 onnx_format=False,
+                                 skip_tensor_list=None,
+                                 bias_correction=False):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         val_reader = paddle.dataset.mnist.train()
 
+<<<<<<< HEAD
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
@@ -174,10 +214,47 @@ class TestPostTrainingQuantization(unittest.TestCase):
         onnx_format=False,
         skip_tensor_list=None,
     ):
+=======
+        ptq = PostTrainingQuantization(executor=exe,
+                                       model_dir=model_path,
+                                       sample_generator=val_reader,
+                                       batch_size=batch_size,
+                                       batch_nums=batch_nums,
+                                       algo=algo,
+                                       quantizable_op_type=quantizable_op_type,
+                                       round_type=round_type,
+                                       is_full_quantize=is_full_quantize,
+                                       optimize_model=is_optimize_model,
+                                       bias_correction=bias_correction,
+                                       onnx_format=onnx_format,
+                                       skip_tensor_list=skip_tensor_list,
+                                       is_use_cache_file=is_use_cache_file)
+        ptq.quantize()
+        ptq.save_quantized_model(self.int8_model_path)
+
+    def run_test(self,
+                 model_name,
+                 data_url,
+                 data_md5,
+                 algo,
+                 round_type,
+                 quantizable_op_type,
+                 is_full_quantize,
+                 is_use_cache_file,
+                 is_optimize_model,
+                 diff_threshold,
+                 batch_size=10,
+                 infer_iterations=10,
+                 quant_iterations=5,
+                 bias_correction=False,
+                 onnx_format=False,
+                 skip_tensor_list=None):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         origin_model_path = self.download_model(data_url, data_md5, model_name)
         origin_model_path = os.path.join(origin_model_path, model_name)
 
+<<<<<<< HEAD
         print(
             "Start FP32 inference for {0} on {1} images ...".format(
                 model_name, infer_iterations * batch_size
@@ -227,6 +304,37 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 model_name, batch_size, int8_throughput, int8_latency, int8_acc1
             )
         )
+=======
+        print("Start FP32 inference for {0} on {1} images ...".format(
+            model_name, infer_iterations * batch_size))
+        (fp32_throughput, fp32_latency,
+         fp32_acc1) = self.run_program(origin_model_path, batch_size,
+                                       infer_iterations)
+
+        print("Start INT8 post training quantization for {0} on {1} images ...".
+              format(model_name, quant_iterations * batch_size))
+        self.generate_quantized_model(origin_model_path, algo, round_type,
+                                      quantizable_op_type, is_full_quantize,
+                                      is_use_cache_file, is_optimize_model,
+                                      batch_size, quant_iterations, onnx_format,
+                                      skip_tensor_list, bias_correction)
+
+        print("Start INT8 inference for {0} on {1} images ...".format(
+            model_name, infer_iterations * batch_size))
+        (int8_throughput, int8_latency,
+         int8_acc1) = self.run_program(self.int8_model_path, batch_size,
+                                       infer_iterations)
+
+        print("---Post training quantization of {} method---".format(algo))
+        print(
+            "FP32 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}."
+            .format(model_name, batch_size, fp32_throughput, fp32_latency,
+                    fp32_acc1))
+        print(
+            "INT8 {0}: batch_size {1}, throughput {2} img/s, latency {3} s, acc1 {4}.\n"
+            .format(model_name, batch_size, int8_throughput, int8_latency,
+                    int8_acc1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
@@ -234,6 +342,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
 
 class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
+
     def test_post_training_kl(self):
         model_name = "mnist_model"
         data_url = (
@@ -268,6 +377,7 @@ class TestPostTrainingKLForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTraininghistForMnist(TestPostTrainingQuantization):
+
     def test_post_training_hist(self):
         model_name = "mnist_model"
         data_url = (
@@ -302,6 +412,7 @@ class TestPostTraininghistForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
+
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = (
@@ -336,6 +447,7 @@ class TestPostTrainingmseForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
+
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = (
@@ -370,6 +482,7 @@ class TestPostTrainingemdForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
+
     def test_post_training_avg(self):
         model_name = "mnist_model"
         data_url = (
@@ -404,6 +517,7 @@ class TestPostTrainingavgForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
+
     def test_post_training_abs_max(self):
         model_name = "mnist_model"
         data_url = (
@@ -438,6 +552,7 @@ class TestPostTrainingAbsMaxForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
+
     def test_post_training_mse(self):
         model_name = "mnist_model"
         data_url = (
@@ -455,6 +570,7 @@ class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
         infer_iterations = 50
         quant_iterations = 5
         bias_correction = True
+<<<<<<< HEAD
         self.run_test(
             model_name,
             data_url,
@@ -471,9 +587,26 @@ class TestPostTrainingmseAdaroundForMnist(TestPostTrainingQuantization):
             quant_iterations,
             bias_correction=bias_correction,
         )
+=======
+        self.run_test(model_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      round_type,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_size,
+                      infer_iterations,
+                      quant_iterations,
+                      bias_correction=bias_correction)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestPostTrainingKLAdaroundForMnist(TestPostTrainingQuantization):
+
     def test_post_training_kl(self):
         model_name = "mnist_model"
         data_url = (
@@ -508,6 +641,7 @@ class TestPostTrainingKLAdaroundForMnist(TestPostTrainingQuantization):
 
 
 class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
+
     def test_post_training_mse_onnx_format(self):
         model_name = "mnist_model"
         data_url = (
@@ -525,6 +659,7 @@ class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
+<<<<<<< HEAD
         self.run_test(
             model_name,
             data_url,
@@ -546,6 +681,27 @@ class TestPostTrainingmseForMnistONNXFormat(TestPostTrainingQuantization):
 class TestPostTrainingmseForMnistONNXFormatFullQuant(
     TestPostTrainingQuantization
 ):
+=======
+        self.run_test(model_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      round_type,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_size,
+                      infer_iterations,
+                      quant_iterations,
+                      onnx_format=onnx_format)
+
+
+class TestPostTrainingmseForMnistONNXFormatFullQuant(
+        TestPostTrainingQuantization):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_post_training_mse_onnx_format_full_quant(self):
         model_name = "mnist_model"
         data_url = (
@@ -563,6 +719,7 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
         batch_size = 10
         infer_iterations = 50
         quant_iterations = 5
+<<<<<<< HEAD
         self.run_test(
             model_name,
             data_url,
@@ -579,9 +736,26 @@ class TestPostTrainingmseForMnistONNXFormatFullQuant(
             quant_iterations,
             onnx_format=onnx_format,
         )
+=======
+        self.run_test(model_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      round_type,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_size,
+                      infer_iterations,
+                      quant_iterations,
+                      onnx_format=onnx_format)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
+
     def test_post_training_avg_skip_op(self):
         model_name = "mnist_model"
         data_url = (
@@ -599,6 +773,7 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
         infer_iterations = 50
         quant_iterations = 5
         skip_tensor_list = ["fc_0.w_0"]
+<<<<<<< HEAD
         self.run_test(
             model_name,
             data_url,
@@ -615,6 +790,22 @@ class TestPostTrainingavgForMnistSkipOP(TestPostTrainingQuantization):
             quant_iterations,
             skip_tensor_list=skip_tensor_list,
         )
+=======
+        self.run_test(model_name,
+                      data_url,
+                      data_md5,
+                      algo,
+                      round_type,
+                      quantizable_op_type,
+                      is_full_quantize,
+                      is_use_cache_file,
+                      is_optimize_model,
+                      diff_threshold,
+                      batch_size,
+                      infer_iterations,
+                      quant_iterations,
+                      skip_tensor_list=skip_tensor_list)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == '__main__':

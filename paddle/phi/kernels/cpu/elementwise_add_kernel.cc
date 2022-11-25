@@ -33,6 +33,14 @@ void GradAddKernel(const Context& dev_ctx,
   AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
+template <typename T, typename Context>
+void GradAddKernel(const Context& dev_ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& y,
+                   DenseTensor* out) {
+  AddKernel<T>(dev_ctx, x, y, out);
+}
+
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -45,6 +53,18 @@ PD_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
                    phi::AddRawKernel,
+                   float,
+                   double,
+                   int16_t,
+                   int,
+                   int64_t,
+                   complex64,
+                   complex128) {}
+
+PD_REGISTER_KERNEL(grad_add,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GradAddKernel,
                    float,
                    double,
                    int16_t,

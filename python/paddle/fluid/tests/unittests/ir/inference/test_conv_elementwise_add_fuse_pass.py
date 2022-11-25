@@ -23,6 +23,7 @@ import hypothesis.strategies as st
 
 
 class TestConvEltwiseAddFusePass(PassAutoScanTest):
+
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         attrs = [
             program_config.ops[i].attrs for i in range(len(program_config.ops))
@@ -45,6 +46,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         out_channel = groups * out_channel_factor
         batch_size = draw(st.integers(min_value=1, max_value=4))
         dilations = draw(
+<<<<<<< HEAD
             st.lists(
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
@@ -59,6 +61,19 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
                 st.integers(min_value=1, max_value=2), min_size=2, max_size=2
             )
         )
+=======
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        paddings = draw(
+            st.lists(st.integers(min_value=0, max_value=2),
+                     min_size=2,
+                     max_size=2))
+        strides = draw(
+            st.lists(st.integers(min_value=1, max_value=2),
+                     min_size=2,
+                     max_size=2))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         x_shape = (
             [batch_size, in_channel, 64, 64]
@@ -81,6 +96,7 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
         def generate_scale_bias():
             return np.random.random(bias_shape).astype(np.float32)
 
+<<<<<<< HEAD
         conv2d_op = OpConfig(
             "conv2d",
             inputs={
@@ -102,6 +118,28 @@ class TestConvEltwiseAddFusePass(PassAutoScanTest):
             outputs={"Out": ["elementwise_output"]},
             axis=axis,
         )
+=======
+        conv2d_op = OpConfig("conv2d",
+                             inputs={
+                                 "Input": ["input_data"],
+                                 "Filter": ["conv2d_weight"],
+                             },
+                             outputs={"Output": ["conv_output"]},
+                             data_format=data_format,
+                             dilations=dilations,
+                             padding_algorithm=padding_algorithm,
+                             groups=groups,
+                             paddings=paddings,
+                             strides=strides,
+                             is_test=True)
+        eltwise_op = OpConfig("elementwise_add",
+                              inputs={
+                                  "X": ["conv_output"],
+                                  "Y": ["conv2d_bias"]
+                              },
+                              outputs={"Out": ["elementwise_output"]},
+                              axis=axis)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         ops = [conv2d_op, eltwise_op]
 
         program_config = ProgramConfig(

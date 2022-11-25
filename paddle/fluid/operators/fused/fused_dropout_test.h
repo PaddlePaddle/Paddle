@@ -151,7 +151,11 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                const phi::GPUContext &ctx) {
   framework::Scope scope;
   auto place = ctx.GetPlace();
+<<<<<<< HEAD
   paddle::optional<phi::DenseTensor> scale_opt;
+=======
+  paddle::optional<framework::LoDTensor> scale_opt;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (scale.size() > 0) {
     auto var_scale = scope.Var("Scale");
     auto tensor_scale = var_scale->GetMutable<phi::DenseTensor>();
@@ -160,7 +164,11 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
     scale_opt = *tensor_scale;
   }
 
+<<<<<<< HEAD
   paddle::optional<phi::DenseTensor> bias_opt;
+=======
+  paddle::optional<framework::LoDTensor> bias_opt;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   if (bias.size() > 0) {
     auto var_bias = scope.Var("Bias");
     auto tensor_bias = var_bias->GetMutable<phi::DenseTensor>();
@@ -193,6 +201,10 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
                           bias_opt,
                           1e-5,
                           1,
+<<<<<<< HEAD
+=======
+                          false,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                           tensor_y,
                           tensor_mean,
                           tensor_variance);

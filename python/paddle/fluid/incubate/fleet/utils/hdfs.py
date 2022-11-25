@@ -44,7 +44,9 @@ __all__ = ["HDFSClient"]
 
 
 def _handle_errors(max_time_out=None):
+
     def decorator(f):
+
         @functools.wraps(f)
         def handler(*args, **kwargs):
             o = args[0]
@@ -63,20 +65,32 @@ def _handle_errors(max_time_out=None):
                 # important: only ExecuteError need to retry
                 except ExecuteError as e:
                     if time.time() - start >= time_out:
+<<<<<<< HEAD
                         raise FSTimeOut(
                             "args:{} timeout:{}".format(
                                 args, time.time() - start
                             )
                         )
+=======
+                        raise FSTimeOut("args:{} timeout:{}".format(
+                            args,
+                            time.time() - start))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
                     time.sleep(inter)
 
                 if time.time() - last_print_time > 30:
+<<<<<<< HEAD
                     print(
                         "hadoop operator timeout:args:{} timeout:{}".format(
                             args, time.time() - start
                         )
                     )
+=======
+                    print("hadoop operator timeout:args:{} timeout:{}".format(
+                        args,
+                        time.time() - start))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     last_print_time = time.time()
 
         return handler
@@ -85,6 +99,7 @@ def _handle_errors(max_time_out=None):
 
 
 class HDFSClient(FS):
+
     def __init__(
         self,
         hadoop_home,
@@ -281,8 +296,12 @@ class HDFSClient(FS):
         if test_exists:
             if not self.is_exist(fs_src_path):
                 raise FSFileNotExistsError(
+<<<<<<< HEAD
                     "{} is not exists".format(fs_src_path)
                 )
+=======
+                    "{} is not exists".format(fs_src_path))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             if self.is_exist(fs_dst_path):
                 raise FSFileExistsError("{} exists already".format(fs_dst_path))

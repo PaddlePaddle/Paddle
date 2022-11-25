@@ -79,6 +79,7 @@ def _is_reshard_op(op):
 # should use dist op instead of custom comm op
 @register_pass("auto_parallel_sharding")
 class ShardingPass(PassBase):
+
     def __init__(self):
         super().__init__()
         self.set_attr("dist_context", None)
@@ -188,10 +189,15 @@ class ShardingPass(PassBase):
         # genetated by auto search
         if len(self.dp_groups) != 1:
             raise NotImplementedError(
+<<<<<<< HEAD
                 "So far Only and Exactly one data parallel group in network are supported, but got [{}] different data parallel groups".format(
                     len(self.dp_groups)
                 )
             )
+=======
+                "So far Only and Exactly one data parallel group in network are supported, but got [{}] different data parallel groups"
+                .format(len(self.dp_groups)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def _build_sharding_infos(self, main_block, params_grads):
 
@@ -203,6 +209,7 @@ class ShardingPass(PassBase):
         # partition
         for dp_group in self.dp_groups:
 
+<<<<<<< HEAD
             assert (
                 dp_group.nranks >= self.sharding_world_size
             ), "sharding world size [{}] should not larger than dp world size [{}]".format(
@@ -223,6 +230,18 @@ class ShardingPass(PassBase):
             ), "number of parameters [{}] is not enough to be shard among [{}] ranks".format(
                 len(params_grads), self.sharding_world_size
             )
+=======
+            assert dp_group.nranks >= self.sharding_world_size, "sharding world size [{}] should not larger than dp world size [{}]".format(
+                self.sharding_world_size, dp_group.nranks)
+            assert dp_group.nranks % self.sharding_world_size == 0, "sharding world size [{}] should be divisible by dp world size [{}]".format(
+                self.sharding_world_size, dp_group.nranks)
+            assert self.global_rank in dp_group.ranks, "current ranks [{}] does NOT belong to the data parallel group [{}]".format(
+                self.global_rank, dp_group.ranks)
+            assert len(
+                params_grads
+            ) >= self.sharding_world_size, "number of parameters [{}] is not enough to be shard among [{}] ranks".format(
+                len(params_grads), self.sharding_world_size)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             # sharding hybrid data parallel: partial sharding param within
             if dp_group.nranks > self.sharding_world_size:
@@ -240,12 +259,20 @@ class ShardingPass(PassBase):
 
             self._dist_context._sharding_group = sharding_group
             # TODO(JZ-LIANG) when support multiple dp groups in future, should group param and bind them to corresponding dp group
+<<<<<<< HEAD
             sharding_info = ShardingInfo(
                 sharding_group,
                 self.global_rank,
                 params_grads,
                 self.partition_algor,
             )
+=======
+            params_in_group = [p for p, g in params_grads]
+            assert len(params_in_group) == len(
+                set(params_in_group)), "found duplicated param in params_grads"
+            sharding_info = ShardingInfo(sharding_group, self.global_rank,
+                                         params_in_group)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             self.sharding_infos.append(sharding_info)
             for param in sharding_info.params:
                 self.varname_to_sharding_info[param.name] = sharding_info
@@ -369,6 +396,7 @@ class ShardingPass(PassBase):
                             'op_namescope': "/gradient_clip_model_parallelism",
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Optimize,
+<<<<<<< HEAD
                         },
                     )
                     dist_attr = (
@@ -376,6 +404,11 @@ class ShardingPass(PassBase):
                             main_block.var(sum_op_output)
                         )
                     )
+=======
+                        })
+                    dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                        main_block.var(sum_op_output))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     # assert dist_attr is not None
                     # naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                     #     new_op, dist_attr.process_mesh, dist_attr.dims_mapping,
@@ -449,6 +482,7 @@ class ShardingPass(PassBase):
                 assert main_block.has_var(param.name)
                 assert startup_block.has_var(param.name)
 
+<<<<<<< HEAD
                 new_op = main_block.append_op(
                     type='c_broadcast',
                     inputs={'X': param},
@@ -463,6 +497,24 @@ class ShardingPass(PassBase):
                 param_dist_attr = (
                     self._dist_context.get_tensor_dist_attr_for_program(param)
                 )
+=======
+                new_op = main_block.append_op(type='c_broadcast',
+                                              inputs={'X': param},
+                                              outputs={'Out': param},
+                                              attrs={
+                                                  'ring_id':
+                                                  sharding_info.group.id,
+                                                  'root':
+                                                  sharding_info.get_var_rank(
+                                                      param.name),
+                                                  'use_calc_stream':
+                                                  True,
+                                                  OP_ROLE_KEY:
+                                                  OpRole.Optimize
+                                              })
+                param_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                    param)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 assert param_dist_attr is not None
                 naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
                     new_op,
@@ -495,6 +547,7 @@ class ShardingPass(PassBase):
                 input_name = op.input_arg_names[0]
                 base_name = _get_base_name_from_grad_name(input_name)
                 sharding_info = self.varname_to_sharding_info[base_name]
+<<<<<<< HEAD
                 _insert_reduce_op(
                     main_block,
                     idx,
@@ -507,6 +560,13 @@ class ShardingPass(PassBase):
                     not self.partial_sharding
                     or not sharding_info.is_in_local_shard(base_name)
                 ):
+=======
+                _insert_reduce_op(main_block, idx, input_name,
+                                  sharding_info.group.id,
+                                  sharding_info.get_var_rank(base_name),
+                                  self._dist_context)
+                if not self.partial_sharding:
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                     main_block._remove_op(idx + 1, sync=False)
                 else:
                     op._set_attr("ring_id", self.outer_dp_group.id)
@@ -565,6 +625,7 @@ class ShardingPass(PassBase):
                             input_name + "@BroadCast"
                         )
                         input_var = main_block.var(input_name)
+<<<<<<< HEAD
                         new_var = main_block.create_var(
                             name=broadcast_varname,
                             shape=input_var.shape,
@@ -576,6 +637,14 @@ class ShardingPass(PassBase):
                                 input_var
                             )
                         )
+=======
+                        new_var = main_block.create_var(name=broadcast_varname,
+                                                        shape=input_var.shape,
+                                                        dtype=input_var.dtype,
+                                                        persistable=False)
+                        ref_dist_attr = self._dist_context.get_tensor_dist_attr_for_program(
+                            input_var)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                         out_var_dist_attr = set_var_dist_attr(
                             self._dist_context,
                             new_var,
@@ -584,6 +653,7 @@ class ShardingPass(PassBase):
                         )
                         op._rename_input(input_name, broadcast_varname)
 
+<<<<<<< HEAD
                     _insert_init_and_broadcast_op(
                         main_block,
                         idx,
@@ -594,6 +664,15 @@ class ShardingPass(PassBase):
                         op.attr('op_role'),
                         self._dist_context,
                     )
+=======
+                    _insert_init_and_broadcast_op(main_block, idx,
+                                                  broadcast_varname,
+                                                  sharding_info.local_rank,
+                                                  root_rank,
+                                                  sharding_info.group.id,
+                                                  op.attr('op_role'),
+                                                  self._dist_context)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             for idx, op in reversed(list(enumerate(main_block.ops))):
                 if op.type != "cast":
@@ -678,6 +757,7 @@ def _insert_init_and_broadcast_op(
         broadcast_var
     )
 
+<<<<<<< HEAD
     new_op = block._insert_op_without_sync(
         insert_idx,
         type='c_broadcast',
@@ -690,6 +770,18 @@ def _insert_init_and_broadcast_op(
             OP_ROLE_KEY: op_role,
         },
     )
+=======
+    new_op = block._insert_op_without_sync(insert_idx,
+                                           type='c_broadcast',
+                                           inputs={'X': varname},
+                                           outputs={'Out': varname},
+                                           attrs={
+                                               'ring_id': ring_id,
+                                               'root': root_rank,
+                                               'use_calc_stream': True,
+                                               OP_ROLE_KEY: op_role
+                                           })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
         new_op,
         broadcast_var_dist_attr.process_mesh,
@@ -717,6 +809,7 @@ def _insert_init_and_broadcast_op(
     return
 
 
+<<<<<<< HEAD
 def _insert_reduce_op(
     block,
     insert_idx,
@@ -742,6 +835,29 @@ def _insert_reduce_op(
             OP_ROLE_KEY: op_role,
         },
     )
+=======
+def _insert_reduce_op(block,
+                      insert_idx,
+                      reduce_var,
+                      ring_id,
+                      root_id,
+                      dist_context,
+                      op_role=OpRole.Backward,
+                      use_calc_stream=True):
+    assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
+        root_id)
+    new_op = block._insert_op_without_sync(insert_idx,
+                                           type='c_reduce_sum',
+                                           inputs={'X': [reduce_var]},
+                                           outputs={'Out': [reduce_var]},
+                                           attrs={
+                                               'ring_id': ring_id,
+                                               'root_id': root_id,
+                                               'use_calc_stream':
+                                               use_calc_stream,
+                                               OP_ROLE_KEY: op_role
+                                           })
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     dist_attr = dist_context.get_tensor_dist_attr_for_program(
         block.var(reduce_var)
@@ -1139,7 +1255,12 @@ def _fuse_overlap_parameter_comm_stage_three(sharding_infos, fuse_size):
 
 
 class ShardingInfo(object):
+<<<<<<< HEAD
     def __init__(self, group, rank, params_grads, partition_algor):
+=======
+
+    def __init__(self, group, rank, params):
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.group = group
         self.params_grads = dict([(p.name, (p, g)) for p, g in params_grads])
         assert len(self.params_grads) == len(

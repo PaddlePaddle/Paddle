@@ -24,6 +24,7 @@ from google.protobuf import text_format  # noqa: F401
 
 
 class TestTheOnePs(PsPassTestBase):
+
     def setUp(self):
         pass
 

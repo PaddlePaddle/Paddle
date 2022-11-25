@@ -89,7 +89,12 @@ __global__ void BroadcastKernelBinary(
   kernel_primitives::ElementwiseBinary<InT, OutT, VecSize, 1, Functor>(
       result, arg0, arg1, func);
   // store
+<<<<<<< HEAD
   kernel_primitives::WriteData<OutT, VecSize, 1, true>(out + fix, result, num);
+=======
+  kernel_primitives::WriteData<OutT, VecSize, 1, 1, true>(
+      out + fix, result, num);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 // bias add forward impl for "[m, n] + [n] = [m, n]"

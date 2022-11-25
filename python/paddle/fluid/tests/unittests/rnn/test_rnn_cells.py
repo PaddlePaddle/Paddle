@@ -24,6 +24,7 @@ from convert import convert_params_for_cell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -34,9 +35,16 @@ class TestSimpleRNNCell(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
         rnn1 = SimpleRNNCell(16, 32, bias=self.bias)
+<<<<<<< HEAD
         rnn2 = paddle.nn.SimpleRNNCell(
             16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
         )
+=======
+        rnn2 = paddle.nn.SimpleRNNCell(16,
+                                       32,
+                                       bias_ih_attr=self.bias,
+                                       bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -64,6 +72,7 @@ class TestSimpleRNNCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
+
         def test_zero_hidden_size():
             cell = paddle.nn.SimpleRNNCell(-1, 0)
 
@@ -76,6 +85,7 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -86,9 +96,16 @@ class TestGRUCell(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
         rnn1 = GRUCell(16, 32, bias=self.bias)
+<<<<<<< HEAD
         rnn2 = paddle.nn.GRUCell(
             16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
         )
+=======
+        rnn2 = paddle.nn.GRUCell(16,
+                                 32,
+                                 bias_ih_attr=self.bias,
+                                 bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -116,6 +133,7 @@ class TestGRUCell(unittest.TestCase):
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
+
         def test_zero_hidden_size():
             cell = paddle.nn.GRUCell(-1, 0)
 
@@ -128,6 +146,7 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
+
     def __init__(self, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
         self.bias = bias
@@ -137,9 +156,16 @@ class TestLSTMCell(unittest.TestCase):
 
     def setUp(self):
         rnn1 = LSTMCell(16, 32, bias=self.bias)
+<<<<<<< HEAD
         rnn2 = paddle.nn.LSTMCell(
             16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
         )
+=======
+        rnn2 = paddle.nn.LSTMCell(16,
+                                  32,
+                                  bias_ih_attr=self.bias,
+                                  bias_hh_attr=self.bias)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         convert_params_for_cell(rnn1, rnn2)
 
         self.rnn1 = rnn1
@@ -154,10 +180,16 @@ class TestLSTMCell(unittest.TestCase):
         prev_c = np.random.randn(4, 32)
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
+<<<<<<< HEAD
         y2, (h2, c2) = rnn2(
             paddle.to_tensor(x),
             (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)),
         )
+=======
+        y2, (h2,
+             c2) = rnn2(paddle.to_tensor(x),
+                        (paddle.to_tensor(prev_h), paddle.to_tensor(prev_c)))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         np.testing.assert_allclose(h1, h2.numpy(), atol=1e-8, rtol=1e-5)
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -173,6 +205,7 @@ class TestLSTMCell(unittest.TestCase):
         np.testing.assert_allclose(c1, c2.numpy(), atol=1e-8, rtol=1e-5)
 
     def test_errors(self):
+
         def test_zero_hidden_size():
             cell = paddle.nn.LSTMCell(-1, 0)
 

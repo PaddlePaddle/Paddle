@@ -954,7 +954,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         dy_mul_x_sub_mean_mean_tile_1.mutable_data<float>(place);
         paddle::framework::TensorCopySync(
             dy_mul_x_sub_mean_mean, place, &dy_mul_x_sub_mean_mean_tile_1);
+<<<<<<< HEAD
         if (layout == phi::DataLayout::kNCHW)
+=======
+        if (layout == framework::DataLayout::kNCHW)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == phi::DataLayout::kNHWC)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, 1, 1, C});

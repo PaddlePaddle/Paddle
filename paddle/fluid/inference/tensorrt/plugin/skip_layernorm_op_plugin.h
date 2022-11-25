@@ -88,6 +88,7 @@ class SkipLayerNormPluginDynamicImpl
 
 class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
  public:
+<<<<<<< HEAD
   explicit SkipLayerNormPluginDynamic(void* bias,
                                       void* scale,
                                       int bias_size,
@@ -100,6 +101,15 @@ class SkipLayerNormPluginDynamic : public DynamicPluginTensorRT {
         scale_size_(scale_size),
         eps_(eps),
         own_host_buff_(false) {
+=======
+  explicit SkipLayerNormPluginDynamic(const float* bias,
+                                      const float* scale,
+                                      int bias_size,
+                                      int scale_size,
+                                      const float eps,
+                                      bool with_fp16)
+      : bias_size_(bias_size), scale_size_(scale_size), eps_(eps) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     with_fp16_ = with_fp16;
     if (with_fp16_) {
 #ifdef TRT_PLUGIN_FP16_AVALIABLE
@@ -326,7 +336,12 @@ class SkipLayerNormPluginDynamicCreator : public nvinfer1::IPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
+<<<<<<< HEAD
     return new SkipLayerNormPluginDynamic(serial_data, serial_length);
+=======
+    auto plugin = new SkipLayerNormPluginDynamic(serial_data, serial_length);
+    return plugin;
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override {

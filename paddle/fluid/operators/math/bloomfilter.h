@@ -34,8 +34,11 @@ struct bloomfilter {
   uint64_t count;
   unsigned char bit_vector[1];
 };
+<<<<<<< HEAD
 #pragma pack(pop)
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 int bloomfilter_get(const struct bloomfilter *bloomfilter,
                     const void *key,
                     size_t len);

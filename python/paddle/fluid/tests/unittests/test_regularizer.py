@@ -26,6 +26,7 @@ from paddle.fluid.backward import append_backward
 
 
 class TestL2DecayRegularizer(unittest.TestCase):
+
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -39,6 +40,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
         )
         self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(
+<<<<<<< HEAD
             isinstance(mul_x.regularizer, regularizer.L2DecayRegularizer)
         )
         mul_y = block.create_var(
@@ -59,6 +61,31 @@ class TestL2DecayRegularizer(unittest.TestCase):
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
+=======
+            isinstance(mul_x.regularizer, regularizer.L2DecayRegularizer))
+        mul_y = block.create_var(dtype="float32",
+                                 shape=[10, 8],
+                                 lod_level=0,
+                                 name="mul.y")
+        mul_out = block.create_var(dtype="float32",
+                                   shape=[5, 8],
+                                   lod_level=0,
+                                   name="mul.out")
+        block.append_op(type="mul",
+                        inputs={
+                            "X": mul_x,
+                            "Y": mul_y
+                        },
+                        outputs={"Out": mul_out},
+                        attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(dtype="float32",
+                                    shape=[1],
+                                    lod_level=0,
+                                    name="mean.out")
+        block.append_op(type="mean",
+                        inputs={"X": mul_out},
+                        outputs={"Out": mean_out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
@@ -71,6 +98,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
 
 
 class TestL1DecayRegularizer(unittest.TestCase):
+
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -84,6 +112,7 @@ class TestL1DecayRegularizer(unittest.TestCase):
         )
         self.assertIsNotNone(mul_x.regularizer)
         self.assertTrue(
+<<<<<<< HEAD
             isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer)
         )
         mul_y = block.create_var(
@@ -104,6 +133,31 @@ class TestL1DecayRegularizer(unittest.TestCase):
         block.append_op(
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out}
         )
+=======
+            isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer))
+        mul_y = block.create_var(dtype="float32",
+                                 shape=[10, 8],
+                                 lod_level=0,
+                                 name="mul.y")
+        mul_out = block.create_var(dtype="float32",
+                                   shape=[5, 8],
+                                   lod_level=0,
+                                   name="mul.out")
+        block.append_op(type="mul",
+                        inputs={
+                            "X": mul_x,
+                            "Y": mul_y
+                        },
+                        outputs={"Out": mul_out},
+                        attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(dtype="float32",
+                                    shape=[1],
+                                    lod_level=0,
+                                    name="mean.out")
+        block.append_op(type="mean",
+                        inputs={"X": mul_out},
+                        outputs={"Out": mean_out})
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         count_ops = len(block.ops)
@@ -131,9 +185,15 @@ def bow_net(
     This model is from https://github.com/PaddlePaddle/models:
     fluid/PaddleNLP/text_classification/nets.py
     """
+<<<<<<< HEAD
     emb = fluid.layers.embedding(
         input=data, is_sparse=is_sparse, size=[dict_dim, emb_dim]
     )
+=======
+    emb = fluid.layers.embedding(input=data,
+                                 is_sparse=is_sparse,
+                                 size=[dict_dim, emb_dim])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
     bow_tanh = paddle.tanh(bow)
     fc_1 = fluid.layers.fc(input=bow_tanh, size=hid_dim, act="tanh")
@@ -145,6 +205,7 @@ def bow_net(
 
 
 class TestRegularizer(unittest.TestCase):
+
     def setUp(self):
         self.word_len = 1500
         self.train_data = [
@@ -189,12 +250,21 @@ class TestRegularizer(unittest.TestCase):
         paddle.framework.random._manual_program_seed(1)
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
+<<<<<<< HEAD
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1
             )
+=======
+        with self.scope_prog_guard(main_prog=main_prog,
+                                   startup_prog=startup_prog):
+            data = fluid.layers.data(name="words",
+                                     shape=[1],
+                                     dtype="int64",
+                                     lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
             avg_cost = model(data, label, self.word_len)
@@ -212,12 +282,21 @@ class TestRegularizer(unittest.TestCase):
         main_prog = fluid.framework.Program()
         startup_prog = fluid.framework.Program()
 
+<<<<<<< HEAD
         with self.scope_prog_guard(
             main_prog=main_prog, startup_prog=startup_prog
         ):
             data = fluid.layers.data(
                 name="words", shape=[1], dtype="int64", lod_level=1
             )
+=======
+        with self.scope_prog_guard(main_prog=main_prog,
+                                   startup_prog=startup_prog):
+            data = fluid.layers.data(name="words",
+                                     shape=[1],
+                                     dtype="int64",
+                                     lod_level=1)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             label = fluid.layers.data(name="label", shape=[1], dtype="int64")
 
             avg_cost_l2 = model(data, label, self.word_len)
@@ -248,11 +327,17 @@ class TestRegularizer(unittest.TestCase):
 
             assert len(dense_sparse_p_sum[0]) == len(dense_sparse_p_sum[1])
             for i in range(len(dense_sparse_p_sum[0])):
+<<<<<<< HEAD
                 assert np.isclose(
                     a=dense_sparse_p_sum[0][i],
                     b=dense_sparse_p_sum[1][i],
                     rtol=5e-5,
                 )
+=======
+                assert np.isclose(a=dense_sparse_p_sum[0][i],
+                                  b=dense_sparse_p_sum[1][i],
+                                  rtol=5e-5)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
     def test_repeated_regularization(self):
         l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
@@ -271,12 +356,23 @@ class TestRegularizer(unittest.TestCase):
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
+<<<<<<< HEAD
             linear1 = fluid.dygraph.Linear(
                 2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
             )
             linear2 = fluid.dygraph.Linear(
                 2, 2, param_attr=fc_param_attr, bias_attr=fc_param_attr
             )
+=======
+            linear1 = fluid.dygraph.Linear(2,
+                                           2,
+                                           param_attr=fc_param_attr,
+                                           bias_attr=fc_param_attr)
+            linear2 = fluid.dygraph.Linear(2,
+                                           2,
+                                           param_attr=fc_param_attr,
+                                           bias_attr=fc_param_attr)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             loss1 = linear1(input)
             loss1.backward()

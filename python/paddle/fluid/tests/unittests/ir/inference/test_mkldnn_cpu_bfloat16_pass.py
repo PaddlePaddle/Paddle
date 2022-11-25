@@ -22,9 +22,11 @@ import paddle
 
 
 class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
+
     def setUp(self):
         self.init_data()
         with fluid.program_guard(self.main_program, self.startup_program):
+<<<<<<< HEAD
             x = fluid.data(
                 name='x', shape=[-1] + self.shape_x, dtype=self.d_type
             )
@@ -32,6 +34,13 @@ class TestMKLDNNCpuBfloat16Pass(InferencePassTest):
             out = paddle.transpose(x, perm=[0, 1, 2, 3])
             out = paddle.reshape(out, [0, 0, 0, 0])
 
+=======
+            x = fluid.data(name='x',
+                           shape=[-1] + self.shape_x,
+                           dtype=self.d_type)
+            out = fluid.layers.transpose(x, perm=[0, 1, 2, 3])
+            out = fluid.layers.reshape(out, [0, 0, 0, 0])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             out = fluid.layers.fc(out, size=1)
 
             self.feeds = {

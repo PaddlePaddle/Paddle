@@ -14,9 +14,15 @@
 
 #include "paddle/phi/kernels/label_smooth_grad_kernel.h"
 
+<<<<<<< HEAD
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+=======
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 namespace phi {
 template <typename T>

@@ -33,8 +33,14 @@ struct sgd_dense_param_kernel {
 
 // LodTensor
 template <typename T>
+<<<<<<< HEAD
 struct sgd_dense_param_kernel<T,
                               framework::VarTypeTrait<phi::DenseTensor>::kId> {
+=======
+struct sgd_dense_param_kernel<
+    T,
+    framework::VarTypeTrait<framework::LoDTensor>::kId> {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<T, LoDTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
@@ -92,8 +98,14 @@ struct sgd_dense_param_kernel<T,
 
 // LodTensor
 template <>
+<<<<<<< HEAD
 struct sgd_dense_param_kernel<platform::bfloat16,
                               framework::VarTypeTrait<phi::DenseTensor>::kId> {
+=======
+struct sgd_dense_param_kernel<
+    platform::bfloat16,
+    framework::VarTypeTrait<framework::LoDTensor>::kId> {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   void operator()(const framework::ExecutionContext &ctx) const {
     VLOG(4) << "[CPU]: sgd_dense_param_kernel<bfloat16, LoDTensor>";
     const auto *learning_rate = ctx.Input<phi::DenseTensor>("LearningRate");
@@ -320,7 +332,11 @@ class SGDOpKernel<phi::CPUContext, T> : public framework::OpKernel<T> {
       const framework::ExecutionContext &ctx) const {
     detail::sgd_dense_param_kernel<
         T,
+<<<<<<< HEAD
         framework::VarTypeTrait<phi::DenseTensor>::kId>()(ctx);
+=======
+        framework::VarTypeTrait<framework::LoDTensor>::kId>()(ctx);
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   }
 
   virtual void dense_param_sparse_grad_kernel(

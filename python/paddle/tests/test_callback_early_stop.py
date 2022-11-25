@@ -27,6 +27,7 @@ from paddle.nn.layer.loss import CrossEntropyLoss
 
 
 class MnistDataset(MNIST):
+
     def __init__(self, mode, return_label=True, sample_num=None):
         super().__init__(mode=mode)
         self.return_label = return_label
@@ -46,6 +47,7 @@ class MnistDataset(MNIST):
 
 
 class TestCallbacks(unittest.TestCase):
+
     def setUp(self):
         self.save_dir = tempfile.mkdtemp()
 
@@ -62,14 +64,20 @@ class TestCallbacks(unittest.TestCase):
             val_dataset = MnistDataset(mode='test', sample_num=sample_num)
 
             net = LeNet()
+<<<<<<< HEAD
             optim = paddle.optimizer.Adam(
                 learning_rate=0.001, parameters=net.parameters()
             )
+=======
+            optim = paddle.optimizer.Adam(learning_rate=0.001,
+                                          parameters=net.parameters())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
             inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
             labels = [InputSpec([None, 1], 'int64', 'label')]
 
             model = Model(net, inputs=inputs, labels=labels)
+<<<<<<< HEAD
             model.prepare(
                 optim,
                 loss=CrossEntropyLoss(reduction="sum"),
@@ -111,6 +119,39 @@ class TestCallbacks(unittest.TestCase):
                 baseline=0,
                 save_best_model=True,
             )
+=======
+            model.prepare(optim,
+                          loss=CrossEntropyLoss(reduction="sum"),
+                          metrics=[Accuracy()])
+            callbacks_0 = paddle.callbacks.EarlyStopping('loss',
+                                                         mode='min',
+                                                         patience=1,
+                                                         verbose=1,
+                                                         min_delta=0,
+                                                         baseline=None,
+                                                         save_best_model=True)
+            callbacks_1 = paddle.callbacks.EarlyStopping('acc',
+                                                         mode='auto',
+                                                         patience=1,
+                                                         verbose=1,
+                                                         min_delta=0,
+                                                         baseline=0,
+                                                         save_best_model=True)
+            callbacks_2 = paddle.callbacks.EarlyStopping('loss',
+                                                         mode='auto_',
+                                                         patience=1,
+                                                         verbose=1,
+                                                         min_delta=0,
+                                                         baseline=None,
+                                                         save_best_model=True)
+            callbacks_3 = paddle.callbacks.EarlyStopping('acc_',
+                                                         mode='max',
+                                                         patience=1,
+                                                         verbose=1,
+                                                         min_delta=0,
+                                                         baseline=0,
+                                                         save_best_model=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             model.fit(
                 train_dataset,
                 val_dataset,

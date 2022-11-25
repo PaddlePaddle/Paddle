@@ -181,6 +181,7 @@ class Hogwild(DeviceWorker):
             sparse_len = len(worker.get_desc().sparse_table)
             for i in range(sparse_len):
                 sparse_table = downpour.sparse_table.add()
+<<<<<<< HEAD
                 sparse_table.table_id = (
                     worker.get_desc().sparse_table[i].table_id
                 )
@@ -196,6 +197,19 @@ class Hogwild(DeviceWorker):
                 sparse_table.fea_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
                 ].accessor.fea_dim
+=======
+                sparse_table.table_id = worker.get_desc(
+                ).sparse_table[i].table_id
+                sparse_table.sparse_key_name.extend(
+                    worker.get_desc().sparse_table[i].slot_key)
+                sparse_table.sparse_value_name.extend(
+                    worker.get_desc().sparse_table[i].slot_value)
+                sparse_table.sparse_grad_name.extend(
+                    worker.get_desc().sparse_table[i].slot_gradient)
+                sparse_table.fea_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                        i].accessor.fea_dim
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # not use emb_dim
                 sparse_table.emb_dim = -1
                 # not use hard code click
@@ -328,6 +342,7 @@ class DownpourLite(DeviceWorker):
             sparse_len = len(worker.get_desc().sparse_table)
             for i in range(sparse_len):
                 sparse_table = downpour.sparse_table.add()
+<<<<<<< HEAD
                 sparse_table.table_id = (
                     worker.get_desc().sparse_table[i].table_id
                 )
@@ -343,6 +358,19 @@ class DownpourLite(DeviceWorker):
                 sparse_table.fea_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
                 ].accessor.fea_dim
+=======
+                sparse_table.table_id = worker.get_desc(
+                ).sparse_table[i].table_id
+                sparse_table.sparse_key_name.extend(
+                    worker.get_desc().sparse_table[i].slot_key)
+                sparse_table.sparse_value_name.extend(
+                    worker.get_desc().sparse_table[i].slot_value)
+                sparse_table.sparse_grad_name.extend(
+                    worker.get_desc().sparse_table[i].slot_gradient)
+                sparse_table.fea_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                        i].accessor.fea_dim
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 # not use emb_dim
                 sparse_table.emb_dim = -1
                 # not use hard code click
@@ -445,6 +473,7 @@ class DownpourSGD(DeviceWorker):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
             sparse_table.sparse_key_name.extend(
+<<<<<<< HEAD
                 worker.get_desc().sparse_table[i].slot_key
             )
             sparse_table.sparse_value_name.extend(
@@ -461,6 +490,18 @@ class DownpourSGD(DeviceWorker):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
                 ].accessor.fea_dim
+=======
+                worker.get_desc().sparse_table[i].slot_key)
+            sparse_table.sparse_value_name.extend(
+                worker.get_desc().sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(
+                worker.get_desc().sparse_table[i].slot_gradient)
+            if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
+                    "no_cvm"] == True:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                        i].accessor.fea_dim
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 sparse_table.fea_dim = sparse_table.emb_dim
             else:
                 sparse_table.emb_dim = (
@@ -555,6 +596,7 @@ class DownpourSGDOPT(DeviceWorker):
             sparse_table = downpour.sparse_table.add()
             sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
             sparse_table.sparse_key_name.extend(
+<<<<<<< HEAD
                 worker.get_desc().sparse_table[i].slot_key
             )
             sparse_table.sparse_value_name.extend(
@@ -571,6 +613,18 @@ class DownpourSGDOPT(DeviceWorker):
                 sparse_table.emb_dim = self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
                     i
                 ].accessor.fea_dim
+=======
+                worker.get_desc().sparse_table[i].slot_key)
+            sparse_table.sparse_value_name.extend(
+                worker.get_desc().sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(
+                worker.get_desc().sparse_table[i].slot_gradient)
+            if opt_info["use_cvm"] or "no_cvm" in opt_info and opt_info[
+                    "no_cvm"] == True:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                        i].accessor.fea_dim
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                 sparse_table.fea_dim = sparse_table.emb_dim
             else:
                 sparse_table.emb_dim = (
@@ -638,16 +692,27 @@ class Section(DeviceWorker):
         # then runs Backward phase for all microbatches.
         # 1F1B scheduler, which runs forward phase and backward phase altertively
         # after startup phase.
+<<<<<<< HEAD
         assert schedule_mode_str in ["F-then-B", "1F1B"], (
             "The schedule mode " "for pipeline must be one of F-then-B or 1F1B"
         )
+=======
+        assert schedule_mode_str in [
+            "F-then-B", "1F1B"
+        ], ("The schedule mode "
+            "for pipeline must be one of F-then-B or 1F1B")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
         section_param.schedule_mode = schedule_mode
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(
+<<<<<<< HEAD
             program._get_desc().serialize_to_string()
         )
+=======
+            program._get_desc().serialize_to_string())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         # TODO: why does not work
         # cfg.program_desc.CopyFrom(program.program._get_desc())
         place = pipeline_opt["place"]
@@ -691,11 +756,19 @@ class HeterSection(DeviceWorker):
         cfg = heter_section_param.section_config
         program = heter_pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(
+<<<<<<< HEAD
             program._get_desc().serialize_to_string()
         )
 
 
 class DeviceWorkerFactory:
+=======
+            program._get_desc().serialize_to_string())
+
+
+class DeviceWorkerFactory(object):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def _create_device_worker(self, worker_type):
         classname = worker_type.capitalize()
         return globals()[classname]()

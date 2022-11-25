@@ -29,7 +29,11 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(param_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(param_var->IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
@@ -38,7 +42,11 @@ class DpsgdOpKernel : public framework::OpKernel<T> {
                           framework::ToTypeName(param_var->Type())));
 
     const auto *grad_var = ctx.InputVar("Grad");
+<<<<<<< HEAD
     PADDLE_ENFORCE_EQ(grad_var->IsType<phi::DenseTensor>(),
+=======
+    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(),
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                       true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "

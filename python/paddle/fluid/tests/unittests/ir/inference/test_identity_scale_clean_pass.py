@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+import numpy as np
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from auto_scan_test import PassAutoScanTest
 from program_config import TensorConfig, ProgramConfig, OpConfig
 import paddle.inference as paddle_infer
@@ -20,6 +24,10 @@ import hypothesis.strategies as st
 
 
 class TestIdentityScaleCleanPass(PassAutoScanTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def sample_predictor_configs(self, program_config):
         config = self.create_trt_inference_config()
         config.enable_tensorrt_engine(
@@ -28,8 +36,12 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
             min_subgraph_size=0,
             precision_mode=paddle_infer.PrecisionType.Float32,
             use_static=False,
+<<<<<<< HEAD
             use_calib_mode=False,
         )
+=======
+            use_calib_mode=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         yield config, ['relu'], (1e-5, 1e-5)
 
     def sample_program_config(self, draw):
@@ -39,6 +51,7 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         h = draw(st.integers(min_value=1, max_value=20))
         w = draw(st.integers(min_value=1, max_value=20))
 
+<<<<<<< HEAD
         relu_op = OpConfig(
             "relu", inputs={"X": ["relu_x"]}, outputs={"Out": ["relu_out"]}
         )
@@ -50,10 +63,22 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
             scale=1.0,
             bias_after_scale=True,
         )
+=======
+        relu_op = OpConfig("relu",
+                           inputs={"X": ["relu_x"]},
+                           outputs={"Out": ["relu_out"]})
+        scale_op = OpConfig("scale",
+                            inputs={"X": ["relu_out"]},
+                            outputs={"Out": ["scale_out"]},
+                            bias=0.,
+                            scale=1.,
+                            bias_after_scale=True)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         program_config = ProgramConfig(
             ops=[relu_op, scale_op],
             weights={},
             inputs={"relu_x": TensorConfig(shape=[n, c, h, w])},
+<<<<<<< HEAD
             outputs=["scale_out"],
         )
         return program_config
@@ -62,6 +87,14 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
         self.run_and_statis(
             max_examples=25, passes=["identity_scale_op_clean_pass"]
         )
+=======
+            outputs=["scale_out"])
+        return program_config
+
+    def test(self):
+        self.run_and_statis(max_examples=25,
+                            passes=["identity_scale_op_clean_pass"])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
 
 if __name__ == "__main__":

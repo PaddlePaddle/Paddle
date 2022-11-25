@@ -54,7 +54,14 @@ enum class Backend : uint8_t {
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
   MLU,  // MLU currently does not exist at the same time as CUDA
+<<<<<<< HEAD
   IPU,
+=======
+
+  // the third library backend
+  ONEDNN,
+  GPUDNN,  // cuDNN and hipDNN
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
   // paddle kernel primitives backend
   KPS,

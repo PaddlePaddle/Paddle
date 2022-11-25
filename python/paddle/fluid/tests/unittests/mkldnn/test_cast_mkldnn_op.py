@@ -24,6 +24,7 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
     not core.supports_bfloat16(), "place does not support BF16 evaluation"
 )
 class TestCastBF16ToFP32MKLDNNOp(OpTest):
+
     def init_data(self):
         self.out = np.random.random(size=[10, 10]).astype("float32")
         self.x = convert_float_to_uint16(self.out)
@@ -32,11 +33,16 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
         self.init_data()
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
+<<<<<<< HEAD
         prepare_dtype = lambda x: int(
             core.VarDesc.VarType.BF16
             if x.dtype != np.float32
             else core.VarDesc.VarType.FP32
         )
+=======
+        prepare_dtype = lambda x: int(core.VarDesc.VarType.BF16 if x.dtype != np
+                                      .float32 else core.VarDesc.VarType.FP32)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.attrs = {
             'in_dtype': prepare_dtype(self.x),
             'out_dtype': prepare_dtype(self.out),
@@ -59,18 +65,21 @@ class TestCastBF16ToFP32MKLDNNOp(OpTest):
 
 
 class TestCastFP32ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
+
     def init_data(self):
         self.x = np.random.random(size=[2, 6]).astype("float32")
         self.out = convert_float_to_uint16(self.x)
 
 
 class TestCastBF16ToBF16MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
+
     def init_data(self):
         self.x = np.random.random(size=[6, 13]).astype("uint16")
         self.out = self.x
 
 
 class TestCastFP32ToFP32MKLDNNOp(TestCastBF16ToFP32MKLDNNOp):
+
     def init_data(self):
         self.x = np.random.random(size=[7, 15]).astype("float32")
         self.out = self.x

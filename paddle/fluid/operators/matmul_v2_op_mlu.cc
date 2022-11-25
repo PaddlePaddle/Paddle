@@ -22,9 +22,15 @@ using Tensor = phi::DenseTensor;
 
 template <typename T>
 static void Mul(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                 const phi::DenseTensor& X,
                 const phi::DenseTensor& Y,
                 phi::DenseTensor* Out) {
+=======
+                const Tensor& X,
+                const Tensor& Y,
+                Tensor* Out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   Out->mutable_data<T>(ctx.GetPlace());
 
   MLUCnnlTensorDesc x_desc(X, CNNL_LAYOUT_ARRAY, ToCnnlDataType<T>());
@@ -46,9 +52,15 @@ static void Mul(const framework::ExecutionContext& ctx,
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
+<<<<<<< HEAD
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      const bool trans_x,
                      const bool trans_y) {
   Out->mutable_data<T>(ctx.GetPlace());
@@ -69,6 +81,7 @@ static void MatMul2D(const framework::ExecutionContext& ctx,
 }
 
 template <typename T>
+<<<<<<< HEAD
 static void MatMul2DwithReduceBatch(const framework::ExecutionContext& ctx,
                                     const phi::DenseTensor& X,
                                     const phi::DenseTensor& Y,
@@ -104,6 +117,12 @@ static void MatMulND(const framework::ExecutionContext& ctx,
                      const phi::DenseTensor& X,
                      const phi::DenseTensor& Y,
                      phi::DenseTensor* Out,
+=======
+static void MatMulND(const framework::ExecutionContext& ctx,
+                     const Tensor& X,
+                     const Tensor& Y,
+                     Tensor* Out,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                      const bool trans_x,
                      const bool trans_y) {
   if (!Out->initialized()) {
@@ -129,8 +148,13 @@ template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
                        const std::vector<int64_t>& dims,
                        const std::vector<int64_t>& bcast_dims,
+<<<<<<< HEAD
                        const phi::DenseTensor& in,
                        phi::DenseTensor* out) {
+=======
+                       const Tensor& in,
+                       Tensor* out) {
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   std::vector<int64_t> axes;
   int64_t size = bcast_dims.size();
   int64_t diff = bcast_dims.size() - dims.size();

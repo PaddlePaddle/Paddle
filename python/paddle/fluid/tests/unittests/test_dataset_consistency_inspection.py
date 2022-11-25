@@ -51,10 +51,12 @@ query_schema = [
 
 
 class CTRDataset(dg.MultiSlotDataGenerator):
+
     def __init__(self, mode):
         self.test = mode
 
     def generate_sample(self, line):
+
         def reader():
             ins = line.strip().split(';')
             label_pos_num = int(ins[1].split(' ')[0])
@@ -393,6 +395,7 @@ class TestDataset(unittest.TestCase):
             f.write(data)
 
         slot_data = []
+<<<<<<< HEAD
         label = fluid.layers.data(
             name="click",
             shape=[-1, 1],
@@ -400,73 +403,131 @@ class TestDataset(unittest.TestCase):
             lod_level=0,
             append_batch_size=False,
         )
+=======
+        label = fluid.layers.data(name="click",
+                                  shape=[-1, 1],
+                                  dtype="int64",
+                                  lod_level=0,
+                                  append_batch_size=False)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         slot_data.append(label)
 
         # sprase_query_feat_names
         len_sparse_query = 19
         for feat_name in range(1, len_sparse_query + 1):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='int64', lod_level=1
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # sparse_url_feat_names
         for feat_name in range(len_sparse_query + 1, len_sparse_query + 5):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='int64', lod_level=1
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # dense_feat_names
         for feat_name in range(len_sparse_query + 5, len_sparse_query + 16):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # context_feat_namess
         for feat_name in range(len_sparse_query + 16, len_sparse_query + 18):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # neg sparse_url_feat_names
         for feat_name in range(len_sparse_query + 18, len_sparse_query + 22):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='int64', lod_level=1
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='int64',
+                                  lod_level=1))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # neg dense_feat_names
         for feat_name in range(len_sparse_query + 22, len_sparse_query + 33):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         # neg context_feat_namess
         for feat_name in range(len_sparse_query + 33, len_sparse_query + 35):
             slot_data.append(
+<<<<<<< HEAD
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'
                 )
             )
+=======
+                fluid.layers.data(name=str(feat_name),
+                                  shape=[1],
+                                  dtype='float32'))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         dataset = paddle.distributed.InMemoryDataset()
 
         print("========================================")
         generator_class = CTRDataset(mode=0)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             print("case 1: check passed!")
         except Exception as e:
             print("warning: catch expected error")
@@ -477,9 +538,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=2)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except Exception as e:
             print("warning: case 2 catch expected error")
             print(e)
@@ -489,9 +556,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=3)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except Exception as e:
             print("warning: case 3 catch expected error")
             print(e)
@@ -501,9 +574,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=4)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except Exception as e:
             print("warning: case 4 catch expected error")
             print(e)
@@ -513,9 +592,15 @@ class TestDataset(unittest.TestCase):
         print("========================================")
         generator_class = CTRDataset(mode=5)
         try:
+<<<<<<< HEAD
             dataset._check_use_var_with_data_generator(
                 slot_data, generator_class, dump_a_path
             )
+=======
+            dataset._check_use_var_with_data_generator(slot_data,
+                                                       generator_class,
+                                                       dump_a_path)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         except Exception as e:
             print("warning: case 5 catch expected error")
             print(e)

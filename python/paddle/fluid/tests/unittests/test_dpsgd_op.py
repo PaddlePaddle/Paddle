@@ -18,6 +18,7 @@ from op_test import OpTest
 
 
 class TestDpsgdOp(OpTest):
+
     def setUp(self):
         '''Test Dpsgd Operator with supplied attributes'''
         self.op_type = "dpsgd"

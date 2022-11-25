@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
 from paddle.utils import gast
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import (
     AstNodeWrapper,
@@ -35,6 +36,26 @@ class CreateVariableTransformer(BaseTransformer):
             "Type of input node should be AstNodeWrapper, but received %s ."
             % type(wrapper_root)
         )
+=======
+from __future__ import print_function
+
+from paddle.utils import gast
+from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
+from paddle.fluid.dygraph.dygraph_to_static.utils import FunctionNameLivenessAnalysis
+from paddle.fluid.dygraph.dygraph_to_static.variable_trans_func import create_undefined_var
+from paddle.fluid.dygraph.dygraph_to_static.base_transformer import BaseTransformer
+
+
+class CreateVariableTransformer(BaseTransformer):
+    """
+    """
+
+    def __init__(self, wrapper_root):
+        assert isinstance(
+            wrapper_root, AstNodeWrapper
+        ), "Type of input node should be AstNodeWrapper, but received %s ." % type(
+            wrapper_root)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         self.root = wrapper_root.node
         FunctionNameLivenessAnalysis(self.root)
 
@@ -45,8 +66,12 @@ class CreateVariableTransformer(BaseTransformer):
         self.visit(self.root)
 
     def visit_FunctionDef(self, node):
+<<<<<<< HEAD
         # attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
         self.generic_visit(node)
+=======
+        #attributes = set(filter(lambda x: '.' in x, node.pd_scope.modified_vars()))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         bodys = node.body
         names = sorted(node.pd_scope.created_vars())
         for name in names:

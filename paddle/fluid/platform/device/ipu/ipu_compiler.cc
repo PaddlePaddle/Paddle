@@ -94,7 +94,11 @@ struct CustomOpAttrVisitor {
 };
 
 struct ConstantOpAttrVisitor {
+<<<<<<< HEAD
   ConstantOpAttrVisitor(phi::DenseTensor* tensor, VarType::Type dtype)
+=======
+  ConstantOpAttrVisitor(framework::LoDTensor* tensor, VarType::Type dtype)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       : tensor_(tensor), dtype_(dtype) {}
 
   phi::DenseTensor* tensor_;
@@ -143,10 +147,13 @@ struct ConstantOpAttrVisitor {
   void operator()(const std::vector<BlockDesc*>& v) const { RAISE_ERROR; }
   void operator()(int64_t v) const { RAISE_ERROR; }
   void operator()(paddle::blank) const { RAISE_ERROR; }
+<<<<<<< HEAD
   void operator()(framework::VarDesc*) const { RAISE_ERROR; }
   void operator()(const std::vector<framework::VarDesc*>&) const {
     RAISE_ERROR;
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 #undef RAISE_ERROR
 };
 
@@ -455,7 +462,11 @@ void Compiler::LowerWeights(const Scope* scope) {
           var,
           platform::errors::NotFound("Tensor %s is not found in the scope",
                                      var_name));
+<<<<<<< HEAD
       auto tensor = var->Get<phi::DenseTensor>();
+=======
+      auto tensor = var->Get<framework::LoDTensor>();
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
       auto dtype = PhiDType2PopartDType(tensor.dtype());
       auto shape = std::vector<int64_t>();
       for (size_t i = 0; i < tensor.dims().size(); ++i) {

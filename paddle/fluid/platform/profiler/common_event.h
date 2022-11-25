@@ -124,6 +124,7 @@ struct OperatorSupplementOriginEvent {
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     op_type = buf;
   }
+<<<<<<< HEAD
   OperatorSupplementOriginEvent(
       std::function<void *(size_t)> arena_allocator,
       uint64_t timestamp_ns,
@@ -141,6 +142,8 @@ struct OperatorSupplementOriginEvent {
       input_shapes[std::string((*it).first)] = (*it).second;
     }
   }
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   uint64_t timestamp_ns;
   const char *op_type = nullptr;  // not owned, designed for performance
   // input shapes

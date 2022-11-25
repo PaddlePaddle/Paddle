@@ -940,6 +940,7 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   return bn_out_var;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::LayerNormShiftScale::operator()() {
   auto layer_norm_in = pattern->NewNode(layer_norm_in_repr())
                            ->AsInput()
@@ -963,6 +964,8 @@ PDNode *patterns::LayerNormShiftScale::operator()() {
   return layer_norm_out;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 PDNode *patterns::OperatorActivation::operator()(
     const std::string &operator_type, const std::string &activation_type) {
   auto *preceding_op =
@@ -979,6 +982,7 @@ PDNode *patterns::OperatorActivation::operator()(
   preceding_op->LinksTo({preceding_op_out});
   activation_op->LinksFrom({preceding_op_out}).LinksTo({activation_out});
   return activation_out;
+<<<<<<< HEAD
 }
 
 PDNode *patterns::Squeeze2Transpose2::operator()() {
@@ -1037,6 +1041,8 @@ PDNode *patterns::OperatorReshape2::operator()(const std::string &operator_type,
   preceding_op->LinksTo({preceding_op_out});
   reshape2_op->LinksFrom({preceding_op_out}).LinksTo({reshape2_out});
   return reshape2_out;
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 }
 
 PDNode *patterns::SeqConvEltAddRelu::operator()(
@@ -1159,6 +1165,7 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
+<<<<<<< HEAD
   std::vector<PDNode *> links_from{input_var, fc_weight_var, fc_bias_var};
   if (with_residual_data) {
     auto res_fc_var = pattern->NewNode(residual_data_repr())
@@ -1175,6 +1182,10 @@ PDNode *patterns::FCMKLDNN::operator()(bool with_residual_data) {
   }
 
   fc_op->LinksFrom(links_from).LinksTo({fc_out_var});
+=======
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
   return fc_out_var;
 }
 
@@ -2127,6 +2138,7 @@ PDNode *patterns::ElementwiseOp::operator()(
   return out_var;
 }
 
+<<<<<<< HEAD
 PDNode *patterns::MatmulElementwiseAdd::operator()(
     const std::string &matmul_type, bool as_x) {
   auto matmul_op =
@@ -2154,6 +2166,8 @@ PDNode *patterns::MatmulElementwiseAdd::operator()(
   return elementwise_add_out;
 }
 
+=======
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 PDNode *patterns::ResidualElementwise::operator()(
     PDNode *op_var,
     PDNode *residual_var,

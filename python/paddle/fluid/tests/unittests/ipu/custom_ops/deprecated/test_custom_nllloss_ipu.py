@@ -22,23 +22,39 @@ import paddle.static
 from paddle.utils.cpp_extension import load
 
 sys.path.append(
+<<<<<<< HEAD
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 )
+=======
+    os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 from op_test_ipu import IPUOpTest
 
 
 def load_custom_ops():
     cur_dir = os.path.dirname(os.path.realpath(__file__))
+<<<<<<< HEAD
     custom_ops = load(
         name="custom_nll_loss",
         sources=[f"{cur_dir}/custom_nllloss.cc"],
         extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
         extra_ldflags=['-lpopfloat'],
     )
+=======
+    custom_ops = load(name="custom_nll_loss",
+                      sources=[f"{cur_dir}/custom_nllloss.cc"],
+                      extra_cxx_cflags=['-DONNX_NAMESPACE=onnx'],
+                      extra_ldflags=['-lpopfloat'])
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     return custom_ops
 
 
 class TestBase(IPUOpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.load_custom_ops()
         self.set_atol()
@@ -76,12 +92,21 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
+<<<<<<< HEAD
         x = paddle.static.data(
             name=self.feed_list[0], shape=self.feed_shape[0], dtype='float32'
         )
         label = paddle.static.data(
             name=self.feed_list[1], shape=self.feed_shape[1], dtype='int32'
         )
+=======
+        x = paddle.static.data(name=self.feed_list[0],
+                               shape=self.feed_shape[0],
+                               dtype='float32')
+        label = paddle.static.data(name=self.feed_list[1],
+                                   shape=self.feed_shape[1],
+                                   dtype='int32')
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         out = self.op(x, label, **self.op_attrs)
         out = paddle.mean(out)
         self.fetch_list = [out.name]
@@ -97,6 +122,10 @@ class TestBase(IPUOpTest):
 
 
 class TestCase1(TestBase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def set_test_op(self):
         self.op = self.custom_ops.custom_nll_loss
         self.op_attrs = {

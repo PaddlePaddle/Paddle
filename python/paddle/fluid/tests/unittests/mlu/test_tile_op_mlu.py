@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+<<<<<<< HEAD
+=======
+from __future__ import print_function
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 import sys
 
 sys.path.append("..")
@@ -25,8 +30,14 @@ from paddle.fluid import compiler, Program, program_guard
 paddle.enable_static()
 
 
+<<<<<<< HEAD
 # Situation 1: repeat_times is a list (without tensor)
 class TestTileOpRank1(OpTest):
+=======
+#Situation 1: repeat_times is a list (without tensor)
+class TestTileOpRank1(OpTest):
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -50,36 +61,60 @@ class TestTileOpRank1(OpTest):
 
 # with dimension expanding
 class TestTileOpRank2Expanding(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = [120]
         self.repeat_times = [2, 2]
 
 
 class TestTileOpRank2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
 
 
 class TestTileOpRank3_Corner(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (1, 1, 1)
 
 
 class TestTileOpRank3_Corner2(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = (2, 10, 5)
         self.repeat_times = (2, 2)
 
 
 class TestTileOpRank3(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = (2, 4, 15)
         self.repeat_times = (2, 1, 4)
 
 
 class TestTileOpRank4(TestTileOpRank1):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = (2, 4, 5, 7)
         self.repeat_times = (3, 2, 1, 2)
@@ -87,6 +122,10 @@ class TestTileOpRank4(TestTileOpRank1):
 
 # Situation 2: repeat_times is a list (with tensor)
 class TestTileOpRank1_tensor_attr(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -94,9 +133,14 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.init_data()
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
+<<<<<<< HEAD
             repeat_times_tensor.append(
                 ("x" + str(index), np.ones((1)).astype('int32') * ele)
             )
+=======
+            repeat_times_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
 
         self.inputs = {
             'X': np.random.random(self.ori_shape).astype("float32"),
@@ -119,6 +163,10 @@ class TestTileOpRank1_tensor_attr(OpTest):
 
 
 class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [1, 1]
@@ -126,6 +174,10 @@ class TestTileOpRank2_Corner_tensor_attr(TestTileOpRank1_tensor_attr):
 
 
 class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -134,6 +186,10 @@ class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
 
 # Situation 3: repeat_times is a tensor
 class TestTileOpRank1_tensor(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -159,6 +215,10 @@ class TestTileOpRank1_tensor(OpTest):
 
 
 class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def init_data(self):
         self.ori_shape = [12, 14]
         self.repeat_times = [2, 3]
@@ -166,6 +226,10 @@ class TestTileOpRank2_tensor(TestTileOpRank1_tensor):
 
 # Situation 4: input x is Integer
 class TestTileOpInteger(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -183,6 +247,10 @@ class TestTileOpInteger(OpTest):
 
 # Situation 5: input x is Bool
 class TestTileOpBoolean(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -198,6 +266,10 @@ class TestTileOpBoolean(OpTest):
 
 # Situation 56: input x is Integer
 class TestTileOpInt64_t(OpTest):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def setUp(self):
         self.op_type = "tile"
         self.place = paddle.device.MLUPlace(0)
@@ -214,11 +286,19 @@ class TestTileOpInt64_t(OpTest):
 
 
 class TestTileError(unittest.TestCase):
+<<<<<<< HEAD
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace()
             )
+=======
+
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.create_lod_tensor(np.array([[-1]]), [[1]],
+                                         fluid.CPUPlace())
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
             repeat_times = [2, 2]
             self.assertRaises(TypeError, paddle.tile, x1, repeat_times)
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
@@ -229,6 +309,10 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_api(self):
         with program_guard(Program(), Program()):
             repeat_times = [2, 2]
@@ -240,6 +324,10 @@ class TestTileAPIStatic(unittest.TestCase):
 
 # Test python API
 class TestTileAPI(unittest.TestCase):
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     def test_api(self):
         with fluid.dygraph.guard():
             np_x = np.random.random([12, 14]).astype("float32")

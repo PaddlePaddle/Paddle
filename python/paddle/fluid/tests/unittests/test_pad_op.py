@@ -25,6 +25,7 @@ from test_attribute_var import UnittestBase
 
 
 class TestPadOp(OpTest):
+
     def setUp(self):
         self.initTestCase()
         self.dtype = self.get_dtype()
@@ -36,12 +37,20 @@ class TestPadOp(OpTest):
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
         self.outputs = {
+<<<<<<< HEAD
             'Out': np.pad(
                 self.inputs['X'],
                 self.paddings,
                 mode='constant',
                 constant_values=self.pad_value,
             )
+=======
+            'Out':
+            np.pad(self.inputs['X'],
+                   self.paddings,
+                   mode='constant',
+                   constant_values=self.pad_value)
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
         }
 
     def get_dtype(self):
@@ -60,6 +69,7 @@ class TestPadOp(OpTest):
 
 
 class TestCase1(TestPadOp):
+
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
         self.paddings = [(0, 1), (2, 3), (2, 1), (1, 1)]
@@ -67,6 +77,7 @@ class TestCase1(TestPadOp):
 
 
 class TestCase2(TestPadOp):
+
     def initTestCase(self):
         self.shape = (5, 5, 5)
         self.paddings = [(0, 0), (0, 0), (1, 2)]
@@ -74,6 +85,7 @@ class TestCase2(TestPadOp):
 
 
 class TestCase3(TestPadOp):
+
     def initTestCase(self):
         self.shape = 100
         self.paddings = [(0, 1)]
@@ -84,10 +96,17 @@ class TestCase3(TestPadOp):
 
 
 def create_test_fp16(parent):
+<<<<<<< HEAD
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
+=======
+
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
     class TestPadFp16(parent):
+
         def get_dtype(self):
             return np.float16
 
@@ -106,6 +125,7 @@ create_test_fp16(TestCase3)
 
 
 class TestPadOpError(unittest.TestCase):
+
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.random((2, 2)).astype("float32")

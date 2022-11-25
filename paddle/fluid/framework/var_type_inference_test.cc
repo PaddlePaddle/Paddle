@@ -63,7 +63,11 @@ class SumOpVarTypeInference : public VarTypeInference {
 }  // namespace framework
 }  // namespace paddle
 
+<<<<<<< HEAD
 REGISTER_OPERATOR(fake_sum,
+=======
+REGISTER_OPERATOR(sum,
+>>>>>>> 5b0760feb220cd8f9e8a247c638a0f0d6df64baf
                   paddle::framework::NOP,
                   paddle::framework::SumOpMaker,
                   paddle::framework::SumOpVarTypeInference);
