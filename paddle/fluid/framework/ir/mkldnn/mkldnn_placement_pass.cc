@@ -20,18 +20,16 @@ namespace framework {
 namespace ir {
 
 bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
-  auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto op_type = op->Op()->Type();
-
-  // This ops have use_mkldnn attr, but not support for now.
-  const std::vector<std::string> op_types = {
-      "trilinear_interp", "bicubic_interp", "linear_interp"};
-  bool is_not_supported_type =
-      std::find(op_types.begin(), op_types.end(), op_type) != op_types.end();
-  if (is_not_supported_type) {
+  const auto excluded_op_types_list = GetExcludedOpTypesList();
+  if (!excluded_op_types_list.empty() &&
+      std::find(excluded_op_types_list.begin(),
+                excluded_op_types_list.end(),
+                op_type) != excluded_op_types_list.end()) {
     return false;
   }
 
+  auto& all_kernels = OperatorWithKernel::AllOpKernels();
   auto it = all_kernels.find(op_type);
   if (it != all_kernels.end()) {
     for (auto& kernel_pair : it->second) {
@@ -60,27 +58,11 @@ bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
   return false;
 }
 
-bool MKLDNNPlacementPass::IsDefaultOpTypes(const std::string& op_type) const {
-  // For interpolate ops, there's a little difference between Paddle and
-  // MKLDNN.
-  // If run MKLDNN interpolate ops, manual set AnalysisConfig and apply
-  // the corresponding pass.
-  const std::vector<std::string> not_default_op_types = {"bilinear_interp",
-                                                         "nearest_interp",
-                                                         "trilinear_interp",
-                                                         "bicubic_interp",
-                                                         "linear_interp",
-                                                         "bilinear_interp_v2",
-                                                         "linear_interp_v2"};
-  bool is_interpolate_op = std::find(not_default_op_types.begin(),
-                                     not_default_op_types.end(),
-                                     op_type) != not_default_op_types.end();
-  return !is_interpolate_op;
-}
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
-    .RequirePassAttr("mkldnn_enabled_op_types");
+    .RequirePassAttr("mkldnn_enabled_op_types")
+    .DefaultPassAttr("mkldnn_excluded_op_types",
+                     new std::unordered_set<std::string>());

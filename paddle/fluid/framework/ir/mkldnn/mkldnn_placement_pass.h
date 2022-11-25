@@ -29,7 +29,6 @@ namespace ir {
 class MKLDNNPlacementPass : public PlacementPassBase {
  protected:
   bool IsSupport(const Node* op) const override;
-  bool IsDefaultOpTypes(const std::string& op_type) const override;
 
  private:
   const std::string GetPlacementName() const override { return "MKLDNN"; }
@@ -38,6 +37,10 @@ class MKLDNNPlacementPass : public PlacementPassBase {
 
   const std::unordered_set<std::string> GetOpTypesList() const override {
     return Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
+  }
+
+  const std::unordered_set<std::string> GetExcludedOpTypesList() const {
+    return Get<std::unordered_set<std::string>>("mkldnn_excluded_op_types");
   }
 };
 

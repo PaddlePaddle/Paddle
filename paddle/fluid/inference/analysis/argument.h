@@ -175,6 +175,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types,
                       MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);
+
+  // Pass a set of operation types to disable their mkldnn kernel
+  DECL_ARGUMENT_FIELD(mkldnn_excluded_op_types,
+                      MKLDNNExcludedOpTypes,
+                      std::unordered_set<std::string>);
+
   // The cache capacity of different input shapes for mkldnn.
   DECL_ARGUMENT_FIELD(mkldnn_cache_capacity, MkldnnCacheCapacity, int);
 

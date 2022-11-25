@@ -382,6 +382,15 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
 }
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+TEST(AnalysisPredictor, mkldnn_excluded_op_types) {
+  AnalysisConfig config;
+  config.EnableMKLDNN();
+  config.SetMKLDNNExcludedOp({"conv2d", "pool2d"});
+  ASSERT_EQ(config.mkldnn_excluded_op_types().size(), (size_t)2);
+}
+#endif
+
 #ifdef PADDLE_WITH_XPU
 TEST(AnalysisPredictor, set_xpu_device_id) {
   AnalysisConfig config;

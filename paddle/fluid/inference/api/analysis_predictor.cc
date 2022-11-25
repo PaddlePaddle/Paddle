@@ -1218,6 +1218,7 @@ void AnalysisPredictor::PrepareArgument() {
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";
     argument_->SetMKLDNNEnabledOpTypes(config_.mkldnn_enabled_op_types_);
+    argument_->SetMKLDNNExcludedOpTypes(config_.mkldnn_excluded_op_types_);
   }
 
   if (config_.use_cinn_compiler_) {

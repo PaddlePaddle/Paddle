@@ -29,9 +29,6 @@ namespace ir {
 class CUDNNPlacementPass : public PlacementPassBase {
  protected:
   bool IsSupport(const Node* op) const override;
-  bool IsDefaultOpTypes(const std::string& op_type) const override {
-    return true;
-  };
 
  private:
   const std::string GetPlacementName() const override { return "cuDNN"; }

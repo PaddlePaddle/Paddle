@@ -149,8 +149,10 @@ class PlacementPassTest {
   }
 
  public:
-  void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
-                unsigned expected_use_mkldnn_true_count) {
+  void MainTest(
+      std::initializer_list<std::string> mkldnn_enabled_op_types,
+      unsigned expected_use_mkldnn_true_count,
+      std::initializer_list<std::string> mkldnn_excluded_op_types = {}) {
     auto prog = BuildProgramDesc();
     RegisterOpKernel();
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
@@ -159,6 +161,8 @@ class PlacementPassTest {
 
     pass->Set("mkldnn_enabled_op_types",
               new std::unordered_set<std::string>(mkldnn_enabled_op_types));
+    pass->Set("mkldnn_excluded_op_types",
+              new std::unordered_set<std::string>(mkldnn_excluded_op_types));
 
     graph.reset(pass->Apply(graph.release()));
 
@@ -198,6 +202,12 @@ TEST(MKLDNNPlacementPass, enable_all) {
   // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
   // 1 concat
   PlacementPassTest().MainTest({}, 6);
+}
+
+TEST(MKLDNNPlacementPass, enable_all_excluded_conv) {
+  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
+  // 1 concat
+  PlacementPassTest().MainTest({}, 5, {"conv2d"});
 }
 
 TEST(MKLDNNPlacementPass, placement_name) {
