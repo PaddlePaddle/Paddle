@@ -2902,6 +2902,35 @@ class TestLayer(LayerTest):
         np.testing.assert_array_equal(static_res2, eager_dynamic_res2)
         np.testing.assert_array_equal(static_res3, eager_dynamic_res3)
 
+    def test_crop_tensor(self):
+        with self.static_graph():
+            x = fluid.layers.data(name="x1", shape=[6, 5, 8])
+
+            dim1 = fluid.layers.data(
+                name="dim1", shape=[1], append_batch_size=False
+            )
+            dim2 = fluid.layers.data(
+                name="dim2", shape=[1], append_batch_size=False
+            )
+            crop_shape1 = (1, 2, 4, 4)
+            crop_shape2 = fluid.layers.data(
+                name="crop_shape", shape=[4], append_batch_size=False
+            )
+            crop_shape3 = [-1, dim1, dim2, 4]
+            crop_offsets1 = [0, 0, 1, 0]
+            crop_offsets2 = fluid.layers.data(
+                name="crop_offset", shape=[4], append_batch_size=False
+            )
+            crop_offsets3 = [0, dim1, dim2, 0]
+
+            out1 = paddle.crop(x, shape=crop_shape1, offsets=crop_offsets1)
+            out2 = paddle.crop(x, shape=crop_shape2, offsets=crop_offsets2)
+            out3 = paddle.crop(x, shape=crop_shape3, offsets=crop_offsets3)
+
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            self.assertIsNotNone(out3)
+
     def test_shard_index(self):
         with self.static_graph():
             x = fluid.layers.data(name="label", shape=[4, 1], dtype='int64')

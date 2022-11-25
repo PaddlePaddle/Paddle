@@ -44,6 +44,58 @@ def get_vaild_warning_num(warning, w):
 
 
 class TestDeviceGuard(unittest.TestCase):
+    def test_device_guard(self):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            data1 = paddle.full(
+                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
+            )
+            data2 = paddle.full(
+                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
+            )
+            shape = paddle.shape(data2)
+            with paddle.static.device_guard("cpu"):
+                shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
+                with paddle.static.device_guard("xpu"):
+                    out = paddle.crop(data1, shape=shape)
+        # check if the device attr is set correctly
+        all_ops = main_program.global_block().ops
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        for op in all_ops:
+            if op.type == 'slice':
+                self.assertEqual(op.desc.attr(device_attr_name), "cpu")
+            if op.type == 'crop_tensor':
+                self.assertEqual(op.desc.attr(device_attr_name), "xpu")
+
+        execute(main_program, startup_program)
+
+    def test_device_guard_with_id(self):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
+            data1 = paddle.full(
+                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
+            )
+            data2 = paddle.full(
+                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
+            )
+            shape = paddle.shape(data2)
+            with paddle.static.device_guard("cpu"):
+                shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
+                with paddle.static.device_guard("xpu:1"):
+                    out = paddle.crop(data1, shape=shape)
+        # check if the device attr is set correctly
+        all_ops = main_program.global_block().ops
+        device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
+        for op in all_ops:
+            if op.type == 'slice':
+                self.assertEqual(op.desc.attr(device_attr_name), "cpu")
+            if op.type == 'crop_tensor':
+                self.assertEqual(op.desc.attr(device_attr_name), "xpu:1")
+
+        execute(main_program, startup_program)
+
     def test_cpu_only_op(self):
         main_program = paddle.static.Program()
         startup_program = paddle.static.Program()
