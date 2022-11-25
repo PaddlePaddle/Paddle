@@ -64,12 +64,12 @@ function init() {
 
 function cmake_base() {
     # Build script will not fail if *.deb does not exist
-    rm *.deb 2>/dev/null || true
-    # Delete previous built whl packages
-    rm -rf python/dist 2>/dev/null || true
+    # rm *.deb 2>/dev/null || true
+    # # Delete previous built whl packages
+    # rm -rf python/dist 2>/dev/null || true
 
-    # Delete previous built paddle cache
-    rm -rf python/paddle 2>/dev/null || true
+    # # Delete previous built paddle cache
+    # rm -rf python/paddle 2>/dev/null || true
 
     # Support build for all python3 versions
     PYTHON_FLAGS=""
@@ -177,6 +177,9 @@ function cmake_base() {
                 export PYTHON_INCLUDE_DIR=/opt/_internal/cpython-3.7.0/include/python3.7m
                 export PYTHON_LIBRARIES=/opt/_internal/cpython-3.7.0/lib/libpython3.so
                 pip3.7 install -r ${PADDLE_ROOT}/python/requirements.txt
+                echo "which pip3.7:"
+                which pip3.7
+                pip3.7 list
             elif [ "$1" == "cp38-cp38" ]; then
                 export LD_LIBRARY_PATH=/opt/_internal/cpython-3.8.0/lib/:${LD_LIBRARY_PATH}
                 export PATH=/opt/_internal/cpython-3.8.0/bin/:${PATH}
@@ -243,60 +246,60 @@ function cmake_base() {
       bash ${PADDLE_ROOT}/tools/get_cpu_info.sh
     fi
 
-    cat <<EOF
-    ========================================
-    Configuring cmake in /paddle/build ...
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
-        ${PYTHON_FLAGS}
-        -DWITH_GPU=${WITH_GPU:-OFF}
-        -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
-        -DWITH_ROCM=${WITH_ROCM:-OFF}
-        -DWITH_CINN=${WITH_CINN:-OFF}
-        -DWITH_DISTRIBUTE=${distibuted_flag}
-        -DWITH_MKL=${WITH_MKL:-ON}
-        -DWITH_AVX=${WITH_AVX:-OFF}
-        -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-        -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
-        -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
-        -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
-        -DWITH_PYTHON=${WITH_PYTHON:-ON}
-        -DCUDNN_ROOT=/usr/
-        -DWITH_TESTING=${WITH_TESTING:-ON}
-        -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
-        -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
-        -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-        -DWITH_INFRT=${WITH_INFRT:-OFF}
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
-        -DPY_VERSION=${PY_VERSION:-3.7}
-        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
-        -DWITH_PSCORE=${distibuted_flag}
-        -DWITH_PSLIB=${WITH_PSLIB:-OFF}
-        -DWITH_GLOO=${gloo_flag}
-        -DWITH_LITE=${WITH_LITE:-OFF}
-        -DWITH_CNCL=${WITH_CNCL:-OFF}
-        -DWITH_XPU=${WITH_XPU:-OFF}
-        -DWITH_MLU=${WITH_MLU:-OFF}
-        -DWITH_IPU=${WITH_IPU:-OFF}
-        -DLITE_GIT_TAG=release/v2.10
-        -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
-        -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
-        -DWITH_ARM=${WITH_ARM:-OFF}
-        -DWITH_ASCEND=${WITH_ASCEND:-OFF}
-        -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
-        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
-        -DWITH_STRIP=${WITH_STRIP:-ON}
-        -DON_INFER=${ON_INFER:-OFF}
-        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
-        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
-        -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
-        -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
-        -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
-        -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
-    ========================================
-EOF
+#     cat <<EOF
+#     ========================================
+#     Configuring cmake in /paddle/build ...
+#         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
+#         ${PYTHON_FLAGS}
+#         -DWITH_GPU=${WITH_GPU:-OFF}
+#         -DWITH_TENSORRT=${WITH_TENSORRT:-ON}
+#         -DWITH_ROCM=${WITH_ROCM:-OFF}
+#         -DWITH_CINN=${WITH_CINN:-OFF}
+#         -DWITH_DISTRIBUTE=${distibuted_flag}
+#         -DWITH_MKL=${WITH_MKL:-ON}
+#         -DWITH_AVX=${WITH_AVX:-OFF}
+#         -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
+#         -DNEW_RELEASE_PYPI=${NEW_RELEASE_PYPI:-OFF}
+#         -DNEW_RELEASE_ALL=${NEW_RELEASE_ALL:-OFF}
+#         -DNEW_RELEASE_JIT=${NEW_RELEASE_JIT:-OFF}
+#         -DWITH_PYTHON=${WITH_PYTHON:-ON}
+#         -DCUDNN_ROOT=/usr/
+#         -DWITH_TESTING=${WITH_TESTING:-ON}
+#         -DWITH_COVERAGE=${WITH_COVERAGE:-OFF}
+#         -DWITH_INCREMENTAL_COVERAGE=${WITH_INCREMENTAL_COVERAGE:-OFF}
+#         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
+#         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+#         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+#         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+#         -DWITH_INFRT=${WITH_INFRT:-OFF}
+#         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
+#         -DPY_VERSION=${PY_VERSION:-3.7}
+#         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+#         -DWITH_PSCORE=${distibuted_flag}
+#         -DWITH_PSLIB=${WITH_PSLIB:-OFF}
+#         -DWITH_GLOO=${gloo_flag}
+#         -DWITH_LITE=${WITH_LITE:-OFF}
+#         -DWITH_CNCL=${WITH_CNCL:-OFF}
+#         -DWITH_XPU=${WITH_XPU:-OFF}
+#         -DWITH_MLU=${WITH_MLU:-OFF}
+#         -DWITH_IPU=${WITH_IPU:-OFF}
+#         -DLITE_GIT_TAG=release/v2.10
+#         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
+#         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
+#         -DWITH_ARM=${WITH_ARM:-OFF}
+#         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
+#         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+#         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
+#         -DWITH_STRIP=${WITH_STRIP:-ON}
+#         -DON_INFER=${ON_INFER:-OFF}
+#         -DWITH_HETERPS=${WITH_HETERPS:-OFF}
+#         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
+#         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
+#         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
+#         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+#         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+#     ========================================
+# EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
     # docker environment is fully controlled by this script.
     # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
@@ -401,6 +404,7 @@ EOF
     export WITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
+    /opt/_internal/cpython-3.7.0/bin/python setup.py install
     # if [ "$build_error" != 0 ];then
     #     exit 7;
     # fi
@@ -408,10 +412,9 @@ EOF
 }
 
 function cmake_gen() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
+    #mkdir -p ${PADDLE_ROOT}/build
+    #cd ${PADDLE_ROOT}/build
     cmake_base $1
-    cd ..
 }
 
 function cmake_gen_in_current_dir() {
