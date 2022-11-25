@@ -2279,8 +2279,9 @@ def unique_consecutive(
     Eliminates all but the first element from every consecutive group of equivalent elements.
 
     Note:
-        This function is different from :func:`paddle.unique` in the sense that this function
-        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+        This function is different from :code:`paddle.unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to :code:`std::unique` in C++.
+        See :ref:'unique'.
 
     Args:
         x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
