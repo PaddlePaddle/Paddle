@@ -573,9 +573,11 @@ function cmake_gen_and_build() {
     cmake_gen $1
     echo "which python:"
     which python
-    python setup.py install
+    #python setup.py install
     echo "which python:"
     which python
+    pip3.7 list
+    find / -name *.egg-link
     build $2
     endTime_s=`date +%s`
     [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
