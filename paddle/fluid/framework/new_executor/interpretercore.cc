@@ -691,7 +691,7 @@ void InterpreterCore::Convert(
         vec_meta_info[i].var_ref_count_, var_scope_.VarRef(i)));
   }
 
-  AnalyseTraceExecuteOrder();
+  AnalyseExecuteOrderForTrace();
 }
 
 void InterpreterCore::BuildSkipShareLoDInfo() {
