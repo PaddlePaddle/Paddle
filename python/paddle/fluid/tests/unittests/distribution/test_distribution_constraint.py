@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+import parameterize as param
+
 import paddle
 from paddle.distribution import constraint
-
-import parameterize as param
 
 np.random.seed(2022)
 

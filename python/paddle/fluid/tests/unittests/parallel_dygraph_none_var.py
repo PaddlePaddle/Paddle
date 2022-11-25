@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import numpy as np
+from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
 import paddle.fluid as fluid
-
-from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
 np.random.seed(2021)
 paddle.seed(1024)
