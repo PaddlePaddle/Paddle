@@ -241,7 +241,7 @@ class TestPriorBox(unittest.TestCase):
                 name='pixel', shape=data_shape, dtype='float32'
             )
             conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-            box, var = layers.prior_box(
+            box, var = paddle.static.nn.prior_box(
                 input=conv1,
                 image=images,
                 min_sizes=[100.0],
@@ -261,7 +261,7 @@ class TestPriorBox2(unittest.TestCase):
             data_shape = [None, 3, None, None]
             images = fluid.data(name='pixel', shape=data_shape, dtype='float32')
             conv1 = fluid.layers.conv2d(images, 3, 3, 2)
-            box, var = layers.prior_box(
+            box, var = paddle.static.nn.prior_box(
                 input=conv1,
                 image=images,
                 min_sizes=[100.0],

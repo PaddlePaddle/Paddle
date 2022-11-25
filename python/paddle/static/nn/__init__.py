@@ -17,6 +17,7 @@ from .common import deform_conv2d  # noqa: F401
 from .common import conv3d  # noqa: F401
 from .common import conv2d_transpose  # noqa: F401
 from .common import conv3d_transpose  # noqa: F401
+from .common import prior_box
 
 from ...fluid.layers import batch_norm  # noqa: F401
 from ...fluid.layers import bilinear_tensor_product  # noqa: F401
@@ -79,6 +80,7 @@ __all__ = [  # noqa
     'multi_box_head',
     'nce',
     'prelu',
+    'prior_box',
     'py_func',
     'row_conv',
     'spectral_norm',
