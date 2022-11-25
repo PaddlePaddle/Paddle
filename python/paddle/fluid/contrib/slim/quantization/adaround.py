@@ -74,7 +74,7 @@ class AdaRoundLoss:
 
             # calculate regularization term - which ensures parameter to converge to exactly zeros and ones
             # at the end of optimization
-            reg_term = paddle.reduce_sum(
+            reg_term = paddle.sum(
                 -paddle.pow(paddle.abs(2 * h_v - 1), beta) + 1
             )
 
