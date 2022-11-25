@@ -29,7 +29,6 @@ from ..fluid.data_feeder import (
     check_variable_and_dtype,
     convert_dtype,
 )
-
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ..fluid.framework import _in_legacy_dygraph, _non_static_mode
 from ..fluid.layers import utils
@@ -42,7 +41,6 @@ from ..framework import (
 )
 from ..static import Variable
 from .creation import _complex_to_real_dtype, _real_to_complex_dtype, zeros
-
 
 __all__ = []
 

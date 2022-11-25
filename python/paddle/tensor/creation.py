@@ -46,7 +46,6 @@ from ..framework import (
 )
 from ..static import Variable, device_guard
 
-
 __all__ = []
 
 

@@ -17,7 +17,6 @@
 import paddle
 
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-
 from ..fluid.framework import _in_eager_mode_
 from ..static import Variable
 from .layer_function_generator import templatedoc
@@ -32,7 +31,6 @@ from paddle.tensor.creation import full
 
 from ..fluid.framework import _in_legacy_dygraph
 from ..framework import LayerHelper, in_dygraph_mode
-
 
 __all__ = []
 

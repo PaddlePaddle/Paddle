@@ -50,7 +50,6 @@ from ..static import Variable
 from .creation import _complex_to_real_dtype
 from .layer_function_generator import generate_layer_fn
 from .manipulation import cast
-
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401
 from .ops import acosh  # noqa: F401
@@ -80,7 +79,6 @@ from .ops import sqrt  # noqa: F401
 from .ops import sqrt_  # noqa: F401
 from .ops import square  # noqa: F401
 from .ops import tan  # noqa: F401
-
 
 __all__ = []
 
