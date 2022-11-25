@@ -3861,16 +3861,6 @@ class TestBook(LayerTest):
             )
             return out
 
-    def test_psroi_pool(self):
-        # TODO(minqiyang): dygraph do not support lod now
-        with self.static_graph():
-            x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
-            rois = layers.data(
-                name="rois", shape=[4], dtype="float32", lod_level=1
-            )
-            output = layers.psroi_pool(x, rois, 5, 0.25, 7, 7)
-            return output
-
     def test_sequence_expand(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
