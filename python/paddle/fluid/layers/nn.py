@@ -104,7 +104,6 @@ __all__ = [
     'resize_trilinear',
     'resize_nearest',
     'gather_nd',
-    'random_crop',
     'relu',
     'log',
     'crop_tensor',
@@ -6223,63 +6222,6 @@ def gather_nd(input, index, name=None):
         outputs={"Out": output},
     )
     return output
-
-
-@templatedoc()
-def random_crop(x, shape, seed=None):
-    """
-    ${comment}
-
-    Args:
-        x(${x_type}): ${x_comment}
-        shape(${shape_type}): ${shape_comment}
-        seed(int|${seed_type}|None): ${seed_comment} By default, the seed will
-            get from `random.randint(-65536, 65535)`.
-
-    Returns:
-        ${out_comment}
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            img = fluid.data("img", [None, 3, 256, 256])
-            # cropped_img is [-1, 3, 224, 224]
-            cropped_img = fluid.layers.random_crop(img, shape=[3, 224, 224])
-
-            # cropped_img2 shape: [-1, 2, 224, 224]
-            # cropped_img2 = fluid.layers.random_crop(img, shape=[2, 224, 224])
-
-            # cropped_img3 shape: [-1, 3, 128, 224]
-            # cropped_img3 = fluid.layers.random_crop(img, shape=[128, 224])
-
-    """
-    helper = LayerHelper("random_crop", **locals())
-    check_variable_and_dtype(
-        x, 'x', ['float32', 'float64', 'uint8', 'int16', 'int32'], 'random_crop'
-    )
-    check_type(shape, 'shape', (list, Variable), 'random_crop')
-    dtype = x.dtype
-    out = helper.create_variable_for_type_inference(dtype)
-    if seed is None:
-        seed = np.random.randint(-65536, 65536)
-    op_attrs = {"shape": shape}
-    if isinstance(seed, int):
-        op_attrs["startup_seed"] = seed
-        seed = helper.create_variable(
-            name=unique_name.generate("random_crop_seed"),
-            dtype="int64",
-            persistable=True,
-        )
-    elif not isinstance(seed, Variable):
-        raise ValueError("'seed' must be a Variable or an int.")
-    helper.append_op(
-        type="random_crop",
-        inputs={"X": x, "Seed": seed},
-        outputs={"Out": out, "SeedOut": seed},
-        attrs=op_attrs,
-    )
-    return out
 
 
 def log(x, name=None):

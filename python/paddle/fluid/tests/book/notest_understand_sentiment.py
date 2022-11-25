@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle.fluid as fluid
-import paddle
 import contextlib
 import math
-import numpy as np
-import sys
 import os
+import sys
+import unittest
+
+import numpy as np
+
+import paddle
+import paddle.fluid as fluid
 
 
 def convolution_net(

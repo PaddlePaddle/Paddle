@@ -16,8 +16,9 @@ import os
 import unittest
 
 import numpy as np
-import paddle
 from op_test_ipu import IPUOpTest
+
+import paddle
 
 
 class SimpleLayer(paddle.nn.Layer):

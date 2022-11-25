@@ -12,18 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import numpy as np
 import random
+import unittest
+
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 import paddle.distributed.fleet as fleet
-from paddle.distributed.fleet.meta_parallel import PipelineLayer
-from paddle.fluid.dygraph.layers import Layer
-import paddle.nn as nn
 import paddle.fluid as fluid
-from paddle.distributed.fleet.meta_parallel import LayerDesc, SharedLayerDesc
+import paddle.nn as nn
+from paddle.distributed.fleet.meta_parallel import (
+    LayerDesc,
+    PipelineLayer,
+    SharedLayerDesc,
+)
+from paddle.fluid.dygraph.layers import Layer
 
 
 def print_hook_fn(grad):
