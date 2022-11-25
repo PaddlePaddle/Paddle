@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.framework.core import AnalysisConfig, PaddleDType, PaddlePlace
-from paddle.framework.core import PaddleInferPredictor, PaddleInferTensor
-from paddle.framework.core import convert_to_mixed_precision_bind
-import paddle.framework.core as core
+import paddle.fluid.core as core
+from paddle.fluid.core import AnalysisConfig, PaddleDType, PaddlePlace
+from paddle.fluid.core import PaddleInferPredictor, PaddleInferTensor
+from paddle.fluid.core import convert_to_mixed_precision_bind
 
 import os
 import numpy as np

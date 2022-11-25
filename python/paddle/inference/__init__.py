@@ -22,7 +22,7 @@ from .wrapper import (
     convert_to_mixed_precision,
 )
 
-from paddle.framework.core import (
+from paddle.fluid.core import (
     create_predictor,
     get_version,
     _get_phi_kernel_name,
