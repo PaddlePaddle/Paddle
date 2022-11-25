@@ -55,13 +55,6 @@ struct CastDataLayout {
 #ifdef PADDLE_WITH_MKLDNN
 using OneDNNDataType = dnnl::memory::data_type;
 
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout,
-                                    DataLayout out_layout,
-                                    const phi::DenseTensor& in,
-                                    phi::DenseTensor* out,
-                                    platform::Place place,
-                                    bool always_copy = false);
-
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const phi::DenseTensor& in,
