@@ -332,14 +332,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_bboxes_Variable():
                 # the bboxes type must be Variable
-                fluid.layers.matrix_nms(
-                    bboxes=boxes_np,
-                    scores=scores_data,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold,
-                    nms_top_k=nms_top_k,
-                    keep_top_k=keep_top_k,
-                )
                 paddle.vision.ops.matrix_nms(
                     bboxes=boxes_np,
                     scores=scores_data,
@@ -351,14 +343,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_scores_Variable():
                 # the scores type must be Variable
-                fluid.layers.matrix_nms(
-                    bboxes=boxes_data,
-                    scores=scores_np,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold,
-                    nms_top_k=nms_top_k,
-                    keep_top_k=keep_top_k,
-                )
                 paddle.vision.ops.matrix_nms(
                     bboxes=boxes_data,
                     scores=scores_np,
@@ -370,17 +354,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_empty():
                 # when all score are lower than threshold
-                try:
-                    fluid.layers.matrix_nms(
-                        bboxes=boxes_data,
-                        scores=scores_data,
-                        score_threshold=score_threshold,
-                        post_threshold=post_threshold,
-                        nms_top_k=nms_top_k,
-                        keep_top_k=keep_top_k,
-                    )
-                except Exception as e:
-                    self.fail(e)
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
@@ -395,17 +368,6 @@ class TestMatrixNMSError(unittest.TestCase):
 
             def test_coverage():
                 # cover correct workflow
-                try:
-                    fluid.layers.matrix_nms(
-                        bboxes=boxes_data,
-                        scores=scores_data,
-                        score_threshold=score_threshold,
-                        post_threshold=post_threshold,
-                        nms_top_k=nms_top_k,
-                        keep_top_k=keep_top_k,
-                    )
-                except Exception as e:
-                    self.fail(e)
                 try:
                     paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
